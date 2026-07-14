@@ -2,6 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 
+mod snbt;
+
+pub use snbt::parse_snbt_compound;
+
 const MAX_NBT_DEPTH: usize = 64;
 const MAX_NBT_ARRAY_ITEMS: usize = 4096;
 pub(crate) const MAX_NBT_COMPOUND_ENTRIES: usize = 4096;

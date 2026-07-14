@@ -6,7 +6,7 @@ pub use component::{
     styled_component_runs_from_nbt_value, styled_runs_summary_text, ComponentClickEvent,
     ComponentStyle, SignBlockEntityNbt, SignTextNbt, StyledTextRun,
 };
-pub use nbt_summary::{decode_nbt_summary, NbtSummaryEntry, NbtSummaryValue};
+pub use nbt_summary::{decode_nbt_summary, parse_snbt_compound, NbtSummaryEntry, NbtSummaryValue};
 
 pub mod advancement_frame_types;
 pub mod attribute_modifier_types;

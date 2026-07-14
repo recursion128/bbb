@@ -1,6 +1,7 @@
 use bbb_protocol::{
     block_entity_types::vanilla_block_entity_type_for_resource_id,
-    entity_types::vanilla_entity_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
+    entity_types::vanilla_entity_type_for_resource_id, parse_snbt_compound, NbtSummaryEntry,
+    NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
 
@@ -61,9 +62,8 @@ pub(super) fn decode_custom_data(
 ) -> Result<NbtSummaryValue, String> {
     match value {
         NbtSummaryValue::Compound(_) => Ok(value.clone()),
-        NbtSummaryValue::String(_) => {
-            Err(format!("{what} flattened SNBT string is not yet supported"))
-        }
+        NbtSummaryValue::String(raw) => parse_snbt_compound(raw)
+            .map_err(|error| format!("invalid {what} flattened SNBT string: {error}")),
         _ => Err(format!("{what} is not a compound")),
     }
 }
@@ -72,13 +72,17 @@ fn decode_typed_data(
     value: &NbtSummaryValue,
     what: &str,
 ) -> Result<(String, NbtSummaryValue), String> {
-    let NbtSummaryValue::Compound(entries) = value else {
-        return Err(match value {
-            NbtSummaryValue::String(_) => {
-                format!("{what} flattened SNBT string is not yet supported")
-            }
-            _ => format!("{what} is not a compound"),
-        });
+    let parsed;
+    let entries = match value {
+        NbtSummaryValue::Compound(entries) => entries,
+        NbtSummaryValue::String(_) => {
+            parsed = decode_custom_data(value, what)?;
+            let NbtSummaryValue::Compound(entries) = &parsed else {
+                unreachable!("parse_snbt_compound returned a compound")
+            };
+            entries
+        }
+        _ => return Err(format!("{what} is not a compound")),
     };
     let id = required_field(entries, "id", what)?;
     let NbtSummaryValue::String(raw_id) = id else {

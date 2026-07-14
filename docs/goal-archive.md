@@ -13883,3 +13883,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   compact/full template、recursive typed patch、空 array/list、顺序、256/257 边界、missing/wrong field、
   air/unknown item 与非法 count/slot 均有定向测试；其余 Component、holder、list/compound-record Codec
   与 native screens 仍开放。
+
+## 2026-07-14：Decode flattened-SNBT dialog data alternatives
+
+- [x] 在 `bbb-protocol` 的 NBT semantic owner 下新增 bounded compound-only SNBT parser；对照
+  `TagParser.FLATTENED_CODEC`、`SnbtGrammar` 与 `SnbtOperations`，覆盖 recursive compound/list、三种
+  typed array、decimal/hex/binary/unsigned integer、finite float、quoted/unquoted string、last-wins key、
+  `bool`/`uuid` builtin、trailing separator 与 `x`/`u`/`U` escape，并复用既有 NBT depth/collection 上限。
+- [x] `ENTITY_DATA`、`BLOCK_ENTITY_DATA`、`BUCKET_ENTITY_DATA`、`CUSTOM_DATA` 以及 Bees nested
+  TypedEntityData 现在接受同一 flattened-SNBT alternative；typed data 仍剥离并验证 built-in `id`，
+  compound 分支行为不变，malformed/non-compound/trailing 输入有定向拒绝测试。
+- [ ] `SnbtGrammar` 的 `\N{name}` Unicode character-name escape 仍显式拒绝；其余 Component、holder、
+  list/compound-record Codec 与 native screens 仍开放。

@@ -1,0 +1,840 @@
+use uuid::Uuid;
+
+use crate::codec::{ProtocolError, Result};
+
+use super::{
+    NbtSummaryEntry, NbtSummaryValue, MAX_NBT_ARRAY_ITEMS, MAX_NBT_COMPOUND_ENTRIES, MAX_NBT_DEPTH,
+    MAX_NBT_LIST_ITEMS,
+};
+
+/// Parses the compound-only flattened SNBT surface used by vanilla
+/// `TagParser.FLATTENED_CODEC`.
+pub fn parse_snbt_compound(input: &str) -> Result<NbtSummaryValue> {
+    let mut parser = SnbtParser::new(input);
+    let value = parser.parse_value(0)?;
+    parser.skip_whitespace();
+    if !parser.is_empty() {
+        return Err(parser.error("trailing data after SNBT value"));
+    }
+    if !matches!(value, NbtSummaryValue::Compound(_)) {
+        return Err(ProtocolError::InvalidData(
+            "flattened SNBT root is not a compound".to_string(),
+        ));
+    }
+    Ok(value)
+}
+
+struct SnbtParser<'a> {
+    input: &'a str,
+    cursor: usize,
+}
+
+impl<'a> SnbtParser<'a> {
+    fn new(input: &'a str) -> Self {
+        Self { input, cursor: 0 }
+    }
+
+    fn parse_value(&mut self, depth: usize) -> Result<NbtSummaryValue> {
+        if depth > MAX_NBT_DEPTH {
+            return Err(self.error("SNBT exceeded max depth"));
+        }
+        self.skip_whitespace();
+        let Some(next) = self.peek() else {
+            return Err(self.error("expected SNBT value"));
+        };
+        match next {
+            '{' => self.parse_compound(depth),
+            '[' => self.parse_list_or_array(depth),
+            '\'' | '"' => self.parse_quoted_string().map(NbtSummaryValue::String),
+            next if can_start_number(next) => {
+                let token = self.read_unquoted();
+                parse_number_token(token).map_err(|reason| self.error(reason))
+            }
+            _ => self.parse_unquoted_value(depth),
+        }
+    }
+
+    fn parse_compound(&mut self, depth: usize) -> Result<NbtSummaryValue> {
+        self.expect('{')?;
+        let mut entries: Vec<NbtSummaryEntry> = Vec::new();
+        self.skip_whitespace();
+        if self.consume('}') {
+            return Ok(NbtSummaryValue::Compound(entries));
+        }
+        loop {
+            if entries.len() >= MAX_NBT_COMPOUND_ENTRIES {
+                return Err(self.error(format!(
+                    "SNBT compound has more than {MAX_NBT_COMPOUND_ENTRIES} entries"
+                )));
+            }
+            let key = self.parse_key()?;
+            if key.is_empty() {
+                return Err(self.error("SNBT compound key is empty"));
+            }
+            self.expect(':')?;
+            let value = self.parse_value(depth + 1)?;
+            if let Some(existing) = entries.iter_mut().find(|entry| entry.name == key) {
+                existing.value = value;
+            } else {
+                entries.push(NbtSummaryEntry { name: key, value });
+            }
+            self.skip_whitespace();
+            if self.consume('}') {
+                break;
+            }
+            self.expect(',')?;
+            self.skip_whitespace();
+            if self.consume('}') {
+                break;
+            }
+        }
+        Ok(NbtSummaryValue::Compound(entries))
+    }
+
+    fn parse_key(&mut self) -> Result<String> {
+        self.skip_whitespace();
+        match self.peek() {
+            Some('\'' | '"') => self.parse_quoted_string(),
+            Some(_) => {
+                let value = self.read_unquoted();
+                if value.is_empty() {
+                    Err(self.error("expected SNBT compound key"))
+                } else {
+                    Ok(value.to_string())
+                }
+            }
+            None => Err(self.error("expected SNBT compound key")),
+        }
+    }
+
+    fn parse_list_or_array(&mut self, depth: usize) -> Result<NbtSummaryValue> {
+        self.expect('[')?;
+        self.skip_whitespace();
+        if let Some(array_type) = self.array_prefix() {
+            return self.parse_array(array_type);
+        }
+        let mut values = Vec::new();
+        if self.consume(']') {
+            return Ok(NbtSummaryValue::List(values));
+        }
+        loop {
+            if values.len() >= MAX_NBT_LIST_ITEMS {
+                return Err(self.error(format!(
+                    "SNBT list has more than {MAX_NBT_LIST_ITEMS} entries"
+                )));
+            }
+            values.push(self.parse_value(depth + 1)?);
+            self.skip_whitespace();
+            if self.consume(']') {
+                break;
+            }
+            self.expect(',')?;
+            self.skip_whitespace();
+            if self.consume(']') {
+                break;
+            }
+        }
+        Ok(NbtSummaryValue::List(values))
+    }
+
+    fn array_prefix(&mut self) -> Option<IntegerType> {
+        let saved = self.cursor;
+        let array_type = match self.peek()? {
+            'B' => IntegerType::Byte,
+            'I' => IntegerType::Int,
+            'L' => IntegerType::Long,
+            _ => return None,
+        };
+        self.bump();
+        self.skip_whitespace();
+        if self.consume(';') {
+            Some(array_type)
+        } else {
+            self.cursor = saved;
+            None
+        }
+    }
+
+    fn parse_array(&mut self, array_type: IntegerType) -> Result<NbtSummaryValue> {
+        let mut values = Vec::new();
+        self.skip_whitespace();
+        if self.consume(']') {
+            return Ok(array_value(array_type, values));
+        }
+        loop {
+            if values.len() >= MAX_NBT_ARRAY_ITEMS {
+                return Err(self.error(format!(
+                    "SNBT array has more than {MAX_NBT_ARRAY_ITEMS} entries"
+                )));
+            }
+            self.skip_whitespace();
+            let token = self.read_unquoted();
+            if token.is_empty() {
+                return Err(self.error("expected integer SNBT array element"));
+            }
+            let (value, actual_type) = parse_integer_token(token, Some(array_type))
+                .map_err(|reason| self.error(reason))?;
+            if !array_type.accepts(actual_type) {
+                return Err(self.error(format!(
+                    "SNBT {} array does not accept {} element {token}",
+                    array_type.name(),
+                    actual_type.name()
+                )));
+            }
+            values.push(value);
+            self.skip_whitespace();
+            if self.consume(']') {
+                break;
+            }
+            self.expect(',')?;
+            self.skip_whitespace();
+            if self.consume(']') {
+                break;
+            }
+        }
+        Ok(array_value(array_type, values))
+    }
+
+    fn parse_unquoted_value(&mut self, depth: usize) -> Result<NbtSummaryValue> {
+        let identifier = self.read_unquoted();
+        if identifier.is_empty() {
+            return Err(self.error("expected unquoted SNBT string"));
+        }
+        if can_start_number(identifier.chars().next().unwrap()) {
+            return Err(self.error("unquoted SNBT string cannot start like a number"));
+        }
+        self.skip_whitespace();
+        if self.consume('(') {
+            let arguments = self.parse_arguments(depth)?;
+            return self.apply_builtin(identifier, arguments);
+        }
+        if identifier.eq_ignore_ascii_case("true") {
+            Ok(NbtSummaryValue::Byte(1))
+        } else if identifier.eq_ignore_ascii_case("false") {
+            Ok(NbtSummaryValue::Byte(0))
+        } else {
+            Ok(NbtSummaryValue::String(identifier.to_string()))
+        }
+    }
+
+    fn parse_arguments(&mut self, depth: usize) -> Result<Vec<NbtSummaryValue>> {
+        let mut arguments = Vec::new();
+        self.skip_whitespace();
+        if self.consume(')') {
+            return Ok(arguments);
+        }
+        loop {
+            if arguments.len() >= MAX_NBT_LIST_ITEMS {
+                return Err(self.error(format!(
+                    "SNBT builtin has more than {MAX_NBT_LIST_ITEMS} arguments"
+                )));
+            }
+            arguments.push(self.parse_value(depth + 1)?);
+            self.skip_whitespace();
+            if self.consume(')') {
+                break;
+            }
+            self.expect(',')?;
+            self.skip_whitespace();
+            if self.consume(')') {
+                break;
+            }
+        }
+        Ok(arguments)
+    }
+
+    fn apply_builtin(
+        &self,
+        identifier: &str,
+        arguments: Vec<NbtSummaryValue>,
+    ) -> Result<NbtSummaryValue> {
+        if arguments.len() != 1 {
+            return Err(self.error(format!(
+                "unknown SNBT builtin {identifier}/{}",
+                arguments.len()
+            )));
+        }
+        let argument = arguments.into_iter().next().unwrap();
+        match identifier {
+            "bool" => numeric_truth(&argument)
+                .map(|value| NbtSummaryValue::Byte(i8::from(value)))
+                .ok_or_else(|| self.error("bool SNBT builtin expects a number or boolean")),
+            "uuid" => {
+                let NbtSummaryValue::String(raw) = argument else {
+                    return Err(self.error("uuid SNBT builtin expects a string"));
+                };
+                let uuid = Uuid::parse_str(&raw)
+                    .map_err(|_| self.error(format!("invalid uuid SNBT builtin value {raw}")))?;
+                let value = uuid.as_u128();
+                Ok(NbtSummaryValue::IntArray(vec![
+                    (value >> 96) as u32 as i32,
+                    (value >> 64) as u32 as i32,
+                    (value >> 32) as u32 as i32,
+                    value as u32 as i32,
+                ]))
+            }
+            _ => Err(self.error(format!("unknown SNBT builtin {identifier}/1"))),
+        }
+    }
+
+    fn parse_quoted_string(&mut self) -> Result<String> {
+        self.skip_whitespace();
+        let quote = self.bump().unwrap();
+        debug_assert!(matches!(quote, '\'' | '"'));
+        let mut output = String::new();
+        loop {
+            let Some(next) = self.bump() else {
+                return Err(self.error("unterminated quoted SNBT string"));
+            };
+            if next == quote {
+                return Ok(output);
+            }
+            if next != '\\' {
+                output.push(next);
+                continue;
+            }
+            let Some(escape) = self.bump() else {
+                return Err(self.error("unterminated SNBT string escape"));
+            };
+            match escape {
+                'b' => output.push('\u{0008}'),
+                's' => output.push(' '),
+                't' => output.push('\t'),
+                'n' => output.push('\n'),
+                'f' => output.push('\u{000c}'),
+                'r' => output.push('\r'),
+                '\\' => output.push('\\'),
+                '\'' => output.push('\''),
+                '"' => output.push('"'),
+                'x' => output.push(self.parse_hex_escape(2)?),
+                'u' => output.push(self.parse_hex_escape(4)?),
+                'U' => output.push(self.parse_hex_escape(8)?),
+                'N' => {
+                    return Err(
+                        self.error("named Unicode SNBT string escapes are not yet supported")
+                    );
+                }
+                _ => return Err(self.error(format!("unknown SNBT string escape \\{escape}"))),
+            }
+        }
+    }
+
+    fn parse_hex_escape(&mut self, digits: usize) -> Result<char> {
+        let start = self.cursor;
+        for _ in 0..digits {
+            let Some(value) = self.bump() else {
+                return Err(self.error(format!(
+                    "SNBT Unicode escape needs {digits} hexadecimal digits"
+                )));
+            };
+            if !value.is_ascii_hexdigit() {
+                return Err(self.error(format!(
+                    "SNBT Unicode escape needs {digits} hexadecimal digits"
+                )));
+            }
+        }
+        let raw = &self.input[start..self.cursor];
+        let codepoint = u32::from_str_radix(raw, 16).unwrap();
+        char::from_u32(codepoint)
+            .ok_or_else(|| self.error(format!("invalid SNBT Unicode codepoint U+{codepoint:08X}")))
+    }
+
+    fn expect(&mut self, expected: char) -> Result<()> {
+        self.skip_whitespace();
+        if self.consume(expected) {
+            Ok(())
+        } else {
+            Err(self.error(format!("expected '{expected}' in SNBT")))
+        }
+    }
+
+    fn read_unquoted(&mut self) -> &'a str {
+        self.skip_whitespace();
+        let start = self.cursor;
+        while self.peek().is_some_and(is_unquoted_character) {
+            self.bump();
+        }
+        &self.input[start..self.cursor]
+    }
+
+    fn skip_whitespace(&mut self) {
+        while self.peek().is_some_and(char::is_whitespace) {
+            self.bump();
+        }
+    }
+
+    fn consume(&mut self, expected: char) -> bool {
+        if self.peek() == Some(expected) {
+            self.bump();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn peek(&self) -> Option<char> {
+        self.input[self.cursor..].chars().next()
+    }
+
+    fn bump(&mut self) -> Option<char> {
+        let value = self.peek()?;
+        self.cursor += value.len_utf8();
+        Some(value)
+    }
+
+    fn is_empty(&self) -> bool {
+        self.cursor == self.input.len()
+    }
+
+    fn error(&self, reason: impl Into<String>) -> ProtocolError {
+        ProtocolError::InvalidData(format!("{} at byte {}", reason.into(), self.cursor))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum IntegerType {
+    Byte,
+    Short,
+    Int,
+    Long,
+}
+
+impl IntegerType {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Byte => "byte",
+            Self::Short => "short",
+            Self::Int => "int",
+            Self::Long => "long",
+        }
+    }
+
+    fn bits(self) -> u32 {
+        match self {
+            Self::Byte => 8,
+            Self::Short => 16,
+            Self::Int => 32,
+            Self::Long => 64,
+        }
+    }
+
+    fn accepts(self, actual: Self) -> bool {
+        match self {
+            Self::Byte => actual == Self::Byte,
+            Self::Int => matches!(actual, Self::Byte | Self::Short | Self::Int),
+            Self::Long => true,
+            Self::Short => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Signedness {
+    Signed,
+    Unsigned,
+}
+
+fn parse_number_token(token: &str) -> std::result::Result<NbtSummaryValue, String> {
+    if !has_base_prefix(token) {
+        if let Some(float) = parse_float_token(token)? {
+            return Ok(float);
+        }
+    }
+    parse_integer_token(token, None).map(|(value, _)| value)
+}
+
+fn parse_float_token(token: &str) -> std::result::Result<Option<NbtSummaryValue>, String> {
+    let (sign, unsigned) = strip_sign(token);
+    if unsigned.is_empty() {
+        return Err(format!("invalid numeric SNBT literal {token}"));
+    }
+    let (body, float_type) = match unsigned.as_bytes().last().copied() {
+        Some(b'f' | b'F') => (&unsigned[..unsigned.len() - 1], Some('f')),
+        Some(b'd' | b'D') => (&unsigned[..unsigned.len() - 1], Some('d')),
+        _ => (unsigned, None),
+    };
+    let has_float_shape =
+        float_type.is_some() || body.contains('.') || body.contains('e') || body.contains('E');
+    if !has_float_shape {
+        return Ok(None);
+    }
+    if body.is_empty() {
+        return Err(format!("invalid floating SNBT literal {token}"));
+    }
+    let mut exponent_parts = body.split(['e', 'E']);
+    let significand = exponent_parts.next().unwrap();
+    let exponent = exponent_parts.next();
+    if exponent_parts.next().is_some() {
+        return Err(format!("invalid floating SNBT literal {token}"));
+    }
+    if let Some(exponent) = exponent {
+        let (_, digits) = strip_sign(exponent);
+        validate_digit_run(digits, 10, "floating exponent")?;
+    }
+    let mut decimal_parts = significand.split('.');
+    let whole = decimal_parts.next().unwrap();
+    let fraction = decimal_parts.next();
+    if decimal_parts.next().is_some() {
+        return Err(format!("invalid floating SNBT literal {token}"));
+    }
+    match fraction {
+        Some(fraction) => {
+            if whole.is_empty() && fraction.is_empty() {
+                return Err(format!("invalid floating SNBT literal {token}"));
+            }
+            if !whole.is_empty() {
+                validate_digit_run(whole, 10, "floating whole part")?;
+            }
+            if !fraction.is_empty() {
+                validate_digit_run(fraction, 10, "floating fraction")?;
+            }
+        }
+        None => validate_digit_run(whole, 10, "floating whole part")?,
+    }
+    let mut cleaned = String::new();
+    if sign == Some('-') {
+        cleaned.push('-');
+    }
+    cleaned.extend(body.chars().filter(|value| *value != '_'));
+    if float_type == Some('f') {
+        let value = cleaned
+            .parse::<f32>()
+            .map_err(|_| format!("invalid floating SNBT literal {token}"))?;
+        if !value.is_finite() {
+            return Err(format!("non-finite floating SNBT literal {token}"));
+        }
+        Ok(Some(NbtSummaryValue::Float(value.to_bits())))
+    } else {
+        let value = cleaned
+            .parse::<f64>()
+            .map_err(|_| format!("invalid floating SNBT literal {token}"))?;
+        if !value.is_finite() {
+            return Err(format!("non-finite floating SNBT literal {token}"));
+        }
+        Ok(Some(NbtSummaryValue::Double(value.to_bits())))
+    }
+}
+
+fn parse_integer_token(
+    token: &str,
+    default_type: Option<IntegerType>,
+) -> std::result::Result<(NbtSummaryValue, IntegerType), String> {
+    let (sign, unsigned) = strip_sign(token);
+    if unsigned.is_empty() {
+        return Err(format!("invalid integer SNBT literal {token}"));
+    }
+    let (base, digits_start) = if unsigned.starts_with("0x") || unsigned.starts_with("0X") {
+        (16, 2)
+    } else if unsigned.starts_with("0b") || unsigned.starts_with("0B") {
+        (2, 2)
+    } else {
+        (10, 0)
+    };
+    let rest = &unsigned[digits_start..];
+    let digit_len = rest
+        .char_indices()
+        .take_while(|(_, value)| is_radix_digit_or_underscore(*value, base))
+        .map(|(index, value)| index + value.len_utf8())
+        .last()
+        .unwrap_or(0);
+    let digits = &rest[..digit_len];
+    validate_digit_run(digits, base, "integer")?;
+    if base == 10 {
+        let cleaned = digits.replace('_', "");
+        if cleaned.len() > 1 && cleaned.starts_with('0') {
+            return Err(format!("leading zero in integer SNBT literal {token}"));
+        }
+    }
+    let suffix = &rest[digit_len..];
+    let (explicit_sign, explicit_type) = parse_integer_suffix(suffix)
+        .ok_or_else(|| format!("invalid integer SNBT suffix in {token}"))?;
+    let value_type = explicit_type.or(default_type).unwrap_or(IntegerType::Int);
+    let signedness = explicit_sign.unwrap_or(if base == 10 {
+        Signedness::Signed
+    } else {
+        Signedness::Unsigned
+    });
+    if signedness == Signedness::Unsigned && sign == Some('-') {
+        return Err(format!("negative unsigned integer SNBT literal {token}"));
+    }
+    let cleaned = digits.replace('_', "");
+    let magnitude = u128::from_str_radix(&cleaned, base)
+        .map_err(|_| format!("integer SNBT literal is out of range {token}"))?;
+    let value = integer_value(value_type, signedness, sign == Some('-'), magnitude)
+        .ok_or_else(|| format!("integer SNBT literal is out of range {token}"))?;
+    Ok((value, value_type))
+}
+
+fn parse_integer_suffix(suffix: &str) -> Option<(Option<Signedness>, Option<IntegerType>)> {
+    if suffix.is_empty() {
+        return Some((None, None));
+    }
+    let lower = suffix.to_ascii_lowercase();
+    let (signedness, type_name) = match lower.len() {
+        1 => (None, lower.as_str()),
+        2 => {
+            let signedness = match &lower[..1] {
+                "s" => Signedness::Signed,
+                "u" => Signedness::Unsigned,
+                _ => return None,
+            };
+            (Some(signedness), &lower[1..])
+        }
+        _ => return None,
+    };
+    let value_type = match type_name {
+        "b" => IntegerType::Byte,
+        "s" => IntegerType::Short,
+        "i" => IntegerType::Int,
+        "l" => IntegerType::Long,
+        _ => return None,
+    };
+    Some((signedness, Some(value_type)))
+}
+
+fn integer_value(
+    value_type: IntegerType,
+    signedness: Signedness,
+    negative: bool,
+    magnitude: u128,
+) -> Option<NbtSummaryValue> {
+    let bits = value_type.bits();
+    let raw = match signedness {
+        Signedness::Signed => {
+            let max = (1u128 << (bits - 1)) - 1;
+            let min_magnitude = 1u128 << (bits - 1);
+            if negative {
+                (magnitude <= min_magnitude).then(|| -(magnitude as i128))?
+            } else {
+                (magnitude <= max).then_some(magnitude as i128)?
+            }
+        }
+        Signedness::Unsigned => {
+            let max = if bits == 64 {
+                u64::MAX as u128
+            } else {
+                (1u128 << bits) - 1
+            };
+            (magnitude <= max).then_some(magnitude as i128)?
+        }
+    };
+    Some(match value_type {
+        IntegerType::Byte => NbtSummaryValue::Byte(raw as u8 as i8),
+        IntegerType::Short => NbtSummaryValue::Short(raw as u16 as i16),
+        IntegerType::Int => NbtSummaryValue::Int(raw as u32 as i32),
+        IntegerType::Long => NbtSummaryValue::Long(raw as u64 as i64),
+    })
+}
+
+fn array_value(array_type: IntegerType, values: Vec<NbtSummaryValue>) -> NbtSummaryValue {
+    match array_type {
+        IntegerType::Byte => NbtSummaryValue::ByteArray(
+            values
+                .into_iter()
+                .map(|value| match value {
+                    NbtSummaryValue::Byte(value) => value,
+                    _ => unreachable!("byte array accepted only byte values"),
+                })
+                .collect(),
+        ),
+        IntegerType::Int => {
+            NbtSummaryValue::IntArray(values.into_iter().map(widen_integer_to_i32).collect())
+        }
+        IntegerType::Long => {
+            NbtSummaryValue::LongArray(values.into_iter().map(widen_integer_to_i64).collect())
+        }
+        IntegerType::Short => unreachable!("SNBT has no short array"),
+    }
+}
+
+fn widen_integer_to_i32(value: NbtSummaryValue) -> i32 {
+    match value {
+        NbtSummaryValue::Byte(value) => value.into(),
+        NbtSummaryValue::Short(value) => value.into(),
+        NbtSummaryValue::Int(value) => value,
+        _ => unreachable!("int array accepted only byte/short/int values"),
+    }
+}
+
+fn widen_integer_to_i64(value: NbtSummaryValue) -> i64 {
+    match value {
+        NbtSummaryValue::Byte(value) => value.into(),
+        NbtSummaryValue::Short(value) => value.into(),
+        NbtSummaryValue::Int(value) => value.into(),
+        NbtSummaryValue::Long(value) => value,
+        _ => unreachable!("long array accepted only integer values"),
+    }
+}
+
+fn numeric_truth(value: &NbtSummaryValue) -> Option<bool> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => *value != 0,
+        NbtSummaryValue::Short(value) => *value != 0,
+        NbtSummaryValue::Int(value) => *value != 0,
+        NbtSummaryValue::Long(value) => *value != 0,
+        NbtSummaryValue::Float(bits) => f32::from_bits(*bits) != 0.0,
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) != 0.0,
+        _ => return None,
+    })
+}
+
+fn strip_sign(value: &str) -> (Option<char>, &str) {
+    match value.as_bytes().first().copied() {
+        Some(b'+') => (Some('+'), &value[1..]),
+        Some(b'-') => (Some('-'), &value[1..]),
+        _ => (None, value),
+    }
+}
+
+fn validate_digit_run(value: &str, radix: u32, part: &str) -> std::result::Result<(), String> {
+    if value.is_empty()
+        || value.starts_with('_')
+        || value.ends_with('_')
+        || !value
+            .chars()
+            .all(|digit| is_radix_digit_or_underscore(digit, radix))
+    {
+        return Err(format!("invalid {part} SNBT numeral {value}"));
+    }
+    Ok(())
+}
+
+fn has_base_prefix(value: &str) -> bool {
+    let (_, value) = strip_sign(value);
+    value.starts_with("0x")
+        || value.starts_with("0X")
+        || value.starts_with("0b")
+        || value.starts_with("0B")
+}
+
+fn is_radix_digit_or_underscore(value: char, radix: u32) -> bool {
+    value == '_' || value.is_digit(radix)
+}
+
+fn is_unquoted_character(value: char) -> bool {
+    value.is_ascii_alphanumeric() || matches!(value, '_' | '-' | '.' | '+')
+}
+
+fn can_start_number(value: char) -> bool {
+    matches!(value, '+' | '-' | '.' | '0'..='9')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry<'a>(value: &'a NbtSummaryValue, name: &str) -> &'a NbtSummaryValue {
+        let NbtSummaryValue::Compound(entries) = value else {
+            panic!("expected compound");
+        };
+        &entries
+            .iter()
+            .find(|entry| entry.name == name)
+            .unwrap()
+            .value
+    }
+
+    #[test]
+    fn parses_compounds_lists_trailing_commas_and_last_duplicate_value() {
+        let value = parse_snbt_compound(
+            " { name: 'Alex', nested: {flag: true,}, values: [1, 2s, 'three',], name: final, } ",
+        )
+        .unwrap();
+        assert_eq!(
+            entry(&value, "name"),
+            &NbtSummaryValue::String("final".into())
+        );
+        assert_eq!(
+            entry(entry(&value, "nested"), "flag"),
+            &NbtSummaryValue::Byte(1)
+        );
+        assert_eq!(
+            entry(&value, "values"),
+            &NbtSummaryValue::List(vec![
+                NbtSummaryValue::Int(1),
+                NbtSummaryValue::Short(2),
+                NbtSummaryValue::String("three".into()),
+            ])
+        );
+    }
+
+    #[test]
+    fn parses_typed_arrays_and_extended_integer_literals() {
+        let value = parse_snbt_compound(
+            "{bytes:[B;127b,255ub],ints:[I;1b,2s,0xFFFFui],longs:[L;1,2l,0b11ul]}",
+        )
+        .unwrap();
+        assert_eq!(
+            entry(&value, "bytes"),
+            &NbtSummaryValue::ByteArray(vec![127, -1])
+        );
+        assert_eq!(
+            entry(&value, "ints"),
+            &NbtSummaryValue::IntArray(vec![1, 2, 65_535])
+        );
+        assert_eq!(
+            entry(&value, "longs"),
+            &NbtSummaryValue::LongArray(vec![1, 2, 3])
+        );
+    }
+
+    #[test]
+    fn parses_float_shapes_and_finite_suffixes() {
+        let value = parse_snbt_compound("{a:.5f,b:1.,c:-2e3,d:4E-2d}").unwrap();
+        assert_eq!(
+            entry(&value, "a"),
+            &NbtSummaryValue::Float(0.5f32.to_bits())
+        );
+        assert_eq!(
+            entry(&value, "b"),
+            &NbtSummaryValue::Double(1.0f64.to_bits())
+        );
+        assert_eq!(
+            entry(&value, "c"),
+            &NbtSummaryValue::Double((-2000.0f64).to_bits())
+        );
+        assert_eq!(
+            entry(&value, "d"),
+            &NbtSummaryValue::Double(0.04f64.to_bits())
+        );
+        assert!(parse_snbt_compound("{value:1e999}").is_err());
+    }
+
+    #[test]
+    fn parses_vanilla_string_escapes_and_builtins() {
+        let value = parse_snbt_compound(
+            r#"{text:"line\n\x41\u0042\U00000043",truth:bool(-0.0f),uuid:uuid("00112233-4455-6677-8899-aabbccddeeff")}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            entry(&value, "text"),
+            &NbtSummaryValue::String("line\nABC".into())
+        );
+        assert_eq!(entry(&value, "truth"), &NbtSummaryValue::Byte(0));
+        assert_eq!(
+            entry(&value, "uuid"),
+            &NbtSummaryValue::IntArray(vec![
+                0x0011_2233,
+                0x4455_6677,
+                0x8899_aabbu32 as i32,
+                0xccdd_eeffu32 as i32,
+            ])
+        );
+    }
+
+    #[test]
+    fn rejects_non_compound_trailing_and_malformed_values() {
+        for input in [
+            "[]",
+            "{} trailing",
+            "{value:01}",
+            "{value:0x}",
+            "{value:128b}",
+            "{value:[B;1s]}",
+            "{value:'unterminated}",
+            "{value:\"\\N{LATIN CAPITAL LETTER A}\"}",
+        ] {
+            assert!(parse_snbt_compound(input).is_err(), "accepted {input}");
+        }
+    }
+}

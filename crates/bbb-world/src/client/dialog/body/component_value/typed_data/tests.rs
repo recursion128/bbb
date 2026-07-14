@@ -175,6 +175,75 @@ fn decodes_custom_data_as_unmodified_compound() {
 }
 
 #[test]
+fn decodes_flattened_snbt_alternatives_for_typed_and_custom_data() {
+    let entity = decode_builtin_entity_data(
+        &NbtSummaryValue::String(
+            "{id:'minecraft:zombie',Health:12.5f,Tags:['first','second']}".to_string(),
+        ),
+        "entity data",
+    )
+    .unwrap();
+    assert_eq!(entity.entity_type.resource_id, "minecraft:zombie");
+    assert_compound_names(&entity.data, &["Health", "Tags"]);
+
+    let block_entity = decode_builtin_block_entity_data(
+        &NbtSummaryValue::String(
+            "{id:'minecraft:mob_spawner',SpawnCount:4s,SpawnPotentials:[]}".to_string(),
+        ),
+        "block entity data",
+    )
+    .unwrap();
+    assert_eq!(
+        block_entity.block_entity_type.resource_id,
+        "minecraft:mob_spawner"
+    );
+    assert_compound_names(&block_entity.data, &["SpawnCount", "SpawnPotentials"]);
+
+    let custom = decode_custom_data(
+        &NbtSummaryValue::String(
+            "{owner:'Alex',flags:[B;1b,0],uuid:uuid('00112233-4455-6677-8899-aabbccddeeff')}"
+                .to_string(),
+        ),
+        "custom data",
+    )
+    .unwrap();
+    assert_compound_names(&custom, &["owner", "flags", "uuid"]);
+    let NbtSummaryValue::Compound(entries) = custom else {
+        panic!("expected compound");
+    };
+    assert_eq!(
+        entries
+            .iter()
+            .find(|entry| entry.name == "flags")
+            .map(|entry| &entry.value),
+        Some(&NbtSummaryValue::ByteArray(vec![1, 0]))
+    );
+
+    for type_id in [
+        VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+    ] {
+        let decoded = super::super::decode_supported_component_value(
+            type_id,
+            if type_id == VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID {
+                "minecraft:bucket_entity_data"
+            } else {
+                "minecraft:custom_data"
+            },
+            &NbtSummaryValue::String("{Health:3.5f,Variant:2}".to_string()),
+            None,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(matches!(
+            decoded,
+            super::super::DialogDataComponentValueState::BucketEntityData { .. }
+                | super::super::DialogDataComponentValueState::CustomData { .. }
+        ));
+    }
+}
+
+#[test]
 fn rejects_malformed_or_unknown_typed_entity_data() {
     for (decode, value, expected) in [
         (
@@ -218,21 +287,23 @@ fn rejects_malformed_or_unknown_typed_entity_data() {
             .unwrap_err()
             .contains("is not a compound")
     );
-    let flattened = NbtSummaryValue::String("{id:'minecraft:pig'}".to_string());
-    assert!(decode_builtin_entity_data(&flattened, "entity data")
-        .unwrap_err()
-        .contains("flattened SNBT string"));
+    let malformed_flattened = NbtSummaryValue::String("{id:'minecraft:pig' trailing}".to_string());
     assert!(
-        decode_builtin_block_entity_data(&flattened, "block entity data")
+        decode_builtin_entity_data(&malformed_flattened, "entity data")
             .unwrap_err()
-            .contains("flattened SNBT string")
+            .contains("invalid entity data flattened SNBT string")
+    );
+    assert!(
+        decode_builtin_block_entity_data(&malformed_flattened, "block entity data")
+            .unwrap_err()
+            .contains("invalid block entity data flattened SNBT string")
     );
     assert!(decode_custom_data(
-        &NbtSummaryValue::String("{Health:3.5f}".to_string()),
+        &NbtSummaryValue::String("[1,2,3]".to_string()),
         "bucket entity data"
     )
     .unwrap_err()
-    .contains("flattened SNBT string"));
+    .contains("flattened SNBT root is not a compound"));
 }
 
 fn decode_component(
