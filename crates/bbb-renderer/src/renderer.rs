@@ -88,6 +88,12 @@ use crate::{
         ParticleUvRect,
     },
     player_skin::{DynamicEntityTextureImage, DynamicPlayerSkinImage},
+    screen_blur::{
+        create_screen_blur_bind_group_layout, create_screen_blur_horizontal_pipeline,
+        create_screen_blur_target, create_screen_blur_vertical_pipeline,
+        sanitize_menu_background_blurriness, ScreenBlurTarget,
+        VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
+    },
     selection::{
         create_chunk_border_always_on_top_pipeline, create_selection_outline_gpu,
         create_selection_pipeline, create_translucent_debug_line_pipeline, sanitize_debug_lines,
@@ -201,6 +207,12 @@ pub struct Renderer {
     pub(super) started_at: Instant,
     pub(super) shader_game_time_ticks: f64,
     pub(super) current_post_effect_id: Option<String>,
+    pub(super) menu_background_blurriness: f32,
+    pub(super) hud_screen_blur: bool,
+    pub(super) screen_blur_bind_group_layout: wgpu::BindGroupLayout,
+    pub(super) screen_blur_horizontal_pipeline: wgpu::RenderPipeline,
+    pub(super) screen_blur_vertical_pipeline: wgpu::RenderPipeline,
+    pub(super) screen_blur_target: ScreenBlurTarget,
     pub(super) main_target: MainTarget,
     pub(super) translucent_target: TranslucentTarget,
     pub(super) item_entity_target: ItemEntityTarget,
@@ -916,6 +928,18 @@ impl Renderer {
         size: PhysicalSize<u32>,
     ) -> Result<Self> {
         let format = config.format;
+        let screen_blur_bind_group_layout = create_screen_blur_bind_group_layout(&device);
+        let screen_blur_horizontal_pipeline =
+            create_screen_blur_horizontal_pipeline(&device, format, &screen_blur_bind_group_layout);
+        let screen_blur_vertical_pipeline =
+            create_screen_blur_vertical_pipeline(&device, format, &screen_blur_bind_group_layout);
+        let screen_blur_target = create_screen_blur_target(
+            &device,
+            &screen_blur_bind_group_layout,
+            format,
+            config.width,
+            config.height,
+        );
         let main_target = create_main_target(&device, config.format, config.width, config.height);
         let depth = create_depth_target(&device, config.width, config.height);
         let translucent_target =
@@ -1309,6 +1333,14 @@ impl Renderer {
             started_at: Instant::now(),
             shader_game_time_ticks: 0.0,
             current_post_effect_id: None,
+            menu_background_blurriness: sanitize_menu_background_blurriness(
+                VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
+            ),
+            hud_screen_blur: false,
+            screen_blur_bind_group_layout,
+            screen_blur_horizontal_pipeline,
+            screen_blur_vertical_pipeline,
+            screen_blur_target,
             main_target,
             translucent_target,
             item_entity_target,
@@ -1800,6 +1832,13 @@ impl Renderer {
         self.config.width = size.width;
         self.config.height = size.height;
         self.surface.configure(&self.device, &self.config);
+        self.screen_blur_target = create_screen_blur_target(
+            &self.device,
+            &self.screen_blur_bind_group_layout,
+            self.config.format,
+            self.config.width,
+            self.config.height,
+        );
         self.main_target = create_main_target(
             &self.device,
             self.config.format,
@@ -1877,6 +1916,17 @@ impl Renderer {
 
     pub fn current_post_effect_id(&self) -> Option<&str> {
         self.current_post_effect_id.as_deref()
+    }
+
+    /// Sets vanilla's startup-only menu background blur option (`0..=10`).
+    /// A value below one disables `Screen.extractBlurredBackground`'s stratum marker.
+    pub fn set_menu_background_blurriness(&mut self, blurriness: u8) {
+        self.menu_background_blurriness = sanitize_menu_background_blurriness(blurriness);
+    }
+
+    /// Marks whether the projected screen inherited vanilla's non-in-game background.
+    pub fn set_hud_screen_blur(&mut self, active: bool) {
+        self.hud_screen_blur = active;
     }
 
     pub fn set_camera_pose(&mut self, pose: Option<CameraPose>) {

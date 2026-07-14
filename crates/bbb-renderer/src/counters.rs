@@ -29,6 +29,7 @@ pub struct RendererCounters {
     pub entity_scene_boxes: usize,
     pub item_entity_billboards: usize,
     pub hud_draw_calls: u64,
+    pub screen_blur_draw_calls: u64,
     pub pipeline_switches: u64,
     pub screenshots_written: u64,
     pub queued_sections: usize,

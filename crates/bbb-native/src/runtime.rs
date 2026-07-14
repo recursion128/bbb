@@ -2429,6 +2429,10 @@ pub(crate) fn pump_network_and_terrain(
             entity_partial_tick,
         )
     };
+    // `DialogScreen`, its warning confirmation, and `GenericMessageScreen` inherit
+    // `Screen.extractBlurredBackground`; container/book/advancement screens remain
+    // vanilla in-game UI and must not create a blur stratum.
+    let hud_screen_blur = hud_screen_blur_for_world(world, hud_inventory_screen.is_some());
     // Vanilla extracts item/entity render state after `Minecraft.tick` has advanced keybinds,
     // `gameRenderer.tick`, and `level.tickEntities`; these projections read the post-tick snapshot.
     // Dropped block-items render as 3D block-item models (replacing their billboard); the animation
@@ -2741,6 +2745,7 @@ pub(crate) fn pump_network_and_terrain(
             hud_hotbar_item_icons,
             hud_hotbar_block_item_models,
             hud_inventory_screen,
+            hud_screen_blur,
             hud_sign_editor_screen,
             hud_pause_screen,
             hud_stats_screen,
@@ -6331,6 +6336,13 @@ fn hud_inventory_screen_with_local_state_for_surface(
             world.gameplay().game_type == GameType::Creative.id(),
         ),
     })
+}
+
+pub(crate) fn hud_screen_blur_for_world(world: &WorldStore, screen_present: bool) -> bool {
+    screen_present
+        && (world.dialog_warning_is_open()
+            || world.current_dialog().is_some()
+            || world.dialog_waiting_ticks().is_some())
 }
 
 fn hud_recipe_book_background_layer() -> HudInventoryBackgroundLayer {
@@ -13255,6 +13267,7 @@ pub(crate) fn control_renderer_counters(
         entity_scene_boxes: counters.entity_scene_boxes,
         item_entity_billboards: counters.item_entity_billboards,
         hud_draw_calls: counters.hud_draw_calls,
+        screen_blur_draw_calls: counters.screen_blur_draw_calls,
         pipeline_switches: counters.pipeline_switches,
         screenshots_written: counters.screenshots_written,
         queued_sections: counters.queued_sections,

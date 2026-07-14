@@ -7582,6 +7582,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
         surface,
     )
     .unwrap();
+
     assert_eq!(
         hovered_item_screen
             .tooltip
@@ -14082,6 +14083,10 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
         value,
     };
     let mut world = WorldStore::new();
+    assert!(
+        !hud_screen_blur_for_world(&world, true),
+        "ordinary in-game inventory-style screens stay transparent"
+    );
     world.apply_show_dialog(ShowDialog {
         dialog: DialogHolder::Direct {
             dialog: NbtSummaryValue::Compound(vec![
@@ -14137,6 +14142,8 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
     )
     .unwrap();
 
+    assert!(hud_screen_blur_for_world(&world, true));
+    assert!(!hud_screen_blur_for_world(&world, false));
     assert_eq!((screen.width, screen.height), (320, 240));
     assert_eq!(
         screen.background_layers,
@@ -14224,6 +14231,7 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
         HudInventoryBackgroundTexture::WidgetButton
     );
     assert!(world.open_dialog_warning());
+    assert!(hud_screen_blur_for_world(&world, true));
     let warning = hud_inventory_screen_with_local_state_for_surface(
         &world,
         None,

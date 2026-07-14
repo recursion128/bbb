@@ -401,6 +401,7 @@ fn main() -> Result<()> {
         args.client_vsync,
     ))?;
     renderer.set_lightmap_brightness_factor(args.client_gamma);
+    renderer.set_menu_background_blurriness(args.menu_background_blurriness);
     let mut terrain_textures = load_terrain_textures(&mut renderer, pack_roots.as_ref());
     if let Some(particles) = particle_runtime.as_mut() {
         particles.set_terrain_particle_sprite_ids(&terrain_textures);

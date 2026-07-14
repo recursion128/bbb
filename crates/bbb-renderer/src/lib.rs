@@ -22,6 +22,7 @@ mod pipeline_builder;
 mod player_skin;
 mod render;
 mod renderer;
+mod screen_blur;
 mod screenshot;
 mod selection;
 mod sky;

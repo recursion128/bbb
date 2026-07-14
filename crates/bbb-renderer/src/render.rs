@@ -5,6 +5,7 @@ use wgpu::util::DeviceExt;
 
 use crate::frame_buffers::FrameDataBuffer;
 use crate::renderer::FrameTarget;
+use crate::screen_blur::write_screen_blur_radius;
 use crate::{
     clouds::CloudShape,
     debug_filled_boxes::build_debug_filled_mesh,
@@ -67,6 +68,10 @@ const FIRST_PERSON_ITEM_PASS_LABEL: &str = "bbb-native-first-person-item-pass";
 const LIGHTMAP_PASS_LABEL: &str = "bbb-native-lightmap-pass";
 const TRANSPARENCY_COMBINE_PASS_LABEL: &str = "bbb-native-transparency-combine-pass";
 const TRANSPARENCY_BLIT_PASS_LABEL: &str = "bbb-native-transparency-blit-pass";
+const HUD_DEPTH_CLEAR_PASS_LABEL: &str = "bbb-native-hud-depth-clear-pass";
+const HUD_BLUR_DEPTH_CLEAR_PASS_LABEL: &str = "bbb-native-hud-blur-depth-clear-pass";
+const SCREEN_BLUR_HORIZONTAL_PASS_LABEL: &str = "bbb-native-screen-blur-horizontal-pass";
+const SCREEN_BLUR_VERTICAL_PASS_LABEL: &str = "bbb-native-screen-blur-vertical-pass";
 
 struct ItemModelFrameBuffers {
     vertex_buffer: wgpu::Buffer,
@@ -99,6 +104,7 @@ struct FrameDrawStats {
     entity_scene_draw_calls: u64,
     entity_target_draw_calls: u64,
     hud_draw_calls: u64,
+    screen_blur_draw_calls: u64,
     lightmap_draw_calls: u64,
     pipeline_switches: u64,
 }
@@ -2224,145 +2230,308 @@ impl Renderer {
                 &self.queue,
                 bytemuck::cast_slice(&hud_draws.vertices),
             );
-        if has_hud_vertices {
-            let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
-            let hud_commands = &hud_draws.commands[..hud_draws.post_gui_item_start];
-            if !hud_commands.is_empty() {
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("bbb-native-hud-pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &surface_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
-                let (draw_calls, switches) = self.draw_hud_commands(&mut pass, hud_commands);
-                stats.hud_draw_calls = draw_calls;
-                stats.pipeline_switches += switches;
+        self.clear_hud_depth(encoder, HUD_DEPTH_CLEAR_PASS_LABEL);
+        if let Some(screen_blur) = hud_draws.screen_blur {
+            if has_hud_vertices {
+                let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
+                self.draw_hud_command_pass(
+                    encoder,
+                    &surface_view,
+                    hud_vertex_buffer,
+                    &hud_draws.commands[..screen_blur.first_base_command],
+                    "bbb-native-hud-before-blur-pass",
+                    stats,
+                );
             }
-        }
+            let before_blur_items = self
+                .collect_hud_block_item_mesh_for_stratum(crate::hud::HudScreenStratum::BeforeBlur);
+            self.draw_hud_item_pass(
+                encoder,
+                &surface_view,
+                &before_blur_items,
+                "bbb-native-hud-item-before-blur-pass",
+                stats,
+            );
+            if has_hud_vertices {
+                let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
+                let first_overlay =
+                    hud_draws.post_gui_item_start + screen_blur.first_overlay_command;
+                self.draw_hud_command_pass(
+                    encoder,
+                    &surface_view,
+                    hud_vertex_buffer,
+                    &hud_draws.commands[hud_draws.post_gui_item_start..first_overlay],
+                    "bbb-native-hud-overlay-before-blur-pass",
+                    stats,
+                );
+            }
 
-        // GUI 3D block-item icons: the hotbar's block items render as 3D models (vanilla inventory item
-        // rendering) under the GUI ortho camera, after the 2D HUD backgrounds / flat items and before
-        // item decorations / foreground overlays. A freshly-cleared depth buffer isolates the 3D icon
-        // faces within each slot. Block-light items sample the blocks atlas via the GUI item bind group
-        // (the world camera's pass already finished, so reusing the depth target with a clear is safe).
-        {
+            self.clear_hud_depth(encoder, HUD_BLUR_DEPTH_CLEAR_PASS_LABEL);
+            self.screen_blur_passes(frame, &surface_view, encoder, screen_blur.radius, stats);
+
+            if has_hud_vertices {
+                let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
+                self.draw_hud_command_pass(
+                    encoder,
+                    &surface_view,
+                    hud_vertex_buffer,
+                    &hud_draws.commands
+                        [screen_blur.first_base_command..hud_draws.post_gui_item_start],
+                    "bbb-native-hud-after-blur-pass",
+                    stats,
+                );
+            }
+            let after_blur_items = self
+                .collect_hud_block_item_mesh_for_stratum(crate::hud::HudScreenStratum::AfterBlur);
+            self.draw_hud_item_pass(
+                encoder,
+                &surface_view,
+                &after_blur_items,
+                "bbb-native-hud-item-after-blur-pass",
+                stats,
+            );
+            if has_hud_vertices {
+                let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
+                let first_overlay =
+                    hud_draws.post_gui_item_start + screen_blur.first_overlay_command;
+                self.draw_hud_command_pass(
+                    encoder,
+                    &surface_view,
+                    hud_vertex_buffer,
+                    &hud_draws.commands[first_overlay..],
+                    "bbb-native-hud-overlay-after-blur-pass",
+                    stats,
+                );
+            }
+        } else {
+            if has_hud_vertices {
+                let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
+                self.draw_hud_command_pass(
+                    encoder,
+                    &surface_view,
+                    hud_vertex_buffer,
+                    &hud_draws.commands[..hud_draws.post_gui_item_start],
+                    "bbb-native-hud-pass",
+                    stats,
+                );
+            }
             let gui_item_meshes = self.collect_hud_block_item_mesh();
-            if !gui_item_meshes.is_empty() {
-                let solid_buffers = self.create_item_model_frame_buffers(
-                    &gui_item_meshes.solid.vertices,
-                    &gui_item_meshes.solid.indices,
+            self.draw_hud_item_pass(
+                encoder,
+                &surface_view,
+                &gui_item_meshes,
+                "bbb-native-hud-item-pass",
+                stats,
+            );
+            if has_hud_vertices {
+                let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
+                self.draw_hud_command_pass(
+                    encoder,
+                    &surface_view,
+                    hud_vertex_buffer,
+                    &hud_draws.commands[hud_draws.post_gui_item_start..],
+                    "bbb-native-hud-overlay-pass",
+                    stats,
                 );
-                let glint_buffers = self.create_item_model_frame_buffers(
-                    &gui_item_meshes.glint.vertices,
-                    &gui_item_meshes.glint.indices,
-                );
-                let translucent_buffers = self.create_item_model_frame_buffers(
-                    &gui_item_meshes.translucent.vertices,
-                    &gui_item_meshes.translucent.indices,
-                );
-                let glint_translucent_buffers = self.create_item_model_frame_buffers(
-                    &gui_item_meshes.glint_translucent.vertices,
-                    &gui_item_meshes.glint_translucent.indices,
-                );
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("bbb-native-hud-item-pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &surface_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: wgpu::StoreOp::Store,
-                        }),
-                        stencil_ops: None,
-                    }),
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                if let Some(buffers) = &solid_buffers {
-                    self.draw_item_model_frame_buffers(
-                        &mut pass,
-                        &self.item_model_pipeline,
-                        buffers,
-                        &self.gui_item_bind_group,
-                    );
-                    stats.pipeline_switches += 1;
-                    stats.item_model_draw_calls += 1;
-                }
-                if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
-                    self.draw_item_model_glint_frame_buffers(
-                        &mut pass,
-                        buffers,
-                        &glint.gui_bind_group,
-                    );
-                    stats.pipeline_switches += 1;
-                    stats.item_model_draw_calls += 1;
-                }
-                if let Some(buffers) = &translucent_buffers {
-                    self.draw_item_model_frame_buffers(
-                        &mut pass,
-                        &self.item_model_translucent_pipeline,
-                        buffers,
-                        &self.gui_item_bind_group,
-                    );
-                    stats.pipeline_switches += 1;
-                    stats.item_model_draw_calls += 1;
-                }
-                if let (Some(glint), Some(buffers)) =
-                    (&self.item_glint_texture, &glint_translucent_buffers)
-                {
-                    self.draw_item_model_glint_frame_buffers(
-                        &mut pass,
-                        buffers,
-                        &glint.gui_bind_group,
-                    );
-                    stats.pipeline_switches += 1;
-                    stats.item_model_draw_calls += 1;
-                }
-            }
-        }
-
-        if has_hud_vertices {
-            let hud_vertex_buffer = frame_hud_vertices.buffer().expect("uploaded");
-            let hud_commands = &hud_draws.commands[hud_draws.post_gui_item_start..];
-            if !hud_commands.is_empty() {
-                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("bbb-native-hud-overlay-pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &surface_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Load,
-                            store: wgpu::StoreOp::Store,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                    occlusion_query_set: None,
-                    timestamp_writes: None,
-                });
-                pass.set_vertex_buffer(0, hud_vertex_buffer.slice(..));
-                let (draw_calls, switches) = self.draw_hud_commands(&mut pass, hud_commands);
-                stats.hud_draw_calls += draw_calls;
-                stats.pipeline_switches += switches;
             }
         }
         drop(hud_draws);
         self.frame_hud_vertices = frame_hud_vertices;
+    }
+
+    fn clear_hud_depth(&self, encoder: &mut wgpu::CommandEncoder, label: &str) {
+        let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(label),
+            color_attachments: &[],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+    }
+
+    fn draw_hud_command_pass<'a>(
+        &'a self,
+        encoder: &mut wgpu::CommandEncoder,
+        surface_view: &'a wgpu::TextureView,
+        vertex_buffer: &'a wgpu::Buffer,
+        commands: &'a [crate::hud::HudDrawCommand<'a>],
+        label: &str,
+        stats: &mut FrameDrawStats,
+    ) {
+        if commands.is_empty() {
+            return;
+        }
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(label),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: surface_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+        let (draw_calls, switches) = self.draw_hud_commands(&mut pass, commands);
+        stats.hud_draw_calls += draw_calls;
+        stats.pipeline_switches += switches;
+    }
+
+    fn draw_hud_item_pass(
+        &self,
+        encoder: &mut wgpu::CommandEncoder,
+        surface_view: &wgpu::TextureView,
+        meshes: &crate::item_models::ItemModelMeshSet,
+        label: &str,
+        stats: &mut FrameDrawStats,
+    ) {
+        if meshes.is_empty() {
+            return;
+        }
+        let solid_buffers =
+            self.create_item_model_frame_buffers(&meshes.solid.vertices, &meshes.solid.indices);
+        let glint_buffers =
+            self.create_item_model_frame_buffers(&meshes.glint.vertices, &meshes.glint.indices);
+        let translucent_buffers = self.create_item_model_frame_buffers(
+            &meshes.translucent.vertices,
+            &meshes.translucent.indices,
+        );
+        let glint_translucent_buffers = self.create_item_model_frame_buffers(
+            &meshes.glint_translucent.vertices,
+            &meshes.glint_translucent.indices,
+        );
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(label),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: surface_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth.view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        if let Some(buffers) = &solid_buffers {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_pipeline,
+                buffers,
+                &self.gui_item_bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_buffers) {
+            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.gui_bind_group);
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let Some(buffers) = &translucent_buffers {
+            self.draw_item_model_frame_buffers(
+                &mut pass,
+                &self.item_model_translucent_pipeline,
+                buffers,
+                &self.gui_item_bind_group,
+            );
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+        if let (Some(glint), Some(buffers)) = (&self.item_glint_texture, &glint_translucent_buffers)
+        {
+            self.draw_item_model_glint_frame_buffers(&mut pass, buffers, &glint.gui_bind_group);
+            stats.pipeline_switches += 1;
+            stats.item_model_draw_calls += 1;
+        }
+    }
+
+    fn screen_blur_passes(
+        &self,
+        frame: &FrameTarget,
+        surface_view: &wgpu::TextureView,
+        encoder: &mut wgpu::CommandEncoder,
+        radius: f32,
+        stats: &mut FrameDrawStats,
+    ) {
+        write_screen_blur_radius(&self.queue, &self.screen_blur_target, radius);
+        encoder.copy_texture_to_texture(
+            frame.texture().as_image_copy(),
+            self.screen_blur_target.texture.as_image_copy(),
+            wgpu::Extent3d {
+                width: self.config.width,
+                height: self.config.height,
+                depth_or_array_layers: 1,
+            },
+        );
+        for round in 0..3 {
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(SCREEN_BLUR_HORIZONTAL_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &self.screen_blur_target.swap_view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.screen_blur_horizontal_pipeline);
+                pass.set_bind_group(0, &self.screen_blur_target.bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                stats.pipeline_switches += 1;
+                stats.screen_blur_draw_calls += 1;
+            }
+            {
+                let destination = if round == 2 {
+                    surface_view
+                } else {
+                    &self.screen_blur_target.view
+                };
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some(SCREEN_BLUR_VERTICAL_PASS_LABEL),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: destination,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                });
+                pass.set_pipeline(&self.screen_blur_vertical_pipeline);
+                pass.set_bind_group(0, &self.screen_blur_target.swap_bind_group, &[]);
+                pass.draw(0..3, 0..1);
+                stats.pipeline_switches += 1;
+                stats.screen_blur_draw_calls += 1;
+            }
+        }
     }
 
     fn finish_frame(
@@ -2403,6 +2572,7 @@ impl Renderer {
             stats.entity_scene_draw_calls + stats.entity_model_draw_calls;
         self.counters.entity_target_draw_calls = stats.entity_target_draw_calls;
         self.counters.hud_draw_calls = stats.hud_draw_calls;
+        self.counters.screen_blur_draw_calls = stats.screen_blur_draw_calls;
         self.counters.draw_calls = stats.opaque_draw_calls
             + stats.cutout_draw_calls
             + stats.translucent_draw_calls
@@ -2424,6 +2594,7 @@ impl Renderer {
             + stats.entity_scene_draw_calls
             + stats.entity_target_draw_calls
             + stats.hud_draw_calls
+            + stats.screen_blur_draw_calls
             + stats.lightmap_draw_calls;
         self.counters.pipeline_switches = stats.pipeline_switches;
         Ok(())
@@ -3708,7 +3879,7 @@ mod tests {
         );
 
         let hud_pass = source
-            .find("label: Some(\"bbb-native-hud-item-pass\")")
+            .find("\"bbb-native-hud-item-pass\",")
             .expect("HUD item-model pass is present");
         let hud_pipeline = source[hud_pass..]
             .find("pass.set_pipeline(&self.item_model_pipeline)")
@@ -3907,7 +4078,7 @@ mod tests {
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
         let hud_item = source
-            .find("label: Some(\"bbb-native-hud-item-pass\")")
+            .find("\"bbb-native-hud-item-pass\",")
             .expect("HUD item pass label is used");
 
         assert!(
@@ -4209,7 +4380,7 @@ mod tests {
             .find("label: Some(TRANSPARENCY_COMBINE_PASS_LABEL)")
             .expect("transparency combine pass label is used");
         let hud = source
-            .find("label: Some(\"bbb-native-hud-pass\")")
+            .find("\"bbb-native-hud-pass\",")
             .expect("HUD pass label is used");
 
         assert!(sky < clouds, "clouds draw after the top sky disc");
@@ -5331,13 +5502,13 @@ mod tests {
             .find("label: Some(TRANSPARENCY_BLIT_PASS_LABEL)")
             .expect("transparency blit pass label is used");
         let hud_pass = source
-            .find("label: Some(\"bbb-native-hud-pass\")")
+            .find("\"bbb-native-hud-pass\",")
             .expect("hud pass label is used");
         let hud_item_pass = source
-            .find("label: Some(\"bbb-native-hud-item-pass\")")
+            .find("\"bbb-native-hud-item-pass\",")
             .expect("hud item pass label is used");
         let hud_overlay_pass = source
-            .find("label: Some(\"bbb-native-hud-overlay-pass\")")
+            .find("\"bbb-native-hud-overlay-pass\",")
             .expect("hud overlay pass label is used");
         let screenshot_copy = source
             .find("prepare_screenshot_copy")
@@ -5393,7 +5564,7 @@ mod tests {
             "HUD, GUI item, and HUD overlay passes draw on the surface after transparency final blit"
         );
         assert!(
-            source[hud_pass..screenshot_copy].contains("view: &surface_view"),
+            source[hud_pass..screenshot_copy].contains("view: surface_view"),
             "post-blit HUD passes target the swapchain surface"
         );
     }
@@ -5405,7 +5576,7 @@ mod tests {
             .find("&hud_draws.commands[..hud_draws.post_gui_item_start]")
             .expect("pre-GUI-item HUD command slice is drawn first");
         let hud_pass = source[pre_commands..]
-            .find("label: Some(\"bbb-native-hud-pass\")")
+            .find("\"bbb-native-hud-pass\",")
             .map(|index| pre_commands + index)
             .expect("base HUD pass label is used");
         let gui_items = source[hud_pass..]
@@ -5413,7 +5584,7 @@ mod tests {
             .map(|index| hud_pass + index)
             .expect("GUI 3D item mesh is collected after base HUD");
         let hud_item_pass = source[gui_items..]
-            .find("label: Some(\"bbb-native-hud-item-pass\")")
+            .find("\"bbb-native-hud-item-pass\",")
             .map(|index| gui_items + index)
             .expect("GUI 3D item pass label is used");
         let post_commands = source[hud_item_pass..]
@@ -5421,7 +5592,7 @@ mod tests {
             .map(|index| hud_item_pass + index)
             .expect("post-GUI-item HUD command slice is drawn last");
         let hud_overlay_pass = source[post_commands..]
-            .find("label: Some(\"bbb-native-hud-overlay-pass\")")
+            .find("\"bbb-native-hud-overlay-pass\",")
             .map(|index| post_commands + index)
             .expect("HUD overlay pass label is used");
 
@@ -5436,23 +5607,81 @@ mod tests {
     }
 
     #[test]
+    fn dialog_screen_blur_clears_depth_between_before_and_after_screen_strata() {
+        let source = include_str!("render.rs");
+        let before_hud = source
+            .find("\"bbb-native-hud-before-blur-pass\",")
+            .expect("pre-screen HUD stratum is submitted");
+        let before_items = source[before_hud..]
+            .find("\"bbb-native-hud-item-before-blur-pass\",")
+            .map(|index| before_hud + index)
+            .expect("pre-screen GUI items are submitted");
+        let before_overlay = source[before_items..]
+            .find("\"bbb-native-hud-overlay-before-blur-pass\",")
+            .map(|index| before_items + index)
+            .expect("pre-screen overlays are submitted");
+        let depth_clear = source[before_overlay..]
+            .find("self.clear_hud_depth(encoder, HUD_BLUR_DEPTH_CLEAR_PASS_LABEL)")
+            .map(|index| before_overlay + index)
+            .expect("depth is cleared immediately before screen blur");
+        let blur = source[depth_clear..]
+            .find("self.screen_blur_passes(")
+            .map(|index| depth_clear + index)
+            .expect("screen blur follows its depth clear");
+        let after_hud = source[blur..]
+            .find("\"bbb-native-hud-after-blur-pass\",")
+            .map(|index| blur + index)
+            .expect("screen background/widgets follow blur");
+        let after_items = source[after_hud..]
+            .find("\"bbb-native-hud-item-after-blur-pass\",")
+            .map(|index| after_hud + index)
+            .expect("screen GUI items follow blur");
+        let after_overlay = source[after_items..]
+            .find("\"bbb-native-hud-overlay-after-blur-pass\",")
+            .map(|index| after_items + index)
+            .expect("screen overlays follow blur");
+
+        assert!(
+            before_hud < before_items
+                && before_items < before_overlay
+                && before_overlay < depth_clear
+                && depth_clear < blur
+                && blur < after_hud
+                && after_hud < after_items
+                && after_items < after_overlay
+        );
+
+        let blur_helper = source
+            .find("fn screen_blur_passes(")
+            .expect("screen blur pass owner is defined");
+        let blur_source = &source[blur_helper..];
+        assert!(blur_source.contains("for round in 0..3"));
+        let horizontal = blur_source
+            .find("SCREEN_BLUR_HORIZONTAL_PASS_LABEL")
+            .expect("horizontal box blur pass");
+        let vertical = blur_source
+            .find("SCREEN_BLUR_VERTICAL_PASS_LABEL")
+            .expect("vertical box blur pass");
+        assert!(
+            horizontal < vertical,
+            "each round is horizontal then vertical"
+        );
+    }
+
+    #[test]
     fn hud_gui_3d_items_draw_translucent_base_and_glint_in_gui_item_pass() {
         let source = include_str!("render.rs");
-        let gui_items = source
-            .find("let gui_item_meshes = self.collect_hud_block_item_mesh()")
-            .expect("GUI 3D item mesh is collected");
-        let translucent_buffers = source[gui_items..]
-            .find("&gui_item_meshes.translucent.vertices")
-            .map(|index| gui_items + index)
+        let hud_item_pass = source
+            .find("fn draw_hud_item_pass(")
+            .expect("GUI 3D item pass helper is defined");
+        let translucent_buffers = source[hud_item_pass..]
+            .find("&meshes.translucent.vertices")
+            .map(|index| hud_item_pass + index)
             .expect("GUI 3D item translucent buffers are created");
-        let glint_translucent_buffers = source[translucent_buffers..]
-            .find("&gui_item_meshes.glint_translucent.vertices")
+        let _glint_translucent_buffers = source[translucent_buffers..]
+            .find("&meshes.glint_translucent.vertices")
             .map(|index| translucent_buffers + index)
             .expect("GUI 3D item glintTranslucent buffers are created");
-        let hud_item_pass = source[glint_translucent_buffers..]
-            .find("label: Some(\"bbb-native-hud-item-pass\")")
-            .map(|index| glint_translucent_buffers + index)
-            .expect("GUI 3D item pass label is used");
         let solid_draw = source[hud_item_pass..]
             .find("&self.item_model_pipeline")
             .map(|index| hud_item_pass + index)
@@ -5469,9 +5698,16 @@ mod tests {
             .find("self.draw_item_model_glint_frame_buffers(")
             .map(|index| translucent_draw + index)
             .expect("GUI 3D item glintTranslucent follows translucent base");
-        let post_commands = source[translucent_glint..]
+        let gui_items = source
+            .find("let gui_item_meshes = self.collect_hud_block_item_mesh()")
+            .expect("GUI 3D item mesh is collected");
+        let hud_item_call = source[gui_items..]
+            .find("\"bbb-native-hud-item-pass\",")
+            .map(|index| gui_items + index)
+            .expect("GUI 3D item pass is submitted");
+        let post_commands = source[hud_item_call..]
             .find("&hud_draws.commands[hud_draws.post_gui_item_start..]")
-            .map(|index| translucent_glint + index)
+            .map(|index| hud_item_call + index)
             .expect("post-GUI HUD commands follow GUI item pass");
 
         assert!(
@@ -5479,7 +5715,8 @@ mod tests {
                 && solid_draw < solid_glint
                 && solid_glint < translucent_draw
                 && translucent_draw < translucent_glint
-                && translucent_glint < post_commands,
+                && gui_items < hud_item_call
+                && hud_item_call < post_commands,
             "GUI 3D item translucent base and glintTranslucent stay inside the GUI item pass"
         );
     }

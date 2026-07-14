@@ -1719,6 +1719,21 @@ pub(super) struct HudDraws<'a> {
     pub(super) vertices: Vec<HudVertex>,
     pub(super) commands: Vec<HudDrawCommand<'a>>,
     pub(super) post_gui_item_start: usize,
+    pub(super) screen_blur: Option<HudScreenBlurDraws>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct HudScreenBlurDraws {
+    pub(super) radius: f32,
+    pub(super) first_base_command: usize,
+    pub(super) first_overlay_command: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum HudScreenStratum {
+    All,
+    BeforeBlur,
+    AfterBlur,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3939,6 +3954,13 @@ impl Renderer {
     /// `gui` display transform. The returned set is split into vanilla solid/translucent item phases plus
     /// matching glint buckets for the GUI item pass.
     pub(crate) fn collect_hud_block_item_mesh(&self) -> ItemModelMeshSet {
+        self.collect_hud_block_item_mesh_for_stratum(HudScreenStratum::All)
+    }
+
+    pub(super) fn collect_hud_block_item_mesh_for_stratum(
+        &self,
+        stratum: HudScreenStratum,
+    ) -> ItemModelMeshSet {
         let surface_size = self.surface_size();
         let mut meshes = ItemModelMeshSet::default();
         let mut append_model = |model: &HudBlockItemModel,
@@ -3950,67 +3972,78 @@ impl Renderer {
                 append_hud_block_item_model_mesh(&mut meshes, model, placement);
             }
         };
-        for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
-            if let Some(model) = model {
-                let placement = gui_item_slot_placement(hotbar_item_hud_rect(surface_size, slot));
-                append_model(model, placement, None);
+        if stratum != HudScreenStratum::AfterBlur {
+            for (slot, model) in self.hud_hotbar_block_item_models.iter().enumerate() {
+                if let Some(model) = model {
+                    let placement =
+                        gui_item_slot_placement(hotbar_item_hud_rect(surface_size, slot));
+                    append_model(model, placement, None);
+                }
             }
         }
         // The open inventory screen's block items (container slots + the cursor / floating item) render as
         // 3D icons in the same pass, seated in their slot pixel rects.
-        if let Some(screen) = &self.hud_inventory_screen {
-            for slot in &screen.slots {
-                if let Some(model) = &slot.block_model {
-                    let rect = inventory_slot_item_hud_rect(
-                        surface_size,
-                        screen.width,
-                        screen.height,
-                        slot.x,
-                        slot.y,
-                    );
-                    append_model(model, gui_item_slot_placement(rect), None);
-                }
-            }
-            for item in &screen.floating_items {
-                if let Some(model) = &item.block_model {
-                    let item_rect = inventory_floating_item_hud_rect(surface_size, screen, item);
-                    let scissor_rect =
-                        inventory_floating_item_scissor_hud_rect(surface_size, screen, item);
-                    append_model(model, gui_item_slot_placement(item_rect), scissor_rect);
-                }
-            }
-            for item in &screen.foreground_items {
-                if let Some(model) = &item.block_model {
-                    let item_rect = inventory_floating_item_hud_rect(surface_size, screen, item);
-                    let scissor_rect =
-                        inventory_floating_item_scissor_hud_rect(surface_size, screen, item);
-                    append_model(model, gui_item_slot_placement(item_rect), scissor_rect);
-                }
-            }
-        }
-        if let Some(screen) = &self.hud_stats_screen {
-            if screen.active_tab == 1 {
-                for (row, item) in screen.item_rows.iter().enumerate() {
-                    if let Some(model) = &item.block_model {
-                        let rect = hud_stats_item_icon_rect(surface_size, screen, row);
-                        append_model(
-                            model,
-                            gui_item_slot_placement(rect),
-                            Some(hud_stats_list_scissor_rect(surface_size)),
+        if stratum != HudScreenStratum::BeforeBlur {
+            if let Some(screen) = &self.hud_inventory_screen {
+                for slot in &screen.slots {
+                    if let Some(model) = &slot.block_model {
+                        let rect = inventory_slot_item_hud_rect(
+                            surface_size,
+                            screen.width,
+                            screen.height,
+                            slot.x,
+                            slot.y,
                         );
+                        append_model(model, gui_item_slot_placement(rect), None);
+                    }
+                }
+                for item in &screen.floating_items {
+                    if let Some(model) = &item.block_model {
+                        let item_rect =
+                            inventory_floating_item_hud_rect(surface_size, screen, item);
+                        let scissor_rect =
+                            inventory_floating_item_scissor_hud_rect(surface_size, screen, item);
+                        append_model(model, gui_item_slot_placement(item_rect), scissor_rect);
+                    }
+                }
+                for item in &screen.foreground_items {
+                    if let Some(model) = &item.block_model {
+                        let item_rect =
+                            inventory_floating_item_hud_rect(surface_size, screen, item);
+                        let scissor_rect =
+                            inventory_floating_item_scissor_hud_rect(surface_size, screen, item);
+                        append_model(model, gui_item_slot_placement(item_rect), scissor_rect);
                     }
                 }
             }
         }
-        if let Some(switcher) = self
-            .hud_debug_overlay
-            .as_ref()
-            .and_then(|overlay| overlay.game_mode_switcher.as_ref())
-        {
-            for slot in &switcher.slots {
-                if let Some(model) = &slot.block_model {
-                    if let Some(rect) = hud_debug_game_mode_switcher_icon_rect(slot) {
-                        append_model(model, gui_item_slot_placement(rect), None);
+        if stratum != HudScreenStratum::AfterBlur {
+            if let Some(screen) = &self.hud_stats_screen {
+                if screen.active_tab == 1 {
+                    for (row, item) in screen.item_rows.iter().enumerate() {
+                        if let Some(model) = &item.block_model {
+                            let rect = hud_stats_item_icon_rect(surface_size, screen, row);
+                            append_model(
+                                model,
+                                gui_item_slot_placement(rect),
+                                Some(hud_stats_list_scissor_rect(surface_size)),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        if stratum != HudScreenStratum::AfterBlur {
+            if let Some(switcher) = self
+                .hud_debug_overlay
+                .as_ref()
+                .and_then(|overlay| overlay.game_mode_switcher.as_ref())
+            {
+                for slot in &switcher.slots {
+                    if let Some(model) = &slot.block_model {
+                        if let Some(rect) = hud_debug_game_mode_switcher_icon_rect(slot) {
+                            append_model(model, gui_item_slot_placement(rect), None);
+                        }
                     }
                 }
             }
@@ -4532,7 +4565,15 @@ impl Renderer {
             );
         }
 
+        let mut screen_blur = None;
         if let Some(screen) = &self.hud_inventory_screen {
+            if self.hud_screen_blur && self.menu_background_blurriness >= 1.0 {
+                screen_blur = Some(HudScreenBlurDraws {
+                    radius: self.menu_background_blurriness,
+                    first_base_command: commands.len(),
+                    first_overlay_command: post_gui_item_commands.len(),
+                });
+            }
             push_hud_inventory_background_layers(
                 &mut vertices,
                 &mut commands,
@@ -5122,6 +5163,7 @@ impl Renderer {
             vertices,
             commands,
             post_gui_item_start,
+            screen_blur,
         }
     }
 
@@ -13179,6 +13221,7 @@ fn sanitize_hud_item_cooldown_progress(progress: Option<f32>) -> Option<f32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ClearColor;
     use bbb_render_types::{HUD_FONT_BOLD_EXTRA_THICKNESS, HUD_FONT_BOLD_OFFSET};
 
     fn assert_close2(actual: [f32; 2], expected: [f32; 2]) {
@@ -17476,6 +17519,153 @@ mod tests {
             hovered_slot_id: None,
             tooltip: None,
         }
+    }
+
+    #[test]
+    fn dialog_screen_blur_marker_splits_before_and_after_screen_commands() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer
+            .upload_hud_crosshair(2, 2, &[255, 0, 0, 255].repeat(4))
+            .expect("crosshair");
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.fill_layers.push(HudInventoryFillLayer {
+            x: 20,
+            y: 20,
+            width: 4,
+            height: 4,
+            tint: [0.0, 1.0, 0.0, 1.0],
+            stage: HudInventoryFillStage::Foreground,
+        });
+        renderer.set_hud_inventory_screen(Some(screen));
+        renderer.set_hud_screen_blur(true);
+
+        let draws = renderer.collect_hud_draws();
+        let blur = draws.screen_blur.expect("dialog blur marker");
+        assert_eq!(blur.radius, 5.0);
+        assert!(
+            blur.first_base_command > 0,
+            "in-world HUD commands stay before the screen blur"
+        );
+        assert_eq!(blur.first_overlay_command, 0);
+        assert!(
+            draws.commands.len() > draws.post_gui_item_start,
+            "dialog foreground fill stays after the GUI-item split"
+        );
+        drop(draws);
+
+        renderer.set_hud_screen_blur(false);
+        assert!(renderer.collect_hud_draws().screen_blur.is_none());
+        renderer.set_hud_screen_blur(true);
+        renderer.set_menu_background_blurriness(0);
+        assert!(renderer.collect_hud_draws().screen_blur.is_none());
+    }
+
+    #[test]
+    fn dialog_screen_blur_strata_separate_hotbar_and_screen_block_items() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let model = HudBlockItemModel {
+            quads: vec![crate::item_models::ItemModelQuad {
+                corners: [
+                    [0.0, 0.0, 8.0],
+                    [16.0, 0.0, 8.0],
+                    [16.0, 16.0, 8.0],
+                    [0.0, 16.0, 8.0],
+                ],
+                uvs: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+                tint: [1.0, 1.0, 1.0, 1.0],
+                normal: [0.0, 0.0, 1.0],
+                shade: 1.0,
+                translucent: false,
+            }],
+            gui_display: glam::Mat4::IDENTITY,
+            lighting: GuiItemLightingEntry::Items3d,
+            foil: false,
+        };
+        renderer.set_hud_hotbar_block_item_models(vec![Some(model.clone())]);
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.slots.push(HudInventorySlot {
+            slot_id: 0,
+            x: 8,
+            y: 8,
+            icon: None,
+            block_model: Some(model),
+        });
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        let before = renderer.collect_hud_block_item_mesh_for_stratum(HudScreenStratum::BeforeBlur);
+        let after = renderer.collect_hud_block_item_mesh_for_stratum(HudScreenStratum::AfterBlur);
+        let all = renderer.collect_hud_block_item_mesh();
+        assert_eq!(before.solid.indices.len(), 6);
+        assert_eq!(after.solid.indices.len(), 6);
+        assert_eq!(all.solid.indices.len(), 12);
+    }
+
+    #[test]
+    fn dialog_screen_box_blur_softens_prior_hud_but_keeps_screen_fill_sharp() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        renderer.set_clear_color(ClearColor {
+            r: 0.0,
+            g: 0.0,
+            b: 1.0,
+            a: 1.0,
+        });
+        renderer
+            .upload_hud_crosshair(4, 4, &[255, 0, 0, 255].repeat(16))
+            .expect("crosshair");
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.width = 320;
+        screen.height = 240;
+        screen.fill_layers.push(HudInventoryFillLayer {
+            x: 20,
+            y: 20,
+            width: 4,
+            height: 4,
+            tint: [0.0, 1.0, 0.0, 1.0],
+            stage: HudInventoryFillStage::Foreground,
+        });
+        renderer.set_hud_inventory_screen(Some(screen));
+        renderer.set_hud_screen_blur(true);
+
+        let blurred = renderer
+            .render_offscreen_frame()
+            .expect("blurred dialog frame");
+        assert_eq!(renderer.counters.screen_blur_draw_calls, 6);
+        let blurred_center = blurred.pixel(160, 120);
+        let blurred_neighbor = blurred.pixel(166, 120);
+        let screen_fill = blurred.pixel(21, 21);
+        let beside_screen_fill = blurred.pixel(25, 21);
+        assert!(
+            blurred_center[0] < 128,
+            "six box-blur passes should soften the red center, got {blurred_center:?}"
+        );
+        assert!(
+            blurred_neighbor[0] > 0,
+            "the softened HUD should spread red beyond its original quad, got {blurred_neighbor:?}"
+        );
+        assert!(
+            screen_fill[1] > 128 && screen_fill[0] < 64 && screen_fill[2] < 64,
+            "screen strata must draw sharp after blur, got {screen_fill:?}"
+        );
+        assert!(
+            beside_screen_fill[1] < 64,
+            "screen fill must not be folded into the blur, got {beside_screen_fill:?}"
+        );
+
+        renderer.set_menu_background_blurriness(0);
+        let unblurred = renderer
+            .render_offscreen_frame()
+            .expect("unblurred dialog frame");
+        assert_eq!(renderer.counters.screen_blur_draw_calls, 0);
+        assert!(
+            unblurred.pixel(160, 120)[0] > 128,
+            "zero blur option keeps the original HUD sharp"
+        );
     }
 
     #[test]

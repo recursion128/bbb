@@ -33,6 +33,8 @@ pub struct RendererCounters {
     #[serde(default)]
     pub item_entity_billboards: usize,
     pub hud_draw_calls: u64,
+    #[serde(default)]
+    pub screen_blur_draw_calls: u64,
     pub pipeline_switches: u64,
     pub screenshots_written: u64,
     pub queued_sections: usize,

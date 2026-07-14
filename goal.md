@@ -385,8 +385,8 @@ drag scale 与键盘 focus 上下各留 10px 的 reveal 规则运行；body/inpu
 item icon 及 decorations 共享 centered HUD scissor。由于 `ScrollableLayout.Container` 先以
 `AbstractScrollArea.mouseScrolled` 截获 wheel，SingleOption 只在 click/keyboard 路径切换，body wheel
 统一滚动 container。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、NumberRange/SingleOption
-超长 label scrolling、Text multiline editor、single-line Text 的 double-click word selection 与
+仍须按 `DialogScreen`/`DialogControlSet` 完成 NumberRange/SingleOption 超长 label scrolling、
+Text multiline editor、single-line Text 的 double-click word selection 与
 IME preedit overlay、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
@@ -869,8 +869,8 @@ playable-gate 覆盖基础 movement/interaction/inventory/world effects；不再
 font 全部子项已在 P1-3 五连 slice 完成（bidi/unihex 见上方结转项）。
 2026-07-05 入口审计：hotbar/crosshair/生命/饥饿/经验条基础档、22 变体
 container screen 家族、merchant 交易 UI、book 阅读均已完成；HUD 深度/颜色
-load/clear 语义与 vanilla 对齐（stratum/blur depth-clear 随 blur 型 screen
-再进入）。debug overlay 的 F3 toggle/keymap、左右列基础 entry、F3+1..4 图表与
+load/clear 语义与 blur 型 screen stratum 均已与 vanilla 对齐。debug overlay 的
+F3 toggle/keymap、左右列基础 entry、F3+1..4 图表与
 lightmap、F3+B/G/H/A/C/D/I/L/N/P/S/T/V/Esc/F4/F6 各动作与 shell、GameModeSwitcher、
 PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive）。
 

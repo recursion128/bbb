@@ -877,6 +877,7 @@ pub(crate) struct RendererFrame {
     pub(crate) hud_hotbar_item_icons: [Option<HudItemIcon>; HUD_HOTBAR_SLOTS],
     pub(crate) hud_hotbar_block_item_models: Vec<Option<HudBlockItemModel>>,
     pub(crate) hud_inventory_screen: Option<HudInventoryScreen>,
+    pub(crate) hud_screen_blur: bool,
     pub(crate) hud_sign_editor_screen: Option<HudSignEditorScreen>,
     pub(crate) hud_pause_screen: Option<HudPauseScreen>,
     pub(crate) hud_stats_screen: Option<HudStatsScreen>,
@@ -962,6 +963,7 @@ pub(crate) fn apply_renderer_frame(renderer: &mut Renderer, frame: RendererFrame
     renderer.set_hud_hotbar_item_icons(frame.hud_hotbar_item_icons);
     renderer.set_hud_hotbar_block_item_models(frame.hud_hotbar_block_item_models);
     renderer.set_hud_inventory_screen(frame.hud_inventory_screen);
+    renderer.set_hud_screen_blur(frame.hud_screen_blur);
     renderer.set_hud_sign_editor_screen(frame.hud_sign_editor_screen);
     renderer.set_hud_pause_screen(frame.hud_pause_screen);
     renderer.set_hud_stats_screen(frame.hud_stats_screen);

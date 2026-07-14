@@ -14901,3 +14901,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   viewport 内 wheel 始终滚动 body，不会下发给 SingleOption。regressions 覆盖 overflow range/thumb、
   wheel interception、focus reveal、scrollbar drag、lifecycle reset、nested sanitizer 与 centered scissor。
   button-list 的独立 scroll/focus 仍留在 TODO。
+
+## 2026-07-14：Blur inherited Dialog screen backgrounds at the vanilla stratum
+
+- [x] 对照 `Screen.extractRenderStateWithTooltipAndSubtitles`、`extractBackground`、
+  `extractBlurredBackground`、`GuiRenderState.firstStratumAfterBlur` 与 `GuiRenderer.draw`，native 仅为
+  Dialog、warning confirm 和 waiting `GenericMessageScreen` 投影 blur marker；container/book/advancement
+  等 `isInGameUi=true` screen 保持透明背景，不被推入模糊链。
+- [x] renderer 在 inventory-screen 起点同时拆分 2D HUD command、GUI 3D block-item 与 decoration/overlay
+  三类提交，先完成 in-world HUD strata，再清 GUI depth、复制当前 surface，按 vanilla `blur.json` 执行
+  三轮 horizontal+vertical linear box blur，最后绘制 screen 背景、控件、screen item 与 tooltip；整帧开始
+  的 GUI depth clear 和 blur 前的第二次 clear 均有顺序回归。
+- [x] `--menu-background-blurriness 0..=10` 作为启动配置复刻 vanilla option，默认 5；半径 0 不创建 blur
+  stratum。renderer-owned resizeable blur/swap targets、六次 draw counter、WGSL half-step/half-weight 公式、
+  native screen 适用性和 offscreen 像素回归共同证明：blur 前 HUD 被扩散，blur 后 screen fill 保持锐利。

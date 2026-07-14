@@ -8,7 +8,8 @@ use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
 };
 use bbb_renderer::{
-    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS,
+    VANILLA_DEFAULT_LIGHTMAP_BRIGHTNESS_FACTOR, VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
+    VANILLA_DEFAULT_RENDER_DISTANCE_CHUNKS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
     VANILLA_MAX_RENDER_DISTANCE_CHUNKS, VANILLA_MIN_RENDER_DISTANCE_CHUNKS,
 };
 use clap::{ArgAction, Parser, ValueEnum};
@@ -99,6 +100,12 @@ pub(crate) struct Args {
         value_parser = parse_client_gamma
     )]
     pub(crate) client_gamma: f32,
+    #[arg(
+        long = "menu-background-blurriness",
+        default_value_t = VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS,
+        value_parser = parse_menu_background_blurriness
+    )]
+    pub(crate) menu_background_blurriness: u8,
     #[arg(
         long = "damage-tilt-strength",
         default_value_t = 1.0,
@@ -319,6 +326,19 @@ fn parse_render_distance(value: &str) -> std::result::Result<u32, String> {
     } else {
         Err(format!(
             "render distance must be between {VANILLA_MIN_RENDER_DISTANCE_CHUNKS} and {VANILLA_MAX_RENDER_DISTANCE_CHUNKS} chunks"
+        ))
+    }
+}
+
+fn parse_menu_background_blurriness(value: &str) -> std::result::Result<u8, String> {
+    let blurriness = value
+        .parse::<u8>()
+        .map_err(|_| format!("menu background blurriness must be an integer: {value}"))?;
+    if blurriness <= VANILLA_MAX_MENU_BACKGROUND_BLURRINESS {
+        Ok(blurriness)
+    } else {
+        Err(format!(
+            "menu background blurriness must be between 0 and {VANILLA_MAX_MENU_BACKGROUND_BLURRINESS}"
         ))
     }
 }
@@ -546,6 +566,30 @@ mod tests {
 
         let args = Args::try_parse_from(["bbb-native", "--render-distance", "20"]).unwrap();
         assert_eq!(args.render_distance_chunks, 20);
+    }
+
+    #[test]
+    fn args_accept_vanilla_menu_background_blurriness_range() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            default_args.menu_background_blurriness,
+            VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS
+        );
+
+        let disabled =
+            Args::try_parse_from(["bbb-native", "--menu-background-blurriness", "0"]).unwrap();
+        assert_eq!(disabled.menu_background_blurriness, 0);
+
+        let maximum =
+            Args::try_parse_from(["bbb-native", "--menu-background-blurriness", "10"]).unwrap();
+        assert_eq!(maximum.menu_background_blurriness, 10);
+    }
+
+    #[test]
+    fn args_reject_menu_background_blurriness_outside_vanilla_range() {
+        let err =
+            Args::try_parse_from(["bbb-native", "--menu-background-blurriness", "11"]).unwrap_err();
+        assert!(err.to_string().contains("between 0 and 10"));
     }
 
     #[test]

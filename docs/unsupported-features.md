@@ -68,8 +68,8 @@ Owner: `bbb-protocol`
   requested host and port.
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
-  `DialogBodyHandlers`: add the in-world screen blur/depth-clear;
-  NumberRange/SingleOption long-label scrolling, the multiline Text editor, and single-line Text
+  `DialogBodyHandlers`: add NumberRange/SingleOption long-label scrolling,
+  the multiline Text editor, and single-line Text
   double-click word selection and IME preedit overlay,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
@@ -899,10 +899,6 @@ back into a todo. Do not delete these.
   producer). The flag is already carried end to end.
 - **Sound-captions subtitle overlay** (`extractSubtitleOverlay`), distinct from
   the title subtitle drawn inside `extractTitle`.
-- **Stratum/blur depth-clear** (`Screen.extractBlurredBackground`,
-  `GuiRenderer.java`, before/after blur). Dialog and waiting screens now provide
-  the tiled in-world menu texture; add the blur-before-screen render stage and
-  its depth-clear ordering without changing transparent in-game UI screens.
 - **Client-only debug entries with no HUD line**: LocalDifficulty,
   EntitySpawnCounts, ChunkGenerationStats. Restart when an integrated
   local-server mirror (`ServerLevel`, `NaturalSpawner.SpawnState`,

@@ -141,6 +141,9 @@ pub use crate::player_skin::{
     DynamicPlayerSkinImage, DynamicPlayerTextureImage,
 };
 pub use crate::renderer::Renderer;
+pub use crate::screen_blur::{
+    VANILLA_DEFAULT_MENU_BACKGROUND_BLURRINESS, VANILLA_MAX_MENU_BACKGROUND_BLURRINESS,
+};
 pub use crate::selection::{
     DebugLine, SelectionBox, SelectionColoredBox, SelectionLine, SelectionOutline, SelectionPoint,
     SelectionTextLabel,
