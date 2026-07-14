@@ -73,7 +73,7 @@ Owner: `bbb-protocol`
   dynamic registry-holder plus 1 block-holder rule registration, 1 filterable
   bounded-page list, 1 potion-alternative/recursive-effect registration, and 2
   consume-effect-backed record registrations, plus 1 item-stack-template wrapper
-  registration:
+  and 3 item-stack-template collection registrations:
   decode the remaining Component, holder, list, and compound-record persistent value
   Codecs, render the corresponding screens, restore the previous screen on clear, and
   route custom-click controls through the active dialog state.

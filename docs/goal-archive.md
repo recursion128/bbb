@@ -13873,3 +13873,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 typed component patch，不新建平行模板 parser。
 - [x] compact item、full item/count、递归 nested use-remainder、air/unknown item、1..=99 count 和 malformed
   components 均有定向测试；其余 Component、holder、list/compound-record Codec 与 native screens 仍开放。
+
+## 2026-07-14：Decode item-template collection dialog components
+
+- [x] 新建 `client/dialog/body/component_value/item_stack_collections.rs` semantic owner；对照
+  `ChargedProjectiles.CODEC`、`BundleContents.CODEC` 与 `ItemContainerContents.CODEC`，让前两者复用
+  ordered ItemStackTemplate list，后者投影最多 256 条的 sparse 0..=255 slot state。
+- [x] container slot canonical state 保留空槽并按 `fromSlots` 输入顺序让重复 slot 后者覆盖；三者的
+  compact/full template、recursive typed patch、空 array/list、顺序、256/257 边界、missing/wrong field、
+  air/unknown item 与非法 count/slot 均有定向测试；其余 Component、holder、list/compound-record Codec
+  与 native screens 仍开放。

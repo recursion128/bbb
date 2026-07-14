@@ -17,8 +17,10 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
@@ -69,6 +71,7 @@ mod debug_stick;
 mod enchantments;
 mod equippable;
 mod holder_set;
+mod item_stack_collections;
 mod map_decorations;
 mod potion_contents;
 mod profile;
@@ -90,6 +93,7 @@ use holder_set::{
     DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
     DialogSuspiciousStewEffectState,
 };
+use item_stack_collections::{decode_item_stack_template_list, decode_item_stack_template_slots};
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
 use potion_contents::{decode_potion_contents, DialogPotionContentsState};
 use profile::decode_profile;
@@ -285,6 +289,15 @@ pub enum DialogDataComponentValueState {
     MapDecorations {
         decorations: Vec<DialogMapDecorationState>,
     },
+    ChargedProjectiles {
+        items: Vec<DialogItemStackTemplateState>,
+    },
+    BundleContents {
+        items: Vec<DialogItemStackTemplateState>,
+    },
+    Container {
+        slots: Vec<Option<DialogItemStackTemplateState>>,
+    },
     BreakSound {
         sound: DialogSoundEventHolderState,
     },
@@ -467,6 +480,19 @@ pub(super) fn decode_supported_component_value(
                 decorations: decode_map_decorations(value, &what)?,
             }
         }
+        VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => {
+            DialogDataComponentValueState::ChargedProjectiles {
+                items: decode_item_stack_template_list(value, registries, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID => {
+            DialogDataComponentValueState::BundleContents {
+                items: decode_item_stack_template_list(value, registries, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => DialogDataComponentValueState::Container {
+            slots: decode_item_stack_template_slots(value, registries, &what)?,
+        },
         VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => DialogDataComponentValueState::BreakSound {
             sound: decode_sound_event_holder(value, &what)?,
         },
