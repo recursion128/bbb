@@ -13959,3 +13959,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 malformed shape/state/count 均有定向测试；107 项 persistent catalog registration 至此都有 typed
   positive-value dispatch。RegistryFileCodec inline/direct-holder 分支与 structured Component 的完整
   validation/canonical 重编码仍由缺口账本继续跟踪。
+
+## 2026-07-14：Decode direct instrument dialog item component
+
+- [x] 新建 `client/dialog/body/component_value/instrument.rs` semantic owner；对照
+  `Instrument.CODEC/DIRECT_CODEC`、`InstrumentComponent.CODEC` 与 `SoundEvent.CODEC`，保留 current-session
+  named holder，并 typed 投影 direct holder 的 required sound-event、use-duration/range positive float
+  和 description Component。
+- [x] session registration order、named/direct sound event、lenient optional sound range、NBT 数字转换、
+  `Float.MIN_VALUE` 与零/负数/NaN/Infinity 边界、styled description、missing/wrong fields 和 unknown sound
+  均有定向测试；其余 RegistryFileCodec inline/direct-holder 与 structured Component 精确 codec 仍开放。

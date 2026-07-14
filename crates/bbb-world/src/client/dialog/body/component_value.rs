@@ -33,7 +33,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
-        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
         VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
@@ -78,6 +78,7 @@ mod debug_stick;
 mod enchantments;
 mod equippable;
 mod holder_set;
+mod instrument;
 mod item_stack_collections;
 mod map_decorations;
 mod potion_contents;
@@ -104,6 +105,7 @@ use holder_set::{
     DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
     DialogSuspiciousStewEffectState,
 };
+use instrument::{decode_instrument_holder, DialogInstrumentHolderState};
 use item_stack_collections::{decode_item_stack_template_list, decode_item_stack_template_slots};
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
 use potion_contents::{decode_potion_contents, DialogPotionContentsState};
@@ -274,7 +276,7 @@ pub enum DialogDataComponentValueState {
         song: DialogRegistryHolderReferenceState,
     },
     Instrument {
-        instrument: DialogRegistryHolderReferenceState,
+        instrument: DialogInstrumentHolderState,
     },
     ProvidesTrimMaterial {
         material: DialogRegistryHolderReferenceState,
@@ -465,6 +467,9 @@ pub(super) fn decode_supported_component_value(
         }
         VANILLA_DATA_COMPONENT_LOCK_TYPE_ID => DialogDataComponentValueState::Lock {
             predicate: decode_item_predicate(value, registries, &what)?,
+        },
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => DialogDataComponentValueState::Instrument {
+            instrument: decode_instrument_holder(value, registries, &what)?,
         },
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID => decode_use_effects(value, &what)?,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => decode_swing_animation(value, &what)?,

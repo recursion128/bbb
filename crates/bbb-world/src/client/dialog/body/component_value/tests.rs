@@ -1556,9 +1556,12 @@ fn decodes_instrument_and_provides_trim_material_named_holders() {
     .unwrap();
     assert!(matches!(
         instrument,
-        Some(DialogDataComponentValueState::Instrument { instrument })
-            if instrument.holder_id == 1
-                && instrument.resource_id == "minecraft:ponder_goat_horn"
+        Some(DialogDataComponentValueState::Instrument {
+            instrument: DialogInstrumentHolderState::Named {
+                registry_id: 1,
+                ref resource_id,
+            }
+        }) if resource_id == "minecraft:ponder_goat_horn"
     ));
 
     let material = decode_supported_component_value(

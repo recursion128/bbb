@@ -77,8 +77,9 @@ Owner: `bbb-protocol`
   1 potion-alternative/recursive-effect registration, and 2
   consume-effect-backed record registrations, plus 1 item-stack-template wrapper
   and 3 item-stack-template collection registrations, plus 2 adventure-mode
-  block-predicate registrations and 1 lock ItemPredicate registration. All 107
-  persistent catalog registrations now have a typed positive-value dispatch;
+  block-predicate registrations and 1 lock ItemPredicate registration, plus 1
+  instrument named/direct registry-holder registration. All 107 persistent catalog
+  registrations now have a typed positive-value dispatch;
   complete the remaining inline/direct-holder branches inside those values and
   canonical persistent Component validation/re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
