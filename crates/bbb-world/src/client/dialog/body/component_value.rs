@@ -47,13 +47,15 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
-        VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
@@ -87,6 +89,7 @@ mod profile;
 mod sound_event;
 mod text_component;
 mod tool;
+mod trim;
 mod typed_data;
 mod writable_book;
 mod written_book;
@@ -120,6 +123,10 @@ use sound_event::{
 };
 use text_component::{decode_lore, decode_text_component};
 use tool::{decode_tool, DialogToolState};
+use trim::{
+    decode_armor_trim, decode_trim_material_holder, DialogTrimMaterialHolderState,
+    DialogTrimPatternHolderState,
+};
 use typed_data::{
     decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
@@ -279,11 +286,11 @@ pub enum DialogDataComponentValueState {
         instrument: DialogInstrumentHolderState,
     },
     ProvidesTrimMaterial {
-        material: DialogRegistryHolderReferenceState,
+        material: DialogTrimMaterialHolderState,
     },
     Trim {
-        material: DialogRegistryHolderReferenceState,
-        pattern: DialogRegistryHolderReferenceState,
+        material: DialogTrimMaterialHolderState,
+        pattern: DialogTrimPatternHolderState,
     },
     RegistryVariant {
         registry: String,
@@ -471,6 +478,15 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => DialogDataComponentValueState::Instrument {
             instrument: decode_instrument_holder(value, registries, &what)?,
         },
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
+            DialogDataComponentValueState::ProvidesTrimMaterial {
+                material: decode_trim_material_holder(value, registries, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => {
+            let (material, pattern) = decode_armor_trim(value, registries, &what)?;
+            DialogDataComponentValueState::Trim { material, pattern }
+        }
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID => decode_use_effects(value, &what)?,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => decode_swing_animation(value, &what)?,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => decode_block_state(value, &what)?,

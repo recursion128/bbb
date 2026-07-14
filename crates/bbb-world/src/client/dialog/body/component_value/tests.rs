@@ -1573,8 +1573,12 @@ fn decodes_instrument_and_provides_trim_material_named_holders() {
     .unwrap();
     assert!(matches!(
         material,
-        Some(DialogDataComponentValueState::ProvidesTrimMaterial { material })
-            if material.holder_id == 1 && material.resource_id == "minecraft:quartz"
+        Some(DialogDataComponentValueState::ProvidesTrimMaterial {
+            material: DialogTrimMaterialHolderState::Named {
+                registry_id: 1,
+                ref resource_id,
+            }
+        }) if resource_id == "minecraft:quartz"
     ));
 
     for (type_id, resource_id, value, context, expected) in [
@@ -1597,7 +1601,7 @@ fn decodes_instrument_and_provides_trim_material_named_holders() {
             "minecraft:provides_trim_material",
             compound(vec![string_entry("asset_name", "quartz")]),
             Some(&registries),
-            "holder is not a resource id",
+            "missing field description",
         ),
     ] {
         let error =
@@ -1634,10 +1638,20 @@ fn decodes_trim_named_holder_pair_from_session_registries() {
     let Some(DialogDataComponentValueState::Trim { material, pattern }) = decoded else {
         panic!("expected trim component");
     };
-    assert_eq!(material.holder_id, 1);
-    assert_eq!(material.resource_id, "minecraft:quartz");
-    assert_eq!(pattern.holder_id, 1);
-    assert_eq!(pattern.resource_id, "minecraft:coast");
+    assert!(matches!(
+        material,
+        DialogTrimMaterialHolderState::Named {
+            registry_id: 1,
+            ref resource_id,
+        } if resource_id == "minecraft:quartz"
+    ));
+    assert!(matches!(
+        pattern,
+        DialogTrimPatternHolderState::Named {
+            registry_id: 1,
+            ref resource_id,
+        } if resource_id == "minecraft:coast"
+    ));
 
     for (value, context, expected) in [
         (value.clone(), None, "without registry context"),
@@ -1660,7 +1674,7 @@ fn decodes_trim_named_holder_pair_from_session_registries() {
                 string_entry("pattern", "minecraft:coast"),
             ]),
             Some(&registries),
-            "field material holder is not a resource id",
+            "field material direct holder is missing field description",
         ),
         (
             compound(vec![

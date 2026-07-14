@@ -15,10 +15,9 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
         VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
-        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID, VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
@@ -116,15 +115,6 @@ pub(super) fn decode_holder_backed_component_value(
         VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID => Some(
             decode_registry_holder_reference(value, "minecraft:jukebox_song", registries, what)
                 .map(|song| DialogDataComponentValueState::JukeboxPlayable { song }),
-        ),
-        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => Some(
-            decode_registry_holder_reference(value, "minecraft:trim_material", registries, what)
-                .map(|material| DialogDataComponentValueState::ProvidesTrimMaterial { material }),
-        ),
-        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => Some(
-            decode_armor_trim(value, registries, what).map(|(material, pattern)| {
-                DialogDataComponentValueState::Trim { material, pattern }
-            }),
         ),
         VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID => Some(
             decode_registry_holder_reference(value, "minecraft:painting_variant", registries, what)
@@ -239,34 +229,6 @@ fn synchronized_registry_variant_component(type_id: i32) -> Option<&'static str>
         VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => Some("minecraft:cat_sound_variant"),
         _ => None,
     }
-}
-
-fn decode_armor_trim(
-    value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
-    what: &str,
-) -> Result<
-    (
-        DialogRegistryHolderReferenceState,
-        DialogRegistryHolderReferenceState,
-    ),
-    String,
-> {
-    let material = decode_registry_holder_reference_field(
-        value,
-        "material",
-        "minecraft:trim_material",
-        registries,
-        what,
-    )?;
-    let pattern = decode_registry_holder_reference_field(
-        value,
-        "pattern",
-        "minecraft:trim_pattern",
-        registries,
-        what,
-    )?;
-    Ok((material, pattern))
 }
 
 fn decode_pot_decorations(

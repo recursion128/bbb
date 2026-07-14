@@ -13969,3 +13969,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] session registration order、named/direct sound event、lenient optional sound range、NBT 数字转换、
   `Float.MIN_VALUE` 与零/负数/NaN/Infinity 边界、styled description、missing/wrong fields 和 unknown sound
   均有定向测试；其余 RegistryFileCodec inline/direct-holder 与 structured Component 精确 codec 仍开放。
+
+## 2026-07-14：Decode direct trim dialog item components
+
+- [x] 新建 `client/dialog/body/component_value/trim.rs` semantic owner；对照 `TrimMaterial.DIRECT_CODEC`、
+  `MaterialAssetGroup.MAP_CODEC`、`TrimPattern.DIRECT_CODEC` 与 `ArmorTrim.CODEC`，让
+  PROVIDES_TRIM_MATERIAL 和 TRIM 共享 session named/direct holder，typed 投影 resource-path asset、
+  equipment-asset override map、Identifier、description Component 与 default decal。
+- [x] 两个 session registry 顺序、context-free direct pair、mixed named/direct、default/explicit decal、
+  styled description、default/多项 override、default namespace/duplicate semantic key、resource path 与
+  Identifier 校验、missing/wrong fields 均有定向测试；其余 RegistryFileCodec inline/direct-holder 与
+  structured Component 精确 codec 仍开放。

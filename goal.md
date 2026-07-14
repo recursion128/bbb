@@ -345,10 +345,10 @@ homogeneous HolderSet（tag/compact/list/session 解析及 context-free 空列�
 ProvidesBannerPatterns 的动态 banner-pattern HolderSet、JukeboxPlayable 的单一动态 song holder 也已
 typed 投影；BannerPatternLayers 的 named pattern list、DyeColor 与 context-free 空列表也已闭合；Instrument
 的 RegistryFileCodec named/direct 分支已按 session 顺序或 required sound-event/positive-float/
-description record typed 投影；ProvidesTrimMaterial 的 RegistryFileCodec named 分支与 PaintingVariant
-的 persistent RegistryFixedCodec 也已投影单一 named holder，并对尚未展开的 direct compound 保留明确
-失败；ArmorTrim 的 required material/pattern RegistryFileCodec pair 也已按两个 session registry
-顺序投影 named holder；wolf/pig/cow/chicken/cat 的 variant/sound-variant，加 zombie-nautilus/frog
+description record typed 投影；ProvidesTrimMaterial 与 ArmorTrim 的 trim-material/trim-pattern
+RegistryFileCodec 也已覆盖 session named holder 和 assets/override/identifier/description/decal direct
+record；PaintingVariant 的 persistent RegistryFixedCodec 投影单一 named holder 并明确拒绝 direct
+compound；wolf/pig/cow/chicken/cat 的 variant/sound-variant，加 zombie-nautilus/frog
 variant 共 12 个同步 RegistryFixedCodec 组件也已通过单一表驱动 surface 按 session 顺序投影；
 DamageResistant 的动态 damage-type tag/compact/list HolderSet 也已闭合；
 SuspiciousStewEffects 的 built-in mob-effect holder list、default/lenient duration，以及 PotDecorations
