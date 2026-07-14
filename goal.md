@@ -387,7 +387,13 @@ instance/HolderSet、sound holder 与 float range 也已 typed 投影；
 USE_REMAINDER 也已复用同一 ItemStackTemplate compact/full/recursive component-patch owner typed 投影；
 CHARGED_PROJECTILES/BUNDLE_CONTENTS 的 ordered ItemStackTemplate list 与 CONTAINER 的 256-entry
 sparse/last-wins slot list 也已复用同一 owner typed 投影；
-其余 Component、holder、list 与 compound record 等 persistent Codec 仍未展开；
+CAN_PLACE_ON/CAN_BREAK 的非空 compact BlockPredicate list、block HolderSet、exact/ranged state、
+flattened NBT 与 DataComponentMatchers，以及 LOCK 的 ItemPredicate/items/count 也已复用单一
+predicate owner typed 投影；exact persistent component map 递归进入已有 value codec，partial map 按
+generated 15 项 predicate-type 优先于 AnyValue component type 分发，并覆盖 CollectionPredicate 的
+contains/count/size、MinMaxBounds 交换校验及 recursive container/bundle ItemPredicate；至此 107 项
+persistent catalog registration 均有 typed positive-value dispatch。其余 inline/direct-holder 分支与
+structured Component 的完整 codec/canonical 重编码仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

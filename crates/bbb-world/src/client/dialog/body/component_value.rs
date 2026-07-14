@@ -18,7 +18,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
@@ -35,7 +36,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
-        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_LOCK_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
@@ -80,6 +81,7 @@ mod holder_set;
 mod item_stack_collections;
 mod map_decorations;
 mod potion_contents;
+mod predicates;
 mod profile;
 mod sound_event;
 mod text_component;
@@ -105,6 +107,10 @@ use holder_set::{
 use item_stack_collections::{decode_item_stack_template_list, decode_item_stack_template_slots};
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
 use potion_contents::{decode_potion_contents, DialogPotionContentsState};
+use predicates::{
+    decode_adventure_mode_predicate, decode_item_predicate, DialogAdventureModePredicateState,
+    DialogItemPredicateState,
+};
 use profile::decode_profile;
 use sound_event::{
     decode_kinetic_weapon, decode_piercing_weapon, decode_sound_event_holder,
@@ -160,6 +166,12 @@ pub enum DialogDataComponentValueState {
     },
     AttributeModifiers {
         modifiers: Vec<DialogAttributeModifierState>,
+    },
+    AdventureModePredicate {
+        predicate: DialogAdventureModePredicateState,
+    },
+    Lock {
+        predicate: DialogItemPredicateState,
     },
     StringEnum {
         value_id: i32,
@@ -446,6 +458,14 @@ pub(super) fn decode_supported_component_value(
                 modifiers: decode_attribute_modifiers(value, &what)?,
             }
         }
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID | VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => {
+            DialogDataComponentValueState::AdventureModePredicate {
+                predicate: decode_adventure_mode_predicate(value, registries, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_LOCK_TYPE_ID => DialogDataComponentValueState::Lock {
+            predicate: decode_item_predicate(value, registries, &what)?,
+        },
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID => decode_use_effects(value, &what)?,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => decode_swing_animation(value, &what)?,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => decode_block_state(value, &what)?,

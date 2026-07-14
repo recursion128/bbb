@@ -76,9 +76,11 @@ Owner: `bbb-protocol`
   filterable bounded-page list, 1 written-book filterable Component record,
   1 potion-alternative/recursive-effect registration, and 2
   consume-effect-backed record registrations, plus 1 item-stack-template wrapper
-  and 3 item-stack-template collection registrations:
-  decode the remaining Component, holder, list, and compound-record persistent value
-  Codecs; complete canonical persistent Component validation/re-encoding, including
+  and 3 item-stack-template collection registrations, plus 2 adventure-mode
+  block-predicate registrations and 1 lock ItemPredicate registration. All 107
+  persistent catalog registrations now have a typed positive-value dispatch;
+  complete the remaining inline/direct-holder branches inside those values and
+  canonical persistent Component validation/re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
   the corresponding screens, restore the previous screen on clear,
   and route custom-click controls through the active dialog state. Flattened SNBT

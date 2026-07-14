@@ -13943,3 +13943,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   display（含 raw/styled override Component）、六类 NBT number→double 转换、NaN payload、unknown fields、
   missing/wrong/unknown codec 字段均有定向测试；map-decoration 也改为复用共享 double 数字解码 helper，
   不保留平行实现。其余 ItemPredicate-backed adventure/lock 与共享 Component 精确 codec 仍开放。
+
+## 2026-07-14：Decode adventure-mode and lock dialog item components
+
+- [x] 新建 `client/dialog/body/component_value/predicates.rs` semantic owner；对照 vanilla 26.1
+  `AdventureModePredicate.CODEC`、`BlockPredicate.CODEC`、`StatePropertiesPredicate.CODEC`、
+  `DataComponentMatchers.CODEC`、`ItemPredicate.CODEC` 与 `LockCode.CODEC`，让 CAN_PLACE_ON/CAN_BREAK
+  投影非空 compact 单项/列表、block HolderSet、exact/ranged state、flattened NBT 和 component matcher，
+  并让 LOCK 复用同一 items/count/matcher surface。
+- [x] exact component map 按 110 项 catalog 拒绝 transient 后递归进入已有 persistent value codec；partial
+  map 按 generated 15 项 concrete predicate type 优先于 AnyValue component type 分发，typed 覆盖
+  MinMaxBounds、CollectionPredicate、recursive container/bundle ItemPredicate、enchantment/potion/custom
+  data、firework/book/attribute/trim/jukebox/villager 分支。compact/list、全部 15 种 concrete type、nested
+  exact LOCK、recursive collection、numeric/NaN/交换范围、unknown/transient/duplicate key、missing registry
+  与 malformed shape/state/count 均有定向测试；107 项 persistent catalog registration 至此都有 typed
+  positive-value dispatch。RegistryFileCodec inline/direct-holder 分支与 structured Component 的完整
+  validation/canonical 重编码仍由缺口账本继续跟踪。
