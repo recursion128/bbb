@@ -185,11 +185,13 @@ use bbb_protocol::mob_effect_types::{
 
 mod control_requests;
 mod debug_light_sections;
+mod dialog_screen;
 mod render_extract;
 pub(crate) use render_extract::*;
 mod events;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
+use dialog_screen::hud_dialog_screen;
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);
@@ -6027,6 +6029,10 @@ fn hud_inventory_screen_with_local_state_for_surface(
     surface_size: winit::dpi::PhysicalSize<u32>,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
+    if let Some(dialog) = world.current_dialog() {
+        return hud_dialog_screen(dialog, local_state.cursor_position, surface_size);
+    }
+
     if let Some(book) = world.current_book() {
         return Some(hud_book_screen(book));
     }

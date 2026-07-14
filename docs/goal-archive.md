@@ -14397,3 +14397,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   递归 NaN 拒绝与 written-book hover `show_item` 四类 item-template patch 的 32767/32768 UTF-16 unit 边界
   均有回归。generic packet show-dialog world context 与剩余 predicate 及 written-book positive
   item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Project native Notice dialog HUD
+
+- [x] 对照 `DialogScreen`、`SimpleDialogScreen`、`HeaderAndFooterLayout` 与
+  `DialogBodyHandlers.PlainMessageHandler`，新增独立 native dialog-screen owner；当前 Notice 按 33px
+  header/footer、30px content margin、10px body spacing、20px action button 与 9px font line 投影标题、
+  PlainMessage 正文和主 action，窄正文以保留 style/color 的确定性行拆分输出。
+- [x] dialog 投影优先于书本/inventory 等既有 screen；未解析或尚未支持的 dialog 不再穿透显示旧界面。
+  action button 按 centered-screen origin 命中鼠标并切换 vanilla widget normal/highlighted sprite；direct
+  NBT→world typed state→native HUD 的坐标、换行、bold/color runs、hover 与 unresolved conservative path
+  均有 focused regression。后续 warning、Item body、inputs、其余 top-level dialog 与 action runtime 继续由
+  缺口账本追踪。

@@ -23,6 +23,7 @@ use bbb_protocol::packets::{
     SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
     ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
     LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData, RegistryPacketEntry,
@@ -14072,6 +14073,137 @@ fn hud_inventory_screen_projects_current_book_screen() {
             },
         ]
     );
+}
+
+#[test]
+fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
+    let entry = |name: &str, value| NbtSummaryEntry {
+        name: name.to_string(),
+        value,
+    };
+    let mut world = WorldStore::new();
+    world.apply_show_dialog(ShowDialog {
+        dialog: DialogHolder::Direct {
+            dialog: NbtSummaryValue::Compound(vec![
+                entry(
+                    "type",
+                    NbtSummaryValue::String("minecraft:notice".to_string()),
+                ),
+                entry(
+                    "title",
+                    NbtSummaryValue::String("Native Notice".to_string()),
+                ),
+                entry(
+                    "body",
+                    NbtSummaryValue::Compound(vec![
+                        entry(
+                            "type",
+                            NbtSummaryValue::String("minecraft:plain_message".to_string()),
+                        ),
+                        entry("contents", NbtSummaryValue::String("AlphaBeta".to_string())),
+                        entry("width", NbtSummaryValue::Int(30)),
+                    ]),
+                ),
+                entry(
+                    "action",
+                    NbtSummaryValue::Compound(vec![
+                        entry(
+                            "label",
+                            NbtSummaryValue::Compound(vec![
+                                entry("text", NbtSummaryValue::String("Continue".to_string())),
+                                entry("bold", NbtSummaryValue::Byte(1)),
+                                entry("color", NbtSummaryValue::String("#55ffff".to_string())),
+                            ]),
+                        ),
+                        entry("width", NbtSummaryValue::Int(100)),
+                    ]),
+                ),
+            ]),
+        },
+    });
+    let surface_size = winit::dpi::PhysicalSize::new(320, 240);
+
+    let screen = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((160, 220)),
+            ..Default::default()
+        },
+        surface_size,
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!((screen.width, screen.height), (320, 240));
+    assert_eq!(
+        screen.background_layers,
+        vec![hud_inventory_background_layer(
+            HudInventoryBackgroundTexture::WidgetButtonHighlighted,
+            110,
+            213,
+            100,
+            20,
+            [0.0, 0.0],
+            [1.0, 1.0],
+        )]
+    );
+    assert_eq!(
+        screen
+            .text_labels
+            .iter()
+            .map(|label| (label.text.as_str(), label.x, label.y, label.width))
+            .collect::<Vec<_>>(),
+        vec![
+            ("Native Notice", 122, 12, 76),
+            ("Alpha", 145, 63, 30),
+            ("Beta", 148, 72, 24),
+            ("Continue", 132, 219, 56),
+        ]
+    );
+    let action_label = screen.text_labels.last().unwrap();
+    assert_eq!(action_label.runs.len(), 1);
+    assert!(action_label.runs[0].style.bold);
+    assert_eq!(action_label.runs[0].color, Some(0x55_FF_FF));
+
+    let idle = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((0, 0)),
+            ..Default::default()
+        },
+        surface_size,
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(
+        idle.background_layers[0].texture,
+        HudInventoryBackgroundTexture::WidgetButton
+    );
+}
+
+#[test]
+fn hud_inventory_screen_hides_unresolved_dialog_instead_of_falling_through() {
+    let mut world = WorldStore::new();
+    world.apply_show_dialog(ShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 99 },
+    });
+
+    assert!(hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState::default(),
+        winit::dpi::PhysicalSize::new(320, 240),
+        0.0,
+    )
+    .is_none());
 }
 
 #[test]

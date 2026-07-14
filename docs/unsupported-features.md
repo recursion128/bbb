@@ -66,141 +66,22 @@ Owner: `bbb-protocol`
   current connection read-only, carry cookies/seen-player/insecure-chat transfer
   state, and reconnect with the Transfer intent instead of only recording the
   requested host and port.
-- Complete native `Dialog` screen/runtime behavior beyond the current five top-level typed and
-  canonical variants and
-  PlainMessage/Item body, input-control, action, and item component-patch key/removal
-  plus 14 primitive, 17 StringRepresentable enum, 6 scalar-wrapper/flat-record/string-map,
-  5 numeric item-behavior record, and 3 resource-key/catalog metadata positive-value
-  registrations, plus 2 Component values and 1 bounded Component list, 2
-  RGB-alternative/list, 2 firework-record, 1 built-in attribute-modifier list,
-  and 1 global-position registration, plus
-  1 profile-alternative, 1 sound-holder, 4 defaulted
-  sound-backed record registrations, 2 registry-holder map registrations, 1
-  dynamic registry-holder plus 1 block-holder rule registration, 1 writable
-  filterable bounded-page list, 1 written-book filterable Component record,
-  1 potion-alternative/recursive-effect registration, and 2
-  consume-effect-backed record registrations, plus 1 item-stack-template wrapper
-  and 3 item-stack-template collection registrations, plus 2 adventure-mode
-  block-predicate registrations and 1 lock ItemPredicate registration, plus 1
-  instrument, 2 trim-material/pattern-backed named/direct registrations, and 1
-  banner-pattern-layer direct holder. All 107 persistent catalog registrations now
-  have a typed positive-value dispatch and their RegistryFileCodec inline/direct
-  holder branches are complete. Component block data-source positions now match
-  vanilla `BlockPosArgument`/Brigadier parsing, including full string consumption,
-  world-relative decimals, local coordinates, and absolute integer bounds. NBT paths
-  now match `NbtPathArgument` node dispatch and full consumption while reusing the
-  bounded 26.1 SNBT parser for root/object/list match compounds. Entity selector
-  strings now match name/UUID and all six selector types plus the 21 registered
-  option grammars, applicability constraints, built-in entity-type lookup, nested
-  SNBT/scores/advancements, and full consumption in both selector content and entity
-  data sources. Registry-independent structured written-book pages now use a semantic
-  Component-to-JsonOps length projection instead of raw NBT size. It exactly covers root/list/full
-  normalization, fuzzy content encoding, unknown/discriminator/default omission, scalar styles,
-  identifier normalization, and click/hover payloads that need no external owner, including the
-  32767/32768 boundary. Vector4f shadow colors now normalize through `ARGB_COLOR_CODEC` to its
-  signed-int encoder form. Custom-click NBT payloads likewise project Byte/Short/Int/Long,
-  Float/Double, String, arrays, lists, and compounds through the NbtOps-to-JsonOps shape. Finite
-  Float/Double values use the exact JDK 26 shortest-decimal selection (including the one/two-digit
-  closest-even rule) and Java plain/scientific notation boundaries; Gson-strict non-finite values
-  fail safely instead of being counted as JSON. Network-NBT decode, SNBT parse,
-  bounded NBT encode, Component/Dialog field lookup, and canonical maps now share CompoundTag's
-  last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
-  limit. All 107 typed positive item-patch values now have canonical JsonOps encoders; nested
-  Components propagate an unknown result when they require a higher owner instead of substituting
-  raw NBT size. Written-book pages now provide a world/session Dialog owner for named/direct holders
-  and all five top-level dialogs, including CommonData title/external-title/defaulted scalars, buttons, and
-  all nine static/dynamic actions. Nested Components, Dialog holders, and NBT reuse their canonical
-  owners. Compact bodies now cover PlainMessage's full encoder and ItemBody's recursive item
-  template, optional description, booleans, and dimensions. All four input controls now cover
-  key/type, Component label/display, default omission, SingleOption's FULL alternative encoder,
-  Text multiline options, and NumberRange's JDK Float encoding. DialogList tag/reference/direct
-  homogeneous compact holder sets are also canonical. Generic packet Components still need this
-  world context.
-  The same world/session Component owner now also reaches WRITTEN_BOOK_CONTENT
-  pages nested inside item patches, WRITTEN_BOOK_CONTENT predicate pages, and
-  exact component maps throughout recursive item predicates. Recursive ItemStackTemplate
-  patches in use remainders, charged projectiles, bundle contents, and container slots now
-  share that owner too, so item-record Component paths no longer block exact
-  `flatRestrictedCodec(32767)` sizing. Next, render
-  the dialog and warning screens, integrate clear-dialog restoration with the remaining
-  native-owned chat/sign/debug and warning return-screen stacks, and route custom-click controls
-  through the active dialog state. Dialog Component holders
-  already validate hover `show_item` patches through the complete typed world patch owner and
-  session registry context. The `minecraft:profile` positive patch value also reuses the sole
-  `ResolvableProfile.CODEC` decoder and protocol canonical owner, including
-  FULL/partial/player-name, property-map, UUID int-stream, and skin-patch forms.
-  `minecraft:map_decorations` string-map values likewise encode map-decoration holder ids and
-  required double/double/float entries with exact JDK 26 formatters and CompoundTag last-wins
-  normalization. Suspicious-stew entries now encode built-in mob-effect holders while omitting
-  duration 160; pot decorations always re-encode all four ordered sides with `minecraft:brick`
-  for empty sides. The 13 fixed registry variants (including built-in villager), jukebox song,
-  painting variant, and damage type also share normalized resource-id string encoding. Repairable,
-  provided banner-pattern, and damage-resistant holder sets now preserve named `#` tags, compact
-  direct singletons, and array-shaped empty/multi-entry sets. Break-sound RegistryFileCodec holders
-  now cover named references and direct sound-id/optional-range objects with exact finite-float
-  encoding. Piercing- and kinetic-weapon records reuse that holder projection and now cover their
-  defaulted scalars, three optional kinetic conditions, nested floats, and strict non-finite
-  rejection. Banner-pattern layer lists now cover named/direct pattern holders, direct asset and
-  translation fields, and dye-color names with last-wins field lookup. Custom/bucket compounds,
-  typed entity/block-entity compounds with normalized `id` restoration, and bee occupant lists now
-  reuse one protocol NbtOps-to-JsonOps length owner across every tag/array kind; duplicate compound
-  keys are last-wins and non-finite numbers fail strictly. Debug-stick dispatched maps likewise
-  encode normalized built-in block ids and validated property names; exact duplicate NBT keys are
-  last-wins while distinct raw keys that normalize to the same holder are rejected like DFU.
-  Enchantment and stored-enchantment maps now likewise encode session-resolved holder ids as
-  normalized resource keys with 1..=255 integer levels, preserving exact-key last-wins and
-  rejecting post-resolution holder collisions.
-  Writable-book content now follows the left/full encoder of its full/simple `Filterable<String>`
-  alternative: compact string inputs re-encode as raw/optional-filtered records, with default-empty
-  pages omitted.
-  Tool records now encode their required ordered rule list, block holder sets, optional positive
-  speed/drop fields, and defaulted mining-speed/damage/creative fields; all floats share the exact
-  JDK formatter and strict non-finite rejection.
-  Equippable records now encode the required slot, both sound holders, optional asset/overlay/entity
-  holder set, and five defaulted booleans. Only exact named default sounds are omitted; direct sounds
-  with the same id remain objects, and range floats keep exact formatting and strict finite checks.
-  Blocks-attacks records now encode both outer floats, the defaulted reduction list and item-damage
-  record, damage-type holder sets, and both optional sounds. List/record defaults require exact
-  structural equality, while every nested and direct-sound float is rejected when non-finite.
-  Consumable/death-protection records and all five dispatched consume-effect variants now encode
-  recursively nested mob-effect details, mob-effect holder sets, and sound holders. Every details
-  record emits `show_icon` per its getter, and every effect/direct-sound float must remain finite.
-  Potion contents now reuse that mob-effect owner for potion/color/custom-effect/name fields; compact
-  potion-holder inputs re-encode through the left/full branch of their full/potion alternative.
-  Registry-independent custom-name/item-name/lore values now reuse the protocol Component-to-JsonOps
-  owner, including content/style normalization and lore arrays. Owner-sensitive nested payloads still
-  return unknown instead of substituting raw NBT size.
-  Instrument values now encode named RegistryFileCodec holders as resource strings and direct holders
-  as ordered sound-event/positive-float/description records. Direct floats use the exact JDK formatter;
-  registry-independent descriptions are exact while owner-sensitive Component payloads remain unknown.
-  Provides-trim-material and armor-trim values now encode named/direct trim-material and trim-pattern
-  holders, including non-empty override maps and exact descriptions. Direct patterns always emit
-  `decal`, because `fieldOf(...).orElse(false)` retains the required field on encode.
-  Attribute-modifier lists now encode fixed attribute holders, modifier identifiers, exact doubles,
-  operations, optional non-`any` slots, and hidden/override displays. Default slot/display fields are
-  omitted, while registry-independent override Components are exact and non-finite amounts are rejected.
-  Use-remainder, charged-projectiles, bundle-contents, and container values now share a recursive
-  ItemStackTemplate owner. Compact item inputs re-encode through the full-object alternative, nested
-  patches recurse, and containers emit final non-empty slots in ascending index order.
-  Can-place-on/can-break now encode the compact single-block/list alternative exactly, including
-  holder sets, state matchers, NBT, and flattened exact/partial component matchers. Lock reuses the
-  recursive ItemPredicate owner with scalar/ranged bounds, exact component values, AnyValue, all 15
-  dispatched predicate types, and collection contains/count/size entries. Nested doubles reject
-  non-finite values, while Component/NBT recursion propagates its canonical owner result.
-  Written-book content now encodes its required full Filterable title and author, defaulted
-  generation/pages/resolved fields, and full Filterable Component page list. Compact title/page
-  inputs therefore re-encode as raw/optional-filtered records and nested pages reuse the Component
-  owner. The positive-value canonical match is now exhaustive rather than retaining a value-type
-  wildcard.
-  Dialog click `show_dialog` payloads also decode through the full
-  inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
-  including recursive item templates and predicates, so registry cycles fail deterministically.
-  Object-content player profiles likewise reuse the complete `ResolvableProfile.CODEC`
-  world owner in every Dialog Component location while preserving the legacy atlas-first/player-second
-  dispatch; atlas and sprite identifiers were already structurally complete.
-  Flattened SNBT
-  now resolves the JDK 26 `\N{name}` surface for Unicode scalar values, but the
-  UTF-8-backed canonical string state still cannot preserve lone-surrogate escapes.
+- Complete native `Dialog` screen/runtime behavior against
+  `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
+  `DialogBodyHandlers`: add the in-world screen background and warning button/screen;
+  render Item bodies, all four input controls, action tooltips, and the
+  Confirmation/MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
+  focus, and clipping; execute button, Escape, Component-click, and custom-click
+  actions with `after_action`/waiting semantics; and restore native-owned
+  chat/sign/debug and warning return-screen stacks when dialogs clear. The current
+  Notice projection still needs these controls and actions before either
+  `ShowDialog` row's `runtime_side_effect` coverage cell can close.
+- Thread the world/session owner into generic packet Components whose nested
+  player, dialog-holder, or show-item payloads require registry context, while
+  preserving an explicit unknown result in context-free callers.
+- Preserve or explicitly reject lone-surrogate `\u`/`\U`/`\N{name}`
+  SNBT escapes instead of passing them through the current UTF-8-backed canonical
+  string state; follow `TagParser` and the Java UTF-16 string model.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed
