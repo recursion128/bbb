@@ -599,6 +599,22 @@ fn enforces_text_component_item_patch_page_boundary() {
 }
 
 #[test]
+fn enforces_nested_dialog_item_name_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:custom_name":{"text":"Nested","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Inner"}}}}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_nested_dialog_item_name("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok(), "{result:?}"),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn enforces_written_book_content_item_patch_page_boundary() {
     let prefix = concat!(
         r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:written_book_content":{"title":{"raw":"Title","filtered":"Safe"},"author":"Author","generation":2,"pages":[{"raw":"Raw","filtered":"Filtered"}],"resolved":true}}}}"#
@@ -2260,6 +2276,45 @@ fn component_with_text_item_patch(extra: String) -> NbtSummaryValue {
                             ]),
                         ),
                     ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_nested_dialog_item_name(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "custom_name",
+                        compound(vec![
+                            string_entry("text", "Nested"),
+                            value_entry(
+                                "click_event",
+                                compound(vec![
+                                    string_entry("action", "show_dialog"),
+                                    value_entry(
+                                        "dialog",
+                                        compound(vec![
+                                            string_entry("type", "notice"),
+                                            string_entry("title", "Inner"),
+                                        ]),
+                                    ),
+                                ]),
+                            ),
+                        ]),
+                    )]),
                 ),
             ]),
         ),

@@ -21,7 +21,7 @@ pub(in crate::client::dialog) fn canonical_component_json_utf16_len_with_context
         }
         CanonicalComponentOwnerValue::ItemComponentPatch => {
             let patch = body::decode_data_component_patch(value, context)?;
-            body::canonical_data_component_patch_json_utf16_len(&patch)
+            body::canonical_data_component_patch_json_utf16_len_with_context(&patch, context)
         }
         CanonicalComponentOwnerValue::Dialog => canonical_dialog_holder_json_utf16_len(
             value,
@@ -451,7 +451,9 @@ fn body_len(
             height,
         } => {
             fields.push(("type", string_len("minecraft:item")));
-            let Some(item_len) = body::canonical_item_stack_template_json_utf16_len(item)? else {
+            let Some(item_len) =
+                body::canonical_item_stack_template_json_utf16_len_with_context(item, context)?
+            else {
                 return Ok(None);
             };
             fields.push(("item", item_len));
@@ -622,7 +624,7 @@ fn collection_len(values: impl Iterator<Item = usize>) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
+    use bbb_protocol::{canonical_component_json_utf16_len, NbtSummaryEntry, NbtSummaryValue};
 
     use crate::{RegistryPacketEntry, WorldStore};
 
@@ -1110,6 +1112,64 @@ mod tests {
         assert_eq!(
             dialog_holder_set_len(&empty, DialogDecodeContext::new(None, 0)).unwrap(),
             Some(2)
+        );
+    }
+
+    #[test]
+    fn threads_dialog_owner_through_item_name_and_lore_components() {
+        let nested_name = compound(vec![
+            string_entry("text", "Nested"),
+            value_entry(
+                "click_event",
+                compound(vec![
+                    string_entry("action", "show_dialog"),
+                    value_entry("dialog", notice("Inner")),
+                ]),
+            ),
+        ]);
+        let nested_lore = compound(vec![
+            string_entry("text", "Lore"),
+            value_entry(
+                "click_event",
+                compound(vec![
+                    string_entry("action", "show_dialog"),
+                    value_entry("dialog", notice("Lore dialog")),
+                ]),
+            ),
+        ]);
+        let value = compound(vec![
+            string_entry("text", "item"),
+            value_entry(
+                "hover_event",
+                compound(vec![
+                    string_entry("action", "show_item"),
+                    string_entry("id", "stone"),
+                    value_entry(
+                        "components",
+                        compound(vec![
+                            value_entry("custom_name", nested_name),
+                            value_entry("lore", NbtSummaryValue::List(vec![nested_lore])),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            canonical_component_json_utf16_len(&value).unwrap(),
+            None,
+            "registry-independent Component owner must remain conservative"
+        );
+        let expected = concat!(
+            r#"{"text":"item","hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:custom_name":{"text":"Nested","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Inner"}}},"#,
+            r#""minecraft:lore":[{"text":"Lore","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Lore dialog"}}}]}}}"#,
+        );
+        assert_eq!(
+            canonical_component_json_utf16_len_with_context(
+                &value,
+                DialogDecodeContext::new(None, 0),
+            )
+            .unwrap(),
+            Some(expected.len())
         );
     }
 

@@ -12,6 +12,7 @@ use bbb_protocol::{
     NbtSummaryEntry, NbtSummaryValue,
 };
 
+use super::super::super::{canonical_component_json_utf16_len_with_context, DialogDecodeContext};
 use super::super::{DialogDataComponentPatchState, DialogItemStackTemplateState};
 use super::attribute_modifiers::{
     DialogAttributeModifierDisplayState, DialogAttributeModifierState,
@@ -44,6 +45,20 @@ mod predicates;
 pub(in crate::client::dialog) fn canonical_data_component_patch_json_utf16_len(
     patch: &DialogDataComponentPatchState,
 ) -> Result<Option<usize>, String> {
+    canonical_data_component_patch_json_utf16_len_inner(patch, None)
+}
+
+pub(in crate::client::dialog) fn canonical_data_component_patch_json_utf16_len_with_context(
+    patch: &DialogDataComponentPatchState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    canonical_data_component_patch_json_utf16_len_inner(patch, Some(context))
+}
+
+fn canonical_data_component_patch_json_utf16_len_inner(
+    patch: &DialogDataComponentPatchState,
+    context: Option<DialogDecodeContext<'_>>,
+) -> Result<Option<usize>, String> {
     let mut length = 2usize;
     for (index, entry) in patch.entries.iter().enumerate() {
         let value_len = if entry.removed {
@@ -54,7 +69,9 @@ pub(in crate::client::dialog) fn canonical_data_component_patch_json_utf16_len(
                 return Ok(None);
             };
             validate_supported_json_numbers(value)?;
-            let Some(length) = canonical_component_value_json_utf16_len(value) else {
+            let Some(length) =
+                canonical_component_value_json_utf16_len_with_context(value, context)?
+            else {
                 return Ok(None);
             };
             length
@@ -71,6 +88,33 @@ pub(in crate::client::dialog) fn canonical_data_component_patch_json_utf16_len(
             .saturating_add(value_len);
     }
     Ok(Some(length))
+}
+
+fn canonical_component_value_json_utf16_len_with_context(
+    value: &DialogDataComponentValueState,
+    context: Option<DialogDecodeContext<'_>>,
+) -> Result<Option<usize>, String> {
+    let Some(context) = context else {
+        return Ok(canonical_component_value_json_utf16_len(value));
+    };
+    match value {
+        DialogDataComponentValueState::TextComponent { component } => {
+            canonical_component_json_utf16_len_with_context(&component.component, context)
+        }
+        DialogDataComponentValueState::Lore { lines } => {
+            let mut lengths = Vec::with_capacity(lines.len());
+            for line in lines {
+                let Some(length) =
+                    canonical_component_json_utf16_len_with_context(&line.component, context)?
+                else {
+                    return Ok(None);
+                };
+                lengths.push(length);
+            }
+            Ok(Some(array_len(lengths.into_iter())))
+        }
+        _ => Ok(canonical_component_value_json_utf16_len(value)),
+    }
 }
 
 fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Result<(), String> {
@@ -896,11 +940,29 @@ fn validate_item_stack_template_json(item: &DialogItemStackTemplateState) -> Res
     Ok(())
 }
 
-pub(in crate::client::dialog) fn canonical_item_stack_template_json_utf16_len(
+pub(in crate::client::dialog) fn canonical_item_stack_template_json_utf16_len_with_context(
     item: &DialogItemStackTemplateState,
+    context: DialogDecodeContext<'_>,
 ) -> Result<Option<usize>, String> {
     validate_item_stack_template_json(item)?;
-    Ok(item_stack_template_len(item))
+    let mut fields = vec![("id", string_len(&item.resource_id))];
+    if item.count != 1 {
+        fields.push(("count", item.count.to_string().len()));
+    }
+    match &item.component_data {
+        Some(patch) if !patch.entries.is_empty() => {
+            let Some(patch_len) =
+                canonical_data_component_patch_json_utf16_len_with_context(patch, context)?
+            else {
+                return Ok(None);
+            };
+            fields.push(("components", patch_len));
+        }
+        Some(_) => {}
+        None if item.components.is_some() => return Ok(None),
+        None => {}
+    }
+    Ok(Some(object_len(fields.into_iter())))
 }
 
 fn item_stack_template_len(item: &DialogItemStackTemplateState) -> Option<usize> {

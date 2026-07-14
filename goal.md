@@ -453,7 +453,8 @@ MobEffectInstance details、mob-effect HolderSet 与 sound holder；details 的 
 compact potion holder 输入按 `withAlternative(full,potion)` 的 left/full encoder 统一重编码为 full object；
 CUSTOM_NAME/ITEM_NAME/LORE 的 registry-independent Component 正值也已复用协议层 Component→JsonOps
 owner 闭合 canonical length、style/content 归一和 lore array；player/dialog/show-item 等 owner-sensitive
-payload 仍返回 unknown 而非 raw NBT 估算；
+payload 在无 context API 中仍返回 unknown 而非 raw NBT 估算；written-book world/session owner 已进一步
+贯通这三类 item value，使其中递归 Dialog/item payload 使用同一 owner；
 INSTRUMENT 也已闭合 RegistryFileCodec named resource string 与 direct sound-event/positive-float/
 description record 的 canonical length；direct sound range 与 required float 复用 JDK 26 formatter，
 registry-independent description 精确编码，owner-sensitive Component 仍保持 unknown；
@@ -497,8 +498,9 @@ persistent catalog registration 均有 typed positive-value dispatch；persisten
 RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的核心 recursive
 structure/content/style/event-envelope validation、block data-source position 与 NBT path command parser
 以及 selector/entity-source command parser 已闭合；registry-independent canonical 重编码已有上述精确
-子集；written-book Component owner 已接入 named/direct、五类 top-level Dialog 与 Common/button/action/
-body/input show-dialog 严格子集，generic packet Component 的 world context 更高 owner 仍开放；
+子集；written-book Component owner 已接入 named/direct、五类 top-level Dialog、Common/button/action/
+body/input show-dialog 与 CUSTOM_NAME/ITEM_NAME/LORE item value；其它 Component-valued item record 的
+递归 context 及 generic packet Component 的 world context 更高 owner 仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

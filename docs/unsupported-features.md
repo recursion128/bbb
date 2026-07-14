@@ -116,8 +116,11 @@ Owner: `bbb-protocol`
   Text multiline options, and NumberRange's JDK Float encoding. DialogList tag/reference/direct
   homogeneous compact holder sets are also canonical. Generic packet Components still need this
   world context.
-  Then complete
-  `flatRestrictedCodec(32767)` sizing for every structured page; render
+  Then thread the same world/session Component owner through the remaining
+  Component-valued item records (written-book pages, attribute overrides,
+  predicates, and direct instrument/trim descriptions) and recursive
+  ItemStackTemplate patches so `flatRestrictedCodec(32767)` can size every
+  structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining
   native-owned chat/sign/debug and warning return-screen stacks, and route custom-click controls
   through the active dialog state. Dialog Component holders

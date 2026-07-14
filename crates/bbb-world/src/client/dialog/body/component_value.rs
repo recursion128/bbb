@@ -141,8 +141,11 @@ use typed_data::{
 use writable_book::{decode_writable_book_content, DialogFilterableStringState};
 use written_book::{decode_written_book_content_with_context, DialogWrittenBookContentState};
 
+#[cfg(test)]
+pub(in crate::client::dialog) use canonical_json::canonical_data_component_patch_json_utf16_len;
 pub(in crate::client::dialog) use canonical_json::{
-    canonical_data_component_patch_json_utf16_len, canonical_item_stack_template_json_utf16_len,
+    canonical_data_component_patch_json_utf16_len_with_context,
+    canonical_item_stack_template_json_utf16_len_with_context,
 };
 
 pub(in crate::client::dialog) fn canonical_component_player_profile_json_utf16_len(
