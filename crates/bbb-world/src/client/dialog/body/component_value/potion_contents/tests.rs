@@ -1,10 +1,13 @@
 use bbb_protocol::{
     data_component_types::VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
     mob_effect_types::{VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_WEAKNESS_ID},
+    packets::inventory::DataComponentPatchSummary,
     NbtSummaryEntry, NbtSummaryValue,
 };
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -93,6 +96,32 @@ fn decodes_full_potion_contents_and_recursive_mob_effect_details() {
     assert_eq!(second.effect.holder_id, VANILLA_MOB_EFFECT_WEAKNESS_ID);
     assert!(!second.details.show_particles);
     assert!(second.details.show_icon);
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
+        &DialogDataComponentValueState::PotionContents {
+            contents: contents.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(patch.potion_id, Some(15));
+    assert_eq!(patch.potion_custom_color, Some(0x12_34_56));
+    assert_eq!(patch.potion_custom_effect_count, Some(2));
+    assert_eq!(patch.potion_custom_effects.len(), 2);
+    assert_eq!(
+        patch.potion_custom_effects[0].effect_id,
+        VANILLA_MOB_EFFECT_SPEED_ID
+    );
+    assert_eq!(patch.potion_custom_effects[0].amplifier, 255);
+    assert_eq!(patch.potion_custom_effects[0].duration, -1);
+    let hidden = patch.potion_custom_effects[0]
+        .hidden_effect
+        .as_ref()
+        .unwrap();
+    assert_eq!(hidden.duration, 20);
+    assert!(!hidden.hidden_effect.as_ref().unwrap().show_icon);
+    assert_eq!(patch.potion_custom_name.as_deref(), Some("example.potion"));
 
     assert_eq!(
         decode_supported_component_value(

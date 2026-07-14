@@ -14594,3 +14594,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   并证明畸形 persisted rule holder-set 整项拒绝；native dialog Item body 加入 empty-rule tool 后继续进入
   唯一 item runtime。potion contents、attribute/enchantment/predicate/book/typed-data 与递归 item-stack
   collection 等其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge potion-contents dialog Item patches
+
+- [x] 对照 `PotionContents.CODEC/FULL_CODEC/STREAM_CODEC`，把 dialog typed optional potion holder、custom
+  color、ordered custom mob-effect instances 与 optional custom name 投影到既有
+  `DataComponentPatchSummary`；custom-effect count 始终按 wire list 记录，mob-effect 及递归 hidden details
+  复用 consume-effect slice 的单一转换 owner。
+- [x] world focused regression 覆盖 built-in potion id、color/name、两项 effects 与两层 hidden details；
+  native dialog Item body 加入 compact `minecraft:water` potion form 后继续进入唯一 item runtime。
+  attribute/enchantment/predicate/book/typed-data 与递归 item-stack collection 等其余富结构值继续由后续
+  明确切片处理。

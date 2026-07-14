@@ -713,6 +713,17 @@ pub(super) fn apply_item_patch_value(
             };
             patch.tool = Some(summary);
         }
+        (VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID, Value::PotionContents { contents }) => {
+            patch.potion_id = contents.potion.as_ref().map(|potion| potion.holder_id);
+            patch.potion_custom_color = contents.custom_color;
+            patch.potion_custom_effect_count = Some(contents.custom_effects.len());
+            patch.potion_custom_effects = contents
+                .custom_effects
+                .iter()
+                .map(mob_effect_instance_summary)
+                .collect();
+            patch.potion_custom_name = contents.custom_name.clone();
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
