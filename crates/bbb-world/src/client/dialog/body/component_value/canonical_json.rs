@@ -1,12 +1,21 @@
 use bbb_protocol::item_component_value_types::ItemUseAnimationSummary;
 use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 use bbb_protocol::{
+    attribute_modifier_types::{
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+    },
     canonical_component_json_utf16_len, canonical_f32_json_utf16_len, canonical_f64_json_utf16_len,
     canonical_json_string_utf16_len, canonical_nbt_json_utf16_len,
-    canonical_resolvable_profile_json_utf16_len, NbtSummaryEntry, NbtSummaryValue,
+    canonical_resolvable_profile_json_utf16_len,
+    equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
+    NbtSummaryEntry, NbtSummaryValue,
 };
 
 use super::super::DialogDataComponentPatchState;
+use super::attribute_modifiers::{
+    DialogAttributeModifierDisplayState, DialogAttributeModifierState,
+};
 use super::blocks_attacks::{
     DialogBlocksAttacksDamageReductionState, DialogBlocksAttacksItemDamageState,
     DialogBlocksAttacksState,
@@ -71,6 +80,14 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
         DialogDataComponentValueState::Lore { lines } => {
             for line in lines {
                 canonical_component_json_utf16_len(&line.component)?;
+            }
+        }
+        DialogDataComponentValueState::AttributeModifiers { modifiers } => {
+            for modifier in modifiers {
+                double_values.push(modifier.amount_bits);
+                if let Some(component) = &modifier.display.value {
+                    canonical_component_json_utf16_len(&component.component)?;
+                }
             }
         }
         DialogDataComponentValueState::Instrument {
@@ -245,6 +262,9 @@ fn canonical_component_value_json_utf16_len(
                 .collect::<Option<Vec<_>>>()?
                 .into_iter(),
         ),
+        DialogDataComponentValueState::AttributeModifiers { modifiers } => {
+            attribute_modifiers_len(modifiers)?
+        }
         DialogDataComponentValueState::Integer { value }
         | DialogDataComponentValueState::RgbColor { value } => value.to_string().len(),
         DialogDataComponentValueState::Float { bits } => canonical_f32_json_utf16_len(*bits)?,
@@ -762,6 +782,49 @@ fn component_json_len(component: &NbtSummaryValue) -> Option<usize> {
     // The production caller has already propagated canonical Component errors through
     // validate_supported_json_numbers; None here is reserved for a remaining higher owner.
     canonical_component_json_utf16_len(component).ok().flatten()
+}
+
+fn attribute_modifiers_len(modifiers: &[DialogAttributeModifierState]) -> Option<usize> {
+    Some(array_len(
+        modifiers
+            .iter()
+            .map(attribute_modifier_len)
+            .collect::<Option<Vec<_>>>()?
+            .into_iter(),
+    ))
+}
+
+fn attribute_modifier_len(modifier: &DialogAttributeModifierState) -> Option<usize> {
+    let mut fields = vec![
+        ("type", string_len(&modifier.attribute.resource_id)),
+        ("id", string_len(&modifier.modifier_id)),
+        (
+            "amount",
+            canonical_f64_json_utf16_len(modifier.amount_bits)?,
+        ),
+        ("operation", string_len(&modifier.operation)),
+    ];
+    if modifier.slot_group_id != VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID {
+        fields.push(("slot", string_len(&modifier.slot_group)));
+    }
+    if modifier.display.type_id != VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID {
+        fields.push((
+            "display",
+            attribute_modifier_display_len(&modifier.display)?,
+        ));
+    }
+    Some(object_len(fields.into_iter()))
+}
+
+fn attribute_modifier_display_len(display: &DialogAttributeModifierDisplayState) -> Option<usize> {
+    let mut fields = vec![("type", string_len(&display.serialized_name))];
+    if display.type_id == VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID {
+        fields.push((
+            "value",
+            component_json_len(&display.value.as_ref()?.component)?,
+        ));
+    }
+    Some(object_len(fields.into_iter()))
 }
 
 fn instrument_holder_len(instrument: &DialogInstrumentHolderState) -> Option<usize> {
@@ -1501,6 +1564,101 @@ mod tests {
                 },
             },
             r#"{"material":"minecraft:quartz","pattern":"minecraft:coast"}"#,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_attribute_modifier_defaults_displays_and_components() {
+        let attribute =
+            |resource_id: &str| super::super::holder_set::DialogRegistryHolderReferenceState {
+                holder_id: 0,
+                resource_id: resource_id.to_string(),
+            };
+        assert_exact(
+            DialogDataComponentValueState::AttributeModifiers {
+                modifiers: vec![DialogAttributeModifierState {
+                    attribute: attribute("minecraft:attack_damage"),
+                    modifier_id: "minecraft:base_attack_damage".to_string(),
+                    amount_bits: (-2.5f64).to_bits(),
+                    operation_id: 0,
+                    operation: "add_value".to_string(),
+                    slot_group_id: 0,
+                    slot_group: "any".to_string(),
+                    display: DialogAttributeModifierDisplayState {
+                        type_id: 0,
+                        serialized_name: "default".to_string(),
+                        value: None,
+                    },
+                }],
+            },
+            concat!(
+                r#"[{"type":"minecraft:attack_damage","id":"minecraft:base_attack_damage","amount":-2.5,"operation":"add_value"}]"#
+            ),
+        );
+        assert_exact(
+            DialogDataComponentValueState::AttributeModifiers {
+                modifiers: vec![DialogAttributeModifierState {
+                    attribute: attribute("minecraft:armor"),
+                    modifier_id: "example:hidden".to_string(),
+                    amount_bits: 0.25f64.to_bits(),
+                    operation_id: 1,
+                    operation: "add_multiplied_base".to_string(),
+                    slot_group_id: 1,
+                    slot_group: "mainhand".to_string(),
+                    display: DialogAttributeModifierDisplayState {
+                        type_id: 1,
+                        serialized_name: "hidden".to_string(),
+                        value: None,
+                    },
+                }],
+            },
+            concat!(
+                r#"[{"type":"minecraft:armor","id":"example:hidden","amount":0.25,"operation":"add_multiplied_base","slot":"mainhand","display":{"type":"hidden"}}]"#
+            ),
+        );
+        assert_exact(
+            DialogDataComponentValueState::AttributeModifiers {
+                modifiers: vec![DialogAttributeModifierState {
+                    attribute: attribute("minecraft:movement_speed"),
+                    modifier_id: "example:override".to_string(),
+                    amount_bits: 1.5f64.to_bits(),
+                    operation_id: 2,
+                    operation: "add_multiplied_total".to_string(),
+                    slot_group_id: 7,
+                    slot_group: "head".to_string(),
+                    display: DialogAttributeModifierDisplayState {
+                        type_id: 2,
+                        serialized_name: "override".to_string(),
+                        value: Some(super::super::DialogTextState {
+                            text: String::new(),
+                            runs: Vec::new(),
+                            component: NbtSummaryValue::Compound(vec![
+                                NbtSummaryEntry {
+                                    name: "text".to_string(),
+                                    value: NbtSummaryValue::String("Boost".to_string()),
+                                },
+                                NbtSummaryEntry {
+                                    name: "bold".to_string(),
+                                    value: NbtSummaryValue::Byte(1),
+                                },
+                                NbtSummaryEntry {
+                                    name: "color".to_string(),
+                                    value: NbtSummaryValue::String("red".to_string()),
+                                },
+                            ]),
+                        }),
+                    },
+                }],
+            },
+            concat!(
+                r#"[{"type":"minecraft:movement_speed","id":"example:override","amount":1.5,"operation":"add_multiplied_total","slot":"head","display":{"type":"override","value":{"text":"Boost","color":"red","bold":true}}}]"#
+            ),
+        );
+        assert_exact(
+            DialogDataComponentValueState::AttributeModifiers {
+                modifiers: Vec::new(),
+            },
+            "[]",
         );
     }
 

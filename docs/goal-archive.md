@@ -14373,3 +14373,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 written-book hover `show_item` provides-trim-material + trim patch 的 32767/32768 UTF-16 unit 边界均有
   回归。generic packet show-dialog world context 与剩余 predicate/item-template 及其它 nested-record
   positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize attribute-modifier item patches
+
+- [x] 对照 `ItemAttributeModifiers.CODEC/Entry.CODEC`、`AttributeModifier.MAP_CODEC` 与
+  `Attribute.CODEC`，扩展单一 item-patch canonical owner：ordered list 内每项按 type/id/amount/operation
+  输出，built-in attribute holder 与两个 Identifier 规范化，Codec.DOUBLE 复用 JDK 26 formatter。
+- [x] `slot:any` 与 `Display.Default` 按 optionalFieldOf default 整字段省略；hidden dispatch 仅输出 type，
+  override dispatch 再复用 Component→JsonOps 输出 value。default/hidden/override 与 empty-list exact JSON、
+  registry-independent styled override、NaN 拒绝及 written-book hover `show_item` attribute-modifier patch 的
+  32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与剩余
+  predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

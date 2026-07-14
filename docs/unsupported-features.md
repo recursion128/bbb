@@ -160,6 +160,9 @@ Owner: `bbb-protocol`
   Provides-trim-material and armor-trim values now encode named/direct trim-material and trim-pattern
   holders, including non-empty override maps and exact descriptions. Direct patterns always emit
   `decal`, because `fieldOf(...).orElse(false)` retains the required field on encode.
+  Attribute-modifier lists now encode fixed attribute holders, modifier identifiers, exact doubles,
+  operations, optional non-`any` slots, and hidden/override displays. Default slot/display fields are
+  omitted, while registry-independent override Components are exact and non-finite amounts are rejected.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.
