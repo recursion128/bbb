@@ -192,6 +192,7 @@ mod events;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 use dialog_screen::hud_dialog_screen;
+pub(crate) use dialog_screen::{handle_dialog_key_input, handle_dialog_mouse_input};
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);

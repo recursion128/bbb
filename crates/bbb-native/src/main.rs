@@ -79,9 +79,10 @@ use input::{
 use level_load_runtime::LevelLoadRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
-    control_renderer_counters, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
-    snapshot_is_running, take_control_screenshot, CameraFovTickState, ClientAnimationTickState,
-    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
+    control_renderer_counters, handle_dialog_key_input, handle_dialog_mouse_input,
+    publish_snapshot, pump_network_and_terrain, request_net_disconnect, snapshot_is_running,
+    take_control_screenshot, CameraFovTickState, ClientAnimationTickState, DebugCollisionCache,
+    DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
     HudDebugNetworkSampler, HudDebugTpsSampler, LevelEventSoundRandomState, LightmapTickState,
 };
 use sky_assets::load_sky_textures;
@@ -491,6 +492,10 @@ fn main() -> Result<()> {
                     if input.handle_debug_pause_screen_cursor_moved(cursor_position) {
                         return;
                     }
+                    if world.current_dialog().is_some() {
+                        input.update_screen_cursor_position(cursor_position);
+                        return;
+                    }
                     if input.handle_command_suggestion_cursor_moved(&world, cursor_position) {
                         return;
                     }
@@ -758,6 +763,10 @@ fn main() -> Result<()> {
                     let command_entry_open = input.command_entry_is_active();
                     if dialog_open {
                         set_cursor_capture(&window, &mut cursor_captured, false);
+                        handle_dialog_key_input(&mut world, event.physical_key, event.state);
+                        if !runtime_wants_cursor(&input, &world) {
+                            set_cursor_capture(&window, &mut cursor_captured, true);
+                        }
                         return;
                     }
                     let ordinary_pause_escape = matches!(event.state, ElementState::Pressed)
@@ -923,6 +932,20 @@ fn main() -> Result<()> {
                             &mut net_counters,
                             &mut world,
                             &net_commands,
+                            button,
+                            state,
+                            cursor_position,
+                            window.inner_size(),
+                        );
+                        if !runtime_wants_cursor(&input, &world) {
+                            set_cursor_capture(&window, &mut cursor_captured, true);
+                        }
+                        return;
+                    }
+                    if world.current_dialog().is_some() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        handle_dialog_mouse_input(
+                            &mut world,
                             button,
                             state,
                             cursor_position,

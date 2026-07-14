@@ -72,9 +72,9 @@ impl ClientUiState {
         self.current_dialog = Some(dialog);
     }
 
-    fn clear_dialog(&mut self) {
+    fn clear_dialog(&mut self) -> bool {
         if self.current_dialog.take().is_none() {
-            return;
+            return false;
         }
         match self.dialog_previous_screen.take() {
             Some(DialogPreviousScreenState::Book { screen }) => {
@@ -88,6 +88,7 @@ impl ClientUiState {
             }
             None => {}
         }
+        true
     }
 
     pub(crate) fn replace_dialog(&mut self) {
@@ -155,6 +156,12 @@ impl WorldStore {
     pub fn apply_clear_dialog(&mut self) {
         self.counters.clear_dialog_packets += 1;
         self.client_ui.clear_dialog();
+    }
+
+    /// Closes the active client dialog without recording a server packet and
+    /// restores the native world-owned screen that preceded it.
+    pub fn close_dialog(&mut self) -> bool {
+        self.client_ui.clear_dialog()
     }
 
     pub fn apply_show_dialog(&mut self, packet: ProtocolShowDialog) {
@@ -571,6 +578,21 @@ mod tests {
         stats_store.apply_clear_dialog();
         assert!(stats_store.stats_screen_is_open());
         assert!(stats_store.stats_screen_is_loading());
+    }
+
+    #[test]
+    fn local_dialog_close_restores_previous_screen_without_counting_a_packet() {
+        let mut store = WorldStore::new();
+        assert!(store.open_advancements_screen());
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 3 },
+        });
+
+        assert!(store.close_dialog());
+        assert!(store.advancements_screen_is_open());
+        assert_eq!(store.counters().clear_dialog_packets, 0);
+        assert!(!store.close_dialog());
+        assert_eq!(store.counters().clear_dialog_packets, 0);
     }
 
     #[test]

@@ -14409,3 +14409,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   NBT→world typed state→native HUD 的坐标、换行、bold/color runs、hover 与 unresolved conservative path
   均有 focused regression。后续 warning、Item body、inputs、其余 top-level dialog 与 action runtime 继续由
   缺口账本追踪。
+
+## 2026-07-14：Handle actionless Notice dialog controls
+
+- [x] 对照 `DialogScreen.onClose/runAction` 与 `NoticeDialog.onCancel`，把键鼠事件路由到 native dialog
+  owner：`can_close_with_escape=true` 的 actionless Notice 在 Escape 时强制走 CLOSE；主按钮只在
+  actionless + `after_action=close` 时恢复 previous screen，`after_action=none` 保持当前 screen。
+- [x] 新增 `WorldStore::close_dialog` 区分本地 screen action 与 serverbound `ClearDialog` apply，复用同一
+  previous-screen restoration 且不误增 packet counter。button hit-test 与渲染共享唯一 centered layout，
+  鼠标 release/非左键/框外、禁止 Escape、带 action 的未实现路径均保守消费而不丢动作；world restore、
+  main event wiring 与四类 native control regression 均有 focused test。

@@ -71,8 +71,9 @@ Owner: `bbb-protocol`
   `DialogBodyHandlers`: add the in-world screen background and warning button/screen;
   render Item bodies, all four input controls, action tooltips, and the
   Confirmation/MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
-  focus, and clipping; execute button, Escape, Component-click, and custom-click
-  actions with `after_action`/waiting semantics; and restore native-owned
+  focus, and clipping; execute action-bearing button/Escape, Component-click,
+  custom-click, and waiting-response paths with complete `after_action` semantics;
+  and restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
   Notice projection still needs these controls and actions before either
   `ShowDialog` row's `runtime_side_effect` coverage cell can close.

@@ -1336,6 +1336,14 @@ impl ClientInputState {
         self.inventory_cursor_position
     }
 
+    pub(crate) fn update_screen_cursor_position(
+        &mut self,
+        cursor_position: Option<PhysicalPosition<f64>>,
+    ) {
+        self.inventory_cursor_position = cursor_position.and_then(physical_position_floor_i32);
+        self.inventory_hovered_slot = None;
+    }
+
     pub(crate) fn inventory_quick_craft_button_num(&self) -> Option<i8> {
         self.inventory_quick_craft_button_num
     }
