@@ -79,7 +79,7 @@ use input::{
 use level_load_runtime::LevelLoadRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
-    control_renderer_counters, handle_dialog_cursor_moved_with_measurer,
+    control_renderer_counters, dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
     handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
     handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
     handle_dialog_text_input_with_measurer, publish_snapshot, pump_network_and_terrain,
@@ -850,7 +850,25 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, true);
                     }
                 }
+                WindowEvent::Ime(Ime::Preedit(text, cursor_range)) => {
+                    if code_of_conduct_overlay.is_visible(&world) {
+                        input.clear_dialog_ime_preedit();
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        return;
+                    }
+                    if world.dialog_screen_is_open() {
+                        set_cursor_capture(&window, &mut cursor_captured, false);
+                        input.handle_dialog_ime_preedit(
+                            &text,
+                            cursor_range,
+                            world.dialog_screen_revision(),
+                        );
+                    } else {
+                        input.clear_dialog_ime_preedit();
+                    }
+                }
                 WindowEvent::Ime(Ime::Commit(text)) => {
+                    input.clear_dialog_ime_preedit();
                     if code_of_conduct_overlay.is_visible(&world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
@@ -894,6 +912,8 @@ fn main() -> Result<()> {
                         &text,
                     );
                 }
+                WindowEvent::Ime(Ime::Disabled) => input.clear_dialog_ime_preedit(),
+                WindowEvent::Ime(Ime::Enabled) => {}
                 WindowEvent::MouseInput { state, button, .. } => {
                     if code_of_conduct_overlay.is_visible(&world) {
                         if code_of_conduct_overlay.handle_mouse_input(
@@ -1198,6 +1218,15 @@ fn main() -> Result<()> {
                     ) {
                         target.exit();
                         return;
+                    }
+                    let dialog_preedit = input.dialog_ime_preedit_hud_state();
+                    if let Some((position, size)) = dialog_ime_cursor_area(
+                        &world,
+                        dialog_preedit.as_ref(),
+                        window.inner_size(),
+                        &renderer,
+                    ) {
+                        window.set_ime_cursor_area(position, size);
                     }
                     let profiler_update_duration = profiler_update_started_at.elapsed();
                     input.consume_debug_recreate_server_query_response(

@@ -173,6 +173,14 @@ fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoot
         widget_text_field_highlighted.height,
         &widget_text_field_highlighted.rgba,
     )?;
+    let widget_preedit = hud_sprite(&sprites, "widget/preedit")?;
+    let widget_preedit_scaling = hud_nine_slice_scaling(widget_preedit)?;
+    renderer.upload_hud_widget_preedit(
+        widget_preedit.width,
+        widget_preedit.height,
+        &widget_preedit.rgba,
+        widget_preedit_scaling,
+    )?;
     let widget_button = hud_sprite(&sprites, "widget/button")?;
     renderer.upload_hud_widget_button(
         widget_button.width,
@@ -1486,6 +1494,30 @@ mod tests {
             assert_eq!(warning.id, format!("minecraft:{id}"));
             assert_eq!((warning.width, warning.height), (20, 20));
         }
+
+        let mut preedit =
+            SpriteImage::new("minecraft:widget/preedit", 200, 20, vec![255; 200 * 20 * 4]).unwrap();
+        preedit.gui_metadata.scaling = SpriteGuiScaling::NineSlice {
+            width: 200,
+            height: 20,
+            border: bbb_pack::SpriteNineSliceBorder::uniform(1),
+            stretch_inner: false,
+        };
+        sprites.insert(preedit.id.clone(), preedit);
+        let preedit = hud_sprite(&sprites, "widget/preedit").unwrap();
+        assert_eq!((preedit.width, preedit.height), (200, 20));
+        assert_eq!(
+            hud_nine_slice_scaling(preedit).unwrap(),
+            HudNineSliceScaling {
+                sprite_width: 200,
+                sprite_height: 20,
+                border_left: 1,
+                border_top: 1,
+                border_right: 1,
+                border_bottom: 1,
+                stretch_inner: false,
+            }
+        );
     }
 
     #[test]

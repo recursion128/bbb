@@ -1649,6 +1649,24 @@ pub struct HudInventoryTextArea {
     pub shadow: bool,
 }
 
+/// Deferred IME composition candidate rendered above the owning inventory-style
+/// screen. Coordinates are absolute HUD pixels because vanilla clamps the
+/// overlay against the full GUI surface rather than the centered dialog frame.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HudInventoryPreeditOverlay {
+    pub text: String,
+    pub focused_start: usize,
+    pub focused_end: usize,
+    pub caret: Option<usize>,
+    pub caret_visible: bool,
+    pub text_x: i32,
+    pub text_y: i32,
+    pub background_x: i32,
+    pub background_y: i32,
+    pub background_width: u32,
+    pub background_height: u32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryTooltipLine {
     pub text: String,
@@ -1712,6 +1730,7 @@ pub struct HudInventoryScreen {
     pub entity_previews: Vec<HudEntityPreview>,
     pub text_labels: Vec<HudInventoryTextLabel>,
     pub scroll_area: Option<HudInventoryScrollArea>,
+    pub preedit_overlay: Option<HudInventoryPreeditOverlay>,
     pub hovered_slot_id: Option<u16>,
     pub tooltip: Option<HudInventoryTooltip>,
 }
@@ -2136,6 +2155,20 @@ impl Renderer {
         rgba: &[u8],
     ) -> Result<()> {
         self.hud_widget_text_field_highlighted = Some(self.upload_hud_sprite(width, height, rgba)?);
+        Ok(())
+    }
+
+    pub fn upload_hud_widget_preedit(
+        &mut self,
+        width: u32,
+        height: u32,
+        rgba: &[u8],
+        scaling: HudNineSliceScaling,
+    ) -> Result<()> {
+        self.hud_widget_preedit = Some(HudNineSliceSprite {
+            gpu: self.upload_hud_sprite(width, height, rgba)?,
+            scaling,
+        });
         Ok(())
     }
 
@@ -5038,6 +5071,19 @@ impl Renderer {
                 );
             }
 
+            push_hud_inventory_preedit_overlay(
+                &mut vertices,
+                &mut post_gui_item_commands,
+                &self.hud_white_pixel,
+                self.hud_widget_preedit.as_ref(),
+                self.hud_font_atlas.as_ref(),
+                &self.hud_font_glyphs,
+                &self.hud_obfuscated_glyph_pool,
+                self.counters.frame_index,
+                surface_size,
+                screen.preedit_overlay.as_ref(),
+            );
+
             push_hud_inventory_tooltip(
                 &mut vertices,
                 &mut post_gui_item_commands,
@@ -6353,6 +6399,116 @@ fn push_hud_inventory_scrollbar<'a>(
                     max: [1.0, 1.0],
                 },
                 missing_asset_tint,
+            );
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_hud_inventory_preedit_overlay<'a>(
+    vertices: &mut Vec<HudVertex>,
+    commands: &mut Vec<HudDrawCommand<'a>>,
+    white_pixel: &'a HudSpriteGpu,
+    background: Option<&'a HudNineSliceSprite>,
+    font_atlas: Option<&'a HudSpriteGpu>,
+    glyphs: &HudFontGlyphMap,
+    obfuscated_pool: &HudObfuscatedGlyphPool,
+    obfuscated_seed: u64,
+    surface_size: PhysicalSize<u32>,
+    overlay: Option<&HudInventoryPreeditOverlay>,
+) {
+    let (Some(font_atlas), Some(overlay)) = (font_atlas, overlay) else {
+        return;
+    };
+    let background_rect = absolute_hud_rect(
+        overlay.background_x as f32,
+        overlay.background_y as f32,
+        overlay.background_width,
+        overlay.background_height,
+    );
+    if let Some(background) = background {
+        for segment in nine_slice_segments(background_rect, background.scaling) {
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                &background.gpu,
+                surface_size,
+                segment.rect,
+                segment.uv,
+                HUD_TINT_WHITE,
+            );
+        }
+    }
+
+    let text_len = overlay.text.chars().count();
+    let focused_start = overlay.focused_start.min(text_len);
+    let focused_end = overlay.focused_end.clamp(focused_start, text_len);
+    let mut runs = Vec::new();
+    if focused_start > 0 {
+        runs.push(HudStyledTextRun::plain(hud_slice_by_chars(
+            &overlay.text,
+            0,
+            focused_start,
+        )));
+    }
+    if focused_start < focused_end {
+        runs.push(HudStyledTextRun {
+            text: hud_slice_by_chars(&overlay.text, focused_start, focused_end),
+            style: HudTextStyle {
+                underlined: true,
+                ..HudTextStyle::default()
+            },
+            color: None,
+        });
+    }
+    if focused_end < text_len {
+        runs.push(HudStyledTextRun::plain(hud_slice_by_chars(
+            &overlay.text,
+            focused_end,
+            text_len,
+        )));
+    }
+    if runs.is_empty() {
+        runs.push(HudStyledTextRun::plain(&overlay.text));
+    }
+    let geometry = hud_styled_text_pass_geometry(
+        &runs,
+        glyphs,
+        obfuscated_pool,
+        obfuscated_seed,
+        (overlay.text_x as f32, overlay.text_y as f32),
+        0.0,
+        false,
+        [0.0, 0.0, 0.0, 1.0],
+        None,
+        1.0,
+    );
+    push_hud_styled_text_pass(
+        vertices,
+        commands,
+        white_pixel,
+        font_atlas,
+        surface_size,
+        &geometry,
+    );
+
+    if overlay.caret_visible {
+        if let Some(caret) = overlay.caret {
+            let prefix = hud_slice_by_chars(&overlay.text, 0, caret.min(text_len));
+            let caret_x = overlay.text_x.saturating_add(
+                i32::try_from(hud_plain_text_width(&prefix, glyphs)).unwrap_or(i32::MAX),
+            );
+            push_hud_draw_with_uv_and_tint(
+                vertices,
+                commands,
+                white_pixel,
+                surface_size,
+                absolute_hud_rect(caret_x as f32, overlay.text_y as f32 - 1.0, 1, 11),
+                HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+                [0.0, 0.0, 0.0, 1.0],
             );
         }
     }
@@ -12812,9 +12968,31 @@ fn sanitize_hud_inventory_screen(screen: HudInventoryScreen) -> HudInventoryScre
         scroll_area: screen
             .scroll_area
             .and_then(sanitize_hud_inventory_scroll_area),
+        preedit_overlay: screen
+            .preedit_overlay
+            .and_then(sanitize_hud_inventory_preedit_overlay),
         hovered_slot_id: screen.hovered_slot_id,
         tooltip: screen.tooltip.and_then(sanitize_hud_inventory_tooltip),
     }
+}
+
+fn sanitize_hud_inventory_preedit_overlay(
+    mut overlay: HudInventoryPreeditOverlay,
+) -> Option<HudInventoryPreeditOverlay> {
+    if overlay.background_width == 0 || overlay.background_height == 0 {
+        return None;
+    }
+    overlay.text = sanitize_hud_text_preserving_empty(overlay.text, 256);
+    if overlay.text.is_empty() {
+        return None;
+    }
+    let text_len = overlay.text.chars().count();
+    overlay.focused_start = overlay.focused_start.min(text_len);
+    overlay.focused_end = overlay.focused_end.clamp(overlay.focused_start, text_len);
+    overlay.caret = overlay.caret.map(|caret| caret.min(text_len));
+    overlay.background_width = overlay.background_width.min(2048);
+    overlay.background_height = overlay.background_height.min(512);
+    Some(overlay)
 }
 
 fn sanitize_hud_inventory_scroll_area(
@@ -17272,6 +17450,7 @@ mod tests {
                 },
             ],
             scroll_area: None,
+            preedit_overlay: None,
             hovered_slot_id: Some(7),
             tooltip: Some(HudInventoryTooltip {
                 slot_id: 5,
@@ -17530,6 +17709,7 @@ mod tests {
             ghost_items: Vec::new(),
             entity_previews: Vec::new(),
             scroll_area: None,
+            preedit_overlay: None,
             hovered_slot_id: None,
             tooltip: None,
             text_labels: Vec::new(),
@@ -18117,9 +18297,102 @@ mod tests {
             entity_previews,
             text_labels: Vec::new(),
             scroll_area: None,
+            preedit_overlay: None,
             hovered_slot_id: None,
             tooltip: None,
         }
+    }
+
+    #[test]
+    fn preedit_overlay_sanitizes_bounds_and_draws_focused_underline_and_caret() {
+        let sanitized = sanitize_hud_inventory_preedit_overlay(HudInventoryPreeditOverlay {
+            text: "a\u{0007}bc".to_string(),
+            focused_start: 2,
+            focused_end: usize::MAX,
+            caret: Some(usize::MAX),
+            caret_visible: true,
+            text_x: 20,
+            text_y: 30,
+            background_x: 15,
+            background_y: 25,
+            background_width: u32::MAX,
+            background_height: u32::MAX,
+        })
+        .unwrap();
+        assert_eq!(sanitized.text, "abc");
+        assert_eq!((sanitized.focused_start, sanitized.focused_end), (2, 3));
+        assert_eq!(sanitized.caret, Some(3));
+        assert_eq!(
+            (sanitized.background_width, sanitized.background_height),
+            (2048, 512)
+        );
+
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let glyph = HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            width: 1,
+            height: 1,
+            advance: 6,
+            ascent: HUD_FONT_BASELINE,
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        for ch in "abc".chars() {
+            glyphs.insert_first_wins(ch, glyph);
+        }
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .unwrap();
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.preedit_overlay = Some(HudInventoryPreeditOverlay {
+            text: "abc".to_string(),
+            focused_start: 1,
+            focused_end: 2,
+            caret: Some(2),
+            caret_visible: true,
+            text_x: 20,
+            text_y: 30,
+            background_x: 15,
+            background_y: 25,
+            background_width: 28,
+            background_height: 19,
+        });
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        let draws = renderer.collect_hud_draws();
+        assert_eq!(
+            draws
+                .commands
+                .iter()
+                .filter(|command| matches!(command, HudDrawCommand::Sprite { .. }))
+                .count(),
+            5,
+            "three glyphs, one focused underline, and one caret"
+        );
+        assert_eq!(draws.vertices.len(), 5 * 6);
+    }
+
+    #[test]
+    fn preedit_overlay_submits_after_screen_foreground_and_before_tooltips() {
+        let source = include_str!("hud.rs");
+        let collect_start = source
+            .find("fn collect_hud_draws(")
+            .expect("collect_hud_draws is defined");
+        let collect_source = &source[collect_start..];
+        let foreground = collect_source
+            .find("HudInventoryFillStage::Foreground")
+            .expect("screen foreground draw is submitted");
+        let preedit = collect_source
+            .find("push_hud_inventory_preedit_overlay(")
+            .expect("preedit overlay is submitted");
+        let tooltip = collect_source
+            .find("push_hud_inventory_tooltip(")
+            .expect("tooltip is submitted");
+        assert!(foreground < preedit && preedit < tooltip);
     }
 
     #[test]

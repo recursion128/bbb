@@ -14554,6 +14554,58 @@ fn dialog_double_click_timing_requires_same_screen_button_and_strict_threshold()
 }
 
 #[test]
+fn dialog_ime_preedit_maps_utf8_cursor_ranges_and_blinks_at_vanilla_period() {
+    let start = Instant::now();
+    let mut input = ClientInputState::new(true);
+
+    assert!(input.handle_dialog_ime_preedit_at("a\u{0007}中b", Some((2, 5)), 7, start,));
+    assert_eq!(
+        input.dialog_ime_preedit_hud_state_at(start + Duration::from_millis(299)),
+        Some(DialogImePreeditHudState {
+            text: "a中b".to_string(),
+            caret: Some(2),
+            focused_start: 1,
+            focused_end: 2,
+            screen_revision: 7,
+            caret_visible: true,
+        })
+    );
+    assert!(
+        !input
+            .dialog_ime_preedit_hud_state_at(start + Duration::from_millis(300))
+            .unwrap()
+            .caret_visible
+    );
+    assert!(
+        input
+            .dialog_ime_preedit_hud_state_at(start + Duration::from_millis(600))
+            .unwrap()
+            .caret_visible
+    );
+
+    assert!(input.handle_dialog_ime_preedit_at("compose", Some((3, 3)), 8, start));
+    let point_cursor = input.dialog_ime_preedit_hud_state_at(start).unwrap();
+    assert_eq!(point_cursor.caret, Some(3));
+    assert_eq!(
+        (point_cursor.focused_start, point_cursor.focused_end),
+        (0, 7)
+    );
+
+    assert!(input.handle_dialog_ime_preedit_at("compose", None, 8, start));
+    let hidden_cursor = input.dialog_ime_preedit_hud_state_at(start).unwrap();
+    assert_eq!(hidden_cursor.caret, None);
+    assert_eq!(
+        (hidden_cursor.focused_start, hidden_cursor.focused_end),
+        (0, 7)
+    );
+
+    input.clear_pressed();
+    assert_eq!(input.dialog_ime_preedit_hud_state_at(start), None);
+    assert!(input.handle_dialog_ime_preedit_at("", None, 8, start));
+    assert_eq!(input.dialog_ime_preedit_hud_state_at(start), None);
+}
+
+#[test]
 fn debug_options_screen_search_double_click_requires_vanilla_threshold() {
     let mut input = ClientInputState::new(true);
     input.open_debug_options_screen();

@@ -436,6 +436,8 @@ const DEBUG_OPTIONS_SEARCH_CHAR_ADVANCE: i32 = 6;
 const DEBUG_OPTIONS_SEARCH_MAX_LENGTH: usize = 32;
 const DEBUG_OPTIONS_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
 const DIALOG_DOUBLE_CLICK_THRESHOLD: Duration = Duration::from_millis(250);
+const DIALOG_IME_PREEDIT_MAX_CHARS: usize = 256;
+const DIALOG_IME_PREEDIT_CURSOR_BLINK_INTERVAL: Duration = Duration::from_millis(300);
 
 pub(crate) trait DebugOptionsSearchTextMeasurer {
     fn debug_options_search_display_start_for_width(
@@ -697,6 +699,7 @@ pub(crate) struct ClientInputState {
     dialog_last_click_button: Option<MouseButton>,
     dialog_last_click_at: Option<Instant>,
     dialog_last_click_screen_revision: Option<u64>,
+    dialog_ime_preedit: Option<DialogImePreeditState>,
     inventory_quick_craft_button_num: Option<i8>,
     inventory_quick_craft_slots: Vec<i16>,
     stonecutter_recipe_scroll_row: i32,
@@ -797,6 +800,26 @@ pub(crate) struct ClientInputState {
     sprint_trigger_elapsed_seconds: f64,
     creative_flight_jump_trigger_ticks: u8,
     creative_flight_jump_trigger_elapsed_seconds: f64,
+}
+
+#[derive(Debug, Clone)]
+struct DialogImePreeditState {
+    text: String,
+    caret: Option<usize>,
+    focused_start: usize,
+    focused_end: usize,
+    screen_revision: u64,
+    initialized_at: Instant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DialogImePreeditHudState {
+    pub(crate) text: String,
+    pub(crate) caret: Option<usize>,
+    pub(crate) focused_start: usize,
+    pub(crate) focused_end: usize,
+    pub(crate) screen_revision: u64,
+    pub(crate) caret_visible: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -1055,6 +1078,86 @@ impl ClientInputState {
         double_click
     }
 
+    pub(crate) fn handle_dialog_ime_preedit(
+        &mut self,
+        text: &str,
+        cursor_range: Option<(usize, usize)>,
+        screen_revision: u64,
+    ) -> bool {
+        self.handle_dialog_ime_preedit_at(text, cursor_range, screen_revision, Instant::now())
+    }
+
+    fn handle_dialog_ime_preedit_at(
+        &mut self,
+        text: &str,
+        cursor_range: Option<(usize, usize)>,
+        screen_revision: u64,
+        now: Instant,
+    ) -> bool {
+        if text.is_empty() {
+            self.dialog_ime_preedit = None;
+            return true;
+        }
+        let original_text = text;
+        let text = original_text
+            .chars()
+            .filter(|ch| !ch.is_control())
+            .take(DIALOG_IME_PREEDIT_MAX_CHARS)
+            .collect::<String>();
+        if text.is_empty() {
+            self.dialog_ime_preedit = None;
+            return true;
+        }
+        let text_len = text.chars().count();
+        let (caret, focused_start, focused_end) =
+            cursor_range.map_or((None, 0, text_len), |(begin, end)| {
+                let begin = dialog_ime_preedit_char_index_for_byte(original_text, begin);
+                let end = dialog_ime_preedit_char_index_for_byte(original_text, end);
+                let start = begin.min(end);
+                let finish = begin.max(end);
+                if start == finish {
+                    (Some(end), 0, text_len)
+                } else {
+                    (Some(end), start, finish)
+                }
+            });
+        self.dialog_ime_preedit = Some(DialogImePreeditState {
+            text,
+            caret,
+            focused_start,
+            focused_end,
+            screen_revision,
+            initialized_at: now,
+        });
+        true
+    }
+
+    pub(crate) fn clear_dialog_ime_preedit(&mut self) {
+        self.dialog_ime_preedit = None;
+    }
+
+    pub(crate) fn dialog_ime_preedit_hud_state(&self) -> Option<DialogImePreeditHudState> {
+        self.dialog_ime_preedit_hud_state_at(Instant::now())
+    }
+
+    fn dialog_ime_preedit_hud_state_at(&self, now: Instant) -> Option<DialogImePreeditHudState> {
+        let state = self.dialog_ime_preedit.as_ref()?;
+        let elapsed = now
+            .checked_duration_since(state.initialized_at)
+            .unwrap_or_default();
+        Some(DialogImePreeditHudState {
+            text: state.text.clone(),
+            caret: state.caret,
+            focused_start: state.focused_start,
+            focused_end: state.focused_end,
+            screen_revision: state.screen_revision,
+            caret_visible: (elapsed.as_millis()
+                / DIALOG_IME_PREEDIT_CURSOR_BLINK_INTERVAL.as_millis())
+                % 2
+                == 0,
+        })
+    }
+
     fn clear_pressed(&mut self) {
         self.forward = false;
         self.backward = false;
@@ -1084,6 +1187,7 @@ impl ClientInputState {
         self.dialog_last_click_button = None;
         self.dialog_last_click_at = None;
         self.dialog_last_click_screen_revision = None;
+        self.dialog_ime_preedit = None;
         self.inventory_quick_craft_button_num = None;
         self.inventory_quick_craft_slots.clear();
         self.loom_pattern_scrolling = false;
@@ -7772,6 +7876,14 @@ pub(crate) fn release_active_input(
     if world.local_player_root_boat_vehicle_id().is_some() {
         queue_paddle_boat_command(counters, net_commands, false, false);
     }
+}
+
+fn dialog_ime_preedit_char_index_for_byte(text: &str, byte_index: usize) -> usize {
+    text.char_indices()
+        .take_while(|(index, _)| *index < byte_index.min(text.len()))
+        .filter(|(_, ch)| !ch.is_control())
+        .take(DIALOG_IME_PREEDIT_MAX_CHARS)
+        .count()
 }
 
 pub(crate) fn handle_focus_change(

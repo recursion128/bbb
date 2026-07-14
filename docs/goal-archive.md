@@ -14955,3 +14955,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   click 继续只启动 scroll drag。world/input/native regressions 覆盖 screen revision lifecycle、同屏/同按钮/
   严格阈值、单行第二击重命中、多行第一次落点保留与 cursor/selection 方向。Text IME preedit overlay
   继续留在 TODO。
+
+## 2026-07-14：Render Dialog Text IME preedit overlays
+
+- [x] 对照 `EditBox.preeditUpdated`、`MultiLineEditBox.preeditUpdated`、`IMEPreeditOverlay` 与
+  `TextCursorUtils`，platform input 保存不写入 canonical value 的 transient composition；空 preedit、commit、
+  IME disable 与 focus loss 均清除，screen revision 隔离旧 screen 状态。Winit 只提供 UTF-8 byte cursor range、没有 GLFW
+  focused-block 列表，因此 non-empty range 映射为 focused underline block，point range 按 vanilla single-block
+  形状 underline 全文并保留 caret，`None` underline 全文且隐藏 caret；过滤控制字符后仍保持 byte-to-char 映射。
+- [x] native 从 active-font single-line horizontal display window 或 multiline wrapped cursor row 投影 anchor，
+  按 vanilla 4px input separation、9px text height、5px background offset、2px text-input hot-area margin运行；
+  右侧溢出时整块左移，底部溢出时移到输入框上方，并把候选热区提交给 window IME owner。
+- [x] renderer 在 screen foreground/highlight 后、tooltip 前绘制 deferred overlay：加载
+  `widget/preedit` 的 200x20、1px-border nine-slice，使用无 shadow 黑色文本、focused underline、1x11 caret
+  与 300ms blink。input/native/renderer regressions 覆盖 UTF-8 区间与控制字符、blink 边界、stale screen
+  revision、单行/多行 cursor anchor、右侧溢出、资产 metadata、sanitization、underline/caret draw submission
+  和 screen/tooltip strata 顺序。

@@ -110,13 +110,14 @@ use crate::{
         recipe_book_type_settings, recipe_book_visible_tab_indices, release_active_input,
         stats_screen_done_button_contains, sync_beacon_effect_selection_state,
         sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
-        DebugOptionsScreenHudRow, InventoryScreenBackground, RecipeBookOverlayHudState,
-        RecipeBookPageHudState, RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
-        LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
-        LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y,
-        LOOM_PATTERN_ITEM_PATTERN_COUNT, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET,
-        LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID,
-        RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        DebugOptionsScreenHudRow, DialogImePreeditHudState, InventoryScreenBackground,
+        RecipeBookOverlayHudState, RecipeBookPageHudState, RecipeBookSearchHudState,
+        RecipeBookTabSelectionHudState, LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT,
+        LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE,
+        LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y, LOOM_PATTERN_ITEM_PATTERN_COUNT,
+        LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X,
+        LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
+        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
         RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
@@ -192,12 +193,14 @@ mod events;
 
 pub(crate) use debug_light_sections::DebugSkyLightSectionCache;
 pub(crate) use dialog_screen::{
-    handle_dialog_cursor_moved_with_measurer,
+    dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
     handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
     handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
     handle_dialog_text_input_with_measurer,
 };
-use dialog_screen::{hud_dialog_screen, hud_dialog_warning_screen, hud_waiting_response_screen};
+use dialog_screen::{
+    hud_dialog_screen_with_measurer, hud_dialog_warning_screen, hud_waiting_response_screen,
+};
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
 const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);
@@ -569,6 +572,7 @@ struct InventoryHudLocalState {
     recipe_book_overlay: Option<RecipeBookOverlayHudState>,
     advancement_scroll_delta: Option<(f64, f64)>,
     advancement_hover_fade: f32,
+    dialog_ime_preedit: Option<DialogImePreeditHudState>,
     cursor_position: Option<(i32, i32)>,
     quick_craft_button_num: Option<i8>,
     quick_craft_slots: Vec<i16>,
@@ -2402,7 +2406,7 @@ pub(crate) fn pump_network_and_terrain(
     {
         None
     } else {
-        hud_inventory_screen_with_local_state_for_surface(
+        hud_inventory_screen_with_local_state_for_surface_and_measurer(
             world,
             item_runtime,
             terrain_textures,
@@ -2419,6 +2423,7 @@ pub(crate) fn pump_network_and_terrain(
                 recipe_book_overlay: input.recipe_book_overlay_hud_state(),
                 advancement_scroll_delta,
                 advancement_hover_fade,
+                dialog_ime_preedit: input.dialog_ime_preedit_hud_state(),
                 cursor_position: input.inventory_cursor_position(),
                 quick_craft_button_num: input.inventory_quick_craft_button_num(),
                 quick_craft_slots: input.inventory_quick_craft_slots().to_vec(),
@@ -2427,6 +2432,7 @@ pub(crate) fn pump_network_and_terrain(
                 advanced_item_tooltips: input.debug_advanced_item_tooltips(),
             },
             surface_size,
+            renderer,
             entity_partial_tick,
         )
     };
@@ -6032,6 +6038,7 @@ fn hud_debug_wrap_degrees(degrees: f32) -> f32 {
     }
 }
 
+#[cfg(test)]
 fn hud_inventory_screen_with_local_state_for_surface(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
@@ -6039,6 +6046,28 @@ fn hud_inventory_screen_with_local_state_for_surface(
     hovered_slot_id: Option<i16>,
     local_state: InventoryHudLocalState,
     surface_size: winit::dpi::PhysicalSize<u32>,
+    partial_tick: f32,
+) -> Option<HudInventoryScreen> {
+    hud_inventory_screen_with_local_state_for_surface_and_measurer(
+        world,
+        item_runtime,
+        terrain_textures,
+        hovered_slot_id,
+        local_state,
+        surface_size,
+        &dialog_screen::ApproximateDialogTextMeasurer,
+        partial_tick,
+    )
+}
+
+fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    hovered_slot_id: Option<i16>,
+    local_state: InventoryHudLocalState,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    dialog_text_measurer: &dyn dialog_screen::DialogTextMeasurer,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
     if world.dialog_warning_is_open() {
@@ -6049,13 +6078,14 @@ fn hud_inventory_screen_with_local_state_for_surface(
         ));
     }
     if let Some(dialog) = world.current_dialog() {
-        return hud_dialog_screen(
+        return hud_dialog_screen_with_measurer(
             world,
             dialog,
             item_runtime,
             terrain_textures,
             &local_state,
             surface_size,
+            dialog_text_measurer,
             partial_tick,
         );
     }
@@ -6326,6 +6356,7 @@ fn hud_inventory_screen_with_local_state_for_surface(
         entity_previews,
         text_labels,
         scroll_area: None,
+        preedit_overlay: None,
         hovered_slot_id: hovered_slot_id.and_then(|slot| u16::try_from(slot).ok()),
         tooltip: hud_inventory_tooltip(
             world,
@@ -7906,6 +7937,7 @@ fn hud_book_screen(book: &BookScreenState) -> HudInventoryScreen {
         entity_previews: Vec::new(),
         text_labels: book_screen_text_labels(book),
         scroll_area: None,
+        preedit_overlay: None,
         hovered_slot_id: None,
         tooltip: None,
     }
@@ -8062,6 +8094,7 @@ fn hud_advancements_screen(
         entity_previews: Vec::new(),
         text_labels,
         scroll_area: None,
+        preedit_overlay: None,
         hovered_slot_id: None,
         tooltip: None,
     }

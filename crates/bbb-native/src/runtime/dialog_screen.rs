@@ -10,10 +10,11 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
-    HudInventoryFillStage, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
-    HudInventoryScrollArea, HudInventoryScrollbar, HudInventoryScrollingText, HudInventoryTextArea,
-    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
-    HudInventoryTooltipLine, HudStyledTextRun, HudTextStyle, HudUvRect, Renderer,
+    HudInventoryFillStage, HudInventoryItem, HudInventoryItemScissor, HudInventoryPreeditOverlay,
+    HudInventoryScreen, HudInventoryScrollArea, HudInventoryScrollbar, HudInventoryScrollingText,
+    HudInventoryTextArea, HudInventoryTextInputDecoration, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun, HudTextStyle, HudUvRect,
+    Renderer,
 };
 use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyFocusPartState, DialogBodyState,
@@ -27,7 +28,7 @@ use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
-use crate::input::{queue_chat_command, text_edit, DebugClipboard};
+use crate::input::{queue_chat_command, text_edit, DebugClipboard, DialogImePreeditHudState};
 use crate::terrain_runtime::TerrainTextureState;
 
 use super::{
@@ -67,6 +68,11 @@ const TEXT_LINE_HEIGHT: i32 = 9;
 const TEXT_INPUT_HEIGHT: i32 = 20;
 const TEXT_INPUT_INSET: i32 = 4;
 const TEXT_INPUT_Y_OFFSET: i32 = 6;
+const PREEDIT_INPUT_HEIGHT: i32 = 10;
+const PREEDIT_TEXT_HEIGHT: i32 = 9;
+const PREEDIT_INPUT_SEPARATION: i32 = 4;
+const PREEDIT_BACKGROUND_OFFSET: i32 = 5;
+const PREEDIT_HOT_AREA_MARGIN: i32 = 2;
 const TEXT_INPUT_COLOR: [f32; 4] = [224.0 / 255.0, 224.0 / 255.0, 224.0 / 255.0, 1.0];
 const TEXT_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
@@ -225,7 +231,7 @@ impl DialogTextMeasurer for Renderer {
 }
 
 #[cfg(test)]
-struct ApproximateDialogTextMeasurer;
+pub(super) struct ApproximateDialogTextMeasurer;
 
 #[cfg(test)]
 impl DialogTextMeasurer for ApproximateDialogTextMeasurer {
@@ -1876,13 +1882,36 @@ impl WaitingLayout {
     }
 }
 
-pub(super) fn hud_dialog_screen(
+#[cfg(test)]
+fn hud_dialog_screen(
     world: &WorldStore,
     dialog: &DialogState,
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     local_state: &InventoryHudLocalState,
     surface_size: PhysicalSize<u32>,
+    partial_tick: f32,
+) -> Option<HudInventoryScreen> {
+    hud_dialog_screen_with_measurer(
+        world,
+        dialog,
+        item_runtime,
+        terrain_textures,
+        local_state,
+        surface_size,
+        &ApproximateDialogTextMeasurer,
+        partial_tick,
+    )
+}
+
+pub(super) fn hud_dialog_screen_with_measurer(
+    world: &WorldStore,
+    dialog: &DialogState,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    local_state: &InventoryHudLocalState,
+    surface_size: PhysicalSize<u32>,
+    text_measurer: &dyn DialogTextMeasurer,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
     let controls = simple_dialog_controls(dialog.data.as_ref()?)?;
@@ -2487,6 +2516,10 @@ pub(super) fn hud_dialog_screen(
                 .collect(),
         }
     });
+    let preedit_overlay = local_state.dialog_ime_preedit.as_ref().and_then(|preedit| {
+        dialog_preedit_projection(world, preedit, surface_size, text_measurer)
+            .map(|projection| projection.overlay)
+    });
 
     Some(HudInventoryScreen {
         width: layout.screen_width,
@@ -2522,8 +2555,195 @@ pub(super) fn hud_dialog_screen(
                 }
             }),
         }),
+        preedit_overlay,
         hovered_slot_id: None,
         tooltip: warning_tooltip.or(action_tooltip).or(item_tooltip),
+    })
+}
+
+struct DialogPreeditProjection {
+    overlay: HudInventoryPreeditOverlay,
+    ime_position: PhysicalPosition<i32>,
+    ime_size: PhysicalSize<u32>,
+}
+
+pub(crate) fn dialog_ime_cursor_area(
+    world: &WorldStore,
+    preedit: Option<&DialogImePreeditHudState>,
+    surface_size: PhysicalSize<u32>,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> Option<(PhysicalPosition<i32>, PhysicalSize<u32>)> {
+    let projection = dialog_preedit_projection(world, preedit?, surface_size, text_measurer)?;
+    Some((projection.ime_position, projection.ime_size))
+}
+
+fn dialog_preedit_projection(
+    world: &WorldStore,
+    preedit: &DialogImePreeditHudState,
+    surface_size: PhysicalSize<u32>,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> Option<DialogPreeditProjection> {
+    if preedit.screen_revision != world.dialog_screen_revision()
+        || world.dialog_warning_is_open()
+        || preedit.text.is_empty()
+    {
+        return None;
+    }
+    let snapshot = focused_dialog_text_snapshot(world)?;
+    let dialog = world.current_dialog()?;
+    let controls = simple_dialog_controls(dialog.data.as_ref()?)?;
+    let scroll_layout = dialog_body_scroll_layout(
+        controls.common,
+        surface_size,
+        world.dialog_body_scroll_amount(),
+    )?;
+    let input_layout =
+        dialog_input_layouts_at_scroll(controls.common, surface_size, scroll_layout.scroll_amount)?
+            .into_iter()
+            .find(|layout| layout.index == snapshot.index)?;
+    let input = controls.common.input_data.get(snapshot.index)?;
+    let (input_left, input_top) = match &input.control {
+        DialogInputControlState::Text {
+            label_visible,
+            multiline: None,
+            ..
+        } => {
+            let layout = dialog_single_line_text_box_layout(input_layout, *label_visible);
+            let inner_width = snapshot.inner_width();
+            let scroll_to = if snapshot.selection != snapshot.cursor {
+                snapshot.selection
+            } else {
+                snapshot.cursor
+            };
+            let display_start =
+                text_measurer.display_start(&snapshot.value, scroll_to, inner_width);
+            let display_end =
+                text_measurer.cursor_for_width(&snapshot.value, display_start, inner_width);
+            let prefix = dialog_char_slice(
+                &snapshot.value,
+                display_start,
+                snapshot.cursor.min(display_end),
+            );
+            let append_offset = usize::from(
+                snapshot.cursor >= text_edit::char_len(&snapshot.value)
+                    && snapshot.value.encode_utf16().count() < snapshot.max_length,
+            );
+            (
+                layout
+                    .x
+                    .saturating_add(TEXT_INPUT_INSET)
+                    .saturating_add(i32::try_from(text_measurer.width(&prefix)).unwrap_or(i32::MAX))
+                    .saturating_add(i32::try_from(append_offset).unwrap_or(0)),
+                layout.y.saturating_add(TEXT_INPUT_Y_OFFSET),
+            )
+        }
+        DialogInputControlState::Text {
+            label_visible,
+            multiline: Some(_),
+            ..
+        } => {
+            let layout = dialog_multiline_text_box_layout(input_layout, *label_visible);
+            let lines =
+                dialog_multiline_lines(&snapshot.value, snapshot.inner_width(), text_measurer);
+            let max_scroll = dialog_multiline_max_scroll(lines.len(), layout.height);
+            let scroll_amount = snapshot.scroll_amount.clamp(0, max_scroll);
+            let cursor_line = lines
+                .iter()
+                .position(|line| snapshot.cursor <= line.end)
+                .unwrap_or_else(|| lines.len().saturating_sub(1));
+            let line = lines[cursor_line];
+            let prefix =
+                dialog_char_slice(&snapshot.value, line.begin, snapshot.cursor.min(line.end));
+            (
+                layout.x.saturating_add(TEXT_INPUT_INSET).saturating_add(
+                    i32::try_from(text_measurer.width(&prefix)).unwrap_or(i32::MAX),
+                ),
+                layout
+                    .y
+                    .saturating_add(TEXT_INPUT_INSET)
+                    .saturating_sub(scroll_amount)
+                    .saturating_add(
+                        i32::try_from(cursor_line)
+                            .unwrap_or(i32::MAX)
+                            .saturating_mul(TEXT_LINE_HEIGHT),
+                    ),
+            )
+        }
+        _ => return None,
+    };
+
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let (origin_x, origin_y) = centered_screen_origin(surface_size, screen_width, screen_height);
+    let input_left = i32::try_from(origin_x + i64::from(input_left)).unwrap_or_else(|_| {
+        if origin_x + i64::from(input_left) < 0 {
+            i32::MIN
+        } else {
+            i32::MAX
+        }
+    });
+    let input_top = i32::try_from(origin_y + i64::from(input_top)).unwrap_or_else(|_| {
+        if origin_y + i64::from(input_top) < 0 {
+            i32::MIN
+        } else {
+            i32::MAX
+        }
+    });
+    let preedit_width = i32::try_from(text_measurer.width(&preedit.text)).unwrap_or(i32::MAX);
+    let surface_width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let surface_height = i32::try_from(surface_size.height).unwrap_or(i32::MAX);
+    let mut preedit_left = input_left;
+    let mut preedit_right = preedit_left.saturating_add(preedit_width);
+    if preedit_right > surface_width {
+        preedit_left = surface_width.saturating_sub(preedit_width);
+        preedit_right = preedit_left.saturating_add(preedit_width);
+    }
+    let input_bottom = input_top.saturating_add(PREEDIT_INPUT_HEIGHT);
+    let mut preedit_bottom = input_bottom
+        .saturating_add(PREEDIT_INPUT_SEPARATION)
+        .saturating_add(PREEDIT_TEXT_HEIGHT);
+    if preedit_bottom > surface_height {
+        preedit_bottom = input_top
+            .saturating_sub(PREEDIT_INPUT_SEPARATION)
+            .saturating_sub(PREEDIT_TEXT_HEIGHT);
+    }
+    let preedit_top = preedit_bottom.saturating_sub(PREEDIT_TEXT_HEIGHT);
+    let hot_left = preedit_left
+        .min(input_left)
+        .saturating_sub(PREEDIT_HOT_AREA_MARGIN);
+    let hot_top = preedit_top
+        .min(input_top)
+        .saturating_sub(PREEDIT_HOT_AREA_MARGIN);
+    let hot_right = preedit_right.saturating_add(PREEDIT_HOT_AREA_MARGIN);
+    let hot_bottom = preedit_bottom
+        .max(input_bottom)
+        .saturating_add(PREEDIT_HOT_AREA_MARGIN);
+
+    Some(DialogPreeditProjection {
+        overlay: HudInventoryPreeditOverlay {
+            text: preedit.text.clone(),
+            focused_start: preedit.focused_start,
+            focused_end: preedit.focused_end,
+            caret: preedit.caret,
+            caret_visible: preedit.caret_visible,
+            text_x: preedit_left,
+            text_y: preedit_top,
+            background_x: preedit_left.saturating_sub(PREEDIT_BACKGROUND_OFFSET),
+            background_y: preedit_top.saturating_sub(PREEDIT_BACKGROUND_OFFSET),
+            background_width: u32::try_from(
+                preedit_width.saturating_add(PREEDIT_BACKGROUND_OFFSET.saturating_mul(2)),
+            )
+            .unwrap_or(u32::MAX),
+            background_height: u32::try_from(
+                PREEDIT_TEXT_HEIGHT.saturating_add(PREEDIT_BACKGROUND_OFFSET.saturating_mul(2)),
+            )
+            .unwrap_or(u32::MAX),
+        },
+        ime_position: PhysicalPosition::new(hot_left, hot_top),
+        ime_size: PhysicalSize::new(
+            u32::try_from(hot_right.saturating_sub(hot_left).max(1)).unwrap_or(u32::MAX),
+            u32::try_from(hot_bottom.saturating_sub(hot_top).max(1)).unwrap_or(u32::MAX),
+        ),
     })
 }
 
@@ -2605,6 +2825,7 @@ pub(super) fn hud_dialog_warning_screen(
         entity_previews: Vec::new(),
         text_labels,
         scroll_area: None,
+        preedit_overlay: None,
         hovered_slot_id: None,
         tooltip: None,
     }
@@ -2685,6 +2906,7 @@ pub(super) fn hud_waiting_response_screen(
         entity_previews: Vec::new(),
         text_labels,
         scroll_area: None,
+        preedit_overlay: None,
         hovered_slot_id: None,
         tooltip: None,
     }
@@ -7324,6 +7546,162 @@ mod tests {
         assert_eq!(
             values["name"].tag,
             NbtSummaryValue::String("a\"'\\\n\u{0001}".to_string())
+        );
+    }
+
+    #[test]
+    fn dialog_ime_preedit_projects_from_the_focused_text_cursor() {
+        let mut world = world_with_notice(vec![entry(
+            "inputs",
+            NbtSummaryValue::List(vec![text_input("name", "Name", 100, true, "ab", 32)]),
+        )]);
+        assert!(world.focus_dialog_text_input(0, 2, false));
+        let surface_size = PhysicalSize::new(320, 240);
+        let input_layout = {
+            let controls = world
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap();
+            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+        };
+        let box_layout = dialog_single_line_text_box_layout(input_layout, true);
+        let preedit = DialogImePreeditHudState {
+            text: "xy".to_string(),
+            caret: Some(1),
+            focused_start: 0,
+            focused_end: 1,
+            screen_revision: world.dialog_screen_revision(),
+            caret_visible: true,
+        };
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState {
+                dialog_ime_preedit: Some(preedit.clone()),
+                ..Default::default()
+            },
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        let overlay = screen.preedit_overlay.unwrap();
+        let input_left = box_layout.x
+            + TEXT_INPUT_INSET
+            + i32::try_from(ApproximateDialogTextMeasurer.width("ab")).unwrap()
+            + 1;
+        let input_top = box_layout.y + TEXT_INPUT_Y_OFFSET;
+        assert_eq!(overlay.text, "xy");
+        assert_eq!((overlay.focused_start, overlay.focused_end), (0, 1));
+        assert_eq!(overlay.caret, Some(1));
+        assert!(overlay.caret_visible);
+        assert_eq!(
+            (overlay.text_x, overlay.text_y),
+            (input_left, input_top + 14)
+        );
+        assert_eq!(
+            (
+                overlay.background_x,
+                overlay.background_y,
+                overlay.background_width,
+                overlay.background_height,
+            ),
+            (input_left - 5, input_top + 9, 22, 19)
+        );
+        assert_eq!(
+            dialog_ime_cursor_area(
+                &world,
+                Some(&preedit),
+                surface_size,
+                &ApproximateDialogTextMeasurer,
+            ),
+            Some((
+                PhysicalPosition::new(input_left - 2, input_top - 2),
+                PhysicalSize::new(16, 27),
+            ))
+        );
+
+        let mut stale = preedit.clone();
+        stale.screen_revision = stale.screen_revision.saturating_add(1);
+        assert_eq!(
+            dialog_ime_cursor_area(
+                &world,
+                Some(&stale),
+                surface_size,
+                &ApproximateDialogTextMeasurer,
+            ),
+            None
+        );
+
+        let mut overflowing = preedit;
+        overflowing.text = "x".repeat(60);
+        let overflow = dialog_preedit_projection(
+            &world,
+            &overflowing,
+            surface_size,
+            &ApproximateDialogTextMeasurer,
+        )
+        .unwrap();
+        assert_eq!(
+            overflow.overlay.text_x,
+            i32::try_from(surface_size.width).unwrap()
+                - i32::try_from(ApproximateDialogTextMeasurer.width(&overflowing.text)).unwrap()
+        );
+    }
+
+    #[test]
+    fn dialog_ime_preedit_uses_the_multiline_cursor_row() {
+        let mut world = world_with_notice(vec![entry(
+            "inputs",
+            NbtSummaryValue::List(vec![multiline_text_input(
+                "notes",
+                "Notes",
+                100,
+                false,
+                "a\nb",
+                32,
+                None,
+                Some(30),
+            )]),
+        )]);
+        assert!(world.focus_dialog_text_input(0, 3, false));
+        let surface_size = PhysicalSize::new(320, 240);
+        let box_layout = {
+            let controls = world
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap();
+            let input_layout = dialog_input_layouts(controls.common, surface_size).unwrap()[0];
+            dialog_multiline_text_box_layout(input_layout, false)
+        };
+        let preedit = DialogImePreeditHudState {
+            text: "候选".to_string(),
+            caret: None,
+            focused_start: 0,
+            focused_end: 2,
+            screen_revision: world.dialog_screen_revision(),
+            caret_visible: true,
+        };
+        let projection = dialog_preedit_projection(
+            &world,
+            &preedit,
+            surface_size,
+            &ApproximateDialogTextMeasurer,
+        )
+        .unwrap();
+
+        assert_eq!(
+            projection.overlay.text_x,
+            box_layout.x
+                + TEXT_INPUT_INSET
+                + i32::try_from(ApproximateDialogTextMeasurer.width("b")).unwrap()
+        );
+        assert_eq!(
+            projection.overlay.text_y,
+            box_layout.y + TEXT_INPUT_INSET + TEXT_LINE_HEIGHT + 14
         );
     }
 
