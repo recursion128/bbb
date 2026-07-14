@@ -14971,3 +14971,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 300ms blink。input/native/renderer regressions 覆盖 UTF-8 区间与控制字符、blink 边界、stale screen
   revision、单行/多行 cursor anchor、右侧溢出、资产 metadata、sanitization、underline/caret draw submission
   和 screen/tooltip strata 顺序。
+
+## 2026-07-14：Render and operate MultiAction dialogs
+
+- [x] 对照 `MultiActionDialog`、`ButtonListDialogScreen.populateBodyElements` 与
+  `DialogScreen.packControlsIntoColumns`，native 将 non-empty actions 按声明 columns、2px row/column spacing
+  排入 common body/input 后的同一 10px-spaced `ScrollableLayout`；完整行按 GridLayout column maxima 居中，
+  末个不满行作为跨列 LinearLayout 居中。超大 columns 保留 vanilla partial-row 几何，同时避免按不可信
+  column count 分配数组。
+- [x] Dialog controls 与 content metrics 统一拥有 Notice/Confirmation/MultiAction 的 common input、body/list/footer
+  action 顺序；MultiAction list buttons 共享 body scissor、wheel、scrollbar、keyboard reveal 与 active-font text，
+  hover/keyboard focus 使用 highlighted sprite 和 CommonButtonData tooltip。Tab 顺序保持 warning → body/input →
+  list actions → exit，方向导航继续复用嵌套 container geometry。
+- [x] `exit_action` 存在时进入 33px footer 并同时作为 Escape cancel action；缺失时按 vanilla 将 footer 压到 5px，
+  Escape 仍强制 close。list/exit mouse 与 Space/Enter 均复用既有 input value binding、static/dynamic action、
+  `after_action` 和 net command owner。native regressions 覆盖不等宽三列/末行几何、tooltip、dynamic Boolean
+  payload、custom action、exit close、无 exit footer、overflow reveal 与 oversized-column boundary。

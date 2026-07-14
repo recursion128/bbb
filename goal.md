@@ -388,8 +388,8 @@ item icon 及 decorations 共享 centered HUD scissor。由于 `ScrollableLayout
 Text multiline editor 已按 `MultiLineEditBox`/`MultilineTextField` 接入 active-font wrap、显式 newline、
 4px inset、9px line、nested scissor、UTF-16 counter、line/character limit、cursor/selection、键盘/clipboard 编辑、
 cursor reveal 与 6px scrollbar drag；`ScrollableLayout.Container` 继续优先截获 wheel。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 button-list tooltip/scroll/focus、
-其余三类 top-level dialog 布局、action-bearing
+仍须按 `DialogScreen`/`DialogControlSet` 完成 ServerLinks/DialogList 两类 top-level dialog 的
+button-list scroll/focus 布局、action-bearing
 open-url 与 Component-click。Boolean input 已按 Checkbox 的 17px box、
 label、initial/on-true/on-false 与 byte-tag 语义接入 mouse toggle；NumberRange 已按 AbstractSliderButton 的
 200x20 nine-slice/8px handle、double slider position、mouse click/drag、RangeInfo lerp/step/edge 规则、localized

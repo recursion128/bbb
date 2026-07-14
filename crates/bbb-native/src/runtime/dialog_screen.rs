@@ -55,6 +55,7 @@ const BODY_SPACING: i32 = 10;
 const ITEM_DESCRIPTION_SPACING: i32 = 2;
 const FOCUSABLE_TEXT_PADDING: i32 = 4;
 const SIMPLE_BUTTON_SPACING: i32 = 8;
+const BUTTON_LIST_SPACING: i32 = 2;
 const BUTTON_HEIGHT: u32 = 20;
 const BUTTON_TEXT_Y_OFFSET: i32 = 6;
 const CHECKBOX_SIZE: u32 = 17;
@@ -251,10 +252,26 @@ impl DialogTextMeasurer for ApproximateDialogTextMeasurer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct SimpleDialogLayout {
+struct DialogFooterLayout {
     screen_width: u32,
     screen_height: u32,
     buttons: Vec<DialogButtonLayout>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DialogBodyActionGridLayout {
+    width: i32,
+    height: i32,
+    buttons: Vec<DialogButtonLayout>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DialogContentLayout {
+    body_dimensions: Vec<(i32, i32)>,
+    input_dimensions: Vec<(i32, i32)>,
+    action_grid: Option<DialogBodyActionGridLayout>,
+    width: i32,
+    height: i32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -325,15 +342,19 @@ fn dialog_item_dimensions(
     })
 }
 
-impl SimpleDialogLayout {
-    fn new(action_widths: &[i32], surface_size: PhysicalSize<u32>) -> Option<Self> {
+impl DialogFooterLayout {
+    fn new(
+        action_widths: &[i32],
+        footer_height: i32,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<Self> {
         let screen_width = surface_size.width.clamp(1, 512);
         let screen_height = surface_size.height.clamp(1, 512);
         let screen_width_i32 = i32::try_from(screen_width).ok()?;
         let screen_height_i32 = i32::try_from(screen_height).ok()?;
         let button_widths = action_widths
             .iter()
-            .map(|width| u32::try_from(*width).ok().map(|width| width.clamp(1, 512)))
+            .map(|width| u32::try_from(*width).ok())
             .collect::<Option<Vec<_>>>()?;
         let spacing_width = SIMPLE_BUTTON_SPACING.saturating_mul(
             i32::try_from(button_widths.len().saturating_sub(1)).unwrap_or(i32::MAX),
@@ -341,8 +362,8 @@ impl SimpleDialogLayout {
         let total_width = button_widths.iter().fold(spacing_width, |total, width| {
             total.saturating_add(i32::try_from(*width).unwrap_or(i32::MAX))
         });
-        let button_y =
-            screen_height_i32 - FOOTER_HEIGHT + (FOOTER_HEIGHT - BUTTON_HEIGHT as i32) / 2;
+        let button_y = screen_height_i32 - footer_height
+            + (footer_height - i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX)) / 2;
         // Notice and Confirmation have at most two codec-bounded buttons, so this
         // subtraction is bounded while preserving vanilla's negative centered x
         // when the declared button row is wider than the screen.
@@ -515,26 +536,259 @@ impl DialogWarningScreenLayout {
     }
 }
 
-struct SimpleDialogControls<'a> {
+struct DialogControls<'a> {
     common: &'a CommonDialogDataState,
     actions: Vec<&'a DialogButtonState>,
-    cancel: &'a DialogButtonState,
+    body_action_count: usize,
+    body_action_columns: i32,
+    cancel: Option<&'a DialogButtonState>,
+    footer_height: i32,
 }
 
-fn simple_dialog_controls(data: &DialogDataState) -> Option<SimpleDialogControls<'_>> {
+impl DialogControls<'_> {
+    fn body_actions(&self) -> &[&DialogButtonState] {
+        &self.actions[..self.body_action_count]
+    }
+
+    fn footer_actions(&self) -> &[&DialogButtonState] {
+        &self.actions[self.body_action_count..]
+    }
+}
+
+fn dialog_controls(data: &DialogDataState) -> Option<DialogControls<'_>> {
     match data {
-        DialogDataState::Notice { common, action } => Some(SimpleDialogControls {
+        DialogDataState::Notice { common, action } => Some(DialogControls {
             common,
             actions: vec![action],
-            cancel: action,
+            body_action_count: 0,
+            body_action_columns: 1,
+            cancel: Some(action),
+            footer_height: FOOTER_HEIGHT,
         }),
-        DialogDataState::Confirmation { common, yes, no } => Some(SimpleDialogControls {
+        DialogDataState::Confirmation { common, yes, no } => Some(DialogControls {
             common,
             actions: vec![yes, no],
-            cancel: no,
+            body_action_count: 0,
+            body_action_columns: 1,
+            cancel: Some(no),
+            footer_height: FOOTER_HEIGHT,
         }),
+        DialogDataState::MultiAction {
+            common,
+            actions,
+            exit_action,
+            columns,
+        } => {
+            let mut all_actions = actions.iter().collect::<Vec<_>>();
+            all_actions.extend(exit_action.iter());
+            Some(DialogControls {
+                common,
+                actions: all_actions,
+                body_action_count: actions.len(),
+                body_action_columns: *columns,
+                cancel: exit_action.as_ref(),
+                footer_height: if exit_action.is_some() {
+                    FOOTER_HEIGHT
+                } else {
+                    5
+                },
+            })
+        }
         _ => None,
     }
+}
+
+fn dialog_body_action_grid_layout(
+    controls: &DialogControls<'_>,
+) -> Option<DialogBodyActionGridLayout> {
+    let actions = controls.body_actions();
+    if actions.is_empty() {
+        return None;
+    }
+    let count = actions.len();
+    let columns = usize::try_from(controls.body_action_columns).ok()?.max(1);
+    let widths = actions
+        .iter()
+        .map(|action| i32::try_from(u32::try_from(action.width).ok()?).ok())
+        .collect::<Option<Vec<_>>>()?;
+    if columns > count {
+        let row_width = widths.iter().copied().fold(
+            i32::try_from(count.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BUTTON_LIST_SPACING),
+            i32::saturating_add,
+        );
+        let spacing_width = i32::try_from(columns.saturating_sub(1))
+            .unwrap_or(i32::MAX)
+            .saturating_mul(BUTTON_LIST_SPACING);
+        // GridLayout lets the partial LinearLayout span the declared column
+        // count. Its Divisor can contribute only non-negative column widths;
+        // preserve that result without allocating an attacker-sized column
+        // array when the codec's positive column count exceeds the actions.
+        let grid_width =
+            spacing_width.saturating_add(row_width.saturating_sub(spacing_width).max(0));
+        let mut x = (grid_width.saturating_sub(row_width)) / 2;
+        let mut buttons = Vec::with_capacity(count);
+        for width in widths {
+            buttons.push(DialogButtonLayout {
+                x,
+                y: 0,
+                width: u32::try_from(width).ok()?,
+            });
+            x = x.saturating_add(width).saturating_add(BUTTON_LIST_SPACING);
+        }
+        return Some(DialogBodyActionGridLayout {
+            width: grid_width,
+            height: i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX),
+            buttons,
+        });
+    }
+    let complete_rows = count / columns;
+    let remainder = count % columns;
+    let complete_count = complete_rows.saturating_mul(columns);
+    let mut column_widths = vec![0i32; columns];
+    for (index, width) in widths.iter().copied().take(complete_count).enumerate() {
+        column_widths[index % columns] = column_widths[index % columns].max(width);
+    }
+    if remainder > 0 {
+        let last_row_width = widths[complete_count..].iter().copied().fold(
+            i32::try_from(remainder.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BUTTON_LIST_SPACING),
+            i32::saturating_add,
+        );
+        let numerator = last_row_width.saturating_sub(
+            i32::try_from(columns.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BUTTON_LIST_SPACING),
+        );
+        let denominator = i32::try_from(columns).ok()?;
+        let quotient = numerator / denominator;
+        let modulus = numerator % denominator;
+        let mut carry = 0i32;
+        for column_width in &mut column_widths {
+            let mut part = quotient;
+            carry = carry.saturating_add(modulus);
+            if carry >= denominator {
+                carry = carry.saturating_sub(denominator);
+                part = part.saturating_add(1);
+            }
+            *column_width = (*column_width).max(part);
+        }
+    }
+    let grid_width = column_widths.iter().copied().fold(
+        i32::try_from(columns.saturating_sub(1))
+            .unwrap_or(i32::MAX)
+            .saturating_mul(BUTTON_LIST_SPACING),
+        i32::saturating_add,
+    );
+    let rows = complete_rows.saturating_add(usize::from(remainder > 0));
+    let grid_height = i32::try_from(rows)
+        .unwrap_or(i32::MAX)
+        .saturating_mul(i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX))
+        .saturating_add(
+            i32::try_from(rows.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BUTTON_LIST_SPACING),
+        );
+    let mut column_offsets = Vec::with_capacity(columns);
+    let mut next_x = 0i32;
+    for width in &column_widths {
+        column_offsets.push(next_x);
+        next_x = next_x
+            .saturating_add(*width)
+            .saturating_add(BUTTON_LIST_SPACING);
+    }
+    let mut buttons = Vec::with_capacity(count);
+    for (index, width) in widths.iter().copied().take(complete_count).enumerate() {
+        let row = index / columns;
+        let column = index % columns;
+        buttons.push(DialogButtonLayout {
+            x: column_offsets[column]
+                .saturating_add((column_widths[column].saturating_sub(width)) / 2),
+            y: i32::try_from(row).unwrap_or(i32::MAX).saturating_mul(
+                i32::try_from(BUTTON_HEIGHT)
+                    .unwrap_or(i32::MAX)
+                    .saturating_add(BUTTON_LIST_SPACING),
+            ),
+            width: u32::try_from(width).ok()?,
+        });
+    }
+    if remainder > 0 {
+        let last_widths = &widths[complete_count..];
+        let last_row_width = last_widths.iter().copied().fold(
+            i32::try_from(remainder.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BUTTON_LIST_SPACING),
+            i32::saturating_add,
+        );
+        let mut x = (grid_width.saturating_sub(last_row_width)) / 2;
+        let y = i32::try_from(complete_rows)
+            .unwrap_or(i32::MAX)
+            .saturating_mul(
+                i32::try_from(BUTTON_HEIGHT)
+                    .unwrap_or(i32::MAX)
+                    .saturating_add(BUTTON_LIST_SPACING),
+            );
+        for width in last_widths {
+            buttons.push(DialogButtonLayout {
+                x,
+                y,
+                width: u32::try_from(*width).ok()?,
+            });
+            x = x.saturating_add(*width).saturating_add(BUTTON_LIST_SPACING);
+        }
+    }
+    Some(DialogBodyActionGridLayout {
+        width: grid_width,
+        height: grid_height,
+        buttons,
+    })
+}
+
+fn dialog_content_layout(controls: &DialogControls<'_>) -> Option<DialogContentLayout> {
+    let body_dimensions = controls
+        .common
+        .body_data
+        .iter()
+        .map(dialog_body_declared_dimensions)
+        .collect::<Option<Vec<_>>>()?;
+    let input_dimensions = controls
+        .common
+        .input_data
+        .iter()
+        .map(|input| dialog_input_dimensions(&input.control))
+        .collect::<Option<Vec<_>>>()?;
+    let action_grid = dialog_body_action_grid_layout(controls);
+    let element_count = body_dimensions
+        .len()
+        .saturating_add(input_dimensions.len())
+        .saturating_add(usize::from(action_grid.is_some()));
+    let width = body_dimensions
+        .iter()
+        .chain(&input_dimensions)
+        .map(|(width, _)| *width)
+        .max()
+        .unwrap_or(0)
+        .max(action_grid.as_ref().map_or(0, |grid| grid.width));
+    let height = body_dimensions
+        .iter()
+        .chain(&input_dimensions)
+        .map(|(_, height)| *height)
+        .fold(0i32, i32::saturating_add)
+        .saturating_add(action_grid.as_ref().map_or(0, |grid| grid.height))
+        .saturating_add(
+            i32::try_from(element_count.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BODY_SPACING),
+        );
+    Some(DialogContentLayout {
+        body_dimensions,
+        input_dimensions,
+        action_grid,
+        width,
+        height,
+    })
 }
 
 fn dialog_body_declared_dimensions(body: &DialogBodyState) -> Option<(i32, i32)> {
@@ -559,15 +813,15 @@ fn dialog_body_declared_dimensions(body: &DialogBodyState) -> Option<(i32, i32)>
     }
 }
 
-fn dialog_content_y(screen_height: i32, content_height: i32) -> i32 {
+fn dialog_content_y(screen_height: i32, content_height: i32, footer_height: i32) -> i32 {
     let container_height = content_height.min(
         screen_height
             .saturating_sub(HEADER_HEIGHT)
-            .saturating_sub(FOOTER_HEIGHT),
+            .saturating_sub(footer_height),
     );
     (HEADER_HEIGHT + CONTENT_MARGIN_TOP).min(
         screen_height
-            .saturating_sub(FOOTER_HEIGHT)
+            .saturating_sub(footer_height)
             .saturating_sub(container_height),
     )
 }
@@ -620,14 +874,14 @@ fn dialog_input_dimensions(control: &DialogInputControlState) -> Option<(i32, i3
 
 #[cfg(test)]
 fn dialog_input_layouts(
-    common: &CommonDialogDataState,
+    controls: &DialogControls<'_>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<Vec<DialogInputLayout>> {
-    dialog_input_layouts_at_scroll(common, surface_size, 0)
+    dialog_input_layouts_at_scroll(controls, surface_size, 0)
 }
 
 fn dialog_input_layouts_at_scroll(
-    common: &CommonDialogDataState,
+    controls: &DialogControls<'_>,
     surface_size: PhysicalSize<u32>,
     scroll_amount: i32,
 ) -> Option<Vec<DialogInputLayout>> {
@@ -635,34 +889,26 @@ fn dialog_input_layouts_at_scroll(
     let screen_height = surface_size.height.clamp(1, 512);
     let screen_width_i32 = i32::try_from(screen_width).ok()?;
     let screen_height_i32 = i32::try_from(screen_height).ok()?;
-    let body_heights = common
-        .body_data
-        .iter()
-        .map(|body| dialog_body_declared_dimensions(body).map(|(_, height)| height))
-        .collect::<Option<Vec<_>>>()?;
-    let input_dimensions = common
-        .input_data
-        .iter()
-        .map(|input| dialog_input_dimensions(&input.control))
-        .collect::<Option<Vec<_>>>()?;
-    let element_count = body_heights.len().saturating_add(input_dimensions.len());
-    let content_height = body_heights
-        .iter()
-        .chain(input_dimensions.iter().map(|(_, height)| height))
-        .fold(0i32, |total, height| total.saturating_add(*height))
-        .saturating_add(
-            i32::try_from(element_count.saturating_sub(1))
-                .unwrap_or(i32::MAX)
-                .saturating_mul(BODY_SPACING),
-        );
-    let mut y = dialog_content_y(screen_height_i32, content_height).saturating_sub(scroll_amount);
-    for height in body_heights {
-        y = y.saturating_add(height).saturating_add(BODY_SPACING);
+    let content = dialog_content_layout(controls)?;
+    let mut y = dialog_content_y(screen_height_i32, content.height, controls.footer_height)
+        .saturating_sub(scroll_amount);
+    let mut ordinal = 0usize;
+    for (_, height) in content.body_dimensions {
+        if ordinal > 0 {
+            y = y.saturating_add(BODY_SPACING);
+        }
+        ordinal = ordinal.saturating_add(1);
+        y = y.saturating_add(height);
     }
-    input_dimensions
+    content
+        .input_dimensions
         .into_iter()
         .enumerate()
         .map(|(index, (width, height))| {
+            if ordinal > 0 {
+                y = y.saturating_add(BODY_SPACING);
+            }
+            ordinal = ordinal.saturating_add(1);
             let layout = DialogInputLayout {
                 index,
                 x: screen_width_i32 / 2 - width / 2,
@@ -670,7 +916,7 @@ fn dialog_input_layouts_at_scroll(
                 width,
                 height,
             };
-            y = y.saturating_add(height).saturating_add(BODY_SPACING);
+            y = y.saturating_add(height);
             Some(layout)
         })
         .collect()
@@ -678,14 +924,14 @@ fn dialog_input_layouts_at_scroll(
 
 #[cfg(test)]
 fn dialog_focus_graph(
-    controls: &SimpleDialogControls<'_>,
+    controls: &DialogControls<'_>,
     surface_size: PhysicalSize<u32>,
 ) -> Option<DialogFocusGraph> {
     dialog_focus_graph_at_scroll(controls, surface_size, 0)
 }
 
 fn dialog_focus_graph_at_scroll(
-    controls: &SimpleDialogControls<'_>,
+    controls: &DialogControls<'_>,
     surface_size: PhysicalSize<u32>,
     scroll_amount: i32,
 ) -> Option<DialogFocusGraph> {
@@ -693,36 +939,8 @@ fn dialog_focus_graph_at_scroll(
     let screen_height = surface_size.height.clamp(1, 512);
     let screen_width_i32 = i32::try_from(screen_width).ok()?;
     let screen_height_i32 = i32::try_from(screen_height).ok()?;
-    let body_dimensions = controls
-        .common
-        .body_data
-        .iter()
-        .map(dialog_body_declared_dimensions)
-        .collect::<Option<Vec<_>>>()?;
-    let input_dimensions = controls
-        .common
-        .input_data
-        .iter()
-        .map(|input| dialog_input_dimensions(&input.control))
-        .collect::<Option<Vec<_>>>()?;
-    let element_count = body_dimensions.len().saturating_add(input_dimensions.len());
-    let content_height = body_dimensions
-        .iter()
-        .map(|(_, height)| height)
-        .chain(input_dimensions.iter().map(|(_, height)| height))
-        .fold(0i32, |total, height| total.saturating_add(*height))
-        .saturating_add(
-            i32::try_from(element_count.saturating_sub(1))
-                .unwrap_or(i32::MAX)
-                .saturating_mul(BODY_SPACING),
-        );
-    let content_width = body_dimensions
-        .iter()
-        .chain(&input_dimensions)
-        .map(|(width, _)| *width)
-        .max()
-        .unwrap_or(0);
-    let content_y = dialog_content_y(screen_height_i32, content_height);
+    let content = dialog_content_layout(controls)?;
+    let content_y = dialog_content_y(screen_height_i32, content.height, controls.footer_height);
     let mut y = content_y.saturating_sub(scroll_amount);
     let mut body = Vec::new();
     let mut ordinal = 0usize;
@@ -730,7 +948,7 @@ fn dialog_focus_graph_at_scroll(
         .common
         .body_data
         .iter()
-        .zip(body_dimensions.iter().copied())
+        .zip(content.body_dimensions.iter().copied())
         .enumerate()
     {
         if ordinal > 0 {
@@ -797,7 +1015,7 @@ fn dialog_focus_graph_at_scroll(
         .common
         .input_data
         .iter()
-        .zip(input_dimensions.iter().copied())
+        .zip(content.input_dimensions.iter().copied())
         .enumerate()
     {
         if ordinal > 0 {
@@ -839,9 +1057,30 @@ fn dialog_focus_graph_at_scroll(
         }
         y = y.saturating_add(height);
     }
+    if let Some(action_grid) = content.action_grid.as_ref() {
+        if ordinal > 0 {
+            y = y.saturating_add(BODY_SPACING);
+        }
+        let grid_x = screen_width_i32 / 2 - action_grid.width / 2;
+        body.extend(
+            action_grid
+                .buttons
+                .iter()
+                .enumerate()
+                .map(|(index, button)| DialogFocusNode {
+                    target: DialogFocusState::Action { index },
+                    rectangle: DialogFocusRectangle {
+                        x: grid_x.saturating_add(button.x),
+                        y: y.saturating_add(button.y),
+                        width: i32::try_from(button.width).unwrap_or(i32::MAX),
+                        height: i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX),
+                    },
+                }),
+        );
+    }
 
-    let container_width = content_width.saturating_add(BODY_SCROLLBAR_RESERVE * 2);
-    let container_height = content_height.min(
+    let container_width = content.width.saturating_add(BODY_SCROLLBAR_RESERVE * 2);
+    let container_height = content.height.min(
         screen_height_i32
             .saturating_sub(HEADER_HEIGHT)
             .saturating_sub(FOOTER_HEIGHT),
@@ -857,7 +1096,7 @@ fn dialog_focus_graph_at_scroll(
             x: screen_width_i32 / 2 - container_width / 2,
             y: content_y.saturating_sub(scroll_amount),
             width: container_width,
-            height: content_height,
+            height: content.height,
         },
     };
     let warning = DialogWarningButtonLayout::new(&controls.common.title, surface_size)?;
@@ -870,12 +1109,13 @@ fn dialog_focus_graph_at_scroll(
             height: WARNING_BUTTON_SIZE,
         },
     };
-    let action_layout = SimpleDialogLayout::new(
+    let action_layout = DialogFooterLayout::new(
         &controls
-            .actions
+            .footer_actions()
             .iter()
             .map(|action| action.width)
             .collect::<Vec<_>>(),
+        controls.footer_height,
         surface_size,
     )?;
     let actions = action_layout
@@ -883,7 +1123,9 @@ fn dialog_focus_graph_at_scroll(
         .iter()
         .enumerate()
         .map(|(index, button)| DialogFocusNode {
-            target: DialogFocusState::Action { index },
+            target: DialogFocusState::Action {
+                index: controls.body_action_count.saturating_add(index),
+            },
             rectangle: DialogFocusRectangle {
                 x: button.x,
                 y: button.y,
@@ -914,57 +1156,33 @@ fn dialog_focus_graph_at_scroll(
 }
 
 fn dialog_body_scroll_layout(
-    common: &CommonDialogDataState,
+    controls: &DialogControls<'_>,
     surface_size: PhysicalSize<u32>,
     scroll_amount: f64,
 ) -> Option<DialogBodyScrollLayout> {
     let screen_width = i32::try_from(surface_size.width.clamp(1, 512)).ok()?;
     let screen_height = i32::try_from(surface_size.height.clamp(1, 512)).ok()?;
-    let dimensions = common
-        .body_data
-        .iter()
-        .map(dialog_body_declared_dimensions)
-        .chain(
-            common
-                .input_data
-                .iter()
-                .map(|input| dialog_input_dimensions(&input.control)),
-        )
-        .collect::<Option<Vec<_>>>()?;
-    let content_width = dimensions
-        .iter()
-        .map(|(width, _)| *width)
-        .max()
-        .unwrap_or(0);
-    let content_height = dimensions
-        .iter()
-        .map(|(_, height)| *height)
-        .fold(0i32, i32::saturating_add)
-        .saturating_add(
-            i32::try_from(dimensions.len().saturating_sub(1))
-                .unwrap_or(i32::MAX)
-                .saturating_mul(BODY_SPACING),
-        );
-    let height = content_height.min(
+    let content = dialog_content_layout(controls)?;
+    let height = content.height.min(
         screen_height
             .saturating_sub(HEADER_HEIGHT)
-            .saturating_sub(FOOTER_HEIGHT),
+            .saturating_sub(controls.footer_height),
     );
-    let max_scroll = content_height.saturating_sub(height).max(0);
+    let max_scroll = content.height.saturating_sub(height).max(0);
     let scroll_amount = if scroll_amount.is_finite() {
         scroll_amount.clamp(0.0, f64::from(max_scroll)) as i32
     } else {
         0
     };
-    let width = content_width.saturating_add(BODY_SCROLLBAR_RESERVE * 2);
+    let width = content.width.saturating_add(BODY_SCROLLBAR_RESERVE * 2);
     Some(DialogBodyScrollLayout {
         rectangle: DialogFocusRectangle {
             x: screen_width / 2 - width / 2,
-            y: dialog_content_y(screen_height, content_height),
+            y: dialog_content_y(screen_height, content.height, controls.footer_height),
             width,
             height,
         },
-        content_height,
+        content_height: content.height,
         max_scroll,
         scroll_amount,
     })
@@ -1914,27 +2132,27 @@ pub(super) fn hud_dialog_screen_with_measurer(
     text_measurer: &dyn DialogTextMeasurer,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
-    let controls = simple_dialog_controls(dialog.data.as_ref()?)?;
-    let layout = SimpleDialogLayout::new(
+    let controls = dialog_controls(dialog.data.as_ref()?)?;
+    let layout = DialogFooterLayout::new(
         &controls
-            .actions
+            .footer_actions()
             .iter()
             .map(|action| action.width)
             .collect::<Vec<_>>(),
+        controls.footer_height,
         surface_size,
     )?;
     let screen_width_i32 = i32::try_from(layout.screen_width).ok()?;
     let screen_height_i32 = i32::try_from(layout.screen_height).ok()?;
-    let scroll_layout = dialog_body_scroll_layout(
-        controls.common,
-        surface_size,
-        world.dialog_body_scroll_amount(),
-    )?;
+    let scroll_layout =
+        dialog_body_scroll_layout(&controls, surface_size, world.dialog_body_scroll_amount())?;
     let cursor_screen_position = local_state.cursor_position;
     let cursor_position = local_state
         .cursor_position
         .map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
-    let highlighted_button = layout.button_at(cursor_position, surface_size);
+    let highlighted_footer_button = layout
+        .button_at(cursor_position, surface_size)
+        .map(|index| controls.body_action_count.saturating_add(index));
     let warning_button = DialogWarningButtonLayout::new(&controls.common.title, surface_size)?;
     let warning_button_hovered = warning_button.contains(cursor_position, surface_size);
     let warning_button_focused = world.dialog_focus() == Some(DialogFocusState::WarningButton);
@@ -1951,6 +2169,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
         warning_button.title_y,
     );
     let scroll_text_start = text_labels.len();
+    let content = dialog_content_layout(&controls)?;
 
     let body_blocks = controls
         .common
@@ -1985,28 +2204,8 @@ pub(super) fn hud_dialog_screen_with_measurer(
             .map(|block| (body_index, block)),
         })
         .collect::<Vec<_>>();
-    let body_height = body_blocks.iter().fold(0i32, |height, (_, block)| {
-        height.saturating_add(block.height())
-    });
-    let input_dimensions = controls
-        .common
-        .input_data
-        .iter()
-        .map(|input| dialog_input_dimensions(&input.control))
-        .collect::<Option<Vec<_>>>()?;
-    let content_element_count = body_blocks.len().saturating_add(input_dimensions.len());
-    let content_height = input_dimensions
-        .iter()
-        .fold(body_height, |height, (_, input_height)| {
-            height.saturating_add(*input_height)
-        })
-        .saturating_add(
-            i32::try_from(content_element_count.saturating_sub(1))
-                .unwrap_or(i32::MAX)
-                .saturating_mul(BODY_SPACING),
-        );
-    let mut body_y = dialog_content_y(screen_height_i32, content_height)
-        .saturating_sub(scroll_layout.scroll_amount);
+    let content_y = dialog_content_y(screen_height_i32, content.height, controls.footer_height);
+    let mut body_y = content_y.saturating_sub(scroll_layout.scroll_amount);
     let mut floating_items = Vec::new();
     let mut scroll_fill_layers = Vec::new();
     let mut item_tooltip = None;
@@ -2124,7 +2323,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
     }
 
     let input_layouts =
-        dialog_input_layouts_at_scroll(controls.common, surface_size, scroll_layout.scroll_amount)?;
+        dialog_input_layouts_at_scroll(&controls, surface_size, scroll_layout.scroll_amount)?;
     let mut input_layers = Vec::new();
     let mut text_areas = Vec::new();
     for input_layout in input_layouts {
@@ -2388,9 +2587,73 @@ pub(super) fn hud_dialog_screen_with_measurer(
         }
     }
 
+    let mut body_action_buttons = Vec::new();
+    let mut highlighted_body_action = None;
+    if let Some(action_grid) = content.action_grid {
+        let grid_x = screen_width_i32 / 2 - action_grid.width / 2;
+        let grid_y = content_y
+            .saturating_sub(scroll_layout.scroll_amount)
+            .saturating_add(content.height.saturating_sub(action_grid.height));
+        for (index, (action, button)) in controls
+            .body_actions()
+            .iter()
+            .zip(action_grid.buttons)
+            .enumerate()
+        {
+            let button = DialogButtonLayout {
+                x: grid_x.saturating_add(button.x),
+                y: grid_y.saturating_add(button.y),
+                width: button.width,
+            };
+            let hovered = dialog_body_viewport_contains(
+                scroll_layout,
+                cursor_position,
+                surface_size,
+                layout.screen_width,
+                layout.screen_height,
+            ) && dialog_widget_contains(
+                button.x,
+                button.y,
+                i32::try_from(button.width).unwrap_or(i32::MAX),
+                i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX),
+                cursor_position,
+                surface_size,
+                layout.screen_width,
+                layout.screen_height,
+            );
+            if hovered {
+                highlighted_body_action = Some(index);
+            }
+            push_horizontal_nine_slice_layers(
+                &mut input_layers,
+                DialogInputLayout {
+                    index,
+                    x: button.x,
+                    y: button.y,
+                    width: i32::try_from(button.width).unwrap_or(i32::MAX),
+                    height: i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX),
+                },
+                if hovered || focused_action == Some(index) {
+                    HudInventoryBackgroundTexture::WidgetButtonHighlighted
+                } else {
+                    HudInventoryBackgroundTexture::WidgetButton
+                },
+                WIDGET_SPRITE_WIDTH,
+                3,
+            );
+            push_centered_text_label(
+                &mut text_labels,
+                &action.label,
+                button.x + i32::try_from(button.width).unwrap_or(i32::MAX) / 2,
+                button.y + BUTTON_TEXT_Y_OFFSET,
+            );
+            body_action_buttons.push(button);
+        }
+    }
+
     let scroll_text_labels = text_labels.split_off(scroll_text_start);
 
-    for (action, button) in controls.actions.iter().zip(&layout.buttons) {
+    for (action, button) in controls.footer_actions().iter().zip(&layout.buttons) {
         push_centered_text_label(
             &mut text_labels,
             &action.label,
@@ -2420,8 +2683,11 @@ pub(super) fn hud_dialog_screen_with_measurer(
         },
     });
     background_layers.extend(layout.buttons.iter().enumerate().map(|(index, button)| {
+        let action_index = controls.body_action_count.saturating_add(index);
         HudInventoryBackgroundLayer {
-            texture: if highlighted_button == Some(index) || focused_action == Some(index) {
+            texture: if highlighted_footer_button == Some(action_index)
+                || focused_action == Some(action_index)
+            {
                 HudInventoryBackgroundTexture::WidgetButtonHighlighted
             } else {
                 HudInventoryBackgroundTexture::WidgetButton
@@ -2436,9 +2702,16 @@ pub(super) fn hud_dialog_screen_with_measurer(
             },
         }
     }));
-    let action_tooltip = highlighted_button.or(focused_action).and_then(|index| {
+    let highlighted_action = highlighted_body_action.or(highlighted_footer_button);
+    let action_tooltip = highlighted_action.or(focused_action).and_then(|index| {
         let tooltip = controls.actions.get(index)?.tooltip.as_ref()?;
-        let button = layout.buttons.get(index)?;
+        let button = if index < controls.body_action_count {
+            body_action_buttons.get(index)?
+        } else {
+            layout
+                .buttons
+                .get(index.saturating_sub(controls.body_action_count))?
+        };
         let (cursor_x, cursor_y) = cursor_screen_position.unwrap_or_else(|| {
             let (origin_x, origin_y) =
                 centered_screen_origin(surface_size, layout.screen_width, layout.screen_height);
@@ -2591,14 +2864,11 @@ fn dialog_preedit_projection(
     }
     let snapshot = focused_dialog_text_snapshot(world)?;
     let dialog = world.current_dialog()?;
-    let controls = simple_dialog_controls(dialog.data.as_ref()?)?;
-    let scroll_layout = dialog_body_scroll_layout(
-        controls.common,
-        surface_size,
-        world.dialog_body_scroll_amount(),
-    )?;
+    let controls = dialog_controls(dialog.data.as_ref()?)?;
+    let scroll_layout =
+        dialog_body_scroll_layout(&controls, surface_size, world.dialog_body_scroll_amount())?;
     let input_layout =
-        dialog_input_layouts_at_scroll(controls.common, surface_size, scroll_layout.scroll_amount)?
+        dialog_input_layouts_at_scroll(&controls, surface_size, scroll_layout.scroll_amount)?
             .into_iter()
             .find(|layout| layout.index == snapshot.index)?;
     let input = controls.common.input_data.get(snapshot.index)?;
@@ -3097,7 +3367,7 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
                 let action = world
                     .current_dialog()
                     .and_then(|dialog| dialog.data.as_ref())
-                    .and_then(simple_dialog_controls)
+                    .and_then(dialog_controls)
                     .and_then(|controls| {
                         Some((
                             controls.actions.get(index)?.action_data.clone(),
@@ -3131,10 +3401,9 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
         let next = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(simple_dialog_controls)
+            .and_then(dialog_controls)
             .and_then(|controls| {
-                let layout =
-                    dialog_body_scroll_layout(controls.common, surface_size, scroll_amount)?;
+                let layout = dialog_body_scroll_layout(&controls, surface_size, scroll_amount)?;
                 dialog_focus_graph_at_scroll(&controls, surface_size, layout.scroll_amount)
             })
             .and_then(|graph| {
@@ -3160,14 +3429,16 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
     let Some(controls) = world
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
-        .and_then(simple_dialog_controls)
+        .and_then(dialog_controls)
     else {
         return true;
     };
     if !controls.common.can_close_with_escape {
         return true;
     }
-    let action = controls.cancel.action_data.clone();
+    let action = controls
+        .cancel
+        .and_then(|cancel| cancel.action_data.clone());
     run_dialog_action(
         counters,
         world,
@@ -3188,9 +3459,9 @@ fn reveal_dialog_keyboard_focus(
     let Some((layout, focused)) = world
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
-        .and_then(simple_dialog_controls)
+        .and_then(dialog_controls)
         .and_then(|controls| {
-            let layout = dialog_body_scroll_layout(controls.common, surface_size, scroll_amount)?;
+            let layout = dialog_body_scroll_layout(&controls, surface_size, scroll_amount)?;
             let graph =
                 dialog_focus_graph_at_scroll(&controls, surface_size, layout.scroll_amount)?;
             let focused = dialog_focus_node(&graph.body, target)?.rectangle;
@@ -3228,7 +3499,7 @@ fn handle_focused_dialog_input_key(
     let control = world
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
-        .and_then(simple_dialog_controls)
+        .and_then(dialog_controls)
         .and_then(|controls| controls.common.input_data.get(index))
         .map(|input| input.control.clone());
     let selection = matches!(code, KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space);
@@ -3444,7 +3715,7 @@ fn focused_dialog_text_snapshot(world: &WorldStore) -> Option<FocusedDialogTextS
         .current_dialog()?
         .data
         .as_ref()
-        .and_then(simple_dialog_controls)?
+        .and_then(dialog_controls)?
         .common
         .input_data
         .get(edit.input_index)
@@ -3904,7 +4175,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
-    let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
+    let Some(controls) = dialog.data.as_ref().and_then(dialog_controls) else {
         return true;
     };
     if DialogWarningButtonLayout::new(&controls.common.title, surface_size)
@@ -3916,11 +4187,8 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     }
     let screen_width = surface_size.width.clamp(1, 512);
     let screen_height = surface_size.height.clamp(1, 512);
-    let scroll_layout = dialog_body_scroll_layout(
-        controls.common,
-        surface_size,
-        world.dialog_body_scroll_amount(),
-    );
+    let scroll_layout =
+        dialog_body_scroll_layout(&controls, surface_size, world.dialog_body_scroll_amount());
     if let Some(cursor_y) = scroll_layout.and_then(|scroll_layout| {
         let scrollbar = dialog_scrollbar_layout(scroll_layout)?;
         dialog_scrollbar_contains(
@@ -3947,7 +4215,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         screen_height,
     );
     let input_hit =
-        dialog_input_layouts_at_scroll(controls.common, surface_size, scroll_layout.scroll_amount)
+        dialog_input_layouts_at_scroll(&controls, surface_size, scroll_layout.scroll_amount)
             .and_then(|layouts| {
                 layouts.into_iter().find_map(|layout| {
                     let control = &controls.common.input_data.get(layout.index)?.control;
@@ -4014,38 +4282,37 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
                     }
                 })
             });
-    let body_focus_hit =
+    let body_navigation_hit =
         dialog_focus_graph_at_scroll(&controls, surface_size, scroll_layout.scroll_amount)
             .and_then(|graph| {
                 graph.body.into_iter().find_map(|node| {
-                    matches!(node.target, DialogFocusState::Body { .. })
-                        .then_some(node)
-                        .filter(|node| {
-                            cursor_in_body
-                                && dialog_widget_contains(
-                                    node.rectangle.x,
-                                    node.rectangle.y,
-                                    node.rectangle.width,
-                                    node.rectangle.height,
-                                    cursor_position,
-                                    surface_size,
-                                    screen_width,
-                                    screen_height,
-                                )
-                        })
-                        .map(|node| node.target)
+                    (cursor_in_body
+                        && dialog_widget_contains(
+                            node.rectangle.x,
+                            node.rectangle.y,
+                            node.rectangle.width,
+                            node.rectangle.height,
+                            cursor_position,
+                            surface_size,
+                            screen_width,
+                            screen_height,
+                        ))
+                    .then_some(node)
+                    .map(|node| node.target)
                 })
             });
-    let action = SimpleDialogLayout::new(
+    let footer_action = DialogFooterLayout::new(
         &controls
-            .actions
+            .footer_actions()
             .iter()
             .map(|action| action.width)
             .collect::<Vec<_>>(),
+        controls.footer_height,
         surface_size,
     )
     .and_then(|layout| layout.button_at(cursor_position, surface_size))
-    .and_then(|action_index| {
+    .and_then(|footer_index| {
+        let action_index = controls.body_action_count.saturating_add(footer_index);
         Some((
             action_index,
             controls.actions.get(action_index)?.action_data.clone(),
@@ -4114,11 +4381,31 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         }
         None => {}
     }
-    if let Some(target) = body_focus_hit {
+    if let Some(target) = body_navigation_hit {
+        let action = match target {
+            DialogFocusState::Action { index } => Some((
+                controls
+                    .actions
+                    .get(index)
+                    .and_then(|action| action.action_data.clone()),
+                controls.common.after_action.clone(),
+            )),
+            _ => None,
+        };
         world.focus_dialog_navigation_target(target, false);
+        if let Some((action, after_action)) = action {
+            run_dialog_action(
+                counters,
+                world,
+                net_commands,
+                clipboard,
+                action.as_ref(),
+                &after_action,
+            );
+        }
         return true;
     }
-    let Some((action_index, action, after_action)) = action else {
+    let Some((action_index, action, after_action)) = footer_action else {
         return true;
     };
     world.focus_dialog_navigation_target(
@@ -4348,7 +4635,7 @@ fn cycle_dialog_single_option(world: &mut WorldStore, index: usize, reverse: boo
         let Some(dialog) = world.current_dialog() else {
             return false;
         };
-        let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
+        let Some(controls) = dialog.data.as_ref().and_then(dialog_controls) else {
             return false;
         };
         let Some(input) = controls.common.input_data.get(index) else {
@@ -4392,16 +4679,14 @@ pub(crate) fn handle_dialog_mouse_wheel(
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
-    let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
+    let Some(controls) = dialog.data.as_ref().and_then(dialog_controls) else {
         return true;
     };
     let screen_width = surface_size.width.clamp(1, 512);
     let screen_height = surface_size.height.clamp(1, 512);
-    let Some(scroll_layout) = dialog_body_scroll_layout(
-        controls.common,
-        surface_size,
-        world.dialog_body_scroll_amount(),
-    ) else {
+    let Some(scroll_layout) =
+        dialog_body_scroll_layout(&controls, surface_size, world.dialog_body_scroll_amount())
+    else {
         return true;
     };
     if !dialog_body_viewport_contains(
@@ -4462,15 +4747,15 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
         let state = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(simple_dialog_controls)
+            .and_then(dialog_controls)
             .and_then(|controls| {
                 let scroll_layout = dialog_body_scroll_layout(
-                    controls.common,
+                    &controls,
                     surface_size,
                     world.dialog_body_scroll_amount(),
                 )?;
                 let layout = dialog_input_layouts_at_scroll(
-                    controls.common,
+                    &controls,
                     surface_size,
                     scroll_layout.scroll_amount,
                 )?
@@ -4545,10 +4830,10 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
         let Some((layout, scrollbar, cursor_y)) = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(simple_dialog_controls)
+            .and_then(dialog_controls)
             .and_then(|controls| {
                 let layout = dialog_body_scroll_layout(
-                    controls.common,
+                    &controls,
                     surface_size,
                     world.dialog_body_scroll_amount(),
                 )?;
@@ -4583,15 +4868,15 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
         let layout = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(simple_dialog_controls)
+            .and_then(dialog_controls)
             .and_then(|controls| {
                 let scroll_layout = dialog_body_scroll_layout(
-                    controls.common,
+                    &controls,
                     surface_size,
                     world.dialog_body_scroll_amount(),
                 )?;
                 let layouts = dialog_input_layouts_at_scroll(
-                    controls.common,
+                    &controls,
                     surface_size,
                     scroll_layout.scroll_amount,
                 )?;
@@ -4630,18 +4915,14 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
     let layout = world
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
-        .and_then(simple_dialog_controls)
+        .and_then(dialog_controls)
         .and_then(|controls| {
             let scroll_layout = dialog_body_scroll_layout(
-                controls.common,
+                &controls,
                 surface_size,
                 world.dialog_body_scroll_amount(),
             )?;
-            dialog_input_layouts_at_scroll(
-                controls.common,
-                surface_size,
-                scroll_layout.scroll_amount,
-            )
+            dialog_input_layouts_at_scroll(&controls, surface_size, scroll_layout.scroll_amount)
         })
         .and_then(|layouts| layouts.into_iter().find(|layout| layout.index == index));
     let Some(layout) = layout else {
@@ -4797,7 +5078,7 @@ fn bound_dialog_input_values(
         .current_dialog()?
         .data
         .as_ref()
-        .and_then(simple_dialog_controls)?;
+        .and_then(dialog_controls)?;
     let values = world.current_dialog_input_values();
     let mut bound = BTreeMap::new();
     for (index, input) in controls.common.input_data.iter().enumerate() {
@@ -5466,7 +5747,7 @@ mod tests {
             &world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap()
                 .common
                 .title,
@@ -5612,7 +5893,7 @@ mod tests {
 
     #[test]
     fn dialog_focus_graph_matches_warning_body_input_and_footer_hierarchy() {
-        assert_eq!(dialog_content_y(240, 205), 33);
+        assert_eq!(dialog_content_y(240, 205, FOOTER_HEIGHT), 33);
         let plain = NbtSummaryValue::Compound(vec![
             entry(
                 "type",
@@ -5679,7 +5960,7 @@ mod tests {
         let controls = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(simple_dialog_controls)
+            .and_then(dialog_controls)
             .unwrap();
         let graph = dialog_focus_graph(&controls, surface_size).unwrap();
         let expected = vec![
@@ -5944,9 +6225,9 @@ mod tests {
         let controls = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(simple_dialog_controls)
+            .and_then(dialog_controls)
             .unwrap();
-        let layout = dialog_body_scroll_layout(controls.common, surface_size, 0.0).unwrap();
+        let layout = dialog_body_scroll_layout(&controls, surface_size, 0.0).unwrap();
         assert_eq!(
             layout.rectangle,
             DialogFocusRectangle {
@@ -6108,7 +6389,7 @@ mod tests {
         let controls = dialog
             .data
             .as_ref()
-            .and_then(simple_dialog_controls)
+            .and_then(dialog_controls)
             .unwrap_or_else(|| panic!("dialog decode failed: {:?}", dialog.semantic_error));
         let item_focus = dialog_focus_node(
             &dialog_focus_graph(&controls, surface_size).unwrap().body,
@@ -6359,6 +6640,287 @@ mod tests {
     }
 
     #[test]
+    fn multi_action_projects_scrolled_button_grid_focus_tooltips_and_exit() {
+        let dynamic_button = NbtSummaryValue::Compound(vec![
+            entry("label", NbtSummaryValue::String("One".to_string())),
+            entry("tooltip", NbtSummaryValue::String("First tip".to_string())),
+            entry("width", NbtSummaryValue::Int(80)),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:dynamic/custom".to_string()),
+                    ),
+                    entry("id", NbtSummaryValue::String("example:one".to_string())),
+                ]),
+            ),
+        ]);
+        let mut world = world_with_multi_action(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "inputs",
+                NbtSummaryValue::List(vec![boolean_input(
+                    "enabled", "Enabled", false, "yes", "no",
+                )]),
+            ),
+            entry(
+                "actions",
+                NbtSummaryValue::List(vec![
+                    dynamic_button,
+                    custom_button("Two", None, 100, "example:two", None),
+                    custom_button("Three", None, 60, "example:three", None),
+                    custom_button("Four", Some("Fourth tip"), 60, "example:four", None),
+                    custom_button("Five", None, 120, "example:five", None),
+                ]),
+            ),
+            entry("columns", NbtSummaryValue::Int(3)),
+            entry(
+                "exit_action",
+                custom_button("Exit", Some("Exit tip"), 150, "example:exit", None),
+            ),
+        ]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let controls = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(dialog_controls)
+            .unwrap();
+        assert_eq!(controls.body_action_count, 5);
+        assert_eq!(controls.footer_height, FOOTER_HEIGHT);
+        let grid = dialog_body_action_grid_layout(&controls).unwrap();
+        assert_eq!((grid.width, grid.height), (244, 42));
+        assert_eq!(
+            grid.buttons,
+            vec![
+                DialogButtonLayout {
+                    x: 0,
+                    y: 0,
+                    width: 80,
+                },
+                DialogButtonLayout {
+                    x: 82,
+                    y: 0,
+                    width: 100,
+                },
+                DialogButtonLayout {
+                    x: 184,
+                    y: 0,
+                    width: 60,
+                },
+                DialogButtonLayout {
+                    x: 31,
+                    y: 22,
+                    width: 60,
+                },
+                DialogButtonLayout {
+                    x: 93,
+                    y: 22,
+                    width: 120,
+                },
+            ]
+        );
+        let graph = dialog_focus_graph(&controls, surface_size).unwrap();
+        assert_eq!(
+            graph.tab,
+            vec![
+                DialogFocusState::WarningButton,
+                DialogFocusState::Input { index: 0 },
+                DialogFocusState::Action { index: 0 },
+                DialogFocusState::Action { index: 1 },
+                DialogFocusState::Action { index: 2 },
+                DialogFocusState::Action { index: 3 },
+                DialogFocusState::Action { index: 4 },
+                DialogFocusState::Action { index: 5 },
+            ]
+        );
+
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState {
+                cursor_position: Some((70, 113)),
+                ..Default::default()
+            },
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert_eq!(
+            scroll_area
+                .background_layers
+                .iter()
+                .filter(|layer| matches!(
+                    layer.texture,
+                    HudInventoryBackgroundTexture::WidgetButton
+                        | HudInventoryBackgroundTexture::WidgetButtonHighlighted
+                ))
+                .count(),
+            15
+        );
+        let four = scroll_area
+            .text_labels
+            .iter()
+            .find(|label| label.text == "Four")
+            .unwrap();
+        assert_eq!(four.y, 118);
+        assert_eq!(four.x + i32::try_from(four.width).unwrap() / 2, 99);
+        assert_eq!(screen.background_layers[2].x, 85);
+        assert_eq!(screen.background_layers[2].y, 213);
+        assert_eq!(screen.background_layers[2].width, 150);
+        assert_eq!(screen.tooltip.as_ref().unwrap().lines[0].text, "Fourth tip");
+
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(2);
+        let net_commands = Some(tx);
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(130.0, 64.0)),
+            surface_size,
+        ));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(39.0, 91.0)),
+            surface_size,
+        ));
+        assert_eq!(
+            world.dialog_focus(),
+            Some(DialogFocusState::Action { index: 0 })
+        );
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::CustomClickAction(CustomClickAction {
+                id,
+                payload: Some(NbtSummaryValue::Compound(entries)),
+            }) if id == "example:one"
+                && entries == vec![entry("enabled", NbtSummaryValue::Byte(1))]
+        ));
+        assert!(world.current_dialog().is_some());
+
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert!(world.current_dialog().is_none());
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::CustomClickAction(CustomClickAction { id, .. }) if id == "example:exit"
+        ));
+        assert_eq!(counters.custom_click_action_commands_queued, 2);
+    }
+
+    #[test]
+    fn multi_action_without_exit_uses_five_pixel_footer_and_reveals_grid_focus() {
+        let actions = (0..9)
+            .map(|index| {
+                custom_button(
+                    &format!("Action {index}"),
+                    None,
+                    100,
+                    &format!("example:{index}"),
+                    None,
+                )
+            })
+            .collect::<Vec<_>>();
+        let mut world = world_with_multi_action(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry("actions", NbtSummaryValue::List(actions)),
+            entry("columns", NbtSummaryValue::Int(1)),
+        ]);
+        let surface_size = PhysicalSize::new(320, 120);
+        let dialog = world.current_dialog().unwrap();
+        let controls = dialog
+            .data
+            .as_ref()
+            .and_then(dialog_controls)
+            .unwrap_or_else(|| panic!("invalid multi-action dialog: {:?}", dialog.semantic_error));
+        assert_eq!(controls.footer_height, 5);
+        assert!(controls.footer_actions().is_empty());
+        let scroll = dialog_body_scroll_layout(&controls, surface_size, 0.0).unwrap();
+        assert_eq!(scroll.rectangle.height, 82);
+        assert_eq!(scroll.content_height, 196);
+        assert_eq!(scroll.max_scroll, 114);
+
+        assert!(world.focus_dialog_navigation_target(DialogFocusState::Action { index: 8 }, true));
+        assert!(reveal_dialog_keyboard_focus(
+            &mut world,
+            DialogFocusState::Action { index: 8 },
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_amount(), 114.0);
+
+        let mut counters = NetCounters::default();
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert!(world.current_dialog().is_none());
+    }
+
+    #[test]
+    fn multi_action_large_column_count_preserves_partial_row_without_large_allocation() {
+        let world = world_with_multi_action(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "actions",
+                NbtSummaryValue::List(vec![
+                    custom_button("A", None, 1, "example:a", None),
+                    custom_button("B", None, 1, "example:b", None),
+                ]),
+            ),
+            entry("columns", NbtSummaryValue::Int(100)),
+        ]);
+        let controls = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(dialog_controls)
+            .unwrap();
+        assert_eq!(
+            dialog_body_action_grid_layout(&controls).unwrap(),
+            DialogBodyActionGridLayout {
+                width: 198,
+                height: 20,
+                buttons: vec![
+                    DialogButtonLayout {
+                        x: 97,
+                        y: 0,
+                        width: 1,
+                    },
+                    DialogButtonLayout {
+                        x: 100,
+                        y: 0,
+                        width: 1,
+                    },
+                ],
+            }
+        );
+    }
+
+    #[test]
     fn boolean_input_renders_toggles_and_binds_dynamic_actions() {
         let mut world = world_with_notice(vec![
             entry("pause", NbtSummaryValue::Byte(0)),
@@ -6398,9 +6960,9 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap();
-            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+            dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
         let input_cursor = (
             input_layout.x.saturating_add(1),
@@ -6614,9 +7176,9 @@ mod tests {
             let controls = dialog
                 .data
                 .as_ref()
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap_or_else(|| panic!("invalid range dialog: {:?}", dialog.semantic_error));
-            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+            dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
         let screen = hud_dialog_screen(
             &world,
@@ -6959,9 +7521,9 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap();
-            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+            dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
         let input_cursor = (input_layout.x + 1, input_layout.y + 1);
         let screen = hud_dialog_screen(
@@ -7242,9 +7804,9 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap();
-            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+            dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
         let box_layout = dialog_single_line_text_box_layout(input_layout, true);
         let screen = hud_dialog_screen(
@@ -7561,9 +8123,9 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap();
-            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+            dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
         let box_layout = dialog_single_line_text_box_layout(input_layout, true);
         let preedit = DialogImePreeditHudState {
@@ -7672,9 +8234,9 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap();
-            let input_layout = dialog_input_layouts(controls.common, surface_size).unwrap()[0];
+            let input_layout = dialog_input_layouts(&controls, surface_size).unwrap()[0];
             dialog_multiline_text_box_layout(input_layout, false)
         };
         let preedit = DialogImePreeditHudState {
@@ -7725,9 +8287,9 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap();
-            let input_layout = dialog_input_layouts(controls.common, surface_size).unwrap()[0];
+            let input_layout = dialog_input_layouts(&controls, surface_size).unwrap()[0];
             (
                 input_layout,
                 dialog_multiline_text_box_layout(input_layout, true),
@@ -7737,7 +8299,7 @@ mod tests {
             &world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap(),
             surface_size,
         )
@@ -7900,9 +8462,9 @@ mod tests {
             let controls = single
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap();
-            let layout = dialog_input_layouts(controls.common, surface_size).unwrap()[0];
+            let layout = dialog_input_layouts(&controls, surface_size).unwrap()[0];
             dialog_single_line_text_box_layout(layout, false)
         };
         let single_first = Some(PhysicalPosition::new(
@@ -7976,9 +8538,9 @@ mod tests {
             let controls = multiline
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(simple_dialog_controls)
+                .and_then(dialog_controls)
                 .unwrap();
-            let layout = dialog_input_layouts(controls.common, surface_size).unwrap()[0];
+            let layout = dialog_input_layouts(&controls, surface_size).unwrap()[0];
             dialog_multiline_text_box_layout(layout, false)
         };
         let multiline_first = Some(PhysicalPosition::new(
@@ -8653,6 +9215,24 @@ mod tests {
                 NbtSummaryValue::String("minecraft:confirmation".to_string()),
             ),
             entry("title", NbtSummaryValue::String("Confirm".to_string())),
+        ];
+        dialog.append(&mut fields);
+        let mut world = WorldStore::new();
+        world.apply_show_dialog(ShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(dialog),
+            },
+        });
+        world
+    }
+
+    fn world_with_multi_action(mut fields: Vec<NbtSummaryEntry>) -> WorldStore {
+        let mut dialog = vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:multi_action".to_string()),
+            ),
+            entry("title", NbtSummaryValue::String("Actions".to_string())),
         ];
         dialog.append(&mut fields);
         let mut world = WorldStore::new();

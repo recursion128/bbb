@@ -739,6 +739,16 @@ impl WorldStore {
                     DialogFocusState::Action { index } => match data {
                         DialogDataState::Notice { .. } => index == 0,
                         DialogDataState::Confirmation { .. } => index < 2,
+                        DialogDataState::MultiAction {
+                            actions,
+                            exit_action,
+                            ..
+                        } => {
+                            index
+                                < actions
+                                    .len()
+                                    .saturating_add(usize::from(exit_action.is_some()))
+                        }
                         _ => false,
                     },
                 };
