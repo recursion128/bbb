@@ -376,6 +376,51 @@ impl WorldStore {
         true
     }
 
+    /// Opens one generated DialogList button target while preserving whether
+    /// its containing dialog was decoded with registry or context-free rules.
+    pub fn show_dialog_list_entry(&mut self, index: usize) -> bool {
+        let Some((context_free, holder_kind, registry_id, dialog)) =
+            self.current_dialog().and_then(|current| {
+                let DialogDataState::DialogList { dialogs, .. } = current.data.as_ref()? else {
+                    return None;
+                };
+                let entry = dialogs.entries.get(index)?;
+                Some((
+                    current.holder_kind == "context_free",
+                    entry.holder_kind.clone(),
+                    entry.registry_id,
+                    entry.dialog.clone(),
+                ))
+            })
+        else {
+            return false;
+        };
+        let target = match holder_kind.as_str() {
+            "reference" => {
+                let Some(registry_id) = registry_id else {
+                    return false;
+                };
+                self.dialog_state_from_reference(registry_id)
+            }
+            "direct" => {
+                let Some(dialog) = dialog else {
+                    return false;
+                };
+                if context_free {
+                    DialogState::context_free(dialog)
+                } else {
+                    DialogState::direct(dialog, &self.registries)
+                }
+            }
+            _ => return false,
+        };
+        if target.data.is_none() {
+            return false;
+        }
+        self.client_ui.show_dialog(target);
+        true
+    }
+
     pub fn close_dialog_waiting_response(&mut self) -> bool {
         self.client_ui.close_dialog_waiting_response()
     }
@@ -746,6 +791,17 @@ impl WorldStore {
                         } => {
                             index
                                 < actions
+                                    .len()
+                                    .saturating_add(usize::from(exit_action.is_some()))
+                        }
+                        DialogDataState::DialogList {
+                            dialogs,
+                            exit_action,
+                            ..
+                        } => {
+                            index
+                                < dialogs
+                                    .entries
                                     .len()
                                     .saturating_add(usize::from(exit_action.is_some()))
                         }
@@ -1184,45 +1240,48 @@ impl WorldStore {
     fn dialog_state_from_packet(&self, packet: ProtocolShowDialog) -> DialogState {
         match packet.dialog {
             DialogHolder::Reference { registry_id } => {
-                let Some(entry) = self.registry_entry_by_holder_id(DIALOG_REGISTRY, registry_id)
-                else {
-                    return DialogState::unresolved_reference(
-                        registry_id,
-                        None,
-                        format!("missing {DIALOG_REGISTRY} holder {registry_id}"),
-                    );
-                };
-                let resource_id = entry.id.clone();
-                let Some(raw_data) = entry.raw_data() else {
-                    return DialogState::unresolved_reference(
-                        registry_id,
-                        Some(resource_id.clone()),
-                        format!("dialog registry entry {resource_id} has no synchronized payload"),
-                    );
-                };
-                match decode_nbt_summary(raw_data) {
-                    Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => {
-                        DialogState::reference(registry_id, resource_id, dialog, &self.registries)
-                    }
-                    Ok(Some(_)) => DialogState::unresolved_reference(
-                        registry_id,
-                        Some(resource_id.clone()),
-                        format!("dialog registry entry {resource_id} root is not a compound tag"),
-                    ),
-                    Ok(None) => DialogState::unresolved_reference(
-                        registry_id,
-                        Some(resource_id.clone()),
-                        format!("dialog registry entry {resource_id} is an end tag"),
-                    ),
-                    Err(error) => DialogState::unresolved_reference(
-                        registry_id,
-                        Some(resource_id.clone()),
-                        format!("invalid dialog registry entry {resource_id}: {error}"),
-                    ),
-                }
+                self.dialog_state_from_reference(registry_id)
             }
             DialogHolder::Direct { dialog } => DialogState::direct(dialog, &self.registries),
             DialogHolder::ContextFree { dialog } => DialogState::context_free(dialog),
+        }
+    }
+
+    fn dialog_state_from_reference(&self, registry_id: i32) -> DialogState {
+        let Some(entry) = self.registry_entry_by_holder_id(DIALOG_REGISTRY, registry_id) else {
+            return DialogState::unresolved_reference(
+                registry_id,
+                None,
+                format!("missing {DIALOG_REGISTRY} holder {registry_id}"),
+            );
+        };
+        let resource_id = entry.id.clone();
+        let Some(raw_data) = entry.raw_data() else {
+            return DialogState::unresolved_reference(
+                registry_id,
+                Some(resource_id.clone()),
+                format!("dialog registry entry {resource_id} has no synchronized payload"),
+            );
+        };
+        match decode_nbt_summary(raw_data) {
+            Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => {
+                DialogState::reference(registry_id, resource_id, dialog, &self.registries)
+            }
+            Ok(Some(_)) => DialogState::unresolved_reference(
+                registry_id,
+                Some(resource_id.clone()),
+                format!("dialog registry entry {resource_id} root is not a compound tag"),
+            ),
+            Ok(None) => DialogState::unresolved_reference(
+                registry_id,
+                Some(resource_id.clone()),
+                format!("dialog registry entry {resource_id} is an end tag"),
+            ),
+            Err(error) => DialogState::unresolved_reference(
+                registry_id,
+                Some(resource_id.clone()),
+                format!("invalid dialog registry entry {resource_id}: {error}"),
+            ),
         }
     }
 }
@@ -1346,6 +1405,51 @@ mod tests {
         assert_eq!(counters.low_disk_space_warnings, 1);
         assert_eq!(counters.show_dialog_packets, 2);
         assert_eq!(counters.clear_dialog_packets, 1);
+    }
+
+    #[test]
+    fn dialog_list_entry_opens_registry_target_without_counting_a_server_packet() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![crate::RegistryPacketEntry::with_raw_data(
+                "example:target",
+                dialog_nbt("minecraft:notice"),
+            )],
+        );
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "type".to_string(),
+                        value: NbtSummaryValue::String("minecraft:dialog_list".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "title".to_string(),
+                        value: NbtSummaryValue::String("Menu".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "dialogs".to_string(),
+                        value: NbtSummaryValue::String("example:target".to_string()),
+                    },
+                ]),
+            },
+        });
+        assert!(store.focus_dialog_navigation_target(DialogFocusState::Action { index: 0 }, false));
+        assert!(!store.show_dialog_list_entry(1));
+
+        assert!(store.show_dialog_list_entry(0));
+        let target = store.current_dialog().unwrap();
+        assert_eq!(target.holder_kind, "reference");
+        assert_eq!(target.registry_id, Some(0));
+        assert_eq!(target.resource_id.as_deref(), Some("example:target"));
+        assert!(matches!(
+            target.data,
+            Some(crate::DialogDataState::Notice { ref common, .. }) if common.title.text == "Title"
+        ));
+        assert_eq!(store.counters().show_dialog_packets, 1);
+        assert_eq!(store.dialog_focus(), None);
     }
 
     #[test]

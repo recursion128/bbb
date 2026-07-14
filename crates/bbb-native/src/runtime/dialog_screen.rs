@@ -536,9 +536,54 @@ impl DialogWarningScreenLayout {
     }
 }
 
+#[derive(Clone, Copy)]
+enum DialogControlAction<'a> {
+    Button(&'a DialogButtonState),
+    DialogListEntry {
+        index: usize,
+        label: &'a DialogTextState,
+        width: i32,
+    },
+}
+
+impl<'a> DialogControlAction<'a> {
+    fn width(self) -> i32 {
+        match self {
+            Self::Button(button) => button.width,
+            Self::DialogListEntry { width, .. } => width,
+        }
+    }
+
+    fn label(self) -> &'a DialogTextState {
+        match self {
+            Self::Button(button) => &button.label,
+            Self::DialogListEntry { label, .. } => label,
+        }
+    }
+
+    fn tooltip(self) -> Option<&'a DialogTextState> {
+        match self {
+            Self::Button(button) => button.tooltip.as_ref(),
+            Self::DialogListEntry { .. } => None,
+        }
+    }
+
+    fn activation(self) -> DialogControlActivation {
+        match self {
+            Self::Button(button) => DialogControlActivation::Action(button.action_data.clone()),
+            Self::DialogListEntry { index, .. } => DialogControlActivation::DialogListEntry(index),
+        }
+    }
+}
+
+enum DialogControlActivation {
+    Action(Option<DialogActionState>),
+    DialogListEntry(usize),
+}
+
 struct DialogControls<'a> {
     common: &'a CommonDialogDataState,
-    actions: Vec<&'a DialogButtonState>,
+    actions: Vec<DialogControlAction<'a>>,
     body_action_count: usize,
     body_action_columns: i32,
     cancel: Option<&'a DialogButtonState>,
@@ -546,11 +591,11 @@ struct DialogControls<'a> {
 }
 
 impl DialogControls<'_> {
-    fn body_actions(&self) -> &[&DialogButtonState] {
+    fn body_actions(&self) -> &[DialogControlAction<'_>] {
         &self.actions[..self.body_action_count]
     }
 
-    fn footer_actions(&self) -> &[&DialogButtonState] {
+    fn footer_actions(&self) -> &[DialogControlAction<'_>] {
         &self.actions[self.body_action_count..]
     }
 }
@@ -559,7 +604,7 @@ fn dialog_controls(data: &DialogDataState) -> Option<DialogControls<'_>> {
     match data {
         DialogDataState::Notice { common, action } => Some(DialogControls {
             common,
-            actions: vec![action],
+            actions: vec![DialogControlAction::Button(action)],
             body_action_count: 0,
             body_action_columns: 1,
             cancel: Some(action),
@@ -567,7 +612,10 @@ fn dialog_controls(data: &DialogDataState) -> Option<DialogControls<'_>> {
         }),
         DialogDataState::Confirmation { common, yes, no } => Some(DialogControls {
             common,
-            actions: vec![yes, no],
+            actions: vec![
+                DialogControlAction::Button(yes),
+                DialogControlAction::Button(no),
+            ],
             body_action_count: 0,
             body_action_columns: 1,
             cancel: Some(no),
@@ -579,12 +627,46 @@ fn dialog_controls(data: &DialogDataState) -> Option<DialogControls<'_>> {
             exit_action,
             columns,
         } => {
-            let mut all_actions = actions.iter().collect::<Vec<_>>();
-            all_actions.extend(exit_action.iter());
+            let mut all_actions = actions
+                .iter()
+                .map(DialogControlAction::Button)
+                .collect::<Vec<_>>();
+            all_actions.extend(exit_action.iter().map(DialogControlAction::Button));
             Some(DialogControls {
                 common,
                 actions: all_actions,
                 body_action_count: actions.len(),
+                body_action_columns: *columns,
+                cancel: exit_action.as_ref(),
+                footer_height: if exit_action.is_some() {
+                    FOOTER_HEIGHT
+                } else {
+                    5
+                },
+            })
+        }
+        DialogDataState::DialogList {
+            common,
+            dialogs,
+            exit_action,
+            columns,
+            button_width,
+        } => {
+            let mut all_actions = dialogs
+                .entries
+                .iter()
+                .enumerate()
+                .map(|(index, entry)| DialogControlAction::DialogListEntry {
+                    index,
+                    label: &entry.external_title,
+                    width: *button_width,
+                })
+                .collect::<Vec<_>>();
+            all_actions.extend(exit_action.iter().map(DialogControlAction::Button));
+            Some(DialogControls {
+                common,
+                actions: all_actions,
+                body_action_count: dialogs.entries.len(),
                 body_action_columns: *columns,
                 cancel: exit_action.as_ref(),
                 footer_height: if exit_action.is_some() {
@@ -609,7 +691,7 @@ fn dialog_body_action_grid_layout(
     let columns = usize::try_from(controls.body_action_columns).ok()?.max(1);
     let widths = actions
         .iter()
-        .map(|action| i32::try_from(u32::try_from(action.width).ok()?).ok())
+        .map(|action| i32::try_from(u32::try_from(action.width()).ok()?).ok())
         .collect::<Option<Vec<_>>>()?;
     if columns > count {
         let row_width = widths.iter().copied().fold(
@@ -1083,7 +1165,7 @@ fn dialog_focus_graph_at_scroll(
     let container_height = content.height.min(
         screen_height_i32
             .saturating_sub(HEADER_HEIGHT)
-            .saturating_sub(FOOTER_HEIGHT),
+            .saturating_sub(controls.footer_height),
     );
     let container = DialogBodyFocusContainer {
         rectangle: DialogFocusRectangle {
@@ -1113,7 +1195,7 @@ fn dialog_focus_graph_at_scroll(
         &controls
             .footer_actions()
             .iter()
-            .map(|action| action.width)
+            .map(|action| action.width())
             .collect::<Vec<_>>(),
         controls.footer_height,
         surface_size,
@@ -2137,7 +2219,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
         &controls
             .footer_actions()
             .iter()
-            .map(|action| action.width)
+            .map(|action| action.width())
             .collect::<Vec<_>>(),
         controls.footer_height,
         surface_size,
@@ -2643,7 +2725,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
             );
             push_centered_text_label(
                 &mut text_labels,
-                &action.label,
+                action.label(),
                 button.x + i32::try_from(button.width).unwrap_or(i32::MAX) / 2,
                 button.y + BUTTON_TEXT_Y_OFFSET,
             );
@@ -2656,7 +2738,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
     for (action, button) in controls.footer_actions().iter().zip(&layout.buttons) {
         push_centered_text_label(
             &mut text_labels,
-            &action.label,
+            action.label(),
             button.x + i32::try_from(button.width).unwrap_or(i32::MAX) / 2,
             button.y + BUTTON_TEXT_Y_OFFSET,
         );
@@ -2704,7 +2786,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
     }));
     let highlighted_action = highlighted_body_action.or(highlighted_footer_button);
     let action_tooltip = highlighted_action.or(focused_action).and_then(|index| {
-        let tooltip = controls.actions.get(index)?.tooltip.as_ref()?;
+        let tooltip = controls.actions.get(index)?.tooltip()?;
         let button = if index < controls.body_action_count {
             body_action_buttons.get(index)?
         } else {
@@ -3370,17 +3452,17 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
                     .and_then(dialog_controls)
                     .and_then(|controls| {
                         Some((
-                            controls.actions.get(index)?.action_data.clone(),
+                            controls.actions.get(index)?.activation(),
                             controls.common.after_action.clone(),
                         ))
                     });
-                if let Some((action, after_action)) = action {
-                    run_dialog_action(
+                if let Some((activation, after_action)) = action {
+                    run_dialog_control_activation(
                         counters,
                         world,
                         net_commands,
                         clipboard,
-                        action.as_ref(),
+                        activation,
                         &after_action,
                     );
                 }
@@ -4305,7 +4387,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         &controls
             .footer_actions()
             .iter()
-            .map(|action| action.width)
+            .map(|action| action.width())
             .collect::<Vec<_>>(),
         controls.footer_height,
         surface_size,
@@ -4315,7 +4397,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         let action_index = controls.body_action_count.saturating_add(footer_index);
         Some((
             action_index,
-            controls.actions.get(action_index)?.action_data.clone(),
+            controls.actions.get(action_index)?.activation(),
             controls.common.after_action.clone(),
         ))
     });
@@ -4383,23 +4465,20 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     }
     if let Some(target) = body_navigation_hit {
         let action = match target {
-            DialogFocusState::Action { index } => Some((
-                controls
-                    .actions
-                    .get(index)
-                    .and_then(|action| action.action_data.clone()),
-                controls.common.after_action.clone(),
-            )),
+            DialogFocusState::Action { index } => controls
+                .actions
+                .get(index)
+                .map(|action| (action.activation(), controls.common.after_action.clone())),
             _ => None,
         };
         world.focus_dialog_navigation_target(target, false);
-        if let Some((action, after_action)) = action {
-            run_dialog_action(
+        if let Some((activation, after_action)) = action {
+            run_dialog_control_activation(
                 counters,
                 world,
                 net_commands,
                 clipboard,
-                action.as_ref(),
+                activation,
                 &after_action,
             );
         }
@@ -4414,12 +4493,12 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         },
         false,
     );
-    run_dialog_action(
+    run_dialog_control_activation(
         counters,
         world,
         net_commands,
         clipboard,
-        action.as_ref(),
+        action,
         &after_action,
     );
     true
@@ -4967,6 +5046,27 @@ fn set_dialog_number_range_from_cursor(
                 .saturating_sub(i32::try_from(SLIDER_HANDLE_WIDTH).unwrap_or(i32::MAX)),
         );
     world.set_dialog_number_range_slider_value(layout.index, slider_value)
+}
+
+fn run_dialog_control_activation(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
+    activation: DialogControlActivation,
+    after_action: &str,
+) -> bool {
+    match activation {
+        DialogControlActivation::Action(action) => run_dialog_action(
+            counters,
+            world,
+            net_commands,
+            clipboard,
+            action.as_ref(),
+            after_action,
+        ),
+        DialogControlActivation::DialogListEntry(index) => world.show_dialog_list_entry(index),
+    }
 }
 
 fn run_dialog_action(
@@ -6918,6 +7018,198 @@ mod tests {
                 ],
             }
         );
+    }
+
+    #[test]
+    fn dialog_list_projects_external_titles_uniform_grid_and_opens_direct_entry() {
+        let targets = (0..5)
+            .map(|index| {
+                notice_dialog(
+                    &format!("Internal {index}"),
+                    Some(&format!("External {index}")),
+                )
+            })
+            .collect::<Vec<_>>();
+        let mut world = world_with_dialog_list(
+            vec![
+                entry("dialogs", NbtSummaryValue::List(targets)),
+                entry("columns", NbtSummaryValue::Int(3)),
+                entry("button_width", NbtSummaryValue::Int(70)),
+                entry(
+                    "exit_action",
+                    custom_button("Back", Some("Exit tip"), 90, "example:back", None),
+                ),
+            ],
+            false,
+        );
+        let surface_size = PhysicalSize::new(320, 240);
+        let controls = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(dialog_controls)
+            .unwrap();
+        assert_eq!(controls.body_action_count, 5);
+        assert_eq!(controls.footer_height, FOOTER_HEIGHT);
+        assert!(controls
+            .body_actions()
+            .iter()
+            .all(|action| action.width() == 70 && action.tooltip().is_none()));
+        assert_eq!(controls.body_actions()[3].label().text, "External 3");
+        assert_eq!(
+            dialog_body_action_grid_layout(&controls).unwrap(),
+            DialogBodyActionGridLayout {
+                width: 214,
+                height: 42,
+                buttons: vec![
+                    DialogButtonLayout {
+                        x: 0,
+                        y: 0,
+                        width: 70,
+                    },
+                    DialogButtonLayout {
+                        x: 72,
+                        y: 0,
+                        width: 70,
+                    },
+                    DialogButtonLayout {
+                        x: 144,
+                        y: 0,
+                        width: 70,
+                    },
+                    DialogButtonLayout {
+                        x: 36,
+                        y: 22,
+                        width: 70,
+                    },
+                    DialogButtonLayout {
+                        x: 108,
+                        y: 22,
+                        width: 70,
+                    },
+                ],
+            }
+        );
+        assert_eq!(
+            dialog_focus_graph(&controls, surface_size).unwrap().tab,
+            vec![
+                DialogFocusState::WarningButton,
+                DialogFocusState::Action { index: 0 },
+                DialogFocusState::Action { index: 1 },
+                DialogFocusState::Action { index: 2 },
+                DialogFocusState::Action { index: 3 },
+                DialogFocusState::Action { index: 4 },
+                DialogFocusState::Action { index: 5 },
+            ]
+        );
+
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState {
+                cursor_position: Some((54, 64)),
+                ..Default::default()
+            },
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        let scroll_area = screen.scroll_area.as_ref().unwrap();
+        assert!(scroll_area
+            .text_labels
+            .iter()
+            .any(|label| label.text == "External 0"));
+        assert_eq!(
+            scroll_area
+                .background_layers
+                .iter()
+                .filter(|layer| matches!(
+                    layer.texture,
+                    HudInventoryBackgroundTexture::WidgetButton
+                        | HudInventoryBackgroundTexture::WidgetButtonHighlighted
+                ))
+                .count(),
+            15
+        );
+        assert_eq!(screen.tooltip, None);
+
+        let mut counters = NetCounters::default();
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(54.0, 64.0)),
+            surface_size,
+        ));
+        let target = world.current_dialog().unwrap();
+        assert_eq!(target.holder_kind, "direct");
+        assert!(matches!(
+            target.data,
+            Some(DialogDataState::Notice { ref common, .. }) if common.title.text == "Internal 0"
+        ));
+        assert_eq!(world.counters().show_dialog_packets, 1);
+        assert_eq!(world.dialog_focus(), None);
+        assert_eq!(world.dialog_body_scroll_amount(), 0.0);
+    }
+
+    #[test]
+    fn context_free_dialog_list_without_exit_reveals_and_opens_entry() {
+        let targets = (0..9)
+            .map(|index| notice_dialog(&format!("Target {index}"), None))
+            .collect::<Vec<_>>();
+        let mut world = world_with_dialog_list(
+            vec![
+                entry("dialogs", NbtSummaryValue::List(targets)),
+                entry("columns", NbtSummaryValue::Int(1)),
+                entry("button_width", NbtSummaryValue::Int(100)),
+            ],
+            true,
+        );
+        let surface_size = PhysicalSize::new(320, 120);
+        let controls = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(dialog_controls)
+            .unwrap();
+        assert_eq!(controls.footer_height, 5);
+        assert!(controls.footer_actions().is_empty());
+        let scroll = dialog_body_scroll_layout(&controls, surface_size, 0.0).unwrap();
+        assert_eq!(scroll.rectangle.height, 82);
+        assert_eq!(scroll.content_height, 196);
+        assert_eq!(scroll.max_scroll, 114);
+        let graph = dialog_focus_graph(&controls, surface_size).unwrap();
+        let DialogTopFocusNode::Body(container) = graph.top[0] else {
+            panic!("body container must lead the top-level focus graph");
+        };
+        assert_eq!(container.rectangle.height, 82);
+
+        let target = DialogFocusState::Action { index: 8 };
+        assert!(world.focus_dialog_navigation_target(target, true));
+        assert!(reveal_dialog_keyboard_focus(
+            &mut world,
+            target,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_body_scroll_amount(), 114.0);
+        let mut counters = NetCounters::default();
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Enter),
+            ElementState::Pressed,
+        ));
+        let target = world.current_dialog().unwrap();
+        assert_eq!(target.holder_kind, "context_free");
+        assert!(matches!(
+            target.data,
+            Some(DialogDataState::Notice { ref common, .. }) if common.title.text == "Target 8"
+        ));
     }
 
     #[test]
@@ -9242,6 +9534,44 @@ mod tests {
             },
         });
         world
+    }
+
+    fn world_with_dialog_list(mut fields: Vec<NbtSummaryEntry>, context_free: bool) -> WorldStore {
+        let mut dialog = vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:dialog_list".to_string()),
+            ),
+            entry("title", NbtSummaryValue::String("Menu".to_string())),
+        ];
+        dialog.append(&mut fields);
+        let dialog = NbtSummaryValue::Compound(dialog);
+        let mut world = WorldStore::new();
+        world.apply_show_dialog(ShowDialog {
+            dialog: if context_free {
+                DialogHolder::ContextFree { dialog }
+            } else {
+                DialogHolder::Direct { dialog }
+            },
+        });
+        world
+    }
+
+    fn notice_dialog(title: &str, external_title: Option<&str>) -> NbtSummaryValue {
+        let mut dialog = vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:notice".to_string()),
+            ),
+            entry("title", NbtSummaryValue::String(title.to_string())),
+        ];
+        if let Some(external_title) = external_title {
+            dialog.push(entry(
+                "external_title",
+                NbtSummaryValue::String(external_title.to_string()),
+            ));
+        }
+        NbtSummaryValue::Compound(dialog)
     }
 
     fn entry(name: &str, value: NbtSummaryValue) -> NbtSummaryEntry {

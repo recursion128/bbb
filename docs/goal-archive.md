@@ -14987,3 +14987,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   Escape 仍强制 close。list/exit mouse 与 Space/Enter 均复用既有 input value binding、static/dynamic action、
   `after_action` 和 net command owner。native regressions 覆盖不等宽三列/末行几何、tooltip、dynamic Boolean
   payload、custom action、exit close、无 exit footer、overflow reveal 与 oversized-column boundary。
+
+## 2026-07-14：Render and operate DialogList dialogs
+
+- [x] 对照 `DialogListDialogScreen.createListActions`、`ButtonListDialogScreen` 与
+  `DialogScreen.packControlsIntoColumns`，native 为每个 Holder 生成使用子 Dialog
+  `computeExternalTitle()` 与父级 `button_width` 的无 tooltip 按钮；common body/input/list 继续位于同一
+  10px-spaced `ScrollableLayout`，完整行、末个 partial row、2px spacing、scissor 与 scrollbar 复用
+  MultiAction 的单一网格/content metrics owner。
+- [x] generated ShowDialog activation 由 world 边界按 entry provenance 还原 registry reference、registry-aware
+  direct 或 context-free target，renderer 不解释 registry；替换 dialog 保留原始 non-dialog previous screen、
+  重置 input/focus/scroll 且不增加 clientbound ShowDialog packet 计数。无效 index/target fail closed。
+- [x] list 与 optional exit 纳入同一扁平 focus/action 顺序，支持 mouse、Space/Enter、方向/Tab 与 keyboard
+  reveal；exit 同时作为 Escape cancel，缺失时按 vanilla 使用 5px footer。world/native regressions 覆盖
+  reference/direct/context-free 三类 target、external title、统一按钮宽度、三列末行居中、无 exit overflow、
+  footer-aware focus container 与 action replacement。

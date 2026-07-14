@@ -68,7 +68,7 @@ Owner: `bbb-protocol`
   requested host and port.
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
-  `DialogBodyHandlers`: add the ServerLinks/DialogList layouts with vanilla scrolling,
+  `DialogBodyHandlers`: add the ServerLinks layout with vanilla scrolling,
   focus, and clipping; execute open-url and Component-click paths; and
   restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
