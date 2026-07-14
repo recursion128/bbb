@@ -4,9 +4,12 @@ use bbb_protocol::{
     },
     item_component_value_types::{ItemUseAnimationSummary, VANILLA_ITEM_USE_ANIMATIONS},
     mob_effect_types::{VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_WEAKNESS_ID},
+    packets::inventory::{ConsumeEffectSummary, DataComponentPatchSummary},
 };
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 const CONSUMABLE_WHAT: &str = "dialog item component minecraft:consumable";
@@ -91,11 +94,11 @@ fn decodes_all_consume_effect_variants_for_both_components() {
     assert_eq!(consumable.animation, ItemUseAnimationSummary::Drink);
     assert!(!consumable.has_consume_particles);
     assert!(matches!(
-        consumable.sound,
+        &consumable.sound,
         DialogSoundEventHolderState::Direct {
-            ref sound_id,
+            sound_id,
             fixed_range_bits: Some(bits),
-        } if sound_id == "example:consume" && bits == 4.0f32.to_bits()
+        } if sound_id == "example:consume" && *bits == 4.0f32.to_bits()
     ));
     assert_eq!(consumable.on_consume_effects.len(), 5);
 
@@ -155,6 +158,83 @@ fn decodes_all_consume_effect_variants_for_both_components() {
         panic!("expected death-protection component");
     };
     assert_eq!(effects, consumable.on_consume_effects);
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        &DialogDataComponentValueState::Consumable {
+            consumable: consumable.clone(),
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
+        &DialogDataComponentValueState::DeathProtection {
+            effects: effects.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.consumable.as_ref().unwrap().consume_seconds.to_bits(),
+        0.5f32.to_bits()
+    );
+    assert_eq!(
+        patch.consumable.as_ref().unwrap().animation,
+        ItemUseAnimationSummary::Drink
+    );
+    assert_eq!(
+        patch.consumable_sound.as_ref().unwrap().sound_id.as_deref(),
+        Some("example:consume")
+    );
+    assert_eq!(
+        patch.consumable_sound.as_ref().unwrap().fixed_range_bits,
+        Some(4.0f32.to_bits())
+    );
+    assert_eq!(patch.consumable_has_consume_particles, Some(false));
+    assert_eq!(patch.consumable_effect_count, Some(5));
+    let ConsumeEffectSummary::ApplyEffects {
+        effects: applied,
+        probability_bits,
+    } = &patch.consumable_effects[0]
+    else {
+        panic!("expected apply-effects summary");
+    };
+    assert_eq!(*probability_bits, 0.25f32.to_bits());
+    assert_eq!(applied[0].effect_id, VANILLA_MOB_EFFECT_SPEED_ID);
+    assert_eq!(applied[0].amplifier, 2);
+    assert_eq!(applied[0].duration, 40);
+    let hidden = applied[0].hidden_effect.as_ref().unwrap();
+    assert_eq!(hidden.duration, 5);
+    assert!(!hidden.show_particles);
+    assert!(!hidden.show_icon);
+    let ConsumeEffectSummary::RemoveEffects {
+        effect_registry_ids,
+        effect_tag,
+    } = &patch.consumable_effects[1]
+    else {
+        panic!("expected remove-effects summary");
+    };
+    assert_eq!(
+        effect_registry_ids,
+        &[VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_WEAKNESS_ID]
+    );
+    assert_eq!(effect_tag, &None);
+    assert_eq!(patch.death_protection_effects, patch.consumable_effects);
+
+    let mut invalid = consumable;
+    let DialogConsumeEffectState::RemoveEffects { effects } = &mut invalid.on_consume_effects[1]
+    else {
+        unreachable!();
+    };
+    effects.holder_set_kind = "named".to_string();
+    effects.tag = None;
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
+        &DialogDataComponentValueState::Consumable {
+            consumable: invalid,
+        },
+        &mut DataComponentPatchSummary::default(),
+    ));
 }
 
 #[test]
@@ -318,6 +398,13 @@ fn all_effects() -> Vec<NbtSummaryValue> {
                         string_entry("id", "speed"),
                         value_entry("amplifier", NbtSummaryValue::Int(2)),
                         value_entry("duration", NbtSummaryValue::Int(40)),
+                        value_entry(
+                            "hidden_effect",
+                            compound(vec![
+                                value_entry("duration", NbtSummaryValue::Int(5)),
+                                value_entry("show_particles", NbtSummaryValue::Byte(0)),
+                            ]),
+                        ),
                     ])]),
                 ),
                 value_entry("probability", float(0.25)),

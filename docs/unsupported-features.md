@@ -82,8 +82,8 @@ Owner: `bbb-protocol`
   Confirmation's two footer actions with its no-button Escape binding and styled hover tooltips,
   projects unpatched, registry-independent text/scalar-patched, typed registry-holder-patched,
   and summary-native nonrecursive structured Item bodies—including break-sound, piercing-weapon,
-  kinetic-weapon, full equippable, and blocks-attacks named/direct sound and holder-set forms—with
-  description layout, decorations,
+  kinetic-weapon, full equippable, blocks-attacks, consumable, and death-protection sound,
+  holder-set, and consume-effect forms—with description layout, decorations,
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the

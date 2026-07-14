@@ -325,13 +325,15 @@ ClearDialog ignore 语义。Dialog 与 waiting screen 已按 `Screen.extractMenu
 32x32 尺寸重复采样 `inworld_menu_background.png` 并覆盖完整 surface，超过 512px 的 centered dialog
 限宽也不会留下未覆盖边缘。无 patch、registry-independent 文本/标量、typed registry-holder 以及
 summary-native nonrecursive structured patch（含 named/direct sound holder 的 break-sound、
-piercing/kinetic-weapon、完整 equippable 与 blocks-attacks）的 Item body 已复用 native item icon、3D block model、
+piercing/kinetic-weapon、完整 equippable、blocks-attacks、consumable 与 death-protection）的 Item body 已复用
+native item icon、3D block model、
 decorations 与 tooltip owner；有 description 时按 2px horizontal spacing/vertical-middle 排列，
 PlainMessage/description 也已计入 `FocusableTextWidget` 的 4px padding 与 inner wrap width。typed dialog
 state 现以 all-or-nothing bridge 生成既有 `DataComponentPatchSummary`，sound holder 的 registry id、
 direct id/range、kinetic condition float bits 及 equippable 的 entity holder-set/optional/default 字段均
 无损保留；blocks-attacks 的 ordered reductions、damage-type sets 与 item-damage bits 也保持协议形状。
-未桥接的递归/其余富结构值不会被猜测性投影。
+consume-effect 的五类 dispatch、ordered mob-effect instances 与递归 hidden details 同样保持协议形状；
+未桥接的 item-stack 递归/其余富结构值不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、
 button-list tooltip/scroll/focus、

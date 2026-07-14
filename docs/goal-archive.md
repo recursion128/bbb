@@ -14572,3 +14572,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   sound 与 optional range，并证明畸形 nested persisted holder-set 会在 summary 写入前整值拒绝；native
   dialog Item body 加入 default blocks-attacks 后继续进入唯一 item runtime。consume/effect、tool 与递归
   item-stack collection 等其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge consume-effect dialog Item patches
+
+- [x] 对照 `Consumable.CODEC/STREAM_CODEC`、`DeathProtection.CODEC/STREAM_CODEC` 与五类
+  `ConsumeEffect` dispatch，把 consume seconds/animation/sound/particles、ordered consume/death effect
+  lists 投影到既有 protocol summary；apply-effects 保留 ordered mob-effect instances 与递归 hidden details，
+  remove-effects 保留 named tag/direct registry ids，play-sound 复用 named/direct sound owner。
+- [x] world focused regression 覆盖五类 dispatch、direct consume sound/range、probability/diameter bits、
+  nested hidden effect、双组件共享列表与畸形 persisted remove-effect holder-set 整值拒绝；native dialog
+  Item body 加入 default consumable/death-protection 后继续进入唯一 item runtime。tool、potion contents 与
+  递归 item-stack collection 等其余富结构值继续由后续明确切片处理。

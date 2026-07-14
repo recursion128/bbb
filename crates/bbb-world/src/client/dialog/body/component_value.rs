@@ -6,12 +6,13 @@ use bbb_protocol::item_component_value_types::{
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
-        AttackRangeSummary, BannerPatternLayerSummary, BlocksAttacksSummary,
-        DamageReductionSummary, DamageTypeHolderSetSummary, DataComponentPatchSummary,
-        EntityTypeHolderSetSummary, EquippableSummary, FireworkExplosionSummary,
-        ItemDamageFunctionSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
-        LodestoneTargetSummary, PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
-        SuspiciousStewEffectSummary, SwingAnimationSummary, TrimMaterialSummary,
+        AttackRangeSummary, BannerPatternLayerSummary, BlocksAttacksSummary, ConsumableSummary,
+        ConsumeEffectSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
+        DataComponentPatchSummary, EntityTypeHolderSetSummary, EquippableSummary,
+        FireworkExplosionSummary, ItemDamageFunctionSummary, KineticWeaponConditionSummary,
+        KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
+        MobEffectInstanceSummary, PiercingWeaponSummary, ResolvableProfileSummary,
+        SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary, TrimMaterialSummary,
         TrimPatternSummary, UseEffectsSummary,
     },
 };
@@ -143,7 +144,10 @@ use item_stack_collections::{
     decode_item_stack_template_list_with_context, decode_item_stack_template_slots_with_context,
 };
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
-use potion_contents::{decode_potion_contents, DialogPotionContentsState};
+use potion_contents::{
+    decode_potion_contents, DialogMobEffectDetailsState, DialogMobEffectInstanceState,
+    DialogPotionContentsState,
+};
 use predicates::{
     decode_adventure_mode_predicate, decode_item_predicate, DialogAdventureModePredicateState,
     DialogItemPredicateState,
@@ -684,6 +688,25 @@ pub(super) fn apply_item_patch_value(
             };
             patch.blocks_attacks = Some(summary);
         }
+        (VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, Value::Consumable { consumable }) => {
+            let Some(effects) = consume_effect_summaries(&consumable.on_consume_effects) else {
+                return false;
+            };
+            patch.consumable = Some(ConsumableSummary {
+                consume_seconds: f32::from_bits(consumable.consume_seconds_bits),
+                animation: consumable.animation,
+            });
+            patch.consumable_sound = Some(sound_event_summary(&consumable.sound));
+            patch.consumable_has_consume_particles = Some(consumable.has_consume_particles);
+            patch.consumable_effect_count = Some(effects.len());
+            patch.consumable_effects = effects;
+        }
+        (VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID, Value::DeathProtection { effects }) => {
+            let Some(effects) = consume_effect_summaries(effects) else {
+                return false;
+            };
+            patch.death_protection_effects = effects;
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
@@ -864,17 +887,8 @@ fn kinetic_weapon_condition_summary(
 fn entity_type_holder_set_summary(
     value: &DialogRegistryHolderSetState,
 ) -> Option<EntityTypeHolderSetSummary> {
-    match (value.holder_set_kind.as_str(), &value.tag) {
-        ("named", Some(tag)) => Some(EntityTypeHolderSetSummary {
-            registry_ids: Vec::new(),
-            tag: Some(tag.clone()),
-        }),
-        ("direct", None) => Some(EntityTypeHolderSetSummary {
-            registry_ids: value.entries.iter().map(|entry| entry.holder_id).collect(),
-            tag: None,
-        }),
-        _ => None,
-    }
+    let (registry_ids, tag) = holder_set_summary_parts(value)?;
+    Some(EntityTypeHolderSetSummary { registry_ids, tag })
 }
 
 fn blocks_attacks_summary(value: &DialogBlocksAttacksState) -> Option<BlocksAttacksSummary> {
@@ -913,15 +927,81 @@ fn blocks_attacks_summary(value: &DialogBlocksAttacksState) -> Option<BlocksAtta
 fn damage_type_holder_set_summary(
     value: &DialogRegistryHolderSetState,
 ) -> Option<DamageTypeHolderSetSummary> {
+    let (registry_ids, tag) = holder_set_summary_parts(value)?;
+    Some(DamageTypeHolderSetSummary { registry_ids, tag })
+}
+
+fn consume_effect_summaries(
+    values: &[DialogConsumeEffectState],
+) -> Option<Vec<ConsumeEffectSummary>> {
+    values.iter().map(consume_effect_summary).collect()
+}
+
+fn consume_effect_summary(value: &DialogConsumeEffectState) -> Option<ConsumeEffectSummary> {
+    match value {
+        DialogConsumeEffectState::ApplyEffects {
+            effects,
+            probability_bits,
+        } => Some(ConsumeEffectSummary::ApplyEffects {
+            effects: effects.iter().map(mob_effect_instance_summary).collect(),
+            probability_bits: *probability_bits,
+        }),
+        DialogConsumeEffectState::RemoveEffects { effects } => {
+            let (effect_registry_ids, effect_tag) = holder_set_summary_parts(effects)?;
+            Some(ConsumeEffectSummary::RemoveEffects {
+                effect_registry_ids,
+                effect_tag,
+            })
+        }
+        DialogConsumeEffectState::ClearAllEffects => Some(ConsumeEffectSummary::ClearAllEffects),
+        DialogConsumeEffectState::TeleportRandomly { diameter_bits } => {
+            Some(ConsumeEffectSummary::TeleportRandomly {
+                diameter_bits: *diameter_bits,
+            })
+        }
+        DialogConsumeEffectState::PlaySound { sound } => Some(ConsumeEffectSummary::PlaySound {
+            sound: sound_event_summary(sound),
+        }),
+    }
+}
+
+fn mob_effect_instance_summary(value: &DialogMobEffectInstanceState) -> MobEffectInstanceSummary {
+    let details = mob_effect_details_summary(&value.details);
+    MobEffectInstanceSummary {
+        effect_id: value.effect.holder_id,
+        amplifier: details.amplifier,
+        duration: details.duration,
+        ambient: details.ambient,
+        show_particles: details.show_particles,
+        show_icon: details.show_icon,
+        hidden_effect: details.hidden_effect,
+    }
+}
+
+fn mob_effect_details_summary(value: &DialogMobEffectDetailsState) -> MobEffectDetailsSummary {
+    MobEffectDetailsSummary {
+        amplifier: value.amplifier,
+        duration: value.duration,
+        ambient: value.ambient,
+        show_particles: value.show_particles,
+        show_icon: value.show_icon,
+        hidden_effect: value
+            .hidden_effect
+            .as_deref()
+            .map(mob_effect_details_summary)
+            .map(Box::new),
+    }
+}
+
+fn holder_set_summary_parts(
+    value: &DialogRegistryHolderSetState,
+) -> Option<(Vec<i32>, Option<String>)> {
     match (value.holder_set_kind.as_str(), &value.tag) {
-        ("named", Some(tag)) => Some(DamageTypeHolderSetSummary {
-            registry_ids: Vec::new(),
-            tag: Some(tag.clone()),
-        }),
-        ("direct", None) => Some(DamageTypeHolderSetSummary {
-            registry_ids: value.entries.iter().map(|entry| entry.holder_id).collect(),
-            tag: None,
-        }),
+        ("named", Some(tag)) => Some((Vec::new(), Some(tag.clone()))),
+        ("direct", None) => Some((
+            value.entries.iter().map(|entry| entry.holder_id).collect(),
+            None,
+        )),
         _ => None,
     }
 }
@@ -931,17 +1011,11 @@ fn apply_holder_set(
     registry_ids: &mut Vec<i32>,
     tag: &mut Option<String>,
 ) -> bool {
-    match (value.holder_set_kind.as_str(), &value.tag) {
-        ("named", Some(named_tag)) => {
-            registry_ids.clear();
-            *tag = Some(named_tag.clone());
-        }
-        ("direct", None) => {
-            *registry_ids = value.entries.iter().map(|entry| entry.holder_id).collect();
-            *tag = None;
-        }
-        _ => return false,
-    }
+    let Some((ids, named_tag)) = holder_set_summary_parts(value) else {
+        return false;
+    };
+    *registry_ids = ids;
+    *tag = named_tag;
     true
 }
 

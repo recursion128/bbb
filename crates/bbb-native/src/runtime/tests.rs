@@ -14359,6 +14359,14 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:blocks_attacks",
                                             NbtSummaryValue::Compound(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:consumable",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
+                                        entry(
+                                            "minecraft:death_protection",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),
