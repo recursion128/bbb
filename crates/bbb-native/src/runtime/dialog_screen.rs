@@ -518,6 +518,11 @@ fn run_dialog_action(
                 }
             }
         }
+        Some(DialogActionState::ChangePage { .. }) => {
+            // DialogScreen delegates this event to Screen.defaultHandleClickEvent,
+            // which has no ChangePage arm. The BookViewScreen override is not
+            // consulted, but the computed after-action screen is still applied.
+        }
         Some(_) => return false,
     }
     match after_action {
@@ -1016,6 +1021,47 @@ mod tests {
         ));
         assert_eq!(rejecting_clipboard.text.as_deref(), Some("unchanged"));
         assert!(closing_world.current_dialog().is_none());
+    }
+
+    #[test]
+    fn change_page_dialog_action_only_applies_after_action() {
+        let mut world = world_with_notice(vec![
+            entry(
+                "after_action",
+                NbtSummaryValue::String("wait_for_response".to_string()),
+            ),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry("label", NbtSummaryValue::String("Page".to_string())),
+                    entry(
+                        "action",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "type",
+                                NbtSummaryValue::String("minecraft:change_page".to_string()),
+                            ),
+                            entry("page", NbtSummaryValue::Int(7)),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        let mut counters = NetCounters::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert_eq!(world.current_dialog(), None);
+        assert_eq!(world.dialog_waiting_ticks(), Some(0));
     }
 
     #[test]

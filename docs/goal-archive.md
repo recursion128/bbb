@@ -14461,3 +14461,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 保持 vanilla 空字符串不触碰 clipboard 的门禁；非空 exact text、`after_action=none` 留屏与空值
   保留旧 clipboard 内容均有 focused regression。该 capability 同时接入按钮和 Escape 共享 action runner，
   后续 Component-click 可复用同一平台边界。
+
+## 2026-07-14：Apply static change-page dialog transitions
+
+- [x] 对照 `DialogScreen.handleDialogClickEvent`、`Screen.defaultHandleClickEvent` 与
+  `BookViewScreen.handleComponentClicked`，确认 dialog action 的 ChangePage 不会动态分派到 book-screen
+  override：default handler 没有该 arm，只记录 unknown event 后激活预先计算的 `after_action` screen。
+- [x] native action runner 因此把静态 change-page 明确建模为无本地页面 side effect、继续执行
+  close/none/waiting transition；page=7 + WAIT_FOR_RESPONSE 的 current-dialog clear 与 waiting tick=0 有
+  focused regression。Book Component-click 的实际翻页仍归 Component-click 缺口，不与本项混淆。

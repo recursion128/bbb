@@ -72,12 +72,13 @@ Owner: `bbb-protocol`
   render Item bodies, all four input controls, action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
   focus, and clipping; execute open-url, run/suggest-command,
-  change-page, dynamic action, and Component-click paths; and
+  dynamic action and Component-click paths; and
   restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
   Notice/Confirmation projection already sends static custom id/payload, lays out
   Confirmation's two footer actions with its no-button Escape binding, and implements the
-  static copy-to-clipboard through the existing native clipboard owner, and implements
+  static copy-to-clipboard through the existing native clipboard owner, preserves
+  DialogScreen's side-effect-free static change-page handling, and implements
   the close/none/waiting `after_action` transitions, including vanilla's delayed Back
   screen; it still needs the remaining controls and actions before either
   `ShowDialog` row's `runtime_side_effect` coverage cell can close.
