@@ -107,9 +107,10 @@ Owner: `bbb-protocol`
   direct Notice dialogs, including CommonData title/external-title/defaulted scalars, buttons, and
   all nine static/dynamic actions. Nested Components, Dialog holders, and NBT reuse their canonical
   owners. Compact bodies now cover PlainMessage's full encoder and ItemBody's recursive item
-  template, optional description, booleans, and dimensions. Non-empty input state and the other
-  four Dialog types still return unknown, and generic packet Components still need this world
-  context.
+  template, optional description, booleans, and dimensions. All four input controls now cover
+  key/type, Component label/display, default omission, SingleOption's FULL alternative encoder,
+  Text multiline options, and NumberRange's JDK Float encoding. The other four Dialog types still
+  return unknown, and generic packet Components still need this world context.
   Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining

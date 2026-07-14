@@ -1,12 +1,14 @@
 use bbb_protocol::{
-    canonical_component_json_utf16_len_with_owner, canonical_json_string_utf16_len,
-    canonical_nbt_json_utf16_len, CanonicalComponentOwnerValue, NbtSummaryValue,
+    canonical_component_json_utf16_len_with_owner, canonical_f32_json_utf16_len,
+    canonical_json_string_utf16_len, canonical_nbt_json_utf16_len, CanonicalComponentOwnerValue,
+    NbtSummaryValue,
 };
 
 use super::{
     action::decode_action_dialog_holder, body, default_notice_action, CommonDialogDataState,
     DialogActionState, DialogBodyState, DialogButtonState, DialogDataState, DialogDecodeContext,
-    DialogPlainMessageState, DialogState, DialogTextState,
+    DialogInputControlState, DialogInputState, DialogPlainMessageState,
+    DialogSingleOptionEntryState, DialogState, DialogTextState,
 };
 
 pub(in crate::client::dialog) fn canonical_component_json_utf16_len_with_context(
@@ -76,9 +78,6 @@ fn common_fields(
     common: &CommonDialogDataState,
     context: DialogDecodeContext<'_>,
 ) -> Result<Option<Vec<(&'static str, usize)>>, String> {
-    if !common.input_data.is_empty() {
-        return Ok(None);
-    }
     let Some(title_len) = component_len(&common.title, context)? else {
         return Ok(None);
     };
@@ -104,7 +103,163 @@ fn common_fields(
         };
         fields.push(("body", body_len));
     }
+    if !common.input_data.is_empty() {
+        let Some(inputs_len) = inputs_len(&common.input_data, context)? else {
+            return Ok(None);
+        };
+        fields.push(("inputs", inputs_len));
+    }
     Ok(Some(fields))
+}
+
+fn inputs_len(
+    inputs: &[DialogInputState],
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut lengths = Vec::with_capacity(inputs.len());
+    for input in inputs {
+        let Some(length) = input_len(input, context)? else {
+            return Ok(None);
+        };
+        lengths.push(length);
+    }
+    Ok(Some(array_len(lengths.into_iter())))
+}
+
+fn input_len(
+    input: &DialogInputState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut fields = vec![("key", string_len(&input.key))];
+    match &input.control {
+        DialogInputControlState::Boolean {
+            label,
+            initial,
+            on_true,
+            on_false,
+        } => {
+            fields.push(("type", string_len("minecraft:boolean")));
+            let Some(label_len) = component_len(label, context)? else {
+                return Ok(None);
+            };
+            fields.push(("label", label_len));
+            if *initial {
+                fields.push(("initial", bool_len(true)));
+            }
+            if on_true != "true" {
+                fields.push(("on_true", string_len(on_true)));
+            }
+            if on_false != "false" {
+                fields.push(("on_false", string_len(on_false)));
+            }
+        }
+        DialogInputControlState::NumberRange {
+            width,
+            label,
+            label_format,
+            range,
+        } => {
+            fields.push(("type", string_len("minecraft:number_range")));
+            if *width != 200 {
+                fields.push(("width", width.to_string().len()));
+            }
+            let Some(label_len) = component_len(label, context)? else {
+                return Ok(None);
+            };
+            fields.push(("label", label_len));
+            if label_format != "options.generic_value" {
+                fields.push(("label_format", string_len(label_format)));
+            }
+            fields.push(("start", float_len(range.start_bits)?));
+            fields.push(("end", float_len(range.end_bits)?));
+            if let Some(bits) = range.initial_bits {
+                fields.push(("initial", float_len(bits)?));
+            }
+            if let Some(bits) = range.step_bits {
+                fields.push(("step", float_len(bits)?));
+            }
+        }
+        DialogInputControlState::SingleOption {
+            width,
+            options,
+            label,
+            label_visible,
+        } => {
+            fields.push(("type", string_len("minecraft:single_option")));
+            if *width != 200 {
+                fields.push(("width", width.to_string().len()));
+            }
+            let Some(options_len) = single_options_len(options, context)? else {
+                return Ok(None);
+            };
+            fields.push(("options", options_len));
+            let Some(label_len) = component_len(label, context)? else {
+                return Ok(None);
+            };
+            fields.push(("label", label_len));
+            if !*label_visible {
+                fields.push(("label_visible", bool_len(false)));
+            }
+        }
+        DialogInputControlState::Text {
+            width,
+            label,
+            label_visible,
+            initial,
+            max_length,
+            multiline,
+        } => {
+            fields.push(("type", string_len("minecraft:text")));
+            if *width != 200 {
+                fields.push(("width", width.to_string().len()));
+            }
+            let Some(label_len) = component_len(label, context)? else {
+                return Ok(None);
+            };
+            fields.push(("label", label_len));
+            if !*label_visible {
+                fields.push(("label_visible", bool_len(false)));
+            }
+            if !initial.is_empty() {
+                fields.push(("initial", string_len(initial)));
+            }
+            if *max_length != 32 {
+                fields.push(("max_length", max_length.to_string().len()));
+            }
+            if let Some(multiline) = multiline {
+                let mut multiline_fields = Vec::new();
+                if let Some(max_lines) = multiline.max_lines {
+                    multiline_fields.push(("max_lines", max_lines.to_string().len()));
+                }
+                if let Some(height) = multiline.height {
+                    multiline_fields.push(("height", height.to_string().len()));
+                }
+                fields.push(("multiline", object_len(multiline_fields.into_iter())));
+            }
+        }
+    }
+    Ok(Some(object_len(fields.into_iter())))
+}
+
+fn single_options_len(
+    options: &[DialogSingleOptionEntryState],
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut lengths = Vec::with_capacity(options.len());
+    for option in options {
+        let mut fields = vec![("id", string_len(&option.id))];
+        if let Some(display) = &option.display {
+            let Some(display_len) = component_len(display, context)? else {
+                return Ok(None);
+            };
+            fields.push(("display", display_len));
+        }
+        if option.initial {
+            fields.push(("initial", bool_len(true)));
+        }
+        lengths.push(object_len(fields.into_iter()));
+    }
+    Ok(Some(array_len(lengths.into_iter())))
 }
 
 fn compact_body_list_len(
@@ -294,6 +449,11 @@ fn bool_len(value: bool) -> usize {
     }
 }
 
+fn float_len(bits: u32) -> Result<usize, String> {
+    canonical_f32_json_utf16_len(bits)
+        .ok_or_else(|| "canonical JsonWriter rejects non-finite Float/Double values".to_string())
+}
+
 fn object_len<'a>(fields: impl Iterator<Item = (&'a str, usize)>) -> usize {
     collection_len(
         fields
@@ -363,16 +523,10 @@ mod tests {
     #[test]
     fn leaves_non_default_or_unresolved_dialogs_unknown() {
         let non_default = component_with_show_dialog(compound(vec![
-            string_entry("type", "notice"),
+            string_entry("type", "confirmation"),
             string_entry("title", "Hello"),
-            value_entry(
-                "inputs",
-                NbtSummaryValue::List(vec![compound(vec![
-                    string_entry("key", "enabled"),
-                    string_entry("type", "boolean"),
-                    string_entry("label", "Enabled"),
-                ])]),
-            ),
+            value_entry("yes", compound(vec![string_entry("label", "Yes")])),
+            value_entry("no", compound(vec![string_entry("label", "No")])),
         ]));
         assert_eq!(
             canonical_component_json_utf16_len_with_context(
@@ -571,6 +725,110 @@ mod tests {
             .unwrap(),
             Some(multiple_expected.len())
         );
+    }
+
+    #[test]
+    fn canonicalizes_all_dialog_input_controls() {
+        let value = component_with_show_dialog(compound(vec![
+            string_entry("type", "notice"),
+            string_entry("title", "Inputs"),
+            value_entry(
+                "inputs",
+                NbtSummaryValue::List(vec![
+                    compound(vec![
+                        string_entry("key", "enabled"),
+                        string_entry("type", "boolean"),
+                        string_entry("label", "Enabled"),
+                        value_entry("initial", NbtSummaryValue::Byte(1)),
+                        string_entry("on_true", "yes"),
+                        string_entry("on_false", "no"),
+                    ]),
+                    compound(vec![
+                        string_entry("key", "amount"),
+                        string_entry("type", "number_range"),
+                        value_entry("width", NbtSummaryValue::Int(240)),
+                        string_entry("label", "Amount"),
+                        string_entry("label_format", "example.range"),
+                        value_entry("start", NbtSummaryValue::Float((-0.0f32).to_bits())),
+                        value_entry("end", NbtSummaryValue::Float(10.0f32.to_bits())),
+                        value_entry("initial", NbtSummaryValue::Float(0.5f32.to_bits())),
+                        value_entry("step", NbtSummaryValue::Float(0.25f32.to_bits())),
+                    ]),
+                    compound(vec![
+                        string_entry("key", "mode"),
+                        string_entry("type", "single_option"),
+                        value_entry(
+                            "options",
+                            NbtSummaryValue::List(vec![
+                                NbtSummaryValue::String("compact".to_string()),
+                                compound(vec![
+                                    string_entry("id", "full"),
+                                    string_entry("display", "Full"),
+                                    value_entry("initial", NbtSummaryValue::Byte(1)),
+                                ]),
+                            ]),
+                        ),
+                        string_entry("label", "Mode"),
+                        value_entry("label_visible", NbtSummaryValue::Byte(0)),
+                    ]),
+                    compound(vec![
+                        string_entry("key", "name"),
+                        string_entry("type", "text"),
+                        value_entry("width", NbtSummaryValue::Int(300)),
+                        string_entry("label", "Name"),
+                        value_entry("label_visible", NbtSummaryValue::Byte(0)),
+                        string_entry("initial", "hello"),
+                        value_entry("max_length", NbtSummaryValue::Int(64)),
+                        value_entry(
+                            "multiline",
+                            compound(vec![
+                                value_entry("max_lines", NbtSummaryValue::Int(3)),
+                                value_entry("height", NbtSummaryValue::Int(100)),
+                            ]),
+                        ),
+                    ]),
+                ]),
+            ),
+        ]));
+        let expected = concat!(
+            r#"{"text":"Open","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Inputs","inputs":["#,
+            r#"{"key":"enabled","type":"minecraft:boolean","label":"Enabled","initial":true,"on_true":"yes","on_false":"no"},"#,
+            r#"{"key":"amount","type":"minecraft:number_range","width":240,"label":"Amount","label_format":"example.range","start":-0.0,"end":10.0,"initial":0.5,"step":0.25},"#,
+            r#"{"key":"mode","type":"minecraft:single_option","options":[{"id":"compact"},{"id":"full","display":"Full","initial":true}],"label":"Mode","label_visible":false},"#,
+            r#"{"key":"name","type":"minecraft:text","width":300,"label":"Name","label_visible":false,"initial":"hello","max_length":64,"multiline":{"max_lines":3,"height":100}}]}}}"#,
+        );
+        assert_eq!(
+            canonical_component_json_utf16_len_with_context(
+                &value,
+                DialogDecodeContext::new(None, 0),
+            )
+            .unwrap(),
+            Some(expected.len())
+        );
+    }
+
+    #[test]
+    fn rejects_non_finite_dialog_number_range_values() {
+        let value = component_with_show_dialog(compound(vec![
+            string_entry("type", "notice"),
+            string_entry("title", "Inputs"),
+            value_entry(
+                "inputs",
+                NbtSummaryValue::List(vec![compound(vec![
+                    string_entry("key", "amount"),
+                    string_entry("type", "number_range"),
+                    string_entry("label", "Amount"),
+                    value_entry("start", NbtSummaryValue::Float(f32::NAN.to_bits())),
+                    value_entry("end", NbtSummaryValue::Float(1.0f32.to_bits())),
+                ])]),
+            ),
+        ]));
+        let error = canonical_component_json_utf16_len_with_context(
+            &value,
+            DialogDecodeContext::new(None, 0),
+        )
+        .unwrap_err();
+        assert!(error.contains("rejects non-finite Float/Double"), "{error}");
     }
 
     fn component_with_show_dialog(dialog: NbtSummaryValue) -> NbtSummaryValue {
