@@ -14204,7 +14204,7 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
 }
 
 #[test]
-fn hud_inventory_screen_projects_dialog_item_body_text_and_holder_patches() {
+fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
     let entry = |name: &str, value| NbtSummaryEntry {
         name: name.to_string(),
         value,
@@ -14323,6 +14323,23 @@ fn hud_inventory_screen_projects_dialog_item_body_text_and_holder_patches() {
                                                     ),
                                                     entry("duration", NbtSummaryValue::Int(160)),
                                                 ],
+                                            )]),
+                                        ),
+                                        entry(
+                                            "minecraft:food",
+                                            NbtSummaryValue::Compound(vec![
+                                                entry("nutrition", NbtSummaryValue::Int(4)),
+                                                entry(
+                                                    "saturation",
+                                                    NbtSummaryValue::Float(0.6f32.to_bits()),
+                                                ),
+                                            ]),
+                                        ),
+                                        entry(
+                                            "minecraft:use_cooldown",
+                                            NbtSummaryValue::Compound(vec![entry(
+                                                "seconds",
+                                                NbtSummaryValue::Float(1.25f32.to_bits()),
                                             )]),
                                         ),
                                     ]),

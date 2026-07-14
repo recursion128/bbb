@@ -6,9 +6,10 @@ use bbb_protocol::item_component_value_types::{
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
-        BannerPatternLayerSummary, DataComponentPatchSummary, FireworkExplosionSummary,
-        LodestoneTargetSummary, ResolvableProfileSummary, SuspiciousStewEffectSummary,
-        TrimMaterialSummary, TrimPatternSummary,
+        AttackRangeSummary, BannerPatternLayerSummary, DataComponentPatchSummary,
+        FireworkExplosionSummary, LodestoneTargetSummary, ResolvableProfileSummary,
+        SuspiciousStewEffectSummary, SwingAnimationSummary, TrimMaterialSummary,
+        TrimPatternSummary, UseEffectsSummary,
     },
 };
 use bbb_protocol::{
@@ -547,6 +548,125 @@ pub(super) fn apply_item_patch_value(
                 .any(|entry| entry.type_id == type_id) =>
         {
             patch.builtin_enum_component_ids.insert(type_id, *value_id);
+        }
+        (
+            VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+            Value::UseEffects {
+                can_sprint,
+                interact_vibrations,
+                speed_multiplier_bits,
+            },
+        ) => {
+            patch.use_effects = Some(UseEffectsSummary {
+                can_sprint: *can_sprint,
+                interact_vibrations: *interact_vibrations,
+                speed_multiplier: f32::from_bits(*speed_multiplier_bits),
+            });
+        }
+        (
+            VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+            Value::SwingAnimation {
+                animation_type,
+                duration,
+            },
+        ) => {
+            patch.swing_animation = Some(SwingAnimationSummary {
+                animation_type: *animation_type,
+                duration: *duration,
+            });
+        }
+        (VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, Value::BlockState { properties }) => {
+            patch.block_state_properties = properties
+                .iter()
+                .map(|entry| (entry.key.clone(), entry.value.clone()))
+                .collect();
+        }
+        (
+            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+            Value::Food {
+                nutrition,
+                saturation_bits,
+                can_always_eat,
+            },
+        ) => {
+            patch.food_nutrition = Some(*nutrition);
+            patch.food_saturation_bits = Some(*saturation_bits);
+            patch.food_can_always_eat = *can_always_eat;
+        }
+        (
+            VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+            Value::UseCooldown {
+                seconds_bits,
+                cooldown_group,
+            },
+        ) => {
+            patch.use_cooldown_seconds_bits = Some(*seconds_bits);
+            patch.use_cooldown_ticks = Some((f32::from_bits(*seconds_bits) * 20.0) as i32);
+            patch.use_cooldown_group = cooldown_group.clone();
+        }
+        (
+            VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+            Value::Weapon {
+                item_damage_per_attack,
+                disable_blocking_for_seconds_bits,
+            },
+        ) => {
+            patch.weapon_item_damage_per_attack = Some(*item_damage_per_attack);
+            patch.weapon_disable_blocking_seconds_bits = Some(*disable_blocking_for_seconds_bits);
+        }
+        (
+            VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+            Value::AttackRange {
+                min_reach_bits,
+                max_reach_bits,
+                min_creative_reach_bits,
+                max_creative_reach_bits,
+                hitbox_margin_bits,
+                mob_factor_bits,
+            },
+        ) => {
+            patch.attack_range = Some(AttackRangeSummary {
+                min_reach: f32::from_bits(*min_reach_bits),
+                max_reach: f32::from_bits(*max_reach_bits),
+                min_creative_reach: f32::from_bits(*min_creative_reach_bits),
+                max_creative_reach: f32::from_bits(*max_creative_reach_bits),
+                hitbox_margin: f32::from_bits(*hitbox_margin_bits),
+                mob_factor: f32::from_bits(*mob_factor_bits),
+            });
+        }
+        (VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID, Value::Enchantable { value }) => {
+            patch.enchantable_value = Some(*value);
+        }
+        (
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            Value::FireworkExplosion { explosion },
+        ) => {
+            patch.firework_explosion_colors = explosion.colors.clone();
+            patch.firework_explosion_fade_colors = explosion.fade_colors.clone();
+            patch.firework_explosion_shape = Some(explosion.shape);
+            patch.firework_explosion_has_trail = Some(explosion.has_trail);
+            patch.firework_explosion_has_twinkle = Some(explosion.has_twinkle);
+        }
+        (
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            Value::Fireworks {
+                flight_duration,
+                explosions,
+            },
+        ) => {
+            patch.fireworks_flight_duration = Some(*flight_duration);
+            patch.fireworks_explosions_count = Some(explosions.len());
+            patch.fireworks_explosions = explosions.clone();
+        }
+        (
+            VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            Value::LodestoneTracker { target, tracked },
+        ) => {
+            patch.lodestone_target = target.clone();
+            patch.lodestone_tracked = Some(*tracked);
+        }
+        (VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, Value::Profile { profile }) => {
+            patch.profile = Some(profile.clone());
         }
         (VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID, Value::Repairable { items }) => {
             if !apply_holder_set(

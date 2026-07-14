@@ -14528,3 +14528,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   effects，native dialog regression 同时携带 custom-name 和 suspicious-stew holder patch 并进入唯一 item
   runtime。`pot_decorations` typed state 尚不能区分 trailing brick 与缺省槽位，direct jukebox/painting 也
   尚无 typed direct payload，均继续保守留在明确缺口而不反解析 raw NBT。
+
+## 2026-07-14：Bridge nonrecursive structured dialog Item patches
+
+- [x] 按 protocol data-component decoder 的既有 summary 形状投影 use-effects、swing-animation、
+  block-state、food、use-cooldown、weapon、attack-range、enchantable、firework-explosion、fireworks、
+  lodestone-tracker 与 profile；float 保持 bit-exact，cooldown 同时派生 `(seconds * 20) as i32` ticks，
+  fireworks 保留声明 explosion count，profile 继续复用完整 resolvable/skin-patch state。
+- [x] world focused regression 覆盖全部上述字段、cooldown 25 ticks、attack-range bits、firework 单值/列表
+  与 lodestone target；profile codec test 同时验证 summary bridge。native dialog regression 在同一 stack
+  上组合 custom-name、suspicious-stew holder、food 与 cooldown 并进入唯一 item runtime；递归 item-stack
+  collections、consume/effect/tool/equipment 等富结构值继续由下一明确切片处理。

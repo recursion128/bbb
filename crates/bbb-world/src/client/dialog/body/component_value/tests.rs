@@ -2370,6 +2370,154 @@ fn projects_holder_backed_component_values_into_protocol_summary() {
     ));
 }
 
+#[test]
+fn projects_nonrecursive_item_behavior_values_into_protocol_summary() {
+    let explosion = FireworkExplosionSummary {
+        shape: FireworkExplosionShapeSummary::Creeper,
+        colors: vec![0x11_22_33],
+        fade_colors: vec![0x44_55_66],
+        has_trail: true,
+        has_twinkle: false,
+    };
+    let values = [
+        (
+            VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
+            DialogDataComponentValueState::UseEffects {
+                can_sprint: true,
+                interact_vibrations: false,
+                speed_multiplier_bits: 0.75f32.to_bits(),
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
+            DialogDataComponentValueState::SwingAnimation {
+                animation_type: SwingAnimationTypeSummary::Stab,
+                duration: 9,
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID,
+            DialogDataComponentValueState::BlockState {
+                properties: vec![DialogStringMapEntryState {
+                    key: "axis".to_string(),
+                    value: "x".to_string(),
+                }],
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
+            DialogDataComponentValueState::Food {
+                nutrition: 4,
+                saturation_bits: 0.6f32.to_bits(),
+                can_always_eat: true,
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
+            DialogDataComponentValueState::UseCooldown {
+                seconds_bits: 1.25f32.to_bits(),
+                cooldown_group: Some("minecraft:ender_pearl".to_string()),
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+            DialogDataComponentValueState::Weapon {
+                item_damage_per_attack: 3,
+                disable_blocking_for_seconds_bits: 5.0f32.to_bits(),
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
+            DialogDataComponentValueState::AttackRange {
+                min_reach_bits: 1.0f32.to_bits(),
+                max_reach_bits: 4.0f32.to_bits(),
+                min_creative_reach_bits: 2.0f32.to_bits(),
+                max_creative_reach_bits: 6.0f32.to_bits(),
+                hitbox_margin_bits: 0.5f32.to_bits(),
+                mob_factor_bits: 1.5f32.to_bits(),
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
+            DialogDataComponentValueState::Enchantable { value: 12 },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID,
+            DialogDataComponentValueState::FireworkExplosion {
+                explosion: explosion.clone(),
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+            DialogDataComponentValueState::Fireworks {
+                flight_duration: 2,
+                explosions: vec![explosion.clone()],
+            },
+        ),
+        (
+            VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID,
+            DialogDataComponentValueState::LodestoneTracker {
+                target: Some(LodestoneTargetSummary {
+                    dimension: "minecraft:the_nether".to_string(),
+                    pos: BlockPos { x: 1, y: 2, z: 3 },
+                }),
+                tracked: false,
+            },
+        ),
+    ];
+    let mut patch = DataComponentPatchSummary::default();
+    for (type_id, value) in values {
+        assert!(apply_item_patch_value(type_id, &value, &mut patch));
+    }
+
+    assert_eq!(
+        patch.use_effects,
+        Some(UseEffectsSummary {
+            can_sprint: true,
+            interact_vibrations: false,
+            speed_multiplier: 0.75,
+        })
+    );
+    assert_eq!(
+        patch.swing_animation,
+        Some(SwingAnimationSummary {
+            animation_type: SwingAnimationTypeSummary::Stab,
+            duration: 9,
+        })
+    );
+    assert_eq!(
+        patch.block_state_properties.get("axis").map(String::as_str),
+        Some("x")
+    );
+    assert_eq!(patch.food_nutrition, Some(4));
+    assert_eq!(patch.food_saturation_bits, Some(0.6f32.to_bits()));
+    assert!(patch.food_can_always_eat);
+    assert_eq!(patch.use_cooldown_seconds_bits, Some(1.25f32.to_bits()));
+    assert_eq!(patch.use_cooldown_ticks, Some(25));
+    assert_eq!(
+        patch.use_cooldown_group.as_deref(),
+        Some("minecraft:ender_pearl")
+    );
+    assert_eq!(patch.weapon_item_damage_per_attack, Some(3));
+    assert_eq!(
+        patch.weapon_disable_blocking_seconds_bits,
+        Some(5.0f32.to_bits())
+    );
+    let attack_range = patch.attack_range.unwrap();
+    assert_eq!(attack_range.min_reach.to_bits(), 1.0f32.to_bits());
+    assert_eq!(attack_range.mob_factor.to_bits(), 1.5f32.to_bits());
+    assert_eq!(patch.enchantable_value, Some(12));
+    assert_eq!(patch.firework_explosion_shape, Some(explosion.shape));
+    assert_eq!(patch.fireworks_flight_duration, Some(2));
+    assert_eq!(patch.fireworks_explosions_count, Some(1));
+    assert_eq!(patch.fireworks_explosions, vec![explosion]);
+    assert_eq!(
+        patch.lodestone_target.as_ref().unwrap().pos,
+        BlockPos { x: 1, y: 2, z: 3 }
+    );
+    assert_eq!(patch.lodestone_tracked, Some(false));
+}
+
 fn decoded(
     type_id: i32,
     resource_id: &str,

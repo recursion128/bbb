@@ -1,6 +1,7 @@
 use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID;
 use bbb_protocol::packets::inventory::{
-    ProfileSkinTextureSummary, ProfileTextureSummary, ProfileTexturesSummary,
+    DataComponentPatchSummary, ProfileSkinTextureSummary, ProfileTextureSummary,
+    ProfileTexturesSummary,
 };
 
 use crate::RegistrySet;
@@ -27,16 +28,27 @@ fn decodes_string_partial_and_full_profile_records() {
         .unwrap(),
         partial
     );
+    let value = super::super::decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        "minecraft:profile",
+        &NbtSummaryValue::String("Player_1".to_string()),
+        Some(&RegistrySet::default()),
+    )
+    .unwrap()
+    .unwrap();
     assert_eq!(
-        super::super::decode_supported_component_value(
-            VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
-            "minecraft:profile",
-            &NbtSummaryValue::String("Player_1".to_string()),
-            Some(&RegistrySet::default()),
-        )
-        .unwrap(),
-        Some(super::super::DialogDataComponentValueState::Profile { profile: partial })
+        value,
+        super::super::DialogDataComponentValueState::Profile {
+            profile: partial.clone()
+        }
     );
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(super::super::apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
+        &value,
+        &mut patch,
+    ));
+    assert_eq!(patch.profile, Some(partial));
     assert_eq!(
         decode(&compound(Vec::new())).unwrap(),
         ResolvableProfileSummary {

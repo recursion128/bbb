@@ -503,7 +503,7 @@ mod tests {
     }
 
     #[test]
-    fn projects_registry_independent_item_patch_values_and_rejects_unbridged_values() {
+    fn projects_item_patch_values_and_rejects_unbridged_values() {
         let type_id = |resource_id| {
             vanilla_data_component_type_for_resource_id(resource_id)
                 .unwrap()
@@ -575,14 +575,12 @@ mod tests {
         let mut unbridged = item;
         unbridged.component_data.as_mut().unwrap().entries.push(
             DialogDataComponentPatchEntryState {
-                type_id: type_id("minecraft:food"),
-                resource_id: "minecraft:food".to_string(),
+                type_id: type_id("minecraft:recipes"),
+                resource_id: "minecraft:recipes".to_string(),
                 removed: false,
                 value: None,
-                value_data: Some(DialogDataComponentValueState::Food {
-                    nutrition: 1,
-                    saturation_bits: 0.5f32.to_bits(),
-                    can_always_eat: false,
+                value_data: Some(DialogDataComponentValueState::Recipes {
+                    resource_ids: vec!["minecraft:test".to_string()],
                 }),
             },
         );
