@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::super::super::{decode_component, DialogDecodeContext};
 use super::super::decode_data_component_patch;
+use super::canonical_data_component_patch_json_utf16_len;
 use super::profile::decode_profile;
 use super::writable_book::decode_filterable_string;
 use super::{
@@ -145,16 +146,14 @@ fn decode_page_component(
     if let Some(encoded_len) =
         canonical_component_json_utf16_len_with_owner(value, |kind, value| match kind {
             CanonicalComponentOwnerValue::PlayerProfile => {
-                decode_profile(value, "component player")
-                    .ok()
-                    .and_then(|profile| canonical_resolvable_profile_json_utf16_len(&profile))
+                let profile = decode_profile(value, "component player")?;
+                Ok(canonical_resolvable_profile_json_utf16_len(&profile))
             }
             CanonicalComponentOwnerValue::ItemComponentPatch => {
-                decode_data_component_patch(value, context)
-                    .ok()
-                    .and_then(|patch| patch.canonical_json_utf16_len())
+                let patch = decode_data_component_patch(value, context)?;
+                canonical_data_component_patch_json_utf16_len(&patch)
             }
-            CanonicalComponentOwnerValue::Dialog => None,
+            CanonicalComponentOwnerValue::Dialog => Ok(None),
         })
         .map_err(|error| format!("{what} cannot be canonically encoded: {error}"))?
     {

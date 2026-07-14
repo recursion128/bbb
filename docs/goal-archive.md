@@ -14124,3 +14124,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   以及 structured page 内 hover `show_item` 的 32767/32768 UTF-16 unit 边界均有定向测试。show-dialog
   和 complex/recursive positive item-patch value 的 canonical owner 长度继续由缺口账本追踪，不以 raw
   NBT 大小近似。
+
+## 2026-07-14：Canonicalize flat-record Component item patches
+
+- [x] 新建 `component_value/canonical_json.rs` 作为 item-patch JsonOps 长度的单一 semantic owner，
+  将 removal/scalar 实现从超过 1000 行的 body decoder 机械迁入，再对照 `UseEffects`、
+  `SwingAnimation`、`BlockItemStateProperties`、`FoodProperties`、`UseCooldown`、`Weapon`、
+  `AttackRange`、`Enchantable`、recipes、`TooltipDisplay`、`SeededContainerLoot` 与 `CustomModelData`
+  codec，补齐 12 类 flat map/list/record value 的 required/default/optional 字段投影。
+- [x] protocol 暴露唯一 Gson string UTF-16 计长入口，patch owner 因而覆盖 arbitrary block-state/
+  custom-model string 的 quote/control/U+2028/astral escape；empty/non-default record、required float/int、
+  Identifier list、hidden component set、seed/default omission、四类 custom-model list 与 non-finite
+  Gson rejection 均有同置测试，written-book hover `show_item` flat patch 的 32767/32768 边界也有贯通
+  回归。show-dialog 和剩余 holder/nested-record/recursive positive item-patch value 继续由缺口账本追踪。

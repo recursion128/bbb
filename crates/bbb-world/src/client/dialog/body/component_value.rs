@@ -77,6 +77,7 @@ use super::{decode_item_stack_template, DialogItemStackTemplateState};
 mod attribute_modifiers;
 mod bees;
 mod blocks_attacks;
+mod canonical_json;
 mod consume_effect;
 mod debug_stick;
 mod enchantments;
@@ -139,6 +140,8 @@ use typed_data::{
 };
 use writable_book::{decode_writable_book_content, DialogFilterableStringState};
 use written_book::{decode_written_book_content_with_context, DialogWrittenBookContentState};
+
+pub(super) use canonical_json::canonical_data_component_patch_json_utf16_len;
 
 use super::super::{DialogDecodeContext, DialogTextState};
 

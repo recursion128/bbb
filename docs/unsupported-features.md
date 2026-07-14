@@ -102,7 +102,8 @@ Owner: `bbb-protocol`
   bounded NBT encode, Component/Dialog field lookup, and canonical maps now share CompoundTag's
   last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
   limit. Finish the remaining owner-sensitive payloads in generic packet Components and canonical
-  value codecs: show-dialog and complex/recursive positive item-patch values. Then complete
+  value codecs: show-dialog and the remaining holder/nested-record/recursive positive item-patch
+  values. Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining
   native-owned chat/sign/debug and warning return-screen stacks, and route custom-click controls

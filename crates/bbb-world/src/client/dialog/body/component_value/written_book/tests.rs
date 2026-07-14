@@ -144,6 +144,18 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let flat_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:use_effects":{},"minecraft:food":{"nutrition":4,"saturation":0.5,"can_always_eat":true}}}}"#
+    )
+    .len();
+    let exact_flat_patch_page =
+        component_with_flat_item_patch("x".repeat(32_767 - flat_patch_prefix));
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_flat_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -295,6 +307,20 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),
         (
+            book_with_pages(vec![component_with_flat_item_patch("x".repeat(
+                32_768
+                    - concat!(
+                        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:use_effects":{},"minecraft:food":{"nutrition":4,"saturation":0.5,"can_always_eat":true}}}}"#
+                    )
+                    .len(),
+            ))]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_item_patch()]),
+            "canonical item component patch contains a non-finite float",
+        ),
+        (
             written_book(vec![
                 string_entry("title", "Title"),
                 string_entry("author", "Author"),
@@ -338,6 +364,60 @@ fn component_with_scalar_item_patch(extra: String) -> NbtSummaryValue {
                         value_entry("max_stack_size", NbtSummaryValue::Byte(64)),
                         value_entry("!damage", compound(Vec::new())),
                     ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_flat_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry("use_effects", compound(Vec::new())),
+                        value_entry(
+                            "food",
+                            compound(vec![
+                                value_entry("nutrition", NbtSummaryValue::Int(4)),
+                                value_entry("saturation", NbtSummaryValue::Float(0.5f32.to_bits())),
+                                value_entry("can_always_eat", NbtSummaryValue::Byte(1)),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "custom_model_data",
+                        compound(vec![value_entry(
+                            "floats",
+                            NbtSummaryValue::List(vec![NbtSummaryValue::Float(f32::NAN.to_bits())]),
+                        )]),
+                    )]),
                 ),
             ]),
         ),

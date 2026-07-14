@@ -29,7 +29,7 @@ use java_number::{java_double_string, java_float_string};
 pub fn canonical_component_json_utf16_len(
     value: &NbtSummaryValue,
 ) -> Result<Option<usize>, String> {
-    canonical_component_json_utf16_len_with_owner(value, |_, _| None)
+    canonical_component_json_utf16_len_with_owner(value, |_, _| Ok(None))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,16 +41,30 @@ pub enum CanonicalComponentOwnerValue {
 
 /// Returns the exact canonical Component JSON length while delegating values whose Codec belongs
 /// to a higher semantic owner. The callback receives the selected owner kind and its raw NBT
-/// value; `None` keeps the complete Component length unknown rather than estimating it.
+/// value; `None` keeps the complete Component length unknown rather than estimating it, while an
+/// owner error is propagated to the caller.
 pub fn canonical_component_json_utf16_len_with_owner(
     value: &NbtSummaryValue,
     mut owner_value_utf16_len: impl FnMut(
         CanonicalComponentOwnerValue,
         &NbtSummaryValue,
-    ) -> Option<usize>,
+    ) -> Result<Option<usize>, String>,
 ) -> Result<Option<usize>, String> {
     validate_component_nbt(value, "component")?;
-    let Some(value) = canonical_component(value, &mut owner_value_utf16_len) else {
+    let mut owner_error = None;
+    let mut owner_adapter = |kind, value: &NbtSummaryValue| match owner_value_utf16_len(kind, value)
+    {
+        Ok(length) => length,
+        Err(error) => {
+            owner_error.get_or_insert(error);
+            None
+        }
+    };
+    let value = canonical_component(value, &mut owner_adapter);
+    if let Some(error) = owner_error {
+        return Err(error);
+    }
+    let Some(value) = value else {
         return Ok(None);
     };
     if value.has_non_finite_number() {
@@ -72,6 +86,11 @@ pub fn canonical_resolvable_profile_json_utf16_len(
 pub fn canonical_f32_json_utf16_len(bits: u32) -> Option<usize> {
     let encoded = java_float_string(f32::from_bits(bits));
     (!matches!(encoded.as_str(), "NaN" | "Infinity" | "-Infinity")).then_some(encoded.len())
+}
+
+/// Exact Gson string length in UTF-16 units, including quotes and required JSON escaping.
+pub fn canonical_json_string_utf16_len(value: &str) -> usize {
+    json_string_utf16_len(value)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -892,6 +911,7 @@ mod tests {
         );
         assert_eq!(canonical_f32_json_utf16_len(1), Some("1.4E-45".len()));
         assert_eq!(canonical_f32_json_utf16_len(f32::NAN.to_bits()), None);
+        assert_eq!(canonical_json_string_utf16_len("\"\u{2028}😀"), 12);
         let custom = compound(vec![
             ("text", string("custom")),
             (
@@ -995,9 +1015,16 @@ mod tests {
         ]);
         assert_eq!(canonical_component_json_utf16_len(&player).unwrap(), None);
         assert_eq!(
+            canonical_component_json_utf16_len_with_owner(&player, |_, _| {
+                Err("owner encoding failed".to_string())
+            })
+            .unwrap_err(),
+            "owner encoding failed"
+        );
+        assert_eq!(
             canonical_component_json_utf16_len_with_owner(&player, |kind, _| {
                 assert_eq!(kind, CanonicalComponentOwnerValue::PlayerProfile);
-                canonical_resolvable_profile_json_utf16_len(&partial)
+                Ok(canonical_resolvable_profile_json_utf16_len(&partial))
             })
             .unwrap(),
             Some(r#"{"player":{"name":"Alex"},"hat":false}"#.len())
