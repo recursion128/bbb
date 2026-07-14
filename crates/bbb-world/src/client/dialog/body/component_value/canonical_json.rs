@@ -119,6 +119,15 @@ fn canonical_component_value_json_utf16_len_with_context(
         DialogDataComponentValueState::AttributeModifiers { modifiers } => {
             attribute_modifiers_len_with_context(modifiers, context)
         }
+        DialogDataComponentValueState::Instrument { instrument } => {
+            instrument_holder_len_with_context(instrument, context)
+        }
+        DialogDataComponentValueState::ProvidesTrimMaterial { material } => {
+            trim_material_holder_len_with_context(material, context)
+        }
+        DialogDataComponentValueState::Trim { material, pattern } => {
+            armor_trim_len_with_context(material, pattern, context)
+        }
         _ => Ok(canonical_component_value_json_utf16_len(value)),
     }
 }
@@ -1142,6 +1151,18 @@ fn instrument_holder_len(instrument: &DialogInstrumentHolderState) -> Option<usi
     }
 }
 
+fn instrument_holder_len_with_context(
+    instrument: &DialogInstrumentHolderState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    match instrument {
+        DialogInstrumentHolderState::Named { resource_id, .. } => Ok(Some(string_len(resource_id))),
+        DialogInstrumentHolderState::Direct { instrument } => {
+            direct_instrument_len_with_context(instrument, context)
+        }
+    }
+}
+
 fn direct_instrument_len(instrument: &DialogInstrumentState) -> Option<usize> {
     Some(object_len(
         [
@@ -1163,10 +1184,55 @@ fn direct_instrument_len(instrument: &DialogInstrumentState) -> Option<usize> {
     ))
 }
 
+fn direct_instrument_len_with_context(
+    instrument: &DialogInstrumentState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let Some(sound_event_len) = sound_event_len(&instrument.sound_event) else {
+        return Ok(None);
+    };
+    let Some(use_duration_len) = canonical_f32_json_utf16_len(instrument.use_duration_bits) else {
+        return Ok(None);
+    };
+    let Some(range_len) = canonical_f32_json_utf16_len(instrument.range_bits) else {
+        return Ok(None);
+    };
+    let Some(description_len) = canonical_component_json_utf16_len_with_context(
+        &instrument.description.component,
+        context,
+    )?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(object_len(
+        [
+            ("sound_event", sound_event_len),
+            ("use_duration", use_duration_len),
+            ("range", range_len),
+            ("description", description_len),
+        ]
+        .into_iter(),
+    )))
+}
+
 fn trim_material_holder_len(material: &DialogTrimMaterialHolderState) -> Option<usize> {
     match material {
         DialogTrimMaterialHolderState::Named { resource_id, .. } => Some(string_len(resource_id)),
         DialogTrimMaterialHolderState::Direct { material } => direct_trim_material_len(material),
+    }
+}
+
+fn trim_material_holder_len_with_context(
+    material: &DialogTrimMaterialHolderState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    match material {
+        DialogTrimMaterialHolderState::Named { resource_id, .. } => {
+            Ok(Some(string_len(resource_id)))
+        }
+        DialogTrimMaterialHolderState::Direct { material } => {
+            direct_trim_material_len_with_context(material, context)
+        }
     }
 }
 
@@ -1190,10 +1256,49 @@ fn direct_trim_material_len(material: &DialogTrimMaterialState) -> Option<usize>
     Some(object_len(fields.into_iter()))
 }
 
+fn direct_trim_material_len_with_context(
+    material: &DialogTrimMaterialState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut fields = vec![("asset_name", string_len(&material.asset_name))];
+    if !material.override_armor_assets.is_empty() {
+        fields.push((
+            "override_armor_assets",
+            object_len(
+                material
+                    .override_armor_assets
+                    .iter()
+                    .map(|(asset, suffix)| (asset.as_str(), string_len(suffix))),
+            ),
+        ));
+    }
+    let Some(description_len) =
+        canonical_component_json_utf16_len_with_context(&material.description.component, context)?
+    else {
+        return Ok(None);
+    };
+    fields.push(("description", description_len));
+    Ok(Some(object_len(fields.into_iter())))
+}
+
 fn trim_pattern_holder_len(pattern: &DialogTrimPatternHolderState) -> Option<usize> {
     match pattern {
         DialogTrimPatternHolderState::Named { resource_id, .. } => Some(string_len(resource_id)),
         DialogTrimPatternHolderState::Direct { pattern } => direct_trim_pattern_len(pattern),
+    }
+}
+
+fn trim_pattern_holder_len_with_context(
+    pattern: &DialogTrimPatternHolderState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    match pattern {
+        DialogTrimPatternHolderState::Named { resource_id, .. } => {
+            Ok(Some(string_len(resource_id)))
+        }
+        DialogTrimPatternHolderState::Direct { pattern } => {
+            direct_trim_pattern_len_with_context(pattern, context)
+        }
     }
 }
 
@@ -1211,6 +1316,41 @@ fn direct_trim_pattern_len(pattern: &DialogTrimPatternState) -> Option<usize> {
         ]
         .into_iter(),
     ))
+}
+
+fn direct_trim_pattern_len_with_context(
+    pattern: &DialogTrimPatternState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let Some(description_len) =
+        canonical_component_json_utf16_len_with_context(&pattern.description.component, context)?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(object_len(
+        [
+            ("asset_id", string_len(&pattern.asset_id)),
+            ("description", description_len),
+            ("decal", bool_len(pattern.decal)),
+        ]
+        .into_iter(),
+    )))
+}
+
+fn armor_trim_len_with_context(
+    material: &DialogTrimMaterialHolderState,
+    pattern: &DialogTrimPatternHolderState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let Some(material_len) = trim_material_holder_len_with_context(material, context)? else {
+        return Ok(None);
+    };
+    let Some(pattern_len) = trim_pattern_holder_len_with_context(pattern, context)? else {
+        return Ok(None);
+    };
+    Ok(Some(object_len(
+        [("material", material_len), ("pattern", pattern_len)].into_iter(),
+    )))
 }
 
 fn banner_pattern_holder_len(holder: &DialogBannerPatternHolderState) -> usize {

@@ -732,11 +732,18 @@ fn enforces_confirmation_show_dialog_page_boundary() {
 }
 
 #[test]
-fn enforces_direct_instrument_item_patch_page_boundary() {
+fn enforces_direct_instrument_dialog_description_page_boundary() {
     let prefix = concat!(
-        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:instrument":{"sound_event":{"sound_id":"example:horn","range":16.0},"use_duration":7.0,"range":256.0,"description":{"text":"Ponder","color":"gold","italic":true}}}}}"#
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:instrument":{"sound_event":{"sound_id":"example:horn","range":16.0},"use_duration":7.0,"range":256.0,"description":{"text":"Ponder","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Horn"}}}}}}}"#
     )
     .len();
+    let canonical_prefix = crate::client::dialog::canonical_component_json_utf16_len_with_context(
+        &component_with_instrument_item_patch(String::new()),
+        DialogDecodeContext::new(None, 0),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(canonical_prefix, prefix);
     for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
         let page = component_with_instrument_item_patch("x".repeat(limit - prefix));
         let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
@@ -748,11 +755,18 @@ fn enforces_direct_instrument_item_patch_page_boundary() {
 }
 
 #[test]
-fn enforces_direct_trim_item_patch_page_boundary() {
+fn enforces_direct_trim_dialog_descriptions_page_boundary() {
     let prefix = concat!(
-        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:provides_trim_material":{"asset_name":"quartz","override_armor_assets":{"example:copper":"nested/copper","minecraft:iron":"iron_darker"},"description":"Quartz"},"minecraft:trim":{"material":{"asset_name":"resin","description":"Resin"},"pattern":{"asset_id":"minecraft:sentry","description":"Sentry","decal":false}}}}}"#
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:provides_trim_material":{"asset_name":"quartz","override_armor_assets":{"example:copper":"nested/copper","minecraft:iron":"iron_darker"},"description":{"text":"Quartz","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Quartz dialog"}}}},"minecraft:trim":{"material":{"asset_name":"resin","description":{"text":"Resin","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Material dialog"}}}},"pattern":{"asset_id":"minecraft:sentry","description":{"text":"Sentry","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Pattern dialog"}}},"decal":false}}}}}"#
     )
     .len();
+    let canonical_prefix = crate::client::dialog::canonical_component_json_utf16_len_with_context(
+        &component_with_trim_item_patch(String::new()),
+        DialogDecodeContext::new(None, 0),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(canonical_prefix, prefix);
     for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
         let page = component_with_trim_item_patch("x".repeat(limit - prefix));
         let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
@@ -2425,8 +2439,19 @@ fn component_with_instrument_item_patch(extra: String) -> NbtSummaryValue {
                                 "description",
                                 compound(vec![
                                     string_entry("text", "Ponder"),
-                                    value_entry("italic", NbtSummaryValue::Byte(1)),
-                                    string_entry("color", "gold"),
+                                    value_entry(
+                                        "click_event",
+                                        compound(vec![
+                                            string_entry("action", "show_dialog"),
+                                            value_entry(
+                                                "dialog",
+                                                compound(vec![
+                                                    string_entry("type", "notice"),
+                                                    string_entry("title", "Horn"),
+                                                ]),
+                                            ),
+                                        ]),
+                                    ),
                                 ]),
                             ),
                         ]),
@@ -2438,6 +2463,24 @@ fn component_with_instrument_item_patch(extra: String) -> NbtSummaryValue {
 }
 
 fn component_with_trim_item_patch(extra: String) -> NbtSummaryValue {
+    let dialog_description = |text: &str, title: &str| {
+        compound(vec![
+            string_entry("text", text),
+            value_entry(
+                "click_event",
+                compound(vec![
+                    string_entry("action", "show_dialog"),
+                    value_entry(
+                        "dialog",
+                        compound(vec![
+                            string_entry("type", "notice"),
+                            string_entry("title", title),
+                        ]),
+                    ),
+                ]),
+            ),
+        ])
+    };
     compound(vec![
         string_entry("text", "item"),
         value_entry(
@@ -2463,7 +2506,10 @@ fn component_with_trim_item_patch(extra: String) -> NbtSummaryValue {
                                         string_entry("example:copper", "nested/copper"),
                                     ]),
                                 ),
-                                string_entry("description", "Quartz"),
+                                value_entry(
+                                    "description",
+                                    dialog_description("Quartz", "Quartz dialog"),
+                                ),
                             ]),
                         ),
                         value_entry(
@@ -2473,14 +2519,20 @@ fn component_with_trim_item_patch(extra: String) -> NbtSummaryValue {
                                     "material",
                                     compound(vec![
                                         string_entry("asset_name", "resin"),
-                                        string_entry("description", "Resin"),
+                                        value_entry(
+                                            "description",
+                                            dialog_description("Resin", "Material dialog"),
+                                        ),
                                     ]),
                                 ),
                                 value_entry(
                                     "pattern",
                                     compound(vec![
                                         string_entry("asset_id", "sentry"),
-                                        string_entry("description", "Sentry"),
+                                        value_entry(
+                                            "description",
+                                            dialog_description("Sentry", "Pattern dialog"),
+                                        ),
                                     ]),
                                 ),
                             ]),
