@@ -85,7 +85,8 @@ Owner: `bbb-protocol`
   kinetic-weapon, full equippable, blocks-attacks, consumable, and death-protection sound,
   holder-set, consume-effect, ordered tool-rule, and potion-content forms—with description layout,
   decorations—as well as ordered enchantment/stored-enchantment maps and attribute modifiers with
-  default/hidden/override display dispatch,
+  default/hidden/override display dispatch, plus can-break/can-place-on block holders, state, NBT,
+  and supported exact-component matchers (partial-component matchers and lock remain open),
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the

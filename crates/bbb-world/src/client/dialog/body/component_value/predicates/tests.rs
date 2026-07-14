@@ -1,13 +1,23 @@
+use std::collections::BTreeMap;
+
 use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
         VANILLA_DATA_COMPONENT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
     },
+    packets::inventory::{
+        BlockHolderSetSummary, DataComponentPatchSummary, StatePropertyMatcherSummary,
+        StatePropertyValueMatcherSummary,
+    },
     NbtSummaryEntry, NbtSummaryValue,
 };
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use crate::RegistryTagState;
+
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -218,6 +228,143 @@ fn decodes_adventure_list_and_lock_recursive_item_collections() {
     assert_eq!(items.contains.as_ref().unwrap().len(), 1);
     assert_eq!(items.count.as_ref().unwrap()[0].count.min, Some(0));
     assert_eq!(items.size.as_ref().unwrap().min, Some(1));
+}
+
+#[test]
+fn projects_adventure_block_holders_state_nbt_and_exact_components() {
+    let mut registries = RegistrySet::default();
+    let stone_id = registries
+        .holder_id_by_resource_id(BLOCK_REGISTRY, "minecraft:stone")
+        .unwrap();
+    registries.tags.insert(
+        BLOCK_REGISTRY.to_string(),
+        RegistryTagState {
+            registry: BLOCK_REGISTRY.to_string(),
+            tags: BTreeMap::from([("minecraft:mineable/pickaxe".to_string(), vec![stone_id])]),
+        },
+    );
+    let value = NbtSummaryValue::List(vec![
+        compound([
+            ("blocks", string("stone")),
+            (
+                "state",
+                compound([
+                    ("axis", string("y")),
+                    (
+                        "age",
+                        compound([("min", string("1")), ("max", string("3"))]),
+                    ),
+                ]),
+            ),
+            ("nbt", string("{foo:1}")),
+            (
+                "components",
+                compound([("max_stack_size", NbtSummaryValue::Int(16))]),
+            ),
+        ]),
+        compound([("blocks", string("#minecraft:mineable/pickaxe"))]),
+        compound([]),
+    ]);
+    let decoded = decode(
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        "minecraft:can_place_on",
+        &value,
+        Some(&registries),
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::AdventureModePredicate { predicate }) = decoded else {
+        panic!("expected adventure-mode predicate")
+    };
+
+    for type_id in [
+        VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+    ] {
+        let mut patch = DataComponentPatchSummary::default();
+        assert!(apply_item_patch_value(
+            type_id,
+            &DialogDataComponentValueState::AdventureModePredicate {
+                predicate: predicate.clone(),
+            },
+            &mut patch,
+        ));
+        let (summary, persistent) = if type_id == VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID {
+            (
+                patch.can_place_on.as_ref().unwrap(),
+                patch.can_place_on_persistent.as_ref().unwrap(),
+            )
+        } else {
+            (
+                patch.can_break.as_ref().unwrap(),
+                patch.can_break_persistent.as_ref().unwrap(),
+            )
+        };
+        assert!(summary.unknown);
+        assert_eq!(summary.block_registry_ids, vec![stone_id]);
+        assert_eq!(summary.unresolved_block_tag_count, 1);
+        assert_eq!(persistent.predicates.len(), 3);
+        assert_eq!(
+            persistent.predicates[0].blocks,
+            Some(BlockHolderSetSummary {
+                registry_ids: vec![stone_id],
+                tag: None,
+            })
+        );
+        assert_eq!(
+            persistent.predicates[0].state,
+            Some(vec![
+                StatePropertyMatcherSummary {
+                    name: "axis".to_string(),
+                    value: StatePropertyValueMatcherSummary::Exact("y".to_string()),
+                },
+                StatePropertyMatcherSummary {
+                    name: "age".to_string(),
+                    value: StatePropertyValueMatcherSummary::Range {
+                        min: Some("1".to_string()),
+                        max: Some("3".to_string()),
+                    },
+                },
+            ])
+        );
+        assert!(matches!(
+            persistent.predicates[0].nbt,
+            Some(NbtSummaryValue::Compound(_))
+        ));
+        let exact = persistent.predicates[0].exact_components.as_ref().unwrap();
+        assert_eq!(exact.added, 1);
+        assert_eq!(
+            exact.added_type_ids,
+            vec![VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID]
+        );
+        assert_eq!(exact.max_stack_size, Some(16));
+        assert_eq!(
+            persistent.predicates[1].blocks,
+            Some(BlockHolderSetSummary {
+                registry_ids: Vec::new(),
+                tag: Some("minecraft:mineable/pickaxe".to_string()),
+            })
+        );
+        assert_eq!(persistent.predicates[2].blocks, None);
+    }
+}
+
+#[test]
+fn rejects_adventure_partial_component_predicates_from_summary_bridge() {
+    let decoded = decode(
+        VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        "minecraft:can_break",
+        &compound([("predicates", compound([("rarity", compound([]))]))]),
+        None,
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::AdventureModePredicate { predicate }) = decoded else {
+        panic!("expected adventure-mode predicate")
+    };
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        &DialogDataComponentValueState::AdventureModePredicate { predicate },
+        &mut DataComponentPatchSummary::default(),
+    ));
 }
 
 #[test]

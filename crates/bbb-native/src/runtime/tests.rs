@@ -14390,6 +14390,14 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:attribute_modifiers",
                                             NbtSummaryValue::List(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:can_break",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
+                                        entry(
+                                            "minecraft:can_place_on",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),

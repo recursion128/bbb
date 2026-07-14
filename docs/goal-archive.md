@@ -14626,3 +14626,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   rows 与 bit-exact amount，并证明 persisted typed display payload 与 type id 不一致时整项拒绝；native
   dialog Item body 加入 empty modifier list 后继续进入唯一 item runtime。predicate/book/typed-data 与递归
   item-stack collection 等其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge adventure-predicate dialog Item patches
+
+- [x] 对照 `AdventureModePredicate.CODEC/STREAM_CODEC`、`BlockPredicate.CODEC/STREAM_CODEC` 与 protocol
+  persistent summary，把 `can_break`/`can_place_on` 的 nonempty ordered predicates、direct/named block
+  holder-set、state exact/range matcher、block-entity NBT 及已支持 exact component matcher 投影到既有
+  `AdventureModePredicateDataSummary`；tooltip aggregate 同步保持 unknown、ordered distinct block ids 与
+  unresolved tag count。
+- [x] world focused regressions 覆盖 direct holder、named tag、缺 blocks、state、NBT、nested exact patch 与
+  两个 outer component 字段，并证明 partial component predicate 保持整项拒绝；native dialog Item body
+  加入两类 empty block predicate 后继续进入唯一 item runtime。protocol summary 尚无 lock 字段，partial
+  predicate typed state 也不能冒充 raw wire NBT，二者连同 book/typed-data 与递归 item-stack collection
+  继续由后续明确切片处理。

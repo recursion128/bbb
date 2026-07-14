@@ -10,13 +10,15 @@ use bbb_protocol::item_component_value_types::{
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
-        AttackRangeSummary, AttributeModifierSummary, BannerPatternLayerSummary,
-        BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary, DamageReductionSummary,
-        DamageTypeHolderSetSummary, DataComponentPatchSummary, EntityTypeHolderSetSummary,
-        EquippableSummary, FireworkExplosionSummary, ItemDamageFunctionSummary,
-        ItemEnchantmentSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
-        LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
-        PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
+        AdventureModePredicateDataSummary, AdventureModePredicateSummary, AttackRangeSummary,
+        AttributeModifierSummary, BannerPatternLayerSummary, BlockHolderSetSummary,
+        BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary,
+        DamageReductionSummary, DamageTypeHolderSetSummary, DataComponentPatchSummary,
+        EntityTypeHolderSetSummary, EquippableSummary, FireworkExplosionSummary,
+        ItemDamageFunctionSummary, ItemEnchantmentSummary, KineticWeaponConditionSummary,
+        KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
+        MobEffectInstanceSummary, PiercingWeaponSummary, ResolvableProfileSummary,
+        SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
         SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
         TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
     },
@@ -155,7 +157,7 @@ use potion_contents::{
 };
 use predicates::{
     decode_adventure_mode_predicate, decode_item_predicate, DialogAdventureModePredicateState,
-    DialogItemPredicateState,
+    DialogBlockPredicateState, DialogItemPredicateState, DialogStatePropertyValueMatcherState,
 };
 use profile::decode_profile;
 use sound_event::{
@@ -748,6 +750,21 @@ pub(super) fn apply_item_patch_value(
             patch.attribute_modifiers = summaries;
         }
         (
+            VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID | VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+            Value::AdventureModePredicate { predicate },
+        ) => {
+            let Some((summary, persistent)) = adventure_mode_predicate_summaries(predicate) else {
+                return false;
+            };
+            if type_id == VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID {
+                patch.can_place_on = Some(summary);
+                patch.can_place_on_persistent = Some(persistent);
+            } else {
+                patch.can_break = Some(summary);
+                patch.can_break_persistent = Some(persistent);
+            }
+        }
+        (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
                 min_reach_bits,
@@ -1105,6 +1122,106 @@ fn attribute_modifier_summaries(
             })
         })
         .collect()
+}
+
+fn adventure_mode_predicate_summaries(
+    value: &DialogAdventureModePredicateState,
+) -> Option<(
+    AdventureModePredicateSummary,
+    AdventureModePredicateDataSummary,
+)> {
+    if value.predicates.is_empty() {
+        return None;
+    }
+    let mut summary = AdventureModePredicateSummary::default();
+    let mut predicates = Vec::with_capacity(value.predicates.len());
+    for predicate in &value.predicates {
+        let predicate = block_predicate_summary(predicate)?;
+        match predicate.blocks.as_ref() {
+            None => summary.unknown = true,
+            Some(blocks) => {
+                summary.unresolved_block_tag_count += usize::from(blocks.tag.is_some());
+                for registry_id in &blocks.registry_ids {
+                    if !summary.block_registry_ids.contains(registry_id) {
+                        summary.block_registry_ids.push(*registry_id);
+                    }
+                }
+            }
+        }
+        predicates.push(predicate);
+    }
+    Some((summary, AdventureModePredicateDataSummary { predicates }))
+}
+
+fn block_predicate_summary(value: &DialogBlockPredicateState) -> Option<BlockPredicateSummary> {
+    if !value.components.partial.is_empty() {
+        return None;
+    }
+    let blocks = match value.blocks.as_ref() {
+        Some(blocks) => {
+            let (registry_ids, tag) = holder_set_summary_parts(blocks)?;
+            Some(BlockHolderSetSummary { registry_ids, tag })
+        }
+        None => None,
+    };
+    let state = match value.state.as_ref() {
+        Some(state) => {
+            let mut names = std::collections::BTreeSet::new();
+            let mut summaries = Vec::with_capacity(state.len());
+            for matcher in state {
+                if !names.insert(matcher.name.as_str()) {
+                    return None;
+                }
+                summaries.push(StatePropertyMatcherSummary {
+                    name: matcher.name.clone(),
+                    value: match &matcher.value {
+                        DialogStatePropertyValueMatcherState::Exact { value } => {
+                            StatePropertyValueMatcherSummary::Exact(value.clone())
+                        }
+                        DialogStatePropertyValueMatcherState::Range { min, max } => {
+                            StatePropertyValueMatcherSummary::Range {
+                                min: min.clone(),
+                                max: max.clone(),
+                            }
+                        }
+                    },
+                });
+            }
+            Some(summaries)
+        }
+        None => None,
+    };
+    let nbt = match value.nbt.as_ref() {
+        Some(nbt @ NbtSummaryValue::Compound(_)) => Some(nbt.clone()),
+        Some(_) => return None,
+        None => None,
+    };
+    let exact_components = if value.components.exact.is_empty() {
+        None
+    } else {
+        let mut patch = DataComponentPatchSummary::default();
+        for component in &value.components.exact {
+            if patch.added_type_ids.contains(&component.component_type_id)
+                || !apply_item_patch_value(
+                    component.component_type_id,
+                    &component.value,
+                    &mut patch,
+                )
+            {
+                return None;
+            }
+            patch.added_type_ids.push(component.component_type_id);
+        }
+        patch.added = patch.added_type_ids.len();
+        Some(Box::new(patch))
+    };
+    Some(BlockPredicateSummary {
+        blocks,
+        state,
+        nbt,
+        exact_components,
+        partial_components: Vec::new(),
+    })
 }
 
 fn apply_holder_set(
