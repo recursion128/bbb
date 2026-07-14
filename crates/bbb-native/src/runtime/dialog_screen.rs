@@ -3,7 +3,8 @@ use bbb_net::NetCommand;
 use bbb_protocol::packets::CustomClickAction;
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryScreen,
-    HudInventoryTextLabel, HudStyledTextRun, HudTextStyle, HudUvRect,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun,
+    HudTextStyle, HudUvRect,
 };
 use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState, DialogDataState,
@@ -197,6 +198,7 @@ pub(super) fn hud_dialog_screen(
     )?;
     let screen_width_i32 = i32::try_from(layout.screen_width).ok()?;
     let screen_height_i32 = i32::try_from(layout.screen_height).ok()?;
+    let cursor_screen_position = cursor_position;
     let cursor_position =
         cursor_position.map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
     let highlighted_button = layout.button_at(cursor_position, surface_size);
@@ -291,6 +293,37 @@ pub(super) fn hud_dialog_screen(
             },
         })
         .collect();
+    let tooltip = highlighted_button.and_then(|index| {
+        let tooltip = controls.actions.get(index)?.tooltip.as_ref()?;
+        let (cursor_x, cursor_y) = cursor_screen_position?;
+        let (origin_x, origin_y) =
+            centered_screen_origin(surface_size, layout.screen_width, layout.screen_height);
+        Some(HudInventoryTooltip {
+            slot_id: u16::try_from(index).unwrap_or(u16::MAX),
+            x: i32::try_from(i64::from(cursor_x) - origin_x).unwrap_or_else(|_| {
+                if i64::from(cursor_x) < origin_x {
+                    i32::MIN
+                } else {
+                    i32::MAX
+                }
+            }),
+            y: i32::try_from(i64::from(cursor_y) - origin_y).unwrap_or_else(|_| {
+                if i64::from(cursor_y) < origin_y {
+                    i32::MIN
+                } else {
+                    i32::MAX
+                }
+            }),
+            lines: wrapped_text_lines(tooltip, 170)
+                .into_iter()
+                .map(|line| HudInventoryTooltipLine {
+                    text: line.text,
+                    tint: TEXT_COLOR,
+                    runs: line.runs,
+                })
+                .collect(),
+        })
+    });
 
     Some(HudInventoryScreen {
         width: layout.screen_width,
@@ -305,7 +338,7 @@ pub(super) fn hud_dialog_screen(
         entity_previews: Vec::new(),
         text_labels,
         hovered_slot_id: None,
-        tooltip: None,
+        tooltip,
     })
 }
 
@@ -843,8 +876,11 @@ mod tests {
         let mut world = world_with_confirmation(vec![
             entry("pause", NbtSummaryValue::Byte(0)),
             entry("after_action", NbtSummaryValue::String("none".to_string())),
-            entry("yes", custom_button("Yes", 80, "example:yes", None)),
-            entry("no", custom_button("No", 100, "example:no", None)),
+            entry(
+                "yes",
+                custom_button("Yes", Some("Proceed"), 80, "example:yes", None),
+            ),
+            entry("no", custom_button("No", None, 100, "example:no", None)),
         ]);
         let screen = hud_dialog_screen(
             world.current_dialog().unwrap(),
@@ -864,6 +900,10 @@ mod tests {
         assert_eq!(screen.background_layers[1].width, 100);
         assert_eq!(screen.text_labels[1].text, "Yes");
         assert_eq!(screen.text_labels[2].text, "No");
+        let tooltip = screen.tooltip.as_ref().unwrap();
+        assert_eq!((tooltip.x, tooltip.y), (100, 220));
+        assert_eq!(tooltip.lines.len(), 1);
+        assert_eq!(tooltip.lines[0].text, "Proceed");
 
         let mut counters = NetCounters::default();
         let (tx, mut rx) = mpsc::channel(2);
@@ -1161,6 +1201,7 @@ mod tests {
 
     fn custom_button(
         label: &str,
+        tooltip: Option<&str>,
         width: i32,
         id: &str,
         payload: Option<NbtSummaryValue>,
@@ -1175,11 +1216,18 @@ mod tests {
         if let Some(payload) = payload {
             action.push(entry("payload", payload));
         }
-        NbtSummaryValue::Compound(vec![
+        let mut button = vec![
             entry("label", NbtSummaryValue::String(label.to_string())),
             entry("width", NbtSummaryValue::Int(width)),
             entry("action", NbtSummaryValue::Compound(action)),
-        ])
+        ];
+        if let Some(tooltip) = tooltip {
+            button.push(entry(
+                "tooltip",
+                NbtSummaryValue::String(tooltip.to_string()),
+            ));
+        }
+        NbtSummaryValue::Compound(button)
     }
 
     #[test]

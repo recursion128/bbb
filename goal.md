@@ -323,7 +323,7 @@ custom action 已发送完整 id/payload，并按 `after_action` 进入 close/no
 按 vanilla 1 秒显示、5 秒启用 Back，且保持 previous-screen、ShowDialog replacement 与
 ClearDialog ignore 语义。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen background、warning button/screen、
-Item body、四类 input、tooltip/scroll/focus、其余三类 top-level dialog 布局、action-bearing
+Item body、四类 input、button-list tooltip/scroll/focus、其余三类 top-level dialog 布局、action-bearing
 open-url/run/suggest/dynamic action 与 Component-click。静态 change-page 在 DialogScreen 的 default
 handler 中无页面 side effect，仅按 vanilla 执行 `after_action`；静态 show-dialog action 已同步
 替换当前 dialog、保留最初 previous screen，且不误增 clientbound packet counter。clear-dialog 还须接入 native-owned

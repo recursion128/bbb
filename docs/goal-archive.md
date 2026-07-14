@@ -14470,3 +14470,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native action runner 因此把静态 change-page 明确建模为无本地页面 side effect、继续执行
   close/none/waiting transition；page=7 + WAIT_FOR_RESPONSE 的 current-dialog clear 与 waiting tick=0 有
   focused regression。Book Component-click 的实际翻页仍归 Component-click 缺口，不与本项混淆。
+
+## 2026-07-14：Project simple-dialog action tooltips
+
+- [x] 对照 `DialogControlSet.createDialogButton`、`Tooltip.splitTooltip` 与默认零延迟
+  `WidgetTooltipHolder`，Notice/Confirmation action button 在共享 hover 命中下投影 optional tooltip；正文
+  复用 dialog Component styled runs，并按 vanilla 170px 最大宽度确定性换行。
+- [x] tooltip anchor 从 window/surface cursor 换算为 centered dialog-screen 相对坐标，继续复用 renderer
+  已有 tooltip background/frame、边界定位和 styled line surface。Confirmation yes-only tooltip 的 hover
+  sprite、exact anchor、line text 与 no-button 无 tooltip 路径有 focused regression；未来 button-list dialog
+  复用该投影时仍须同时完成 scrolling/clipping/focus。
