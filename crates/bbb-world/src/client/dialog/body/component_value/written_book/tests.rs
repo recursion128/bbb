@@ -560,6 +560,22 @@ fn enforces_consume_effect_item_patch_page_boundary_with_session_registries() {
 }
 
 #[test]
+fn enforces_potion_contents_item_patch_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:potion_contents":{"potion":"minecraft:strong_swiftness","custom_color":1193046,"custom_effects":[{"id":"minecraft:speed","amplifier":2,"duration":40,"show_particles":false,"show_icon":true}],"custom_name":"example.potion"}}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_potion_contents_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -1640,6 +1656,44 @@ fn component_with_consume_effect_item_patch(extra: String) -> NbtSummaryValue {
 fn consume_effect(effect_type: &str, mut entries: Vec<NbtSummaryEntry>) -> NbtSummaryValue {
     entries.insert(0, string_entry("type", effect_type));
     compound(entries)
+}
+
+fn component_with_potion_contents_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "potion_contents",
+                        compound(vec![
+                            string_entry("potion", "strong_swiftness"),
+                            value_entry("custom_color", NbtSummaryValue::Int(0x12_34_56)),
+                            value_entry(
+                                "custom_effects",
+                                NbtSummaryValue::List(vec![compound(vec![
+                                    string_entry("id", "speed"),
+                                    value_entry("amplifier", NbtSummaryValue::Int(2)),
+                                    value_entry("duration", NbtSummaryValue::Int(40)),
+                                    value_entry("show_particles", NbtSummaryValue::Byte(0)),
+                                    value_entry("show_icon", NbtSummaryValue::Byte(1)),
+                                ])]),
+                            ),
+                            string_entry("custom_name", "example.potion"),
+                        ]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
 }
 
 fn component_with_non_finite_tool_item_patch() -> NbtSummaryValue {

@@ -443,6 +443,8 @@ HolderSet 与两个 optional sound 也已闭合 canonical；default list/record 
 `consumable`/`death_protection` 及共享的五类 dispatched ConsumeEffect 也已闭合 canonical，覆盖递归
 MobEffectInstance details、mob-effect HolderSet 与 sound holder；details 的 `show_icon` 按 getter 语义始终
 重编码，default sound 仅省略 exact named holder，全部 effect/direct-sound float 严格拒绝 non-finite；
+`potion_contents` 也已复用同一 MobEffectInstance owner 闭合 potion/custom color/custom effects/custom name；
+compact potion holder 输入按 `withAlternative(full,potion)` 的 left/full encoder 统一重编码为 full object；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

@@ -13,7 +13,9 @@ use super::blocks_attacks::{
 };
 use super::consume_effect::{DialogConsumableState, DialogConsumeEffectState};
 use super::holder_set::{DialogBannerPatternHolderState, DialogRegistryHolderSetState};
-use super::potion_contents::{DialogMobEffectDetailsState, DialogMobEffectInstanceState};
+use super::potion_contents::{
+    DialogMobEffectDetailsState, DialogMobEffectInstanceState, DialogPotionContentsState,
+};
 use super::sound_event::{
     DialogKineticWeaponConditionState, DialogKineticWeaponState, DialogPiercingWeaponState,
     DialogSoundEventHolderState,
@@ -679,6 +681,7 @@ fn canonical_component_value_json_utf16_len(
         DialogDataComponentValueState::BlocksAttacks { blocks_attacks } => {
             blocks_attacks_len(blocks_attacks)?
         }
+        DialogDataComponentValueState::PotionContents { contents } => potion_contents_len(contents),
         DialogDataComponentValueState::Consumable { consumable } => consumable_len(consumable)?,
         DialogDataComponentValueState::DeathProtection { effects } => {
             death_protection_len(effects)?
@@ -748,6 +751,26 @@ fn append_consume_effect_float_bits(values: &mut Vec<u32>, effects: &[DialogCons
             | DialogConsumeEffectState::ClearAllEffects => {}
         }
     }
+}
+
+fn potion_contents_len(contents: &DialogPotionContentsState) -> usize {
+    let mut fields = Vec::new();
+    if let Some(potion) = &contents.potion {
+        fields.push(("potion", string_len(&potion.resource_id)));
+    }
+    if let Some(custom_color) = contents.custom_color {
+        fields.push(("custom_color", custom_color.to_string().len()));
+    }
+    if !contents.custom_effects.is_empty() {
+        fields.push((
+            "custom_effects",
+            array_len(contents.custom_effects.iter().map(mob_effect_instance_len)),
+        ));
+    }
+    if let Some(custom_name) = &contents.custom_name {
+        fields.push(("custom_name", string_len(custom_name)));
+    }
+    object_len(fields.into_iter())
 }
 
 fn consumable_len(consumable: &DialogConsumableState) -> Option<usize> {
@@ -1984,6 +2007,62 @@ mod tests {
         assert_exact(
             DialogDataComponentValueState::DeathProtection { effects },
             r##"{"death_effects":[{"type":"minecraft:apply_effects","effects":[{"id":"minecraft:speed","amplifier":2,"duration":40,"show_icon":true,"hidden_effect":{"duration":20,"ambient":true,"show_particles":false,"show_icon":false}}],"probability":0.25},{"type":"minecraft:remove_effects","effects":"#example:negative"},{"type":"minecraft:clear_all_effects"},{"type":"minecraft:teleport_randomly","diameter":8.0},{"type":"minecraft:play_sound","sound":"minecraft:entity.generic.eat"}]}"##,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_potion_contents_full_alternative() {
+        assert_exact(
+            DialogDataComponentValueState::PotionContents {
+                contents: DialogPotionContentsState {
+                    potion: None,
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                },
+            },
+            "{}",
+        );
+        assert_exact(
+            DialogDataComponentValueState::PotionContents {
+                contents: DialogPotionContentsState {
+                    potion: Some(DialogRegistryHolderReferenceState {
+                        holder_id: 0,
+                        resource_id: "minecraft:water".to_string(),
+                    }),
+                    custom_color: None,
+                    custom_effects: Vec::new(),
+                    custom_name: None,
+                },
+            },
+            r#"{"potion":"minecraft:water"}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::PotionContents {
+                contents: DialogPotionContentsState {
+                    potion: Some(DialogRegistryHolderReferenceState {
+                        holder_id: 15,
+                        resource_id: "minecraft:strong_swiftness".to_string(),
+                    }),
+                    custom_color: Some(0x12_34_56),
+                    custom_effects: vec![DialogMobEffectInstanceState {
+                        effect: DialogRegistryHolderReferenceState {
+                            holder_id: 1,
+                            resource_id: "minecraft:speed".to_string(),
+                        },
+                        details: DialogMobEffectDetailsState {
+                            amplifier: 2,
+                            duration: 40,
+                            ambient: false,
+                            show_particles: false,
+                            show_icon: true,
+                            hidden_effect: None,
+                        },
+                    }],
+                    custom_name: Some("example.potion".to_string()),
+                },
+            },
+            r#"{"potion":"minecraft:strong_swiftness","custom_color":1193046,"custom_effects":[{"id":"minecraft:speed","amplifier":2,"duration":40,"show_particles":false,"show_icon":true}],"custom_name":"example.potion"}"#,
         );
     }
 

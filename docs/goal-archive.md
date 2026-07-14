@@ -14326,3 +14326,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   details、NaN 拒绝与显式 session mob-effect tag 下 written-book hover `show_item` consumable +
   death-protection patch 的 32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context
   与剩余 predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize potion-contents item patches
+
+- [x] 对照 `PotionContents.FULL_CODEC/CODEC`，扩展单一 item-patch canonical owner：optional potion、
+  custom_color、default-empty custom_effects 与 optional custom_name 按 vanilla field order/default omission
+  编码，custom effects 复用上一 slice 的完整递归 `MobEffectInstance.Details` owner。
+- [x] `Codec.withAlternative(FULL_CODEC, Potion.CODEC, PotionContents::new)` 的 encoder 固定走 left/full
+  分支，故 compact potion holder 输入统一输出 `{"potion":"minecraft:..."}` 而非字符串。empty/compact/full
+  exact JSON、`show_icon` 重编码与 written-book hover `show_item` potion-contents patch 的 32767/32768
+  UTF-16 unit 边界均有回归。generic packet show-dialog world context 与剩余 predicate/item-template 及
+  其它 nested-record positive item-patch value 继续由缺口账本追踪。
