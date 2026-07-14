@@ -14460,6 +14460,10 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:map_decorations",
                                             NbtSummaryValue::Compound(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:debug_stick_state",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),

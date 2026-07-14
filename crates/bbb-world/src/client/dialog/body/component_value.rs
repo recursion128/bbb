@@ -924,6 +924,23 @@ pub(super) fn apply_item_patch_value(
             );
         }
         (
+            VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+            Value::DebugStickState { properties },
+        ) => {
+            patch.codec_backed_nbt.insert(
+                type_id,
+                NbtSummaryValue::Compound(
+                    properties
+                        .iter()
+                        .map(|property| NbtSummaryEntry {
+                            name: property.block.resource_id.clone(),
+                            value: NbtSummaryValue::String(property.property.clone()),
+                        })
+                        .collect(),
+                ),
+            );
+        }
+        (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
                 min_reach_bits,

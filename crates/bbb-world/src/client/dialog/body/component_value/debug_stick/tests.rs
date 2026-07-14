@@ -1,8 +1,9 @@
 use bbb_protocol::{
-    data_component_types::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID, NbtSummaryEntry,
-    NbtSummaryValue,
+    data_component_types::VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+    packets::inventory::DataComponentPatchSummary, NbtSummaryEntry, NbtSummaryValue,
 };
 
+use super::super::apply_item_patch_value;
 use super::*;
 use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
 
@@ -31,6 +32,39 @@ fn decodes_debug_stick_block_property_map_from_builtin_registry() {
     assert_eq!(properties[1].property, "powered");
     assert_ne!(properties[0].block.holder_id, properties[1].block.holder_id);
     let oak_log_id = properties[0].block.holder_id;
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+        &super::super::DialogDataComponentValueState::DebugStickState {
+            properties: properties.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID),
+        Some(&compound(vec![
+            string_entry("minecraft:oak_log", "axis"),
+            string_entry("minecraft:lever", "powered"),
+        ]))
+    );
+
+    let mut empty_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
+        &super::super::DialogDataComponentValueState::DebugStickState {
+            properties: Vec::new(),
+        },
+        &mut empty_patch,
+    ));
+    assert_eq!(
+        empty_patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID),
+        Some(&compound(Vec::new()))
+    );
 
     let mut registries = RegistrySet::default();
     let mut contents = RegistryContentState::new("minecraft:block");

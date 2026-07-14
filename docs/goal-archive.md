@@ -14691,3 +14691,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   coordinates/rotation、empty map 与 session registry 不覆盖 builtin type；native dialog Item body 加入
   empty map-decorations 后继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续
   明确切片处理。
+
+## 2026-07-14：Bridge debug-stick-state dialog Item patches
+
+- [x] 对照 `DebugStickState.CODEC` 的 builtin block-holder dispatched map，把 normalized ordered block
+  resource id 与已验证 property name 重建为 persistent CompoundTag，并按 type id 进入既有 codec-backed
+  NBT summary/encoder；保持 compound last-value 与 resource-id normalization 后重复拒绝语义。
+- [x] world focused regression 覆盖 two-block ordered map、duplicate original key last-value、empty map 与
+  session registry 不覆盖 builtin block identity；native dialog Item body 加入 empty debug-stick-state 后
+  继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续明确切片处理。
