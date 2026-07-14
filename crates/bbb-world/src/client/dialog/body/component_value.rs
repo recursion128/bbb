@@ -48,7 +48,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
         VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
         VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, VANILLA_DATA_COMPONENT_USE_COOLDOWN_TYPE_ID,
-        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern_for_name,
@@ -59,6 +60,7 @@ use serde::{Deserialize, Serialize};
 use crate::{registries::normalize_codec_identifier, RegistrySet};
 
 use super::super::{compound_entries, find_entry};
+use super::{decode_item_stack_template, DialogItemStackTemplateState};
 
 mod bees;
 mod blocks_attacks;
@@ -214,6 +216,9 @@ pub enum DialogDataComponentValueState {
     },
     Consumable {
         consumable: DialogConsumableState,
+    },
+    UseRemainder {
+        convert_into: DialogItemStackTemplateState,
     },
     DeathProtection {
         effects: Vec<DialogConsumeEffectState>,
@@ -423,6 +428,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => DialogDataComponentValueState::Consumable {
             consumable: decode_consumable(value, registries, &what)?,
         },
+        VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => {
+            DialogDataComponentValueState::UseRemainder {
+                convert_into: decode_item_stack_template(value, registries)?,
+            }
+        }
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
             DialogDataComponentValueState::DeathProtection {
                 effects: decode_death_protection(value, registries, &what)?,

@@ -428,6 +428,98 @@ mod tests {
     }
 
     #[test]
+    fn decodes_use_remainder_with_shared_recursive_item_stack_template_codec() {
+        let compact = decode_data_component_patch(&compound(vec![value_entry(
+            "use_remainder",
+            NbtSummaryValue::String("glass_bottle".to_string()),
+        )]))
+        .unwrap();
+        let Some(DialogDataComponentValueState::UseRemainder { convert_into }) =
+            compact.entries[0].value_data.as_ref()
+        else {
+            panic!("expected compact use-remainder component");
+        };
+        assert_eq!(convert_into.resource_id, "minecraft:glass_bottle");
+        assert_eq!(convert_into.count, 1);
+        assert_eq!(convert_into.component_data, None);
+
+        let nested_components = compound(vec![value_entry(
+            "use_remainder",
+            NbtSummaryValue::String("glass_bottle".to_string()),
+        )]);
+        let full_value = compound(vec![
+            string_entry("id", "bucket"),
+            value_entry("count", NbtSummaryValue::Int(2)),
+            value_entry("components", nested_components.clone()),
+        ]);
+        let full = decode_data_component_patch(&compound(vec![value_entry(
+            "minecraft:use_remainder",
+            full_value,
+        )]))
+        .unwrap();
+        let Some(DialogDataComponentValueState::UseRemainder { convert_into }) =
+            full.entries[0].value_data.as_ref()
+        else {
+            panic!("expected full use-remainder component");
+        };
+        assert_eq!(convert_into.resource_id, "minecraft:bucket");
+        assert_eq!(convert_into.count, 2);
+        assert_eq!(convert_into.components.as_ref(), Some(&nested_components));
+        let nested = convert_into.component_data.as_ref().unwrap();
+        let Some(DialogDataComponentValueState::UseRemainder { convert_into }) =
+            nested.entries[0].value_data.as_ref()
+        else {
+            panic!("expected nested use-remainder component");
+        };
+        assert_eq!(convert_into.resource_id, "minecraft:glass_bottle");
+    }
+
+    #[test]
+    fn rejects_invalid_use_remainder_item_stack_templates() {
+        for (value, expected) in [
+            (
+                NbtSummaryValue::List(Vec::new()),
+                "is neither an item id nor a compound",
+            ),
+            (
+                NbtSummaryValue::String("air".to_string()),
+                "must not be minecraft:air",
+            ),
+            (compound(Vec::new()), "is missing field id"),
+            (
+                compound(vec![string_entry("id", "missing")]),
+                "unknown dialog item minecraft:missing",
+            ),
+            (
+                compound(vec![
+                    string_entry("id", "bucket"),
+                    value_entry("count", NbtSummaryValue::Int(0)),
+                ]),
+                "count 0 is outside 1..=99",
+            ),
+            (
+                compound(vec![
+                    string_entry("id", "bucket"),
+                    value_entry("count", NbtSummaryValue::Int(100)),
+                ]),
+                "count 100 is outside 1..=99",
+            ),
+            (
+                compound(vec![
+                    string_entry("id", "bucket"),
+                    value_entry("components", NbtSummaryValue::Int(0)),
+                ]),
+                "components is not a compound",
+            ),
+        ] {
+            let error =
+                decode_data_component_patch(&compound(vec![value_entry("use_remainder", value)]))
+                    .unwrap_err();
+            assert!(error.contains(expected), "unexpected error: {error}");
+        }
+    }
+
+    #[test]
     fn decodes_component_patch_removals_and_applies_last_entry() {
         let components = compound(vec![
             value_entry("custom_name", NbtSummaryValue::String("First".to_string())),

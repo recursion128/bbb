@@ -13865,3 +13865,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 空/default record、全部 12 个 item-use animation、五种 effect、两个顶层 component dispatch、
   context-free empty HolderSet、NBT numeric/bool conversion、missing/wrong fields、unknown type 与非法范围
   均有定向测试；其余 Component、holder、list/compound-record Codec 与 native screens 仍开放。
+
+## 2026-07-14：Decode use-remainder dialog item component
+
+- [x] 对照 `UseRemainder.CODEC = ItemStackTemplate.CODEC.xmap(...)`，让 USE_REMAINDER positive value
+  直接委托 dialog body 已有的 compact/full ItemStackTemplate semantic owner，保留 item/count/raw components
+  与 typed component patch，不新建平行模板 parser。
+- [x] compact item、full item/count、递归 nested use-remainder、air/unknown item、1..=99 count 和 malformed
+  components 均有定向测试；其余 Component、holder、list/compound-record Codec 与 native screens 仍开放。
