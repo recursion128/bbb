@@ -6,6 +6,10 @@ use crate::{
     nbt_summary::{decode_nbt_summary_from_decoder, NbtSummaryEntry, NbtSummaryValue},
 };
 
+mod codec;
+
+pub use codec::validate_component_nbt;
+
 /// The client-visible subset of vanilla `net.minecraft.network.chat.Style`
 /// (`Style.Serializer.MAP_CODEC`). Each key is `None` when the component chain
 /// never set it, mirroring vanilla's nullable style fields so downstream

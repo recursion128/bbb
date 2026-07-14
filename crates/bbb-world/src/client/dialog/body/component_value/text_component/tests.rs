@@ -142,6 +142,25 @@ fn decodes_lore_components_in_order_and_at_collection_boundaries() {
 
 #[test]
 fn rejects_invalid_text_component_roots_and_lore_bounds() {
+    let invalid_components = [
+        NbtSummaryValue::Int(1),
+        NbtSummaryValue::List(Vec::new()),
+        compound(vec![
+            entry("type", NbtSummaryValue::String("text".to_string())),
+            entry(
+                "translate",
+                NbtSummaryValue::String("typed.dispatch.must.not.fallback".to_string()),
+            ),
+        ]),
+        compound(vec![
+            entry("text", NbtSummaryValue::String("value".to_string())),
+            entry("extra", NbtSummaryValue::List(Vec::new())),
+        ]),
+        compound(vec![
+            entry("text", NbtSummaryValue::String("value".to_string())),
+            entry("bold", NbtSummaryValue::String("true".to_string())),
+        ]),
+    ];
     for (type_id, resource_id) in [
         (
             VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
@@ -152,8 +171,8 @@ fn rejects_invalid_text_component_roots_and_lore_bounds() {
             "minecraft:item_name",
         ),
     ] {
-        for value in [NbtSummaryValue::Int(1), NbtSummaryValue::List(Vec::new())] {
-            assert!(decode_supported_component_value(type_id, resource_id, &value, None).is_err());
+        for value in &invalid_components {
+            assert!(decode_supported_component_value(type_id, resource_id, value, None).is_err());
         }
     }
 

@@ -1,6 +1,6 @@
 use bbb_protocol::{
     decode_nbt_summary, styled_component_runs_from_nbt_value, styled_runs_summary_text,
-    NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    validate_component_nbt, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 
@@ -590,11 +590,7 @@ fn translated_component(key: &str) -> NbtSummaryValue {
 }
 
 fn decode_component(value: &NbtSummaryValue, what: &str) -> Result<DialogTextState, String> {
-    match value {
-        NbtSummaryValue::String(_) | NbtSummaryValue::Compound(_) => {}
-        NbtSummaryValue::List(values) if !values.is_empty() => {}
-        _ => return Err(format!("{what} is not a component")),
-    }
+    validate_component_nbt(value, what)?;
     let runs = styled_component_runs_from_nbt_value(value);
     Ok(DialogTextState {
         text: styled_runs_summary_text(&runs),

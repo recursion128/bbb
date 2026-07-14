@@ -13992,3 +13992,18 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   direct surface 至此均已覆盖。JukeboxSong/Enchantment 是 `RegistryFixedCodec`，Potion/MobEffect 是
   built-in holder codec，PROVIDES_BANNER_PATTERNS 的无 element-codec HolderSet 也不接受 inline value；
   不将这些 fixed holder 误列为 direct 缺口。structured Component 精确 codec 仍开放。
+
+## 2026-07-14：Validate persistent Component core structure
+
+- [x] 新建 protocol `component/codec.rs` semantic owner；对照 vanilla 26.1
+  `ComponentSerialization.CODEC/createLegacyComponentMatcher`、七类 `ComponentContents` map codec 与
+  `Style.Serializer.MAP_CODEC`，递归校验 string/non-empty-list/full-compound root、显式 `type` strict
+  dispatch、无 discriminator 的 registration-order fuzzy dispatch、simple content fields、nested
+  separator/fallback/arguments、non-empty `extra` 及 color/shadow/boolean/insertion/font scalar style。
+- [x] dialog 的共享 Component decoder 先调用该 protocol validator，因此 CUSTOM_NAME、ITEM_NAME、LORE、
+  written-book page 及 direct holder description 等既有 persistent surface 统一拒绝 malformed structure；
+  root/content/style 正反例和 typed-dispatch 不回退、lenient optional、空 `extra` 的 protocol/world 定向
+  测试均通过。
+- [ ] selector/NBT path/block-position 的 Brigadier compile、click/hover payload、ResolvableProfile 与
+  registry-aware nested values，以及 vanilla `JsonOps` canonical 重编码和 structured written-book
+  `flatRestrictedCodec(32767)` 精确长度仍由 Component codec 缺口继续跟踪。

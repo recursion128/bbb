@@ -380,8 +380,10 @@ non-negative damage 与 creative default 也已 typed 投影；WRITABLE_BOOK_CON
 Filterable<String> page list、compact/full alternative、100 页与 1024 UTF-16 unit 边界也已 typed 投影；
 WRITTEN_BOOK_CONTENT 的 required Filterable<String> title/author、defaulted 0..=3 generation、无
 100 页语义上限的 Filterable<Component> page list 与 resolved 也已 typed 投影，title 32 UTF-16 unit
-和纯字符串 page 的 canonical JSON 32767 UTF-16 unit 边界已精确闭合；structured Component page 的
-完整 codec validation/canonical JsonOps 重编码长度仍与共享 Component codec 一并开放；
+和纯字符串 page 的 canonical JSON 32767 UTF-16 unit 边界已精确闭合；共享 Component codec 已闭合
+string/non-empty-list/full-compound root、typed/fuzzy 七类 content dispatch、simple/nested content、extra
+与 scalar style validation；structured Component page 的 command-backed parser、click/hover/registry-aware
+payload 和 canonical JsonOps 重编码长度仍开放；
 POTION_CONTENTS 的 built-in potion compact/full alternative、optional color/name、custom MobEffect
 holder list 与 recursive details defaults/unsigned-byte amplifier 也已 typed 投影；
 CONSUMABLE/DEATH_PROTECTION 的共享 5 分支 ConsumeEffect dispatch、record defaults、mob-effect
@@ -395,7 +397,8 @@ predicate owner typed 投影；exact persistent component map 递归进入已有
 generated 15 项 predicate-type 优先于 AnyValue component type 分发，并覆盖 CollectionPredicate 的
 contains/count/size、MinMaxBounds 交换校验及 recursive container/bundle ItemPredicate；至此 107 项
 persistent catalog registration 均有 typed positive-value dispatch；persistent item-component
-RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的完整 codec/canonical
+RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的核心 recursive
+structure/content/scalar-style validation 已闭合；command parser、event/registry payload 与 canonical
 重编码仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
