@@ -14,10 +14,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::{registries::normalize_codec_identifier, RegistrySet};
 
-use super::super::super::decode_component;
+use super::super::super::{decode_component, DialogDecodeContext};
 use super::{
-    component_bool, component_f64_bits, component_i32, decode_supported_component_value,
-    find_entry,
+    component_bool, component_f64_bits, component_i32,
+    decode_supported_component_value_with_context, find_entry,
     holder_set::{decode_registry_holder_set, DialogRegistryHolderSetState},
     typed_data::decode_custom_data,
     DialogDataComponentValueState, DialogTextState,
@@ -241,7 +241,7 @@ pub struct DialogAttributeModifierEntryPredicateState {
 
 pub(super) fn decode_adventure_mode_predicate(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogAdventureModePredicateState, String> {
     let predicates = match value {
@@ -261,7 +261,7 @@ pub(super) fn decode_adventure_mode_predicate(
             .iter()
             .enumerate()
             .map(|(index, value)| {
-                decode_block_predicate(value, registries, &format!("{what}[{index}]"))
+                decode_block_predicate(value, context, &format!("{what}[{index}]"))
             })
             .collect::<Result<Vec<_>, _>>()?,
     })
@@ -269,12 +269,12 @@ pub(super) fn decode_adventure_mode_predicate(
 
 pub(super) fn decode_item_predicate(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogItemPredicateState, String> {
     let entries = compound(value, what)?;
     let items = find_entry(entries, "items")
-        .map(|value| decode_registry_holder_set(value, ITEM_REGISTRY, registries, what))
+        .map(|value| decode_registry_holder_set(value, ITEM_REGISTRY, context.registries, what))
         .transpose()?;
     let count = find_entry(entries, "count")
         .map(|value| decode_int_bounds(value, &format!("{what} field count")))
@@ -283,19 +283,21 @@ pub(super) fn decode_item_predicate(
     Ok(DialogItemPredicateState {
         items,
         count,
-        components: decode_data_component_matchers(entries, registries, what)?,
+        components: decode_data_component_matchers(entries, context, what)?,
     })
 }
 
 fn decode_block_predicate(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogBlockPredicateState, String> {
     let entries = compound(value, what)?;
     Ok(DialogBlockPredicateState {
         blocks: find_entry(entries, "blocks")
-            .map(|value| decode_registry_holder_set(value, BLOCK_REGISTRY, registries, what))
+            .map(|value| {
+                decode_registry_holder_set(value, BLOCK_REGISTRY, context.registries, what)
+            })
             .transpose()?,
         state: find_entry(entries, "state")
             .map(|value| decode_state_properties(value, &format!("{what} field state")))
@@ -303,7 +305,7 @@ fn decode_block_predicate(
         nbt: find_entry(entries, "nbt")
             .map(|value| decode_custom_data(value, &format!("{what} field nbt")))
             .transpose()?,
-        components: decode_data_component_matchers(entries, registries, what)?,
+        components: decode_data_component_matchers(entries, context, what)?,
     })
 }
 
@@ -339,15 +341,15 @@ fn decode_state_properties(
 
 fn decode_data_component_matchers(
     entries: &[NbtSummaryEntry],
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogDataComponentMatchersState, String> {
     let exact = find_entry(entries, "components")
-        .map(|value| decode_exact_component_predicates(value, registries, what))
+        .map(|value| decode_exact_component_predicates(value, context, what))
         .transpose()?
         .unwrap_or_default();
     let partial = find_entry(entries, "predicates")
-        .map(|value| decode_partial_component_predicates(value, registries, what))
+        .map(|value| decode_partial_component_predicates(value, context, what))
         .transpose()?
         .unwrap_or_default();
     Ok(DialogDataComponentMatchersState { exact, partial })
@@ -355,7 +357,7 @@ fn decode_data_component_matchers(
 
 fn decode_exact_component_predicates(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<Vec<DialogExactDataComponentPredicateState>, String> {
     let entries = compound(value, &format!("{what} field components"))?;
@@ -376,11 +378,11 @@ fn decode_exact_component_predicates(
             if !seen.insert(component_type.type_id) {
                 return Err(format!("duplicate {what} exact component {resource_id}"));
             }
-            let value = decode_supported_component_value(
+            let value = decode_supported_component_value_with_context(
                 component_type.type_id,
                 &resource_id,
                 &entry.value,
-                registries,
+                context,
             )?
             .ok_or_else(|| {
                 format!("missing typed decoder for {what} exact component {resource_id}")
@@ -396,7 +398,7 @@ fn decode_exact_component_predicates(
 
 fn decode_partial_component_predicates(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<Vec<DialogPartialDataComponentPredicateState>, String> {
     let entries = compound(value, &format!("{what} field predicates"))?;
@@ -423,7 +425,7 @@ fn decode_partial_component_predicates(
                     value: decode_concrete_component_predicate(
                         predicate_type.resource_id,
                         &entry.value,
-                        registries,
+                        context,
                         &format!("{what} partial predicate {resource_id}"),
                     )?,
                 });
@@ -448,7 +450,7 @@ fn decode_partial_component_predicates(
 fn decode_concrete_component_predicate(
     resource_id: &str,
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogDataComponentPredicateState, String> {
     match resource_id {
@@ -460,7 +462,7 @@ fn decode_concrete_component_predicate(
             })
         }
         "minecraft:enchantments" | "minecraft:stored_enchantments" => {
-            let enchantments = decode_enchantment_predicates(value, registries, what)?;
+            let enchantments = decode_enchantment_predicates(value, context.registries, what)?;
             if resource_id == "minecraft:enchantments" {
                 Ok(DialogDataComponentPredicateState::Enchantments { enchantments })
             } else {
@@ -468,7 +470,7 @@ fn decode_concrete_component_predicate(
             }
         }
         "minecraft:potion_contents" => Ok(DialogDataComponentPredicateState::PotionContents {
-            potions: decode_registry_holder_set(value, POTION_REGISTRY, registries, what)?,
+            potions: decode_registry_holder_set(value, POTION_REGISTRY, context.registries, what)?,
         }),
         "minecraft:custom_data" => Ok(DialogDataComponentPredicateState::CustomData {
             value: decode_custom_data(value, what)?,
@@ -478,7 +480,7 @@ fn decode_concrete_component_predicate(
             let items = find_entry(entries, "items")
                 .map(|value| {
                     decode_collection_predicate(value, what, &|value, nested_what| {
-                        decode_item_predicate(value, registries, nested_what)
+                        decode_item_predicate(value, context, nested_what)
                     })
                 })
                 .transpose()?;
@@ -521,7 +523,7 @@ fn decode_concrete_component_predicate(
                 pages: find_entry(entries, "pages")
                     .map(|value| {
                         decode_collection_predicate(value, what, &|value, nested_what| {
-                            decode_component(value, nested_what, registries)
+                            decode_component(value, nested_what, context)
                         })
                     })
                     .transpose()?,
@@ -541,7 +543,7 @@ fn decode_concrete_component_predicate(
                         decode_collection_predicate(value, what, &|value, nested_what| {
                             decode_attribute_modifier_entry_predicate(
                                 value,
-                                registries,
+                                context.registries,
                                 nested_what,
                             )
                         })
@@ -554,12 +556,22 @@ fn decode_concrete_component_predicate(
             Ok(DialogDataComponentPredicateState::Trim {
                 material: find_entry(entries, "material")
                     .map(|value| {
-                        decode_registry_holder_set(value, TRIM_MATERIAL_REGISTRY, registries, what)
+                        decode_registry_holder_set(
+                            value,
+                            TRIM_MATERIAL_REGISTRY,
+                            context.registries,
+                            what,
+                        )
                     })
                     .transpose()?,
                 pattern: find_entry(entries, "pattern")
                     .map(|value| {
-                        decode_registry_holder_set(value, TRIM_PATTERN_REGISTRY, registries, what)
+                        decode_registry_holder_set(
+                            value,
+                            TRIM_PATTERN_REGISTRY,
+                            context.registries,
+                            what,
+                        )
                     })
                     .transpose()?,
             })
@@ -569,7 +581,12 @@ fn decode_concrete_component_predicate(
             Ok(DialogDataComponentPredicateState::JukeboxPlayable {
                 song: find_entry(entries, "song")
                     .map(|value| {
-                        decode_registry_holder_set(value, JUKEBOX_SONG_REGISTRY, registries, what)
+                        decode_registry_holder_set(
+                            value,
+                            JUKEBOX_SONG_REGISTRY,
+                            context.registries,
+                            what,
+                        )
                     })
                     .transpose()?,
             })
@@ -578,7 +595,7 @@ fn decode_concrete_component_predicate(
             villager_types: decode_registry_holder_set(
                 value,
                 VILLAGER_TYPE_REGISTRY,
-                registries,
+                context.registries,
                 what,
             )?,
         }),

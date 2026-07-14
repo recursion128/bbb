@@ -1,9 +1,10 @@
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
 use crate::RegistrySet;
 
-use super::super::super::{decode_component, DialogTextState};
+use super::super::super::{decode_component, DialogDecodeContext, DialogTextState};
 use super::{
     component_f32_bits, find_entry,
     holder_set::decode_registry_holder_reference,
@@ -35,20 +36,24 @@ pub struct DialogInstrumentState {
 
 pub(super) fn decode_instrument_holder(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogInstrumentHolderState, String> {
     match value {
         NbtSummaryValue::String(_) => {
-            let holder =
-                decode_registry_holder_reference(value, INSTRUMENT_REGISTRY, registries, what)?;
+            let holder = decode_registry_holder_reference(
+                value,
+                INSTRUMENT_REGISTRY,
+                context.registries,
+                what,
+            )?;
             Ok(DialogInstrumentHolderState::Named {
                 registry_id: holder.holder_id,
                 resource_id: holder.resource_id,
             })
         }
         NbtSummaryValue::Compound(entries) => Ok(DialogInstrumentHolderState::Direct {
-            instrument: decode_direct_instrument(entries, registries, what)?,
+            instrument: decode_direct_instrument(entries, context, what)?,
         }),
         _ => Err(format!(
             "{what} holder is neither a resource id nor a direct instrument"
@@ -58,7 +63,7 @@ pub(super) fn decode_instrument_holder(
 
 fn decode_direct_instrument(
     entries: &[NbtSummaryEntry],
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogInstrumentState, String> {
     let sound_event = required_entry(entries, "sound_event", what)?;
@@ -74,7 +79,7 @@ fn decode_direct_instrument(
         description: decode_component(
             required_entry(entries, "description", what)?,
             &format!("{what} direct holder field description"),
-            registries,
+            context,
         )?,
     })
 }

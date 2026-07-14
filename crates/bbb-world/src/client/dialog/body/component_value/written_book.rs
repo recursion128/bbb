@@ -1,9 +1,7 @@
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
-use crate::RegistrySet;
-
-use super::super::super::decode_component;
+use super::super::super::{decode_component, DialogDecodeContext};
 use super::writable_book::decode_filterable_string;
 use super::{
     component_bool, component_i32, find_entry, validate_i32_range, DialogFilterableStringState,
@@ -34,13 +32,13 @@ pub(super) fn decode_written_book_content(
     value: &NbtSummaryValue,
     what: &str,
 ) -> Result<DialogWrittenBookContentState, String> {
-    decode_written_book_content_with_registries(value, what, None)
+    decode_written_book_content_with_context(value, what, DialogDecodeContext::new(None, 0))
 }
 
-pub(super) fn decode_written_book_content_with_registries(
+pub(super) fn decode_written_book_content_with_context(
     value: &NbtSummaryValue,
     what: &str,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
 ) -> Result<DialogWrittenBookContentState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
         return Err(format!("{what} is not a compound"));
@@ -69,11 +67,7 @@ pub(super) fn decode_written_book_content_with_registries(
             .iter()
             .enumerate()
             .map(|(index, page)| {
-                decode_filterable_component(
-                    page,
-                    &format!("{what} field pages[{index}]"),
-                    registries,
-                )
+                decode_filterable_component(page, &format!("{what} field pages[{index}]"), context)
             })
             .collect::<Result<_, _>>()?,
         Some(_) => return Err(format!("{what} field pages is not a list")),
@@ -93,14 +87,14 @@ pub(super) fn decode_written_book_content_with_registries(
 fn decode_filterable_component(
     value: &NbtSummaryValue,
     what: &str,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
 ) -> Result<DialogFilterableComponentState, String> {
     if let NbtSummaryValue::Compound(entries) = value {
         if find_entry(entries, "raw").is_some() {
-            match decode_full_filterable_component(entries, what, registries) {
+            match decode_full_filterable_component(entries, what, context) {
                 Ok(component) => return Ok(component),
                 Err(full_error) => {
-                    return decode_page_component(value, what, registries)
+                    return decode_page_component(value, what, context)
                         .map(|raw| DialogFilterableComponentState {
                             raw,
                             filtered: None,
@@ -110,7 +104,7 @@ fn decode_filterable_component(
             }
         }
     }
-    decode_page_component(value, what, registries).map(|raw| DialogFilterableComponentState {
+    decode_page_component(value, what, context).map(|raw| DialogFilterableComponentState {
         raw,
         filtered: None,
     })
@@ -119,13 +113,13 @@ fn decode_filterable_component(
 fn decode_full_filterable_component(
     entries: &[NbtSummaryEntry],
     what: &str,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
 ) -> Result<DialogFilterableComponentState, String> {
     let raw = find_entry(entries, "raw")
         .ok_or_else(|| format!("{what} is missing field raw"))
-        .and_then(|value| decode_page_component(value, &format!("{what} field raw"), registries))?;
+        .and_then(|value| decode_page_component(value, &format!("{what} field raw"), context))?;
     let filtered = find_entry(entries, "filtered")
-        .map(|value| decode_page_component(value, &format!("{what} field filtered"), registries))
+        .map(|value| decode_page_component(value, &format!("{what} field filtered"), context))
         .transpose()?;
     Ok(DialogFilterableComponentState { raw, filtered })
 }
@@ -133,7 +127,7 @@ fn decode_full_filterable_component(
 fn decode_page_component(
     value: &NbtSummaryValue,
     what: &str,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
 ) -> Result<DialogTextState, String> {
     if !has_component_shape(value) {
         return Err(format!("{what} is not a component"));
@@ -149,7 +143,7 @@ fn decode_page_component(
             ));
         }
     }
-    decode_component(value, what, registries)
+    decode_component(value, what, context)
 }
 
 fn has_component_shape(value: &NbtSummaryValue) -> bool {

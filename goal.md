@@ -383,13 +383,16 @@ WRITTEN_BOOK_CONTENT 的 required Filterable<String> title/author、defaulted 0.
 和纯字符串 page 的 canonical JSON 32767 UTF-16 unit 边界已精确闭合；共享 Component codec 已闭合
 string/non-empty-list/full-compound root、typed/fuzzy 七类 content dispatch、simple/nested content、extra
 与 scalar style validation，并已校验七种 server-allowed click event、三种 hover event 的 discriminator
-及 registry-independent payload；structured Component page 的 command-backed parser、deep click dialog、
-registry-aware object/profile、generic packet owner 和 canonical JsonOps 重编码长度仍开放；hover
+及 registry-independent payload；structured Component page 的 command-backed parser、registry-aware
+object/profile、generic packet owner 和 canonical JsonOps 重编码长度仍开放；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
 title/button/body/input、CUSTOM_NAME/ITEM_NAME/LORE、written-book、attribute override、predicate 及 direct
 instrument/trim description；generic packet Component 尚无该 world context；
+click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
+并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
+semantic depth，registry 自引用/互引用不会重置预算；
 POTION_CONTENTS 的 built-in potion compact/full alternative、optional color/name、custom MobEffect
 holder list 与 recursive details defaults/unsigned-byte amplifier 也已 typed 投影；
 CONSUMABLE/DEATH_PROTECTION 的共享 5 分支 ConsumeEffect dispatch、record defaults、mob-effect
@@ -404,8 +407,8 @@ generated 15 项 predicate-type 优先于 AnyValue component type 分发，并�
 contains/count/size、MinMaxBounds 交换校验及 recursive container/bundle ItemPredicate；至此 107 项
 persistent catalog registration 均有 typed positive-value dispatch；persistent item-component
 RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的核心 recursive
-structure/content/style/event-envelope validation 已闭合；command parser、deep event/registry payload 与
-canonical 重编码仍开放；
+structure/content/style/event-envelope validation 已闭合；command parser、registry-aware object/profile、
+generic packet owner 与 canonical 重编码仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

@@ -54,7 +54,7 @@ pub struct DialogCommandTemplateState {
     pub variables: Vec<String>,
 }
 
-fn decode_action_dialog_holder(
+pub(super) fn decode_action_dialog_holder(
     value: &NbtSummaryValue,
     registries: Option<&RegistrySet>,
     depth: usize,

@@ -1,15 +1,30 @@
 use bbb_protocol::NbtSummaryValue;
 
+#[cfg(test)]
 use crate::RegistrySet;
 
+use super::super::super::DialogDecodeContext;
 use super::super::{decode_item_stack_template, DialogItemStackTemplateState};
 use super::{component_i32, component_list, find_entry, validate_i32_range};
 
 const MAX_CONTAINER_SLOT_RECORDS: usize = 256;
 
+#[cfg(test)]
 pub(super) fn decode_item_stack_template_list(
     value: &NbtSummaryValue,
     registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<Vec<DialogItemStackTemplateState>, String> {
+    decode_item_stack_template_list_with_context(
+        value,
+        DialogDecodeContext::new(registries, 0),
+        what,
+    )
+}
+
+pub(super) fn decode_item_stack_template_list_with_context(
+    value: &NbtSummaryValue,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<Vec<DialogItemStackTemplateState>, String> {
     component_list(value)
@@ -17,16 +32,29 @@ pub(super) fn decode_item_stack_template_list(
         .iter()
         .enumerate()
         .map(|(index, value)| {
-            decode_item_stack_template(value, registries).map_err(|error| {
+            decode_item_stack_template(value, context).map_err(|error| {
                 format!("{what}[{index}] failed item stack template decoding: {error}")
             })
         })
         .collect()
 }
 
+#[cfg(test)]
 pub(super) fn decode_item_stack_template_slots(
     value: &NbtSummaryValue,
     registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<Vec<Option<DialogItemStackTemplateState>>, String> {
+    decode_item_stack_template_slots_with_context(
+        value,
+        DialogDecodeContext::new(registries, 0),
+        what,
+    )
+}
+
+pub(super) fn decode_item_stack_template_slots_with_context(
+    value: &NbtSummaryValue,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<Vec<Option<DialogItemStackTemplateState>>, String> {
     let values = component_list(value).map_err(|_| format!("{what} is not a list"))?;
@@ -48,7 +76,7 @@ pub(super) fn decode_item_stack_template_slots(
         validate_i32_range(slot, 0, 255, &format!("{entry_what} field slot"))?;
         let item_value = find_entry(entries, "item")
             .ok_or_else(|| format!("{entry_what} is missing field item"))?;
-        let item = decode_item_stack_template(item_value, registries).map_err(|error| {
+        let item = decode_item_stack_template(item_value, context).map_err(|error| {
             format!("{entry_what} field item failed item stack template decoding: {error}")
         })?;
         let slot = slot as usize;

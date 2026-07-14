@@ -14056,3 +14056,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   positive-value decoder、recursive item template owner 与 session registry context；中央 title malformed
   `damage` 贯通测试与全 Dialog 139 项测试通过。generic packet Component 没有 Dialog/world context，click
   show-dialog、object/profile registry-aware value、command-backed content 与 canonical encoding 仍开放。
+
+## 2026-07-14：Decode deep Component click dialogs
+
+- [x] 用单一 `DialogDecodeContext` 携带 session `RegistrySet` 与现有 64 层 semantic depth，贯通
+  title/button/body/input、persistent component value、recursive item template 与 predicate 路径；Component
+  click `show_dialog` 不再只校验 RegistryFileCodec 外形，而是复用 static action 的 inline/reference
+  holder owner 解码完整 `Dialog.CODEC`。
+- [x] inline malformed dialog、session reference、nested CUSTOM_NAME 与 registry self-cycle 回归均通过；
+  自引用/互引用不会因进入 Component 或 item patch 重置深度预算。generic packet Component owner、
+  registry-aware object/profile、command-backed content 和 canonical encoding 继续由缺口账本跟踪。

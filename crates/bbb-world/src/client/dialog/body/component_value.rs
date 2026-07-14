@@ -67,7 +67,9 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{registries::normalize_codec_identifier, RegistrySet};
+use crate::registries::normalize_codec_identifier;
+#[cfg(test)]
+use crate::RegistrySet;
 
 use super::super::{compound_entries, find_entry};
 use super::{decode_item_stack_template, DialogItemStackTemplateState};
@@ -94,9 +96,7 @@ mod typed_data;
 mod writable_book;
 mod written_book;
 
-use attribute_modifiers::{
-    decode_attribute_modifiers_with_registries, DialogAttributeModifierState,
-};
+use attribute_modifiers::{decode_attribute_modifiers_with_context, DialogAttributeModifierState};
 use bees::{decode_bees, DialogBeeOccupantState};
 use blocks_attacks::{decode_blocks_attacks, DialogBlocksAttacksState};
 use consume_effect::{
@@ -113,7 +113,9 @@ use holder_set::{
 #[cfg(test)]
 use holder_set::{DialogBannerPatternHolderState, DialogDirectBannerPatternState};
 use instrument::{decode_instrument_holder, DialogInstrumentHolderState};
-use item_stack_collections::{decode_item_stack_template_list, decode_item_stack_template_slots};
+use item_stack_collections::{
+    decode_item_stack_template_list_with_context, decode_item_stack_template_slots_with_context,
+};
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
 use potion_contents::{decode_potion_contents, DialogPotionContentsState};
 use predicates::{
@@ -136,9 +138,9 @@ use typed_data::{
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
 };
 use writable_book::{decode_writable_book_content, DialogFilterableStringState};
-use written_book::{decode_written_book_content_with_registries, DialogWrittenBookContentState};
+use written_book::{decode_written_book_content_with_context, DialogWrittenBookContentState};
 
-use super::super::DialogTextState;
+use super::super::{DialogDecodeContext, DialogTextState};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogStringMapEntryState {
@@ -386,11 +388,26 @@ impl DialogDataComponentValueState {
     }
 }
 
+#[cfg(test)]
 pub(super) fn decode_supported_component_value(
     type_id: i32,
     resource_id: &str,
     value: &NbtSummaryValue,
     registries: Option<&RegistrySet>,
+) -> Result<Option<DialogDataComponentValueState>, String> {
+    decode_supported_component_value_with_context(
+        type_id,
+        resource_id,
+        value,
+        DialogDecodeContext::new(registries, 0),
+    )
+}
+
+pub(super) fn decode_supported_component_value_with_context(
+    type_id: i32,
+    resource_id: &str,
+    value: &NbtSummaryValue,
+    context: DialogDecodeContext<'_>,
 ) -> Result<Option<DialogDataComponentValueState>, String> {
     let what = format!("dialog item component {resource_id}");
     let decoded = match type_id {
@@ -460,35 +477,35 @@ pub(super) fn decode_supported_component_value(
         }
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID | VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
             DialogDataComponentValueState::TextComponent {
-                component: decode_text_component(value, &what, registries)?,
+                component: decode_text_component(value, &what, context)?,
             }
         }
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => DialogDataComponentValueState::Lore {
-            lines: decode_lore(value, &what, registries)?,
+            lines: decode_lore(value, &what, context)?,
         },
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
             DialogDataComponentValueState::AttributeModifiers {
-                modifiers: decode_attribute_modifiers_with_registries(value, &what, registries)?,
+                modifiers: decode_attribute_modifiers_with_context(value, &what, context)?,
             }
         }
         VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID | VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID => {
             DialogDataComponentValueState::AdventureModePredicate {
-                predicate: decode_adventure_mode_predicate(value, registries, &what)?,
+                predicate: decode_adventure_mode_predicate(value, context, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_LOCK_TYPE_ID => DialogDataComponentValueState::Lock {
-            predicate: decode_item_predicate(value, registries, &what)?,
+            predicate: decode_item_predicate(value, context, &what)?,
         },
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID => DialogDataComponentValueState::Instrument {
-            instrument: decode_instrument_holder(value, registries, &what)?,
+            instrument: decode_instrument_holder(value, context, &what)?,
         },
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID => {
             DialogDataComponentValueState::ProvidesTrimMaterial {
-                material: decode_trim_material_holder(value, registries, &what)?,
+                material: decode_trim_material_holder(value, context, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID => {
-            let (material, pattern) = decode_armor_trim(value, registries, &what)?;
+            let (material, pattern) = decode_armor_trim(value, context, &what)?;
             DialogDataComponentValueState::Trim { material, pattern }
         }
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID => decode_use_effects(value, &what)?,
@@ -522,16 +539,16 @@ pub(super) fn decode_supported_component_value(
             }
         }
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => DialogDataComponentValueState::Consumable {
-            consumable: decode_consumable(value, registries, &what)?,
+            consumable: decode_consumable(value, context.registries, &what)?,
         },
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => {
             DialogDataComponentValueState::UseRemainder {
-                convert_into: decode_item_stack_template(value, registries)?,
+                convert_into: decode_item_stack_template(value, context)?,
             }
         }
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
             DialogDataComponentValueState::DeathProtection {
-                effects: decode_death_protection(value, registries, &what)?,
+                effects: decode_death_protection(value, context.registries, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => DialogDataComponentValueState::Bees {
@@ -565,16 +582,16 @@ pub(super) fn decode_supported_component_value(
         }
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID => {
             DialogDataComponentValueState::ChargedProjectiles {
-                items: decode_item_stack_template_list(value, registries, &what)?,
+                items: decode_item_stack_template_list_with_context(value, context, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_BUNDLE_CONTENTS_TYPE_ID => {
             DialogDataComponentValueState::BundleContents {
-                items: decode_item_stack_template_list(value, registries, &what)?,
+                items: decode_item_stack_template_list_with_context(value, context, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID => DialogDataComponentValueState::Container {
-            slots: decode_item_stack_template_slots(value, registries, &what)?,
+            slots: decode_item_stack_template_slots_with_context(value, context, &what)?,
         },
         VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID => DialogDataComponentValueState::BreakSound {
             sound: decode_sound_event_holder(value, &what)?,
@@ -590,25 +607,25 @@ pub(super) fn decode_supported_component_value(
             }
         }
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => DialogDataComponentValueState::Equippable {
-            equippable: decode_equippable(value, registries, &what)?,
+            equippable: decode_equippable(value, context.registries, &what)?,
         },
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
             DialogDataComponentValueState::BlocksAttacks {
-                blocks_attacks: decode_blocks_attacks(value, registries, &what)?,
+                blocks_attacks: decode_blocks_attacks(value, context.registries, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => {
             DialogDataComponentValueState::Enchantments {
-                entries: decode_enchantments(value, registries, &what)?,
+                entries: decode_enchantments(value, context.registries, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
             DialogDataComponentValueState::StoredEnchantments {
-                entries: decode_enchantments(value, registries, &what)?,
+                entries: decode_enchantments(value, context.registries, &what)?,
             }
         }
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => DialogDataComponentValueState::Tool {
-            tool: decode_tool(value, registries, &what)?,
+            tool: decode_tool(value, context.registries, &what)?,
         },
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID => {
             DialogDataComponentValueState::WritableBookContent {
@@ -617,12 +634,12 @@ pub(super) fn decode_supported_component_value(
         }
         VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => {
             DialogDataComponentValueState::WrittenBookContent {
-                content: decode_written_book_content_with_registries(value, &what, registries)?,
+                content: decode_written_book_content_with_context(value, &what, context)?,
             }
         }
         _ => {
             if let Some(decoded) =
-                decode_holder_backed_component_value(type_id, value, registries, &what)
+                decode_holder_backed_component_value(type_id, value, context.registries, &what)
             {
                 return decoded.map(Some);
             }

@@ -3,9 +3,11 @@ use std::collections::BTreeMap;
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
-use crate::{registries::normalize_codec_identifier, RegistrySet};
+use crate::registries::normalize_codec_identifier;
+#[cfg(test)]
+use crate::RegistrySet;
 
-use super::super::super::{decode_component, DialogTextState};
+use super::super::super::{decode_component, DialogDecodeContext, DialogTextState};
 use super::{component_bool, find_entry, holder_set::decode_registry_holder_reference};
 
 const TRIM_MATERIAL_REGISTRY: &str = "minecraft:trim_material";
@@ -52,20 +54,24 @@ pub struct DialogTrimPatternState {
 
 pub(super) fn decode_trim_material_holder(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogTrimMaterialHolderState, String> {
     match value {
         NbtSummaryValue::String(_) => {
-            let holder =
-                decode_registry_holder_reference(value, TRIM_MATERIAL_REGISTRY, registries, what)?;
+            let holder = decode_registry_holder_reference(
+                value,
+                TRIM_MATERIAL_REGISTRY,
+                context.registries,
+                what,
+            )?;
             Ok(DialogTrimMaterialHolderState::Named {
                 registry_id: holder.holder_id,
                 resource_id: holder.resource_id,
             })
         }
         NbtSummaryValue::Compound(entries) => Ok(DialogTrimMaterialHolderState::Direct {
-            material: decode_direct_trim_material(entries, registries, what)?,
+            material: decode_direct_trim_material(entries, context, what)?,
         }),
         _ => Err(format!(
             "{what} holder is neither a resource id nor a direct trim material"
@@ -75,20 +81,24 @@ pub(super) fn decode_trim_material_holder(
 
 pub(super) fn decode_trim_pattern_holder(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogTrimPatternHolderState, String> {
     match value {
         NbtSummaryValue::String(_) => {
-            let holder =
-                decode_registry_holder_reference(value, TRIM_PATTERN_REGISTRY, registries, what)?;
+            let holder = decode_registry_holder_reference(
+                value,
+                TRIM_PATTERN_REGISTRY,
+                context.registries,
+                what,
+            )?;
             Ok(DialogTrimPatternHolderState::Named {
                 registry_id: holder.holder_id,
                 resource_id: holder.resource_id,
             })
         }
         NbtSummaryValue::Compound(entries) => Ok(DialogTrimPatternHolderState::Direct {
-            pattern: decode_direct_trim_pattern(entries, registries, what)?,
+            pattern: decode_direct_trim_pattern(entries, context, what)?,
         }),
         _ => Err(format!(
             "{what} holder is neither a resource id nor a direct trim pattern"
@@ -98,7 +108,7 @@ pub(super) fn decode_trim_pattern_holder(
 
 pub(super) fn decode_armor_trim(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<(DialogTrimMaterialHolderState, DialogTrimPatternHolderState), String> {
     let NbtSummaryValue::Compound(entries) = value else {
@@ -106,12 +116,12 @@ pub(super) fn decode_armor_trim(
     };
     let material = decode_trim_material_holder(
         required_entry(entries, "material", what)?,
-        registries,
+        context,
         &format!("{what} field material"),
     )?;
     let pattern = decode_trim_pattern_holder(
         required_entry(entries, "pattern", what)?,
-        registries,
+        context,
         &format!("{what} field pattern"),
     )?;
     Ok((material, pattern))
@@ -119,7 +129,7 @@ pub(super) fn decode_armor_trim(
 
 fn decode_direct_trim_material(
     entries: &[NbtSummaryEntry],
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogTrimMaterialState, String> {
     let direct_what = format!("{what} direct holder");
@@ -132,14 +142,14 @@ fn decode_direct_trim_material(
         description: decode_component(
             required_entry(entries, "description", &direct_what)?,
             &format!("{direct_what} field description"),
-            registries,
+            context,
         )?,
     })
 }
 
 fn decode_direct_trim_pattern(
     entries: &[NbtSummaryEntry],
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
     what: &str,
 ) -> Result<DialogTrimPatternState, String> {
     let direct_what = format!("{what} direct holder");
@@ -154,7 +164,7 @@ fn decode_direct_trim_pattern(
         description: decode_component(
             required_entry(entries, "description", &direct_what)?,
             &format!("{direct_what} field description"),
-            registries,
+            context,
         )?,
         decal: find_entry(entries, "decal").map_or(Ok(false), |value| {
             component_bool(value, &format!("{direct_what} field decal"))

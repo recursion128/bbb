@@ -23,6 +23,18 @@ pub use input::{
 const MAX_DIALOG_SEMANTIC_DEPTH: usize = 64;
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
 
+#[derive(Debug, Clone, Copy)]
+struct DialogDecodeContext<'a> {
+    registries: Option<&'a RegistrySet>,
+    depth: usize,
+}
+
+impl<'a> DialogDecodeContext<'a> {
+    fn new(registries: Option<&'a RegistrySet>, depth: usize) -> Self {
+        Self { registries, depth }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogState {
     pub holder_kind: String,
@@ -232,12 +244,13 @@ fn decode_dialog_data_inner(
     }
     let entries = compound_entries(dialog, "dialog root")?;
     let dialog_type = required_string(entries, "type", "dialog")?;
-    let common = decode_common_dialog_data(entries, registries)?;
+    let context = DialogDecodeContext::new(registries, depth);
+    let common = decode_common_dialog_data(entries, context)?;
     match dialog_type {
         "notice" | "minecraft:notice" => Ok(DialogDataState::Notice {
             common,
             action: match find_entry(entries, "action") {
-                Some(action) => decode_button(action, "notice action", registries, depth)?,
+                Some(action) => decode_button(action, "notice action", context)?,
                 None => default_notice_action(),
             },
         }),
@@ -246,14 +259,12 @@ fn decode_dialog_data_inner(
             yes: decode_button(
                 required_entry(entries, "yes", "confirmation dialog")?,
                 "confirmation yes button",
-                registries,
-                depth,
+                context,
             )?,
             no: decode_button(
                 required_entry(entries, "no", "confirmation dialog")?,
                 "confirmation no button",
-                registries,
-                depth,
+                context,
             )?,
         }),
         "multi_action" | "minecraft:multi_action" => Ok(DialogDataState::MultiAction {
@@ -261,11 +272,10 @@ fn decode_dialog_data_inner(
             actions: decode_non_empty_button_list(
                 required_entry(entries, "actions", "multi-action dialog")?,
                 "multi-action actions",
-                registries,
-                depth,
+                context,
             )?,
             exit_action: find_entry(entries, "exit_action")
-                .map(|value| decode_button(value, "multi-action exit button", registries, depth))
+                .map(|value| decode_button(value, "multi-action exit button", context))
                 .transpose()?,
             columns: optional_positive_i32(entries, "columns", 2, "multi-action dialog")?,
         }),
@@ -279,9 +289,7 @@ fn decode_dialog_data_inner(
             Ok(DialogDataState::ServerLinks {
                 common,
                 exit_action: find_entry(entries, "exit_action")
-                    .map(|value| {
-                        decode_button(value, "server-links exit button", registries, depth)
-                    })
+                    .map(|value| decode_button(value, "server-links exit button", context))
                     .transpose()?,
                 columns: optional_positive_i32(entries, "columns", 2, "server-links dialog")?,
                 button_width,
@@ -302,7 +310,7 @@ fn decode_dialog_data_inner(
                     depth,
                 )?,
                 exit_action: find_entry(entries, "exit_action")
-                    .map(|value| decode_button(value, "dialog-list exit button", registries, depth))
+                    .map(|value| decode_button(value, "dialog-list exit button", context))
                     .transpose()?,
                 columns: optional_positive_i32(entries, "columns", 2, "dialog-list dialog")?,
                 button_width,
@@ -329,7 +337,7 @@ fn decode_dialog_holder_set(
                 .ok_or_else(|| format!("missing dialog tag #{tag}"))?;
             let entries = holder_ids
                 .iter()
-                .map(|holder_id| decode_referenced_dialog_entry(*holder_id, registries))
+                .map(|holder_id| decode_referenced_dialog_entry(*holder_id, registries, depth))
                 .collect::<Result<Vec<_>, _>>()?;
             return Ok(DialogHolderSetState {
                 holder_set_kind: "named".to_string(),
@@ -360,7 +368,7 @@ fn decode_dialog_holder_set(
                 let holder_id = registries
                     .holder_id_by_resource_id(DIALOG_REGISTRY, &resource_id)
                     .ok_or_else(|| format!("missing {DIALOG_REGISTRY} resource {resource_id}"))?;
-                decode_referenced_dialog_entry(holder_id, registries)?
+                decode_referenced_dialog_entry(holder_id, registries, depth)?
             }
             dialog @ NbtSummaryValue::Compound(_) => {
                 let data = decode_dialog_data_inner(dialog, Some(registries), depth + 1)?;
@@ -428,6 +436,7 @@ fn dialog_holder_kind(value: &NbtSummaryValue) -> Result<&'static str, String> {
 fn decode_referenced_dialog_entry(
     holder_id: i32,
     registries: &RegistrySet,
+    depth: usize,
 ) -> Result<DialogListEntryState, String> {
     let entry = registries
         .entry_by_holder_id(DIALOG_REGISTRY, holder_id)
@@ -454,8 +463,10 @@ fn decode_referenced_dialog_entry(
             ))
         }
     };
-    let common =
-        decode_common_dialog_data(compound_entries(&dialog, "dialog root")?, Some(registries))?;
+    let common = decode_common_dialog_data(
+        compound_entries(&dialog, "dialog root")?,
+        DialogDecodeContext::new(Some(registries), depth + 1),
+    )?;
     Ok(DialogListEntryState {
         holder_kind: "reference".to_string(),
         registry_id: Some(holder_id),
@@ -481,15 +492,15 @@ fn dialog_external_title(data: &DialogDataState) -> DialogTextState {
 
 fn decode_common_dialog_data(
     entries: &[NbtSummaryEntry],
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
 ) -> Result<CommonDialogDataState, String> {
     let title = decode_component(
         required_entry(entries, "title", "common dialog data")?,
         "dialog title",
-        registries,
+        context,
     )?;
     let external_title = find_entry(entries, "external_title")
-        .map(|value| decode_component(value, "dialog external title", registries))
+        .map(|value| decode_component(value, "dialog external title", context))
         .transpose()?;
     let can_close_with_escape = optional_bool(entries, "can_close_with_escape", true)?;
     let pause = optional_bool(entries, "pause", true)?;
@@ -509,8 +520,8 @@ fn decode_common_dialog_data(
         Some(value) => vec![value.clone()],
     };
     let inputs = optional_list(entries, "inputs", "dialog inputs")?;
-    let body_data = body::decode_dialog_bodies(&body, registries)?;
-    let input_data = input::decode_dialog_inputs_with_registries(&inputs, registries)?;
+    let body_data = body::decode_dialog_bodies(&body, context)?;
+    let input_data = input::decode_dialog_inputs_with_context(&inputs, context)?;
     Ok(CommonDialogDataState {
         title,
         external_title,
@@ -527,17 +538,16 @@ fn decode_common_dialog_data(
 fn decode_button(
     value: &NbtSummaryValue,
     what: &str,
-    registries: Option<&RegistrySet>,
-    depth: usize,
+    context: DialogDecodeContext<'_>,
 ) -> Result<DialogButtonState, String> {
     let entries = compound_entries(value, what)?;
     let label = decode_component(
         required_entry(entries, "label", what)?,
         "button label",
-        registries,
+        context,
     )?;
     let tooltip = find_entry(entries, "tooltip")
-        .map(|value| decode_component(value, "button tooltip", registries))
+        .map(|value| decode_component(value, "button tooltip", context))
         .transpose()?;
     let width = optional_i32(entries, "width", 150, what)?;
     if !(1..=1024).contains(&width) {
@@ -546,7 +556,7 @@ fn decode_button(
     let action = find_entry(entries, "action").cloned();
     let action_data = action
         .as_ref()
-        .map(|action| action::decode_dialog_action(action, registries, depth + 1))
+        .map(|action| action::decode_dialog_action(action, context.registries, context.depth + 1))
         .transpose()?;
     Ok(DialogButtonState {
         label,
@@ -560,8 +570,7 @@ fn decode_button(
 fn decode_non_empty_button_list(
     value: &NbtSummaryValue,
     what: &str,
-    registries: Option<&RegistrySet>,
-    depth: usize,
+    context: DialogDecodeContext<'_>,
 ) -> Result<Vec<DialogButtonState>, String> {
     let NbtSummaryValue::List(values) = value else {
         return Err(format!("{what} is not a list"));
@@ -572,7 +581,7 @@ fn decode_non_empty_button_list(
     values
         .iter()
         .enumerate()
-        .map(|(index, value)| decode_button(value, &format!("{what}[{index}]"), registries, depth))
+        .map(|(index, value)| decode_button(value, &format!("{what}[{index}]"), context))
         .collect()
 }
 
@@ -581,7 +590,7 @@ fn default_notice_action() -> DialogButtonState {
         label: decode_component(
             &translated_component("gui.ok"),
             "default notice label",
-            None,
+            DialogDecodeContext::new(None, 0),
         )
         .expect("built-in gui.ok component is valid"),
         tooltip: None,
@@ -601,12 +610,16 @@ fn translated_component(key: &str) -> NbtSummaryValue {
 fn decode_component(
     value: &NbtSummaryValue,
     what: &str,
-    registries: Option<&RegistrySet>,
+    context: DialogDecodeContext<'_>,
 ) -> Result<DialogTextState, String> {
     visit_component_payloads(value, what, |payload, payload_what| match payload {
-        ComponentPayload::ShowDialog(_) => Ok(()),
+        ComponentPayload::ShowDialog(dialog) => {
+            action::decode_action_dialog_holder(dialog, context.registries, context.depth + 1)
+                .map(|_| ())
+                .map_err(|error| format!("{payload_what}: {error}"))
+        }
         ComponentPayload::ShowItemComponents(components) => {
-            body::decode_data_component_patch(components, registries)
+            body::decode_data_component_patch(components, context)
                 .map(|_| ())
                 .map_err(|error| format!("{payload_what}: {error}"))
         }
@@ -967,6 +980,97 @@ mod tests {
     }
 
     #[test]
+    fn dialog_components_decode_inline_click_dialog_values_through_central_owner() {
+        let title =
+            component_with_show_dialog(compound(vec![string_entry("type", "minecraft:notice")]));
+        let error = decode_test_dialog(&compound(vec![
+            string_entry("type", "minecraft:notice"),
+            value_entry("title", title),
+        ]))
+        .unwrap_err();
+        assert!(
+            error.contains("dialog title field click_event field dialog")
+                && error.contains("missing field title"),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn dialog_item_components_preserve_click_dialog_decode_context() {
+        let error = decode_test_dialog(&compound(vec![
+            string_entry("type", "minecraft:notice"),
+            string_entry("title", "Item"),
+            value_entry(
+                "body",
+                compound(vec![
+                    string_entry("type", "minecraft:item"),
+                    value_entry(
+                        "item",
+                        compound(vec![
+                            string_entry("id", "stone"),
+                            value_entry(
+                                "components",
+                                compound(vec![value_entry(
+                                    "custom_name",
+                                    component_with_show_dialog(compound(vec![string_entry(
+                                        "type",
+                                        "minecraft:notice",
+                                    )])),
+                                )]),
+                            ),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]))
+        .unwrap_err();
+        assert!(
+            error.contains("dialog item component minecraft:custom_name")
+                && error.contains("field click_event field dialog")
+                && error.contains("missing field title"),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn dialog_components_resolve_click_dialog_references_and_bound_cycles() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DIALOG_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_raw_data(
+                    "example:next",
+                    notice_dialog_nbt("Referenced", None),
+                ),
+                RegistryPacketEntry::with_raw_data(
+                    "example:self",
+                    click_dialog_notice_nbt("example:self"),
+                ),
+            ],
+        );
+
+        let referencing = |resource_id: &str| {
+            compound(vec![
+                string_entry("type", "minecraft:notice"),
+                value_entry(
+                    "title",
+                    component_with_show_dialog(NbtSummaryValue::String(resource_id.to_string())),
+                ),
+            ])
+        };
+        decode_dialog_data(&referencing("example:next"), Some(store.registries())).unwrap();
+
+        let error =
+            decode_dialog_data(&referencing("example:self"), Some(store.registries())).unwrap_err();
+        assert!(
+            error.contains("dialog title field click_event field dialog")
+                && error.contains("dialog semantic nesting exceeds 64"),
+            "{error:?}"
+        );
+    }
+
+    #[test]
     fn decodes_multi_action_buttons_exit_and_columns() {
         let data = decode_test_dialog(&compound(vec![
             string_entry("type", "minecraft:multi_action"),
@@ -1244,6 +1348,19 @@ mod tests {
         ])
     }
 
+    fn component_with_show_dialog(dialog: NbtSummaryValue) -> NbtSummaryValue {
+        compound(vec![
+            string_entry("text", "Open"),
+            value_entry(
+                "click_event",
+                compound(vec![
+                    string_entry("action", "show_dialog"),
+                    value_entry("dialog", dialog),
+                ]),
+            ),
+        ])
+    }
+
     fn value_entry(name: &str, value: NbtSummaryValue) -> NbtSummaryEntry {
         NbtSummaryEntry {
             name: name.to_string(),
@@ -1275,6 +1392,31 @@ mod tests {
         }
         out.push(0);
         out
+    }
+
+    fn click_dialog_notice_nbt(resource_id: &str) -> Vec<u8> {
+        let mut out = vec![10];
+        write_nbt_named_string(&mut out, "type", "minecraft:notice");
+        write_nbt_named_compound(&mut out, "title", |out| {
+            write_nbt_named_string(out, "text", "Open");
+            write_nbt_named_compound(out, "click_event", |out| {
+                write_nbt_named_string(out, "action", "show_dialog");
+                write_nbt_named_string(out, "dialog", resource_id);
+            });
+        });
+        out.push(0);
+        out
+    }
+
+    fn write_nbt_named_compound(
+        out: &mut Vec<u8>,
+        name: &str,
+        write_entries: impl FnOnce(&mut Vec<u8>),
+    ) {
+        out.push(10);
+        write_nbt_string(out, name);
+        write_entries(out);
+        out.push(0);
     }
 
     fn write_nbt_named_string(out: &mut Vec<u8>, name: &str, value: &str) {
