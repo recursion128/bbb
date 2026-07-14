@@ -9,7 +9,8 @@ use bbb_protocol::{
 use crate::{RegistryContentState, RegistryPacketEntry};
 
 use super::super::{
-    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+    apply_item_patch_entry_value, apply_item_patch_value, decode_supported_component_value,
+    DialogDataComponentValueState,
 };
 use super::*;
 
@@ -19,22 +20,19 @@ fn decodes_direct_provides_trim_material_with_assets_and_component() {
         ("text", string("Quartz")),
         ("italic", NbtSummaryValue::Byte(1)),
     ]);
-    let decoded = decode_provides(
-        &compound([
-            ("asset_name", string("quartz")),
-            (
-                "override_armor_assets",
-                compound([
-                    ("iron", string("iron_darker")),
-                    ("example:copper", string("nested/copper")),
-                ]),
-            ),
-            ("description", description.clone()),
-            ("ignored", NbtSummaryValue::Int(1)),
-        ]),
-        None,
-    )
-    .unwrap();
+    let value = compound([
+        ("asset_name", string("quartz")),
+        (
+            "override_armor_assets",
+            compound([
+                ("iron", string("iron_darker")),
+                ("example:copper", string("nested/copper")),
+            ]),
+        ),
+        ("description", description.clone()),
+        ("ignored", NbtSummaryValue::Int(1)),
+    ]);
+    let decoded = decode_provides(&value, None).unwrap();
     let mut patch = DataComponentPatchSummary::default();
     assert!(apply_item_patch_value(
         VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
@@ -67,32 +65,47 @@ fn decodes_direct_provides_trim_material_with_assets_and_component() {
     assert_eq!(material.description.text, "Quartz");
     assert_eq!(material.description.component, description);
     assert_eq!(material.description.runs[0].style.italic, Some(true));
+
+    let mut entry_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_entry_value(
+        VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+        &DialogDataComponentValueState::ProvidesTrimMaterial {
+            material: DialogTrimMaterialHolderState::Direct {
+                material: material.clone(),
+            },
+        },
+        Some(&value),
+        &mut entry_patch,
+    ));
+    assert_eq!(
+        entry_patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID),
+        Some(&value)
+    );
 }
 
 #[test]
 fn decodes_context_free_direct_armor_trim_and_pattern_defaults() {
-    let decoded = decode_trim(
-        &compound([
-            (
-                "material",
-                compound([
-                    ("asset_name", string("resin")),
-                    ("description", string("Resin")),
-                ]),
-            ),
-            (
-                "pattern",
-                compound([
-                    ("asset_id", string("sentry")),
-                    ("description", string("Sentry")),
-                    ("ignored", NbtSummaryValue::Byte(1)),
-                ]),
-            ),
-            ("ignored", NbtSummaryValue::Int(1)),
-        ]),
-        None,
-    )
-    .unwrap();
+    let value = compound([
+        (
+            "material",
+            compound([
+                ("asset_name", string("resin")),
+                ("description", string("Resin")),
+            ]),
+        ),
+        (
+            "pattern",
+            compound([
+                ("asset_id", string("sentry")),
+                ("description", string("Sentry")),
+                ("ignored", NbtSummaryValue::Byte(1)),
+            ]),
+        ),
+        ("ignored", NbtSummaryValue::Int(1)),
+    ]);
+    let decoded = decode_trim(&value, None).unwrap();
     let mut patch = DataComponentPatchSummary::default();
     assert!(apply_item_patch_value(
         VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
@@ -111,7 +124,7 @@ fn decodes_context_free_direct_armor_trim_and_pattern_defaults() {
         patch.armor_trim_pattern_direct.as_ref().unwrap().asset_id,
         "minecraft:sentry"
     );
-    let Some(DialogDataComponentValueState::Trim { material, pattern }) = decoded else {
+    let Some(DialogDataComponentValueState::Trim { material, pattern }) = decoded.clone() else {
         panic!("expected armor trim")
     };
     let DialogTrimMaterialHolderState::Direct { material } = material else {
@@ -126,6 +139,20 @@ fn decodes_context_free_direct_armor_trim_and_pattern_defaults() {
     assert_eq!(pattern.asset_id, "minecraft:sentry");
     assert_eq!(pattern.description.text, "Sentry");
     assert!(!pattern.decal);
+
+    let mut entry_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_entry_value(
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        decoded.as_ref().unwrap(),
+        Some(&value),
+        &mut entry_patch,
+    ));
+    assert_eq!(
+        entry_patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_TRIM_TYPE_ID),
+        Some(&value)
+    );
 }
 
 #[test]

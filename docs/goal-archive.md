@@ -14738,3 +14738,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world all-or-nothing regression 覆盖 decoded empty lock 成功桥接及 rawless lock 整栈拒绝；native
   dialog Item body 加入 empty lock 后继续进入唯一 item runtime。adventure partial component predicate 与
   nested exact lock 仍因 protocol persistent summary 无对应形状保持拒绝，其余富结构值继续明确审计。
+
+## 2026-07-14：Bridge persistent direct instrument and trim dialog Item patches
+
+- [x] 对照 `Instrument.DIRECT_CODEC`、`TrimMaterial.DIRECT_CODEC`、`TrimPattern.DIRECT_CODEC` 与各 holder
+  CODEC，在保留现有 typed summary 的同时，要求 entry 原始 String/CompoundTag 存在并按 type id 进入
+  codec-backed NBT；native instrument/provides-trim-material/trim encoder 优先复用该 validated persistent
+  value，完整保留 direct sound、use-duration/range bits、styled Component 与 trim asset/override/decal。
+- [x] world focused regressions 覆盖 direct instrument、direct provides material 与 direct material/pattern
+  trim 的 raw value retention；native encoder 单测覆盖三种 raw priority，dialog Item body 组合回归加入三种
+  direct value。另对照 `RegistryFixedCodec` 并锁定 jukebox-song/painting-variant 的 persistent dialog 形状只
+  允许 named resource id，inline compound 不作为待实现语法。其余 direct registry variants 继续审计。

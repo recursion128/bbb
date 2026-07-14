@@ -1321,20 +1321,26 @@ fn encode_block_entity_data(
 }
 
 fn encode_instrument(
-    _type_id: i32,
+    type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
+    if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
+        return Some(debug_nbt_summary_snbt(persistent));
+    }
     Some(debug_snbt_string(
         VanillaInstrumentIdentity::for_vanilla_registry_id(patch.instrument_id?)?.resource_id(),
     ))
 }
 
 fn encode_provides_trim_material(
-    _type_id: i32,
+    type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
+    if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
+        return Some(debug_nbt_summary_snbt(persistent));
+    }
     if patch.provides_trim_material_direct.is_some() {
         return None;
     }
@@ -1475,10 +1481,13 @@ fn filterable_component_snbt(
 }
 
 fn encode_armor_trim(
-    _type_id: i32,
+    type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     _item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
+    if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
+        return Some(debug_nbt_summary_snbt(persistent));
+    }
     if patch.armor_trim_material_direct.is_some() || patch.armor_trim_pattern_direct.is_some() {
         return None;
     }
@@ -2579,6 +2588,76 @@ mod tests {
                 decal: false,
             }));
         assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
+    }
+
+    #[test]
+    fn persistent_holder_encoders_preserve_validated_dialog_values() {
+        for (type_id, persistent) in [
+            (
+                61,
+                bbb_protocol::packets::NbtSummaryValue::Compound(vec![
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "sound_event".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::String(
+                            "example:horn".to_string(),
+                        ),
+                    },
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "use_duration".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::Float(1.0f32.to_bits()),
+                    },
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "range".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::Float(16.0f32.to_bits()),
+                    },
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "description".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::String(
+                            "Custom horn".to_string(),
+                        ),
+                    },
+                ]),
+            ),
+            (
+                62,
+                bbb_protocol::packets::NbtSummaryValue::Compound(vec![
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "asset_name".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::String("custom".to_string()),
+                    },
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "description".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::String(
+                            "Custom material".to_string(),
+                        ),
+                    },
+                ]),
+            ),
+            (
+                56,
+                bbb_protocol::packets::NbtSummaryValue::Compound(vec![
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "material".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::String(
+                            "example:material".to_string(),
+                        ),
+                    },
+                    bbb_protocol::packets::NbtSummaryEntry {
+                        name: "pattern".to_string(),
+                        value: bbb_protocol::packets::NbtSummaryValue::String(
+                            "example:pattern".to_string(),
+                        ),
+                    },
+                ]),
+            ),
+        ] {
+            let mut patch = bbb_protocol::packets::DataComponentPatchSummary::default();
+            patch.codec_backed_nbt.insert(type_id, persistent.clone());
+            assert_eq!(
+                encode_added_component_value_snbt(type_id, &patch, None),
+                Some(debug_nbt_summary_snbt(&persistent))
+            );
+        }
     }
 
     #[test]

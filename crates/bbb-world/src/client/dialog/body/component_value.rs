@@ -460,6 +460,37 @@ pub(super) fn apply_item_patch_entry_value(
         patch.codec_backed_nbt.insert(type_id, persistent.clone());
         return true;
     }
+    let retains_persistent_holder = matches!(
+        (type_id, value),
+        (
+            VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+            DialogDataComponentValueState::Instrument { .. }
+        ) | (
+            VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
+            DialogDataComponentValueState::ProvidesTrimMaterial { .. }
+        ) | (
+            VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+            DialogDataComponentValueState::Trim { .. }
+        )
+    );
+    if retains_persistent_holder {
+        let Some(persistent) = persistent_value else {
+            return false;
+        };
+        let valid_shape = if type_id == VANILLA_DATA_COMPONENT_TRIM_TYPE_ID {
+            matches!(persistent, NbtSummaryValue::Compound(_))
+        } else {
+            matches!(
+                persistent,
+                NbtSummaryValue::String(_) | NbtSummaryValue::Compound(_)
+            )
+        };
+        if !valid_shape || !apply_item_patch_value(type_id, value, patch) {
+            return false;
+        }
+        patch.codec_backed_nbt.insert(type_id, persistent.clone());
+        return true;
+    }
     apply_item_patch_value(type_id, value, patch)
 }
 

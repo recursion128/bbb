@@ -1680,6 +1680,14 @@ fn decodes_jukebox_playable_from_session_registry() {
     )
     .unwrap_err()
     .contains("without registry context"));
+    assert!(decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+        "minecraft:jukebox_playable",
+        &compound(vec![string_entry("description", "not persistent")]),
+        Some(&registries),
+    )
+    .unwrap_err()
+    .contains("holder is not a resource id"));
 }
 
 #[test]

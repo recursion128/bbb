@@ -14485,6 +14485,78 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:lock",
                                             NbtSummaryValue::Compound(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:instrument",
+                                            NbtSummaryValue::Compound(vec![
+                                                entry(
+                                                    "sound_event",
+                                                    NbtSummaryValue::String(
+                                                        "minecraft:block.note_block.harp"
+                                                            .to_string(),
+                                                    ),
+                                                ),
+                                                entry("use_duration", NbtSummaryValue::Int(1)),
+                                                entry("range", NbtSummaryValue::Int(1)),
+                                                entry(
+                                                    "description",
+                                                    NbtSummaryValue::String("Horn".to_string()),
+                                                ),
+                                            ]),
+                                        ),
+                                        entry(
+                                            "minecraft:provides_trim_material",
+                                            NbtSummaryValue::Compound(vec![
+                                                entry(
+                                                    "asset_name",
+                                                    NbtSummaryValue::String("custom".to_string()),
+                                                ),
+                                                entry(
+                                                    "description",
+                                                    NbtSummaryValue::String(
+                                                        "Custom material".to_string(),
+                                                    ),
+                                                ),
+                                            ]),
+                                        ),
+                                        entry(
+                                            "minecraft:trim",
+                                            NbtSummaryValue::Compound(vec![
+                                                entry(
+                                                    "material",
+                                                    NbtSummaryValue::Compound(vec![
+                                                        entry(
+                                                            "asset_name",
+                                                            NbtSummaryValue::String(
+                                                                "custom".to_string(),
+                                                            ),
+                                                        ),
+                                                        entry(
+                                                            "description",
+                                                            NbtSummaryValue::String(
+                                                                "Custom material".to_string(),
+                                                            ),
+                                                        ),
+                                                    ]),
+                                                ),
+                                                entry(
+                                                    "pattern",
+                                                    NbtSummaryValue::Compound(vec![
+                                                        entry(
+                                                            "asset_id",
+                                                            NbtSummaryValue::String(
+                                                                "example:pattern".to_string(),
+                                                            ),
+                                                        ),
+                                                        entry(
+                                                            "description",
+                                                            NbtSummaryValue::String(
+                                                                "Custom pattern".to_string(),
+                                                            ),
+                                                        ),
+                                                    ]),
+                                                ),
+                                            ]),
+                                        ),
                                     ]),
                                 ),
                             ]),
@@ -14494,6 +14566,7 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
             ]),
         },
     });
+    assert_eq!(patched_world.current_dialog().unwrap().semantic_error, None);
     let patched = hud_inventory_screen_with_local_state_for_surface(
         &patched_world,
         Some(&item_runtime),

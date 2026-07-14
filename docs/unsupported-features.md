@@ -98,6 +98,9 @@ Owner: `bbb-protocol`
   plus normalized ordered recipe-key lists,
   plus codec-normalized seeded container-loot references,
   plus four-side normalized pot-decoration item ids,
+  plus validated persistent named/direct instrument and trim holder values while retaining their
+  typed summaries; jukebox-song and painting-variant compounds remain rejected because their
+  persistent `RegistryFixedCodec` only accepts named resource ids,
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the

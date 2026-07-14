@@ -7,7 +7,8 @@ use bbb_protocol::{
 use crate::{RegistryContentState, RegistryPacketEntry};
 
 use super::super::{
-    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+    apply_item_patch_entry_value, apply_item_patch_value, decode_supported_component_value,
+    DialogDataComponentValueState,
 };
 use super::*;
 
@@ -40,17 +41,14 @@ fn decodes_direct_instrument_with_named_sound_and_component() {
         ("text", string("Ponder")),
         ("italic", NbtSummaryValue::Byte(1)),
     ]);
-    let decoded = decode(
-        &compound([
-            ("sound_event", string("block.note_block.harp")),
-            ("use_duration", NbtSummaryValue::Double(7.0f64.to_bits())),
-            ("range", NbtSummaryValue::Int(256)),
-            ("description", description.clone()),
-            ("ignored", NbtSummaryValue::Int(1)),
-        ]),
-        None,
-    )
-    .unwrap();
+    let value = compound([
+        ("sound_event", string("block.note_block.harp")),
+        ("use_duration", NbtSummaryValue::Double(7.0f64.to_bits())),
+        ("range", NbtSummaryValue::Int(256)),
+        ("description", description.clone()),
+        ("ignored", NbtSummaryValue::Int(1)),
+    ]);
+    let decoded = decode(&value, None).unwrap();
     let mut patch = DataComponentPatchSummary::default();
     assert!(apply_item_patch_value(
         VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
@@ -64,6 +62,19 @@ fn decodes_direct_instrument_with_named_sound_and_component() {
             .style
             .italic,
         Some(true)
+    );
+    let mut entry_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_entry_value(
+        VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+        decoded.as_ref().unwrap(),
+        Some(&value),
+        &mut entry_patch,
+    ));
+    assert_eq!(
+        entry_patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID),
+        Some(&value)
     );
     let Some(DialogDataComponentValueState::Instrument {
         instrument: DialogInstrumentHolderState::Direct { instrument },

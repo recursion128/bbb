@@ -357,6 +357,10 @@ debug-stick-state 按 dispatched map CODEC 保留 ordered builtin block resource
 recipes 按 `Recipe.KEY_CODEC.listOf()` 保留 normalized ordered resource ids 与 duplicates；
 container-loot 保留 normalized loot-table key，并按 optional-field CODEC 仅在非零时编码 long seed；
 pot-decorations 按 `ordered()` 规范化为四个 item ids，empty side 统一落为 builtin brick id；
+instrument、provides-trim-material 与 trim 同时保留 typed summary 和经 CODEC 验证的原始 persistent
+String/CompoundTag，native encoder 优先复用 raw value，完整覆盖 direct sound/float/Component/asset 字段；
+jukebox-song 与 painting-variant 的 persistent `RegistryFixedCodec` 只允许 named resource id，dialog NBT
+中的 inline compound 不是 vanilla 可表达形状并继续严格拒绝；
 未桥接的其余富结构值不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、
