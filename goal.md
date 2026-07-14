@@ -350,6 +350,7 @@ entity/block-entity data 保留 builtin type id 与去除 persistent `id` 后的
 use-remainder、charged-projectiles、bundle-contents 与 sparse container 复用同一递归 ItemStackTemplate
 summary，保留 nested patch、ordered items、last-duplicate slot 与 nonempty count；
 bees 保留 ordered occupant、builtin entity type id、去除 persistent `id` 后的 CompoundTag 与两个 tick；
+map-decorations 按 persistent CODEC 形状保留 ordered key、builtin type resource 与 double/float bits；
 未桥接的其余富结构值不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、

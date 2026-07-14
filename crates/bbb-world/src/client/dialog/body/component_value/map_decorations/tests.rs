@@ -1,9 +1,10 @@
 use bbb_protocol::{
-    data_component_types::VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, NbtSummaryEntry,
-    NbtSummaryValue,
+    data_component_types::VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+    packets::inventory::DataComponentPatchSummary, NbtSummaryEntry, NbtSummaryValue,
 };
 use bbb_render_types::vanilla_map_decoration_type_for_resource_id;
 
+use super::super::apply_item_patch_value;
 use super::*;
 use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet};
 
@@ -53,6 +54,55 @@ fn decodes_map_decorations_with_builtin_types_and_numeric_codecs() {
     assert_eq!(f64::from_bits(decorations[1].x_bits), 2.5);
     assert_eq!(f64::from_bits(decorations[1].z_bits), -7.0);
     assert_eq!(f32::from_bits(decorations[1].rotation_bits), 45.25);
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+        &super::super::DialogDataComponentValueState::MapDecorations {
+            decorations: decorations.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID),
+        Some(&compound(vec![
+            value_entry(
+                "home",
+                decoration(
+                    "minecraft:mansion",
+                    NbtSummaryValue::Double((-120.5f64).to_bits()),
+                    NbtSummaryValue::Double(64.0f64.to_bits()),
+                    NbtSummaryValue::Float(180.0f32.to_bits()),
+                ),
+            ),
+            value_entry(
+                "trial marker",
+                decoration(
+                    "minecraft:trial_chambers",
+                    NbtSummaryValue::Double(2.5f64.to_bits()),
+                    NbtSummaryValue::Double((-7.0f64).to_bits()),
+                    NbtSummaryValue::Float(45.25f32.to_bits()),
+                ),
+            ),
+        ]))
+    );
+
+    let mut empty_patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+        &super::super::DialogDataComponentValueState::MapDecorations {
+            decorations: Vec::new(),
+        },
+        &mut empty_patch,
+    ));
+    assert_eq!(
+        empty_patch
+            .codec_backed_nbt
+            .get(&VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID),
+        Some(&compound(Vec::new()))
+    );
 
     let mut registries = RegistrySet::default();
     let mut contents = RegistryContentState::new("minecraft:map_decoration_type");

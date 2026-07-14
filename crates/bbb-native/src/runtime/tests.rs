@@ -14456,6 +14456,10 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             NbtSummaryValue::List(Vec::new()),
                                         ),
                                         entry("minecraft:bees", NbtSummaryValue::List(Vec::new())),
+                                        entry(
+                                            "minecraft:map_decorations",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),

@@ -14681,3 +14681,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world focused regression 覆盖 duplicate-id last-value、session registry 不覆盖 builtin wire identity、
   entity tag、两个 tick、empty list 与非 CompoundTag 整项拒绝；native dialog Item body 加入 empty bees
   component 后继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge map-decorations dialog Item patches
+
+- [x] 对照 `MapDecorations.CODEC` 与 `Entry.CODEC`，把 normalized ordered key、builtin decoration type
+  resource id、double `x/z` bits 与 float `rotation` bits 重建为 persistent CompoundTag，并按 type id 进入
+  既有 codec-backed NBT summary/encoder；不从浮点文本或 session registry 猜测 wire identity。
+- [x] world focused regression 覆盖两个 ordered entries、numeric codec normalization、bit-exact
+  coordinates/rotation、empty map 与 session registry 不覆盖 builtin type；native dialog Item body 加入
+  empty map-decorations 后继续进入唯一 item runtime。partial/lock predicate 与其余富结构值继续由后续
+  明确切片处理。

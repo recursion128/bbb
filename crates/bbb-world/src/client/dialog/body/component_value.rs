@@ -890,6 +890,39 @@ pub(super) fn apply_item_patch_value(
             patch.bees_count = bees.len();
             patch.bees = bees;
         }
+        (VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, Value::MapDecorations { decorations }) => {
+            patch.codec_backed_nbt.insert(
+                type_id,
+                NbtSummaryValue::Compound(
+                    decorations
+                        .iter()
+                        .map(|decoration| NbtSummaryEntry {
+                            name: decoration.id.clone(),
+                            value: NbtSummaryValue::Compound(vec![
+                                NbtSummaryEntry {
+                                    name: "type".to_string(),
+                                    value: NbtSummaryValue::String(
+                                        decoration.decoration_type.resource_id.clone(),
+                                    ),
+                                },
+                                NbtSummaryEntry {
+                                    name: "x".to_string(),
+                                    value: NbtSummaryValue::Double(decoration.x_bits),
+                                },
+                                NbtSummaryEntry {
+                                    name: "z".to_string(),
+                                    value: NbtSummaryValue::Double(decoration.z_bits),
+                                },
+                                NbtSummaryEntry {
+                                    name: "rotation".to_string(),
+                                    value: NbtSummaryValue::Float(decoration.rotation_bits),
+                                },
+                            ]),
+                        })
+                        .collect(),
+                ),
+            );
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
