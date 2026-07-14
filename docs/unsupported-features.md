@@ -43,7 +43,10 @@ Owner: `bbb-protocol`
 - Use `docs/packet-coverage-26.1.json` as the complete 256-entry inventory. A
   cell remains `partial` until it carries implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
-  generic dispatch arm alone is not completion.
+  generic dispatch arm alone is not completion. For both clientbound
+  `ShowDialog` rows, close the remaining `runtime_side_effect` cell by building
+  and testing the native dialog screen stack; do not reopen the now-complete
+  wire decode or canonical apply cells to stand in for that runtime work.
 - Route a transferred target into production reconnect, send its Transfer-intent
   handshake, and lock the closing-to-handshake state transition.
 - Complete authenticated login: perform session authentication/encryption from the

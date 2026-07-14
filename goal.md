@@ -715,9 +715,10 @@ play UpdateRecipes 的 property-set/stonecutter framing、strict trailing、repl
 play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry replace ownership 与 tests 已闭合；剩余 fuel values/creative search-tree 派生刷新保持 runtime partial。
 play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailing、manager apply ownership 与 tests 已闭合；剩余 locator contextual-bar presentation 保持 runtime partial。
 play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 native-owned chat/sign/debug 与 warning return-screen stack 集成保持 runtime partial。
-play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session registry holder
-resolution、五种 top-level Dialog semantic baseline、ownership 与 tests 已闭合；剩余完整
-Component generic packet owner、canonical screen data/runtime screen stack 保持 partial。
+configuration/play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session
+registry holder resolution、五种 top-level Dialog 的完整 Codec projection 与 canonical apply、ownership
+及 tests 已闭合；两行只保留 native screen stack 的 runtime cell 为 partial。Component generic packet
+owner 与 canonical screen data/runtime screen stack 仍待闭合。
 play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。
 play BlockDestruction 的 id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与 tests 已闭合；剩余 full model-shaped crack decal parity 保持 runtime partial。

@@ -519,7 +519,7 @@ mod tests {
     }
 
     #[test]
-    fn configuration_dialog_coverage_keeps_codec_and_screen_gaps_explicit() {
+    fn configuration_dialog_coverage_keeps_only_screen_runtime_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_CUSTOM_CLICK_ACTION",
@@ -551,8 +551,6 @@ mod tests {
                 ("SERVERBOUND_CUSTOM_CLICK_ACTION", "state_guard"),
                 ("SERVERBOUND_CUSTOM_CLICK_ACTION", "tests"),
                 ("CLIENTBOUND_CLEAR_DIALOG", "runtime_side_effect"),
-                ("CLIENTBOUND_SHOW_DIALOG", "canonical_apply"),
-                ("CLIENTBOUND_SHOW_DIALOG", "decode"),
                 ("CLIENTBOUND_SHOW_DIALOG", "runtime_side_effect"),
             ])
         );
@@ -2249,7 +2247,7 @@ mod tests {
     }
 
     #[test]
-    fn play_show_dialog_keeps_typed_dialog_and_screen_open() {
+    fn play_show_dialog_keeps_only_screen_runtime_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2263,10 +2261,7 @@ mod tests {
                 (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect"])
-        );
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
     }
 
     #[test]

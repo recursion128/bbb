@@ -2232,19 +2232,24 @@
             "crates/bbb-world/src/client/dialog/body.rs#DialogDataComponentPatchState",
             "crates/bbb-world/src/client/dialog/body/component_value.rs#DialogDataComponentValueState",
             "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#DialogRegistryHolderSetState",
-            "crates/bbb-world/src/client/dialog.rs#projects_common_dialog_inputs_while_retaining_raw_values"
+            "crates/bbb-world/src/client/dialog.rs#projects_common_dialog_inputs_while_retaining_raw_values",
+            "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_all_dialog_input_controls",
+            "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_remaining_top_level_dialog_types",
+            "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_compact_and_named_dialog_holder_sets"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
             "crates/bbb-protocol/src/packets/client_common.rs#decode_context_free_show_dialog",
             "crates/bbb-protocol/src/packets/tests.rs#decodes_configuration_common_packets",
+            "crates/bbb-world/src/client/dialog.rs#decodes_context_free_dialog_list_requires_inline_list",
+            "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_remaining_top_level_dialog_types",
             "vanilla:net/minecraft/network/protocol/common/ClientboundShowDialogPacket.java#CONTEXT_FREE_STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -13994,12 +13999,15 @@
             "crates/bbb-world/src/client/dialog/body.rs#DialogDataComponentPatchState",
             "crates/bbb-world/src/client/dialog/body/component_value.rs#DialogDataComponentValueState",
             "crates/bbb-world/src/client/dialog/body/component_value/holder_set.rs#DialogRegistryHolderSetState",
+            "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_all_dialog_input_controls",
+            "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_remaining_top_level_dialog_types",
+            "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_compact_and_named_dialog_holder_sets",
             "crates/bbb-world/src/client/ui.rs#dialog_state_from_packet",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
             "crates/bbb-world/src/client/ui.rs#referenced_dialogs_use_session_holder_order_and_retain_resolution_errors"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -14009,10 +14017,12 @@
             "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_show_dialog_direct_holder_with_trailing_bytes",
             "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_show_dialog_direct_holder_with_excessive_compound_entries",
             "crates/bbb-protocol/src/packets/client_common/tests.rs#rejects_oversized_show_dialog_direct_holder_before_nbt_allocation",
+            "crates/bbb-world/src/client/dialog.rs#decodes_dialog_list_tag_in_session_tag_order",
+            "crates/bbb-world/src/client/dialog/canonical_json.rs#canonicalizes_remaining_top_level_dialog_types",
             "vanilla:net/minecraft/network/protocol/common/ClientboundShowDialogPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
