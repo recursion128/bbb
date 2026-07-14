@@ -3,7 +3,7 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check
 
-use bbb_protocol::mob_effect_types::{
+use crate::mob_effect_types::{
     VANILLA_MOB_EFFECT_FIRE_RESISTANCE_ID, VANILLA_MOB_EFFECT_INFESTED_ID,
     VANILLA_MOB_EFFECT_INSTANT_DAMAGE_ID, VANILLA_MOB_EFFECT_INSTANT_HEALTH_ID,
     VANILLA_MOB_EFFECT_INVISIBILITY_ID, VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
@@ -17,36 +17,42 @@ use bbb_protocol::mob_effect_types::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct VanillaPotionEffect {
-    pub(super) effect_id: i32,
-    pub(super) duration: i32,
-    pub(super) amplifier: i32,
+pub struct VanillaPotionEffect {
+    pub effect_id: i32,
+    pub duration: i32,
+    pub amplifier: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct VanillaPotion {
-    pub(super) resource_id: &'static str,
-    pub(super) effects: &'static [VanillaPotionEffect],
+pub struct VanillaPotion {
+    pub id: i32,
+    pub resource_id: &'static str,
+    pub effects: &'static [VanillaPotionEffect],
 }
 
-pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
+pub const VANILLA_POTIONS: &[VanillaPotion] = &[
     VanillaPotion {
+        id: 0,
         resource_id: "minecraft:water",
         effects: &[],
     },
     VanillaPotion {
+        id: 1,
         resource_id: "minecraft:mundane",
         effects: &[],
     },
     VanillaPotion {
+        id: 2,
         resource_id: "minecraft:thick",
         effects: &[],
     },
     VanillaPotion {
+        id: 3,
         resource_id: "minecraft:awkward",
         effects: &[],
     },
     VanillaPotion {
+        id: 4,
         resource_id: "minecraft:night_vision",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
@@ -55,6 +61,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 5,
         resource_id: "minecraft:long_night_vision",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_NIGHT_VISION_ID,
@@ -63,6 +70,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 6,
         resource_id: "minecraft:invisibility",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_INVISIBILITY_ID,
@@ -71,6 +79,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 7,
         resource_id: "minecraft:long_invisibility",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_INVISIBILITY_ID,
@@ -79,6 +88,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 8,
         resource_id: "minecraft:leaping",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
@@ -87,6 +97,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 9,
         resource_id: "minecraft:long_leaping",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
@@ -95,6 +106,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 10,
         resource_id: "minecraft:strong_leaping",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_JUMP_BOOST_ID,
@@ -103,6 +115,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 11,
         resource_id: "minecraft:fire_resistance",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_FIRE_RESISTANCE_ID,
@@ -111,6 +124,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 12,
         resource_id: "minecraft:long_fire_resistance",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_FIRE_RESISTANCE_ID,
@@ -119,6 +133,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 13,
         resource_id: "minecraft:swiftness",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
@@ -127,6 +142,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 14,
         resource_id: "minecraft:long_swiftness",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
@@ -135,6 +151,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 15,
         resource_id: "minecraft:strong_swiftness",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
@@ -143,6 +160,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 16,
         resource_id: "minecraft:slowness",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_SLOWNESS_ID,
@@ -151,6 +169,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 17,
         resource_id: "minecraft:long_slowness",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_SLOWNESS_ID,
@@ -159,6 +178,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 18,
         resource_id: "minecraft:strong_slowness",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_SLOWNESS_ID,
@@ -167,6 +187,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 19,
         resource_id: "minecraft:turtle_master",
         effects: &[
             VanillaPotionEffect {
@@ -182,6 +203,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         ],
     },
     VanillaPotion {
+        id: 20,
         resource_id: "minecraft:long_turtle_master",
         effects: &[
             VanillaPotionEffect {
@@ -197,6 +219,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         ],
     },
     VanillaPotion {
+        id: 21,
         resource_id: "minecraft:strong_turtle_master",
         effects: &[
             VanillaPotionEffect {
@@ -212,6 +235,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         ],
     },
     VanillaPotion {
+        id: 22,
         resource_id: "minecraft:water_breathing",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_WATER_BREATHING_ID,
@@ -220,6 +244,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 23,
         resource_id: "minecraft:long_water_breathing",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_WATER_BREATHING_ID,
@@ -228,6 +253,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 24,
         resource_id: "minecraft:healing",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_INSTANT_HEALTH_ID,
@@ -236,6 +262,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 25,
         resource_id: "minecraft:strong_healing",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_INSTANT_HEALTH_ID,
@@ -244,6 +271,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 26,
         resource_id: "minecraft:harming",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_INSTANT_DAMAGE_ID,
@@ -252,6 +280,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 27,
         resource_id: "minecraft:strong_harming",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_INSTANT_DAMAGE_ID,
@@ -260,6 +289,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 28,
         resource_id: "minecraft:poison",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_POISON_ID,
@@ -268,6 +298,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 29,
         resource_id: "minecraft:long_poison",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_POISON_ID,
@@ -276,6 +307,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 30,
         resource_id: "minecraft:strong_poison",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_POISON_ID,
@@ -284,6 +316,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 31,
         resource_id: "minecraft:regeneration",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_REGENERATION_ID,
@@ -292,6 +325,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 32,
         resource_id: "minecraft:long_regeneration",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_REGENERATION_ID,
@@ -300,6 +334,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 33,
         resource_id: "minecraft:strong_regeneration",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_REGENERATION_ID,
@@ -308,6 +343,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 34,
         resource_id: "minecraft:strength",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_STRENGTH_ID,
@@ -316,6 +352,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 35,
         resource_id: "minecraft:long_strength",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_STRENGTH_ID,
@@ -324,6 +361,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 36,
         resource_id: "minecraft:strong_strength",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_STRENGTH_ID,
@@ -332,6 +370,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 37,
         resource_id: "minecraft:weakness",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_WEAKNESS_ID,
@@ -340,6 +379,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 38,
         resource_id: "minecraft:long_weakness",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_WEAKNESS_ID,
@@ -348,6 +388,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 39,
         resource_id: "minecraft:luck",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_LUCK_ID,
@@ -356,6 +397,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 40,
         resource_id: "minecraft:slow_falling",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_SLOW_FALLING_ID,
@@ -364,6 +406,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 41,
         resource_id: "minecraft:long_slow_falling",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_SLOW_FALLING_ID,
@@ -372,6 +415,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 42,
         resource_id: "minecraft:wind_charged",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_WIND_CHARGED_ID,
@@ -380,6 +424,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 43,
         resource_id: "minecraft:weaving",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_WEAVING_ID,
@@ -388,6 +433,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 44,
         resource_id: "minecraft:oozing",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_OOZING_ID,
@@ -396,6 +442,7 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
         }],
     },
     VanillaPotion {
+        id: 45,
         resource_id: "minecraft:infested",
         effects: &[VanillaPotionEffect {
             effect_id: VANILLA_MOB_EFFECT_INFESTED_ID,
@@ -405,8 +452,14 @@ pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[
     },
 ];
 
-pub(super) fn vanilla_potion(id: i32) -> Option<&'static VanillaPotion> {
+pub fn vanilla_potion(id: i32) -> Option<&'static VanillaPotion> {
     VANILLA_POTIONS.get(usize::try_from(id).ok()?)
+}
+
+pub fn vanilla_potion_for_resource_id(resource_id: &str) -> Option<&'static VanillaPotion> {
+    VANILLA_POTIONS
+        .iter()
+        .find(|potion| potion.resource_id == resource_id)
 }
 
 #[cfg(test)]
@@ -419,7 +472,8 @@ mod tests {
     fn potion_catalog_is_complete_contiguous_and_unique() {
         assert_eq!(VANILLA_POTIONS.len(), 46);
         let mut resources = HashSet::new();
-        for entry in VANILLA_POTIONS {
+        for (id, entry) in VANILLA_POTIONS.iter().enumerate() {
+            assert_eq!(entry.id, id as i32);
             assert!(resources.insert(entry.resource_id));
         }
         assert_eq!(
@@ -435,6 +489,12 @@ mod tests {
     fn potion_catalog_preserves_vanilla_order_and_effects() {
         assert_eq!(vanilla_potion(0).unwrap().resource_id, "minecraft:water");
         assert_eq!(vanilla_potion(3).unwrap().resource_id, "minecraft:awkward");
+        assert_eq!(
+            vanilla_potion_for_resource_id("minecraft:awkward")
+                .unwrap()
+                .id,
+            3
+        );
         assert_eq!(
             vanilla_potion(42).unwrap().effects[0].effect_id,
             VANILLA_MOB_EFFECT_WIND_CHARGED_ID
@@ -457,6 +517,7 @@ mod tests {
         );
         assert_eq!(vanilla_potion(-1), None);
         assert_eq!(vanilla_potion(46), None);
+        assert_eq!(vanilla_potion_for_resource_id("minecraft:missing"), None);
     }
 
     #[test]
@@ -472,7 +533,7 @@ mod tests {
                     continue;
                 }
                 let display = path.to_string_lossy();
-                if display.ends_with("/potion_catalog.rs")
+                if display.ends_with("/potion_types.rs")
                     || display.ends_with("/tests.rs")
                     || display.contains("/tests/")
                 {
@@ -488,7 +549,7 @@ mod tests {
         }
         let mut violations = Vec::new();
         visit(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("src").as_path(),
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("..").as_path(),
             &mut violations,
         );
         assert!(

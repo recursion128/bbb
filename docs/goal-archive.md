@@ -13841,3 +13841,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 空/default record、输入顺序、100 页边界、1024 UTF-16 unit（含 astral character）边界、
   missing/wrong page shapes 与 raw/filtered 独立长度均有定向测试；其余 Component、holder、list/
   compound-record persistent Codec 与 native screens 仍开放。
+
+## 2026-07-14：Decode potion-contents dialog item component
+
+- [x] 将 `Potions.java`/`MobEffects.java` 生成的 46 项药水顺序与效果目录从 item-model 私有模块迁入
+  `bbb-protocol::potion_types` 共享 semantic owner，并把既有 icon/tooltip consumer 改为复用该目录；
+  正反向 identity、连续顺序、唯一性与效果映射仍由生成测试锁定。
+- [x] 新建 `client/dialog/body/component_value/potion_contents.rs`；对照 `PotionContents.CODEC`、
+  `Potion.CODEC`、`MobEffectInstance.CODEC` 与 recursive `Details.MAP_CODEC`，typed 投影 compact/full
+  potion alternative、optional color/name、custom effect holder list、recursive hidden details 与默认值。
+- [x] 空/default record、default namespace、固定 holder identity、NBT numeric/bool conversion、
+  show-icon 跟随 particles 默认、0..=255 amplifier、recursive details、missing/wrong fields 与 unknown
+  potion/effect 均有定向测试；其余 Component、holder、list/compound-record Codec 与 screens 仍开放。

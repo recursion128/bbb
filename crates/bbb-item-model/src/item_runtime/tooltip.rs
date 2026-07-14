@@ -40,8 +40,8 @@ use super::mob_effects::{
     vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
     VanillaMobEffectCategory,
 };
-use super::potion_catalog::{vanilla_potion, VanillaPotionEffect};
 use super::*;
+use bbb_protocol::potion_types::{vanilla_potion, VanillaPotionEffect};
 
 /// Vanilla `ItemLore.LORE_STYLE`
 /// (`net.minecraft.world.item.component.ItemLore`):

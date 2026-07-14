@@ -31,12 +31,12 @@ use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
 use super::mob_effects::vanilla_mob_effect_key;
-use super::potion_catalog::vanilla_potion;
 use super::{
     first_texture_ref, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
     ItemModelCompassContext, ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
     ItemTextureState,
 };
+use bbb_protocol::potion_types::vanilla_potion;
 
 pub fn vanilla_potion_resource_id(potion_id: i32) -> Option<&'static str> {
     vanilla_potion(potion_id).map(|potion| potion.resource_id)

@@ -69,7 +69,6 @@ use crate::{
 
 mod icon_model;
 mod item_membership_catalog;
-mod potion_catalog;
 mod profile_skin;
 
 pub use icon_model::vanilla_potion_resource_id;

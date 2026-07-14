@@ -55,7 +55,7 @@ DEFAULT_OUTPUT = (
     REPO_ROOT / "crates/bbb-world/src/registries/enchantments/generated_26_1.rs"
 )
 DEFAULT_POTION_CATALOG_OUTPUT = (
-    REPO_ROOT / "crates/bbb-item-model/src/item_runtime/potion_catalog.rs"
+    REPO_ROOT / "crates/bbb-protocol/src/potion_types.rs"
 )
 DEFAULT_PAINTING_VARIANTS_OUTPUT = REPO_ROOT / "crates/bbb-world/src/painting_variants.rs"
 DEFAULT_DECORATED_POT_PATTERNS_OUTPUT = (
@@ -425,7 +425,7 @@ def render_potion_catalog(entries: list[PotionEntry]) -> str:
         "// Update: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py",
         "// Check: scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check",
         "",
-        "use bbb_protocol::mob_effect_types::{",
+        "use crate::mob_effect_types::{",
         *(
             f"    VANILLA_MOB_EFFECT_{constant_name}_ID,"
             for constant_name in effect_constants
@@ -433,24 +433,26 @@ def render_potion_catalog(entries: list[PotionEntry]) -> str:
         "};",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
-        "pub(super) struct VanillaPotionEffect {",
-        "    pub(super) effect_id: i32,",
-        "    pub(super) duration: i32,",
-        "    pub(super) amplifier: i32,",
+        "pub struct VanillaPotionEffect {",
+        "    pub effect_id: i32,",
+        "    pub duration: i32,",
+        "    pub amplifier: i32,",
         "}",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
-        "pub(super) struct VanillaPotion {",
-        "    pub(super) resource_id: &'static str,",
-        "    pub(super) effects: &'static [VanillaPotionEffect],",
+        "pub struct VanillaPotion {",
+        "    pub id: i32,",
+        "    pub resource_id: &'static str,",
+        "    pub effects: &'static [VanillaPotionEffect],",
         "}",
         "",
-        "pub(super) const VANILLA_POTIONS: &[VanillaPotion] = &[",
+        "pub const VANILLA_POTIONS: &[VanillaPotion] = &[",
     ]
-    for entry in entries:
+    for potion_id, entry in enumerate(entries):
         lines.extend(
             (
                 "    VanillaPotion {",
+                f"        id: {potion_id},",
                 f"        resource_id: {rust_string(entry.resource_id)},",
                 "        effects: &[",
             )
@@ -470,8 +472,12 @@ def render_potion_catalog(entries: list[PotionEntry]) -> str:
         (
             "];",
             "",
-            "pub(super) fn vanilla_potion(id: i32) -> Option<&'static VanillaPotion> {",
+            "pub fn vanilla_potion(id: i32) -> Option<&'static VanillaPotion> {",
             "    VANILLA_POTIONS.get(usize::try_from(id).ok()?)",
+            "}",
+            "",
+            "pub fn vanilla_potion_for_resource_id(resource_id: &str) -> Option<&'static VanillaPotion> {",
+            "    VANILLA_POTIONS.iter().find(|potion| potion.resource_id == resource_id)",
             "}",
             "",
             "#[cfg(test)]",
@@ -484,7 +490,8 @@ def render_potion_catalog(entries: list[PotionEntry]) -> str:
             "    fn potion_catalog_is_complete_contiguous_and_unique() {",
             f"        assert_eq!(VANILLA_POTIONS.len(), {len(entries)});",
             "        let mut resources = HashSet::new();",
-            "        for entry in VANILLA_POTIONS {",
+            "        for (id, entry) in VANILLA_POTIONS.iter().enumerate() {",
+            "            assert_eq!(entry.id, id as i32);",
             "            assert!(resources.insert(entry.resource_id));",
             "        }",
             f"        assert_eq!(VANILLA_POTIONS.iter().map(|entry| entry.effects.len()).sum::<usize>(), {sum(len(entry.effects) for entry in entries)});",
@@ -494,12 +501,14 @@ def render_potion_catalog(entries: list[PotionEntry]) -> str:
             "    fn potion_catalog_preserves_vanilla_order_and_effects() {",
             '        assert_eq!(vanilla_potion(0).unwrap().resource_id, "minecraft:water");',
             '        assert_eq!(vanilla_potion(3).unwrap().resource_id, "minecraft:awkward");',
+            '        assert_eq!(vanilla_potion_for_resource_id("minecraft:awkward").unwrap().id, 3);',
             '        assert_eq!(vanilla_potion(42).unwrap().effects[0].effect_id, VANILLA_MOB_EFFECT_WIND_CHARGED_ID);',
             '        assert_eq!(vanilla_potion(43).unwrap().effects[0].effect_id, VANILLA_MOB_EFFECT_WEAVING_ID);',
             '        assert_eq!(vanilla_potion(44).unwrap().effects[0].effect_id, VANILLA_MOB_EFFECT_OOZING_ID);',
             '        assert_eq!(vanilla_potion(45).unwrap().effects, &[VanillaPotionEffect { effect_id: VANILLA_MOB_EFFECT_INFESTED_ID, duration: 3600, amplifier: 0 }]);',
             "        assert_eq!(vanilla_potion(-1), None);",
             "        assert_eq!(vanilla_potion(46), None);",
+            '        assert_eq!(vanilla_potion_for_resource_id("minecraft:missing"), None);',
             "    }",
             "",
             "    #[test]",
@@ -510,13 +519,13 @@ def render_potion_catalog(entries: list[PotionEntry]) -> str:
             "                if path.is_dir() { visit(&path, violations); continue; }",
             "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
             "                let display = path.to_string_lossy();",
-            "                if display.ends_with(\"/potion_catalog.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+            "                if display.ends_with(\"/potion_types.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
             "                if source.contains(\"const VANILLA_POTION_KEYS\") || source.contains(\"const VANILLA_POTION_EFFECTS_BY_ID\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",
-            "        visit(Path::new(env!(\"CARGO_MANIFEST_DIR\")).join(\"src\").as_path(), &mut violations);",
+            "        visit(Path::new(env!(\"CARGO_MANIFEST_DIR\")).join(\"..\").as_path(), &mut violations);",
             "        assert!(violations.is_empty(), \"parallel potion catalog owners: {violations:?}\");",
             "    }",
             "}",

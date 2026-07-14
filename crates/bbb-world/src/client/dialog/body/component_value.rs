@@ -36,6 +36,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
         VANILLA_DATA_COMPONENT_RECIPES_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
@@ -64,6 +65,7 @@ mod enchantments;
 mod equippable;
 mod holder_set;
 mod map_decorations;
+mod potion_contents;
 mod profile;
 mod sound_event;
 mod tool;
@@ -81,6 +83,7 @@ use holder_set::{
     DialogSuspiciousStewEffectState,
 };
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
+use potion_contents::{decode_potion_contents, DialogPotionContentsState};
 use profile::decode_profile;
 use sound_event::{
     decode_kinetic_weapon, decode_piercing_weapon, decode_sound_event_holder,
@@ -199,6 +202,9 @@ pub enum DialogDataComponentValueState {
     },
     Profile {
         profile: ResolvableProfileSummary,
+    },
+    PotionContents {
+        contents: DialogPotionContentsState,
     },
     Repairable {
         items: DialogRegistryHolderSetState,
@@ -397,6 +403,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID => DialogDataComponentValueState::Profile {
             profile: decode_profile(value, &what)?,
         },
+        VANILLA_DATA_COMPONENT_POTION_CONTENTS_TYPE_ID => {
+            DialogDataComponentValueState::PotionContents {
+                contents: decode_potion_contents(value, &what)?,
+            }
+        }
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => DialogDataComponentValueState::Bees {
             occupants: decode_bees(value, &what)?,
         },

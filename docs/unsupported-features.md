@@ -71,7 +71,7 @@ Owner: `bbb-protocol`
   registration, plus 1 profile-alternative, 1 sound-holder, 4 defaulted
   sound-backed record registrations, 2 registry-holder map registrations, 1
   dynamic registry-holder plus 1 block-holder rule registration, and 1 filterable
-  bounded-page list registration:
+  bounded-page list plus 1 potion-alternative/recursive-effect registration:
   decode the remaining Component, holder, list, and compound-record persistent value
   Codecs, render the corresponding screens, restore the previous screen on clear, and
   route custom-click controls through the active dialog state.

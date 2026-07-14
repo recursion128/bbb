@@ -361,7 +361,7 @@ fn decode_suspicious_stew_effects(
         .collect()
 }
 
-fn decode_builtin_mob_effect_holder_reference(
+pub(super) fn decode_builtin_mob_effect_holder_reference(
     value: &NbtSummaryValue,
     what: &str,
 ) -> Result<DialogRegistryHolderReferenceState, String> {
