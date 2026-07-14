@@ -14204,7 +14204,7 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
 }
 
 #[test]
-fn hud_inventory_screen_projects_unpatched_dialog_item_body_and_hover_tooltip() {
+fn hud_inventory_screen_projects_dialog_item_body_and_registry_independent_patch() {
     let entry = |name: &str, value| NbtSummaryEntry {
         name: name.to_string(),
         value,
@@ -14323,12 +14323,17 @@ fn hud_inventory_screen_projects_unpatched_dialog_item_body_and_hover_tooltip() 
         Some(&item_runtime),
         &terrain_textures,
         None,
-        InventoryHudLocalState::default(),
+        InventoryHudLocalState {
+            cursor_position: Some((153, 64)),
+            ..Default::default()
+        },
         surface_size,
         0.0,
     )
     .unwrap();
-    assert!(patched.floating_items.is_empty());
+    assert_eq!(patched.floating_items.len(), 1);
+    assert_eq!(patched.floating_items[0].icon.count_label, None);
+    assert_eq!(patched.tooltip.as_ref().unwrap().lines[0].text, "Named");
 }
 
 #[test]

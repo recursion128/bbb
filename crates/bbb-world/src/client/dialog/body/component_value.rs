@@ -5,7 +5,10 @@ use bbb_protocol::item_component_value_types::{
 };
 use bbb_protocol::packets::{
     chunks::BlockPos,
-    inventory::{FireworkExplosionSummary, LodestoneTargetSummary, ResolvableProfileSummary},
+    inventory::{
+        DataComponentPatchSummary, FireworkExplosionSummary, LodestoneTargetSummary,
+        ResolvableProfileSummary,
+    },
 };
 use bbb_protocol::{
     builtin_enum_component_values::{
@@ -403,6 +406,133 @@ impl DialogDataComponentValueState {
             _ => None,
         }
     }
+}
+
+pub(super) fn apply_registry_independent_item_patch_value(
+    type_id: i32,
+    value: &DialogDataComponentValueState,
+    patch: &mut DataComponentPatchSummary,
+) -> bool {
+    use DialogDataComponentValueState as Value;
+
+    match (type_id, value) {
+        (VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID, Value::CustomData { data }) => {
+            patch.custom_data = Some(data.clone());
+        }
+        (VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, Value::Integer { value }) => {
+            patch.max_stack_size = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, Value::Integer { value }) => {
+            patch.max_damage = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, Value::Integer { value }) => {
+            patch.damage = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID, Value::Integer { value }) => {
+            patch.repair_cost = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, Value::Integer { value }) => {
+            patch.map_color = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, Value::Integer { value }) => {
+            patch.map_id = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID, Value::Integer { value }) => {
+            patch.ominous_bottle_amplifier = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID, Value::Float { bits }) => {
+            patch.minimum_attack_charge_bits = Some(*bits);
+        }
+        (VANILLA_DATA_COMPONENT_POTION_DURATION_SCALE_TYPE_ID, Value::Float { bits }) => {
+            patch.potion_duration_scale_bits = Some(*bits);
+        }
+        (VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID, Value::Boolean { value }) => {
+            patch.enchantment_glint_override = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_UNBREAKABLE_TYPE_ID, Value::Unit) => {
+            patch.unbreakable = true;
+        }
+        (VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID, Value::Unit) => {
+            patch.intangible_projectile = true;
+        }
+        (VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID, Value::Unit) => {}
+        (VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, Value::ResourceId { resource_id }) => {
+            patch.item_model = Some(resource_id.clone());
+        }
+        (VANILLA_DATA_COMPONENT_TOOLTIP_STYLE_TYPE_ID, Value::ResourceId { resource_id }) => {
+            patch.tooltip_style = Some(resource_id.clone());
+        }
+        (VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID, Value::ResourceId { resource_id }) => {
+            patch.note_block_sound = Some(resource_id.clone());
+        }
+        (VANILLA_DATA_COMPONENT_RARITY_TYPE_ID, Value::Rarity { value }) => {
+            patch.rarity = Some(*value);
+        }
+        (VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, Value::TextComponent { component }) => {
+            patch.custom_name = Some(component.text.clone());
+            patch.custom_name_styled = Some(component.runs.clone());
+            patch.custom_name_nbt = Some(component.component.clone());
+        }
+        (VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID, Value::TextComponent { component }) => {
+            patch.item_name = Some(component.text.clone());
+            patch.item_name_styled = Some(component.runs.clone());
+            patch.item_name_nbt = Some(component.component.clone());
+        }
+        (VANILLA_DATA_COMPONENT_LORE_TYPE_ID, Value::Lore { lines }) => {
+            patch.lore = lines.iter().map(|line| line.text.clone()).collect();
+            patch.lore_styled = lines.iter().map(|line| line.runs.clone()).collect();
+            patch.lore_nbt = lines.iter().map(|line| line.component.clone()).collect();
+        }
+        (
+            VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+            Value::CustomModelData {
+                floats_bits,
+                flags,
+                strings,
+                colors,
+            },
+        ) => {
+            patch.custom_model_data_floats = floats_bits
+                .iter()
+                .map(|bits| f32::from_bits(*bits))
+                .collect::<Vec<_>>()
+                .into();
+            patch.custom_model_data_flags = flags.clone();
+            patch.custom_model_data_strings = strings.clone();
+            patch.custom_model_data_colors = colors.clone();
+        }
+        (
+            VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID,
+            Value::TooltipDisplay {
+                hide_tooltip,
+                hidden_components,
+            },
+        ) => {
+            patch.tooltip_hide_tooltip = *hide_tooltip;
+            patch.tooltip_hidden_component_type_ids = hidden_components
+                .iter()
+                .map(|entry| entry.type_id)
+                .collect();
+        }
+        (VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, Value::RgbColor { value }) => {
+            patch.dyed_color = Some(*value);
+        }
+        (
+            VANILLA_DATA_COMPONENT_TROPICAL_FISH_PATTERN_TYPE_ID,
+            Value::StringEnum { value_id, .. },
+        ) => {
+            patch.tropical_fish_pattern_id = Some(*value_id);
+        }
+        (_, Value::StringEnum { value_id, .. })
+            if VANILLA_BUILTIN_ENUM_COMPONENTS
+                .iter()
+                .any(|entry| entry.type_id == type_id) =>
+        {
+            patch.builtin_enum_component_ids.insert(type_id, *value_id);
+        }
+        _ => return false,
+    }
+    true
 }
 
 pub(super) fn validate_component_player_profile(

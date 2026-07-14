@@ -69,8 +69,9 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
-  bridge component-patched Item bodies into the native item renderer, add Item widget focus
-  outlines, all four input controls, remaining button-list action tooltips, and the
+  bridge the remaining registry-backed, recursive, and complex component-patched Item bodies
+  into the native item renderer, add Item widget focus outlines, all four input controls,
+  remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
   focus, and clipping; execute open-url, run/suggest-command,
   dynamic action and Component-click paths; and
@@ -78,7 +79,9 @@ Owner: `bbb-protocol`
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
   Notice/Confirmation projection already sends static custom id/payload, lays out
   Confirmation's two footer actions with its no-button Escape binding and styled hover tooltips,
-  projects unpatched Item bodies with description layout, decorations, and item tooltips,
+  projects unpatched and registry-independent text/scalar-patched Item bodies with description
+  layout, decorations, and item tooltips while conservatively rejecting an entire body when any
+  added component value has no summary bridge,
   and implements the
   static copy-to-clipboard through the existing native clipboard owner, preserves
   DialogScreen's side-effect-free static change-page handling, and implements

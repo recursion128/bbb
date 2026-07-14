@@ -1,5 +1,6 @@
 #[cfg(test)]
 use bbb_protocol::item_component_value_types::ItemRaritySummary;
+use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
 use bbb_protocol::{
     data_component_types::vanilla_data_component_type_for_resource_id,
     item_types::vanilla_item_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
@@ -18,14 +19,14 @@ use super::{
 mod component_value;
 
 pub use component_value::DialogDataComponentValueState;
+use component_value::{
+    apply_registry_independent_item_patch_value, decode_supported_component_value_with_context,
+    validate_component_player_profile as validate_player_profile,
+};
 pub(super) use component_value::{
     canonical_component_player_profile_json_utf16_len,
     canonical_data_component_patch_json_utf16_len_with_context,
     canonical_item_stack_template_json_utf16_len_with_context,
-};
-use component_value::{
-    decode_supported_component_value_with_context,
-    validate_component_player_profile as validate_player_profile,
 };
 
 pub(super) fn validate_component_player_profile(
@@ -82,6 +83,33 @@ pub struct DialogDataComponentPatchEntryState {
     pub value: Option<NbtSummaryValue>,
     #[serde(default)]
     pub value_data: Option<DialogDataComponentValueState>,
+}
+
+impl DialogItemStackTemplateState {
+    pub fn item_stack_summary_for_protocol_id(&self, item_id: i32) -> Option<ItemStackSummary> {
+        let mut component_patch = DataComponentPatchSummary::default();
+        if let Some(patch) = &self.component_data {
+            for entry in &patch.entries {
+                if entry.removed {
+                    component_patch.removed_type_ids.push(entry.type_id);
+                    continue;
+                }
+                apply_registry_independent_item_patch_value(
+                    entry.type_id,
+                    entry.value_data.as_ref()?,
+                    &mut component_patch,
+                )
+                .then_some(())?;
+                component_patch.added_type_ids.push(entry.type_id);
+            }
+        }
+        component_patch.added = component_patch.added_type_ids.len();
+        Some(ItemStackSummary {
+            item_id: Some(item_id),
+            count: self.count,
+            component_patch,
+        })
+    }
 }
 
 pub(super) fn decode_dialog_bodies(
@@ -435,6 +463,19 @@ mod tests {
         assert!(show_tooltip);
         assert_eq!(*width, 16);
         assert_eq!(*height, 16);
+        let summary = item.item_stack_summary_for_protocol_id(7).unwrap();
+        assert_eq!(summary.item_id, Some(7));
+        assert_eq!(summary.count, 2);
+        assert_eq!(summary.component_patch.added, 1);
+        assert_eq!(summary.component_patch.added_type_ids, vec![6]);
+        assert_eq!(
+            summary.component_patch.custom_name.as_deref(),
+            Some("Named")
+        );
+        assert_eq!(
+            summary.component_patch.custom_name_nbt,
+            Some(NbtSummaryValue::String("Named".to_string()))
+        );
 
         for (field, value) in [("width", 0), ("height", 257)] {
             let error = decode_dialog_bodies(&[compound(vec![
@@ -459,6 +500,93 @@ mod tests {
             ])])
             .is_err());
         }
+    }
+
+    #[test]
+    fn projects_registry_independent_item_patch_values_and_rejects_unbridged_values() {
+        let type_id = |resource_id| {
+            vanilla_data_component_type_for_resource_id(resource_id)
+                .unwrap()
+                .type_id
+        };
+        let max_damage_type_id = type_id("minecraft:max_damage");
+        let glint_type_id = type_id("minecraft:enchantment_glint_override");
+        let lore_type_id = type_id("minecraft:lore");
+        let tropical_fish_pattern_type_id = type_id("minecraft:tropical_fish/pattern");
+        let item = DialogItemStackTemplateState {
+            resource_id: "minecraft:stick".to_string(),
+            count: 3,
+            components: None,
+            component_data: Some(DialogDataComponentPatchState {
+                entries: vec![
+                    DialogDataComponentPatchEntryState {
+                        type_id: max_damage_type_id,
+                        resource_id: "minecraft:max_damage".to_string(),
+                        removed: false,
+                        value: None,
+                        value_data: Some(DialogDataComponentValueState::Integer { value: 100 }),
+                    },
+                    DialogDataComponentPatchEntryState {
+                        type_id: glint_type_id,
+                        resource_id: "minecraft:enchantment_glint_override".to_string(),
+                        removed: false,
+                        value: None,
+                        value_data: Some(DialogDataComponentValueState::Boolean { value: true }),
+                    },
+                    DialogDataComponentPatchEntryState {
+                        type_id: lore_type_id,
+                        resource_id: "minecraft:lore".to_string(),
+                        removed: true,
+                        value: None,
+                        value_data: None,
+                    },
+                    DialogDataComponentPatchEntryState {
+                        type_id: tropical_fish_pattern_type_id,
+                        resource_id: "minecraft:tropical_fish/pattern".to_string(),
+                        removed: false,
+                        value: None,
+                        value_data: Some(DialogDataComponentValueState::StringEnum {
+                            value_id: 1,
+                            serialized_name: "flopper".to_string(),
+                        }),
+                    },
+                ],
+            }),
+        };
+
+        let summary = item.item_stack_summary_for_protocol_id(4).unwrap();
+        assert_eq!(summary.component_patch.added, 3);
+        assert_eq!(
+            summary.component_patch.added_type_ids,
+            vec![
+                max_damage_type_id,
+                glint_type_id,
+                tropical_fish_pattern_type_id
+            ]
+        );
+        assert_eq!(summary.component_patch.removed_type_ids, vec![lore_type_id]);
+        assert_eq!(summary.component_patch.max_damage, Some(100));
+        assert_eq!(
+            summary.component_patch.enchantment_glint_override,
+            Some(true)
+        );
+        assert_eq!(summary.component_patch.tropical_fish_pattern_id, Some(1));
+
+        let mut unbridged = item;
+        unbridged.component_data.as_mut().unwrap().entries.push(
+            DialogDataComponentPatchEntryState {
+                type_id: type_id("minecraft:food"),
+                resource_id: "minecraft:food".to_string(),
+                removed: false,
+                value: None,
+                value_data: Some(DialogDataComponentValueState::Food {
+                    nutrition: 1,
+                    saturation_bits: 0.5f32.to_bits(),
+                    can_always_eat: false,
+                }),
+            },
+        );
+        assert!(unbridged.item_stack_summary_for_protocol_id(4).is_none());
     }
 
     #[test]

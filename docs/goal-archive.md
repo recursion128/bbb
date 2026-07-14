@@ -14505,3 +14505,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   world→native HUD 路径。32x48 `stick x3`、50px description 的精确坐标/count/tooltip 与非空
   custom-name patch 保守不投影均有 focused regression。任意 component-patched template 的 typed
   dialog state→`DataComponentPatchSummary` bridge 及 keyboard focus outline 继续由缺口账本追踪。
+
+## 2026-07-14：Bridge registry-independent dialog Item patches
+
+- [x] 把 ItemStackTemplate typed component state 到既有 `DataComponentPatchSummary` 的投影放在
+  dialog body semantic owner，不在 screen 层反解析 raw NBT；added/removed type id 与声明顺序均保留，
+  renderer 继续复用唯一 native item icon/decorations/tooltip pipeline。
+- [x] bridge 覆盖 custom/item name、lore、custom data/model data、tooltip display、rarity、资源 ID、
+  integer/float/boolean/unit、dyed color、built-in enum 与 tropical-fish pattern 等 registry-independent
+  值；任何 added entry 缺 typed value 或仍属 registry-backed/递归/复杂类型时整栈返回 `None`，不产生
+  部分 patch 或猜测性视觉。world focused test 覆盖 added/removed、glint、专属 fish-pattern 字段与复杂
+  Food 拒绝；native focused test 证明 custom-name patch 驱动真实 item tooltip 且 count=1 不显示装饰文字。

@@ -751,19 +751,9 @@ fn dialog_item_block(
     height: i32,
     partial_tick: f32,
 ) -> Option<DialogItemBlock> {
-    if item
-        .component_data
-        .as_ref()
-        .is_some_and(|patch| !patch.entries.is_empty())
-    {
-        return None;
-    }
     let item_runtime = item_runtime?;
-    let stack = ItemStackSummary {
-        item_id: Some(item_runtime.item_protocol_id(&item.resource_id)?),
-        count: item.count,
-        component_patch: Default::default(),
-    };
+    let stack =
+        item.item_stack_summary_for_protocol_id(item_runtime.item_protocol_id(&item.resource_id)?)?;
     let icon = hud_item_icon_for_stack(
         world,
         Some(item_runtime),
