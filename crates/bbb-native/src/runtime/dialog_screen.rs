@@ -10,8 +10,9 @@ use bbb_protocol::{
 };
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
-    HudInventoryScreen, HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine,
-    HudStyledTextRun, HudTextStyle, HudUvRect,
+    HudInventoryScreen, HudInventoryTextInputDecoration, HudInventoryTextLabel,
+    HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun, HudTextStyle, HudUvRect,
+    Renderer,
 };
 use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState,
@@ -24,12 +25,12 @@ use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event::{ElementState, MouseButton, MouseScrollDelta};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
-use crate::input::{queue_chat_command, DebugClipboard};
+use crate::input::{queue_chat_command, text_edit, DebugClipboard};
 use crate::terrain_runtime::TerrainTextureState;
 
 use super::{
     block_item_3d_model, hud_ascii_approx_char_width, hud_item_icon_for_stack,
-    hud_item_tooltip_lines, InventoryHudLocalState,
+    hud_item_tooltip_lines, wall_clock_millis, InventoryHudLocalState,
 };
 
 // Vanilla `HeaderAndFooterLayout` uses 33-pixel header/footer frames and places
@@ -52,6 +53,11 @@ const SLIDER_HANDLE_HALF_WIDTH: i32 = 4;
 const WIDGET_TEXT_MARGIN: u32 = 2;
 const WIDGET_SPRITE_WIDTH: u32 = 200;
 const TEXT_LINE_HEIGHT: i32 = 9;
+const TEXT_INPUT_HEIGHT: i32 = 20;
+const TEXT_INPUT_INSET: i32 = 4;
+const TEXT_INPUT_Y_OFFSET: i32 = 6;
+const TEXT_INPUT_COLOR: [f32; 4] = [224.0 / 255.0, 224.0 / 255.0, 224.0 / 255.0, 1.0];
+const TEXT_SELECTION_TINT: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
 const TEXT_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const INACTIVE_TEXT_COLOR: [f32; 4] = [160.0 / 255.0, 160.0 / 255.0, 160.0 / 255.0, 1.0];
 const WAITING_BUTTON_WIDTH: u32 = 200;
@@ -87,6 +93,39 @@ enum DialogInputMouseHit {
     Boolean(usize),
     NumberRange(DialogInputLayout),
     SingleOption(DialogInputLayout),
+    Text(DialogInputLayout),
+}
+
+pub(crate) trait DialogTextMeasurer {
+    fn display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize;
+
+    fn cursor_for_width(&self, text: &str, display_start: usize, width: u32) -> usize;
+}
+
+impl DialogTextMeasurer for Renderer {
+    fn display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize {
+        self.hud_plain_text_display_start_for_width(text, scroll_to, width)
+            .unwrap_or_else(|| approximate_dialog_text_display_start(text, scroll_to, width))
+    }
+
+    fn cursor_for_width(&self, text: &str, display_start: usize, width: u32) -> usize {
+        self.hud_plain_text_cursor_for_width_from(text, display_start, width)
+            .unwrap_or_else(|| approximate_dialog_text_cursor(text, display_start, width))
+    }
+}
+
+#[cfg(test)]
+struct ApproximateDialogTextMeasurer;
+
+#[cfg(test)]
+impl DialogTextMeasurer for ApproximateDialogTextMeasurer {
+    fn display_start(&self, text: &str, scroll_to: usize, width: u32) -> usize {
+        approximate_dialog_text_display_start(text, scroll_to, width)
+    }
+
+    fn cursor_for_width(&self, text: &str, display_start: usize, width: u32) -> usize {
+        approximate_dialog_text_cursor(text, display_start, width)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -345,6 +384,58 @@ fn dialog_input_layouts(
             Some(layout)
         })
         .collect()
+}
+
+fn dialog_single_line_text_box_layout(
+    layout: DialogInputLayout,
+    label_visible: bool,
+) -> DialogInputLayout {
+    DialogInputLayout {
+        y: layout.y.saturating_add(if label_visible {
+            TEXT_LINE_HEIGHT + 4
+        } else {
+            0
+        }),
+        height: TEXT_INPUT_HEIGHT,
+        ..layout
+    }
+}
+
+fn approximate_dialog_text_display_start(text: &str, scroll_to: usize, width: u32) -> usize {
+    let scroll_to = scroll_to.min(text_edit::char_len(text));
+    let prefix_width = text.chars().take(scroll_to).fold(0u32, |total, ch| {
+        total.saturating_add(hud_ascii_approx_char_width(ch))
+    });
+    if prefix_width <= width {
+        return 0;
+    }
+    let chars = text.chars().take(scroll_to).collect::<Vec<_>>();
+    let mut start = chars.len();
+    let mut used_width = 0u32;
+    while start > 0 {
+        let advance = hud_ascii_approx_char_width(chars[start - 1]);
+        if used_width.saturating_add(advance) > width {
+            break;
+        }
+        used_width = used_width.saturating_add(advance);
+        start -= 1;
+    }
+    start
+}
+
+fn approximate_dialog_text_cursor(text: &str, display_start: usize, width: u32) -> usize {
+    let display_start = display_start.min(text_edit::char_len(text));
+    let mut cursor = display_start;
+    let mut used_width = 0u32;
+    for ch in text.chars().skip(display_start) {
+        let advance = hud_ascii_approx_char_width(ch);
+        if used_width.saturating_add(advance) > width {
+            break;
+        }
+        used_width = used_width.saturating_add(advance);
+        cursor += 1;
+    }
+    cursor
 }
 
 fn push_slider_track_layers(
@@ -880,6 +971,68 @@ pub(super) fn hud_dialog_screen(
                     Some(available_width),
                 );
             }
+            (
+                DialogInputControlState::Text {
+                    label,
+                    label_visible,
+                    max_length,
+                    multiline: None,
+                    ..
+                },
+                Some(Some(DialogInputValueState::Text { value })),
+            ) => {
+                if *label_visible {
+                    push_text_label(&mut text_labels, label, input_layout.x, input_layout.y);
+                }
+                let box_layout = dialog_single_line_text_box_layout(input_layout, *label_visible);
+                let edit = world
+                    .dialog_text_edit_state()
+                    .filter(|edit| edit.input_index == input_layout.index);
+                push_horizontal_nine_slice_layers(
+                    &mut input_layers,
+                    box_layout,
+                    if edit.is_some() {
+                        HudInventoryBackgroundTexture::WidgetTextFieldHighlighted
+                    } else {
+                        HudInventoryBackgroundTexture::WidgetTextField
+                    },
+                    WIDGET_SPRITE_WIDTH,
+                    1,
+                );
+                let inner_width = u32::try_from(
+                    box_layout
+                        .width
+                        .saturating_sub(TEXT_INPUT_INSET.saturating_mul(2))
+                        .max(1),
+                )
+                .unwrap_or(1);
+                let text_len = text_edit::char_len(value);
+                let cursor = edit.map_or(text_len, |edit| edit.cursor);
+                let selection = edit.map_or(text_len, |edit| edit.selection);
+                text_labels.push(HudInventoryTextLabel {
+                    x: box_layout.x.saturating_add(TEXT_INPUT_INSET),
+                    y: box_layout.y.saturating_add(TEXT_INPUT_Y_OFFSET),
+                    width: inner_width,
+                    text: value.clone(),
+                    tint: TEXT_INPUT_COLOR,
+                    background: None,
+                    input: Some(HudInventoryTextInputDecoration {
+                        cursor,
+                        selection,
+                        scroll_to: if selection != cursor {
+                            selection
+                        } else {
+                            cursor
+                        },
+                        max_length: usize::try_from(*max_length).unwrap_or(usize::MAX),
+                        cursor_visible: edit.is_some() && (wall_clock_millis() / 300) % 2 == 0,
+                        cursor_tint: TEXT_INPUT_COLOR,
+                        selection_tint: TEXT_SELECTION_TINT,
+                    }),
+                    shadow: true,
+                    runs: Vec::new(),
+                });
+            }
             _ => {}
         }
     }
@@ -1044,6 +1197,7 @@ pub(super) fn hud_waiting_response_screen(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn handle_dialog_key_input(
     counters: &mut NetCounters,
     world: &mut WorldStore,
@@ -1051,6 +1205,29 @@ pub(crate) fn handle_dialog_key_input(
     clipboard: Option<&mut dyn DebugClipboard>,
     physical_key: PhysicalKey,
     state: ElementState,
+) -> bool {
+    handle_dialog_key_input_with_modifiers(
+        counters,
+        world,
+        net_commands,
+        clipboard,
+        physical_key,
+        state,
+        false,
+        false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn handle_dialog_key_input_with_modifiers(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    mut clipboard: Option<&mut dyn DebugClipboard>,
+    physical_key: PhysicalKey,
+    state: ElementState,
+    shift_down: bool,
+    control_down: bool,
 ) -> bool {
     if world.dialog_waiting_ticks().is_some() {
         if state == ElementState::Pressed
@@ -1061,13 +1238,29 @@ pub(crate) fn handle_dialog_key_input(
         }
         return true;
     }
-    let Some(dialog) = world.current_dialog() else {
+    if world.current_dialog().is_none() {
         return false;
-    };
-    if state != ElementState::Pressed || physical_key != PhysicalKey::Code(KeyCode::Escape) {
+    }
+    if state != ElementState::Pressed {
         return true;
     }
-    let Some(controls) = dialog.data.as_ref().and_then(simple_dialog_controls) else {
+    if handle_focused_dialog_text_key(
+        world,
+        &mut clipboard,
+        physical_key,
+        shift_down,
+        control_down,
+    ) {
+        return true;
+    }
+    if physical_key != PhysicalKey::Code(KeyCode::Escape) {
+        return true;
+    }
+    let Some(controls) = world
+        .current_dialog()
+        .and_then(|dialog| dialog.data.as_ref())
+        .and_then(simple_dialog_controls)
+    else {
         return true;
     };
     if !controls.common.can_close_with_escape {
@@ -1085,6 +1278,236 @@ pub(crate) fn handle_dialog_key_input(
     true
 }
 
+fn handle_focused_dialog_text_key(
+    world: &mut WorldStore,
+    clipboard: &mut Option<&mut dyn DebugClipboard>,
+    physical_key: PhysicalKey,
+    shift_down: bool,
+    control_down: bool,
+) -> bool {
+    let PhysicalKey::Code(code) = physical_key else {
+        return false;
+    };
+    if world.dialog_text_edit_state().is_none() {
+        return false;
+    }
+    match code {
+        KeyCode::Backspace => {
+            delete_focused_dialog_text(world, -1, control_down);
+            true
+        }
+        KeyCode::Delete => {
+            delete_focused_dialog_text(world, 1, control_down);
+            true
+        }
+        KeyCode::ArrowLeft => {
+            move_focused_dialog_text_cursor(world, -1, shift_down, control_down);
+            true
+        }
+        KeyCode::ArrowRight => {
+            move_focused_dialog_text_cursor(world, 1, shift_down, control_down);
+            true
+        }
+        KeyCode::Home => {
+            move_focused_dialog_text_cursor_to(world, 0, shift_down);
+            true
+        }
+        KeyCode::End => {
+            let end = focused_dialog_text_snapshot(world)
+                .map(|(_, value, _, _, _)| text_edit::char_len(&value))
+                .unwrap_or(0);
+            move_focused_dialog_text_cursor_to(world, end, shift_down);
+            true
+        }
+        KeyCode::KeyA if control_down => {
+            if let Some((index, value, _, _, _)) = focused_dialog_text_snapshot(world) {
+                let end = text_edit::char_len(&value);
+                world.set_dialog_text_input_value_and_selection(index, value, end, 0);
+            }
+            true
+        }
+        KeyCode::KeyC if control_down => {
+            copy_focused_dialog_text_selection(world, clipboard);
+            true
+        }
+        KeyCode::KeyV if control_down => {
+            if let Some(text) = clipboard
+                .as_deref_mut()
+                .and_then(DebugClipboard::get_debug_clipboard_text)
+            {
+                replace_focused_dialog_text_selection(world, &text);
+            }
+            true
+        }
+        KeyCode::KeyX if control_down => {
+            copy_focused_dialog_text_selection(world, clipboard);
+            replace_focused_dialog_text_selection(world, "");
+            true
+        }
+        _ => false,
+    }
+}
+
+fn focused_dialog_text_snapshot(
+    world: &WorldStore,
+) -> Option<(usize, String, usize, usize, usize)> {
+    let edit = world.dialog_text_edit_state()?;
+    let Some(Some(DialogInputValueState::Text { value })) =
+        world.current_dialog_input_values().get(edit.input_index)
+    else {
+        return None;
+    };
+    let max_length = world
+        .current_dialog()?
+        .data
+        .as_ref()
+        .and_then(simple_dialog_controls)?
+        .common
+        .input_data
+        .get(edit.input_index)
+        .and_then(|input| match &input.control {
+            DialogInputControlState::Text {
+                max_length,
+                multiline: None,
+                ..
+            } => usize::try_from(*max_length).ok(),
+            _ => None,
+        })?;
+    Some((
+        edit.input_index,
+        value.clone(),
+        edit.cursor,
+        edit.selection,
+        max_length,
+    ))
+}
+
+fn move_focused_dialog_text_cursor(
+    world: &mut WorldStore,
+    direction: i32,
+    extend_selection: bool,
+    whole_word: bool,
+) -> bool {
+    let Some((index, value, cursor, selection, _)) = focused_dialog_text_snapshot(world) else {
+        return false;
+    };
+    let next = if whole_word {
+        text_edit::word_position(&value, cursor, direction)
+    } else if direction < 0 {
+        cursor.saturating_sub(1)
+    } else {
+        cursor.saturating_add(1).min(text_edit::char_len(&value))
+    };
+    world.set_dialog_text_input_value_and_selection(
+        index,
+        value,
+        next,
+        if extend_selection { selection } else { next },
+    )
+}
+
+fn move_focused_dialog_text_cursor_to(
+    world: &mut WorldStore,
+    cursor: usize,
+    extend_selection: bool,
+) -> bool {
+    let Some((index, value, _, selection, _)) = focused_dialog_text_snapshot(world) else {
+        return false;
+    };
+    world.set_dialog_text_input_value_and_selection(
+        index,
+        value,
+        cursor,
+        if extend_selection { selection } else { cursor },
+    )
+}
+
+fn delete_focused_dialog_text(world: &mut WorldStore, direction: i32, whole_word: bool) -> bool {
+    let Some((index, mut value, cursor, selection, _)) = focused_dialog_text_snapshot(world) else {
+        return false;
+    };
+    let (start, end) = if cursor != selection {
+        (cursor.min(selection), cursor.max(selection))
+    } else {
+        let target = if whole_word {
+            text_edit::word_position(&value, cursor, direction)
+        } else if direction < 0 {
+            cursor.saturating_sub(1)
+        } else {
+            cursor.saturating_add(1).min(text_edit::char_len(&value))
+        };
+        (cursor.min(target), cursor.max(target))
+    };
+    if start != end {
+        value.replace_range(
+            text_edit::byte_index(&value, start)..text_edit::byte_index(&value, end),
+            "",
+        );
+    }
+    world.set_dialog_text_input_value_and_selection(index, value, start, start)
+}
+
+fn replace_focused_dialog_text_selection(world: &mut WorldStore, input: &str) -> bool {
+    let Some((index, mut value, cursor, selection, max_length)) =
+        focused_dialog_text_snapshot(world)
+    else {
+        return false;
+    };
+    let start = cursor.min(selection);
+    let end = cursor.max(selection);
+    let start_byte = text_edit::byte_index(&value, start);
+    let end_byte = text_edit::byte_index(&value, end);
+    let selected_utf16 = value[start_byte..end_byte].encode_utf16().count();
+    let retained_utf16 = value.encode_utf16().count().saturating_sub(selected_utf16);
+    let mut remaining = max_length.saturating_sub(retained_utf16);
+    let mut replacement = String::new();
+    for ch in input
+        .chars()
+        .filter(|ch| dialog_text_character_allowed(*ch))
+    {
+        let units = ch.len_utf16();
+        if units > remaining {
+            break;
+        }
+        replacement.push(ch);
+        remaining -= units;
+    }
+    let replacement_len = text_edit::char_len(&replacement);
+    value.replace_range(start_byte..end_byte, &replacement);
+    let cursor = start.saturating_add(replacement_len);
+    world.set_dialog_text_input_value_and_selection(index, value, cursor, cursor)
+}
+
+fn dialog_text_character_allowed(ch: char) -> bool {
+    ch != '\u{00a7}' && ch >= ' ' && ch != '\u{007f}'
+}
+
+fn copy_focused_dialog_text_selection(
+    world: &WorldStore,
+    clipboard: &mut Option<&mut dyn DebugClipboard>,
+) -> bool {
+    let Some((_, value, cursor, selection, _)) = focused_dialog_text_snapshot(world) else {
+        return false;
+    };
+    let start = cursor.min(selection);
+    let end = cursor.max(selection);
+    if start == end {
+        return true;
+    }
+    let selected = &value[text_edit::byte_index(&value, start)..text_edit::byte_index(&value, end)];
+    clipboard
+        .as_deref_mut()
+        .is_some_and(|clipboard| clipboard.set_debug_clipboard_text(selected))
+}
+
+pub(crate) fn handle_dialog_text_input(world: &mut WorldStore, text: &str) -> bool {
+    if world.dialog_text_edit_state().is_none() {
+        return world.dialog_screen_is_open();
+    }
+    replace_focused_dialog_text_selection(world, text);
+    true
+}
+
 #[cfg(test)]
 pub(crate) fn handle_dialog_mouse_input(
     counters: &mut NetCounters,
@@ -1096,7 +1519,7 @@ pub(crate) fn handle_dialog_mouse_input(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    handle_dialog_mouse_input_with_modifiers(
+    handle_dialog_mouse_input_with_modifiers_and_measurer(
         counters,
         world,
         net_commands,
@@ -1106,9 +1529,11 @@ pub(crate) fn handle_dialog_mouse_input(
         cursor_position,
         surface_size,
         false,
+        &ApproximateDialogTextMeasurer,
     )
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn handle_dialog_mouse_input_with_modifiers(
     counters: &mut NetCounters,
@@ -1121,8 +1546,36 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers(
     surface_size: PhysicalSize<u32>,
     shift_down: bool,
 ) -> bool {
+    handle_dialog_mouse_input_with_modifiers_and_measurer(
+        counters,
+        world,
+        net_commands,
+        clipboard,
+        button,
+        state,
+        cursor_position,
+        surface_size,
+        shift_down,
+        &ApproximateDialogTextMeasurer,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
+    button: MouseButton,
+    state: ElementState,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    shift_down: bool,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
     if button == MouseButton::Left && state == ElementState::Released {
         world.end_dialog_number_range_drag();
+        world.end_dialog_text_input_drag();
         return world.dialog_screen_is_open();
     }
     if world.dialog_waiting_ticks().is_some() {
@@ -1139,6 +1592,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers(
         return world.current_dialog().is_some();
     }
     world.end_dialog_number_range_drag();
+    world.end_dialog_text_input_drag();
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
@@ -1149,11 +1603,20 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers(
     let screen_height = surface_size.height.clamp(1, 512);
     let input_hit = dialog_input_layouts(controls.common, surface_size).and_then(|layouts| {
         layouts.into_iter().find_map(|layout| {
+            let control = &controls.common.input_data.get(layout.index)?.control;
+            let hit_layout = match control {
+                DialogInputControlState::Text {
+                    label_visible,
+                    multiline: None,
+                    ..
+                } => dialog_single_line_text_box_layout(layout, *label_visible),
+                _ => layout,
+            };
             if !dialog_widget_contains(
-                layout.x,
-                layout.y,
-                layout.width,
-                layout.height,
+                hit_layout.x,
+                hit_layout.y,
+                hit_layout.width,
+                hit_layout.height,
                 cursor_position,
                 surface_size,
                 screen_width,
@@ -1161,7 +1624,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers(
             ) {
                 return None;
             }
-            match &controls.common.input_data.get(layout.index)?.control {
+            match control {
                 DialogInputControlState::Boolean { .. } => {
                     Some(DialogInputMouseHit::Boolean(layout.index))
                 }
@@ -1171,27 +1634,14 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers(
                 DialogInputControlState::SingleOption { .. } => {
                     Some(DialogInputMouseHit::SingleOption(layout))
                 }
+                DialogInputControlState::Text {
+                    multiline: None, ..
+                } => Some(DialogInputMouseHit::Text(hit_layout)),
                 _ => None,
             }
         })
     });
-    match input_hit {
-        Some(DialogInputMouseHit::Boolean(index)) => {
-            world.toggle_dialog_boolean_input(index);
-            return true;
-        }
-        Some(DialogInputMouseHit::NumberRange(layout)) => {
-            world.begin_dialog_number_range_drag(layout.index);
-            set_dialog_number_range_from_cursor(world, layout, cursor_position, surface_size);
-            return true;
-        }
-        Some(DialogInputMouseHit::SingleOption(layout)) => {
-            cycle_dialog_single_option(world, layout.index, shift_down);
-            return true;
-        }
-        None => {}
-    }
-    let Some(action_index) = SimpleDialogLayout::new(
+    let action = SimpleDialogLayout::new(
         &controls
             .actions
             .iter()
@@ -1199,13 +1649,49 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers(
             .collect::<Vec<_>>(),
         surface_size,
     )
-    .and_then(|layout| layout.button_at(cursor_position, surface_size)) else {
+    .and_then(|layout| layout.button_at(cursor_position, surface_size))
+    .and_then(|action_index| {
+        Some((
+            controls.actions.get(action_index)?.action_data.clone(),
+            controls.common.after_action.clone(),
+        ))
+    });
+    match input_hit {
+        Some(DialogInputMouseHit::Boolean(index)) => {
+            world.clear_dialog_text_input_focus();
+            world.toggle_dialog_boolean_input(index);
+            return true;
+        }
+        Some(DialogInputMouseHit::NumberRange(layout)) => {
+            world.clear_dialog_text_input_focus();
+            world.begin_dialog_number_range_drag(layout.index);
+            set_dialog_number_range_from_cursor(world, layout, cursor_position, surface_size);
+            return true;
+        }
+        Some(DialogInputMouseHit::SingleOption(layout)) => {
+            world.clear_dialog_text_input_focus();
+            cycle_dialog_single_option(world, layout.index, shift_down);
+            return true;
+        }
+        Some(DialogInputMouseHit::Text(layout)) => {
+            focus_dialog_text_from_cursor(
+                world,
+                layout,
+                cursor_position,
+                surface_size,
+                shift_down,
+                text_measurer,
+            );
+            world.begin_dialog_text_input_drag(layout.index);
+            return true;
+        }
+        None => {
+            world.clear_dialog_text_input_focus();
+        }
+    }
+    let Some(action) = action else {
         return true;
     };
-    let action = (
-        controls.actions[action_index].action_data.clone(),
-        controls.common.after_action.clone(),
-    );
     run_dialog_action(
         counters,
         world,
@@ -1215,6 +1701,51 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers(
         &action.1,
     );
     true
+}
+
+fn focus_dialog_text_from_cursor(
+    world: &mut WorldStore,
+    layout: DialogInputLayout,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    extend_selection: bool,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
+    let Some(cursor_position) = cursor_position else {
+        return false;
+    };
+    let Some(Some(DialogInputValueState::Text { value })) =
+        world.current_dialog_input_values().get(layout.index)
+    else {
+        return false;
+    };
+    let text_len = text_edit::char_len(value);
+    let scroll_to = world
+        .dialog_text_edit_state()
+        .filter(|edit| edit.input_index == layout.index)
+        .map_or(text_len, |edit| {
+            if edit.selection != edit.cursor {
+                edit.selection
+            } else {
+                edit.cursor
+            }
+        });
+    let inner_width = u32::try_from(
+        layout
+            .width
+            .saturating_sub(TEXT_INPUT_INSET.saturating_mul(2))
+            .max(1),
+    )
+    .unwrap_or(1);
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let (origin_x, _) = centered_screen_origin(surface_size, screen_width, screen_height);
+    let text_x = origin_x + i64::from(layout.x) + i64::from(TEXT_INPUT_INSET);
+    let position_in_text =
+        (cursor_position.x.floor() - text_x as f64).clamp(0.0, f64::from(inner_width)) as u32;
+    let display_start = text_measurer.display_start(value, scroll_to, inner_width);
+    let cursor = text_measurer.cursor_for_width(value, display_start, position_in_text);
+    world.focus_dialog_text_input(layout.index, cursor, extend_selection)
 }
 
 fn cycle_dialog_single_option(world: &mut WorldStore, index: usize, reverse: bool) -> bool {
@@ -1309,13 +1840,61 @@ pub(crate) fn handle_dialog_mouse_wheel(
     true
 }
 
+#[cfg(test)]
 pub(crate) fn handle_dialog_cursor_moved(
     world: &mut WorldStore,
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
+    handle_dialog_cursor_moved_with_measurer(
+        world,
+        cursor_position,
+        surface_size,
+        &ApproximateDialogTextMeasurer,
+    )
+}
+
+pub(crate) fn handle_dialog_cursor_moved_with_measurer(
+    world: &mut WorldStore,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    text_measurer: &dyn DialogTextMeasurer,
+) -> bool {
     if world.dialog_waiting_ticks().is_some() {
         world.end_dialog_number_range_drag();
+        world.end_dialog_text_input_drag();
+        return true;
+    }
+    if let Some(index) = world.dialog_dragging_text_input() {
+        let layout = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(simple_dialog_controls)
+            .and_then(|controls| {
+                let layouts = dialog_input_layouts(controls.common, surface_size)?;
+                let layout = layouts.into_iter().find(|layout| layout.index == index)?;
+                let label_visible = match &controls.common.input_data.get(index)?.control {
+                    DialogInputControlState::Text {
+                        label_visible,
+                        multiline: None,
+                        ..
+                    } => *label_visible,
+                    _ => return None,
+                };
+                Some(dialog_single_line_text_box_layout(layout, label_visible))
+            });
+        let Some(layout) = layout else {
+            world.end_dialog_text_input_drag();
+            return world.current_dialog().is_some();
+        };
+        focus_dialog_text_from_cursor(
+            world,
+            layout,
+            cursor_position,
+            surface_size,
+            true,
+            text_measurer,
+        );
         return true;
     }
     let Some(index) = world.dialog_dragging_number_range_input() else {
@@ -1501,11 +2080,37 @@ fn bound_dialog_input_values(
                     tag: NbtSummaryValue::String(selected.id.clone()),
                 }
             }
+            (DialogInputControlState::Text { .. }, Some(DialogInputValueState::Text { value })) => {
+                BoundDialogInputValue {
+                    template_substitution: escape_dialog_text_template(value),
+                    tag: NbtSummaryValue::String(value.clone()),
+                }
+            }
             _ => return None,
         };
         bound.insert(input.key.clone(), value);
     }
     Some(bound)
+}
+
+fn escape_dialog_text_template(value: &str) -> String {
+    let mut escaped = String::new();
+    for ch in value.chars() {
+        match ch {
+            '"' | '\'' | '\\' => {
+                escaped.push('\\');
+                escaped.push(ch);
+            }
+            '\u{0008}' => escaped.push_str("\\b"),
+            '\t' => escaped.push_str("\\t"),
+            '\n' => escaped.push_str("\\n"),
+            '\u{000c}' => escaped.push_str("\\f"),
+            '\r' => escaped.push_str("\\r"),
+            ch if ch < ' ' => escaped.push_str(&format!("\\x{:02x}", ch as u8)),
+            _ => escaped.push(ch),
+        }
+    }
+    escaped
 }
 
 fn instantiate_dialog_command_template(
@@ -1951,6 +2556,10 @@ mod tests {
             }
             self.text = Some(text.to_string());
             true
+        }
+
+        fn get_debug_clipboard_text(&mut self) -> Option<String> {
+            self.text.clone()
         }
     }
 
@@ -2814,6 +3423,319 @@ mod tests {
     }
 
     #[test]
+    fn single_line_text_renders_edits_and_binds_escaped_and_raw_strings() {
+        let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "inputs",
+                NbtSummaryValue::List(vec![text_input("name", "Name", 100, true, "ab😀", 5)]),
+            ),
+        ]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let input_layout = {
+            let controls = world
+                .current_dialog()
+                .and_then(|dialog| dialog.data.as_ref())
+                .and_then(simple_dialog_controls)
+                .unwrap();
+            dialog_input_layouts(controls.common, surface_size).unwrap()[0]
+        };
+        let box_layout = dialog_single_line_text_box_layout(input_layout, true);
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert!(screen.text_labels.iter().any(|label| {
+            label.text == "Name" && (label.x, label.y) == (input_layout.x, input_layout.y)
+        }));
+        let text = screen
+            .text_labels
+            .iter()
+            .find(|label| label.text == "ab😀")
+            .unwrap();
+        assert_eq!(
+            (text.x, text.y, text.width),
+            (box_layout.x + 4, box_layout.y + 6, 92)
+        );
+        assert_eq!(text.input.as_ref().unwrap().cursor, 3);
+        assert!(!text.input.as_ref().unwrap().cursor_visible);
+        assert_eq!(text.tint, TEXT_INPUT_COLOR);
+        assert!(text.shadow);
+        assert_eq!(
+            screen
+                .background_layers
+                .iter()
+                .filter(|layer| {
+                    layer.texture == HudInventoryBackgroundTexture::WidgetTextField
+                        && layer.y == box_layout.y
+                })
+                .count(),
+            3
+        );
+
+        let mut counters = NetCounters::default();
+        let cursor = Some(PhysicalPosition::new(
+            f64::from(box_layout.x + TEXT_INPUT_INSET + 6),
+            f64::from(box_layout.y + 1),
+        ));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            cursor,
+            surface_size,
+        ));
+        assert_eq!(
+            world.dialog_text_edit_state(),
+            Some(bbb_world::DialogTextEditState {
+                input_index: 0,
+                cursor: 1,
+                selection: 1,
+            })
+        );
+        assert!(handle_dialog_cursor_moved(
+            &mut world,
+            Some(PhysicalPosition::new(
+                f64::from(box_layout.x + TEXT_INPUT_INSET + 12),
+                f64::from(box_layout.y + 1),
+            )),
+            surface_size,
+        ));
+        assert_eq!(
+            world.dialog_text_edit_state(),
+            Some(bbb_world::DialogTextEditState {
+                input_index: 0,
+                cursor: 2,
+                selection: 1,
+            })
+        );
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Released,
+            cursor,
+            surface_size,
+        ));
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            cursor,
+            surface_size,
+        ));
+        assert!(handle_dialog_text_input(&mut world, "§C😀\n"));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "aCb😀".to_string(),
+            })]
+        );
+
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::ArrowRight),
+            ElementState::Pressed,
+            true,
+            false,
+        ));
+        let mut clipboard = MockDialogClipboard::default();
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &None,
+            Some(&mut clipboard),
+            PhysicalKey::Code(KeyCode::KeyX),
+            ElementState::Pressed,
+            false,
+            true,
+        ));
+        assert_eq!(clipboard.text.as_deref(), Some("b"));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "aC😀".to_string(),
+            })]
+        );
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &None,
+            Some(&mut clipboard),
+            PhysicalKey::Code(KeyCode::KeyV),
+            ElementState::Pressed,
+            false,
+            true,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "aCb😀".to_string(),
+            })]
+        );
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::KeyA),
+            ElementState::Pressed,
+            false,
+            true,
+        ));
+        assert!(handle_dialog_text_input(&mut world, "😀😀😀"));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "😀😀".to_string(),
+            })]
+        );
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(
+            screen
+                .background_layers
+                .iter()
+                .filter(|layer| {
+                    layer.texture == HudInventoryBackgroundTexture::WidgetTextFieldHighlighted
+                        && layer.y == box_layout.y
+                })
+                .count(),
+            3
+        );
+        let edited = screen
+            .text_labels
+            .iter()
+            .find(|label| label.text == "😀😀")
+            .unwrap();
+        assert_eq!(edited.input.as_ref().unwrap().cursor, 2);
+
+        let mut word_world = world_with_notice(vec![entry(
+            "inputs",
+            NbtSummaryValue::List(vec![text_input("name", "Name", 100, false, "one two", 32)]),
+        )]);
+        assert!(word_world.focus_dialog_text_input(0, 7, false));
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut word_world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::ArrowLeft),
+            ElementState::Pressed,
+            false,
+            true,
+        ));
+        assert_eq!(word_world.dialog_text_edit_state().unwrap().cursor, 4);
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut word_world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Home),
+            ElementState::Pressed,
+            true,
+            false,
+        ));
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut word_world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Backspace),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert_eq!(
+            word_world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "two".to_string(),
+            })]
+        );
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut word_world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::End),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut word_world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Backspace),
+            ElementState::Pressed,
+            false,
+            true,
+        ));
+        assert_eq!(
+            word_world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: String::new(),
+            })]
+        );
+
+        let escaped_world = world_with_notice(vec![entry(
+            "inputs",
+            NbtSummaryValue::List(vec![text_input(
+                "name",
+                "Name",
+                100,
+                false,
+                "a\"'\\\n\u{0001}",
+                32,
+            )]),
+        )]);
+        let values = bound_dialog_input_values(&escaped_world).unwrap();
+        assert_eq!(values["name"].template_substitution, "a\\\"\\'\\\\\\n\\x01");
+        assert_eq!(
+            instantiate_dialog_command_template(
+                &DialogCommandTemplateState {
+                    raw: "/say $(name)".to_string(),
+                    segments: vec!["/say ".to_string(), String::new()],
+                    variables: vec!["name".to_string()],
+                },
+                &values,
+            ),
+            "/say a\\\"\\'\\\\\\n\\x01"
+        );
+        assert_eq!(
+            values["name"].tag,
+            NbtSummaryValue::String("a\"'\\\n\u{0001}".to_string())
+        );
+    }
+
+    #[test]
     fn static_run_command_action_trims_optional_slash_before_send() {
         let mut world = world_with_notice(vec![entry(
             "action",
@@ -3262,6 +4184,31 @@ mod tests {
                 "label_visible",
                 NbtSummaryValue::Byte(i8::from(label_visible)),
             ),
+        ])
+    }
+
+    fn text_input(
+        key: &str,
+        label: &str,
+        width: i32,
+        label_visible: bool,
+        initial: &str,
+        max_length: i32,
+    ) -> NbtSummaryValue {
+        NbtSummaryValue::Compound(vec![
+            entry("key", NbtSummaryValue::String(key.to_string())),
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:text".to_string()),
+            ),
+            entry("width", NbtSummaryValue::Int(width)),
+            entry("label", NbtSummaryValue::String(label.to_string())),
+            entry(
+                "label_visible",
+                NbtSummaryValue::Byte(i8::from(label_visible)),
+            ),
+            entry("initial", NbtSummaryValue::String(initial.to_string())),
+            entry("max_length", NbtSummaryValue::Int(max_length)),
         ])
     }
 

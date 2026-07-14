@@ -309,7 +309,7 @@ mod component_patch;
 mod inventory;
 mod mouse;
 mod movement;
-mod text_edit;
+pub(crate) mod text_edit;
 
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
@@ -1101,13 +1101,15 @@ impl ClientInputState {
         self.shift_left_down || self.shift_right_down
     }
 
-    pub(crate) fn update_screen_shift_key(
+    pub(crate) fn update_screen_modifier_keys(
         &mut self,
         physical_key: PhysicalKey,
         state: ElementState,
     ) {
         if let PhysicalKey::Code(code) = physical_key {
-            self.set_shift_key(code, matches!(state, ElementState::Pressed));
+            let pressed = matches!(state, ElementState::Pressed);
+            self.set_shift_key(code, pressed);
+            self.set_control_key(code, pressed);
         }
     }
 
@@ -1183,7 +1185,7 @@ impl ClientInputState {
         }
     }
 
-    fn control_down(&self) -> bool {
+    pub(crate) fn control_down(&self) -> bool {
         self.control_left_down || self.control_right_down
     }
 

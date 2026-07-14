@@ -14816,3 +14816,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   wrap。dynamic template 使用 raw id，custom payload 使用 StringTag。world/native regressions 覆盖初值、显示、
   hover geometry、forward/reverse click、wheel、label hidden 及两类 dynamic action；keyboard focus/selection 与
   超长 label 时间滚动继续留在 TODO。
+
+## 2026-07-14：Render and edit single-line Text dialog inputs
+
+- [x] 对照 `TextInput`、`InputControlHandlers.TextInputHandler`、`EditBox`、`StringUtil` 与
+  `StringTag.escapeWithoutQuotes`，world 按 initial 建立 Text value，并以 serde-skipped focus/cursor/selection/
+  drag owner 管理 transient edit state；show/close/wait/replace 均同步清理。
+- [x] native 按可见 label 的 9px line + 4px gap、20px/1px-border text-field nine-slice、0xE0E0E0 shadow
+  text、active-font horizontal scroll/click hit mapping、focus sprite、blink cursor 和 selection 投影；mouse press/
+  drag/release 支持光标与选择，主循环在 dialog path 跟踪 Shift/Control 并接收 IME commit。
+- [x] 编辑路径按 Unicode codepoint 移动、space word movement/deletion、Home/End、Shift selection 与
+  Ctrl-A/C/V/X 运行，输入按 allowed-chat-character 过滤并按 Java UTF-16 max-length 截断且不拆 scalar。
+  template substitution 精确转义 quote/backslash/SNBT control characters，dynamic custom 保留原始 StringTag；
+  world/native regressions 覆盖 lifecycle、supplementary characters、geometry、drag、clipboard 与两种 binding。
+  multiline editor、Tab focus traversal、double-click word selection 和 IME preedit overlay 继续留在 TODO。

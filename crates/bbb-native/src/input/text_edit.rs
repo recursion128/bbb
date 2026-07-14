@@ -1,14 +1,14 @@
-pub(super) fn char_len(text: &str) -> usize {
+pub(crate) fn char_len(text: &str) -> usize {
     text.chars().count()
 }
 
-pub(super) fn byte_index(text: &str, char_index: usize) -> usize {
+pub(crate) fn byte_index(text: &str, char_index: usize) -> usize {
     text.char_indices()
         .nth(char_index)
         .map_or(text.len(), |(index, _)| index)
 }
 
-pub(super) fn word_position(text: &str, cursor: usize, direction: i32) -> usize {
+pub(crate) fn word_position(text: &str, cursor: usize, direction: i32) -> usize {
     let mut result = cursor.min(char_len(text));
     let reverse = direction < 0;
 

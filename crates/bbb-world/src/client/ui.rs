@@ -32,6 +32,10 @@ pub struct ClientUiState {
     pub dialog_input_values: Vec<Option<DialogInputValueState>>,
     #[serde(skip)]
     dialog_dragging_number_range_input: Option<usize>,
+    #[serde(skip)]
+    dialog_text_edit: Option<DialogTextEditState>,
+    #[serde(skip)]
+    dialog_dragging_text_input: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dialog_previous_screen: Option<DialogPreviousScreenState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -66,12 +70,20 @@ pub enum DialogPreviousScreenState {
     Stats,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum DialogInputValueState {
     Boolean { selected: bool },
     NumberRange { slider_value_bits: u64 },
     SingleOption { selected_index: usize },
+    Text { value: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DialogTextEditState {
+    pub input_index: usize,
+    pub cursor: usize,
+    pub selection: usize,
 }
 
 impl ClientUiState {
@@ -89,6 +101,8 @@ impl ClientUiState {
         }
         self.dialog_waiting_ticks = None;
         self.dialog_dragging_number_range_input = None;
+        self.dialog_text_edit = None;
+        self.dialog_dragging_text_input = None;
         self.dialog_input_values = initial_dialog_input_values(&dialog);
         self.current_dialog = Some(dialog);
     }
@@ -98,6 +112,8 @@ impl ClientUiState {
             return false;
         }
         self.dialog_dragging_number_range_input = None;
+        self.dialog_text_edit = None;
+        self.dialog_dragging_text_input = None;
         self.dialog_input_values.clear();
         self.restore_dialog_previous_screen();
         true
@@ -108,6 +124,8 @@ impl ClientUiState {
             return false;
         }
         self.dialog_dragging_number_range_input = None;
+        self.dialog_text_edit = None;
+        self.dialog_dragging_text_input = None;
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = Some(0);
         true
@@ -143,6 +161,8 @@ impl ClientUiState {
     pub(crate) fn replace_dialog(&mut self) {
         self.current_dialog = None;
         self.dialog_dragging_number_range_input = None;
+        self.dialog_text_edit = None;
+        self.dialog_dragging_text_input = None;
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = None;
         self.dialog_previous_screen = None;
@@ -182,7 +202,9 @@ fn initial_dialog_input_values(dialog: &DialogState) -> Vec<Option<DialogInputVa
                         .unwrap_or(0),
                 })
             }
-            _ => None,
+            DialogInputControlState::Text { initial, .. } => Some(DialogInputValueState::Text {
+                value: initial.clone(),
+            }),
         })
         .collect()
 }
@@ -463,6 +485,116 @@ impl WorldStore {
         };
         *current = selected_index;
         true
+    }
+
+    pub fn dialog_text_edit_state(&self) -> Option<DialogTextEditState> {
+        self.client_ui.dialog_text_edit
+    }
+
+    pub fn focus_dialog_text_input(
+        &mut self,
+        index: usize,
+        cursor: usize,
+        extend_selection: bool,
+    ) -> bool {
+        let Some(Some(DialogInputValueState::Text { value })) =
+            self.client_ui.dialog_input_values.get(index)
+        else {
+            return false;
+        };
+        if self.dialog_single_line_text_max_length(index).is_none() {
+            return false;
+        }
+        let cursor = cursor.min(value.chars().count());
+        let selection = self
+            .client_ui
+            .dialog_text_edit
+            .filter(|edit| extend_selection && edit.input_index == index)
+            .map_or(cursor, |edit| edit.selection);
+        self.client_ui.dialog_text_edit = Some(DialogTextEditState {
+            input_index: index,
+            cursor,
+            selection,
+        });
+        true
+    }
+
+    pub fn clear_dialog_text_input_focus(&mut self) -> bool {
+        self.client_ui.dialog_dragging_text_input = None;
+        self.client_ui.dialog_text_edit.take().is_some()
+    }
+
+    pub fn begin_dialog_text_input_drag(&mut self, index: usize) -> bool {
+        if !self
+            .client_ui
+            .dialog_text_edit
+            .is_some_and(|edit| edit.input_index == index)
+        {
+            return false;
+        }
+        self.client_ui.dialog_dragging_text_input = Some(index);
+        true
+    }
+
+    pub fn end_dialog_text_input_drag(&mut self) -> Option<usize> {
+        self.client_ui.dialog_dragging_text_input.take()
+    }
+
+    pub fn dialog_dragging_text_input(&self) -> Option<usize> {
+        self.client_ui.dialog_dragging_text_input
+    }
+
+    pub fn set_dialog_text_input_value_and_selection(
+        &mut self,
+        index: usize,
+        value: String,
+        cursor: usize,
+        selection: usize,
+    ) -> bool {
+        let Some(max_length) = self.dialog_single_line_text_max_length(index) else {
+            return false;
+        };
+        let text_len = value.chars().count();
+        if value.encode_utf16().count() > max_length
+            || cursor > text_len
+            || selection > text_len
+            || !self
+                .client_ui
+                .dialog_text_edit
+                .is_some_and(|edit| edit.input_index == index)
+        {
+            return false;
+        }
+        let Some(Some(DialogInputValueState::Text { value: current })) =
+            self.client_ui.dialog_input_values.get_mut(index)
+        else {
+            return false;
+        };
+        *current = value;
+        self.client_ui.dialog_text_edit = Some(DialogTextEditState {
+            input_index: index,
+            cursor,
+            selection,
+        });
+        true
+    }
+
+    fn dialog_single_line_text_max_length(&self, index: usize) -> Option<usize> {
+        let input = self
+            .current_dialog()?
+            .data
+            .as_ref()
+            .map(common_dialog_data)?
+            .input_data
+            .get(index)?;
+        match &input.control {
+            DialogInputControlState::Text {
+                max_length,
+                multiline: None,
+                ..
+            } => usize::try_from(*max_length).ok(),
+            _ => None,
+        }
     }
 
     pub fn dialog_waiting_ticks(&self) -> Option<u32> {
@@ -790,7 +922,9 @@ mod tests {
             store.current_dialog_input_values(),
             [
                 Some(DialogInputValueState::Boolean { selected: true }),
-                None,
+                Some(DialogInputValueState::Text {
+                    value: String::new(),
+                }),
             ]
         );
         assert!(store.toggle_dialog_boolean_input(0));
@@ -799,7 +933,9 @@ mod tests {
             store.current_dialog_input_values(),
             [
                 Some(DialogInputValueState::Boolean { selected: false }),
-                None,
+                Some(DialogInputValueState::Text {
+                    value: String::new(),
+                }),
             ]
         );
 
@@ -908,6 +1044,63 @@ mod tests {
                 selected_index: 0,
             })]
         );
+    }
+
+    #[test]
+    fn dialog_single_line_text_tracks_utf16_bounded_value_selection_and_drag() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let mut store = WorldStore::new();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String("Inputs".to_string())),
+                    entry(
+                        "inputs",
+                        NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                            entry("key", NbtSummaryValue::String("name".to_string())),
+                            entry("type", NbtSummaryValue::String("text".to_string())),
+                            entry("label", NbtSummaryValue::String("Name".to_string())),
+                            entry("initial", NbtSummaryValue::String("A😀".to_string())),
+                            entry("max_length", NbtSummaryValue::Int(4)),
+                        ])]),
+                    ),
+                ]),
+            },
+        });
+
+        assert_eq!(
+            store.current_dialog_input_values(),
+            [Some(DialogInputValueState::Text {
+                value: "A😀".to_string(),
+            })]
+        );
+        assert!(store.focus_dialog_text_input(0, 1, false));
+        assert!(store.focus_dialog_text_input(0, 2, true));
+        assert_eq!(
+            store.dialog_text_edit_state(),
+            Some(DialogTextEditState {
+                input_index: 0,
+                cursor: 2,
+                selection: 1,
+            })
+        );
+        assert!(store.begin_dialog_text_input_drag(0));
+        assert_eq!(store.dialog_dragging_text_input(), Some(0));
+        assert!(!store.set_dialog_text_input_value_and_selection(0, "A😀BC".to_string(), 4, 4,));
+        assert!(store.set_dialog_text_input_value_and_selection(0, "A😀B".to_string(), 3, 3,));
+        assert_eq!(store.end_dialog_text_input_drag(), Some(0));
+
+        assert!(store.close_dialog());
+        assert_eq!(store.dialog_text_edit_state(), None);
+        assert_eq!(store.dialog_dragging_text_input(), None);
+        assert!(store.current_dialog_input_values().is_empty());
     }
 
     #[test]

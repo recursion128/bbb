@@ -70,11 +70,11 @@ Owner: `bbb-protocol`
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
   add Item/Boolean/NumberRange/SingleOption widget keyboard focus outlines and keyboard operation,
-  NumberRange/SingleOption long-label scrolling, and the text input control,
+  NumberRange/SingleOption long-label scrolling, the multiline Text editor, and single-line Text
+  Tab focus traversal, double-click word selection, and IME preedit overlay,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
-  focus, and clipping; execute open-url,
-  dynamic actions backed by the remaining input types, and Component-click paths; and
+  focus, and clipping; execute open-url and Component-click paths; and
   restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
   Notice/Confirmation projection already sends static custom id/payload, lays out
@@ -109,7 +109,11 @@ Owner: `bbb-protocol`
   mouse click/drag semantics, exact RangeInfo step/edge math, localized label format, Java float
   text and FloatTag bindings into the same dynamic actions, renders SingleOption through the
   nine-sliced CycleButton with initial/display/label-visible semantics, cycles forward/backward by
-  ordinary/Shift click and wheel with wraparound, binds its id as template text and StringTag, and executes
+  ordinary/Shift click and wheel with wraparound, binds its id as template text and StringTag, and renders
+  single-line Text through the labeled 20px text-field nine-slice with focus, cursor, selection,
+  horizontal scroll, mouse press/drag, UTF-16 max-length and allowed-character filtering, codepoint/word
+  navigation, Home/End, Shift selection, and Ctrl-A/C/V/X editing, and binds escaped template text plus
+  raw StringTag values into dynamic actions; it also executes
   static run-command through the existing command owner,
   and implements the
   static copy-to-clipboard through the existing native clipboard owner, preserves

@@ -367,16 +367,21 @@ persistent CODEC，剩余 107 项 persistent component 均有 dialog typed decod
 persistent encoder，未知未来形状仍不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 Item/Boolean/NumberRange/SingleOption keyboard focus outline 与键盘操作、NumberRange/SingleOption
-超长 label scrolling、text input、
+超长 label scrolling、Text multiline editor、single-line Text 的 Tab focus traversal、double-click
+word selection 与 IME preedit overlay、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
-open-url、其余 input-backed dynamic action 与 Component-click。Boolean input 已按 Checkbox 的 17px box、
+open-url 与 Component-click。Boolean input 已按 Checkbox 的 17px box、
 label、initial/on-true/on-false 与 byte-tag 语义接入 mouse toggle；NumberRange 已按 AbstractSliderButton 的
 200x20 nine-slice/8px handle、double slider position、mouse click/drag、RangeInfo lerp/step/edge 规则、localized
 label-format、Java Float.toString 与 FloatTag 语义接入；static run-command 以及 Boolean/NumberRange-backed
 dynamic run-command/custom 已执行并复用现有 command/custom-click owner。SingleOption 已按 CycleButton 的
 initial-or-first、display-or-id、label-visible、普通/Shift 反向 click 与 wheel 双向 wrap 语义接入，id 同时作为
-template substitution 与 StringTag；对应 dynamic action 也已执行。静态 change-page 与 suggest-command 在
+template substitution 与 StringTag；对应 dynamic action 也已执行。单行 Text 已按 EditBox 的 label gap、
+20px one-pixel nine-slice、0xE0E0E0 shadow text、focus/cursor/selection/horizontal scroll、mouse press/drag、
+UTF-16 max length、allowed-chat-character filter、codepoint/word/Home/End/Shift/Ctrl-A/C/V/X 编辑接入；
+template substitution 使用 `StringTag.escapeWithoutQuotes`，dynamic custom 使用原始 StringTag。静态
+change-page 与 suggest-command 在
 DialogScreen 的 default handler 中无页面 side effect，仅按 vanilla 执行 `after_action`；静态 show-dialog action 已同步
 替换当前 dialog、保留最初 previous screen，且不误增 clientbound packet counter。clear-dialog 还须接入 native-owned
 chat/sign/debug screen 和 warning return-screen stack；上述 runtime 完成前两个 `ShowDialog`
