@@ -7472,6 +7472,7 @@ fn hud_recipe_book_search_text_label(
             cursor_tint: RECIPE_BOOK_SEARCH_TEXT_COLOR,
             selection_tint: RECIPE_BOOK_SEARCH_SELECTION_TINT,
         }),
+        scrolling: None,
         shadow: false,
         runs: Vec::new(),
     })
@@ -7504,6 +7505,7 @@ fn hud_recipe_book_page_text_label(
         tint: RECIPE_BOOK_SEARCH_TEXT_COLOR,
         background: None,
         input: None,
+        scrolling: None,
         shadow: false,
         runs: Vec::new(),
     })
@@ -9185,6 +9187,7 @@ fn push_advancement_hover_text_label(
         tint,
         background: None,
         input: None,
+        scrolling: None,
         shadow: false,
         runs: Vec::new(),
     });
@@ -9344,6 +9347,7 @@ fn advancements_screen_text_labels(
         tint: ADVANCEMENTS_TITLE_TEXT_COLOR,
         background: None,
         input: None,
+        scrolling: None,
         shadow: false,
         runs: Vec::new(),
     }];
@@ -9394,6 +9398,7 @@ fn push_centered_advancements_label(
         },
         background: None,
         input: None,
+        scrolling: None,
         shadow: false,
         runs: Vec::new(),
     });
@@ -9459,6 +9464,7 @@ fn hud_inventory_text_labels(
                     tint: ANVIL_RENAME_TEXT_COLOR,
                     background: None,
                     input: None,
+                    scrolling: None,
                     shadow: false,
                     runs: Vec::new(),
                 });
@@ -9496,6 +9502,7 @@ fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInvent
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 input: None,
+                scrolling: None,
                 shadow: false,
                 runs: Vec::new(),
             });
@@ -9515,6 +9522,7 @@ fn book_page_text_labels(pages: &[String], current_page: usize) -> Vec<HudInvent
                 tint: BOOK_TEXT_COLOR,
                 background: None,
                 input: None,
+                scrolling: None,
                 shadow: false,
                 runs: Vec::new(),
             });
@@ -9608,6 +9616,7 @@ fn enchanting_table_cost_text_labels(world: &WorldStore) -> Vec<HudInventoryText
             },
             background: None,
             input: None,
+            scrolling: None,
             shadow: false,
             runs: Vec::new(),
         });
@@ -9659,6 +9668,7 @@ fn anvil_cost_text_label(world: &WorldStore) -> Option<HudInventoryTextLabel> {
             tint: ANVIL_COST_BACKGROUND_TINT,
         }),
         input: None,
+        scrolling: None,
         shadow: false,
         runs: Vec::new(),
     })

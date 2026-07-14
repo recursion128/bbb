@@ -14915,3 +14915,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `--menu-background-blurriness 0..=10` 作为启动配置复刻 vanilla option，默认 5；半径 0 不创建 blur
   stratum。renderer-owned resizeable blur/swap targets、六次 draw counter、WGSL half-step/half-weight 公式、
   native screen 适用性和 offscreen 像素回归共同证明：blur 前 HUD 被扩散，blur 后 screen fill 保持锐利。
+
+## 2026-07-14：Scroll overflowed NumberRange and SingleOption labels like vanilla
+
+- [x] 对照 `InputControlHandlers.NumberRangeHandler` / `SingleOptionHandler`、`AbstractSliderButton`、
+  `AbstractButton`、`AbstractWidget.extractScrollingStringOverContents` 与
+  `ActiveTextCollector.defaultScrollingHelper`，NumberRange 和 SingleOption 均把完整 styled label 交给
+  renderer；不溢出时以精确 glyph advance 居中，溢出时按 `max(overflow * 0.5s, 3s)` 周期正弦往返。
+- [x] renderer-owned `HudInventoryScrollingText` 携带 widget 的 2px 内边距 bounds，逐帧以单调启动时间计算
+  offset；仅 overflow path 建立内层 scissor，并与 `ScrollableLayout` body scissor 相交后恢复 parent，保留
+  vanilla 未溢出路径不额外裁剪的行为。回归覆盖短 label 居中、最短/长周期端点、非有限时间保护、nested
+  scissor 命令顺序，以及两种 100px Dialog 控件的完整长 label 与 96x20 内框投影。

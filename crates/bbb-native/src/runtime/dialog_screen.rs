@@ -11,9 +11,9 @@ use bbb_protocol::{
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
     HudInventoryFillStage, HudInventoryItem, HudInventoryItemScissor, HudInventoryScreen,
-    HudInventoryScrollArea, HudInventoryScrollbar, HudInventoryTextInputDecoration,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun,
-    HudTextStyle, HudUvRect, Renderer,
+    HudInventoryScrollArea, HudInventoryScrollbar, HudInventoryScrollingText,
+    HudInventoryTextInputDecoration, HudInventoryTextLabel, HudInventoryTooltip,
+    HudInventoryTooltipLine, HudStyledTextRun, HudTextStyle, HudUvRect, Renderer,
 };
 use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyFocusPartState, DialogBodyState,
@@ -1936,17 +1936,7 @@ pub(super) fn hud_dialog_screen(
                     None => label_format,
                 };
                 let runs = dialog_number_range_label_runs(template, label, &value);
-                let available_width = u32::try_from(input_layout.width)
-                    .unwrap_or(1)
-                    .saturating_sub(WIDGET_TEXT_MARGIN.saturating_mul(2))
-                    .max(1);
-                push_centered_runs_text_label(
-                    &mut text_labels,
-                    runs,
-                    input_layout.x.saturating_add(input_layout.width / 2),
-                    input_layout.y.saturating_add(BUTTON_TEXT_Y_OFFSET),
-                    Some(available_width),
-                );
+                push_scrolling_widget_text_label(&mut text_labels, runs, input_layout);
             }
             (
                 DialogInputControlState::SingleOption {
@@ -1984,17 +1974,7 @@ pub(super) fn hud_dialog_screen(
                 } else {
                     value_runs
                 };
-                let available_width = u32::try_from(input_layout.width)
-                    .unwrap_or(1)
-                    .saturating_sub(WIDGET_TEXT_MARGIN.saturating_mul(2))
-                    .max(1);
-                push_centered_runs_text_label(
-                    &mut text_labels,
-                    runs,
-                    input_layout.x.saturating_add(input_layout.width / 2),
-                    input_layout.y.saturating_add(BUTTON_TEXT_Y_OFFSET),
-                    Some(available_width),
-                );
+                push_scrolling_widget_text_label(&mut text_labels, runs, input_layout);
             }
             (
                 DialogInputControlState::Text {
@@ -2054,6 +2034,7 @@ pub(super) fn hud_dialog_screen(
                         cursor_tint: TEXT_INPUT_COLOR,
                         selection_tint: TEXT_SELECTION_TINT,
                     }),
+                    scrolling: None,
                     shadow: true,
                     runs: Vec::new(),
                 });
@@ -3920,6 +3901,7 @@ fn push_dialog_text_block(
             tint: TEXT_COLOR,
             background: None,
             input: None,
+            scrolling: None,
             shadow: false,
             runs: line.runs,
         });
@@ -4027,6 +4009,7 @@ fn push_centered_plain_text_label(
         tint,
         background: None,
         input: None,
+        scrolling: None,
         shadow: false,
         runs: Vec::new(),
     });
@@ -4049,6 +4032,7 @@ fn push_centered_text_label(
         tint: TEXT_COLOR,
         background: None,
         input: None,
+        scrolling: None,
         shadow: false,
         runs,
     });
@@ -4072,6 +4056,43 @@ fn push_centered_runs_text_label(
         tint: TEXT_COLOR,
         background: None,
         input: None,
+        scrolling: None,
+        shadow: false,
+        runs,
+    });
+}
+
+fn push_scrolling_widget_text_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    runs: Vec<HudStyledTextRun>,
+    layout: DialogInputLayout,
+) {
+    let text = runs.iter().map(|run| run.text.as_str()).collect::<String>();
+    let bounds = HudInventoryScrollingText {
+        x: layout
+            .x
+            .saturating_add(i32::try_from(WIDGET_TEXT_MARGIN).unwrap_or(i32::MAX)),
+        y: layout.y,
+        width: u32::try_from(layout.width)
+            .unwrap_or(1)
+            .saturating_sub(WIDGET_TEXT_MARGIN.saturating_mul(2))
+            .max(1),
+        height: u32::try_from(layout.height).unwrap_or(1).max(1),
+    };
+    let measured_width = runs_approx_width(&runs).max(1);
+    let width = measured_width.min(bounds.width);
+    labels.push(HudInventoryTextLabel {
+        x: layout
+            .x
+            .saturating_add(layout.width / 2)
+            .saturating_sub(i32::try_from(width).unwrap_or(i32::MAX) / 2),
+        y: layout.y.saturating_add(BUTTON_TEXT_Y_OFFSET),
+        width,
+        text,
+        tint: TEXT_COLOR,
+        background: None,
+        input: None,
+        scrolling: Some(bounds),
         shadow: false,
         runs,
     });
@@ -4093,6 +4114,7 @@ fn push_text_label(
         tint: TEXT_COLOR,
         background: None,
         input: None,
+        scrolling: None,
         shadow: false,
         runs,
     });
@@ -5392,7 +5414,7 @@ mod tests {
                 "inputs",
                 NbtSummaryValue::List(vec![number_range_input(
                     "speed",
-                    "Speed",
+                    "A very long speed control",
                     100,
                     0.0,
                     10.0,
@@ -5438,10 +5460,20 @@ mod tests {
         )
         .unwrap();
         let scroll_area = screen.scroll_area.as_ref().unwrap();
-        assert!(scroll_area
+        let range_label = scroll_area
             .text_labels
             .iter()
-            .any(|label| label.text == "Speed: 2"));
+            .find(|label| label.text == "A very long speed control: 2")
+            .unwrap();
+        assert_eq!(
+            range_label.scrolling,
+            Some(HudInventoryScrollingText {
+                x: input_layout.x + 2,
+                y: input_layout.y,
+                width: 96,
+                height: 20,
+            })
+        );
         assert_eq!(
             scroll_area
                 .background_layers
@@ -5730,7 +5762,7 @@ mod tests {
                 "inputs",
                 NbtSummaryValue::List(vec![single_option_input(
                     "mode",
-                    "Mode",
+                    "A very long mode label",
                     100,
                     true,
                     options.clone(),
@@ -5777,10 +5809,20 @@ mod tests {
         )
         .unwrap();
         let scroll_area = screen.scroll_area.as_ref().unwrap();
-        assert!(scroll_area
+        let option_label = scroll_area
             .text_labels
             .iter()
-            .any(|label| label.text == "Mode: Second"));
+            .find(|label| label.text == "A very long mode label: Second")
+            .unwrap();
+        assert_eq!(
+            option_label.scrolling,
+            Some(HudInventoryScrollingText {
+                x: input_layout.x + 2,
+                y: input_layout.y,
+                width: 96,
+                height: 20,
+            })
+        );
         assert_eq!(
             scroll_area
                 .background_layers

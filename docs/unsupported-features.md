@@ -68,8 +68,7 @@ Owner: `bbb-protocol`
   requested host and port.
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
-  `DialogBodyHandlers`: add NumberRange/SingleOption long-label scrolling,
-  the multiline Text editor, and single-line Text
+  `DialogBodyHandlers`: add the multiline Text editor and single-line Text
   double-click word selection and IME preedit overlay,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,

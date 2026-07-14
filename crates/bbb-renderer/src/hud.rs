@@ -798,6 +798,7 @@ const HUD_DEBUG_OVERLAY_BACKGROUND_TINT: [f32; 4] =
 const HUD_DEBUG_OVERLAY_MARGIN_X: i32 = 2;
 const HUD_DEBUG_OVERLAY_MARGIN_Y: i32 = 2;
 const HUD_DEBUG_OVERLAY_LINE_HEIGHT: i32 = 9;
+const HUD_WIDGET_TEXT_LINE_HEIGHT: i32 = 9;
 const HUD_DEBUG_CHART_SAMPLE_CAPACITY: usize = 240;
 const HUD_DEBUG_CHART_HEIGHT: i32 = 60;
 const HUD_DEBUG_CHART_LABEL_HEIGHT: i32 = 9;
@@ -1600,6 +1601,16 @@ pub struct HudInventoryTextInputDecoration {
     pub selection_tint: [f32; 4],
 }
 
+/// Vanilla `ActiveTextCollector.acceptScrollingWithDefaultCenter` bounds for a
+/// single-line widget label, relative to the centered inventory screen origin.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HudInventoryScrollingText {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct HudInventoryTextLabel {
     /// Text x position relative to the centered inventory screen origin.
@@ -1611,6 +1622,7 @@ pub struct HudInventoryTextLabel {
     pub tint: [f32; 4],
     pub background: Option<HudInventoryTextBackground>,
     pub input: Option<HudInventoryTextInputDecoration>,
+    pub scrolling: Option<HudInventoryScrollingText>,
     pub shadow: bool,
     /// Styled draw runs; concatenated run text matches `text`. Leave empty
     /// for plain labels — sanitization synthesizes a single default-style run
@@ -4887,6 +4899,7 @@ impl Renderer {
                 &screen.foreground_layers,
             );
 
+            let scrolling_text_time_seconds = self.started_at.elapsed().as_secs_f64();
             push_hud_inventory_text_labels(
                 &mut vertices,
                 &mut post_gui_item_commands,
@@ -4898,6 +4911,8 @@ impl Renderer {
                 surface_size,
                 screen,
                 &screen.text_labels,
+                None,
+                scrolling_text_time_seconds,
             );
             if let Some(area) = &screen.scroll_area {
                 if push_hud_inventory_scissor(
@@ -4917,6 +4932,8 @@ impl Renderer {
                         surface_size,
                         screen,
                         &area.text_labels,
+                        Some(area.scissor),
+                        scrolling_text_time_seconds,
                     );
                     push_hud_inventory_scissor_reset(&mut post_gui_item_commands, surface_size);
                 }
@@ -6160,16 +6177,36 @@ fn push_hud_inventory_scissor(
     push_hud_rect_scissor(
         commands,
         surface_size,
-        inventory_background_hud_rect(
-            surface_size,
-            screen.width,
-            screen.height,
-            scissor.x,
-            scissor.y,
-            scissor.width,
-            scissor.height,
-        ),
+        hud_inventory_scissor_rect(surface_size, screen, scissor),
     )
+}
+
+fn hud_inventory_scissor_rect(
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    scissor: HudInventoryItemScissor,
+) -> HudRect {
+    inventory_background_hud_rect(
+        surface_size,
+        screen.width,
+        screen.height,
+        scissor.x,
+        scissor.y,
+        scissor.width,
+        scissor.height,
+    )
+}
+
+fn hud_inventory_nested_scissor_rect(
+    surface_size: PhysicalSize<u32>,
+    screen: &HudInventoryScreen,
+    scissor: HudInventoryItemScissor,
+    parent: Option<HudRect>,
+) -> Option<HudRect> {
+    let scissor = hud_inventory_scissor_rect(surface_size, screen, scissor);
+    parent.map_or(Some(scissor), |parent| {
+        hud_rect_intersection_uv_span(scissor, parent).map(|(intersection, _, _)| intersection)
+    })
 }
 
 fn push_hud_inventory_scissor_reset(
@@ -6330,10 +6367,14 @@ fn push_hud_inventory_text_labels<'a>(
     surface_size: PhysicalSize<u32>,
     screen: &HudInventoryScreen,
     labels: &[HudInventoryTextLabel],
+    parent_scissor: Option<HudInventoryItemScissor>,
+    scrolling_time_seconds: f64,
 ) {
     let Some(font_atlas) = font_atlas else {
         return;
     };
+    let parent_scissor =
+        parent_scissor.map(|scissor| hud_inventory_scissor_rect(surface_size, screen, scissor));
     for label in labels {
         if let Some(background) = label.background {
             push_hud_draw_with_uv_and_tint(
@@ -6357,7 +6398,7 @@ fn push_hud_inventory_text_labels<'a>(
                 background.tint,
             );
         }
-        let origin = hud_inventory_text_label_origin(
+        let mut origin = hud_inventory_text_label_origin(
             surface_size,
             screen.width,
             screen.height,
@@ -6380,6 +6421,42 @@ fn push_hud_inventory_text_labels<'a>(
             );
             continue;
         }
+        let mut width_limit = Some(label.width);
+        let mut scrolling_scissor = false;
+        if let Some(scrolling) = label.scrolling {
+            if let Some(line_width) = hud_font_runs_width(&label.runs, glyphs) {
+                let layout =
+                    hud_scrolling_text_layout(scrolling, line_width, scrolling_time_seconds);
+                origin = hud_inventory_text_label_origin(
+                    surface_size,
+                    screen.width,
+                    screen.height,
+                    layout.x,
+                    layout.y,
+                );
+                width_limit = None;
+                if layout.clipped {
+                    let effective_scissor = hud_inventory_nested_scissor_rect(
+                        surface_size,
+                        screen,
+                        HudInventoryItemScissor {
+                            x: scrolling.x,
+                            y: scrolling.y,
+                            width: scrolling.width,
+                            height: scrolling.height,
+                        },
+                        parent_scissor,
+                    );
+                    let Some(effective_scissor) = effective_scissor else {
+                        continue;
+                    };
+                    if !push_hud_rect_scissor(commands, surface_size, effective_scissor) {
+                        continue;
+                    }
+                    scrolling_scissor = true;
+                }
+            }
+        }
         // Vanilla pass order: the whole line's shadow first, then the main
         // colour (the shadow geometry is the main geometry at +1,+1).
         for (shadow_offset, is_shadow) in label
@@ -6397,7 +6474,7 @@ fn push_hud_inventory_text_labels<'a>(
                 shadow_offset,
                 is_shadow,
                 label.tint,
-                Some(label.width),
+                width_limit,
                 1.0,
             );
             push_hud_styled_text_pass(
@@ -6409,6 +6486,60 @@ fn push_hud_inventory_text_labels<'a>(
                 &geometry,
             );
         }
+        if scrolling_scissor {
+            if let Some(parent_scissor) = parent_scissor {
+                push_hud_rect_scissor(commands, surface_size, parent_scissor);
+            } else {
+                push_hud_inventory_scissor_reset(commands, surface_size);
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct HudScrollingTextLayout {
+    x: i32,
+    y: i32,
+    clipped: bool,
+}
+
+fn hud_scrolling_text_layout(
+    bounds: HudInventoryScrollingText,
+    line_width: u32,
+    time_seconds: f64,
+) -> HudScrollingTextLayout {
+    let bounds_width = bounds.width.max(1);
+    let text_y = bounds.y.saturating_add(
+        (i32::try_from(bounds.height).unwrap_or(i32::MAX) - HUD_WIDGET_TEXT_LINE_HEIGHT) / 2 + 1,
+    );
+    if line_width <= bounds_width {
+        let center_x = bounds
+            .x
+            .saturating_add(i32::try_from(bounds_width).unwrap_or(i32::MAX) / 2);
+        return HudScrollingTextLayout {
+            x: center_x.saturating_sub(i32::try_from(line_width).unwrap_or(i32::MAX) / 2),
+            y: text_y,
+            clipped: false,
+        };
+    }
+
+    let max_position = line_width - bounds_width;
+    let period = (f64::from(max_position) * 0.5).max(3.0);
+    let time_seconds = if time_seconds.is_finite() {
+        time_seconds
+    } else {
+        0.0
+    };
+    let alpha = ((std::f64::consts::FRAC_PI_2
+        * (std::f64::consts::TAU * time_seconds / period).cos())
+    .sin()
+        / 2.0)
+        + 0.5;
+    let position = (alpha * f64::from(max_position)) as i32;
+    HudScrollingTextLayout {
+        x: bounds.x.saturating_sub(position),
+        y: text_y,
+        clipped: true,
     }
 }
 
@@ -7996,6 +8127,7 @@ fn push_hud_debug_options_search_box<'a>(
         tint: HUD_TINT_WHITE,
         background: None,
         input: Some(input),
+        scrolling: None,
         shadow: true,
         runs: Vec::new(),
     };
@@ -8781,6 +8913,7 @@ fn push_hud_command_suggestions<'a>(
             cursor_tint: HUD_COMMAND_INPUT_TINT,
             selection_tint: HUD_COMMAND_SELECTION_TINT,
         }),
+        scrolling: None,
         shadow: true,
         runs: Vec::new(),
     };
@@ -12638,6 +12771,13 @@ fn sanitize_hud_inventory_text_label(
     let input = label
         .input
         .and_then(|input| sanitize_hud_inventory_text_input(input, &text));
+    let scrolling = if input.is_none() {
+        label
+            .scrolling
+            .and_then(sanitize_hud_inventory_scrolling_text)
+    } else {
+        None
+    };
     if text.is_empty() && input.is_none() {
         return None;
     }
@@ -12650,8 +12790,19 @@ fn sanitize_hud_inventory_text_label(
         tint: tint.map(|component| component.clamp(0.0, 1.0)),
         background,
         input,
+        scrolling,
         shadow: label.shadow,
         runs,
+    })
+}
+
+fn sanitize_hud_inventory_scrolling_text(
+    scrolling: HudInventoryScrollingText,
+) -> Option<HudInventoryScrollingText> {
+    (scrolling.width > 0 && scrolling.height > 0).then_some(HudInventoryScrollingText {
+        width: scrolling.width.min(1024),
+        height: scrolling.height.min(512),
+        ..scrolling
     })
 }
 
@@ -15571,6 +15722,7 @@ mod tests {
             tint: HUD_TINT_WHITE,
             background: None,
             input: None,
+            scrolling: None,
             shadow: false,
             runs: Vec::new(),
         };
@@ -15607,6 +15759,7 @@ mod tests {
             tint: HUD_TINT_WHITE,
             background: None,
             input: None,
+            scrolling: None,
             shadow: false,
             runs: Vec::new(),
         };
@@ -16657,6 +16810,7 @@ mod tests {
                         tint: [0.0, 0.0, 0.0, 1.5],
                     }),
                     input: None,
+                    scrolling: None,
                     shadow: false,
                     runs: Vec::new(),
                 },
@@ -16668,6 +16822,7 @@ mod tests {
                     tint: HUD_TINT_WHITE,
                     background: None,
                     input: None,
+                    scrolling: None,
                     shadow: true,
                     runs: Vec::new(),
                 },
@@ -16760,6 +16915,7 @@ mod tests {
                     tint: [0.0, 0.0, 0.0, 1.0],
                 }),
                 input: None,
+                scrolling: None,
                 shadow: false,
                 // Plain labels (empty runs in) synthesize one default-style
                 // run from the sanitized text.
@@ -16806,6 +16962,7 @@ mod tests {
                 cursor_tint: [2.0, 0.5, -1.0, 1.0],
                 selection_tint: [0.0, 0.0, 2.0, 1.5],
             }),
+            scrolling: None,
             shadow: false,
             runs: Vec::new(),
         })
@@ -17669,6 +17826,154 @@ mod tests {
     }
 
     #[test]
+    fn scrolling_widget_text_layout_matches_vanilla_period_and_centering() {
+        let bounds = HudInventoryScrollingText {
+            x: 12,
+            y: 30,
+            width: 96,
+            height: 20,
+        };
+        assert_eq!(
+            hud_scrolling_text_layout(bounds, 50, 0.0),
+            HudScrollingTextLayout {
+                x: 35,
+                y: 36,
+                clipped: false,
+            }
+        );
+
+        // Four overflow pixels use vanilla's minimum three-second period.
+        assert_eq!(
+            hud_scrolling_text_layout(bounds, 100, 0.0),
+            HudScrollingTextLayout {
+                x: 8,
+                y: 36,
+                clipped: true,
+            }
+        );
+        assert_eq!(
+            hud_scrolling_text_layout(bounds, 100, 1.5),
+            HudScrollingTextLayout {
+                x: 12,
+                y: 36,
+                clipped: true,
+            }
+        );
+
+        // Twenty overflow pixels use a ten-second period instead of the floor.
+        assert_eq!(hud_scrolling_text_layout(bounds, 116, 0.0).x, -8);
+        assert_eq!(hud_scrolling_text_layout(bounds, 116, 5.0).x, 12);
+        assert_eq!(
+            hud_scrolling_text_layout(bounds, 116, f64::NAN),
+            hud_scrolling_text_layout(bounds, 116, 0.0)
+        );
+    }
+
+    #[test]
+    fn scrolling_widget_scissor_intersects_the_dialog_body_scissor() {
+        let screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        let surface_size = PhysicalSize::new(320, 240);
+        let parent = hud_inventory_scissor_rect(
+            surface_size,
+            &screen,
+            HudInventoryItemScissor {
+                x: 10,
+                y: 20,
+                width: 80,
+                height: 60,
+            },
+        );
+        let intersection = hud_inventory_nested_scissor_rect(
+            surface_size,
+            &screen,
+            HudInventoryItemScissor {
+                x: 0,
+                y: 30,
+                width: 100,
+                height: 20,
+            },
+            Some(parent),
+        )
+        .unwrap();
+
+        assert_eq!(hud_rect_bounds(intersection), (82.0, 67.0, 162.0, 87.0));
+    }
+
+    #[test]
+    fn scrolling_widget_draws_restore_the_enclosing_body_scissor() {
+        let Some(mut renderer) = Renderer::new_offscreen(320, 240) else {
+            return;
+        };
+        let glyph = HudAsciiGlyph {
+            uv: HudUvRect {
+                min: [0.0, 0.0],
+                max: [1.0, 1.0],
+            },
+            width: 1,
+            height: 1,
+            advance: 6,
+            ascent: HUD_FONT_BASELINE,
+        };
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins('a', glyph);
+        renderer
+            .upload_hud_font_atlas(1, 1, &[255, 255, 255, 255], glyphs)
+            .unwrap();
+
+        let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
+        screen.scroll_area = Some(HudInventoryScrollArea {
+            scissor: HudInventoryItemScissor {
+                x: 2,
+                y: 30,
+                width: 10,
+                height: 20,
+            },
+            background_layers: Vec::new(),
+            fill_layers: Vec::new(),
+            text_labels: vec![HudInventoryTextLabel {
+                x: 0,
+                y: 30,
+                width: 10,
+                text: "aaaa".to_string(),
+                tint: HUD_TINT_WHITE,
+                background: None,
+                input: None,
+                scrolling: Some(HudInventoryScrollingText {
+                    x: 0,
+                    y: 30,
+                    width: 10,
+                    height: 20,
+                }),
+                shadow: false,
+                runs: vec![HudStyledTextRun::plain("aaaa")],
+            }],
+            scrollbar: None,
+        });
+        renderer.set_hud_inventory_screen(Some(screen));
+
+        let draws = renderer.collect_hud_draws();
+        let scissors = draws
+            .commands
+            .iter()
+            .filter_map(|command| match command {
+                HudDrawCommand::Scissor {
+                    x,
+                    y,
+                    width,
+                    height,
+                } => Some((*x, *y, *width, *height)),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(scissors.ends_with(&[
+            (74, 67, 10, 20),
+            (74, 67, 8, 20),
+            (74, 67, 10, 20),
+            (0, 0, 320, 240),
+        ]));
+    }
+
+    #[test]
     fn inventory_scroll_area_sanitizes_nested_layers_and_emits_centered_scissor() {
         let mut screen = hud_inventory_screen_with_entity_previews(Vec::new());
         screen.scroll_area = Some(HudInventoryScrollArea {
@@ -17705,6 +18010,7 @@ mod tests {
                 tint: HUD_TINT_WHITE,
                 background: None,
                 input: None,
+                scrolling: None,
                 shadow: false,
                 runs: Vec::new(),
             }],

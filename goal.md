@@ -385,8 +385,8 @@ drag scale 与键盘 focus 上下各留 10px 的 reveal 规则运行；body/inpu
 item icon 及 decorations 共享 centered HUD scissor。由于 `ScrollableLayout.Container` 先以
 `AbstractScrollArea.mouseScrolled` 截获 wheel，SingleOption 只在 click/keyboard 路径切换，body wheel
 统一滚动 container。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 NumberRange/SingleOption 超长 label scrolling、
-Text multiline editor、single-line Text 的 double-click word selection 与
+仍须按 `DialogScreen`/`DialogControlSet` 完成 Text multiline editor、
+single-line Text 的 double-click word selection 与
 IME preedit overlay、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
