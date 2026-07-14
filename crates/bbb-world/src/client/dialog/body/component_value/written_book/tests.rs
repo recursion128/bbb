@@ -847,11 +847,20 @@ fn enforces_dialog_components_in_predicate_tree_page_boundary() {
 }
 
 #[test]
-fn enforces_recursive_item_template_patch_page_boundary() {
+fn enforces_dialog_components_in_recursive_item_templates_page_boundary() {
     let prefix = concat!(
-        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:use_remainder":{"id":"minecraft:glass_bottle"},"minecraft:charged_projectiles":[{"id":"minecraft:arrow"},{"id":"minecraft:firework_rocket","count":3,"components":{"minecraft:repair_cost":4}}],"minecraft:bundle_contents":[{"id":"minecraft:diamond"}],"minecraft:container":[{"slot":0,"item":{"id":"minecraft:diamond"}},{"slot":2,"item":{"id":"minecraft:dirt","count":5}}]}}}"#
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:use_remainder":{"id":"minecraft:glass_bottle","components":{"minecraft:custom_name":{"text":"Remainder","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Remainder dialog"}}}}},"minecraft:charged_projectiles":[{"id":"minecraft:arrow","components":{"minecraft:custom_name":{"text":"Projectile","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Projectile dialog"}}}}},{"id":"minecraft:firework_rocket","count":3,"components":{"minecraft:repair_cost":4}}],"minecraft:bundle_contents":[{"id":"minecraft:diamond","components":{"minecraft:item_name":{"text":"Bundle","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Bundle dialog"}}}}}],"minecraft:container":[{"slot":0,"item":{"id":"minecraft:diamond","components":{"minecraft:custom_name":{"text":"Container","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Container dialog"}}}}}},{"slot":2,"item":{"id":"minecraft:dirt","count":5}}]}}}"#
     )
     .len();
+    let empty = component_with_recursive_item_template_patch(String::new());
+    assert_eq!(canonical_component_json_utf16_len(&empty).unwrap(), None);
+    let canonical_prefix = crate::client::dialog::canonical_component_json_utf16_len_with_context(
+        &empty,
+        DialogDecodeContext::new(None, 0),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(canonical_prefix, prefix);
     for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
         let page = component_with_recursive_item_template_patch("x".repeat(limit - prefix));
         let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
@@ -2781,6 +2790,27 @@ fn component_with_attribute_modifier_item_patch(extra: String) -> NbtSummaryValu
 }
 
 fn component_with_recursive_item_template_patch(extra: String) -> NbtSummaryValue {
+    let dialog_text = |text: &str, title: &str| {
+        compound(vec![
+            string_entry("text", text),
+            value_entry(
+                "click_event",
+                compound(vec![
+                    string_entry("action", "show_dialog"),
+                    value_entry(
+                        "dialog",
+                        compound(vec![
+                            string_entry("type", "notice"),
+                            string_entry("title", title),
+                        ]),
+                    ),
+                ]),
+            ),
+        ])
+    };
+    let named_component = |name: &str, text: &str, title: &str| {
+        compound(vec![value_entry(name, dialog_text(text, title))])
+    };
     let item = |id: &str, count: Option<i32>, components: Option<NbtSummaryValue>| {
         let mut entries = vec![string_entry("id", id)];
         if let Some(count) = count {
@@ -2811,11 +2841,30 @@ fn component_with_recursive_item_template_patch(extra: String) -> NbtSummaryValu
                 value_entry(
                     "components",
                     compound(vec![
-                        string_entry("use_remainder", "glass_bottle"),
+                        value_entry(
+                            "use_remainder",
+                            item(
+                                "glass_bottle",
+                                None,
+                                Some(named_component(
+                                    "custom_name",
+                                    "Remainder",
+                                    "Remainder dialog",
+                                )),
+                            ),
+                        ),
                         value_entry(
                             "charged_projectiles",
                             NbtSummaryValue::List(vec![
-                                NbtSummaryValue::String("arrow".to_string()),
+                                item(
+                                    "arrow",
+                                    None,
+                                    Some(named_component(
+                                        "custom_name",
+                                        "Projectile",
+                                        "Projectile dialog",
+                                    )),
+                                ),
                                 item(
                                     "firework_rocket",
                                     Some(3),
@@ -2828,15 +2877,28 @@ fn component_with_recursive_item_template_patch(extra: String) -> NbtSummaryValu
                         ),
                         value_entry(
                             "bundle_contents",
-                            NbtSummaryValue::List(vec![NbtSummaryValue::String(
-                                "diamond".to_string(),
+                            NbtSummaryValue::List(vec![item(
+                                "diamond",
+                                None,
+                                Some(named_component("item_name", "Bundle", "Bundle dialog")),
                             )]),
                         ),
                         value_entry(
                             "container",
                             NbtSummaryValue::List(vec![
                                 slot(2, NbtSummaryValue::String("stone".to_string())),
-                                slot(0, NbtSummaryValue::String("diamond".to_string())),
+                                slot(
+                                    0,
+                                    item(
+                                        "diamond",
+                                        None,
+                                        Some(named_component(
+                                            "custom_name",
+                                            "Container",
+                                            "Container dialog",
+                                        )),
+                                    ),
+                                ),
                                 slot(2, item("dirt", Some(5), None)),
                             ]),
                         ),

@@ -502,8 +502,9 @@ structure/content/style/event-envelope validation、block data-source position �
 body/input show-dialog、CUSTOM_NAME/ITEM_NAME/LORE item value、item patch 内递归 WRITTEN_BOOK_CONTENT
 page、ATTRIBUTE_MODIFIERS override display 与 direct instrument/trim descriptions；其它
 Component-valued item predicate（含 WRITTEN_BOOK_CONTENT pages 与 recursive exact component map）
-也已贯通；其它 item record 的
-递归 context 及 generic packet Component 的 world context 更高 owner 仍开放；
+也已贯通；USE_REMAINDER/CHARGED_PROJECTILES/BUNDLE_CONTENTS/CONTAINER 内 recursive
+ItemStackTemplate patch 同样继承该 owner；item-record Component context 已闭合，generic packet
+Component 的 world context 更高 owner 仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

@@ -118,9 +118,10 @@ Owner: `bbb-protocol`
   world context.
   The same world/session Component owner now also reaches WRITTEN_BOOK_CONTENT
   pages nested inside item patches, WRITTEN_BOOK_CONTENT predicate pages, and
-  exact component maps throughout recursive item predicates. Thread it through recursive
-  ItemStackTemplate patches so `flatRestrictedCodec(32767)` can size every
-  structured page; render
+  exact component maps throughout recursive item predicates. Recursive ItemStackTemplate
+  patches in use remainders, charged projectiles, bundle contents, and container slots now
+  share that owner too, so item-record Component paths no longer block exact
+  `flatRestrictedCodec(32767)` sizing. Next, render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining
   native-owned chat/sign/debug and warning return-screen stacks, and route custom-click controls
   through the active dialog state. Dialog Component holders

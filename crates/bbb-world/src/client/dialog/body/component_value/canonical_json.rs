@@ -125,6 +125,16 @@ fn canonical_component_value_json_utf16_len_with_context(
         DialogDataComponentValueState::Lock { predicate } => {
             predicates::item_predicate_len_with_context(predicate, context)
         }
+        DialogDataComponentValueState::UseRemainder { convert_into } => {
+            canonical_item_stack_template_json_utf16_len_with_context(convert_into, context)
+        }
+        DialogDataComponentValueState::ChargedProjectiles { items }
+        | DialogDataComponentValueState::BundleContents { items } => {
+            item_stack_template_list_len_with_context(items, context)
+        }
+        DialogDataComponentValueState::Container { slots } => {
+            container_len_with_context(slots, context)
+        }
         DialogDataComponentValueState::Instrument { instrument } => {
             instrument_holder_len_with_context(instrument, context)
         }
@@ -1026,6 +1036,43 @@ pub(in crate::client::dialog) fn canonical_item_stack_template_json_utf16_len_wi
         None => {}
     }
     Ok(Some(object_len(fields.into_iter())))
+}
+
+fn item_stack_template_list_len_with_context(
+    items: &[DialogItemStackTemplateState],
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut lengths = Vec::with_capacity(items.len());
+    for item in items {
+        let Some(length) =
+            canonical_item_stack_template_json_utf16_len_with_context(item, context)?
+        else {
+            return Ok(None);
+        };
+        lengths.push(length);
+    }
+    Ok(Some(array_len(lengths.into_iter())))
+}
+
+fn container_len_with_context(
+    slots: &[Option<DialogItemStackTemplateState>],
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut lengths = Vec::new();
+    for (slot, item) in slots.iter().enumerate() {
+        let Some(item) = item else {
+            continue;
+        };
+        let Some(item_len) =
+            canonical_item_stack_template_json_utf16_len_with_context(item, context)?
+        else {
+            return Ok(None);
+        };
+        lengths.push(object_len(
+            [("slot", slot.to_string().len()), ("item", item_len)].into_iter(),
+        ));
+    }
+    Ok(Some(array_len(lengths.into_iter())))
 }
 
 fn item_stack_template_len(item: &DialogItemStackTemplateState) -> Option<usize> {
