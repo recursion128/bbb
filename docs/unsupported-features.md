@@ -102,8 +102,8 @@ Owner: `bbb-protocol`
   bounded NBT encode, Component/Dialog field lookup, and canonical maps now share CompoundTag's
   last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
   limit. Finish the remaining owner-sensitive payloads in generic packet Components and canonical
-  value codecs: show-dialog world context in the generic packet owner plus the remaining
-  registry-holder, predicate/item-template, and other nested-record positive item-patch values.
+  value codecs: show-dialog world context in the generic packet owner plus WrittenBookContent and
+  the other remaining nested-record positive item-patch values.
   Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining
@@ -166,6 +166,11 @@ Owner: `bbb-protocol`
   Use-remainder, charged-projectiles, bundle-contents, and container values now share a recursive
   ItemStackTemplate owner. Compact item inputs re-encode through the full-object alternative, nested
   patches recurse, and containers emit final non-empty slots in ascending index order.
+  Can-place-on/can-break now encode the compact single-block/list alternative exactly, including
+  holder sets, state matchers, NBT, and flattened exact/partial component matchers. Lock reuses the
+  recursive ItemPredicate owner with scalar/ranged bounds, exact component values, AnyValue, all 15
+  dispatched predicate types, and collection contains/count/size entries. Nested doubles reject
+  non-finite values, while Component/NBT recursion propagates its canonical owner result.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.

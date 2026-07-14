@@ -657,6 +657,27 @@ fn enforces_attribute_modifier_item_patch_page_boundary() {
 }
 
 #[test]
+fn enforces_predicate_item_patch_page_boundary_with_session_registries() {
+    let registries = RegistrySet::default();
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:can_break":{"blocks":"minecraft:stone","state":{"axis":"y"},"components":{"minecraft:max_stack_size":64},"predicates":{"minecraft:damage":{"damage":3}}},"minecraft:lock":{"items":["minecraft:stone","minecraft:dirt"],"count":{"min":1,"max":2},"predicates":{"minecraft:container":{"items":{"contains":[{"items":"minecraft:stone","count":1}]}}}}}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_predicate_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content_with_context(
+            &book_with_pages(vec![page]),
+            "written book",
+            DialogDecodeContext::new(Some(&registries), 0),
+        );
+        match expected_error {
+            None => assert!(result.is_ok(), "{result:?}"),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn enforces_recursive_item_template_patch_page_boundary() {
     let prefix = concat!(
         r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:use_remainder":{"id":"minecraft:glass_bottle"},"minecraft:charged_projectiles":[{"id":"minecraft:arrow"},{"id":"minecraft:firework_rocket","count":3,"components":{"minecraft:repair_cost":4}}],"minecraft:bundle_contents":[{"id":"minecraft:diamond"}],"minecraft:container":[{"slot":0,"item":{"id":"minecraft:diamond"}},{"slot":2,"item":{"id":"minecraft:dirt","count":5}}]}}}"#
@@ -956,6 +977,10 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
+            book_with_pages(vec![component_with_non_finite_predicate_item_patch()]),
+            "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
             book_with_pages(vec![component_with_non_finite_recursive_item_template_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
@@ -1003,6 +1028,122 @@ fn component_with_scalar_item_patch(extra: String) -> NbtSummaryValue {
                         value_entry("max_stack_size", NbtSummaryValue::Byte(64)),
                         value_entry("!damage", compound(Vec::new())),
                     ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_predicate_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "can_break",
+                            compound(vec![
+                                string_entry("blocks", "stone"),
+                                value_entry("state", compound(vec![string_entry("axis", "y")])),
+                                value_entry(
+                                    "components",
+                                    compound(vec![value_entry(
+                                        "max_stack_size",
+                                        NbtSummaryValue::Byte(64),
+                                    )]),
+                                ),
+                                value_entry(
+                                    "predicates",
+                                    compound(vec![value_entry(
+                                        "damage",
+                                        compound(vec![value_entry(
+                                            "damage",
+                                            NbtSummaryValue::Int(3),
+                                        )]),
+                                    )]),
+                                ),
+                            ]),
+                        ),
+                        value_entry(
+                            "lock",
+                            compound(vec![
+                                value_entry(
+                                    "items",
+                                    NbtSummaryValue::List(vec![
+                                        NbtSummaryValue::String("stone".to_string()),
+                                        NbtSummaryValue::String("dirt".to_string()),
+                                    ]),
+                                ),
+                                value_entry(
+                                    "count",
+                                    compound(vec![
+                                        value_entry("min", NbtSummaryValue::Int(1)),
+                                        value_entry("max", NbtSummaryValue::Int(2)),
+                                    ]),
+                                ),
+                                value_entry(
+                                    "predicates",
+                                    compound(vec![value_entry(
+                                        "container",
+                                        compound(vec![value_entry(
+                                            "items",
+                                            compound(vec![value_entry(
+                                                "contains",
+                                                NbtSummaryValue::List(vec![compound(vec![
+                                                    string_entry("items", "stone"),
+                                                    value_entry("count", NbtSummaryValue::Int(1)),
+                                                ])]),
+                                            )]),
+                                        )]),
+                                    )]),
+                                ),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_predicate_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "lock",
+                        compound(vec![value_entry(
+                            "predicates",
+                            compound(vec![value_entry(
+                                "attribute_modifiers",
+                                compound(vec![value_entry(
+                                    "modifiers",
+                                    compound(vec![value_entry(
+                                        "contains",
+                                        NbtSummaryValue::List(vec![compound(vec![value_entry(
+                                            "amount",
+                                            NbtSummaryValue::Double(f64::NAN.to_bits()),
+                                        )])]),
+                                    )]),
+                                )]),
+                            )]),
+                        )]),
+                    )]),
                 ),
             ]),
         ),

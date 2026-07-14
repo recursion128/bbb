@@ -36,6 +36,8 @@ use super::trim::{
 };
 use super::DialogDataComponentValueState;
 
+mod predicates;
+
 /// Returns an exact JsonOps length when every patch value has a supported semantic encoder.
 /// Complex holder and recursive values remain unknown rather than falling back to raw NBT size.
 pub(in crate::client::dialog::body) fn canonical_data_component_patch_json_utf16_len(
@@ -89,6 +91,12 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
                     canonical_component_json_utf16_len(&component.component)?;
                 }
             }
+        }
+        DialogDataComponentValueState::AdventureModePredicate { predicate } => {
+            predicates::validate_adventure_mode_predicate(predicate)?;
+        }
+        DialogDataComponentValueState::Lock { predicate } => {
+            predicates::validate_item_predicate(predicate)?;
         }
         DialogDataComponentValueState::UseRemainder { convert_into } => {
             validate_item_stack_template_json(convert_into)?;
@@ -278,6 +286,12 @@ fn canonical_component_value_json_utf16_len(
         ),
         DialogDataComponentValueState::AttributeModifiers { modifiers } => {
             attribute_modifiers_len(modifiers)?
+        }
+        DialogDataComponentValueState::AdventureModePredicate { predicate } => {
+            predicates::adventure_mode_predicate_len(predicate)?
+        }
+        DialogDataComponentValueState::Lock { predicate } => {
+            predicates::item_predicate_len(predicate)?
         }
         DialogDataComponentValueState::UseRemainder { convert_into } => {
             item_stack_template_len(convert_into)?
