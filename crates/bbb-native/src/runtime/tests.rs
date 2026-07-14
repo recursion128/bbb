@@ -14348,6 +14348,13 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                                 "minecraft:entity.item.break".to_string(),
                                             ),
                                         ),
+                                        entry(
+                                            "minecraft:equippable",
+                                            NbtSummaryValue::Compound(vec![entry(
+                                                "slot",
+                                                NbtSummaryValue::String("head".to_string()),
+                                            )]),
+                                        ),
                                     ]),
                                 ),
                             ]),

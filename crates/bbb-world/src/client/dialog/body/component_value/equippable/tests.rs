@@ -1,11 +1,16 @@
 use bbb_protocol::{
     data_component_types::VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
     entity_types::{VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID},
+    packets::inventory::{
+        DataComponentPatchSummary, EntityTypeHolderSetSummary, EquippableSummary, SoundEventSummary,
+    },
     sound_event_types::vanilla_sound_event_registry_id,
     NbtSummaryEntry, NbtSummaryValue,
 };
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -166,6 +171,84 @@ fn decodes_equippable_entity_tags_and_context_free_empty_sets() {
         panic!("expected equippable component");
     };
     assert!(equippable.allowed_entities.unwrap().entries.is_empty());
+}
+
+#[test]
+fn projects_equippable_into_protocol_summary() {
+    let registries = RegistrySet::default();
+    let decoded = decode(
+        &compound([
+            ("slot", string("body")),
+            ("equip_sound", direct_sound("example:equip", Some(6.5))),
+            ("asset_id", string("example:llama_carpet")),
+            ("camera_overlay", string("overlay/powder_snow")),
+            (
+                "allowed_entities",
+                NbtSummaryValue::List(vec![string("llama"), string("trader_llama")]),
+            ),
+            ("dispensable", NbtSummaryValue::Byte(0)),
+            ("swappable", NbtSummaryValue::Byte(0)),
+            ("damage_on_hurt", NbtSummaryValue::Byte(0)),
+            ("equip_on_interact", NbtSummaryValue::Byte(1)),
+            ("can_be_sheared", NbtSummaryValue::Byte(1)),
+        ]),
+        Some(&registries),
+    )
+    .unwrap()
+    .unwrap();
+    let mut patch = DataComponentPatchSummary::default();
+
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+        &decoded,
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.equippable,
+        Some(EquippableSummary {
+            slot_id: 6,
+            equip_sound: SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:equip".to_string()),
+                fixed_range_bits: Some(6.5f32.to_bits()),
+            },
+            asset_id: Some("example:llama_carpet".to_string()),
+            camera_overlay: Some("minecraft:overlay/powder_snow".to_string()),
+            allowed_entities: Some(EntityTypeHolderSetSummary {
+                registry_ids: vec![
+                    VANILLA_ENTITY_TYPE_LLAMA_ID,
+                    VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+                ],
+                tag: None,
+            }),
+            dispensable: false,
+            swappable: false,
+            damage_on_hurt: false,
+            equip_on_interact: true,
+            can_be_sheared: true,
+            shearing_sound: SoundEventSummary {
+                registry_id: Some(
+                    vanilla_sound_event_registry_id("minecraft:item.shears.snip").unwrap(),
+                ),
+                sound_id: None,
+                fixed_range_bits: None,
+            },
+        })
+    );
+
+    let DialogDataComponentValueState::Equippable { mut equippable } = decoded else {
+        unreachable!();
+    };
+    equippable.allowed_entities = Some(DialogRegistryHolderSetState {
+        holder_set_kind: "named".to_string(),
+        tag: None,
+        entries: Vec::new(),
+    });
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+        &DialogDataComponentValueState::Equippable { equippable },
+        &mut patch,
+    ));
 }
 
 #[test]

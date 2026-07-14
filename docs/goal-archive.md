@@ -14550,3 +14550,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   native dialog Item body 同时携带 custom-name、holder/structured patch 与 break-sound 并进入唯一 item
   runtime，证明新增类型不会触发 all-or-nothing 整栈拒绝。consume/effect/tool/equipment 等其余富结构
   值继续由下一明确切片处理。
+
+## 2026-07-14：Bridge equippable dialog Item patches
+
+- [x] 对照 `Equippable.CODEC/STREAM_CODEC`，把 dialog typed equippable 的 required slot、equip/shearing
+  sound holder、optional asset/camera overlay/entity holder-set 及五个 boolean 字段投影到既有
+  `EquippableSummary`；direct entity list 保持有序 registry ids，named set 保持 tag，sound holder 复用
+  break/weapon slice 的 named/direct summary owner。
+- [x] world focused regression 覆盖 direct equip sound/range、默认 named shearing sound、direct allowed
+  entities、optional resource ids 与全部 boolean，并证明畸形 persisted holder-set 仍整值拒绝；native
+  dialog Item body 加入 defaulted equippable 后继续进入唯一 item runtime。blocks-attacks、consume/effect、
+  tool 及递归 item-stack collection 等其余富结构值继续由后续明确切片处理。

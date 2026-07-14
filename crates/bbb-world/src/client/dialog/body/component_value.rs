@@ -7,8 +7,9 @@ use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
         AttackRangeSummary, BannerPatternLayerSummary, DataComponentPatchSummary,
-        FireworkExplosionSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
-        LodestoneTargetSummary, PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
+        EntityTypeHolderSetSummary, EquippableSummary, FireworkExplosionSummary,
+        KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
+        PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
         SuspiciousStewEffectSummary, SwingAnimationSummary, TrimMaterialSummary,
         TrimPatternSummary, UseEffectsSummary,
     },
@@ -649,6 +650,30 @@ pub(super) fn apply_item_patch_value(
                 hit_sound: weapon.hit_sound.as_ref().map(sound_event_summary),
             });
         }
+        (VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID, Value::Equippable { equippable }) => {
+            let allowed_entities = match equippable.allowed_entities.as_ref() {
+                Some(entities) => {
+                    let Some(summary) = entity_type_holder_set_summary(entities) else {
+                        return false;
+                    };
+                    Some(summary)
+                }
+                None => None,
+            };
+            patch.equippable = Some(EquippableSummary {
+                slot_id: equippable.slot_id,
+                equip_sound: sound_event_summary(&equippable.equip_sound),
+                asset_id: equippable.asset_id.clone(),
+                camera_overlay: equippable.camera_overlay.clone(),
+                allowed_entities,
+                dispensable: equippable.dispensable,
+                swappable: equippable.swappable,
+                damage_on_hurt: equippable.damage_on_hurt,
+                equip_on_interact: equippable.equip_on_interact,
+                can_be_sheared: equippable.can_be_sheared,
+                shearing_sound: sound_event_summary(&equippable.shearing_sound),
+            });
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
@@ -823,6 +848,22 @@ fn kinetic_weapon_condition_summary(
         max_duration_ticks: value.max_duration_ticks,
         min_speed_bits: value.min_speed_bits,
         min_relative_speed_bits: value.min_relative_speed_bits,
+    }
+}
+
+fn entity_type_holder_set_summary(
+    value: &DialogRegistryHolderSetState,
+) -> Option<EntityTypeHolderSetSummary> {
+    match (value.holder_set_kind.as_str(), &value.tag) {
+        ("named", Some(tag)) => Some(EntityTypeHolderSetSummary {
+            registry_ids: Vec::new(),
+            tag: Some(tag.clone()),
+        }),
+        ("direct", None) => Some(EntityTypeHolderSetSummary {
+            registry_ids: value.entries.iter().map(|entry| entry.holder_id).collect(),
+            tag: None,
+        }),
+        _ => None,
     }
 }
 
