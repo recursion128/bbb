@@ -13919,3 +13919,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] plain/styled/translated Component、raw NBT、style、空/256 行边界、错误 Component root、非列表与
   257 行均有定向测试，ItemStackTemplate component patch 也断言新的 typed value；其余 Component、
   holder、list/compound-record Codec 与 native screens 仍开放。
+
+## 2026-07-14：Decode written-book dialog item component record
+
+- [x] 新建 `client/dialog/body/component_value/written_book.rs` semantic owner；对照
+  `WrittenBookContent.CODEC`、`Filterable.codec` 与 `ComponentSerialization.flatRestrictedCodec`，复用
+  writable-book 的有界 Filterable<String> surface，typed 投影 required title/author、default generation、
+  default pages/resolved，以及 Filterable<Component> full-first/simple-fallback alternative。
+- [x] title compact/full、32 UTF-16 unit、generation 0..=3、default fields、raw/filtered Component、
+  101 页合法边界（成书无 100 页 codec 上限）、malformed shape 与纯字符串 page canonical JSON
+  32767 UTF-16 unit（含 quote/U+2028/astral 计数）均有定向测试。
+- [ ] structured Component page 的 32767 flat-size 精确判断仍需要共享 persistent Component codec 完成
+  validation 后按 vanilla `JsonOps` canonical 重编码；该缺口由 `docs/unsupported-features.md` 的 Dialog
+  Component codec 条目继续追踪，不用原始 NBT 大小冒充 canonical JSON 长度。

@@ -35,17 +35,24 @@ pub(super) fn decode_writable_book_content(
     pages
         .iter()
         .enumerate()
-        .map(|page| decode_filterable_string(page.1, &format!("{what} field pages[{}]", page.0)))
+        .map(|page| {
+            decode_filterable_string(
+                page.1,
+                MAX_WRITABLE_BOOK_PAGE_UTF16_UNITS,
+                &format!("{what} field pages[{}]", page.0),
+            )
+        })
         .collect()
 }
 
-fn decode_filterable_string(
+pub(super) fn decode_filterable_string(
     value: &NbtSummaryValue,
+    max_utf16_units: usize,
     what: &str,
 ) -> Result<DialogFilterableStringState, String> {
     match value {
         NbtSummaryValue::String(raw) => Ok(DialogFilterableStringState {
-            raw: bounded_page_string(raw, what)?,
+            raw: bounded_string(raw, max_utf16_units, what)?,
             filtered: None,
         }),
         NbtSummaryValue::Compound(entries) => {
@@ -59,11 +66,11 @@ fn decode_filterable_string(
                     let NbtSummaryValue::String(filtered) = value else {
                         return Err(format!("{what} field filtered is not a string"));
                     };
-                    bounded_page_string(filtered, &format!("{what} field filtered"))
+                    bounded_string(filtered, max_utf16_units, &format!("{what} field filtered"))
                 })
                 .transpose()?;
             Ok(DialogFilterableStringState {
-                raw: bounded_page_string(raw, &format!("{what} field raw"))?,
+                raw: bounded_string(raw, max_utf16_units, &format!("{what} field raw"))?,
                 filtered,
             })
         }
@@ -71,11 +78,11 @@ fn decode_filterable_string(
     }
 }
 
-fn bounded_page_string(value: &str, what: &str) -> Result<String, String> {
+fn bounded_string(value: &str, max_utf16_units: usize, what: &str) -> Result<String, String> {
     let len = value.encode_utf16().count();
-    if len > MAX_WRITABLE_BOOK_PAGE_UTF16_UNITS {
+    if len > max_utf16_units {
         return Err(format!(
-            "{what} has {len} UTF-16 units, maximum is {MAX_WRITABLE_BOOK_PAGE_UTF16_UNITS}"
+            "{what} has {len} UTF-16 units, maximum is {max_utf16_units}"
         ));
     }
     Ok(value.to_string())

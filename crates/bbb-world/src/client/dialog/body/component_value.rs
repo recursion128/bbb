@@ -56,6 +56,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
     },
     tropical_fish_patterns::vanilla_tropical_fish_pattern_for_name,
     NbtSummaryEntry, NbtSummaryValue,
@@ -83,6 +84,7 @@ mod text_component;
 mod tool;
 mod typed_data;
 mod writable_book;
+mod written_book;
 
 use bees::{decode_bees, DialogBeeOccupantState};
 use blocks_attacks::{decode_blocks_attacks, DialogBlocksAttacksState};
@@ -112,6 +114,7 @@ use typed_data::{
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
 };
 use writable_book::{decode_writable_book_content, DialogFilterableStringState};
+use written_book::{decode_written_book_content, DialogWrittenBookContentState};
 
 use super::super::DialogTextState;
 
@@ -338,6 +341,9 @@ pub enum DialogDataComponentValueState {
     WritableBookContent {
         pages: Vec<DialogFilterableStringState>,
     },
+    WrittenBookContent {
+        content: DialogWrittenBookContentState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -551,6 +557,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID => {
             DialogDataComponentValueState::WritableBookContent {
                 pages: decode_writable_book_content(value, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID => {
+            DialogDataComponentValueState::WrittenBookContent {
+                content: decode_written_book_content(value, &what)?,
             }
         }
         _ => {

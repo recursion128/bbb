@@ -373,6 +373,10 @@ RegistryFixedCodec holder 也已 typed 投影且明确拒绝 direct compound；T
 list、block HolderSet、optional positive speed/drop correctness、unrestricted default mining speed、
 non-negative damage 与 creative default 也已 typed 投影；WRITABLE_BOOK_CONTENT 的 default-empty
 Filterable<String> page list、compact/full alternative、100 页与 1024 UTF-16 unit 边界也已 typed 投影；
+WRITTEN_BOOK_CONTENT 的 required Filterable<String> title/author、defaulted 0..=3 generation、无
+100 页语义上限的 Filterable<Component> page list 与 resolved 也已 typed 投影，title 32 UTF-16 unit
+和纯字符串 page 的 canonical JSON 32767 UTF-16 unit 边界已精确闭合；structured Component page 的
+完整 codec validation/canonical JsonOps 重编码长度仍与共享 Component codec 一并开放；
 POTION_CONTENTS 的 built-in potion compact/full alternative、optional color/name、custom MobEffect
 holder list 与 recursive details defaults/unsigned-byte amplifier 也已 typed 投影；
 CONSUMABLE/DEATH_PROTECTION 的共享 5 分支 ConsumeEffect dispatch、record defaults、mob-effect

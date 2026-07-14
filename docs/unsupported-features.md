@@ -71,12 +71,15 @@ Owner: `bbb-protocol`
   RGB-alternative/list, 2 firework-record, and 1 global-position registration, plus
   1 profile-alternative, 1 sound-holder, 4 defaulted
   sound-backed record registrations, 2 registry-holder map registrations, 1
-  dynamic registry-holder plus 1 block-holder rule registration, 1 filterable
-  bounded-page list, 1 potion-alternative/recursive-effect registration, and 2
+  dynamic registry-holder plus 1 block-holder rule registration, 1 writable
+  filterable bounded-page list, 1 written-book filterable Component record,
+  1 potion-alternative/recursive-effect registration, and 2
   consume-effect-backed record registrations, plus 1 item-stack-template wrapper
   and 3 item-stack-template collection registrations:
   decode the remaining Component, holder, list, and compound-record persistent value
-  Codecs, render the corresponding screens, restore the previous screen on clear,
+  Codecs; complete canonical persistent Component validation/re-encoding, including
+  exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
+  the corresponding screens, restore the previous screen on clear,
   and route custom-click controls through the active dialog state. Flattened SNBT
   now resolves the JDK 26 `\N{name}` surface for Unicode scalar values, but the
   UTF-8-backed canonical string state still cannot preserve lone-surrogate escapes.
