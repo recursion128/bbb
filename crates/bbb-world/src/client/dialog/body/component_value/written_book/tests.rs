@@ -1,14 +1,17 @@
 use bbb_protocol::{
     canonical_component_json_utf16_len,
-    data_component_types::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID, NbtSummaryEntry,
-    NbtSummaryValue,
+    data_component_types::VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+    packets::inventory::{DataComponentPatchSummary, WrittenBookContentSummary},
+    NbtSummaryEntry, NbtSummaryValue,
 };
 
 use std::collections::BTreeMap;
 
 use crate::{RegistryContentState, RegistryPacketEntry, RegistrySet, RegistryTagState};
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -59,7 +62,39 @@ fn decodes_written_book_fields_defaults_and_filterable_alternatives() {
             None,
         )
         .unwrap(),
-        Some(DialogDataComponentValueState::WrittenBookContent { content })
+        Some(DialogDataComponentValueState::WrittenBookContent {
+            content: content.clone(),
+        })
+    );
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+        &DialogDataComponentValueState::WrittenBookContent { content },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.written_book,
+        Some(WrittenBookContentSummary {
+            title: "A title".to_string(),
+            title_filter: None,
+            author: "An author".to_string(),
+            generation: 2,
+            pages: vec!["Compact page".to_string(), "Raw".to_string()],
+            page_filters: vec![None, Some("Filtered".to_string())],
+            resolved: true,
+        })
+    );
+    assert_eq!(
+        patch.written_book_pages_nbt,
+        vec![
+            Some(NbtSummaryValue::String("Compact page".to_string())),
+            Some(compound(vec![string_entry("text", "Raw")])),
+        ]
+    );
+    assert_eq!(
+        patch.written_book_page_filters_nbt,
+        vec![None, Some(styled)]
     );
 
     let title = compound(vec![

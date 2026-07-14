@@ -1,9 +1,11 @@
 use bbb_protocol::{
-    data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID, NbtSummaryEntry,
-    NbtSummaryValue,
+    data_component_types::VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+    packets::inventory::DataComponentPatchSummary, NbtSummaryEntry, NbtSummaryValue,
 };
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -53,6 +55,21 @@ fn decodes_writable_book_defaults_and_filterable_page_alternatives() {
                 filtered: None,
             },
         ]
+    );
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+        &DialogDataComponentValueState::WritableBookContent { pages },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.writable_book_pages,
+        ["compact page", "raw page", "unfiltered page"]
+    );
+    assert_eq!(
+        patch.writable_book_page_filters,
+        vec![None, Some("filtered page".to_string()), None]
     );
 }
 

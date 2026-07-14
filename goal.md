@@ -327,7 +327,7 @@ ClearDialog ignore 语义。Dialog 与 waiting screen 已按 `Screen.extractMenu
 summary-native nonrecursive structured patch（含 named/direct sound holder 的 break-sound、
 piercing/kinetic-weapon、完整 equippable、blocks-attacks、consumable、death-protection、tool 与
 potion-contents，以及 enchantments/stored-enchantments、attribute-modifiers、can-break/can-place-on
-adventure predicates）的 Item body 已复用
+adventure predicates、writable/written book content）的 Item body 已复用
 native item icon、3D block model、
 decorations 与 tooltip owner；有 description 时按 2px horizontal spacing/vertical-middle 排列，
 PlainMessage/description 也已计入 `FocusableTextWidget` 的 4px padding 与 inner wrap width。typed dialog
@@ -342,6 +342,8 @@ attribute modifier 的 ordered holder/id/amount bits/operation/slot 与 default/
 dispatch（含 override styled Component）也保持 wire summary 形状；
 adventure predicate 的 ordered block holder-set、state exact/range、block-entity NBT 与已支持 exact
 component matcher 同样进入 persistent summary，partial component predicate 与 lock 仍保持整栈拒绝；
+writable book 保留 aligned raw/filtered page strings，written book 同时保留 title/author/generation/resolved、
+aligned page text/filter 与逐页原始 raw/filtered Component NBT；
 未桥接的 item-stack 递归/其余富结构值不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、

@@ -14398,6 +14398,23 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:can_place_on",
                                             NbtSummaryValue::Compound(Vec::new()),
                                         ),
+                                        entry(
+                                            "minecraft:writable_book_content",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
+                                        entry(
+                                            "minecraft:written_book_content",
+                                            NbtSummaryValue::Compound(vec![
+                                                entry(
+                                                    "title",
+                                                    NbtSummaryValue::String(String::new()),
+                                                ),
+                                                entry(
+                                                    "author",
+                                                    NbtSummaryValue::String(String::new()),
+                                                ),
+                                            ]),
+                                        ),
                                     ]),
                                 ),
                             ]),

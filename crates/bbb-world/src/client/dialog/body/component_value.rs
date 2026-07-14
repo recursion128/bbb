@@ -20,7 +20,7 @@ use bbb_protocol::packets::{
         MobEffectInstanceSummary, PiercingWeaponSummary, ResolvableProfileSummary,
         SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
         SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
-        TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
+        TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
     },
 };
 use bbb_protocol::{
@@ -763,6 +763,46 @@ pub(super) fn apply_item_patch_value(
                 patch.can_break = Some(summary);
                 patch.can_break_persistent = Some(persistent);
             }
+        }
+        (
+            VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID,
+            Value::WritableBookContent { pages },
+        ) => {
+            patch.writable_book_pages = pages.iter().map(|page| page.raw.clone()).collect();
+            patch.writable_book_page_filters =
+                pages.iter().map(|page| page.filtered.clone()).collect();
+        }
+        (
+            VANILLA_DATA_COMPONENT_WRITTEN_BOOK_CONTENT_TYPE_ID,
+            Value::WrittenBookContent { content },
+        ) => {
+            patch.written_book = Some(WrittenBookContentSummary {
+                title: content.title.raw.clone(),
+                title_filter: content.title.filtered.clone(),
+                author: content.author.clone(),
+                generation: content.generation,
+                pages: content
+                    .pages
+                    .iter()
+                    .map(|page| page.raw.text.clone())
+                    .collect(),
+                page_filters: content
+                    .pages
+                    .iter()
+                    .map(|page| page.filtered.as_ref().map(|page| page.text.clone()))
+                    .collect(),
+                resolved: content.resolved,
+            });
+            patch.written_book_pages_nbt = content
+                .pages
+                .iter()
+                .map(|page| Some(page.raw.component.clone()))
+                .collect();
+            patch.written_book_page_filters_nbt = content
+                .pages
+                .iter()
+                .map(|page| page.filtered.as_ref().map(|page| page.component.clone()))
+                .collect();
         }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,

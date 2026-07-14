@@ -14639,3 +14639,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   加入两类 empty block predicate 后继续进入唯一 item runtime。protocol summary 尚无 lock 字段，partial
   predicate typed state 也不能冒充 raw wire NBT，二者连同 book/typed-data 与递归 item-stack collection
   继续由后续明确切片处理。
+
+## 2026-07-14：Bridge book-content dialog Item patches
+
+- [x] 对照 `WritableBookContent.CODEC/STREAM_CODEC`、`WrittenBookContent.CODEC/STREAM_CODEC` 与
+  `Filterable` wire shape，把 writable pages 的 aligned raw/filtered strings，以及 written title filter、
+  author、generation、ordered pages/filter 与 resolved 投影到既有 protocol summary。
+- [x] written pages 除 plain text 外同步保留逐页 raw/filtered 原始 Component NBT，供 native encoder 精确
+  重建 styled/click/hover payload；world focused regressions 覆盖 compact/full filterable alternatives、
+  styled filtered page、alignment 与 defaults，native dialog Item body 加入两类 empty/default book 后继续
+  进入唯一 item runtime。typed-data、partial/lock predicate 与递归 item-stack collection 等其余富结构值
+  继续由后续明确切片处理。
