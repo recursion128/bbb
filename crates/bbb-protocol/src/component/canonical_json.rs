@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::{
     nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
     packets::normalize_resource_location,
@@ -17,17 +15,13 @@ use super::{
 /// registry-independent Component model is sufficient to reproduce it.
 ///
 /// `None` means that decoding succeeded but canonical re-encoding still needs a higher semantic
-/// owner (a player profile, dialog, or item component patch), Java Float/Double formatting, or
-/// duplicate compound-key normalization that the summary tree does not retain canonically. It is
-/// deliberately not an estimate: callers enforcing `flatRestrictedCodec` must only act on an
+/// owner (a player profile, dialog, or item component patch) or Java Float/Double formatting. It
+/// is deliberately not an estimate: callers enforcing `flatRestrictedCodec` must only act on an
 /// exact `Some` result.
 pub fn canonical_component_json_utf16_len(
     value: &NbtSummaryValue,
 ) -> Result<Option<usize>, String> {
     validate_component_nbt(value, "component")?;
-    if has_duplicate_compound_keys(value) {
-        return Ok(None);
-    }
     Ok(canonical_component(value).map(|value| value.utf16_len()))
 }
 
@@ -448,12 +442,7 @@ fn canonical_nbt(value: &NbtSummaryValue) -> Option<JsonValue> {
                 .map(canonical_nbt)
                 .collect::<Option<Vec<_>>>()?,
         ),
-        NbtSummaryValue::Compound(entries) => JsonValue::Map(
-            entries
-                .iter()
-                .map(|entry| Some((entry.name.clone(), canonical_nbt(&entry.value)?)))
-                .collect::<Option<Vec<_>>>()?,
-        ),
+        NbtSummaryValue::Compound(entries) => JsonValue::Map(canonical_nbt_map(entries)?),
         NbtSummaryValue::IntArray(values) => JsonValue::Array(
             values
                 .iter()
@@ -464,6 +453,19 @@ fn canonical_nbt(value: &NbtSummaryValue) -> Option<JsonValue> {
             JsonValue::Array(values.iter().map(|value| number(*value)).collect())
         }
     })
+}
+
+fn canonical_nbt_map(entries: &[NbtSummaryEntry]) -> Option<Vec<(String, JsonValue)>> {
+    let mut normalized = Vec::<(String, JsonValue)>::with_capacity(entries.len());
+    for entry in entries {
+        let value = canonical_nbt(&entry.value)?;
+        if let Some((_, existing)) = normalized.iter_mut().find(|(name, _)| name == &entry.name) {
+            *existing = value;
+        } else {
+            normalized.push((entry.name.clone(), value));
+        }
+    }
+    Some(normalized)
 }
 
 fn java_uuid_int_array(value: &str) -> Option<Vec<i32>> {
@@ -509,21 +511,9 @@ fn number(value: i64) -> JsonValue {
 fn find_entry<'a>(entries: &'a [NbtSummaryEntry], field: &str) -> Option<&'a NbtSummaryValue> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == field)
         .map(|entry| &entry.value)
-}
-
-fn has_duplicate_compound_keys(value: &NbtSummaryValue) -> bool {
-    match value {
-        NbtSummaryValue::Compound(entries) => {
-            let mut names = HashSet::with_capacity(entries.len());
-            entries.iter().any(|entry| {
-                !names.insert(entry.name.as_str()) || has_duplicate_compound_keys(&entry.value)
-            })
-        }
-        NbtSummaryValue::List(values) => values.iter().any(has_duplicate_compound_keys),
-        _ => false,
-    }
 }
 
 fn json_string_utf16_len(value: &str) -> usize {
@@ -623,6 +613,34 @@ mod tests {
         assert_eq!(
             exact(&value),
             r#"{"text":"x","shadow_color":-33024,"click_event":{"action":"custom","id":"minecraft:test","payload":{"a":1,"bytes":[-1,2],"nested":["z"]}}}"#.len()
+        );
+    }
+
+    #[test]
+    fn canonicalizes_duplicate_component_and_payload_keys_last_wins() {
+        let value = compound(vec![("text", string("first")), ("text", string("last"))]);
+        assert_eq!(exact(&value), r#""last""#.len());
+
+        let custom = compound(vec![
+            ("text", string("x")),
+            (
+                "click_event",
+                compound(vec![
+                    ("action", string("custom")),
+                    ("id", string("test")),
+                    (
+                        "payload",
+                        compound(vec![
+                            ("key", NbtSummaryValue::Int(1)),
+                            ("key", string("last")),
+                        ]),
+                    ),
+                ]),
+            ),
+        ]);
+        assert_eq!(
+            exact(&custom),
+            r#"{"text":"x","click_event":{"action":"custom","id":"minecraft:test","payload":{"key":"last"}}}"#.len()
         );
     }
 

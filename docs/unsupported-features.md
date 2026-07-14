@@ -95,10 +95,13 @@ Owner: `bbb-protocol`
   identifier normalization, and click/hover payloads that need no external owner, including the
   32767/32768 boundary. Vector4f shadow colors now normalize through `ARGB_COLOR_CODEC` to its
   signed-int encoder form. Custom-click NBT payloads likewise project Byte/Short/Int/Long, String,
-  arrays, lists, and compounds through the NbtOps-to-JsonOps shape. Finish owner-sensitive payloads
-  in generic packet Components and the remaining canonical value codecs:
+  arrays, lists, and compounds through the NbtOps-to-JsonOps shape. Network-NBT decode, SNBT parse,
+  bounded NBT encode, Component/Dialog field lookup, and canonical maps now share CompoundTag's
+  last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
+  limit. Finish owner-sensitive payloads in generic packet Components and the remaining canonical
+  value codecs:
   player/show-dialog/item-patch payloads, Java Float/Double primitive formatting (including
-  floating custom-NBT tags), and duplicate-compound normalization. Then complete
+  floating custom-NBT tags). Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the corresponding screens, restore the previous screen on clear,
   and route custom-click controls through the active dialog state. Dialog Component holders

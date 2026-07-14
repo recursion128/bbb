@@ -472,6 +472,7 @@ fn parse_text_color(color: &str) -> Option<u32> {
 fn find_entry<'a>(entries: &'a [NbtSummaryEntry], key: &str) -> Option<&'a NbtSummaryValue> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == key)
         .map(|entry| &entry.value)
 }
@@ -486,6 +487,27 @@ mod tests {
         assert_eq!(
             decode_component_summary(&payload).unwrap(),
             "Disconnected".to_string()
+        );
+    }
+
+    #[test]
+    fn direct_component_projection_reads_duplicate_fields_last_wins() {
+        let component = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("first".to_string()),
+            },
+            NbtSummaryEntry {
+                name: "text".to_string(),
+                value: NbtSummaryValue::String("last".to_string()),
+            },
+        ]);
+        assert_eq!(
+            styled_component_runs_from_nbt_value(&component),
+            vec![StyledTextRun {
+                text: "last".to_string(),
+                style: ComponentStyle::default(),
+            }]
         );
     }
 

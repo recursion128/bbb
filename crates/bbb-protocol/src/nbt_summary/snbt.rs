@@ -75,27 +75,25 @@ impl<'a> SnbtParser<'a> {
     fn parse_compound(&mut self, depth: usize) -> Result<NbtSummaryValue> {
         self.expect('{')?;
         let mut entries: Vec<NbtSummaryEntry> = Vec::new();
+        let mut entry_count = 0usize;
         self.skip_whitespace();
         if self.consume('}') {
             return Ok(NbtSummaryValue::Compound(entries));
         }
         loop {
-            if entries.len() >= MAX_NBT_COMPOUND_ENTRIES {
+            if entry_count >= MAX_NBT_COMPOUND_ENTRIES {
                 return Err(self.error(format!(
                     "SNBT compound has more than {MAX_NBT_COMPOUND_ENTRIES} entries"
                 )));
             }
+            entry_count += 1;
             let key = self.parse_key()?;
             if key.is_empty() {
                 return Err(self.error("SNBT compound key is empty"));
             }
             self.expect(':')?;
             let value = self.parse_value(depth + 1)?;
-            if let Some(existing) = entries.iter_mut().find(|entry| entry.name == key) {
-                existing.value = value;
-            } else {
-                entries.push(NbtSummaryEntry { name: key, value });
-            }
+            super::insert_compound_entry(&mut entries, key, value);
             self.skip_whitespace();
             if self.consume('}') {
                 break;

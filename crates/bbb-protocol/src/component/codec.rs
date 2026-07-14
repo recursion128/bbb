@@ -895,6 +895,7 @@ fn required_string<'a>(
 fn find_entry<'a>(entries: &'a [NbtSummaryEntry], field: &str) -> Option<&'a NbtSummaryValue> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == field)
         .map(|entry| &entry.value)
 }

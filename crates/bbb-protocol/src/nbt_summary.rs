@@ -105,20 +105,22 @@ fn read_nbt_payload(
         }
         10 => {
             let mut entries = Vec::new();
+            let mut entry_count = 0usize;
             loop {
                 let nested_type = decoder.read_u8()?;
                 if nested_type == 0 {
                     break;
                 }
-                if entries.len() >= MAX_NBT_COMPOUND_ENTRIES {
+                if entry_count >= MAX_NBT_COMPOUND_ENTRIES {
                     return Err(ProtocolError::PacketTooLarge(
-                        entries.len() + 1,
+                        entry_count + 1,
                         MAX_NBT_COMPOUND_ENTRIES,
                     ));
                 }
+                entry_count += 1;
                 let name = read_modified_utf8(decoder)?;
                 let value = read_nbt_payload(decoder, nested_type, depth + 1)?;
-                entries.push(NbtSummaryEntry { name, value });
+                insert_compound_entry(&mut entries, name, value);
             }
             Ok(NbtSummaryValue::Compound(entries))
         }
@@ -276,7 +278,7 @@ fn encode_nbt_payload(
                     MAX_NBT_COMPOUND_ENTRIES,
                 ));
             }
-            for entry in entries {
+            for entry in last_wins_compound_entries(entries) {
                 encoder.write_u8(nbt_tag_id(&entry.value))?;
                 encode_modified_utf8(encoder, &entry.name)?;
                 encode_nbt_payload(encoder, &entry.value, nested_depth, max_depth)?;
@@ -298,6 +300,29 @@ fn encode_nbt_payload(
             Ok(())
         }
     }
+}
+
+fn insert_compound_entry(entries: &mut Vec<NbtSummaryEntry>, name: String, value: NbtSummaryValue) {
+    if let Some(existing) = entries.iter_mut().find(|entry| entry.name == name) {
+        existing.value = value;
+    } else {
+        entries.push(NbtSummaryEntry { name, value });
+    }
+}
+
+fn last_wins_compound_entries(entries: &[NbtSummaryEntry]) -> Vec<&NbtSummaryEntry> {
+    let mut normalized = Vec::<&NbtSummaryEntry>::with_capacity(entries.len());
+    for entry in entries {
+        if let Some(existing) = normalized
+            .iter_mut()
+            .find(|existing| existing.name == entry.name)
+        {
+            *existing = entry;
+        } else {
+            normalized.push(entry);
+        }
+    }
+    normalized
 }
 
 fn nbt_tag_id(value: &NbtSummaryValue) -> u8 {
@@ -430,6 +455,52 @@ mod tests {
             decode_nbt_summary(&bytes),
             Err(ProtocolError::PacketTooLarge(actual, max))
                 if actual == MAX_NBT_ARRAY_ITEMS + 1 && max == MAX_NBT_ARRAY_ITEMS
+        ));
+    }
+
+    #[test]
+    fn network_compounds_decode_and_encode_duplicate_keys_last_wins() {
+        let value = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "key".to_string(),
+                value: NbtSummaryValue::Int(1),
+            },
+            NbtSummaryEntry {
+                name: "key".to_string(),
+                value: NbtSummaryValue::String("last".to_string()),
+            },
+        ]);
+        let encoded = encode_nbt_summary_bounded(Some(&value), 1024, MAX_NBT_DEPTH).unwrap();
+        assert_eq!(
+            decode_nbt_summary(&encoded).unwrap(),
+            Some(NbtSummaryValue::Compound(vec![NbtSummaryEntry {
+                name: "key".to_string(),
+                value: NbtSummaryValue::String("last".to_string()),
+            }]))
+        );
+
+        let mut duplicate_wire = vec![10, 3, 0, 3, b'k', b'e', b'y'];
+        duplicate_wire.extend_from_slice(&1i32.to_be_bytes());
+        duplicate_wire.extend_from_slice(&[8, 0, 3, b'k', b'e', b'y', 0, 4]);
+        duplicate_wire.extend_from_slice(b"last");
+        duplicate_wire.push(0);
+        assert_eq!(
+            decode_nbt_summary(&duplicate_wire).unwrap(),
+            decode_nbt_summary(&encoded).unwrap()
+        );
+    }
+
+    #[test]
+    fn duplicate_network_compound_keys_still_count_toward_the_entry_limit() {
+        let mut bytes = vec![10];
+        for _ in 0..=MAX_NBT_COMPOUND_ENTRIES {
+            bytes.extend_from_slice(&[1, 0, 3, b'k', b'e', b'y', 0]);
+        }
+        bytes.push(0);
+        assert!(matches!(
+            decode_nbt_summary(&bytes),
+            Err(ProtocolError::PacketTooLarge(actual, max))
+                if actual == MAX_NBT_COMPOUND_ENTRIES + 1 && max == MAX_NBT_COMPOUND_ENTRIES
         ));
     }
 }

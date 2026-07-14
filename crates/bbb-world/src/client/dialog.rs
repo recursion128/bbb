@@ -719,6 +719,7 @@ fn string_value<'a>(value: &'a NbtSummaryValue, what: &str) -> Result<&'a str, S
 fn find_entry<'a>(entries: &'a [NbtSummaryEntry], key: &str) -> Option<&'a NbtSummaryValue> {
     entries
         .iter()
+        .rev()
         .find(|entry| entry.name == key)
         .map(|entry| &entry.value)
 }

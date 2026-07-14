@@ -385,6 +385,8 @@ page 也已按语义 Component 重编码计长，覆盖 special/list/full root�
 default/lenient optional 省略、标量 style、Identifier 规范化与无需外部 owner 的 click/hover payload；
 vector4f shadow color 也已按 `ARGB_COLOR_CODEC` 归一为 signed int，custom-click NBT payload 已覆盖
 Byte/Short/Int/Long、String、array/list/compound 的 NbtOps→JsonOps 投影；
+network-NBT/SNBT compound 也已统一同名 key 的 last-wins 语义、4096 occurrence 安全计数与 bounded
+encoder 归一化，Component core/Dialog owner/canonical JSON lookup 均读取最终值；
 共享 Component codec 已闭合
 string/non-empty-list/full-compound root、typed/fuzzy 七类 content dispatch、simple/nested content、extra
 与 scalar style validation，并已校验七种 server-allowed click event、三种 hover event 的 discriminator
@@ -396,7 +398,7 @@ selector、21 项 registered option 的 grammar/applicability/重复互斥、bui
 nested SNBT/scores/advancements 与完整消费，并同时接入 selector content/entity data source；structured
 Component page 的 generic packet owner 和完整 canonical JsonOps 重编码仍开放，当前明确不以 raw NBT
 近似 owner-sensitive player/show-dialog/item-patch、Float/Double Java primitive（包括 custom NBT payload
-中的浮点 tag）或 duplicate-compound normalization；hover
+中的浮点 tag）；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
