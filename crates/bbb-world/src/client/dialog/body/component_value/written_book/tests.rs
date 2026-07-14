@@ -490,6 +490,42 @@ fn enforces_equippable_item_patch_page_boundary_with_session_registries() {
 }
 
 #[test]
+fn enforces_blocks_attacks_item_patch_page_boundary_with_session_registries() {
+    let mut registries = RegistrySet::default();
+    let mut contents = RegistryContentState::new("minecraft:damage_type");
+    contents.entries = vec![
+        RegistryPacketEntry::stub("minecraft:in_fire"),
+        RegistryPacketEntry::stub("minecraft:explosion"),
+    ];
+    registries
+        .contents
+        .insert("minecraft:damage_type".to_string(), contents);
+    registries.tags.insert(
+        "minecraft:damage_type".to_string(),
+        RegistryTagState {
+            registry: "minecraft:damage_type".to_string(),
+            tags: BTreeMap::from([("example:fire".to_string(), vec![0])]),
+        },
+    );
+    let prefix = concat!(
+        r##"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:blocks_attacks":{"block_delay_seconds":0.25,"disable_cooldown_scale":2.0,"damage_reductions":[{"horizontal_blocking_angle":45.0,"type":"#example:fire","base":-2.0,"factor":0.5}],"item_damage":{"threshold":3.0,"base":1.0,"factor":-1.0},"bypassed_by":"minecraft:explosion","block_sound":"minecraft:item.shield.block","disabled_sound":{"sound_id":"example:disable","range":8.0}}}}}"##
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_blocks_attacks_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content_with_context(
+            &book_with_pages(vec![page]),
+            "written book",
+            DialogDecodeContext::new(Some(&registries), 0),
+        );
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -754,6 +790,10 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
         ),
         (
             book_with_pages(vec![component_with_non_finite_equippable_item_patch()]),
+            "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_blocks_attacks_item_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
@@ -1394,6 +1434,74 @@ fn component_with_equippable_item_patch(extra: String) -> NbtSummaryValue {
     ])
 }
 
+fn component_with_blocks_attacks_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "blocks_attacks",
+                        compound(vec![
+                            value_entry(
+                                "block_delay_seconds",
+                                NbtSummaryValue::Float(0.25f32.to_bits()),
+                            ),
+                            value_entry("disable_cooldown_scale", NbtSummaryValue::Int(2)),
+                            value_entry(
+                                "damage_reductions",
+                                NbtSummaryValue::List(vec![compound(vec![
+                                    value_entry(
+                                        "horizontal_blocking_angle",
+                                        NbtSummaryValue::Float(45.0f32.to_bits()),
+                                    ),
+                                    string_entry("type", "#example:fire"),
+                                    value_entry(
+                                        "base",
+                                        NbtSummaryValue::Float((-2.0f32).to_bits()),
+                                    ),
+                                    value_entry("factor", NbtSummaryValue::Float(0.5f32.to_bits())),
+                                ])]),
+                            ),
+                            value_entry(
+                                "item_damage",
+                                compound(vec![
+                                    value_entry(
+                                        "threshold",
+                                        NbtSummaryValue::Float(3.0f32.to_bits()),
+                                    ),
+                                    value_entry("base", NbtSummaryValue::Float(1.0f32.to_bits())),
+                                    value_entry(
+                                        "factor",
+                                        NbtSummaryValue::Float((-1.0f32).to_bits()),
+                                    ),
+                                ]),
+                            ),
+                            string_entry("bypassed_by", "explosion"),
+                            string_entry("block_sound", "item.shield.block"),
+                            value_entry(
+                                "disabled_sound",
+                                compound(vec![
+                                    string_entry("sound_id", "example:disable"),
+                                    value_entry("range", NbtSummaryValue::Float(8.0f32.to_bits())),
+                                ]),
+                            ),
+                        ]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
 fn component_with_non_finite_tool_item_patch() -> NbtSummaryValue {
     compound(vec![
         string_entry("text", "item"),
@@ -1445,6 +1553,32 @@ fn component_with_non_finite_equippable_item_patch() -> NbtSummaryValue {
                                 ]),
                             ),
                         ]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_blocks_attacks_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "blocks_attacks",
+                        compound(vec![value_entry(
+                            "damage_reductions",
+                            NbtSummaryValue::List(vec![compound(vec![
+                                value_entry("base", NbtSummaryValue::Float(0.0f32.to_bits())),
+                                value_entry("factor", NbtSummaryValue::Float(f32::NAN.to_bits())),
+                            ])]),
+                        )]),
                     )]),
                 ),
             ]),

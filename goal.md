@@ -437,6 +437,9 @@ non-finite；
 `equippable` 的 required slot、两个 sound holder、optional asset/overlay/entity HolderSet 与五个 default
 boolean 也已闭合 canonical；只有 exact named default sound holder 才省略，direct sound 即使同 id 仍保留
 object，range float 同样复用 JDK 26 formatter 并严格拒绝 non-finite；
+`blocks_attacks` 的两项 outer float、default reduction list/default item-damage record、damage-type
+HolderSet 与两个 optional sound 也已闭合 canonical；default list/record 仅在 exact structural equality 时
+省略，reduction required base/factor 与所有 nested/direct-sound float 均严格拒绝 non-finite；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

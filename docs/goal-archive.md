@@ -14301,3 +14301,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   default/full exact JSON、NaN 拒绝与显式 session entity-tag registry 下 written-book hover `show_item`
   equippable patch 的 32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与
   剩余 predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize blocks-attacks item patches
+
+- [x] 对照 `BlocksAttacks.CODEC`、`DamageReduction.CODEC` 与 `ItemDamageFunction.CODEC`，扩展单一
+  item-patch canonical owner：两项 outer float、default reduction list/default item-damage record、
+  bypassed_by damage-type HolderSet 及 block/disabled sound 均保持 vanilla field order/default omission。
+- [x] default reduction 只在单元素 record exact structural equality 时省略，显式空 list 保留；每项
+  reduction 的 optional angle/type 与 required base/factor、item-damage 三项 required float 均精确编码。
+  全部 nested/direct-sound float 复用 JDK 26 formatter 与 non-finite 门禁；default/full exact JSON、NaN
+  拒绝与显式 session damage-type tag/singleton registry 下 written-book hover `show_item` blocks-attacks
+  patch 的 32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与剩余
+  predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

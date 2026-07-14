@@ -6,6 +6,10 @@ use bbb_protocol::{
 };
 
 use super::super::DialogDataComponentPatchState;
+use super::blocks_attacks::{
+    DialogBlocksAttacksDamageReductionState, DialogBlocksAttacksItemDamageState,
+    DialogBlocksAttacksState,
+};
 use super::holder_set::{DialogBannerPatternHolderState, DialogRegistryHolderSetState};
 use super::sound_event::{
     DialogKineticWeaponConditionState, DialogKineticWeaponState, DialogPiercingWeaponState,
@@ -123,6 +127,26 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
         DialogDataComponentValueState::Equippable { equippable } => {
             append_sound_range_bits(&mut values, Some(&equippable.equip_sound));
             append_sound_range_bits(&mut values, Some(&equippable.shearing_sound));
+        }
+        DialogDataComponentValueState::BlocksAttacks { blocks_attacks } => {
+            values.extend([
+                blocks_attacks.block_delay_seconds_bits,
+                blocks_attacks.disable_cooldown_scale_bits,
+            ]);
+            for reduction in &blocks_attacks.damage_reductions {
+                values.extend([
+                    reduction.horizontal_blocking_angle_bits,
+                    reduction.base_bits,
+                    reduction.factor_bits,
+                ]);
+            }
+            values.extend([
+                blocks_attacks.item_damage.threshold_bits,
+                blocks_attacks.item_damage.base_bits,
+                blocks_attacks.item_damage.factor_bits,
+            ]);
+            append_sound_range_bits(&mut values, blocks_attacks.block_sound.as_ref());
+            append_sound_range_bits(&mut values, blocks_attacks.disabled_sound.as_ref());
         }
         DialogDataComponentValueState::Bees { occupants } => {
             for occupant in occupants {
@@ -641,6 +665,9 @@ fn canonical_component_value_json_utf16_len(
             }
             object_len(fields.into_iter())
         }
+        DialogDataComponentValueState::BlocksAttacks { blocks_attacks } => {
+            blocks_attacks_len(blocks_attacks)?
+        }
         _ => return None,
     })
 }
@@ -688,6 +715,101 @@ fn is_named_sound(sound: &DialogSoundEventHolderState, resource_id: &str) -> boo
             ..
         } if actual == resource_id
     )
+}
+
+fn blocks_attacks_len(blocks_attacks: &DialogBlocksAttacksState) -> Option<usize> {
+    let mut fields = Vec::new();
+    append_non_default_float(
+        &mut fields,
+        "block_delay_seconds",
+        blocks_attacks.block_delay_seconds_bits,
+        0.0,
+    )?;
+    append_non_default_float(
+        &mut fields,
+        "disable_cooldown_scale",
+        blocks_attacks.disable_cooldown_scale_bits,
+        1.0,
+    )?;
+    if !is_default_damage_reductions(&blocks_attacks.damage_reductions) {
+        fields.push((
+            "damage_reductions",
+            array_len(
+                blocks_attacks
+                    .damage_reductions
+                    .iter()
+                    .map(damage_reduction_len)
+                    .collect::<Option<Vec<_>>>()?
+                    .into_iter(),
+            ),
+        ));
+    }
+    if !is_default_item_damage(&blocks_attacks.item_damage) {
+        fields.push(("item_damage", item_damage_len(&blocks_attacks.item_damage)?));
+    }
+    if let Some(bypassed_by) = &blocks_attacks.bypassed_by {
+        fields.push(("bypassed_by", registry_holder_set_len(bypassed_by)?));
+    }
+    if let Some(block_sound) = &blocks_attacks.block_sound {
+        fields.push(("block_sound", sound_event_len(block_sound)?));
+    }
+    if let Some(disabled_sound) = &blocks_attacks.disabled_sound {
+        fields.push(("disabled_sound", sound_event_len(disabled_sound)?));
+    }
+    Some(object_len(fields.into_iter()))
+}
+
+fn is_default_damage_reductions(reductions: &[DialogBlocksAttacksDamageReductionState]) -> bool {
+    matches!(
+        reductions,
+        [reduction]
+            if reduction.horizontal_blocking_angle_bits == 90.0f32.to_bits()
+                && reduction.damage_types.is_none()
+                && reduction.base_bits == 0.0f32.to_bits()
+                && reduction.factor_bits == 1.0f32.to_bits()
+    )
+}
+
+fn damage_reduction_len(reduction: &DialogBlocksAttacksDamageReductionState) -> Option<usize> {
+    let mut fields = Vec::new();
+    append_non_default_float(
+        &mut fields,
+        "horizontal_blocking_angle",
+        reduction.horizontal_blocking_angle_bits,
+        90.0,
+    )?;
+    if let Some(damage_types) = &reduction.damage_types {
+        fields.push(("type", registry_holder_set_len(damage_types)?));
+    }
+    fields.push(("base", canonical_f32_json_utf16_len(reduction.base_bits)?));
+    fields.push((
+        "factor",
+        canonical_f32_json_utf16_len(reduction.factor_bits)?,
+    ));
+    Some(object_len(fields.into_iter()))
+}
+
+fn is_default_item_damage(item_damage: &DialogBlocksAttacksItemDamageState) -> bool {
+    item_damage.threshold_bits == 1.0f32.to_bits()
+        && item_damage.base_bits == 0.0f32.to_bits()
+        && item_damage.factor_bits == 1.0f32.to_bits()
+}
+
+fn item_damage_len(item_damage: &DialogBlocksAttacksItemDamageState) -> Option<usize> {
+    Some(object_len(
+        [
+            (
+                "threshold",
+                canonical_f32_json_utf16_len(item_damage.threshold_bits)?,
+            ),
+            ("base", canonical_f32_json_utf16_len(item_damage.base_bits)?),
+            (
+                "factor",
+                canonical_f32_json_utf16_len(item_damage.factor_bits)?,
+            ),
+        ]
+        .into_iter(),
+    ))
 }
 
 fn piercing_weapon_len(weapon: &DialogPiercingWeaponState) -> Option<usize> {
@@ -1629,6 +1751,73 @@ mod tests {
                 },
             },
             r##"{"slot":"body","equip_sound":{"sound_id":"minecraft:item.armor.equip_generic","range":6.5},"asset_id":"example:llama_carpet","camera_overlay":"minecraft:overlay/powder_snow","allowed_entities":"#example:llamas","dispensable":false,"swappable":false,"damage_on_hurt":false,"equip_on_interact":true,"can_be_sheared":true}"##,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_blocks_attacks_nested_records_and_defaults() {
+        assert_exact(
+            DialogDataComponentValueState::BlocksAttacks {
+                blocks_attacks: DialogBlocksAttacksState {
+                    block_delay_seconds_bits: 0.0f32.to_bits(),
+                    disable_cooldown_scale_bits: 1.0f32.to_bits(),
+                    damage_reductions: vec![DialogBlocksAttacksDamageReductionState {
+                        horizontal_blocking_angle_bits: 90.0f32.to_bits(),
+                        damage_types: None,
+                        base_bits: 0.0f32.to_bits(),
+                        factor_bits: 1.0f32.to_bits(),
+                    }],
+                    item_damage: DialogBlocksAttacksItemDamageState {
+                        threshold_bits: 1.0f32.to_bits(),
+                        base_bits: 0.0f32.to_bits(),
+                        factor_bits: 1.0f32.to_bits(),
+                    },
+                    bypassed_by: None,
+                    block_sound: None,
+                    disabled_sound: None,
+                },
+            },
+            "{}",
+        );
+        assert_exact(
+            DialogDataComponentValueState::BlocksAttacks {
+                blocks_attacks: DialogBlocksAttacksState {
+                    block_delay_seconds_bits: 0.25f32.to_bits(),
+                    disable_cooldown_scale_bits: 2.0f32.to_bits(),
+                    damage_reductions: vec![DialogBlocksAttacksDamageReductionState {
+                        horizontal_blocking_angle_bits: 45.0f32.to_bits(),
+                        damage_types: Some(DialogRegistryHolderSetState {
+                            holder_set_kind: "named".to_string(),
+                            tag: Some("example:fire".to_string()),
+                            entries: Vec::new(),
+                        }),
+                        base_bits: (-2.0f32).to_bits(),
+                        factor_bits: 0.5f32.to_bits(),
+                    }],
+                    item_damage: DialogBlocksAttacksItemDamageState {
+                        threshold_bits: 3.0f32.to_bits(),
+                        base_bits: 1.0f32.to_bits(),
+                        factor_bits: (-1.0f32).to_bits(),
+                    },
+                    bypassed_by: Some(DialogRegistryHolderSetState {
+                        holder_set_kind: "direct".to_string(),
+                        tag: None,
+                        entries: vec![DialogRegistryHolderReferenceState {
+                            holder_id: 1,
+                            resource_id: "minecraft:explosion".to_string(),
+                        }],
+                    }),
+                    block_sound: Some(DialogSoundEventHolderState::Named {
+                        registry_id: 0,
+                        resource_id: "minecraft:item.shield.block".to_string(),
+                    }),
+                    disabled_sound: Some(DialogSoundEventHolderState::Direct {
+                        sound_id: "example:disable".to_string(),
+                        fixed_range_bits: Some(8.0f32.to_bits()),
+                    }),
+                },
+            },
+            r##"{"block_delay_seconds":0.25,"disable_cooldown_scale":2.0,"damage_reductions":[{"horizontal_blocking_angle":45.0,"type":"#example:fire","base":-2.0,"factor":0.5}],"item_damage":{"threshold":3.0,"base":1.0,"factor":-1.0},"bypassed_by":"minecraft:explosion","block_sound":"minecraft:item.shield.block","disabled_sound":{"sound_id":"example:disable","range":8.0}}"##,
         );
     }
 
