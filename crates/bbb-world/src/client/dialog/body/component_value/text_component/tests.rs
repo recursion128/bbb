@@ -160,6 +160,16 @@ fn rejects_invalid_text_component_roots_and_lore_bounds() {
             entry("text", NbtSummaryValue::String("value".to_string())),
             entry("bold", NbtSummaryValue::String("true".to_string())),
         ]),
+        compound(vec![
+            entry("text", NbtSummaryValue::String("value".to_string())),
+            entry(
+                "click_event",
+                compound(vec![
+                    entry("action", NbtSummaryValue::String("open_file".to_string())),
+                    entry("path", NbtSummaryValue::String("debug".to_string())),
+                ]),
+            ),
+        ]),
     ];
     for (type_id, resource_id) in [
         (

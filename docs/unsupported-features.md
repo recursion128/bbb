@@ -81,11 +81,10 @@ Owner: `bbb-protocol`
   instrument, 2 trim-material/pattern-backed named/direct registrations, and 1
   banner-pattern-layer direct holder. All 107 persistent catalog registrations now
   have a typed positive-value dispatch and their RegistryFileCodec inline/direct
-  holder branches are complete. Persistent Component now validates recursive root
-  alternatives, typed/fuzzy content dispatch, simple/nested fields, non-empty
-  `extra`, and scalar style fields; finish command-backed selector/NBT parsing,
-  click/hover and registry-aware payload validation, and canonical re-encoding,
-  including
+  holder branches are complete. Finish persistent Component command-backed
+  selector/NBT/block-position parsing, deep click `show_dialog` and hover
+  `show_item` component-patch payload validation, registry-aware nested values,
+  and canonical re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
   the corresponding screens, restore the previous screen on clear,
   and route custom-click controls through the active dialog state. Flattened SNBT

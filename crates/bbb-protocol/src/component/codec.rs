@@ -1,9 +1,13 @@
+use url::Url;
+
 use crate::{
+    entity_types::vanilla_entity_type_for_resource_id,
+    item_types::vanilla_item_type_for_resource_id,
     nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
     packets::normalize_resource_location,
 };
 
-use super::parse_text_color;
+use super::{parse_text_color, ComponentClickEvent};
 
 const MAX_COMPONENT_DEPTH: usize = 64;
 const CONTENT_TYPES: [&str; 7] = [
@@ -21,10 +25,21 @@ const CONTENT_TYPES: [&str; 7] = [
 ///
 /// This owns the recursive root alternatives, the legacy fuzzy/typed content
 /// matcher, simple content fields, nested component positions, `extra`, and
-/// scalar style fields. Command parsers, click/hover payloads, registry-aware
-/// values, and canonical JsonOps encoding are intentionally separate stages.
+/// style fields and the registry-independent portion of click/hover events.
+/// Command parsers, deep dialog/item payloads, registry-aware values, and
+/// canonical JsonOps encoding are intentionally separate stages.
 pub fn validate_component_nbt(value: &NbtSummaryValue, what: &str) -> Result<(), String> {
     validate_component(value, what, 0)
+}
+
+pub(super) fn validate_component_style_nbt(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<(), String> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(format!("{what} is not a compound"));
+    };
+    validate_style(entries, what, 0)
 }
 
 fn validate_component(value: &NbtSummaryValue, what: &str, depth: usize) -> Result<(), String> {
@@ -66,7 +81,7 @@ fn validate_full_component(
             validate_component(value, &format!("{what} field extra[{index}]"), depth + 1)?;
         }
     }
-    validate_scalar_style(entries, what)
+    validate_style(entries, what, depth)
 }
 
 fn validate_contents(entries: &[NbtSummaryEntry], what: &str, depth: usize) -> Result<(), String> {
@@ -187,7 +202,7 @@ fn validate_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), S
         return match source.as_str() {
             "block" => required_string(entries, "block", what).map(|_| ()),
             "entity" => required_string(entries, "entity", what).map(|_| ()),
-            "storage" => validate_identifier_field(entries, "storage", what),
+            "storage" => validate_identifier_field(entries, "storage", what).map(|_| ()),
             _ => Err(format!("{what} has unknown component data source {source}")),
         };
     }
@@ -238,7 +253,7 @@ fn validate_atlas_object(entries: &[NbtSummaryEntry], what: &str) -> Result<(), 
     if find_entry(entries, "atlas").is_some() {
         validate_identifier_field(entries, "atlas", what)?;
     }
-    validate_identifier_field(entries, "sprite", what)
+    validate_identifier_field(entries, "sprite", what).map(|_| ())
 }
 
 fn validate_player_object(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {
@@ -252,7 +267,7 @@ fn validate_player_object(entries: &[NbtSummaryEntry], what: &str) -> Result<(),
     Ok(())
 }
 
-fn validate_scalar_style(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {
+fn validate_style(entries: &[NbtSummaryEntry], what: &str, depth: usize) -> Result<(), String> {
     if let Some(color) = find_entry(entries, "color") {
         let NbtSummaryValue::String(color) = color else {
             return Err(format!("{what} field color is not a string"));
@@ -284,6 +299,210 @@ fn validate_scalar_style(entries: &[NbtSummaryEntry], what: &str) -> Result<(), 
     if find_entry(entries, "font").is_some() {
         validate_identifier_field(entries, "font", what)?;
     }
+    if let Some(click_event) = find_entry(entries, "click_event") {
+        decode_component_click_event(click_event, &format!("{what} field click_event"))?;
+    }
+    if let Some(hover_event) = find_entry(entries, "hover_event") {
+        validate_hover_event(hover_event, &format!("{what} field hover_event"), depth)?;
+    }
+    Ok(())
+}
+
+pub(super) fn decode_component_click_event(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<ComponentClickEvent, String> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(format!("{what} is not a compound"));
+    };
+    let action = required_string(entries, "action", what)?;
+    match action {
+        "open_url" => {
+            let url = required_string(entries, "url", what)?;
+            validate_untrusted_uri(url, what)?;
+            Ok(ComponentClickEvent::OpenUrl {
+                url: url.to_string(),
+            })
+        }
+        "open_file" => Err(format!(
+            "{what} action open_file is not allowed from a server"
+        )),
+        "run_command" => {
+            let command = required_string(entries, "command", what)?;
+            validate_chat_string(command, what)?;
+            Ok(ComponentClickEvent::RunCommand {
+                command: command.to_string(),
+            })
+        }
+        "suggest_command" => {
+            let command = required_string(entries, "command", what)?;
+            validate_chat_string(command, what)?;
+            Ok(ComponentClickEvent::SuggestCommand {
+                command: command.to_string(),
+            })
+        }
+        "show_dialog" => {
+            let dialog = required_entry(entries, "dialog", what)?;
+            validate_registry_file_holder_shape(dialog, &format!("{what} field dialog"))?;
+            Ok(ComponentClickEvent::ShowDialog {
+                dialog: dialog.clone(),
+            })
+        }
+        "change_page" => {
+            let page = component_i32(required_entry(entries, "page", what)?)
+                .ok_or_else(|| format!("{what} field page is not numeric"))?;
+            if page <= 0 {
+                return Err(format!("{what} field page must be positive"));
+            }
+            Ok(ComponentClickEvent::ChangePage { page })
+        }
+        "copy_to_clipboard" => Ok(ComponentClickEvent::CopyToClipboard {
+            value: required_string(entries, "value", what)?.to_string(),
+        }),
+        "custom" => {
+            let id = validate_identifier_field(entries, "id", what)?;
+            Ok(ComponentClickEvent::Custom {
+                id,
+                payload: find_entry(entries, "payload").cloned(),
+            })
+        }
+        _ => Err(format!("{what} has unknown click action {action}")),
+    }
+}
+
+fn validate_hover_event(value: &NbtSummaryValue, what: &str, depth: usize) -> Result<(), String> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return Err(format!("{what} is not a compound"));
+    };
+    match required_string(entries, "action", what)? {
+        "show_text" => validate_component(
+            required_entry(entries, "value", what)?,
+            &format!("{what} field value"),
+            depth + 1,
+        ),
+        "show_item" => validate_hover_item(entries, what),
+        "show_entity" => validate_hover_entity(entries, what, depth),
+        action => Err(format!("{what} has unknown hover action {action}")),
+    }
+}
+
+fn validate_hover_item(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {
+    let raw_id = required_string(entries, "id", what)?;
+    let resource_id = normalize_resource_location(raw_id.to_string())
+        .map_err(|_| format!("{what} field id is not a valid item identifier: {raw_id}"))?;
+    if resource_id == "minecraft:air" || vanilla_item_type_for_resource_id(&resource_id).is_none() {
+        return Err(format!(
+            "{what} field id is not a non-empty built-in item: {raw_id}"
+        ));
+    }
+    if let Some(count) = find_entry(entries, "count") {
+        let count =
+            component_i32(count).ok_or_else(|| format!("{what} field count is not numeric"))?;
+        if !(1..=99).contains(&count) {
+            return Err(format!("{what} field count {count} is outside 1..=99"));
+        }
+    }
+    if let Some(components) = find_entry(entries, "components") {
+        if !matches!(components, NbtSummaryValue::Compound(_)) {
+            return Err(format!("{what} field components is not a compound"));
+        }
+    }
+    Ok(())
+}
+
+fn validate_hover_entity(
+    entries: &[NbtSummaryEntry],
+    what: &str,
+    depth: usize,
+) -> Result<(), String> {
+    let raw_id = required_string(entries, "id", what)?;
+    let resource_id = normalize_resource_location(raw_id.to_string())
+        .map_err(|_| format!("{what} field id is not a valid entity identifier: {raw_id}"))?;
+    if vanilla_entity_type_for_resource_id(&resource_id).is_none() {
+        return Err(format!(
+            "{what} field id is not a built-in entity type: {raw_id}"
+        ));
+    }
+    validate_uuid(
+        required_entry(entries, "uuid", what)?,
+        &format!("{what} field uuid"),
+    )?;
+    if let Some(name) = find_entry(entries, "name") {
+        validate_component(name, &format!("{what} field name"), depth + 1)?;
+    }
+    Ok(())
+}
+
+fn validate_uuid(value: &NbtSummaryValue, what: &str) -> Result<(), String> {
+    match value {
+        NbtSummaryValue::IntArray(values) if values.len() == 4 => Ok(()),
+        NbtSummaryValue::ByteArray(values) if values.len() == 4 => Ok(()),
+        NbtSummaryValue::LongArray(values) if values.len() == 4 => Ok(()),
+        NbtSummaryValue::List(values)
+            if values.len() == 4 && values.iter().all(|value| component_i32(value).is_some()) =>
+        {
+            Ok(())
+        }
+        NbtSummaryValue::String(value) if is_java_uuid_string(value) => Ok(()),
+        _ => Err(format!("{what} is not a lenient UUID")),
+    }
+}
+
+fn is_java_uuid_string(value: &str) -> bool {
+    if value.len() > 36 {
+        return false;
+    }
+    let mut parts = value.split('-');
+    (0..5).all(|_| parts.next().is_some_and(is_java_positive_hex_long)) && parts.next().is_none()
+}
+
+fn is_java_positive_hex_long(part: &str) -> bool {
+    let digits = part.strip_prefix('+').unwrap_or(part);
+    !digits.is_empty()
+        && digits.len() <= 16
+        && digits.bytes().all(|byte| byte.is_ascii_hexdigit())
+        && (digits.len() < 16 || digits.as_bytes()[0] <= b'7')
+}
+
+fn validate_registry_file_holder_shape(value: &NbtSummaryValue, what: &str) -> Result<(), String> {
+    match value {
+        NbtSummaryValue::String(resource_id) => normalize_resource_location(resource_id.clone())
+            .map(|_| ())
+            .map_err(|_| format!("{what} is not a valid resource identifier: {resource_id}")),
+        NbtSummaryValue::Compound(_) => Ok(()),
+        _ => Err(format!(
+            "{what} is neither a resource id nor a direct value"
+        )),
+    }
+}
+
+fn validate_untrusted_uri(value: &str, what: &str) -> Result<(), String> {
+    if value
+        .chars()
+        .any(|character| character.is_whitespace() || character.is_control())
+    {
+        return Err(format!("{what} field url is not a valid untrusted URI"));
+    }
+    let url = Url::parse(value)
+        .map_err(|error| format!("{what} field url is not a valid URI: {error}"))?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err(format!(
+            "{what} field url uses unsupported scheme {}",
+            url.scheme()
+        ));
+    }
+    Ok(())
+}
+
+fn validate_chat_string(value: &str, what: &str) -> Result<(), String> {
+    if let Some(character) = value
+        .chars()
+        .find(|character| *character == '§' || (*character as u32) < 32 || *character == '\u{7f}')
+    {
+        return Err(format!(
+            "{what} contains disallowed chat character {character:?}"
+        ));
+    }
     Ok(())
 }
 
@@ -304,10 +523,9 @@ fn validate_identifier_field(
     entries: &[NbtSummaryEntry],
     field: &str,
     what: &str,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let raw = required_string(entries, field, what)?;
     normalize_resource_location(raw.to_string())
-        .map(|_| ())
         .map_err(|_| format!("{what} field {field} is not a valid identifier: {raw}"))
 }
 
@@ -319,6 +537,18 @@ fn component_bool(value: &NbtSummaryValue) -> Option<bool> {
         NbtSummaryValue::Long(value) => (*value as i8) != 0,
         NbtSummaryValue::Float(bits) => (f32::from_bits(*bits) as i32 as i8) != 0,
         NbtSummaryValue::Double(bits) => (f64::from_bits(*bits) as i32 as i8) != 0,
+        _ => return None,
+    })
+}
+
+fn component_i32(value: &NbtSummaryValue) -> Option<i32> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => i32::from(*value),
+        NbtSummaryValue::Short(value) => i32::from(*value),
+        NbtSummaryValue::Int(value) => *value,
+        NbtSummaryValue::Long(value) => *value as i32,
+        NbtSummaryValue::Float(bits) => f32::from_bits(*bits) as i32,
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as i32,
         _ => return None,
     })
 }

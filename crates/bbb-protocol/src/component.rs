@@ -34,7 +34,7 @@ pub struct ComponentStyle {
     pub color: Option<u32>,
     /// Click event carried by the run (`click_event` in the 26.1 Style codec).
     /// The renderer-facing HUD run projection ignores this today, but control
-    /// and local debug feedback preserve it for file-open/copy actions.
+    /// and local debug feedback preserve it for interactive actions.
     #[serde(default)]
     pub click_event: Option<ComponentClickEvent>,
 }
@@ -44,6 +44,8 @@ pub struct ComponentStyle {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "action")]
 pub enum ComponentClickEvent {
+    /// Vanilla permits this for locally-created Components but rejects it from
+    /// the server-facing serialized `ClickEvent.Action.CODEC`.
     #[serde(rename = "open_file")]
     OpenFile { path: String },
     #[serde(rename = "open_url")]
@@ -52,8 +54,18 @@ pub enum ComponentClickEvent {
     RunCommand { command: String },
     #[serde(rename = "suggest_command")]
     SuggestCommand { command: String },
+    #[serde(rename = "show_dialog")]
+    ShowDialog { dialog: NbtSummaryValue },
+    #[serde(rename = "change_page")]
+    ChangePage { page: i32 },
     #[serde(rename = "copy_to_clipboard")]
     CopyToClipboard { value: String },
+    #[serde(rename = "custom")]
+    Custom {
+        id: String,
+        #[serde(default)]
+        payload: Option<NbtSummaryValue>,
+    },
 }
 
 impl ComponentStyle {
@@ -113,6 +125,14 @@ pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -
     Ok(styled_runs_summary_text(&runs))
 }
 
+pub(crate) fn decode_component_style_from_decoder(decoder: &mut Decoder<'_>) -> Result<()> {
+    let style = decode_nbt_summary_from_decoder(decoder)?.ok_or_else(|| {
+        ProtocolError::InvalidData("component style network nbt root is absent".to_string())
+    })?;
+    codec::validate_component_style_nbt(&style, "component style network nbt")
+        .map_err(ProtocolError::InvalidData)
+}
+
 pub(crate) fn decode_styled_component_summary_from_decoder(
     decoder: &mut Decoder<'_>,
 ) -> Result<Vec<StyledTextRun>> {
@@ -123,10 +143,13 @@ pub(crate) fn decode_styled_component_summary_with_nbt_from_decoder(
     decoder: &mut Decoder<'_>,
 ) -> Result<(Vec<StyledTextRun>, Option<NbtSummaryValue>)> {
     let root = decode_nbt_summary_from_decoder(decoder)?;
+    let component = root.as_ref().ok_or_else(|| {
+        ProtocolError::InvalidData("component network nbt root is absent".to_string())
+    })?;
+    validate_component_nbt(component, "component network nbt")
+        .map_err(ProtocolError::InvalidData)?;
     let mut runs = RunCollector::default();
-    if let Some(root) = &root {
-        append_component_runs(root, &ComponentStyle::default(), &mut runs);
-    }
+    append_component_runs(component, &ComponentStyle::default(), &mut runs);
     Ok((runs.runs, root))
 }
 
@@ -164,6 +187,7 @@ pub(crate) fn decode_json_component_summary(raw_json: &str) -> Result<String> {
         ));
     }
     let value = component_json_value_to_nbt(value)?;
+    validate_component_nbt(&value, "component json").map_err(ProtocolError::InvalidData)?;
     let mut runs = RunCollector::default();
     append_component_runs(&value, &ComponentStyle::default(), &mut runs);
     Ok(styled_runs_summary_text(&runs.runs))
@@ -403,8 +427,8 @@ fn append_primary_component_runs(
 /// Extracts the render-relevant vanilla `Style` keys from a component
 /// compound (`Style.Serializer.MAP_CODEC` field names). Booleans arrive as
 /// NBT bytes (`Codec.BOOL` via `NbtOps`), the colour as a string
-/// (`TextColor.CODEC`); malformed values are treated as unset, matching the
-/// summary decoder's lenient posture.
+/// (`TextColor.CODEC`). Wire callers validate first; direct projection keeps a
+/// defensive unset fallback for malformed scalar values.
 fn component_style_from_entries(entries: &[NbtSummaryEntry]) -> ComponentStyle {
     ComponentStyle {
         bold: style_flag(entries, "bold"),
@@ -421,34 +445,7 @@ fn component_style_from_entries(entries: &[NbtSummaryEntry]) -> ComponentStyle {
 }
 
 fn style_click_event(entries: &[NbtSummaryEntry]) -> Option<ComponentClickEvent> {
-    let NbtSummaryValue::Compound(click_entries) = find_entry(entries, "click_event")? else {
-        return None;
-    };
-    let Some(NbtSummaryValue::String(action)) = find_entry(click_entries, "action") else {
-        return None;
-    };
-    let string_field = |key: &str| match find_entry(click_entries, key) {
-        Some(NbtSummaryValue::String(value)) => Some(value.clone()),
-        _ => None,
-    };
-    Some(match action.as_str() {
-        "open_file" => ComponentClickEvent::OpenFile {
-            path: string_field("path")?,
-        },
-        "open_url" => ComponentClickEvent::OpenUrl {
-            url: string_field("url")?,
-        },
-        "run_command" => ComponentClickEvent::RunCommand {
-            command: string_field("command")?,
-        },
-        "suggest_command" => ComponentClickEvent::SuggestCommand {
-            command: string_field("command")?,
-        },
-        "copy_to_clipboard" => ComponentClickEvent::CopyToClipboard {
-            value: string_field("value")?,
-        },
-        _ => return None,
-    })
+    codec::decode_component_click_event(find_entry(entries, "click_event")?, "click event").ok()
 }
 
 fn style_flag(entries: &[NbtSummaryEntry], key: &str) -> Option<bool> {
@@ -557,15 +554,15 @@ mod tests {
     }
 
     #[test]
-    fn styled_runs_decode_click_event_open_file() {
+    fn styled_runs_decode_click_event_copy_to_clipboard() {
         // {text:"debug", underlined:1b,
-        //  click_event:{action:"open_file", path:"screenshots/debug"}}
+        //  click_event:{action:"copy_to_clipboard", value:"debug value"}}
         let mut payload = vec![10];
         write_named_string(&mut payload, "text", "debug");
         write_named_byte(&mut payload, "underlined", 1);
         write_named_compound_start(&mut payload, "click_event");
-        write_named_string(&mut payload, "action", "open_file");
-        write_named_string(&mut payload, "path", "screenshots/debug");
+        write_named_string(&mut payload, "action", "copy_to_clipboard");
+        write_named_string(&mut payload, "value", "debug value");
         payload.push(0);
         payload.push(0);
 
@@ -575,13 +572,43 @@ mod tests {
                 text: "debug".to_string(),
                 style: ComponentStyle {
                     underlined: Some(true),
-                    click_event: Some(ComponentClickEvent::OpenFile {
-                        path: "screenshots/debug".to_string(),
+                    click_event: Some(ComponentClickEvent::CopyToClipboard {
+                        value: "debug value".to_string(),
                     }),
                     ..ComponentStyle::default()
                 },
             }]
         );
+    }
+
+    #[test]
+    fn component_wire_rejects_absent_root_and_server_disallowed_click_event() {
+        assert!(decode_styled_component_summary(&[0]).is_err());
+
+        let mut payload = vec![10];
+        write_named_string(&mut payload, "text", "debug");
+        write_named_compound_start(&mut payload, "click_event");
+        write_named_string(&mut payload, "action", "open_file");
+        write_named_string(&mut payload, "path", "screenshots/debug");
+        payload.push(0);
+        payload.push(0);
+        let error = decode_styled_component_summary(&payload).unwrap_err();
+        assert!(error.to_string().contains("not allowed from a server"));
+    }
+
+    #[test]
+    fn component_style_wire_is_distinct_from_component_contents() {
+        let empty_style = [10, 0];
+        let mut decoder = Decoder::new(&empty_style);
+        decode_component_style_from_decoder(&mut decoder).unwrap();
+        assert!(decoder.is_empty());
+
+        let mut malformed_style = vec![10];
+        write_named_string(&mut malformed_style, "bold", "true");
+        malformed_style.push(0);
+        let mut decoder = Decoder::new(&malformed_style);
+        let error = decode_component_style_from_decoder(&mut decoder).unwrap_err();
+        assert!(error.to_string().contains("bold is not a boolean"));
     }
 
     #[test]
@@ -597,18 +624,15 @@ mod tests {
             Some(0x1A_2B_3C)
         );
 
-        // Out-of-range hex and unknown names are unset (vanilla parseColor errors).
+        // Out-of-range hex and unknown names fail vanilla's Style codec.
         for bad in ["#1FFFFFF", "#nothex", "purple", "DARK_PURPLE"] {
             let mut payload = vec![10];
             write_named_string(&mut payload, "text", "Bad");
             write_named_string(&mut payload, "color", bad);
             payload.push(0);
-            assert_eq!(
-                decode_styled_component_summary(&payload).unwrap()[0]
-                    .style
-                    .color,
-                None,
-                "color {bad:?} should not parse"
+            assert!(
+                decode_styled_component_summary(&payload).is_err(),
+                "color {bad:?} should fail component decoding"
             );
         }
     }

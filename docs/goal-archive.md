@@ -14007,3 +14007,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [ ] selector/NBT path/block-position 的 Brigadier compile、click/hover payload、ResolvableProfile 与
   registry-aware nested values，以及 vanilla `JsonOps` canonical 重编码和 structured written-book
   `flatRestrictedCodec(32767)` 精确长度仍由 Component codec 缺口继续跟踪。
+
+## 2026-07-14：Validate persistent Component style events
+
+- [x] 对照 vanilla 26.1 `Style.Serializer.MAP_CODEC`、`ClickEvent.Action` 与 `HoverEvent.Action`，校验
+  click/hover compound discriminator；七种 server-allowed click action 覆盖 http/https URI、CHAT_STRING、
+  Dialog holder shape、positive page、clipboard 和 custom Identifier/NBT，`open_file` 按 action codec
+  明确拒绝网络输入但保留本地 debug feedback variant；三种 hover action 覆盖 recursive show-text、
+  built-in non-air ItemStackTemplate envelope/count/component-map shape，以及 built-in entity type、JDK
+  `UUID.fromString`/int-stream alternative 和 optional recursive name。
+- [x] network-NBT 与 login lenient-JSON Component 共用结构 validator，缺失 root 和 malformed style/event
+  不再静默退化；direct ChatTypeDecoration 末字段改用独立 Style NBT validator，不再借 Component decoder
+  消费空 compound。全部 click/hover 正反例、wire root/open-file、Style/Component owner 区分、dialog
+  persistent item component 贯通及全 `bbb-protocol` 741 项测试通过。
+- [ ] click show-dialog direct value、hover show-item component patch 的完整 typed/registry-aware decode，
+  command-backed selector/NBT/block-position parser 与 canonical JsonOps 重编码仍由 Component codec 缺口
+  继续跟踪。

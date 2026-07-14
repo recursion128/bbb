@@ -4,7 +4,7 @@ use uuid::Uuid;
 pub use crate::filter_mask_types::FilterMaskKind;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    component::decode_component_summary_from_decoder,
+    component::{decode_component_style_from_decoder, decode_component_summary_from_decoder},
 };
 
 const MESSAGE_SIGNATURE_BYTES: usize = 256;
@@ -254,10 +254,9 @@ fn decode_chat_type_decoration(decoder: &mut Decoder<'_>) -> Result<ChatTypeDeco
         parameters.push(decoder.read_var_i32()?);
     }
 
-    // Style.Serializer.TRUSTED_STREAM_CODEC is an NBT-backed codec. We do not need
-    // style details for routing yet, but we must consume the payload to preserve
-    // the exact wire boundary for direct chat type holders.
-    decode_component_summary_from_decoder(decoder)?;
+    // Style.Serializer.TRUSTED_STREAM_CODEC is an NBT-backed codec distinct
+    // from ComponentSerialization.CODEC.
+    decode_component_style_from_decoder(decoder)?;
 
     Ok(ChatTypeDecorationSummary {
         translation_key,
