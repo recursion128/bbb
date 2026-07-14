@@ -21,7 +21,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ENCHANTMENT_GLINT_OVERRIDE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ENTITY_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_FIREWORKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
@@ -54,6 +55,7 @@ use super::super::{compound_entries, find_entry};
 
 mod bees;
 mod debug_stick;
+mod equippable;
 mod holder_set;
 mod map_decorations;
 mod profile;
@@ -62,6 +64,7 @@ mod typed_data;
 
 use bees::{decode_bees, DialogBeeOccupantState};
 use debug_stick::{decode_debug_stick_state, DialogDebugStickPropertyState};
+use equippable::{decode_equippable, DialogEquippableState};
 use holder_set::{
     decode_holder_backed_component_value, DialogBannerPatternLayerState, DialogPotDecorationsState,
     DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
@@ -253,6 +256,9 @@ pub enum DialogDataComponentValueState {
     KineticWeapon {
         weapon: DialogKineticWeaponState,
     },
+    Equippable {
+        equippable: DialogEquippableState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -403,6 +409,9 @@ pub(super) fn decode_supported_component_value(
                 weapon: decode_kinetic_weapon(value, &what)?,
             }
         }
+        VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => DialogDataComponentValueState::Equippable {
+            equippable: decode_equippable(value, registries, &what)?,
+        },
         _ => {
             if let Some(decoded) =
                 decode_holder_backed_component_value(type_id, value, registries, &what)

@@ -13785,3 +13785,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 空 compound 默认值、全部 condition default/required 字段、NBT 数字转换、NaN/负 unrestricted
   float 位保留、non-negative int 边界、missing/wrong nested shape 与 unknown sound 均有定向测试；
   BlocksAttacks/Equippable 等其余 sound-backed record 与 native screens 仍开放。
+
+## 2026-07-13：Decode equippable dialog item component
+
+- [x] 新建 `client/dialog/body/component_value/equippable.rs` semantic owner；对照
+  `Equippable.CODEC` 与 `EquipmentSlot.CODEC`，复用共享 sound holder、generated EquipmentSlot catalog
+  和 entity HolderSet surface，typed 投影必填 slot、两个 defaulted sound holder、optional equipment
+  asset/camera overlay/allowed entities，以及五个 default bool。
+- [x] 空/default record、全部八个 slot catalog 入口、named/direct sound、resource-id normalization、
+  compact/list/tag/context-free empty HolderSet、built-in entity identity、wrong/missing fields 与
+  unknown holder 均有定向测试；BlocksAttacks 等其余 sound-backed record 与 native screens 仍开放。
