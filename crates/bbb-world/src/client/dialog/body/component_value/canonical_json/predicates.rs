@@ -774,10 +774,12 @@ mod tests {
                                 max: Some(3),
                             },
                         },
+                        wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
                     },
                     DialogPartialDataComponentPredicateState::AnyComponent {
                         component_type_id: 0,
                         resource_id: "minecraft:rarity".to_string(),
+                        wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
                     },
                 ],
             },
@@ -819,6 +821,7 @@ mod tests {
                 partial: vec![DialogPartialDataComponentPredicateState::AnyComponent {
                     component_type_id: 0,
                     resource_id: "minecraft:rarity".to_string(),
+                    wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
                 }],
             },
         };
@@ -849,6 +852,7 @@ mod tests {
                             }),
                         }),
                     },
+                    wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
                 }],
             },
         };
@@ -1026,6 +1030,7 @@ mod tests {
                             size: None,
                         }),
                     },
+                    wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
                 }],
             },
         };

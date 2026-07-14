@@ -91,10 +91,14 @@ pub enum DialogPartialDataComponentPredicateState {
         predicate_type_id: i32,
         resource_id: String,
         value: DialogDataComponentPredicateState,
+        #[serde(default)]
+        wire_value: Option<NbtSummaryValue>,
     },
     AnyComponent {
         component_type_id: i32,
         resource_id: String,
+        #[serde(default)]
+        wire_value: Option<NbtSummaryValue>,
     },
 }
 
@@ -428,6 +432,7 @@ fn decode_partial_component_predicates(
                         context,
                         &format!("{what} partial predicate {resource_id}"),
                     )?,
+                    wire_value: Some(entry.value.clone()),
                 });
             }
             let component_type = vanilla_data_component_type_for_resource_id(&resource_id)
@@ -442,6 +447,7 @@ fn decode_partial_component_predicates(
             Ok(DialogPartialDataComponentPredicateState::AnyComponent {
                 component_type_id: component_type.type_id,
                 resource_id,
+                wire_value: Some(entry.value.clone()),
             })
         })
         .collect()

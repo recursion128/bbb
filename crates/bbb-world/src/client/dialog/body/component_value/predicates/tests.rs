@@ -138,6 +138,7 @@ fn decodes_adventure_compact_block_predicate_and_matchers() {
         DialogPartialDataComponentPredicateState::AnyComponent {
             component_type_id: VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
             resource_id: "minecraft:rarity".to_string(),
+            wire_value: Some(compound([("ignored", NbtSummaryValue::Int(1))])),
         }
     );
 }
@@ -364,7 +365,7 @@ fn projects_adventure_block_holders_state_nbt_and_exact_components() {
 }
 
 #[test]
-fn rejects_adventure_partial_component_predicates_from_summary_bridge() {
+fn projects_adventure_partial_component_predicates_and_rejects_rawless_values() {
     let decoded = decode(
         VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
         "minecraft:can_break",
@@ -375,9 +376,37 @@ fn rejects_adventure_partial_component_predicates_from_summary_bridge() {
     let Some(DialogDataComponentValueState::AdventureModePredicate { predicate }) = decoded else {
         panic!("expected adventure-mode predicate")
     };
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
+        &DialogDataComponentValueState::AdventureModePredicate {
+            predicate: predicate.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.can_break_persistent.unwrap().predicates[0].partial_components,
+        vec![
+            bbb_protocol::packets::PartialDataComponentPredicateSummary {
+                predicate_type:
+                    bbb_protocol::packets::DataComponentPredicateTypeSummary::AnyComponent(
+                        VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+                    ),
+                wire_value: Some(compound([])),
+            }
+        ]
+    );
+
+    let mut rawless = predicate;
+    let DialogPartialDataComponentPredicateState::AnyComponent { wire_value, .. } =
+        &mut rawless.predicates[0].components.partial[0]
+    else {
+        panic!("expected any-component predicate")
+    };
+    *wire_value = None;
     assert!(!apply_item_patch_value(
         VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID,
-        &DialogDataComponentValueState::AdventureModePredicate { predicate },
+        &DialogDataComponentValueState::AdventureModePredicate { predicate: rawless },
         &mut DataComponentPatchSummary::default(),
     ));
 }

@@ -608,6 +608,58 @@ mod tests {
     }
 
     #[test]
+    fn projects_adventure_partial_component_predicates_with_persistent_values() {
+        let damage_predicate = compound(vec![value_entry(
+            "durability",
+            compound(vec![value_entry("min", NbtSummaryValue::Short(1))]),
+        )]);
+        let any_custom_name = compound(Vec::new());
+        let decoded = decode_data_component_patch(&compound(vec![value_entry(
+            "can_break",
+            compound(vec![value_entry(
+                "predicates",
+                compound(vec![
+                    value_entry("damage", damage_predicate.clone()),
+                    value_entry("custom_name", any_custom_name.clone()),
+                ]),
+            )]),
+        )]))
+        .unwrap();
+        let item = DialogItemStackTemplateState {
+            resource_id: "minecraft:stick".to_string(),
+            count: 1,
+            components: None,
+            component_data: Some(decoded),
+        };
+
+        let summary = item.item_stack_summary_for_protocol_id(4).unwrap();
+        let predicate = &summary
+            .component_patch
+            .can_break_persistent
+            .as_ref()
+            .unwrap()
+            .predicates[0];
+        assert_eq!(predicate.partial_components.len(), 2);
+        assert_eq!(
+            predicate.partial_components[0].predicate_type,
+            bbb_protocol::packets::DataComponentPredicateTypeSummary::Concrete(0)
+        );
+        assert_eq!(
+            predicate.partial_components[0].wire_value.as_ref(),
+            Some(&damage_predicate)
+        );
+        assert_eq!(
+            predicate.partial_components[1].predicate_type,
+            bbb_protocol::packets::DataComponentPredicateTypeSummary::AnyComponent(6)
+        );
+        assert_eq!(
+            predicate.partial_components[1].wire_value.as_ref(),
+            Some(&any_custom_name)
+        );
+        assert!(summary.component_patch.can_break.as_ref().unwrap().unknown);
+    }
+
+    #[test]
     fn decodes_use_remainder_with_shared_recursive_item_stack_template_codec() {
         let compact = decode_data_component_patch(&compound(vec![value_entry(
             "use_remainder",

@@ -341,9 +341,9 @@ optional potion holder、color/name 与 recursive custom mob-effect details 同�
 两类 enchantment map 的 ordered holder-id/level entries 分别落到对应字段；
 attribute modifier 的 ordered holder/id/amount bits/operation/slot 与 default/hidden/override display
 dispatch（含 override styled Component）也保持 wire summary 形状；
-adventure predicate 的 ordered block holder-set、state exact/range、block-entity NBT 与已支持 exact
-component matcher 同样进入 persistent summary，partial component predicate 与 nested exact lock 仍保持
-整栈拒绝；顶层 lock 则要求 typed predicate 与经 CODEC 验证的原始 CompoundTag 同时存在后进入
+adventure predicate 的 ordered block holder-set、state exact/range、block-entity NBT、已支持 exact
+component matcher 与 concrete/any-component partial matcher 同样进入 persistent summary，nested exact lock
+仍保持整栈拒绝；顶层 lock 则要求 typed predicate 与经 CODEC 验证的原始 CompoundTag 同时存在后进入
 codec-backed NBT；
 writable book 保留 aligned raw/filtered page strings，written book 同时保留 title/author/generation/resolved、
 aligned page text/filter 与逐页原始 raw/filtered Component NBT；

@@ -15,14 +15,15 @@ use bbb_protocol::packets::{
         AttributeModifierSummary, BannerPatternLayerSummary, BeeOccupantSummary,
         BlockHolderSetSummary, BlockPredicateSummary, BlocksAttacksSummary, ConsumableSummary,
         ConsumeEffectSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
-        DataComponentPatchSummary, EntityTypeHolderSetSummary, EquippableSummary,
-        FireworkExplosionSummary, ItemContainerSlotSummary, ItemDamageFunctionSummary,
-        ItemEnchantmentSummary, ItemStackTemplateSummary, KineticWeaponConditionSummary,
-        KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
-        MobEffectInstanceSummary, PiercingWeaponSummary, ResolvableProfileSummary,
-        SoundEventSummary, StatePropertyMatcherSummary, StatePropertyValueMatcherSummary,
-        SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
-        TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
+        DataComponentPatchSummary, DataComponentPredicateTypeSummary, EntityTypeHolderSetSummary,
+        EquippableSummary, FireworkExplosionSummary, ItemContainerSlotSummary,
+        ItemDamageFunctionSummary, ItemEnchantmentSummary, ItemStackTemplateSummary,
+        KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
+        MobEffectDetailsSummary, MobEffectInstanceSummary, PartialDataComponentPredicateSummary,
+        PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
+        StatePropertyMatcherSummary, StatePropertyValueMatcherSummary, SuspiciousStewEffectSummary,
+        SwingAnimationSummary, ToolRuleSummary, ToolSummary, TrimMaterialSummary,
+        TrimPatternSummary, UseEffectsSummary, WrittenBookContentSummary,
     },
 };
 use bbb_protocol::{
@@ -159,7 +160,8 @@ use potion_contents::{
 };
 use predicates::{
     decode_adventure_mode_predicate, decode_item_predicate, DialogAdventureModePredicateState,
-    DialogBlockPredicateState, DialogItemPredicateState, DialogStatePropertyValueMatcherState,
+    DialogBlockPredicateState, DialogItemPredicateState, DialogPartialDataComponentPredicateState,
+    DialogStatePropertyValueMatcherState,
 };
 use profile::decode_profile;
 use sound_event::{
@@ -1425,9 +1427,6 @@ fn adventure_mode_predicate_summaries(
 }
 
 fn block_predicate_summary(value: &DialogBlockPredicateState) -> Option<BlockPredicateSummary> {
-    if !value.components.partial.is_empty() {
-        return None;
-    }
     let blocks = match value.blocks.as_ref() {
         Some(blocks) => {
             let (registry_ids, tag) = holder_set_summary_parts(blocks)?;
@@ -1486,12 +1485,45 @@ fn block_predicate_summary(value: &DialogBlockPredicateState) -> Option<BlockPre
         patch.added = patch.added_type_ids.len();
         Some(Box::new(patch))
     };
+    let partial_components = value
+        .components
+        .partial
+        .iter()
+        .map(partial_component_predicate_summary)
+        .collect::<Option<Vec<_>>>()?;
     Some(BlockPredicateSummary {
         blocks,
         state,
         nbt,
         exact_components,
-        partial_components: Vec::new(),
+        partial_components,
+    })
+}
+
+fn partial_component_predicate_summary(
+    value: &DialogPartialDataComponentPredicateState,
+) -> Option<PartialDataComponentPredicateSummary> {
+    let (predicate_type, wire_value) = match value {
+        DialogPartialDataComponentPredicateState::Concrete {
+            predicate_type_id,
+            wire_value,
+            ..
+        } => (
+            DataComponentPredicateTypeSummary::Concrete(*predicate_type_id),
+            wire_value,
+        ),
+        DialogPartialDataComponentPredicateState::AnyComponent {
+            component_type_id,
+            wire_value,
+            ..
+        } => (
+            DataComponentPredicateTypeSummary::AnyComponent(*component_type_id),
+            wire_value,
+        ),
+    };
+    Some(PartialDataComponentPredicateSummary {
+        predicate_type,
+        wire_value: Some(wire_value.clone()?),
     })
 }
 

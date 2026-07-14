@@ -86,8 +86,8 @@ Owner: `bbb-protocol`
   holder-set, consume-effect, ordered tool-rule, and potion-content forms—with description layout,
   decorations—as well as ordered enchantment/stored-enchantment maps and attribute modifiers with
   default/hidden/override display dispatch, plus can-break/can-place-on block holders, state, NBT,
-  and supported exact-component matchers (partial-component matchers and nested exact-lock summary
-  projection remain open), with top-level lock preserved through its typed predicate plus validated
+  and supported exact-component plus concrete/any-component partial matchers (nested exact-lock
+  summary projection remains open), with top-level lock preserved through its typed predicate plus validated
   persistent CompoundTag,
   as well as writable/written book filterable strings and exact written-page Component NBT,
   plus entity, bucket-entity, and block-entity typed data with spawner entity projection,

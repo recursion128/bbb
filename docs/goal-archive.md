@@ -14758,3 +14758,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] focused regression 覆盖 suggest-command + wait-for-response，断言 current dialog 清除、waiting screen
   从 tick 0 开始且不会错误发送 chat command；open-url、run-command、dynamic action 与 Component-click
   仍由后续明确切片处理。
+
+## 2026-07-14：Bridge adventure partial predicates in dialog Item patches
+
+- [x] 对照 `DataComponentMatchers.CODEC` 的 `predicates` dispatched map，把 concrete predicate type id 与
+  any-component component type id 投影到既有 protocol partial summary，并在 typed decoder 中保留每项已经
+  CODEC 验证的 persistent value；缺少原值时继续 all-or-nothing 拒绝，不从复杂 typed tree 反向猜测 NBT。
+- [x] world focused regression 从 can-break dialog NBT 贯通 damage concrete 与 custom-name any-component，
+  断言 type dispatch、numeric tag、empty compound 与 unknown-tooltip 语义；既有 native persistent encoder
+  regression 继续锁定 `predicates` map 输出。nested exact lock summary 仍由后续明确切片处理。
