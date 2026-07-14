@@ -142,6 +142,62 @@ fn validates_compiled_nbt_paths_before_data_source_dispatch() {
 }
 
 #[test]
+fn validates_compiled_entity_selectors_in_content_and_data_sources() {
+    for value in [
+        compound([
+            ("type", string("selector")),
+            (
+                "selector",
+                string("@e[type=minecraft:pig,distance=..16,limit=2]"),
+            ),
+        ]),
+        compound([
+            ("type", string("nbt")),
+            ("nbt", string("Pos")),
+            ("source", string("entity")),
+            ("entity", string("@n[nbt={Silent:true}]")),
+        ]),
+    ] {
+        validate_component_nbt(&value, "component").unwrap();
+    }
+
+    for (value, expected) in [
+        (
+            compound([
+                ("type", string("selector")),
+                ("selector", string("@e[type=minecraft:missing]")),
+            ]),
+            "field selector is not a valid entity selector",
+        ),
+        (
+            compound([
+                ("type", string("nbt")),
+                ("nbt", string("Pos")),
+                ("source", string("entity")),
+                ("entity", string("@e[limit=0]")),
+            ]),
+            "field entity is not a valid entity selector",
+        ),
+    ] {
+        let error = validate_component_nbt(&value, "component").unwrap_err();
+        assert!(error.contains(expected), "unexpected error: {error}");
+    }
+
+    // Fuzzy DataSources tries entity before block, but a failed entity codec
+    // still permits the following valid block codec to win.
+    validate_component_nbt(
+        &compound([
+            ("type", string("nbt")),
+            ("nbt", string("Pos")),
+            ("entity", string("@e[limit=0]")),
+            ("block", string("~ ~ ~")),
+        ]),
+        "component",
+    )
+    .unwrap();
+}
+
+#[test]
 fn rejects_non_brigadier_block_data_source_coordinates() {
     for coordinates in [
         "",

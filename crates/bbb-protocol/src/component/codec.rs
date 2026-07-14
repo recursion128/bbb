@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    command::{is_valid_block_position, is_valid_nbt_path},
+    command::{is_valid_block_position, is_valid_entity_selector, is_valid_nbt_path},
     parse_text_color, ComponentClickEvent,
 };
 
@@ -357,7 +357,12 @@ fn validate_score(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String>
 }
 
 fn validate_selector(entries: &[NbtSummaryEntry], what: &str, depth: usize) -> Result<(), String> {
-    required_string(entries, "selector", what)?;
+    let selector = required_string(entries, "selector", what)?;
+    if !is_valid_entity_selector(selector) {
+        return Err(format!(
+            "{what} field selector is not a valid entity selector: {selector}"
+        ));
+    }
     if let Some(separator) = find_entry(entries, "separator") {
         validate_component(separator, &format!("{what} field separator"), depth + 1)?;
     }
@@ -401,7 +406,7 @@ fn validate_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), S
         };
         return match source.as_str() {
             "block" => validate_block_data_source(entries, what),
-            "entity" => required_string(entries, "entity", what).map(|_| ()),
+            "entity" => validate_entity_data_source(entries, what),
             "storage" => validate_identifier_field(entries, "storage", what).map(|_| ()),
             _ => Err(format!("{what} has unknown component data source {source}")),
         };
@@ -409,15 +414,24 @@ fn validate_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), S
     // DataSources registers its legacy fuzzy codecs in entity/block/storage
     // order. Keep that first-success dispatch even though more than one field
     // may be present in the same compound.
-    if matches!(
-        find_entry(entries, "entity"),
-        Some(NbtSummaryValue::String(_))
-    ) || validate_block_data_source(entries, what).is_ok()
+    if validate_entity_data_source(entries, what).is_ok()
+        || validate_block_data_source(entries, what).is_ok()
         || validate_identifier_field(entries, "storage", what).is_ok()
     {
         return Ok(());
     }
     Err(format!("{what} has no matching component data source"))
+}
+
+fn validate_entity_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {
+    let selector = required_string(entries, "entity", what)?;
+    if is_valid_entity_selector(selector) {
+        Ok(())
+    } else {
+        Err(format!(
+            "{what} field entity is not a valid entity selector: {selector}"
+        ))
+    }
 }
 
 fn validate_block_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {

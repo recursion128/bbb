@@ -1,5 +1,11 @@
 use crate::nbt_summary::validate_snbt_compound_prefix;
 
+mod entity_selector;
+
+pub(super) fn is_valid_entity_selector(value: &str) -> bool {
+    entity_selector::is_valid_entity_selector(value)
+}
+
 pub(super) fn is_valid_block_position(value: &str) -> bool {
     let bytes = value.as_bytes();
     let mut cursor = 0;

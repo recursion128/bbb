@@ -85,9 +85,11 @@ Owner: `bbb-protocol`
   vanilla `BlockPosArgument`/Brigadier parsing, including full string consumption,
   world-relative decimals, local coordinates, and absolute integer bounds. NBT paths
   now match `NbtPathArgument` node dispatch and full consumption while reusing the
-  bounded 26.1 SNBT parser for root/object/list match compounds. Finish persistent
-  Component command-backed selector/entity-source parsing,
-  owner-sensitive payloads in generic packet Components, and canonical
+  bounded 26.1 SNBT parser for root/object/list match compounds. Entity selector
+  strings now match name/UUID and all six selector types plus the 21 registered
+  option grammars, applicability constraints, built-in entity-type lookup, nested
+  SNBT/scores/advancements, and full consumption in both selector content and entity
+  data sources. Finish owner-sensitive payloads in generic packet Components and canonical
   re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
   the corresponding screens, restore the previous screen on clear,
