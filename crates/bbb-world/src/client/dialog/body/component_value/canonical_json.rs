@@ -34,6 +34,7 @@ use super::trim::{
     DialogTrimMaterialHolderState, DialogTrimMaterialState, DialogTrimPatternHolderState,
     DialogTrimPatternState,
 };
+use super::written_book::DialogWrittenBookContentState;
 use super::DialogDataComponentValueState;
 
 mod predicates;
@@ -82,6 +83,14 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
         DialogDataComponentValueState::Lore { lines } => {
             for line in lines {
                 canonical_component_json_utf16_len(&line.component)?;
+            }
+        }
+        DialogDataComponentValueState::WrittenBookContent { content } => {
+            for page in &content.pages {
+                canonical_component_json_utf16_len(&page.raw.component)?;
+                if let Some(filtered) = &page.filtered {
+                    canonical_component_json_utf16_len(&filtered.component)?;
+                }
             }
         }
         DialogDataComponentValueState::AttributeModifiers { modifiers } => {
@@ -284,6 +293,9 @@ fn canonical_component_value_json_utf16_len(
                 .collect::<Option<Vec<_>>>()?
                 .into_iter(),
         ),
+        DialogDataComponentValueState::WrittenBookContent { content } => {
+            written_book_content_len(content)?
+        }
         DialogDataComponentValueState::AttributeModifiers { modifiers } => {
             attribute_modifiers_len(modifiers)?
         }
@@ -819,7 +831,6 @@ fn canonical_component_value_json_utf16_len(
         DialogDataComponentValueState::DeathProtection { effects } => {
             death_protection_len(effects)?
         }
-        _ => return None,
     })
 }
 
@@ -839,6 +850,43 @@ fn component_json_len(component: &NbtSummaryValue) -> Option<usize> {
     // The production caller has already propagated canonical Component errors through
     // validate_supported_json_numbers; None here is reserved for a remaining higher owner.
     canonical_component_json_utf16_len(component).ok().flatten()
+}
+
+fn written_book_content_len(content: &DialogWrittenBookContentState) -> Option<usize> {
+    let mut title_fields = vec![("raw", string_len(&content.title.raw))];
+    if let Some(filtered) = &content.title.filtered {
+        title_fields.push(("filtered", string_len(filtered)));
+    }
+    let mut fields = vec![
+        ("title", object_len(title_fields.into_iter())),
+        ("author", string_len(&content.author)),
+    ];
+    if content.generation != 0 {
+        fields.push(("generation", content.generation.to_string().len()));
+    }
+    if !content.pages.is_empty() {
+        fields.push((
+            "pages",
+            array_len(
+                content
+                    .pages
+                    .iter()
+                    .map(|page| {
+                        let mut fields = vec![("raw", component_json_len(&page.raw.component)?)];
+                        if let Some(filtered) = &page.filtered {
+                            fields.push(("filtered", component_json_len(&filtered.component)?));
+                        }
+                        Some(object_len(fields.into_iter()))
+                    })
+                    .collect::<Option<Vec<_>>>()?
+                    .into_iter(),
+            ),
+        ));
+    }
+    if content.resolved {
+        fields.push(("resolved", bool_len(true)));
+    }
+    Some(object_len(fields.into_iter()))
 }
 
 fn validate_item_stack_template_json(item: &DialogItemStackTemplateState) -> Result<(), String> {
@@ -2449,6 +2497,81 @@ mod tests {
                 ],
             },
             r#"{"pages":[{"raw":"compact\""},{"raw":"raw","filtered":"filtered\n"}]}"#,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_written_book_filterables_and_defaults() {
+        let text = |value: &str| super::super::DialogTextState {
+            text: value.to_string(),
+            runs: Vec::new(),
+            component: NbtSummaryValue::String(value.to_string()),
+        };
+        assert_exact(
+            DialogDataComponentValueState::WrittenBookContent {
+                content: DialogWrittenBookContentState {
+                    title: super::super::writable_book::DialogFilterableStringState {
+                        raw: "Title".to_string(),
+                        filtered: None,
+                    },
+                    author: "Author".to_string(),
+                    generation: 0,
+                    pages: Vec::new(),
+                    resolved: false,
+                },
+            },
+            r#"{"title":{"raw":"Title"},"author":"Author"}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::WrittenBookContent {
+                content: DialogWrittenBookContentState {
+                    title: super::super::writable_book::DialogFilterableStringState {
+                        raw: "Title".to_string(),
+                        filtered: Some("Safe".to_string()),
+                    },
+                    author: "Author".to_string(),
+                    generation: 2,
+                    pages: vec![super::super::written_book::DialogFilterableComponentState {
+                        raw: text("Raw"),
+                        filtered: Some(text("Filtered")),
+                    }],
+                    resolved: true,
+                },
+            },
+            r#"{"title":{"raw":"Title","filtered":"Safe"},"author":"Author","generation":2,"pages":[{"raw":"Raw","filtered":"Filtered"}],"resolved":true}"#,
+        );
+
+        let owner_sensitive = DialogDataComponentValueState::WrittenBookContent {
+            content: DialogWrittenBookContentState {
+                title: super::super::writable_book::DialogFilterableStringState {
+                    raw: "Title".to_string(),
+                    filtered: None,
+                },
+                author: "Author".to_string(),
+                generation: 0,
+                pages: vec![super::super::written_book::DialogFilterableComponentState {
+                    raw: super::super::DialogTextState {
+                        text: "Alex".to_string(),
+                        runs: Vec::new(),
+                        component: NbtSummaryValue::Compound(vec![
+                            NbtSummaryEntry {
+                                name: "object".to_string(),
+                                value: NbtSummaryValue::String("player".to_string()),
+                            },
+                            NbtSummaryEntry {
+                                name: "player".to_string(),
+                                value: NbtSummaryValue::String("Alex".to_string()),
+                            },
+                        ]),
+                    },
+                    filtered: None,
+                }],
+                resolved: false,
+            },
+        };
+        assert_eq!(
+            canonical_component_value_json_utf16_len(&owner_sensitive),
+            None
         );
     }
 

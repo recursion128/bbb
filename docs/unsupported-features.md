@@ -101,9 +101,10 @@ Owner: `bbb-protocol`
   fail safely instead of being counted as JSON. Network-NBT decode, SNBT parse,
   bounded NBT encode, Component/Dialog field lookup, and canonical maps now share CompoundTag's
   last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
-  limit. Finish the remaining owner-sensitive payloads in generic packet Components and canonical
-  value codecs: show-dialog world context in the generic packet owner plus WrittenBookContent and
-  the other remaining nested-record positive item-patch values.
+  limit. All 107 typed positive item-patch values now have canonical JsonOps encoders; nested
+  Components propagate an unknown result when they require a higher owner instead of substituting
+  raw NBT size. Finish the remaining owner-sensitive payloads in generic packet Components,
+  especially show-dialog world context in the generic packet owner.
   Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining
@@ -171,6 +172,11 @@ Owner: `bbb-protocol`
   recursive ItemPredicate owner with scalar/ranged bounds, exact component values, AnyValue, all 15
   dispatched predicate types, and collection contains/count/size entries. Nested doubles reject
   non-finite values, while Component/NBT recursion propagates its canonical owner result.
+  Written-book content now encodes its required full Filterable title and author, defaulted
+  generation/pages/resolved fields, and full Filterable Component page list. Compact title/page
+  inputs therefore re-encode as raw/optional-filtered records and nested pages reuse the Component
+  owner. The positive-value canonical match is now exhaustive rather than retaining a value-type
+  wildcard.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.

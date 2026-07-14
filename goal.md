@@ -398,9 +398,9 @@ NBT path 也已按 `NbtPathArgument` 闭合 quoted/unquoted/object/index/all/mat
 完整消费与内嵌 26.1 bounded SNBT compound argument；entity selector 也已闭合 name/UUID、六类 `@`
 selector、21 项 registered option 的 grammar/applicability/重复互斥、built-in entity-type lookup、
 nested SNBT/scores/advancements 与完整消费，并同时接入 selector content/entity data source；structured
-Component page 仍需在 generic packet/session owner 中补齐 show-dialog world context，并继续闭合剩余
-WrittenBookContent 及其它 nested-record positive item-patch value 的 canonical
-JsonOps 重编码，当前明确不以 raw NBT 近似这些 payload；hover
+Component page 仍需在 generic packet/session owner 中补齐 show-dialog world context；item-patch 的 107 项
+typed positive value 已全部闭合 canonical JsonOps 重编码，嵌套 Component 若需要更高 owner 则传播
+unknown，当前明确不以 raw NBT 近似这些 payload；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
@@ -465,6 +465,10 @@ CAN_PLACE_ON/CAN_BREAK 也已按 `compactListCodec` 闭合单项 object/多项 a
 MinMaxBounds、exact component 递归、AnyValue 与 15 类 dispatched predicate，并让 CollectionPredicate 的
 contains/count/size 递归进入 item/firework/book/attribute 条目；double bounds 与嵌套 component/NBT 继续
 沿单一 owner 严格拒绝 non-finite 或传播更高 owner unknown；
+WRITTEN_BOOK_CONTENT 也已按 required full Filterable title/author、default generation/pages/resolved 与
+full Filterable Component page list 闭合 canonical；compact title/page 输入统一输出 raw/filtered record，
+page Component 递归进入共享 owner；至此 canonical value match 对 107 项 typed positive dispatch 已穷尽，
+不再保留按 value 类型回退的 wildcard；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；
@@ -487,7 +491,7 @@ persistent catalog registration 均有 typed positive-value dispatch；persisten
 RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的核心 recursive
 structure/content/style/event-envelope validation、block data-source position 与 NBT path command parser
 以及 selector/entity-source command parser 已闭合；registry-independent canonical 重编码已有上述精确
-子集，generic packet owner 与 WrittenBookContent/其它剩余 canonical value codec 仍开放；
+子集，generic packet Component 的 show-dialog world context 等更高 owner 仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

@@ -609,6 +609,22 @@ fn enforces_text_component_item_patch_page_boundary() {
 }
 
 #[test]
+fn enforces_written_book_content_item_patch_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:written_book_content":{"title":{"raw":"Title","filtered":"Safe"},"author":"Author","generation":2,"pages":[{"raw":"Raw","filtered":"Filtered"}],"resolved":true}}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_written_book_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok(), "{result:?}"),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn enforces_direct_instrument_item_patch_page_boundary() {
     let prefix = concat!(
         r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:instrument":{"sound_event":{"sound_id":"example:horn","range":16.0},"use_duration":7.0,"range":256.0,"description":{"text":"Ponder","color":"gold","italic":true}}}}}"#
@@ -1618,6 +1634,48 @@ fn component_with_writable_book_item_patch(extra: String) -> NbtSummaryValue {
                                 "page".to_string(),
                             )]),
                         )]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_written_book_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "written_book_content",
+                        compound(vec![
+                            value_entry(
+                                "title",
+                                compound(vec![
+                                    string_entry("raw", "Title"),
+                                    string_entry("filtered", "Safe"),
+                                ]),
+                            ),
+                            string_entry("author", "Author"),
+                            value_entry("generation", NbtSummaryValue::Int(2)),
+                            value_entry(
+                                "pages",
+                                NbtSummaryValue::List(vec![compound(vec![
+                                    string_entry("raw", "Raw"),
+                                    string_entry("filtered", "Filtered"),
+                                ])]),
+                            ),
+                            value_entry("resolved", NbtSummaryValue::Byte(1)),
+                        ]),
                     )]),
                 ),
             ]),
