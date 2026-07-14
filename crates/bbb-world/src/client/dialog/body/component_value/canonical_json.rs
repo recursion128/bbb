@@ -896,6 +896,13 @@ fn validate_item_stack_template_json(item: &DialogItemStackTemplateState) -> Res
     Ok(())
 }
 
+pub(in crate::client::dialog) fn canonical_item_stack_template_json_utf16_len(
+    item: &DialogItemStackTemplateState,
+) -> Result<Option<usize>, String> {
+    validate_item_stack_template_json(item)?;
+    Ok(item_stack_template_len(item))
+}
+
 fn item_stack_template_len(item: &DialogItemStackTemplateState) -> Option<usize> {
     let mut fields = vec![("id", string_len(&item.resource_id))];
     if item.count != 1 {

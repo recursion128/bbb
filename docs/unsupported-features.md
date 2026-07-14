@@ -106,8 +106,10 @@ Owner: `bbb-protocol`
   raw NBT size. Written-book pages now provide a world/session Dialog owner for named holders and
   direct Notice dialogs, including CommonData title/external-title/defaulted scalars, buttons, and
   all nine static/dynamic actions. Nested Components, Dialog holders, and NBT reuse their canonical
-  owners. Non-empty body/input state and the other four Dialog types still return unknown, and
-  generic packet Components still need this world context.
+  owners. Compact bodies now cover PlainMessage's full encoder and ItemBody's recursive item
+  template, optional description, booleans, and dimensions. Non-empty input state and the other
+  four Dialog types still return unknown, and generic packet Components still need this world
+  context.
   Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining

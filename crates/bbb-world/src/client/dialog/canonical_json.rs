@@ -5,8 +5,8 @@ use bbb_protocol::{
 
 use super::{
     action::decode_action_dialog_holder, body, default_notice_action, CommonDialogDataState,
-    DialogActionState, DialogButtonState, DialogDataState, DialogDecodeContext, DialogState,
-    DialogTextState,
+    DialogActionState, DialogBodyState, DialogButtonState, DialogDataState, DialogDecodeContext,
+    DialogPlainMessageState, DialogState, DialogTextState,
 };
 
 pub(in crate::client::dialog) fn canonical_component_json_utf16_len_with_context(
@@ -76,7 +76,7 @@ fn common_fields(
     common: &CommonDialogDataState,
     context: DialogDecodeContext<'_>,
 ) -> Result<Option<Vec<(&'static str, usize)>>, String> {
-    if !common.body_data.is_empty() || !common.input_data.is_empty() {
+    if !common.input_data.is_empty() {
         return Ok(None);
     }
     let Some(title_len) = component_len(&common.title, context)? else {
@@ -98,7 +98,96 @@ fn common_fields(
     if common.after_action != "close" {
         fields.push(("after_action", string_len(&common.after_action)));
     }
+    if !common.body_data.is_empty() {
+        let Some(body_len) = compact_body_list_len(&common.body_data, context)? else {
+            return Ok(None);
+        };
+        fields.push(("body", body_len));
+    }
     Ok(Some(fields))
+}
+
+fn compact_body_list_len(
+    bodies: &[DialogBodyState],
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut lengths = Vec::with_capacity(bodies.len());
+    for body in bodies {
+        let Some(length) = body_len(body, context)? else {
+            return Ok(None);
+        };
+        lengths.push(length);
+    }
+    Ok(Some(match lengths.as_slice() {
+        [single] => *single,
+        _ => array_len(lengths.into_iter()),
+    }))
+}
+
+fn body_len(
+    body: &DialogBodyState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut fields = Vec::new();
+    match body {
+        DialogBodyState::PlainMessage { message } => {
+            fields.push(("type", string_len("minecraft:plain_message")));
+            let Some(contents_len) = component_len(&message.contents, context)? else {
+                return Ok(None);
+            };
+            fields.push(("contents", contents_len));
+            if message.width != 200 {
+                fields.push(("width", message.width.to_string().len()));
+            }
+        }
+        DialogBodyState::Item {
+            item,
+            description,
+            show_decorations,
+            show_tooltip,
+            width,
+            height,
+        } => {
+            fields.push(("type", string_len("minecraft:item")));
+            let Some(item_len) = body::canonical_item_stack_template_json_utf16_len(item)? else {
+                return Ok(None);
+            };
+            fields.push(("item", item_len));
+            if let Some(description) = description {
+                let Some(description_len) = plain_message_len(description, context)? else {
+                    return Ok(None);
+                };
+                fields.push(("description", description_len));
+            }
+            if !*show_decorations {
+                fields.push(("show_decorations", bool_len(false)));
+            }
+            if !*show_tooltip {
+                fields.push(("show_tooltip", bool_len(false)));
+            }
+            if *width != 16 {
+                fields.push(("width", width.to_string().len()));
+            }
+            if *height != 16 {
+                fields.push(("height", height.to_string().len()));
+            }
+        }
+    }
+    Ok(Some(object_len(fields.into_iter())))
+}
+
+fn plain_message_len(
+    message: &DialogPlainMessageState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let Some(contents_len) = component_len(&message.contents, context)? else {
+        return Ok(None);
+    };
+    let mut fields = vec![("contents", contents_len)];
+    if message.width != 200 {
+        fields.push(("width", message.width.to_string().len()));
+    }
+    Ok(Some(object_len(fields.into_iter())))
 }
 
 fn button_len(
@@ -212,6 +301,10 @@ fn object_len<'a>(fields: impl Iterator<Item = (&'a str, usize)>) -> usize {
     )
 }
 
+fn array_len(values: impl Iterator<Item = usize>) -> usize {
+    collection_len(values)
+}
+
 fn collection_len(values: impl Iterator<Item = usize>) -> usize {
     values.enumerate().fold(2usize, |length, (index, value)| {
         length
@@ -273,11 +366,12 @@ mod tests {
             string_entry("type", "notice"),
             string_entry("title", "Hello"),
             value_entry(
-                "body",
-                compound(vec![
-                    string_entry("type", "plain_message"),
-                    string_entry("contents", "Body"),
-                ]),
+                "inputs",
+                NbtSummaryValue::List(vec![compound(vec![
+                    string_entry("key", "enabled"),
+                    string_entry("type", "boolean"),
+                    string_entry("label", "Enabled"),
+                ])]),
             ),
         ]));
         assert_eq!(
@@ -407,6 +501,76 @@ mod tests {
                 "{action:?}"
             );
         }
+    }
+
+    #[test]
+    fn canonicalizes_compact_plain_and_item_bodies() {
+        let singleton = component_with_show_dialog(compound(vec![
+            string_entry("type", "notice"),
+            string_entry("title", "Body"),
+            value_entry(
+                "body",
+                compound(vec![
+                    string_entry("type", "plain_message"),
+                    string_entry("contents", "Message"),
+                ]),
+            ),
+        ]));
+        let singleton_expected = r#"{"text":"Open","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Body","body":{"type":"minecraft:plain_message","contents":"Message"}}}}"#;
+        assert_eq!(
+            canonical_component_json_utf16_len_with_context(
+                &singleton,
+                DialogDecodeContext::new(None, 0),
+            )
+            .unwrap(),
+            Some(singleton_expected.len())
+        );
+
+        let multiple = component_with_show_dialog(compound(vec![
+            string_entry("type", "notice"),
+            string_entry("title", "Body"),
+            value_entry(
+                "body",
+                NbtSummaryValue::List(vec![
+                    compound(vec![
+                        string_entry("type", "plain_message"),
+                        string_entry("contents", "Message"),
+                        value_entry("width", NbtSummaryValue::Int(240)),
+                    ]),
+                    compound(vec![
+                        string_entry("type", "item"),
+                        value_entry(
+                            "item",
+                            compound(vec![
+                                string_entry("id", "stone"),
+                                value_entry("count", NbtSummaryValue::Int(2)),
+                                value_entry(
+                                    "components",
+                                    compound(vec![value_entry(
+                                        "repair_cost",
+                                        NbtSummaryValue::Int(4),
+                                    )]),
+                                ),
+                            ]),
+                        ),
+                        string_entry("description", "Description"),
+                        value_entry("show_decorations", NbtSummaryValue::Byte(0)),
+                        value_entry("show_tooltip", NbtSummaryValue::Byte(0)),
+                        value_entry("width", NbtSummaryValue::Int(32)),
+                        value_entry("height", NbtSummaryValue::Int(24)),
+                    ]),
+                ]),
+            ),
+        ]));
+        let multiple_expected = r#"{"text":"Open","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:notice","title":"Body","body":[{"type":"minecraft:plain_message","contents":"Message","width":240},{"type":"minecraft:item","item":{"id":"minecraft:stone","count":2,"components":{"minecraft:repair_cost":4}},"description":{"contents":"Description"},"show_decorations":false,"show_tooltip":false,"width":32,"height":24}]}}}"#;
+        assert_eq!(
+            canonical_component_json_utf16_len_with_context(
+                &multiple,
+                DialogDecodeContext::new(None, 0),
+            )
+            .unwrap(),
+            Some(multiple_expected.len())
+        );
     }
 
     fn component_with_show_dialog(dialog: NbtSummaryValue) -> NbtSummaryValue {
