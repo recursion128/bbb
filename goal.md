@@ -326,7 +326,7 @@ ClearDialog ignore 语义。Dialog 与 waiting screen 已按 `Screen.extractMenu
 限宽也不会留下未覆盖边缘。无 patch、registry-independent 文本/标量、typed registry-holder 以及
 summary-native nonrecursive structured patch（含 named/direct sound holder 的 break-sound、
 piercing/kinetic-weapon、完整 equippable、blocks-attacks、consumable、death-protection、tool 与
-potion-contents）的 Item body 已复用
+potion-contents，以及 enchantments/stored-enchantments）的 Item body 已复用
 native item icon、3D block model、
 decorations 与 tooltip owner；有 description 时按 2px horizontal spacing/vertical-middle 排列，
 PlainMessage/description 也已计入 `FocusableTextWidget` 的 4px padding 与 inner wrap width。typed dialog
@@ -336,6 +336,7 @@ direct id/range、kinetic condition float bits 及 equippable 的 entity holder-
 consume-effect 的五类 dispatch、ordered mob-effect instances 与递归 hidden details 同样保持协议形状；
 tool 的 ordered rules、block holder-set 与 optional rule 字段也无损落位；
 optional potion holder、color/name 与 recursive custom mob-effect details 同样复用 protocol summary；
+两类 enchantment map 的 ordered holder-id/level entries 分别落到对应字段；
 未桥接的 item-stack 递归/其余富结构值不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
 剩余有损/未 typed holder 形式及递归/富结构 component-patched Item body bridge 与 item focus outline、四类 input、

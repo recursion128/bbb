@@ -3,12 +3,15 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
     },
+    packets::inventory::{DataComponentPatchSummary, ItemEnchantmentSummary},
     NbtSummaryEntry, NbtSummaryValue,
 };
 
 use crate::{RegistryContentState, RegistryPacketEntry};
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -44,6 +47,29 @@ fn decodes_enchantment_maps_with_session_holder_ids() {
             (0, "example:first", 2),
         ]
     );
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,
+        &DialogDataComponentValueState::Enchantments { entries },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.enchantments,
+        vec![
+            ItemEnchantmentSummary {
+                holder_id: 1,
+                level: 5,
+            },
+            ItemEnchantmentSummary {
+                holder_id: 2,
+                level: 255,
+            },
+            ItemEnchantmentSummary {
+                holder_id: 0,
+                level: 2,
+            },
+        ]
+    );
 }
 
 #[test]
@@ -55,13 +81,25 @@ fn decodes_stored_enchantments_and_context_free_empty_maps() {
         Some(&registries),
     )
     .unwrap();
-    assert!(matches!(
-        decoded,
-        Some(DialogDataComponentValueState::StoredEnchantments { entries })
-            if entries.len() == 1
-                && entries[0].enchantment.holder_id == 0
-                && entries[0].level == 1
+    let Some(DialogDataComponentValueState::StoredEnchantments { entries }) = decoded else {
+        panic!("expected stored enchantments component");
+    };
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].enchantment.holder_id, 0);
+    assert_eq!(entries[0].level, 1);
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+        &DialogDataComponentValueState::StoredEnchantments { entries },
+        &mut patch,
     ));
+    assert_eq!(
+        patch.stored_enchantments,
+        vec![ItemEnchantmentSummary {
+            holder_id: 0,
+            level: 1,
+        }]
+    );
 
     for type_id in [
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID,

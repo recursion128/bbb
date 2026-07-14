@@ -14605,3 +14605,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   native dialog Item body 加入 compact `minecraft:water` potion form 后继续进入唯一 item runtime。
   attribute/enchantment/predicate/book/typed-data 与递归 item-stack collection 等其余富结构值继续由后续
   明确切片处理。
+
+## 2026-07-14：Bridge enchantment dialog Item patches
+
+- [x] 对照 `ItemEnchantments.CODEC/STREAM_CODEC` 与 protocol varint-map summary，把 dialog typed
+  enchantments/stored-enchantments 的 ordered holder-id/level entries 通过同一纯转换 helper 分别投影到
+  `DataComponentPatchSummary.enchantments` 与 `stored_enchantments`；不重新查询 registry，也不从名称
+  重建 wire identity。
+- [x] world focused regressions 覆盖 session holder order、duplicate last-value 语义、1..255 level 与两类
+  summary 字段；native dialog Item body 同时加入两类 empty map 后继续进入唯一 item runtime。
+  attribute/predicate/book/typed-data 与递归 item-stack collection 等其余富结构值继续由后续明确切片处理。

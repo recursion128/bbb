@@ -14378,6 +14378,14 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                             "minecraft:potion_contents",
                                             NbtSummaryValue::String("minecraft:water".to_string()),
                                         ),
+                                        entry(
+                                            "minecraft:enchantments",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
+                                        entry(
+                                            "minecraft:stored_enchantments",
+                                            NbtSummaryValue::Compound(Vec::new()),
+                                        ),
                                     ]),
                                 ),
                             ]),

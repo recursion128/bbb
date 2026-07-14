@@ -9,11 +9,12 @@ use bbb_protocol::packets::{
         AttackRangeSummary, BannerPatternLayerSummary, BlocksAttacksSummary, ConsumableSummary,
         ConsumeEffectSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
         DataComponentPatchSummary, EntityTypeHolderSetSummary, EquippableSummary,
-        FireworkExplosionSummary, ItemDamageFunctionSummary, KineticWeaponConditionSummary,
-        KineticWeaponSummary, LodestoneTargetSummary, MobEffectDetailsSummary,
-        MobEffectInstanceSummary, PiercingWeaponSummary, ResolvableProfileSummary,
-        SoundEventSummary, SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary,
-        ToolSummary, TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
+        FireworkExplosionSummary, ItemDamageFunctionSummary, ItemEnchantmentSummary,
+        KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
+        MobEffectDetailsSummary, MobEffectInstanceSummary, PiercingWeaponSummary,
+        ResolvableProfileSummary, SoundEventSummary, SuspiciousStewEffectSummary,
+        SwingAnimationSummary, ToolRuleSummary, ToolSummary, TrimMaterialSummary,
+        TrimPatternSummary, UseEffectsSummary,
     },
 };
 use bbb_protocol::{
@@ -724,6 +725,15 @@ pub(super) fn apply_item_patch_value(
                 .collect();
             patch.potion_custom_name = contents.custom_name.clone();
         }
+        (VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID, Value::Enchantments { entries }) => {
+            patch.enchantments = enchantment_summaries(entries);
+        }
+        (
+            VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID,
+            Value::StoredEnchantments { entries },
+        ) => {
+            patch.stored_enchantments = enchantment_summaries(entries);
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
@@ -1040,6 +1050,16 @@ fn tool_summary(value: &DialogToolState) -> Option<ToolSummary> {
         damage_per_block: value.damage_per_block,
         can_destroy_blocks_in_creative: value.can_destroy_blocks_in_creative,
     })
+}
+
+fn enchantment_summaries(entries: &[DialogEnchantmentEntryState]) -> Vec<ItemEnchantmentSummary> {
+    entries
+        .iter()
+        .map(|entry| ItemEnchantmentSummary {
+            holder_id: entry.enchantment.holder_id,
+            level: entry.level,
+        })
+        .collect()
 }
 
 fn apply_holder_set(
