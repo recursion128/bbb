@@ -63,7 +63,8 @@ Owner: `bbb-protocol`
   current connection read-only, carry cookies/seen-player/insecure-chat transfer
   state, and reconnect with the Transfer intent instead of only recording the
   requested host and port.
-- Complete typed `Dialog` data beyond the current five top-level variants and
+- Complete native `Dialog` screen/runtime behavior beyond the current five top-level typed and
+  canonical variants and
   PlainMessage/Item body, input-control, action, and item component-patch key/removal
   plus 14 primitive, 17 StringRepresentable enum, 6 scalar-wrapper/flat-record/string-map,
   5 numeric item-behavior record, and 3 resource-key/catalog metadata positive-value
@@ -103,14 +104,15 @@ Owner: `bbb-protocol`
   last-wins duplicate-key semantics while every wire occurrence still counts toward the safety
   limit. All 107 typed positive item-patch values now have canonical JsonOps encoders; nested
   Components propagate an unknown result when they require a higher owner instead of substituting
-  raw NBT size. Written-book pages now provide a world/session Dialog owner for named holders and
-  direct Notice dialogs, including CommonData title/external-title/defaulted scalars, buttons, and
+  raw NBT size. Written-book pages now provide a world/session Dialog owner for named/direct holders
+  and all five top-level dialogs, including CommonData title/external-title/defaulted scalars, buttons, and
   all nine static/dynamic actions. Nested Components, Dialog holders, and NBT reuse their canonical
   owners. Compact bodies now cover PlainMessage's full encoder and ItemBody's recursive item
   template, optional description, booleans, and dimensions. All four input controls now cover
   key/type, Component label/display, default omission, SingleOption's FULL alternative encoder,
-  Text multiline options, and NumberRange's JDK Float encoding. The other four Dialog types still
-  return unknown, and generic packet Components still need this world context.
+  Text multiline options, and NumberRange's JDK Float encoding. DialogList tag/reference/direct
+  homogeneous compact holder sets are also canonical. Generic packet Components still need this
+  world context.
   Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
   the dialog and warning screens, integrate clear-dialog restoration with the remaining

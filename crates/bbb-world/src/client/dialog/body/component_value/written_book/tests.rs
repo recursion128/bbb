@@ -679,6 +679,22 @@ fn enforces_notice_input_show_dialog_page_boundary() {
 }
 
 #[test]
+fn enforces_confirmation_show_dialog_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"Open","extra":[""],"click_event":{"action":"show_dialog","dialog":{"type":"minecraft:confirmation","title":"Confirm","yes":{"label":"Yes"},"no":{"label":"No"}}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_confirmation_show_dialog("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok(), "{result:?}"),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn enforces_direct_instrument_item_patch_page_boundary() {
     let prefix = concat!(
         r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:instrument":{"sound_event":{"sound_id":"example:horn","range":16.0},"use_duration":7.0,"range":256.0,"description":{"text":"Ponder","color":"gold","italic":true}}}}}"#
@@ -1856,6 +1872,31 @@ fn component_with_notice_input_show_dialog(extra: String) -> NbtSummaryValue {
                                 string_entry("label", "Enabled"),
                             ])]),
                         ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_confirmation_show_dialog(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "Open"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "click_event",
+            compound(vec![
+                string_entry("action", "show_dialog"),
+                value_entry(
+                    "dialog",
+                    compound(vec![
+                        string_entry("type", "confirmation"),
+                        string_entry("title", "Confirm"),
+                        value_entry("yes", compound(vec![string_entry("label", "Yes")])),
+                        value_entry("no", compound(vec![string_entry("label", "No")])),
                     ]),
                 ),
             ]),

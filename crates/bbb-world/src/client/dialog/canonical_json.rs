@@ -7,7 +7,7 @@ use bbb_protocol::{
 use super::{
     action::decode_action_dialog_holder, body, default_notice_action, CommonDialogDataState,
     DialogActionState, DialogBodyState, DialogButtonState, DialogDataState, DialogDecodeContext,
-    DialogInputControlState, DialogInputState, DialogPlainMessageState,
+    DialogHolderSetState, DialogInputControlState, DialogInputState, DialogPlainMessageState,
     DialogSingleOptionEntryState, DialogState, DialogTextState,
 };
 
@@ -58,20 +58,167 @@ fn dialog_data_len(
     data: &DialogDataState,
     context: DialogDecodeContext<'_>,
 ) -> Result<Option<usize>, String> {
-    let DialogDataState::Notice { common, action } = data else {
-        return Ok(None);
+    let common = match data {
+        DialogDataState::Notice { common, .. }
+        | DialogDataState::Confirmation { common, .. }
+        | DialogDataState::MultiAction { common, .. }
+        | DialogDataState::ServerLinks { common, .. }
+        | DialogDataState::DialogList { common, .. } => common,
     };
     let Some(mut fields) = common_fields(common, context)? else {
         return Ok(None);
     };
-    fields.insert(0, ("type", string_len("minecraft:notice")));
-    if action != &default_notice_action() {
-        let Some(action_len) = button_len(action, context)? else {
-            return Ok(None);
-        };
-        fields.push(("action", action_len));
+    match data {
+        DialogDataState::Notice { action, .. } => {
+            fields.insert(0, ("type", string_len("minecraft:notice")));
+            if action != &default_notice_action() {
+                let Some(action_len) = button_len(action, context)? else {
+                    return Ok(None);
+                };
+                fields.push(("action", action_len));
+            }
+        }
+        DialogDataState::Confirmation { yes, no, .. } => {
+            fields.insert(0, ("type", string_len("minecraft:confirmation")));
+            let Some(yes_len) = button_len(yes, context)? else {
+                return Ok(None);
+            };
+            fields.push(("yes", yes_len));
+            let Some(no_len) = button_len(no, context)? else {
+                return Ok(None);
+            };
+            fields.push(("no", no_len));
+        }
+        DialogDataState::MultiAction {
+            actions,
+            exit_action,
+            columns,
+            ..
+        } => {
+            fields.insert(0, ("type", string_len("minecraft:multi_action")));
+            let Some(actions_len) = button_list_len(actions, context)? else {
+                return Ok(None);
+            };
+            fields.push(("actions", actions_len));
+            if let Some(exit_action) = exit_action {
+                let Some(exit_action_len) = button_len(exit_action, context)? else {
+                    return Ok(None);
+                };
+                fields.push(("exit_action", exit_action_len));
+            }
+            if *columns != 2 {
+                fields.push(("columns", columns.to_string().len()));
+            }
+        }
+        DialogDataState::ServerLinks {
+            exit_action,
+            columns,
+            button_width,
+            ..
+        } => {
+            fields.insert(0, ("type", string_len("minecraft:server_links")));
+            if let Some(exit_action) = exit_action {
+                let Some(exit_action_len) = button_len(exit_action, context)? else {
+                    return Ok(None);
+                };
+                fields.push(("exit_action", exit_action_len));
+            }
+            if *columns != 2 {
+                fields.push(("columns", columns.to_string().len()));
+            }
+            if *button_width != 150 {
+                fields.push(("button_width", button_width.to_string().len()));
+            }
+        }
+        DialogDataState::DialogList {
+            dialogs,
+            exit_action,
+            columns,
+            button_width,
+            ..
+        } => {
+            fields.insert(0, ("type", string_len("minecraft:dialog_list")));
+            let Some(dialogs_len) = dialog_holder_set_len(dialogs, context)? else {
+                return Ok(None);
+            };
+            fields.push(("dialogs", dialogs_len));
+            if let Some(exit_action) = exit_action {
+                let Some(exit_action_len) = button_len(exit_action, context)? else {
+                    return Ok(None);
+                };
+                fields.push(("exit_action", exit_action_len));
+            }
+            if *columns != 2 {
+                fields.push(("columns", columns.to_string().len()));
+            }
+            if *button_width != 150 {
+                fields.push(("button_width", button_width.to_string().len()));
+            }
+        }
     }
     Ok(Some(object_len(fields.into_iter())))
+}
+
+fn button_list_len(
+    buttons: &[DialogButtonState],
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut lengths = Vec::with_capacity(buttons.len());
+    for button in buttons {
+        let Some(length) = button_len(button, context)? else {
+            return Ok(None);
+        };
+        lengths.push(length);
+    }
+    Ok(Some(array_len(lengths.into_iter())))
+}
+
+fn dialog_holder_set_len(
+    holder_set: &DialogHolderSetState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    match holder_set.holder_set_kind.as_str() {
+        "named" => Ok(holder_set
+            .tag
+            .as_ref()
+            .map(|tag| string_len(&format!("#{tag}")))),
+        "direct" => {
+            let nested_context =
+                DialogDecodeContext::new(context.registries, context.depth.saturating_add(1));
+            let mut lengths = Vec::with_capacity(holder_set.entries.len());
+            for entry in &holder_set.entries {
+                let length = match entry.holder_kind.as_str() {
+                    "reference" => {
+                        let Some(resource_id) = entry.resource_id.as_deref() else {
+                            return Ok(None);
+                        };
+                        string_len(resource_id)
+                    }
+                    "direct" => {
+                        let Some(dialog) = entry.dialog.as_ref() else {
+                            return Ok(None);
+                        };
+                        let state = decode_action_dialog_holder(
+                            dialog,
+                            nested_context.registries,
+                            nested_context.depth,
+                        )?;
+                        let Some(length) = dialog_holder_len(&state, nested_context)? else {
+                            return Ok(None);
+                        };
+                        length
+                    }
+                    _ => return Ok(None),
+                };
+                lengths.push(length);
+            }
+            Ok(Some(match lengths.as_slice() {
+                [single] => *single,
+                _ => array_len(lengths.into_iter()),
+            }))
+        }
+        _ => Ok(None),
+    }
 }
 
 fn common_fields(
@@ -479,6 +626,7 @@ mod tests {
 
     use crate::{RegistryPacketEntry, WorldStore};
 
+    use super::super::DialogListEntryState;
     use super::*;
 
     #[test]
@@ -521,19 +669,18 @@ mod tests {
     }
 
     #[test]
-    fn leaves_non_default_or_unresolved_dialogs_unknown() {
-        let non_default = component_with_show_dialog(compound(vec![
-            string_entry("type", "confirmation"),
-            string_entry("title", "Hello"),
-            value_entry("yes", compound(vec![string_entry("label", "Yes")])),
-            value_entry("no", compound(vec![string_entry("label", "No")])),
-        ]));
+    fn leaves_unknown_or_unresolved_dialog_holders_unprojected() {
+        let unknown = DialogState {
+            holder_kind: "future".to_string(),
+            registry_id: None,
+            resource_id: None,
+            dialog: None,
+            resolution_error: None,
+            data: None,
+            semantic_error: None,
+        };
         assert_eq!(
-            canonical_component_json_utf16_len_with_context(
-                &non_default,
-                DialogDecodeContext::new(None, 0),
-            )
-            .unwrap(),
+            dialog_holder_len(&unknown, DialogDecodeContext::new(None, 0)).unwrap(),
             None
         );
 
@@ -829,6 +976,141 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.contains("rejects non-finite Float/Double"), "{error}");
+    }
+
+    #[test]
+    fn canonicalizes_remaining_top_level_dialog_types() {
+        let cases = vec![
+            (
+                compound(vec![
+                    string_entry("type", "confirmation"),
+                    string_entry("title", "Confirm"),
+                    value_entry("yes", compound(vec![string_entry("label", "Yes")])),
+                    value_entry("no", compound(vec![string_entry("label", "No")])),
+                ]),
+                r#"{"text":"Open","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:confirmation","title":"Confirm","yes":{"label":"Yes"},"no":{"label":"No"}}}}"#,
+            ),
+            (
+                compound(vec![
+                    string_entry("type", "multi_action"),
+                    string_entry("title", "Actions"),
+                    value_entry(
+                        "actions",
+                        NbtSummaryValue::List(vec![
+                            compound(vec![string_entry("label", "One")]),
+                            compound(vec![
+                                string_entry("label", "Two"),
+                                value_entry("width", NbtSummaryValue::Int(180)),
+                            ]),
+                        ]),
+                    ),
+                    value_entry("exit_action", compound(vec![string_entry("label", "Exit")])),
+                    value_entry("columns", NbtSummaryValue::Int(3)),
+                ]),
+                r#"{"text":"Open","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:multi_action","title":"Actions","actions":[{"label":"One"},{"label":"Two","width":180}],"exit_action":{"label":"Exit"},"columns":3}}}"#,
+            ),
+            (
+                compound(vec![
+                    string_entry("type", "server_links"),
+                    string_entry("title", "Links"),
+                    value_entry("exit_action", compound(vec![string_entry("label", "Done")])),
+                    value_entry("columns", NbtSummaryValue::Int(4)),
+                    value_entry("button_width", NbtSummaryValue::Int(200)),
+                ]),
+                r#"{"text":"Open","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:server_links","title":"Links","exit_action":{"label":"Done"},"columns":4,"button_width":200}}}"#,
+            ),
+            (
+                compound(vec![
+                    string_entry("type", "dialog_list"),
+                    string_entry("title", "Menu"),
+                    value_entry(
+                        "dialogs",
+                        NbtSummaryValue::List(vec![
+                            notice("First"),
+                            compound(vec![
+                                string_entry("type", "confirmation"),
+                                string_entry("title", "Second"),
+                                value_entry("yes", compound(vec![string_entry("label", "Yes")])),
+                                value_entry("no", compound(vec![string_entry("label", "No")])),
+                            ]),
+                        ]),
+                    ),
+                    value_entry("exit_action", compound(vec![string_entry("label", "Back")])),
+                    value_entry("columns", NbtSummaryValue::Int(3)),
+                    value_entry("button_width", NbtSummaryValue::Int(220)),
+                ]),
+                r#"{"text":"Open","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:dialog_list","title":"Menu","dialogs":[{"type":"minecraft:notice","title":"First"},{"type":"minecraft:confirmation","title":"Second","yes":{"label":"Yes"},"no":{"label":"No"}}],"exit_action":{"label":"Back"},"columns":3,"button_width":220}}}"#,
+            ),
+        ];
+        for (dialog, expected) in cases {
+            assert_eq!(
+                canonical_component_json_utf16_len_with_context(
+                    &component_with_show_dialog(dialog),
+                    DialogDecodeContext::new(None, 0),
+                )
+                .unwrap(),
+                Some(expected.len()),
+                "{expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn canonicalizes_compact_and_named_dialog_holder_sets() {
+        let singleton = component_with_show_dialog(compound(vec![
+            string_entry("type", "dialog_list"),
+            string_entry("title", "Menu"),
+            value_entry("dialogs", NbtSummaryValue::List(vec![notice("Only")])),
+        ]));
+        let expected = r#"{"text":"Open","click_event":{"action":"show_dialog","dialog":{"type":"minecraft:dialog_list","title":"Menu","dialogs":{"type":"minecraft:notice","title":"Only"}}}}"#;
+        assert_eq!(
+            canonical_component_json_utf16_len_with_context(
+                &singleton,
+                DialogDecodeContext::new(None, 0),
+            )
+            .unwrap(),
+            Some(expected.len())
+        );
+
+        let named = DialogHolderSetState {
+            holder_set_kind: "named".to_string(),
+            tag: Some("example:menu".to_string()),
+            entries: Vec::new(),
+        };
+        assert_eq!(
+            dialog_holder_set_len(&named, DialogDecodeContext::new(None, 0)).unwrap(),
+            Some(string_len("#example:menu"))
+        );
+
+        let referenced = DialogHolderSetState {
+            holder_set_kind: "direct".to_string(),
+            tag: None,
+            entries: vec![DialogListEntryState {
+                holder_kind: "reference".to_string(),
+                registry_id: Some(0),
+                resource_id: Some("example:notice".to_string()),
+                external_title: DialogTextState {
+                    text: "Notice".to_string(),
+                    runs: Vec::new(),
+                    component: NbtSummaryValue::String("Notice".to_string()),
+                },
+                dialog: None,
+            }],
+        };
+        assert_eq!(
+            dialog_holder_set_len(&referenced, DialogDecodeContext::new(None, 0)).unwrap(),
+            Some(string_len("example:notice"))
+        );
+
+        let empty = DialogHolderSetState {
+            holder_set_kind: "direct".to_string(),
+            tag: None,
+            entries: Vec::new(),
+        };
+        assert_eq!(
+            dialog_holder_set_len(&empty, DialogDecodeContext::new(None, 0)).unwrap(),
+            Some(2)
+        );
     }
 
     fn component_with_show_dialog(dialog: NbtSummaryValue) -> NbtSummaryValue {

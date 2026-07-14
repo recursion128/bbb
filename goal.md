@@ -398,12 +398,12 @@ NBT path 也已按 `NbtPathArgument` 闭合 quoted/unquoted/object/index/all/mat
 完整消费与内嵌 26.1 bounded SNBT compound argument；entity selector 也已闭合 name/UUID、六类 `@`
 selector、21 项 registered option 的 grammar/applicability/重复互斥、built-in entity-type lookup、
 nested SNBT/scores/advancements 与完整消费，并同时接入 selector content/entity data source；structured
-Component page 的 written-book world/session owner 已闭合 named holder、Notice CommonData 的 title/
-external-title/default scalar、button 与九类 static/dynamic action，并让其中 Component/Dialog/NBT 递归进入
-各自 owner；compact body list 也已闭合 PlainMessage full encoder 与 ItemBody 的 recursive
+Component page 的 written-book world/session owner 已闭合 named/direct holder、五类 top-level Dialog、
+CommonData 的 title/external-title/default scalar、button 与九类 static/dynamic action，并让其中
+Component/Dialog/NBT 递归进入各自 owner；compact body list 也已闭合 PlainMessage full encoder 与 ItemBody 的 recursive
 ItemStackTemplate/description/default bool/size；四类 input control 也已闭合 key/type、Component
 label/display、default scalar、SingleOption FULL alternative、Text multiline 与 NumberRange JDK Float
-编码；其它四类 Dialog 仍严格返回 unknown，generic packet owner 也仍需接入；
+编码；DialogList 的 tag/reference/direct homogeneous compact HolderSet 也已闭合；generic packet owner 仍需接入；
 item-patch 的 107 项
 typed positive value 已全部闭合 canonical JsonOps 重编码，嵌套 Component 若需要更高 owner 则传播
 unknown，当前明确不以 raw NBT 近似这些 payload；hover
@@ -497,8 +497,8 @@ persistent catalog registration 均有 typed positive-value dispatch；persisten
 RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的核心 recursive
 structure/content/style/event-envelope validation、block data-source position 与 NBT path command parser
 以及 selector/entity-source command parser 已闭合；registry-independent canonical 重编码已有上述精确
-子集；written-book Component owner 已接入 named/Notice Common/button/action/body/input show-dialog 严格
-子集，generic packet Component 与其它 Dialog 的 world context 等更高 owner 仍开放；
+子集；written-book Component owner 已接入 named/direct、五类 top-level Dialog 与 Common/button/action/
+body/input show-dialog 严格子集，generic packet Component 的 world context 更高 owner 仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +
@@ -717,8 +717,7 @@ play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailin
 play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 native-owned chat/sign/debug 与 warning return-screen stack 集成保持 runtime partial。
 play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session registry holder
 resolution、五种 top-level Dialog semantic baseline、ownership 与 tests 已闭合；剩余完整
-Component/holder/list/其余 compound-record item component patch 正值 Codec、canonical screen
-data/runtime screen stack 保持 partial。
+Component generic packet owner、canonical screen data/runtime screen stack 保持 partial。
 play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。
 play BlockDestruction 的 id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与 tests 已闭合；剩余 full model-shaped crack decal parity 保持 runtime partial。
