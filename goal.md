@@ -353,7 +353,9 @@ ENTITY_DATA/BLOCK_ENTITY_DATA 的 built-in type + id 剥离 compound 分支与 B
 compound 分支已 typed 投影，CUSTOM_DATA 也复用相同 canonical compound 投影；四者的 TagParser
 flattened-SNBT string alternative 已复用 protocol 的 bounded parser，覆盖 compound/list/typed array、
 decimal/hex/binary/unsigned/float、`bool`/`uuid` builtin 与 `x`/`u`/`U` 转义；`\N{name}` Unicode
-character-name escape 仍未实现；MAP_DECORATIONS 的 ordered string map、共享 built-in
+character-name escape 也已按 JDK 26/Unicode 17 的 exact case-insensitive name、control old-name
+特例和 block-name + uppercase-hex 构造规则闭合；canonical UTF-8 string 仍无法表达 `u`/`U`/`N`
+escape 产生的 lone surrogate；MAP_DECORATIONS 的 ordered string map、共享 built-in
 map-decoration holder 与 required double/double/float record 也已 typed 投影；VILLAGER_VARIANT 的
 shared built-in RegistryFixedCodec holder 也已 typed 投影且不接受 session remap；BREAK_SOUND 的
 shared 1902 项 built-in sound-event catalog、named RegistryFileCodec holder，以及 direct

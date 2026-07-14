@@ -13893,5 +13893,19 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `ENTITY_DATA`、`BLOCK_ENTITY_DATA`、`BUCKET_ENTITY_DATA`、`CUSTOM_DATA` 以及 Bees nested
   TypedEntityData 现在接受同一 flattened-SNBT alternative；typed data 仍剥离并验证 built-in `id`，
   compound 分支行为不变，malformed/non-compound/trailing 输入有定向拒绝测试。
-- [ ] `SnbtGrammar` 的 `\N{name}` Unicode character-name escape 仍显式拒绝；其余 Component、holder、
+- [x] `SnbtGrammar` 的 `\N{name}` Unicode character-name escape 后续已由下一切片闭合；其余
+  Component、holder、list/compound-record Codec 与 native screens 仍开放。
+
+## 2026-07-14：Decode named Unicode flattened-SNBT escapes
+
+- [x] 对照 `SnbtGrammar` 和 JDK 26 `Character.codePointOf` / `getName`，实现 `\N{name}` 的 trim、
+  ASCII case-insensitive exact match，并保留 string terminal 的 whitespace skipping；正式 Unicode 名称、
+  UnicodeData 1.0 control old-name、JDK 的 U+0007/U+0080/U+0081/U+0099 特例，以及 UnicodeBlock +
+  uppercase hex 构造名称均有明确 surface。
+- [x] 固定 `unicode_names2 = 3.1.0` 作为与 JDK 26 相同的 Unicode 17 名称候选索引，再以 canonical
+  name 反查排除该库的 loose UAX44 匹配与 aliases；普通名称、control、Hangul/CJK/Tangut/private-use
+  构造名称、大小写/首尾空白、错误连字符/省略分隔符/leading-zero、malformed name 和 typed/custom data
+  world 贯通均有定向测试。
+- [ ] Rust canonical `String` 只容纳 Unicode scalar value，仍不能保留 Java UTF-16 可产生的 lone
+  surrogate；`u`/`U`/`N` escape 指向 surrogate code point 时继续显式拒绝。其余 Component、holder、
   list/compound-record Codec 与 native screens 仍开放。

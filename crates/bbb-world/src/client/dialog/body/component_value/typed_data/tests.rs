@@ -201,7 +201,7 @@ fn decodes_flattened_snbt_alternatives_for_typed_and_custom_data() {
 
     let custom = decode_custom_data(
         &NbtSummaryValue::String(
-            "{owner:'Alex',flags:[B;1b,0],uuid:uuid('00112233-4455-6677-8899-aabbccddeeff')}"
+            "{owner:'\\N{LATIN CAPITAL LETTER A}lex',flags:[B;1b,0],uuid:uuid('00112233-4455-6677-8899-aabbccddeeff')}"
                 .to_string(),
         ),
         "custom data",
@@ -211,6 +211,13 @@ fn decodes_flattened_snbt_alternatives_for_typed_and_custom_data() {
     let NbtSummaryValue::Compound(entries) = custom else {
         panic!("expected compound");
     };
+    assert_eq!(
+        entries
+            .iter()
+            .find(|entry| entry.name == "owner")
+            .map(|entry| &entry.value),
+        Some(&NbtSummaryValue::String("Alex".to_string()))
+    );
     assert_eq!(
         entries
             .iter()

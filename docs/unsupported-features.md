@@ -74,10 +74,11 @@ Owner: `bbb-protocol`
   bounded-page list, 1 potion-alternative/recursive-effect registration, and 2
   consume-effect-backed record registrations, plus 1 item-stack-template wrapper
   and 3 item-stack-template collection registrations:
-  finish the flattened-SNBT `\N{name}` Unicode character-name escape, decode the
-  remaining Component, holder, list, and compound-record persistent value Codecs,
-  render the corresponding screens, restore the previous screen on clear, and route
-  custom-click controls through the active dialog state.
+  decode the remaining Component, holder, list, and compound-record persistent value
+  Codecs, render the corresponding screens, restore the previous screen on clear,
+  and route custom-click controls through the active dialog state. Flattened SNBT
+  now resolves the JDK 26 `\N{name}` surface for Unicode scalar values, but the
+  UTF-8-backed canonical string state still cannot preserve lone-surrogate escapes.
 - Decode block/chunk/entity/event debug subscription payloads through the synced
   `DEBUG_SUBSCRIPTION` registry codecs, retain typed values with vanilla game-time
   expiry/removal semantics, ignore entity updates whose target is absent, and feed

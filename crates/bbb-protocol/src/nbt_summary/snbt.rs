@@ -7,6 +7,10 @@ use super::{
     MAX_NBT_LIST_ITEMS,
 };
 
+mod openjdk_character_names;
+
+use openjdk_character_names::character_by_name;
+
 /// Parses the compound-only flattened SNBT surface used by vanilla
 /// `TagParser.FLATTENED_CODEC`.
 pub fn parse_snbt_compound(input: &str) -> Result<NbtSummaryValue> {
@@ -293,6 +297,7 @@ impl<'a> SnbtParser<'a> {
                 output.push(next);
                 continue;
             }
+            self.skip_whitespace();
             let Some(escape) = self.bump() else {
                 return Err(self.error("unterminated SNBT string escape"));
             };
@@ -309,14 +314,25 @@ impl<'a> SnbtParser<'a> {
                 'x' => output.push(self.parse_hex_escape(2)?),
                 'u' => output.push(self.parse_hex_escape(4)?),
                 'U' => output.push(self.parse_hex_escape(8)?),
-                'N' => {
-                    return Err(
-                        self.error("named Unicode SNBT string escapes are not yet supported")
-                    );
-                }
+                'N' => output.push(self.parse_named_unicode_escape()?),
                 _ => return Err(self.error(format!("unknown SNBT string escape \\{escape}"))),
             }
         }
+    }
+
+    fn parse_named_unicode_escape(&mut self) -> Result<char> {
+        self.expect('{')?;
+        let start = self.cursor;
+        while self.peek().is_some_and(is_unicode_name_character) {
+            self.bump();
+        }
+        let name = self.input[start..self.cursor].to_string();
+        if name.is_empty() {
+            return Err(self.error("SNBT named Unicode escape has an empty name"));
+        }
+        self.expect('}')?;
+        character_by_name(&name)
+            .ok_or_else(|| self.error(format!("unknown SNBT Unicode character name {name}")))
     }
 
     fn parse_hex_escape(&mut self, digits: usize) -> Result<char> {
@@ -715,6 +731,10 @@ fn is_unquoted_character(value: char) -> bool {
     value.is_ascii_alphanumeric() || matches!(value, '_' | '-' | '.' | '+')
 }
 
+fn is_unicode_name_character(value: char) -> bool {
+    value.is_ascii_alphanumeric() || matches!(value, '-' | ' ')
+}
+
 fn can_start_number(value: char) -> bool {
     matches!(value, '+' | '-' | '.' | '0'..='9')
 }
@@ -832,7 +852,42 @@ mod tests {
             "{value:128b}",
             "{value:[B;1s]}",
             "{value:'unterminated}",
-            "{value:\"\\N{LATIN CAPITAL LETTER A}\"}",
+            "{value:\"\\N{}\"}",
+        ] {
+            assert!(parse_snbt_compound(input).is_err(), "accepted {input}");
+        }
+    }
+
+    #[test]
+    fn parses_openjdk_character_names_and_rejects_loose_matches() {
+        let value = parse_snbt_compound(
+            "{latin:'\\N{latin capital letter a}',control:'\\N{BEL}',hangul:'\\N{HANGUL SYLLABLES AC00}',private:'\\N{PRIVATE USE AREA E000}',spaced:'\\  N { BLACK STAR }'}",
+        )
+        .unwrap();
+        assert_eq!(entry(&value, "latin"), &NbtSummaryValue::String("A".into()));
+        assert_eq!(
+            entry(&value, "control"),
+            &NbtSummaryValue::String("\u{0007}".into())
+        );
+        assert_eq!(
+            entry(&value, "hangul"),
+            &NbtSummaryValue::String("가".into())
+        );
+        assert_eq!(
+            entry(&value, "private"),
+            &NbtSummaryValue::String("\u{e000}".into())
+        );
+        assert_eq!(
+            entry(&value, "spaced"),
+            &NbtSummaryValue::String("★".into())
+        );
+        for input in [
+            "{value:'\\N{LATINCAPITALLETTERA}'}",
+            "{value:'\\N{LATIN-CAPITAL LETTER A}'}",
+            "{value:'\\N{HANGUL SYLLABLE GA}'}",
+            "{value:'\\N{HIGH SURROGATES D800}'}",
+            "{value:'\\N{BS}'}",
+            "{value:'\\N{BLACK_STAR}'}",
         ] {
             assert!(parse_snbt_compound(input).is_err(), "accepted {input}");
         }
