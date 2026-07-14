@@ -7,7 +7,8 @@ use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
         AttackRangeSummary, BannerPatternLayerSummary, DataComponentPatchSummary,
-        FireworkExplosionSummary, LodestoneTargetSummary, ResolvableProfileSummary,
+        FireworkExplosionSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
+        LodestoneTargetSummary, PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
         SuspiciousStewEffectSummary, SwingAnimationSummary, TrimMaterialSummary,
         TrimPatternSummary, UseEffectsSummary,
     },
@@ -148,7 +149,8 @@ use predicates::{
 use profile::decode_profile;
 use sound_event::{
     decode_kinetic_weapon, decode_piercing_weapon, decode_sound_event_holder,
-    DialogKineticWeaponState, DialogPiercingWeaponState, DialogSoundEventHolderState,
+    DialogKineticWeaponConditionState, DialogKineticWeaponState, DialogPiercingWeaponState,
+    DialogSoundEventHolderState,
 };
 use text_component::{decode_lore, decode_text_component};
 use tool::{decode_tool, DialogToolState};
@@ -614,6 +616,39 @@ pub(super) fn apply_item_patch_value(
             patch.weapon_item_damage_per_attack = Some(*item_damage_per_attack);
             patch.weapon_disable_blocking_seconds_bits = Some(*disable_blocking_for_seconds_bits);
         }
+        (VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID, Value::BreakSound { sound }) => {
+            patch.break_sound = Some(sound_event_summary(sound));
+        }
+        (VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, Value::PiercingWeapon { weapon }) => {
+            patch.piercing_weapon = Some(PiercingWeaponSummary {
+                deals_knockback: weapon.deals_knockback,
+                dismounts: weapon.dismounts,
+                sound: weapon.sound.as_ref().map(sound_event_summary),
+                hit_sound: weapon.hit_sound.as_ref().map(sound_event_summary),
+            });
+        }
+        (VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, Value::KineticWeapon { weapon }) => {
+            patch.kinetic_weapon = Some(KineticWeaponSummary {
+                contact_cooldown_ticks: weapon.contact_cooldown_ticks,
+                delay_ticks: weapon.delay_ticks,
+                dismount_conditions: weapon
+                    .dismount_conditions
+                    .as_ref()
+                    .map(kinetic_weapon_condition_summary),
+                knockback_conditions: weapon
+                    .knockback_conditions
+                    .as_ref()
+                    .map(kinetic_weapon_condition_summary),
+                damage_conditions: weapon
+                    .damage_conditions
+                    .as_ref()
+                    .map(kinetic_weapon_condition_summary),
+                forward_movement_bits: weapon.forward_movement_bits,
+                damage_multiplier_bits: weapon.damage_multiplier_bits,
+                sound: weapon.sound.as_ref().map(sound_event_summary),
+                hit_sound: weapon.hit_sound.as_ref().map(sound_event_summary),
+            });
+        }
         (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
@@ -761,6 +796,34 @@ pub(super) fn apply_item_patch_value(
         _ => return false,
     }
     true
+}
+
+fn sound_event_summary(value: &DialogSoundEventHolderState) -> SoundEventSummary {
+    match value {
+        DialogSoundEventHolderState::Named { registry_id, .. } => SoundEventSummary {
+            registry_id: Some(*registry_id),
+            sound_id: None,
+            fixed_range_bits: None,
+        },
+        DialogSoundEventHolderState::Direct {
+            sound_id,
+            fixed_range_bits,
+        } => SoundEventSummary {
+            registry_id: None,
+            sound_id: Some(sound_id.clone()),
+            fixed_range_bits: *fixed_range_bits,
+        },
+    }
+}
+
+fn kinetic_weapon_condition_summary(
+    value: &DialogKineticWeaponConditionState,
+) -> KineticWeaponConditionSummary {
+    KineticWeaponConditionSummary {
+        max_duration_ticks: value.max_duration_ticks,
+        min_speed_bits: value.min_speed_bits,
+        min_relative_speed_bits: value.min_relative_speed_bits,
+    }
 }
 
 fn apply_holder_set(

@@ -14342,6 +14342,12 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
                                                 NbtSummaryValue::Float(1.25f32.to_bits()),
                                             )]),
                                         ),
+                                        entry(
+                                            "minecraft:break_sound",
+                                            NbtSummaryValue::String(
+                                                "minecraft:entity.item.break".to_string(),
+                                            ),
+                                        ),
                                     ]),
                                 ),
                             ]),

@@ -81,7 +81,8 @@ Owner: `bbb-protocol`
   Notice/Confirmation projection already sends static custom id/payload, lays out
   Confirmation's two footer actions with its no-button Escape binding and styled hover tooltips,
   projects unpatched, registry-independent text/scalar-patched, typed registry-holder-patched,
-  and summary-native nonrecursive structured Item bodies with description layout, decorations,
+  and summary-native nonrecursive structured Item bodies—including break-sound, piercing-weapon,
+  and kinetic-weapon named/direct sound holders—with description layout, decorations,
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the

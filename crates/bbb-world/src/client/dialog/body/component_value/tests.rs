@@ -1,5 +1,5 @@
 use bbb_protocol::data_component_types::{
-    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
     VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
@@ -8,8 +8,9 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
     VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
     VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
@@ -2516,6 +2517,107 @@ fn projects_nonrecursive_item_behavior_values_into_protocol_summary() {
         BlockPos { x: 1, y: 2, z: 3 }
     );
     assert_eq!(patch.lodestone_tracked, Some(false));
+}
+
+#[test]
+fn projects_sound_bearing_weapon_values_into_protocol_summary() {
+    let named_sound = DialogSoundEventHolderState::Named {
+        registry_id: 42,
+        resource_id: "example:named".to_string(),
+    };
+    let direct_sound = DialogSoundEventHolderState::Direct {
+        sound_id: "example:direct".to_string(),
+        fixed_range_bits: Some(12.5f32.to_bits()),
+    };
+    let condition = DialogKineticWeaponConditionState {
+        max_duration_ticks: 20,
+        min_speed_bits: 1.25f32.to_bits(),
+        min_relative_speed_bits: 2.5f32.to_bits(),
+    };
+    let mut patch = DataComponentPatchSummary::default();
+
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
+        &DialogDataComponentValueState::BreakSound {
+            sound: direct_sound.clone(),
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
+        &DialogDataComponentValueState::PiercingWeapon {
+            weapon: DialogPiercingWeaponState {
+                deals_knockback: false,
+                dismounts: true,
+                sound: Some(named_sound.clone()),
+                hit_sound: Some(direct_sound.clone()),
+            },
+        },
+        &mut patch,
+    ));
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        &DialogDataComponentValueState::KineticWeapon {
+            weapon: DialogKineticWeaponState {
+                contact_cooldown_ticks: 3,
+                delay_ticks: 2,
+                dismount_conditions: Some(condition.clone()),
+                knockback_conditions: None,
+                damage_conditions: Some(condition.clone()),
+                forward_movement_bits: 0.75f32.to_bits(),
+                damage_multiplier_bits: 1.5f32.to_bits(),
+                sound: Some(direct_sound),
+                hit_sound: Some(named_sound),
+            },
+        },
+        &mut patch,
+    ));
+
+    assert_eq!(
+        patch.break_sound,
+        Some(SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("example:direct".to_string()),
+            fixed_range_bits: Some(12.5f32.to_bits()),
+        })
+    );
+    assert_eq!(
+        patch.piercing_weapon,
+        Some(PiercingWeaponSummary {
+            deals_knockback: false,
+            dismounts: true,
+            sound: Some(SoundEventSummary {
+                registry_id: Some(42),
+                sound_id: None,
+                fixed_range_bits: None,
+            }),
+            hit_sound: Some(SoundEventSummary {
+                registry_id: None,
+                sound_id: Some("example:direct".to_string()),
+                fixed_range_bits: Some(12.5f32.to_bits()),
+            }),
+        })
+    );
+    let kinetic = patch.kinetic_weapon.unwrap();
+    assert_eq!(kinetic.contact_cooldown_ticks, 3);
+    assert_eq!(kinetic.delay_ticks, 2);
+    assert_eq!(
+        kinetic.dismount_conditions,
+        Some(KineticWeaponConditionSummary {
+            max_duration_ticks: 20,
+            min_speed_bits: 1.25f32.to_bits(),
+            min_relative_speed_bits: 2.5f32.to_bits(),
+        })
+    );
+    assert!(kinetic.knockback_conditions.is_none());
+    assert_eq!(kinetic.damage_conditions, kinetic.dismount_conditions);
+    assert_eq!(kinetic.forward_movement_bits, 0.75f32.to_bits());
+    assert_eq!(kinetic.damage_multiplier_bits, 1.5f32.to_bits());
+    assert_eq!(
+        kinetic.sound.unwrap().sound_id.as_deref(),
+        Some("example:direct")
+    );
+    assert_eq!(kinetic.hit_sound.unwrap().registry_id, Some(42));
 }
 
 fn decoded(

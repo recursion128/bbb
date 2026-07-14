@@ -14539,3 +14539,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 lodestone target；profile codec test 同时验证 summary bridge。native dialog regression 在同一 stack
   上组合 custom-name、suspicious-stew holder、food 与 cooldown 并进入唯一 item runtime；递归 item-stack
   collections、consume/effect/tool/equipment 等富结构值继续由下一明确切片处理。
+
+## 2026-07-14：Bridge sound-bearing weapon dialog Item patches
+
+- [x] 复用 dialog sound-event holder 与 weapon typed state，把 break-sound、piercing-weapon 和
+  kinetic-weapon 投影到 protocol decoder 已有的 `SoundEventSummary`、`PiercingWeaponSummary` 与
+  `KineticWeaponSummary`；named holder 仅保留 registry id，direct holder 保留 normalized sound id 与
+  optional range bits，三类 kinetic condition 及 movement/damage float bits 均逐字段无损复制。
+- [x] world focused regression 覆盖 named/direct、optional sound、optional condition 与 bit-exact 字段；
+  native dialog Item body 同时携带 custom-name、holder/structured patch 与 break-sound 并进入唯一 item
+  runtime，证明新增类型不会触发 all-or-nothing 整栈拒绝。consume/effect/tool/equipment 等其余富结构
+  值继续由下一明确切片处理。
