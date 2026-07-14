@@ -68,7 +68,8 @@ Owner: `bbb-protocol`
   plus 14 primitive, 17 StringRepresentable enum, 6 scalar-wrapper/flat-record/string-map,
   5 numeric item-behavior record, and 3 resource-key/catalog metadata positive-value
   registrations, plus 2 Component values and 1 bounded Component list, 2
-  RGB-alternative/list, 2 firework-record, and 1 global-position registration, plus
+  RGB-alternative/list, 2 firework-record, 1 built-in attribute-modifier list,
+  and 1 global-position registration, plus
   1 profile-alternative, 1 sound-holder, 4 defaulted
   sound-backed record registrations, 2 registry-holder map registrations, 1
   dynamic registry-holder plus 1 block-holder rule registration, 1 writable

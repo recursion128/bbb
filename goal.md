@@ -328,6 +328,9 @@ max-stack/max-damage/damage/repair-cost int range、minimum-attack-charge/potion
 range、glint bool、三项 unit、三项 Identifier 与 Rarity 共 14 个 primitive 注册项已 typed 投影；
 CUSTOM_NAME/ITEM_NAME 的 Component alternative 与 LORE 的 256-entry Component list 也已复用共享
 styled-run/raw-NBT surface typed 投影；
+ATTRIBUTE_MODIFIERS 的 built-in Attribute named holder、Identifier/double/operation record、11 项
+EquipmentSlotGroup 与 default/hidden/override display 也已复用生成 catalog 和共享 Component surface
+typed 投影；
 16 项生成 built-in enum 与 tropical-fish pattern 共 17 个 StringRepresentable 注册项也已按严格
 serialized name typed 投影；MapItemColor/MapId 与 0..=4 OminousBottleAmplifier scalar wrapper、
 UseEffects/SwingAnimation defaulted flat record 及 BlockItemStateProperties string map 共 6 个注册项也已

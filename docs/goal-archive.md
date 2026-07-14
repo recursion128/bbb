@@ -13932,3 +13932,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [ ] structured Component page 的 32767 flat-size 精确判断仍需要共享 persistent Component codec 完成
   validation 后按 vanilla `JsonOps` canonical 重编码；该缺口由 `docs/unsupported-features.md` 的 Dialog
   Component codec 条目继续追踪，不用原始 NBT 大小冒充 canonical JSON 长度。
+
+## 2026-07-14：Decode attribute-modifier dialog item component
+
+- [x] 新建 `client/dialog/body/component_value/attribute_modifiers.rs` semantic owner；对照
+  `ItemAttributeModifiers.CODEC`、`Entry.CODEC`、`AttributeModifier.MAP_CODEC` 与 `Display.CODEC`，复用
+  generated built-in Attribute、operation/display type 和 EquipmentSlotGroup catalog，typed 投影 ordered
+  modifier list、named attribute、modifier Identifier、unrestricted double、operation、slot 与 display。
+- [x] 空列表、default any/default display、35 项 Attribute、3 种 operation、11 项 slot group、三种
+  display（含 raw/styled override Component）、六类 NBT number→double 转换、NaN payload、unknown fields、
+  missing/wrong/unknown codec 字段均有定向测试；map-decoration 也改为复用共享 double 数字解码 helper，
+  不保留平行实现。其余 ItemPredicate-backed adventure/lock 与共享 Component 精确 codec 仍开放。

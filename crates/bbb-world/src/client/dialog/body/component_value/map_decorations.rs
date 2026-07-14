@@ -53,11 +53,11 @@ fn decode_map_decoration(
             holder_id: decoration_type.type_id,
             resource_id: decoration_type.resource_id.to_string(),
         },
-        x_bits: component_f64_bits(
+        x_bits: super::component_f64_bits(
             required_field(entries, "x", &entry_what)?,
             &format!("{entry_what} field x"),
         )?,
-        z_bits: component_f64_bits(
+        z_bits: super::component_f64_bits(
             required_field(entries, "z", &entry_what)?,
             &format!("{entry_what} field z"),
         )?,
@@ -66,19 +66,6 @@ fn decode_map_decoration(
             &format!("{entry_what} field rotation"),
         )?,
     })
-}
-
-fn component_f64_bits(value: &NbtSummaryValue, what: &str) -> Result<u64, String> {
-    let value = match value {
-        NbtSummaryValue::Byte(value) => f64::from(*value),
-        NbtSummaryValue::Short(value) => f64::from(*value),
-        NbtSummaryValue::Int(value) => f64::from(*value),
-        NbtSummaryValue::Long(value) => *value as f64,
-        NbtSummaryValue::Float(bits) => f64::from(f32::from_bits(*bits)),
-        NbtSummaryValue::Double(bits) => return Ok(*bits),
-        _ => return Err(format!("{what} is not numeric")),
-    };
-    Ok(value.to_bits())
 }
 
 fn required_field<'a>(

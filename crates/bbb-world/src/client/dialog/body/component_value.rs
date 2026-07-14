@@ -13,7 +13,8 @@ use bbb_protocol::{
     },
     data_component_types::{
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_BEES_TYPE_ID, VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
+        VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_ENTITY_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_BUCKET_ENTITY_DATA_TYPE_ID,
@@ -68,6 +69,7 @@ use crate::{registries::normalize_codec_identifier, RegistrySet};
 use super::super::{compound_entries, find_entry};
 use super::{decode_item_stack_template, DialogItemStackTemplateState};
 
+mod attribute_modifiers;
 mod bees;
 mod blocks_attacks;
 mod consume_effect;
@@ -86,6 +88,7 @@ mod typed_data;
 mod writable_book;
 mod written_book;
 
+use attribute_modifiers::{decode_attribute_modifiers, DialogAttributeModifierState};
 use bees::{decode_bees, DialogBeeOccupantState};
 use blocks_attacks::{decode_blocks_attacks, DialogBlocksAttacksState};
 use consume_effect::{
@@ -154,6 +157,9 @@ pub enum DialogDataComponentValueState {
     },
     Lore {
         lines: Vec<DialogTextState>,
+    },
+    AttributeModifiers {
+        modifiers: Vec<DialogAttributeModifierState>,
     },
     StringEnum {
         value_id: i32,
@@ -435,6 +441,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => DialogDataComponentValueState::Lore {
             lines: decode_lore(value, &what)?,
         },
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
+            DialogDataComponentValueState::AttributeModifiers {
+                modifiers: decode_attribute_modifiers(value, &what)?,
+            }
+        }
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID => decode_use_effects(value, &what)?,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => decode_swing_animation(value, &what)?,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => decode_block_state(value, &what)?,
@@ -1193,6 +1204,19 @@ fn component_f32_bits(value: &NbtSummaryValue, what: &str) -> Result<u32, String
         NbtSummaryValue::Long(value) => *value as f32,
         NbtSummaryValue::Float(bits) => return Ok(*bits),
         NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
+        _ => return Err(format!("{what} is not numeric")),
+    };
+    Ok(value.to_bits())
+}
+
+fn component_f64_bits(value: &NbtSummaryValue, what: &str) -> Result<u64, String> {
+    let value = match value {
+        NbtSummaryValue::Byte(value) => f64::from(*value),
+        NbtSummaryValue::Short(value) => f64::from(*value),
+        NbtSummaryValue::Int(value) => f64::from(*value),
+        NbtSummaryValue::Long(value) => *value as f64,
+        NbtSummaryValue::Float(bits) => f64::from(f32::from_bits(*bits)),
+        NbtSummaryValue::Double(bits) => return Ok(*bits),
         _ => return Err(format!("{what} is not numeric")),
     };
     Ok(value.to_bits())
