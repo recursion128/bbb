@@ -113,6 +113,9 @@ fn canonical_component_value_json_utf16_len_with_context(
             }
             Ok(Some(array_len(lengths.into_iter())))
         }
+        DialogDataComponentValueState::WrittenBookContent { content } => {
+            written_book_content_len_with_context(content, context)
+        }
         _ => Ok(canonical_component_value_json_utf16_len(value)),
     }
 }
@@ -931,6 +934,48 @@ fn written_book_content_len(content: &DialogWrittenBookContentState) -> Option<u
         fields.push(("resolved", bool_len(true)));
     }
     Some(object_len(fields.into_iter()))
+}
+
+fn written_book_content_len_with_context(
+    content: &DialogWrittenBookContentState,
+    context: DialogDecodeContext<'_>,
+) -> Result<Option<usize>, String> {
+    let mut title_fields = vec![("raw", string_len(&content.title.raw))];
+    if let Some(filtered) = &content.title.filtered {
+        title_fields.push(("filtered", string_len(filtered)));
+    }
+    let mut fields = vec![
+        ("title", object_len(title_fields.into_iter())),
+        ("author", string_len(&content.author)),
+    ];
+    if content.generation != 0 {
+        fields.push(("generation", content.generation.to_string().len()));
+    }
+    if !content.pages.is_empty() {
+        let mut page_lengths = Vec::with_capacity(content.pages.len());
+        for page in &content.pages {
+            let Some(raw_len) =
+                canonical_component_json_utf16_len_with_context(&page.raw.component, context)?
+            else {
+                return Ok(None);
+            };
+            let mut page_fields = vec![("raw", raw_len)];
+            if let Some(filtered) = &page.filtered {
+                let Some(filtered_len) =
+                    canonical_component_json_utf16_len_with_context(&filtered.component, context)?
+                else {
+                    return Ok(None);
+                };
+                page_fields.push(("filtered", filtered_len));
+            }
+            page_lengths.push(object_len(page_fields.into_iter()));
+        }
+        fields.push(("pages", array_len(page_lengths.into_iter())));
+    }
+    if content.resolved {
+        fields.push(("resolved", bool_len(true)));
+    }
+    Ok(Some(object_len(fields.into_iter())))
 }
 
 fn validate_item_stack_template_json(item: &DialogItemStackTemplateState) -> Result<(), String> {
