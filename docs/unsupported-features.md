@@ -68,8 +68,8 @@ Owner: `bbb-protocol`
   plus 14 primitive, 17 StringRepresentable enum, 6 scalar-wrapper/flat-record/string-map,
   5 numeric item-behavior record, and 3 resource-key/catalog metadata positive-value
   registrations, plus 2 RGB-alternative/list, 2 firework-record, and 1 global-position
-  registration, plus 1 profile-alternative, 1 sound-holder, and 1 defaulted
-  sound-backed record registration:
+  registration, plus 1 profile-alternative, 1 sound-holder, and 2 defaulted
+  sound-backed record registrations:
   decode the remaining Component, holder, list, and compound-record persistent value
   Codecs, render the corresponding screens, restore the previous screen on clear, and
   route custom-click controls through the active dialog state.
@@ -553,7 +553,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   tool-block-holder-rules/
   damage-type-named-holder (fixed vanilla bootstrap catalog is generated;
   dynamic-registry remapping remains)/
-  kinetic-weapon/
   use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/

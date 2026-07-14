@@ -356,8 +356,9 @@ map-decoration holder 与 required double/double/float record 也已 typed 投�
 shared built-in RegistryFixedCodec holder 也已 typed 投影且不接受 session remap；BREAK_SOUND 的
 shared 1902 项 built-in sound-event catalog、named RegistryFileCodec holder，以及 direct
 sound_id/lenient optional range 也已 typed 投影；PIERCING_WEAPON 的两个 default bool 与两个 optional
-named/direct sound holder 也已复用相同 surface typed 投影；其余 Component、holder、list 与 compound
-record 等 persistent Codec 仍未展开；
+named/direct sound holder 也已复用相同 surface typed 投影；KINETIC_WEAPON 的 non-negative int defaults、
+三类 optional nested condition、unrestricted float defaults 与两个 optional sound holder 也已 typed
+投影；其余 Component、holder、list 与 compound record 等 persistent Codec 仍未展开；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

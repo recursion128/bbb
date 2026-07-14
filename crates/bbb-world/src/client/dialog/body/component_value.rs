@@ -25,7 +25,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
         VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
         VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
@@ -70,8 +70,8 @@ use holder_set::{
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};
 use profile::decode_profile;
 use sound_event::{
-    decode_piercing_weapon, decode_sound_event_holder, DialogPiercingWeaponState,
-    DialogSoundEventHolderState,
+    decode_kinetic_weapon, decode_piercing_weapon, decode_sound_event_holder,
+    DialogKineticWeaponState, DialogPiercingWeaponState, DialogSoundEventHolderState,
 };
 use typed_data::{
     decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
@@ -250,6 +250,9 @@ pub enum DialogDataComponentValueState {
     PiercingWeapon {
         weapon: DialogPiercingWeaponState,
     },
+    KineticWeapon {
+        weapon: DialogKineticWeaponState,
+    },
 }
 
 impl DialogDataComponentValueState {
@@ -393,6 +396,11 @@ pub(super) fn decode_supported_component_value(
         VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID => {
             DialogDataComponentValueState::PiercingWeapon {
                 weapon: decode_piercing_weapon(value, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID => {
+            DialogDataComponentValueState::KineticWeapon {
+                weapon: decode_kinetic_weapon(value, &what)?,
             }
         }
         _ => {

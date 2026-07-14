@@ -13776,3 +13776,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 空 compound 默认值、NBT bool 数字转换、named/direct holder、direct range、wrong root/bool/holder
   与 unknown built-in sound 均有定向测试；KineticWeapon/BlocksAttacks 等其余 sound-backed record 与
   native screens 仍开放。
+
+## 2026-07-13：Decode kinetic-weapon dialog item component
+
+- [x] 对照 `KineticWeapon.CODEC/Condition.CODEC`，typed 投影 `contact_cooldown_ticks`/`delay_ticks`
+  non-negative defaults、三类 optional nested condition、`forward_movement`/`damage_multiplier`
+  unrestricted float defaults，以及 optional `sound`/`hit_sound` named/direct holder。
+- [x] 空 compound 默认值、全部 condition default/required 字段、NBT 数字转换、NaN/负 unrestricted
+  float 位保留、non-negative int 边界、missing/wrong nested shape 与 unknown sound 均有定向测试；
+  BlocksAttacks/Equippable 等其余 sound-backed record 与 native screens 仍开放。
