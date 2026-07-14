@@ -2187,6 +2187,8 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/ui.rs#apply_clear_dialog",
+            "crates/bbb-world/src/client/ui.rs#dialog_clear_restores_world_owned_previous_screen",
+            "crates/bbb-world/src/client/ui.rs#clear_dialog_only_restores_while_dialog_is_active",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#clearDialog"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -2195,6 +2197,8 @@
         "tests": {
           "evidence": [
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+            "crates/bbb-world/src/client/ui.rs#dialog_clear_restores_world_owned_previous_screen",
+            "crates/bbb-world/src/client/ui.rs#clear_dialog_only_restores_while_dialog_is_active",
             "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world"
           ],
           "gap": null,
@@ -13951,6 +13955,8 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/ui.rs#apply_clear_dialog",
+            "crates/bbb-world/src/client/ui.rs#dialog_clear_restores_world_owned_previous_screen",
+            "crates/bbb-world/src/client/ui.rs#clear_dialog_only_restores_while_dialog_is_active",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#clearDialog"
           ],
           "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
@@ -13962,6 +13968,8 @@
             "crates/bbb-net/src/event_stream.rs#play_hud_and_ui_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_client_ui_packets_to_world",
             "crates/bbb-world/src/client/ui.rs#tracks_client_ui_warnings_and_dialogs",
+            "crates/bbb-world/src/client/ui.rs#dialog_clear_restores_world_owned_previous_screen",
+            "crates/bbb-world/src/client/ui.rs#clear_dialog_only_restores_while_dialog_is_active",
             "crates/bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs#client_common_waypoint_events_update_world_and_snapshot_counters"
           ],
           "gap": null,

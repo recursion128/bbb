@@ -2229,7 +2229,7 @@ mod tests {
     }
 
     #[test]
-    fn play_clear_dialog_keeps_screen_stack_restoration_open() {
+    fn play_clear_dialog_keeps_native_and_warning_screen_restoration_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries

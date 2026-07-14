@@ -14087,3 +14087,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 nested custom-NBT 长度均有定向测试；canonical Gson strict writer 对非有限值安全报错，unknown
   fuzzy 字段仍先丢弃。structured page 剩余 owner-sensitive player/show-dialog/item-patch 重编码继续由
   protocol/session 缺口账本追踪。
+
+## 2026-07-14：Restore canonical screens after clear dialog
+
+- [x] 对照 `ClientCommonPacketListenerImpl.showDialog/clearDialog`，让首次 ShowDialog 保存 canonical
+  world 拥有的 book/advancements/stats previous screen，连续 ShowDialog 只替换当前 dialog 并保留最初
+  previous，ClearDialog 仅在 dialog 仍激活时恢复原 screen；book 页码与 stats loading 状态均随 screen
+  保存。
+- [x] 后续 book/sign/advancements/stats/container/local-inventory screen 替换 dialog 时丢弃 stale previous，
+  server OpenScreen 不再错误保留 dialog；world lifecycle 回归覆盖 restore、dialog replacement、late clear
+  与 container replacement。native-owned chat/sign/debug、warning return-screen stack 和 dialog surface 仍由
+  protocol/session runtime 缺口账本追踪。

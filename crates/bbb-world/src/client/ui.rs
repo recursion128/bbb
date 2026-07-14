@@ -24,6 +24,8 @@ pub struct ClientUiState {
     pub low_disk_space_warning_count: usize,
     #[serde(default)]
     pub current_dialog: Option<DialogState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dialog_previous_screen: Option<DialogPreviousScreenState>,
     #[serde(default)]
     pub current_book: Option<BookScreenState>,
     #[serde(default)]
@@ -44,6 +46,54 @@ pub struct ClientUiState {
     pub last_ghost_recipe: Option<GhostRecipeState>,
     #[serde(default)]
     pub last_pong_response: Option<PongResponseState>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum DialogPreviousScreenState {
+    Book { screen: BookScreenState },
+    Advancements,
+    Stats,
+}
+
+impl ClientUiState {
+    fn show_dialog(&mut self, dialog: DialogState) {
+        if self.current_dialog.is_none() {
+            self.dialog_previous_screen = if let Some(screen) = self.current_book.take() {
+                Some(DialogPreviousScreenState::Book { screen })
+            } else if std::mem::take(&mut self.current_advancements_screen) {
+                Some(DialogPreviousScreenState::Advancements)
+            } else if std::mem::take(&mut self.current_stats_screen) {
+                Some(DialogPreviousScreenState::Stats)
+            } else {
+                None
+            };
+        }
+        self.current_dialog = Some(dialog);
+    }
+
+    fn clear_dialog(&mut self) {
+        if self.current_dialog.take().is_none() {
+            return;
+        }
+        match self.dialog_previous_screen.take() {
+            Some(DialogPreviousScreenState::Book { screen }) => {
+                self.current_book = Some(screen);
+            }
+            Some(DialogPreviousScreenState::Advancements) => {
+                self.current_advancements_screen = true;
+            }
+            Some(DialogPreviousScreenState::Stats) => {
+                self.current_stats_screen = true;
+            }
+            None => {}
+        }
+    }
+
+    pub(crate) fn replace_dialog(&mut self) {
+        self.current_dialog = None;
+        self.dialog_previous_screen = None;
+    }
 }
 
 const DIALOG_REGISTRY: &str = "minecraft:dialog";
@@ -104,15 +154,13 @@ impl WorldStore {
 
     pub fn apply_clear_dialog(&mut self) {
         self.counters.clear_dialog_packets += 1;
-        self.client_ui.current_dialog = None;
+        self.client_ui.clear_dialog();
     }
 
     pub fn apply_show_dialog(&mut self, packet: ProtocolShowDialog) {
         self.counters.show_dialog_packets += 1;
-        self.client_ui.current_book = None;
-        self.client_ui.current_advancements_screen = false;
-        self.client_ui.current_stats_screen = false;
-        self.client_ui.current_dialog = Some(self.dialog_state_from_packet(packet));
+        let dialog = self.dialog_state_from_packet(packet);
+        self.client_ui.show_dialog(dialog);
     }
 
     pub fn apply_code_of_conduct(&mut self, text: String) {
@@ -148,7 +196,7 @@ impl WorldStore {
         let hand = interaction_hand_name(packet.hand).to_string();
         self.client_ui.last_open_book = Some(OpenBookState { hand: hand.clone() });
         if let Some(pages) = self.open_book_pages_from_hand(packet.hand) {
-            self.client_ui.current_dialog = None;
+            self.client_ui.replace_dialog();
             self.client_ui.current_advancements_screen = false;
             self.client_ui.current_stats_screen = false;
             self.client_ui.current_book = Some(BookScreenState {
@@ -167,7 +215,7 @@ impl WorldStore {
             return;
         }
         self.counters.open_sign_editor_updates_applied += 1;
-        self.client_ui.current_dialog = None;
+        self.client_ui.replace_dialog();
         self.client_ui.current_book = None;
         self.client_ui.current_advancements_screen = false;
         self.client_ui.current_stats_screen = false;
@@ -221,7 +269,7 @@ impl WorldStore {
 
     pub fn open_advancements_screen(&mut self) -> bool {
         let was_open = self.client_ui.current_advancements_screen;
-        self.client_ui.current_dialog = None;
+        self.client_ui.replace_dialog();
         self.client_ui.current_book = None;
         self.client_ui.current_stats_screen = false;
         self.client_ui.current_advancements_screen = true;
@@ -240,7 +288,7 @@ impl WorldStore {
 
     pub fn open_stats_screen(&mut self) -> bool {
         let was_open = self.client_ui.current_stats_screen;
-        self.client_ui.current_dialog = None;
+        self.client_ui.replace_dialog();
         self.client_ui.current_book = None;
         self.client_ui.current_advancements_screen = false;
         self.client_ui.current_stats_screen = true;
@@ -402,7 +450,7 @@ mod tests {
     use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID};
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DataComponentPatchSummary,
-        DialogHolder, InteractionHand, ItemStackSummary,
+        DialogHolder, InteractionHand, ItemStackSummary, OpenScreen as ProtocolOpenScreen,
         SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
         WrittenBookContentSummary,
     };
@@ -482,6 +530,83 @@ mod tests {
         assert_eq!(counters.low_disk_space_warnings, 1);
         assert_eq!(counters.show_dialog_packets, 2);
         assert_eq!(counters.clear_dialog_packets, 1);
+    }
+
+    #[test]
+    fn dialog_clear_restores_world_owned_previous_screen() {
+        let previous_book = BookScreenState {
+            hand: "main_hand".to_string(),
+            pages: vec!["First".to_string(), "Second".to_string()],
+            current_page: 1,
+        };
+        let mut book_store = WorldStore::new();
+        book_store.client_ui.current_book = Some(previous_book.clone());
+        book_store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 1 },
+        });
+        assert_eq!(book_store.current_book(), None);
+
+        // Replacing one dialog with another keeps the original non-dialog previous screen.
+        book_store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 2 },
+        });
+        book_store.apply_clear_dialog();
+        assert_eq!(book_store.current_book(), Some(&previous_book));
+
+        let mut advancements_store = WorldStore::new();
+        assert!(advancements_store.open_advancements_screen());
+        advancements_store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 3 },
+        });
+        assert!(!advancements_store.advancements_screen_is_open());
+        advancements_store.apply_clear_dialog();
+        assert!(advancements_store.advancements_screen_is_open());
+
+        let mut stats_store = WorldStore::new();
+        assert!(stats_store.open_stats_screen());
+        stats_store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 4 },
+        });
+        assert!(!stats_store.stats_screen_is_open());
+        stats_store.apply_clear_dialog();
+        assert!(stats_store.stats_screen_is_open());
+        assert!(stats_store.stats_screen_is_loading());
+    }
+
+    #[test]
+    fn clear_dialog_only_restores_while_dialog_is_active() {
+        let mut store = WorldStore::new();
+        assert!(store.open_advancements_screen());
+        store.apply_clear_dialog();
+        assert!(store.advancements_screen_is_open());
+
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 1 },
+        });
+        assert!(store.open_stats_screen());
+        assert_eq!(store.current_dialog(), None);
+
+        // The later screen replaced the dialog, so a late clear packet must not revive its
+        // now-stale previous screen.
+        store.apply_clear_dialog();
+        assert!(store.stats_screen_is_open());
+        assert!(!store.advancements_screen_is_open());
+
+        let mut container_store = WorldStore::new();
+        assert!(container_store.open_advancements_screen());
+        container_store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Reference { registry_id: 2 },
+        });
+        container_store.apply_open_screen(ProtocolOpenScreen {
+            container_id: 7,
+            menu_type_id: 0,
+            title: "Container".to_string(),
+            title_styled: Vec::new(),
+        });
+        assert_eq!(container_store.current_dialog(), None);
+        container_store.apply_clear_dialog();
+        assert_eq!(container_store.open_container_id(), Some(7));
+        assert!(!container_store.advancements_screen_is_open());
     }
 
     #[test]

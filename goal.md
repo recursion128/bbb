@@ -317,7 +317,7 @@ transfer state 并重连仍保持具体 `partial`，不能把记录 host/port �
 configuration client-information 的 startup command owner、language bound、9 字段 encoder、
 configuration finish 无 play duplicate 与无 ack 语义已闭合；仓库禁止的 in-game option UI
 不再作为 play packet 的虚构 command surface。
-dialog unit clear 的 wire/ownership/canonical projection 已闭合，但 previous-screen 恢复仍 partial；
+dialog unit clear 的 runtime 仍缺 native-owned chat/sign/debug screen 与 warning return-screen stack 集成；
 show-dialog 的 direct/context-free holder 已按单一 bounded network-NBT tree 严格消费并保留 canonical
 结构；play referenced holder 已按当前 session `minecraft:dialog` wire order 解析为 resource id 与同一
 canonical NBT，stub/missing/malformed 不猜测 bootstrap 下标；`CommonDialogData` 的 scalar/text、
@@ -643,7 +643,7 @@ play UpdateMobEffect 的 entity/effect/amplifier/duration/flags wire、strict de
 play UpdateRecipes 的 property-set/stonecutter framing、strict trailing、replace ownership 与 tests 已闭合；剩余 SlotDisplay/component/menu presentation 保持 decode/canonical/runtime partial。
 play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry replace ownership 与 tests 已闭合；剩余 fuel values/creative search-tree 派生刷新保持 runtime partial。
 play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailing、manager apply ownership 与 tests 已闭合；剩余 locator contextual-bar presentation 保持 runtime partial。
-play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 previous/warning screen-stack restoration 保持 runtime partial。
+play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 native-owned chat/sign/debug 与 warning return-screen stack 集成保持 runtime partial。
 play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session registry holder
 resolution、五种 top-level Dialog semantic baseline、ownership 与 tests 已闭合；剩余完整
 Component/holder/list/其余 compound-record item component patch 正值 Codec、canonical screen

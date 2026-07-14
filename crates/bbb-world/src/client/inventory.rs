@@ -558,6 +558,7 @@ impl InventoryState {
         packet: ProtocolOpenScreen,
     ) {
         counters.container_open_updates_received += 1;
+        ui.replace_dialog();
         ui.current_book = None;
         ui.current_advancements_screen = false;
         ui.current_stats_screen = false;
@@ -680,7 +681,7 @@ impl InventoryState {
         ui: &mut ClientUiState,
         mount: MountScreenState,
     ) {
-        ui.current_dialog = None;
+        ui.replace_dialog();
         ui.current_book = None;
         ui.current_advancements_screen = false;
         ui.current_stats_screen = false;
@@ -827,6 +828,7 @@ impl InventoryState {
         if self.open_container.is_some() {
             return false;
         }
+        ui.replace_dialog();
         ui.current_book = None;
         ui.current_advancements_screen = false;
         ui.current_stats_screen = false;

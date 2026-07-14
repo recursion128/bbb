@@ -104,8 +104,9 @@ Owner: `bbb-protocol`
   limit. Finish owner-sensitive payloads in generic packet Components and the remaining canonical
   value codecs: player/show-dialog/item-patch payloads. Then complete
   `flatRestrictedCodec(32767)` sizing for every structured page; render
-  the corresponding screens, restore the previous screen on clear,
-  and route custom-click controls through the active dialog state. Dialog Component holders
+  the dialog and warning screens, integrate clear-dialog restoration with the remaining
+  native-owned chat/sign/debug and warning return-screen stacks, and route custom-click controls
+  through the active dialog state. Dialog Component holders
   already validate hover `show_item` patches through the complete typed world patch owner and
   session registry context. Their click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
