@@ -28,6 +28,20 @@ pub fn parse_snbt_compound(input: &str) -> Result<NbtSummaryValue> {
     Ok(value)
 }
 
+/// Validates the compound at the start of an argument string and returns the
+/// byte length it consumed. This mirrors `TagParser.parseCompoundAsArgument`:
+/// callers, such as `NbtPathArgument`, own the delimiter that follows it.
+pub(crate) fn validate_snbt_compound_prefix(input: &str) -> Result<usize> {
+    let mut parser = SnbtParser::new(input);
+    let value = parser.parse_value(0)?;
+    if !matches!(value, NbtSummaryValue::Compound(_)) {
+        return Err(ProtocolError::InvalidData(
+            "SNBT argument root is not a compound".to_string(),
+        ));
+    }
+    Ok(parser.cursor)
+}
+
 struct SnbtParser<'a> {
     input: &'a str,
     cursor: usize,

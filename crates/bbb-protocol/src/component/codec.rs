@@ -8,7 +8,10 @@ use crate::{
     packets::normalize_resource_location,
 };
 
-use super::{parse_text_color, ComponentClickEvent};
+use super::{
+    command::{is_valid_block_position, is_valid_nbt_path},
+    parse_text_color, ComponentClickEvent,
+};
 
 const MAX_COMPONENT_DEPTH: usize = 64;
 const CONTENT_TYPES: [&str; 7] = [
@@ -366,7 +369,12 @@ fn validate_nbt_contents(
     what: &str,
     depth: usize,
 ) -> Result<(), String> {
-    required_string(entries, "nbt", what)?;
+    let nbt_path = required_string(entries, "nbt", what)?;
+    if !is_valid_nbt_path(nbt_path) {
+        return Err(format!(
+            "{what} field nbt is not a valid NBT path: {nbt_path}"
+        ));
+    }
     let interpreting = find_entry(entries, "interpret")
         .and_then(component_bool)
         .unwrap_or(false);
@@ -414,93 +422,13 @@ fn validate_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), S
 
 fn validate_block_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {
     let coordinates = required_string(entries, "block", what)?;
-    if is_brigadier_block_position(coordinates) {
+    if is_valid_block_position(coordinates) {
         Ok(())
     } else {
         Err(format!(
             "{what} field block is not valid block coordinates: {coordinates}"
         ))
     }
-}
-
-fn is_brigadier_block_position(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    let mut cursor = 0;
-    let local = bytes.first() == Some(&b'^');
-    for axis in 0..3 {
-        let valid = if local {
-            parse_local_coordinate(bytes, &mut cursor)
-        } else {
-            parse_world_block_coordinate(bytes, &mut cursor)
-        };
-        if !valid {
-            return false;
-        }
-        if axis < 2 {
-            if bytes.get(cursor) != Some(&b' ') {
-                return false;
-            }
-            cursor += 1;
-        }
-    }
-    cursor == bytes.len()
-}
-
-fn parse_world_block_coordinate(bytes: &[u8], cursor: &mut usize) -> bool {
-    if *cursor >= bytes.len() || bytes[*cursor] == b'^' {
-        return false;
-    }
-    let relative = bytes[*cursor] == b'~';
-    if relative {
-        *cursor += 1;
-    }
-    if *cursor >= bytes.len() || bytes[*cursor] == b' ' {
-        // WorldCoordinate.parseInt treats an omitted value as zero, including
-        // an absolute axis positioned directly at a separator.
-        return true;
-    }
-    let number = read_brigadier_number(bytes, cursor);
-    if relative {
-        is_brigadier_double(number)
-    } else {
-        number.parse::<i32>().is_ok()
-    }
-}
-
-fn parse_local_coordinate(bytes: &[u8], cursor: &mut usize) -> bool {
-    if bytes.get(*cursor) != Some(&b'^') {
-        return false;
-    }
-    *cursor += 1;
-    if *cursor >= bytes.len() || bytes[*cursor] == b' ' {
-        return true;
-    }
-    is_brigadier_double(read_brigadier_number(bytes, cursor))
-}
-
-fn read_brigadier_number<'a>(bytes: &'a [u8], cursor: &mut usize) -> &'a str {
-    let start = *cursor;
-    while bytes
-        .get(*cursor)
-        .is_some_and(|byte| byte.is_ascii_digit() || matches!(*byte, b'.' | b'-'))
-    {
-        *cursor += 1;
-    }
-    std::str::from_utf8(&bytes[start..*cursor]).expect("Brigadier number characters are ASCII")
-}
-
-fn is_brigadier_double(number: &str) -> bool {
-    let unsigned = number.strip_prefix('-').unwrap_or(number);
-    let mut halves = unsigned.split('.');
-    let whole = halves.next().expect("split always yields one part");
-    let fraction = halves.next();
-    if halves.next().is_some() {
-        return false;
-    }
-    let fraction = fraction.unwrap_or("");
-    (!whole.is_empty() || !fraction.is_empty())
-        && whole.bytes().all(|byte| byte.is_ascii_digit())
-        && fraction.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 fn validate_object_contents(

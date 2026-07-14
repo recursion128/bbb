@@ -7,6 +7,7 @@ use crate::{
 };
 
 mod codec;
+mod command;
 
 pub use codec::{validate_component_nbt, visit_component_payloads, ComponentPayload};
 

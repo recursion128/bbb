@@ -5,6 +5,7 @@ use crate::codec::{Decoder, ProtocolError, Result};
 mod snbt;
 
 pub use snbt::parse_snbt_compound;
+pub(crate) use snbt::validate_snbt_compound_prefix;
 
 const MAX_NBT_DEPTH: usize = 64;
 const MAX_NBT_ARRAY_ITEMS: usize = 4096;

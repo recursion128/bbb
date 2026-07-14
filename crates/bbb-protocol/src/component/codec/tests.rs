@@ -111,6 +111,37 @@ fn accepts_vanilla_block_data_source_coordinate_forms() {
 }
 
 #[test]
+fn validates_compiled_nbt_paths_before_data_source_dispatch() {
+    validate_component_nbt(
+        &compound([
+            ("type", string("nbt")),
+            ("nbt", string("Items[{id:'minecraft:diamond'}].components")),
+            ("source", string("storage")),
+            ("storage", string("example:data")),
+        ]),
+        "component",
+    )
+    .unwrap();
+
+    for nbt_path in ["Items[", "Items[0] trailing", "Items{count=1}"] {
+        let error = validate_component_nbt(
+            &compound([
+                ("type", string("nbt")),
+                ("nbt", string(nbt_path)),
+                ("source", string("storage")),
+                ("storage", string("example:data")),
+            ]),
+            "component",
+        )
+        .unwrap_err();
+        assert!(
+            error.contains("field nbt is not a valid NBT path"),
+            "{nbt_path:?} failed with unexpected error: {error}"
+        );
+    }
+}
+
+#[test]
 fn rejects_non_brigadier_block_data_source_coordinates() {
     for coordinates in [
         "",

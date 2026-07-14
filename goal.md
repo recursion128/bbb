@@ -385,8 +385,9 @@ string/non-empty-list/full-compound root、typed/fuzzy 七类 content dispatch�
 与 scalar style validation，并已校验七种 server-allowed click event、三种 hover event 的 discriminator
 及 registry-independent payload；block data-source position 已按 vanilla `BlockPosArgument` 与 Brigadier
 数字词法闭合 absolute-int/world-relative-double/local 三轴、空轴兼容、完整消费及 trailing-data 拒绝；
-structured Component page 的 selector/NBT-path/entity-source command parser、generic packet owner 和
-canonical JsonOps 重编码长度仍开放；hover
+NBT path 也已按 `NbtPathArgument` 闭合 quoted/unquoted/object/index/all/match-root/match-element node、
+完整消费与内嵌 26.1 bounded SNBT compound argument；structured Component page 的 selector/entity-source
+command parser、generic packet owner 和 canonical JsonOps 重编码长度仍开放；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
@@ -412,8 +413,8 @@ generated 15 项 predicate-type 优先于 AnyValue component type 分发，并�
 contains/count/size、MinMaxBounds 交换校验及 recursive container/bundle ItemPredicate；至此 107 项
 persistent catalog registration 均有 typed positive-value dispatch；persistent item-component
 RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的核心 recursive
-structure/content/style/event-envelope validation 与 block data-source position command parser 已闭合；
-selector/NBT-path/entity-source command parser、generic packet owner 与 canonical 重编码仍开放；
+structure/content/style/event-envelope validation、block data-source position 与 NBT path command parser
+已闭合；selector/entity-source command parser、generic packet owner 与 canonical 重编码仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

@@ -83,8 +83,10 @@ Owner: `bbb-protocol`
   have a typed positive-value dispatch and their RegistryFileCodec inline/direct
   holder branches are complete. Component block data-source positions now match
   vanilla `BlockPosArgument`/Brigadier parsing, including full string consumption,
-  world-relative decimals, local coordinates, and absolute integer bounds. Finish
-  persistent Component command-backed selector/NBT-path/entity-source parsing,
+  world-relative decimals, local coordinates, and absolute integer bounds. NBT paths
+  now match `NbtPathArgument` node dispatch and full consumption while reusing the
+  bounded 26.1 SNBT parser for root/object/list match compounds. Finish persistent
+  Component command-backed selector/entity-source parsing,
   owner-sensitive payloads in generic packet Components, and canonical
   re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
