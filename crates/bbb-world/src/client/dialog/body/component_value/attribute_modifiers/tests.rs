@@ -5,10 +5,13 @@ use bbb_protocol::{
     attribute_types::VANILLA_ATTRIBUTE_TYPES,
     data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
     equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUPS,
+    packets::inventory::{AttributeModifierSummary, DataComponentPatchSummary},
     NbtSummaryEntry, NbtSummaryValue,
 };
 
-use super::super::{decode_supported_component_value, DialogDataComponentValueState};
+use super::super::{
+    apply_item_patch_value, decode_supported_component_value, DialogDataComponentValueState,
+};
 use super::*;
 
 #[test]
@@ -122,6 +125,113 @@ fn decodes_all_builtin_attributes_operations_slot_groups_and_displays() {
             assert_eq!(entry.display.value, None);
         }
     }
+}
+
+#[test]
+fn projects_ordered_attribute_modifier_summaries_and_display_text() {
+    let value = NbtSummaryValue::List(vec![
+        modifier(
+            "attack_damage",
+            "base_attack_damage",
+            NbtSummaryValue::Double((-2.5f64).to_bits()),
+            "add_value",
+            None,
+            None,
+        ),
+        modifier(
+            "armor",
+            "example:hidden",
+            NbtSummaryValue::Double(0.25f64.to_bits()),
+            "add_multiplied_base",
+            Some("mainhand"),
+            Some(display_record("hidden", None)),
+        ),
+        modifier(
+            "movement_speed",
+            "example:override",
+            NbtSummaryValue::Double(1.5f64.to_bits()),
+            "add_multiplied_total",
+            Some("head"),
+            Some(display_record(
+                "override",
+                Some(NbtSummaryValue::String("Boost".to_string())),
+            )),
+        ),
+    ]);
+    let decoded = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        "minecraft:attribute_modifiers",
+        &value,
+        None,
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::AttributeModifiers { modifiers }) = decoded else {
+        panic!("expected attribute modifiers component");
+    };
+    let override_text = modifiers[2].display.value.as_ref().unwrap().clone();
+
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        &DialogDataComponentValueState::AttributeModifiers {
+            modifiers: modifiers.clone(),
+        },
+        &mut patch,
+    ));
+    assert_eq!(
+        patch.attribute_modifiers,
+        vec![
+            AttributeModifierSummary {
+                attribute_id: 2,
+                modifier_id: "minecraft:base_attack_damage".to_string(),
+                amount_bits: (-2.5f64).to_bits(),
+                operation_id: 0,
+                slot_id: 0,
+                display_id: 0,
+                display_text: None,
+                display_text_styled: None,
+            },
+            AttributeModifierSummary {
+                attribute_id: 0,
+                modifier_id: "example:hidden".to_string(),
+                amount_bits: 0.25f64.to_bits(),
+                operation_id: 1,
+                slot_id: 1,
+                display_id: 1,
+                display_text: None,
+                display_text_styled: None,
+            },
+            AttributeModifierSummary {
+                attribute_id: 22,
+                modifier_id: "example:override".to_string(),
+                amount_bits: 1.5f64.to_bits(),
+                operation_id: 2,
+                slot_id: 7,
+                display_id: 2,
+                display_text: Some("Boost".to_string()),
+                display_text_styled: Some(override_text.runs.clone()),
+            },
+        ]
+    );
+
+    let mut invalid_default = modifiers.clone();
+    invalid_default[0].display.value = Some(override_text);
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        &DialogDataComponentValueState::AttributeModifiers {
+            modifiers: invalid_default,
+        },
+        &mut DataComponentPatchSummary::default(),
+    ));
+    let mut invalid_override = modifiers;
+    invalid_override[2].display.value = None;
+    assert!(!apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        &DialogDataComponentValueState::AttributeModifiers {
+            modifiers: invalid_override,
+        },
+        &mut DataComponentPatchSummary::default(),
+    ));
 }
 
 #[test]

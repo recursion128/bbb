@@ -1,20 +1,24 @@
 use std::borrow::Cow;
 
+use bbb_protocol::attribute_modifier_types::{
+    VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID, VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+    VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
+};
 use bbb_protocol::item_component_value_types::{
     FireworkExplosionShapeSummary, ItemRaritySummary, SwingAnimationTypeSummary,
 };
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
-        AttackRangeSummary, BannerPatternLayerSummary, BlocksAttacksSummary, ConsumableSummary,
-        ConsumeEffectSummary, DamageReductionSummary, DamageTypeHolderSetSummary,
-        DataComponentPatchSummary, EntityTypeHolderSetSummary, EquippableSummary,
-        FireworkExplosionSummary, ItemDamageFunctionSummary, ItemEnchantmentSummary,
-        KineticWeaponConditionSummary, KineticWeaponSummary, LodestoneTargetSummary,
-        MobEffectDetailsSummary, MobEffectInstanceSummary, PiercingWeaponSummary,
-        ResolvableProfileSummary, SoundEventSummary, SuspiciousStewEffectSummary,
-        SwingAnimationSummary, ToolRuleSummary, ToolSummary, TrimMaterialSummary,
-        TrimPatternSummary, UseEffectsSummary,
+        AttackRangeSummary, AttributeModifierSummary, BannerPatternLayerSummary,
+        BlocksAttacksSummary, ConsumableSummary, ConsumeEffectSummary, DamageReductionSummary,
+        DamageTypeHolderSetSummary, DataComponentPatchSummary, EntityTypeHolderSetSummary,
+        EquippableSummary, FireworkExplosionSummary, ItemDamageFunctionSummary,
+        ItemEnchantmentSummary, KineticWeaponConditionSummary, KineticWeaponSummary,
+        LodestoneTargetSummary, MobEffectDetailsSummary, MobEffectInstanceSummary,
+        PiercingWeaponSummary, ResolvableProfileSummary, SoundEventSummary,
+        SuspiciousStewEffectSummary, SwingAnimationSummary, ToolRuleSummary, ToolSummary,
+        TrimMaterialSummary, TrimPatternSummary, UseEffectsSummary,
     },
 };
 use bbb_protocol::{
@@ -735,6 +739,15 @@ pub(super) fn apply_item_patch_value(
             patch.stored_enchantments = enchantment_summaries(entries);
         }
         (
+            VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
+            Value::AttributeModifiers { modifiers },
+        ) => {
+            let Some(summaries) = attribute_modifier_summaries(modifiers) else {
+                return false;
+            };
+            patch.attribute_modifiers = summaries;
+        }
+        (
             VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
             Value::AttackRange {
                 min_reach_bits,
@@ -1058,6 +1071,38 @@ fn enchantment_summaries(entries: &[DialogEnchantmentEntryState]) -> Vec<ItemEnc
         .map(|entry| ItemEnchantmentSummary {
             holder_id: entry.enchantment.holder_id,
             level: entry.level,
+        })
+        .collect()
+}
+
+fn attribute_modifier_summaries(
+    modifiers: &[DialogAttributeModifierState],
+) -> Option<Vec<AttributeModifierSummary>> {
+    modifiers
+        .iter()
+        .map(|modifier| {
+            let (display_text, display_text_styled) =
+                match (modifier.display.type_id, modifier.display.value.as_ref()) {
+                    (
+                        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID
+                        | VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+                        None,
+                    ) => (None, None),
+                    (VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID, Some(value)) => {
+                        (Some(value.text.clone()), Some(value.runs.clone()))
+                    }
+                    _ => return None,
+                };
+            Some(AttributeModifierSummary {
+                attribute_id: modifier.attribute.holder_id,
+                modifier_id: modifier.modifier_id.clone(),
+                amount_bits: modifier.amount_bits,
+                operation_id: modifier.operation_id,
+                slot_id: modifier.slot_group_id,
+                display_id: modifier.display.type_id,
+                display_text,
+                display_text_styled,
+            })
         })
         .collect()
 }

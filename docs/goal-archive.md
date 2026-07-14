@@ -14615,3 +14615,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world focused regressions 覆盖 session holder order、duplicate last-value 语义、1..255 level 与两类
   summary 字段；native dialog Item body 同时加入两类 empty map 后继续进入唯一 item runtime。
   attribute/predicate/book/typed-data 与递归 item-stack collection 等其余富结构值继续由后续明确切片处理。
+
+## 2026-07-14：Bridge attribute-modifier dialog Item patches
+
+- [x] 对照 `ItemAttributeModifiers.Entry.CODEC/STREAM_CODEC` 与三类 `Display` dispatch，把 dialog typed
+  ordered modifiers 的 attribute holder id、modifier resource id、double bits、operation id、equipment
+  slot-group id 投影到既有 `AttributeModifierSummary`；default/hidden 不携带文本，override 同时保留
+  component plain text 与 styled runs。
+- [x] world focused regression 覆盖 default/hidden/override、三类 operation、default/explicit slot、ordered
+  rows 与 bit-exact amount，并证明 persisted typed display payload 与 type id 不一致时整项拒绝；native
+  dialog Item body 加入 empty modifier list 后继续进入唯一 item runtime。predicate/book/typed-data 与递归
+  item-stack collection 等其余富结构值继续由后续明确切片处理。

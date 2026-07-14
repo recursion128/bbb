@@ -84,7 +84,8 @@ Owner: `bbb-protocol`
   and summary-native nonrecursive structured Item bodies—including break-sound, piercing-weapon,
   kinetic-weapon, full equippable, blocks-attacks, consumable, and death-protection sound,
   holder-set, consume-effect, ordered tool-rule, and potion-content forms—with description layout,
-  decorations—as well as ordered enchantment/stored-enchantment maps,
+  decorations—as well as ordered enchantment/stored-enchantment maps and attribute modifiers with
+  default/hidden/override display dispatch,
   and item tooltips while conservatively rejecting an entire body when any added component value
   has no summary bridge,
   and implements the
