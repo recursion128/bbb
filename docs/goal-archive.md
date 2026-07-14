@@ -14066,3 +14066,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] inline malformed dialog、session reference、nested CUSTOM_NAME 与 registry self-cycle 回归均通过；
   自引用/互引用不会因进入 Component 或 item patch 重置深度预算。generic packet Component owner、
   registry-aware object/profile、command-backed content 和 canonical encoding 继续由缺口账本跟踪。
+
+## 2026-07-14：Decode Component player objects
+
+- [x] 按 `ObjectInfos` 的 typed/legacy fuzzy dispatch 与 atlas-first 注册顺序扩展 recursive payload visitor；
+  只在实际选中 `PlayerSprite.MAP_CODEC` 时产出 `player` payload，带额外 player 字段的 atlas 分支不会
+  被误判。
+- [x] 全部 Dialog Component 持有位置将 `PlayerSprite.player` 交给既有 `ResolvableProfile.CODEC`
+  world owner，覆盖 FULL/player-name alternative、UUID、property map/list 与 skin patch；typed/fuzzy visitor
+  和 17 UTF-16 unit 非法玩家名均有回归。generic packet owner、command-backed content 与 canonical
+  encoding 仍开放。

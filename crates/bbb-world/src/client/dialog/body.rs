@@ -17,8 +17,18 @@ use super::{
 
 mod component_value;
 
-use component_value::decode_supported_component_value_with_context;
 pub use component_value::DialogDataComponentValueState;
+use component_value::{
+    decode_supported_component_value_with_context,
+    validate_component_player_profile as validate_player_profile,
+};
+
+pub(super) fn validate_component_player_profile(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<(), String> {
+    validate_player_profile(value, what)
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]

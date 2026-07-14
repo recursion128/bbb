@@ -388,6 +388,13 @@ impl DialogDataComponentValueState {
     }
 }
 
+pub(super) fn validate_component_player_profile(
+    value: &NbtSummaryValue,
+    what: &str,
+) -> Result<(), String> {
+    decode_profile(value, what).map(|_| ())
+}
+
 #[cfg(test)]
 pub(super) fn decode_supported_component_value(
     type_id: i32,

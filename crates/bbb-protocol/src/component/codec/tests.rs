@@ -423,6 +423,7 @@ fn visits_owner_sensitive_payloads_in_recursive_component_positions() {
     visit_component_payloads(&value, "component", |payload, what| {
         visited.push((
             match payload {
+                ComponentPayload::PlayerProfile(value) => ("profile", value.clone()),
                 ComponentPayload::ShowDialog(value) => ("dialog", value.clone()),
                 ComponentPayload::ShowItemComponents(value) => ("item", value.clone()),
             },
@@ -447,6 +448,41 @@ fn visits_owner_sensitive_payloads_in_recursive_component_positions() {
     assert!(visited[3]
         .1
         .contains("hover_event field value field hover_event field components"));
+}
+
+#[test]
+fn component_payload_visitor_follows_typed_and_fuzzy_player_object_dispatch() {
+    let typed_profile = string("Steve");
+    let fuzzy_profile = compound([("name", string("Alex"))]);
+    let value = list([
+        compound([
+            ("type", string("object")),
+            ("object", string("player")),
+            ("player", typed_profile.clone()),
+        ]),
+        compound([("player", fuzzy_profile.clone())]),
+        compound([
+            ("sprite", string("item/diamond")),
+            ("player", string("atlas branch ignores this extra field")),
+        ]),
+    ]);
+
+    let mut visited = Vec::new();
+    visit_component_payloads(&value, "component", |payload, what| {
+        if let ComponentPayload::PlayerProfile(profile) = payload {
+            visited.push((profile.clone(), what.to_string()));
+        }
+        Ok(())
+    })
+    .unwrap();
+
+    assert_eq!(
+        visited,
+        [
+            (typed_profile, "component[0] field player".to_string()),
+            (fuzzy_profile, "component[1] field player".to_string()),
+        ]
+    );
 }
 
 #[test]

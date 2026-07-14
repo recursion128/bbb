@@ -613,6 +613,9 @@ fn decode_component(
     context: DialogDecodeContext<'_>,
 ) -> Result<DialogTextState, String> {
     visit_component_payloads(value, what, |payload, payload_what| match payload {
+        ComponentPayload::PlayerProfile(profile) => {
+            body::validate_component_player_profile(profile, payload_what)
+        }
         ComponentPayload::ShowDialog(dialog) => {
             action::decode_action_dialog_holder(dialog, context.registries, context.depth + 1)
                 .map(|_| ())
@@ -975,6 +978,35 @@ mod tests {
         assert!(
             error.contains("dialog title field hover_event field components")
                 && error.contains("minecraft:damage is not numeric"),
+            "{error:?}"
+        );
+    }
+
+    #[test]
+    fn dialog_components_decode_player_object_profiles_through_central_owner() {
+        let dialog = |profile| {
+            compound(vec![
+                string_entry("type", "minecraft:notice"),
+                value_entry(
+                    "title",
+                    compound(vec![
+                        string_entry("type", "object"),
+                        string_entry("object", "player"),
+                        value_entry("player", profile),
+                    ]),
+                ),
+            ])
+        };
+        decode_test_dialog(&dialog(NbtSummaryValue::String("Steve".to_string()))).unwrap();
+
+        let error = decode_test_dialog(&dialog(compound(vec![string_entry(
+            "name",
+            "abcdefghijklmnopq",
+        )])))
+        .unwrap_err();
+        assert!(
+            error.contains("dialog title field player")
+                && error.contains("17 UTF-16 units, maximum is 16"),
             "{error:?}"
         );
     }

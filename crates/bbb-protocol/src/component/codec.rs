@@ -38,6 +38,7 @@ pub fn validate_component_nbt(value: &NbtSummaryValue, what: &str) -> Result<(),
 /// the payload value belongs to the higher semantic owner named by the variant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ComponentPayload<'a> {
+    PlayerProfile(&'a NbtSummaryValue),
     ShowDialog(&'a NbtSummaryValue),
     ShowItemComponents(&'a NbtSummaryValue),
 }
@@ -163,6 +164,15 @@ fn visit_content_payloads<'a>(
             }
         }
         "object" => {
+            if decoded_object_type(entries, what) == "player" {
+                visitor(
+                    ComponentPayload::PlayerProfile(
+                        find_entry(entries, "player")
+                            .expect("player object payload was validated before traversal"),
+                    ),
+                    &format!("{what} field player"),
+                )?;
+            }
             if let Some(fallback) = find_entry(entries, "fallback") {
                 visit_component_payloads_inner(
                     fallback,
@@ -429,6 +439,18 @@ fn validate_object_info(entries: &[NbtSummaryEntry], what: &str) -> Result<(), S
         return Ok(());
     }
     Err(format!("{what} has no matching component object codec"))
+}
+
+fn decoded_object_type<'a>(entries: &'a [NbtSummaryEntry], what: &str) -> &'a str {
+    if let Some(NbtSummaryValue::String(object)) = find_entry(entries, "object") {
+        return object;
+    }
+    if validate_atlas_object(entries, what).is_ok() {
+        "atlas"
+    } else {
+        debug_assert!(validate_player_object(entries, what).is_ok());
+        "player"
+    }
 }
 
 fn validate_atlas_object(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {
