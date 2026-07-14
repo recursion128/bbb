@@ -13,6 +13,7 @@ use super::blocks_attacks::{
 };
 use super::consume_effect::{DialogConsumableState, DialogConsumeEffectState};
 use super::holder_set::{DialogBannerPatternHolderState, DialogRegistryHolderSetState};
+use super::instrument::{DialogInstrumentHolderState, DialogInstrumentState};
 use super::potion_contents::{
     DialogMobEffectDetailsState, DialogMobEffectInstanceState, DialogPotionContentsState,
 };
@@ -67,6 +68,13 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
             for line in lines {
                 canonical_component_json_utf16_len(&line.component)?;
             }
+        }
+        DialogDataComponentValueState::Instrument {
+            instrument: DialogInstrumentHolderState::Direct { instrument },
+        } => {
+            values.extend([instrument.use_duration_bits, instrument.range_bits]);
+            append_sound_range_bits(&mut values, Some(&instrument.sound_event));
+            canonical_component_json_utf16_len(&instrument.description.component)?;
         }
         DialogDataComponentValueState::Float { bits } => values.push(*bits),
         DialogDataComponentValueState::UseEffects {
@@ -518,6 +526,9 @@ fn canonical_component_value_json_utf16_len(
             string_len(&holder.resource_id)
         }
         DialogDataComponentValueState::JukeboxPlayable { song } => string_len(&song.resource_id),
+        DialogDataComponentValueState::Instrument { instrument } => {
+            instrument_holder_len(instrument)?
+        }
         DialogDataComponentValueState::PaintingVariant { variant } => {
             string_len(&variant.resource_id)
         }
@@ -724,6 +735,34 @@ fn component_json_len(component: &NbtSummaryValue) -> Option<usize> {
     // The production caller has already propagated canonical Component errors through
     // validate_supported_json_numbers; None here is reserved for a remaining higher owner.
     canonical_component_json_utf16_len(component).ok().flatten()
+}
+
+fn instrument_holder_len(instrument: &DialogInstrumentHolderState) -> Option<usize> {
+    match instrument {
+        DialogInstrumentHolderState::Named { resource_id, .. } => Some(string_len(resource_id)),
+        DialogInstrumentHolderState::Direct { instrument } => direct_instrument_len(instrument),
+    }
+}
+
+fn direct_instrument_len(instrument: &DialogInstrumentState) -> Option<usize> {
+    Some(object_len(
+        [
+            ("sound_event", sound_event_len(&instrument.sound_event)?),
+            (
+                "use_duration",
+                canonical_f32_json_utf16_len(instrument.use_duration_bits)?,
+            ),
+            (
+                "range",
+                canonical_f32_json_utf16_len(instrument.range_bits)?,
+            ),
+            (
+                "description",
+                component_json_len(&instrument.description.component)?,
+            ),
+        ]
+        .into_iter(),
+    ))
 }
 
 fn banner_pattern_holder_len(holder: &DialogBannerPatternHolderState) -> usize {
@@ -1262,6 +1301,54 @@ mod tests {
                 },
             ),
             None
+        );
+    }
+
+    #[test]
+    fn canonicalizes_named_and_registry_independent_direct_instruments() {
+        assert_exact(
+            DialogDataComponentValueState::Instrument {
+                instrument: DialogInstrumentHolderState::Named {
+                    registry_id: 0,
+                    resource_id: "minecraft:ponder_goat_horn".to_string(),
+                },
+            },
+            r#""minecraft:ponder_goat_horn""#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::Instrument {
+                instrument: DialogInstrumentHolderState::Direct {
+                    instrument: DialogInstrumentState {
+                        sound_event: DialogSoundEventHolderState::Direct {
+                            sound_id: "example:horn".to_string(),
+                            fixed_range_bits: Some(16.0f32.to_bits()),
+                        },
+                        use_duration_bits: 7.0f32.to_bits(),
+                        range_bits: 256.0f32.to_bits(),
+                        description: super::super::DialogTextState {
+                            text: String::new(),
+                            runs: Vec::new(),
+                            component: NbtSummaryValue::Compound(vec![
+                                NbtSummaryEntry {
+                                    name: "text".to_string(),
+                                    value: NbtSummaryValue::String("Ponder".to_string()),
+                                },
+                                NbtSummaryEntry {
+                                    name: "italic".to_string(),
+                                    value: NbtSummaryValue::Byte(1),
+                                },
+                                NbtSummaryEntry {
+                                    name: "color".to_string(),
+                                    value: NbtSummaryValue::String("gold".to_string()),
+                                },
+                            ]),
+                        },
+                    },
+                },
+            },
+            concat!(
+                r#"{"sound_event":{"sound_id":"example:horn","range":16.0},"use_duration":7.0,"range":256.0,"description":{"text":"Ponder","color":"gold","italic":true}}"#
+            ),
         );
     }
 

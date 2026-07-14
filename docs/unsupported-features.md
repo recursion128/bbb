@@ -154,6 +154,9 @@ Owner: `bbb-protocol`
   Registry-independent custom-name/item-name/lore values now reuse the protocol Component-to-JsonOps
   owner, including content/style normalization and lore arrays. Owner-sensitive nested payloads still
   return unknown instead of substituting raw NBT size.
+  Instrument values now encode named RegistryFileCodec holders as resource strings and direct holders
+  as ordered sound-event/positive-float/description records. Direct floats use the exact JDK formatter;
+  registry-independent descriptions are exact while owner-sensitive Component payloads remain unknown.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.

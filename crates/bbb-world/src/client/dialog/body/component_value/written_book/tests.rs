@@ -609,6 +609,22 @@ fn enforces_text_component_item_patch_page_boundary() {
 }
 
 #[test]
+fn enforces_direct_instrument_item_patch_page_boundary() {
+    let prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:instrument":{"sound_event":{"sound_id":"example:horn","range":16.0},"use_duration":7.0,"range":256.0,"description":{"text":"Ponder","color":"gold","italic":true}}}}}"#
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_instrument_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content(&book_with_pages(vec![page]), "written book");
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -1768,6 +1784,48 @@ fn component_with_text_item_patch(extra: String) -> NbtSummaryValue {
                             ]),
                         ),
                     ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_instrument_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "instrument",
+                        compound(vec![
+                            value_entry(
+                                "sound_event",
+                                compound(vec![
+                                    string_entry("sound_id", "example:horn"),
+                                    value_entry("range", NbtSummaryValue::Float(16.0f32.to_bits())),
+                                ]),
+                            ),
+                            value_entry("use_duration", NbtSummaryValue::Float(7.0f32.to_bits())),
+                            value_entry("range", NbtSummaryValue::Float(256.0f32.to_bits())),
+                            value_entry(
+                                "description",
+                                compound(vec![
+                                    string_entry("text", "Ponder"),
+                                    value_entry("italic", NbtSummaryValue::Byte(1)),
+                                    string_entry("color", "gold"),
+                                ]),
+                            ),
+                        ]),
+                    )]),
                 ),
             ]),
         ),

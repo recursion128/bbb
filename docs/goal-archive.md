@@ -14349,3 +14349,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   NaN 拒绝与 written-book hover `show_item` custom-name + item-name + lore patch 的 32767/32768 UTF-16
   unit 边界均有回归。generic packet show-dialog world context 与剩余 predicate/item-template 及其它
   nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize instrument item patches
+
+- [x] 对照 `InstrumentComponent.CODEC`、`Instrument.CODEC` 与 `SoundEvent.CODEC`，扩展单一 item-patch
+  canonical owner：RegistryFileCodec named holder 输出 normalized resource-id string；direct holder 严格按
+  sound_event/use_duration/range/description 顺序输出，并复用既有 named/direct sound-event owner。
+- [x] 两个 required positive float 与 direct-sound range 复用 JDK 26 formatter 和 non-finite 门禁；
+  registry-independent description 复用 Component→JsonOps 精确计长，owner-sensitive Component 保持
+  unknown。named/direct exact JSON 与 written-book hover `show_item` direct-instrument patch 的
+  32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与剩余
+  predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
