@@ -140,6 +140,9 @@ Owner: `bbb-protocol`
   Tool records now encode their required ordered rule list, block holder sets, optional positive
   speed/drop fields, and defaulted mining-speed/damage/creative fields; all floats share the exact
   JDK formatter and strict non-finite rejection.
+  Equippable records now encode the required slot, both sound holders, optional asset/overlay/entity
+  holder set, and five defaulted booleans. Only exact named default sounds are omitted; direct sounds
+  with the same id remain objects, and range floats keep exact formatting and strict finite checks.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.

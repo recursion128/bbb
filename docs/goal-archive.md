@@ -14290,3 +14290,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   拒绝与显式 session registry 下 written-book hover `show_item` tool patch 的 32767/32768 UTF-16 unit
   边界均有回归。generic packet show-dialog world context 与剩余 registry-holder、predicate/item-template
   及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize equippable item patches
+
+- [x] 对照 `Equippable.CODEC`，扩展单一 item-patch canonical owner：required slot 始终输出；
+  equip/shearing sound holder、optional asset_id/camera_overlay/allowed_entities 与 dispensable/swappable/
+  damage_on_hurt/equip_on_interact/can_be_sheared 均保持 vanilla field order 和 default omission。
+- [x] 默认音效只在 exact named holder 身份下省略，同 id direct holder 仍输出 sound_id/optional range object；
+  entity HolderSet 复用 tag/singleton/list 规则，range float 复用唯一 JDK 26 formatter 与 non-finite 门禁。
+  default/full exact JSON、NaN 拒绝与显式 session entity-tag registry 下 written-book hover `show_item`
+  equippable patch 的 32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与
+  剩余 predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

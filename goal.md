@@ -434,6 +434,9 @@ resource-id/integer canonical object，同名 raw key last-wins、归一化 hold
 `tool` 的 required ordered rule list、block HolderSet compact/tag/list、optional positive speed/drop flag、
 默认 mining speed/damage/creative 字段也已闭合 canonical，所有 float 复用 JDK 26 formatter 并严格拒绝
 non-finite；
+`equippable` 的 required slot、两个 sound holder、optional asset/overlay/entity HolderSet 与五个 default
+boolean 也已闭合 canonical；只有 exact named default sound holder 才省略，direct sound 即使同 id 仍保留
+object，range float 同样复用 JDK 26 formatter 并严格拒绝 non-finite；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

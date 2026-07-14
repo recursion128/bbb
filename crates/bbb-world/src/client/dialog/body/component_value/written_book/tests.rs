@@ -453,6 +453,43 @@ fn enforces_tool_item_patch_page_boundary_with_session_registries() {
 }
 
 #[test]
+fn enforces_equippable_item_patch_page_boundary_with_session_registries() {
+    let mut registries = RegistrySet::default();
+    let llama_id = registries
+        .holder_id_by_resource_id("minecraft:entity_type", "minecraft:llama")
+        .unwrap();
+    let trader_llama_id = registries
+        .holder_id_by_resource_id("minecraft:entity_type", "minecraft:trader_llama")
+        .unwrap();
+    registries.tags.insert(
+        "minecraft:entity_type".to_string(),
+        RegistryTagState {
+            registry: "minecraft:entity_type".to_string(),
+            tags: BTreeMap::from([(
+                "example:llamas".to_string(),
+                vec![llama_id, trader_llama_id],
+            )]),
+        },
+    );
+    let prefix = concat!(
+        r##"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:equippable":{"slot":"body","equip_sound":{"sound_id":"example:equip","range":6.5},"asset_id":"example:llama_carpet","camera_overlay":"minecraft:overlay/powder_snow","allowed_entities":"#example:llamas","dispensable":false,"swappable":false,"damage_on_hurt":false,"equip_on_interact":true,"can_be_sheared":true}}}}"##
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_equippable_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content_with_context(
+            &book_with_pages(vec![page]),
+            "written book",
+            DialogDecodeContext::new(Some(&registries), 0),
+        );
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -713,6 +750,10 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
         ),
         (
             book_with_pages(vec![component_with_non_finite_tool_item_patch()]),
+            "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_equippable_item_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
@@ -1312,6 +1353,47 @@ fn component_with_tool_item_patch(extra: String) -> NbtSummaryValue {
     ])
 }
 
+fn component_with_equippable_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "equippable",
+                        compound(vec![
+                            string_entry("slot", "body"),
+                            value_entry(
+                                "equip_sound",
+                                compound(vec![
+                                    string_entry("sound_id", "example:equip"),
+                                    value_entry("range", NbtSummaryValue::Float(6.5f32.to_bits())),
+                                ]),
+                            ),
+                            string_entry("asset_id", "example:llama_carpet"),
+                            string_entry("camera_overlay", "overlay/powder_snow"),
+                            string_entry("allowed_entities", "#example:llamas"),
+                            value_entry("dispensable", NbtSummaryValue::Byte(0)),
+                            value_entry("swappable", NbtSummaryValue::Byte(0)),
+                            value_entry("damage_on_hurt", NbtSummaryValue::Byte(0)),
+                            value_entry("equip_on_interact", NbtSummaryValue::Byte(1)),
+                            value_entry("can_be_sheared", NbtSummaryValue::Byte(1)),
+                        ]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
 fn component_with_non_finite_tool_item_patch() -> NbtSummaryValue {
     compound(vec![
         string_entry("text", "item"),
@@ -1329,6 +1411,38 @@ fn component_with_non_finite_tool_item_patch() -> NbtSummaryValue {
                             value_entry(
                                 "default_mining_speed",
                                 NbtSummaryValue::Float(f32::NEG_INFINITY.to_bits()),
+                            ),
+                        ]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_equippable_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "equippable",
+                        compound(vec![
+                            string_entry("slot", "head"),
+                            value_entry(
+                                "equip_sound",
+                                compound(vec![
+                                    string_entry("sound_id", "example:equip"),
+                                    value_entry(
+                                        "range",
+                                        NbtSummaryValue::Float(f32::NAN.to_bits()),
+                                    ),
+                                ]),
                             ),
                         ]),
                     )]),

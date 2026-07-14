@@ -120,6 +120,10 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
             values.push(tool.default_mining_speed_bits);
             values.extend(tool.rules.iter().filter_map(|rule| rule.speed_bits));
         }
+        DialogDataComponentValueState::Equippable { equippable } => {
+            append_sound_range_bits(&mut values, Some(&equippable.equip_sound));
+            append_sound_range_bits(&mut values, Some(&equippable.shearing_sound));
+        }
         DialogDataComponentValueState::Bees { occupants } => {
             for occupant in occupants {
                 typed_data_json_utf16_len(
@@ -594,6 +598,49 @@ fn canonical_component_value_json_utf16_len(
             }
             object_len(fields.into_iter())
         }
+        DialogDataComponentValueState::Equippable { equippable } => {
+            let mut fields = vec![("slot", string_len(&equippable.slot))];
+            if !is_named_sound(
+                &equippable.equip_sound,
+                "minecraft:item.armor.equip_generic",
+            ) {
+                fields.push(("equip_sound", sound_event_len(&equippable.equip_sound)?));
+            }
+            if let Some(asset_id) = &equippable.asset_id {
+                fields.push(("asset_id", string_len(asset_id)));
+            }
+            if let Some(camera_overlay) = &equippable.camera_overlay {
+                fields.push(("camera_overlay", string_len(camera_overlay)));
+            }
+            if let Some(allowed_entities) = &equippable.allowed_entities {
+                fields.push((
+                    "allowed_entities",
+                    registry_holder_set_len(allowed_entities)?,
+                ));
+            }
+            if !equippable.dispensable {
+                fields.push(("dispensable", bool_len(false)));
+            }
+            if !equippable.swappable {
+                fields.push(("swappable", bool_len(false)));
+            }
+            if !equippable.damage_on_hurt {
+                fields.push(("damage_on_hurt", bool_len(false)));
+            }
+            if equippable.equip_on_interact {
+                fields.push(("equip_on_interact", bool_len(true)));
+            }
+            if equippable.can_be_sheared {
+                fields.push(("can_be_sheared", bool_len(true)));
+            }
+            if !is_named_sound(&equippable.shearing_sound, "minecraft:item.shears.snip") {
+                fields.push((
+                    "shearing_sound",
+                    sound_event_len(&equippable.shearing_sound)?,
+                ));
+            }
+            object_len(fields.into_iter())
+        }
         _ => return None,
     })
 }
@@ -631,6 +678,16 @@ fn append_sound_range_bits(values: &mut Vec<u32>, sound: Option<&DialogSoundEven
     {
         values.push(*bits);
     }
+}
+
+fn is_named_sound(sound: &DialogSoundEventHolderState, resource_id: &str) -> bool {
+    matches!(
+        sound,
+        DialogSoundEventHolderState::Named {
+            resource_id: actual,
+            ..
+        } if actual == resource_id
+    )
 }
 
 fn piercing_weapon_len(weapon: &DialogPiercingWeaponState) -> Option<usize> {
@@ -1519,6 +1576,59 @@ mod tests {
             canonical_data_component_patch_json_utf16_len(&non_finite_patch)
                 .unwrap_err()
                 .contains("non-finite")
+        );
+    }
+
+    #[test]
+    fn canonicalizes_equippable_holders_and_defaults() {
+        let named_sound = |resource_id: &str| DialogSoundEventHolderState::Named {
+            registry_id: 0,
+            resource_id: resource_id.to_string(),
+        };
+        assert_exact(
+            DialogDataComponentValueState::Equippable {
+                equippable: super::super::equippable::DialogEquippableState {
+                    slot_id: 4,
+                    slot: "head".to_string(),
+                    equip_sound: named_sound("minecraft:item.armor.equip_generic"),
+                    asset_id: None,
+                    camera_overlay: None,
+                    allowed_entities: None,
+                    dispensable: true,
+                    swappable: true,
+                    damage_on_hurt: true,
+                    equip_on_interact: false,
+                    can_be_sheared: false,
+                    shearing_sound: named_sound("minecraft:item.shears.snip"),
+                },
+            },
+            r#"{"slot":"head"}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::Equippable {
+                equippable: super::super::equippable::DialogEquippableState {
+                    slot_id: 6,
+                    slot: "body".to_string(),
+                    equip_sound: DialogSoundEventHolderState::Direct {
+                        sound_id: "minecraft:item.armor.equip_generic".to_string(),
+                        fixed_range_bits: Some(6.5f32.to_bits()),
+                    },
+                    asset_id: Some("example:llama_carpet".to_string()),
+                    camera_overlay: Some("minecraft:overlay/powder_snow".to_string()),
+                    allowed_entities: Some(DialogRegistryHolderSetState {
+                        holder_set_kind: "named".to_string(),
+                        tag: Some("example:llamas".to_string()),
+                        entries: Vec::new(),
+                    }),
+                    dispensable: false,
+                    swappable: false,
+                    damage_on_hurt: false,
+                    equip_on_interact: true,
+                    can_be_sheared: true,
+                    shearing_sound: named_sound("minecraft:item.shears.snip"),
+                },
+            },
+            r##"{"slot":"body","equip_sound":{"sound_id":"minecraft:item.armor.equip_generic","range":6.5},"asset_id":"example:llama_carpet","camera_overlay":"minecraft:overlay/powder_snow","allowed_entities":"#example:llamas","dispensable":false,"swappable":false,"damage_on_hurt":false,"equip_on_interact":true,"can_be_sheared":true}"##,
         );
     }
 
