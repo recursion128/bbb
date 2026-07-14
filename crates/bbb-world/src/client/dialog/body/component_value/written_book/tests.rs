@@ -234,6 +234,19 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let banner_patterns_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:banner_patterns":[{"pattern":{"asset_id":"example:spiral","translation_key":"block.example.spiral"},"color":"blue"}]}}}"#
+    )
+    .len();
+    let exact_banner_patterns_patch_page = component_with_banner_patterns_item_patch(
+        "x".repeat(32_767 - banner_patterns_patch_prefix),
+    );
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_banner_patterns_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -535,6 +548,16 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
                 32_768
                     - concat!(
                         r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:piercing_weapon":{"deals_knockback":false,"sound":{"sound_id":"example:throw"}},"minecraft:kinetic_weapon":{"contact_cooldown_ticks":5,"damage_conditions":{"max_duration_ticks":20,"min_relative_speed":2.0},"forward_movement":0.25,"hit_sound":{"sound_id":"example:hit","range":8.0}}}}}"#
+                    )
+                    .len(),
+            ))]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
+            book_with_pages(vec![component_with_banner_patterns_item_patch("x".repeat(
+                32_768
+                    - concat!(
+                        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:banner_patterns":[{"pattern":{"asset_id":"example:spiral","translation_key":"block.example.spiral"},"color":"blue"}]}}}"#
                     )
                     .len(),
             ))]),
@@ -910,6 +933,39 @@ fn component_with_non_finite_weapon_item_patch() -> NbtSummaryValue {
                             "forward_movement",
                             NbtSummaryValue::Float(f32::NAN.to_bits()),
                         )]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_banner_patterns_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "banner_patterns",
+                        NbtSummaryValue::List(vec![compound(vec![
+                            value_entry(
+                                "pattern",
+                                compound(vec![
+                                    string_entry("asset_id", "example:spiral"),
+                                    string_entry("translation_key", "block.example.spiral"),
+                                ]),
+                            ),
+                            string_entry("color", "blue"),
+                        ])]),
                     )]),
                 ),
             ]),

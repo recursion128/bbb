@@ -14222,3 +14222,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   direct sound、NaN 拒绝与 written-book hover `show_item` 双 weapon patch 的 32767/32768 UTF-16 unit
   边界均有回归。show-dialog 和剩余 RegistryFileCodec-direct、typed-NBT、predicate/item-template 及其它
   nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize banner-pattern layers
+
+- [x] 对照 `BannerPatternLayers.CODEC/Layer.CODEC` 与 `BannerPattern.CODEC/DIRECT_CODEC`，扩展单一
+  item-patch canonical owner：layer list 保留 pattern/color field order，named pattern holder 输出 normalized
+  resource-id string，direct holder 输出 required asset_id/translation_key object，DyeColor 输出 serialized name。
+- [x] layer pattern/color 与 direct asset_id/translation_key 的 duplicate lookup 均按 CompoundTag last-wins
+  修正；named/direct 精确列表及 written-book hover `show_item` direct banner-pattern patch 的 32767/32768
+  UTF-16 unit 边界均有回归。show-dialog 和剩余 RegistryFileCodec-direct、typed-NBT、predicate/
+  item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

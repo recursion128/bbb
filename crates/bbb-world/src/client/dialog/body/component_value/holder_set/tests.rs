@@ -242,6 +242,65 @@ fn holder_set_record_fields_follow_compound_last_wins_semantics() {
 }
 
 #[test]
+fn banner_pattern_layer_and_direct_holder_fields_follow_last_wins_semantics() {
+    let layers = decode_banner_pattern_layers(
+        &NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "pattern".to_string(),
+                value: NbtSummaryValue::Int(0),
+            },
+            NbtSummaryEntry {
+                name: "pattern".to_string(),
+                value: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "asset_id".to_string(),
+                        value: NbtSummaryValue::Int(0),
+                    },
+                    NbtSummaryEntry {
+                        name: "asset_id".to_string(),
+                        value: NbtSummaryValue::String("example:spiral".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "translation_key".to_string(),
+                        value: NbtSummaryValue::Int(0),
+                    },
+                    NbtSummaryEntry {
+                        name: "translation_key".to_string(),
+                        value: NbtSummaryValue::String("block.example.spiral".to_string()),
+                    },
+                ]),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::Int(0),
+            },
+            NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String("blue".to_string()),
+            },
+        ])]),
+        None,
+        "banner patterns",
+    )
+    .unwrap();
+    assert!(matches!(
+        layers.as_slice(),
+        [DialogBannerPatternLayerState {
+            pattern: DialogBannerPatternHolderState::Direct {
+                pattern: DialogDirectBannerPatternState {
+                    asset_id,
+                    translation_key,
+                },
+            },
+            color,
+            ..
+        }] if asset_id == "example:spiral"
+            && translation_key == "block.example.spiral"
+            && color == "blue"
+    ));
+}
+
+#[test]
 fn synchronized_registry_holder_set_uses_session_order_and_tags() {
     let registry = "minecraft:banner_pattern";
     let mut registries = RegistrySet::default();

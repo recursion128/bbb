@@ -419,7 +419,9 @@ packet Component 尚无该 world context；`repairable`、`provides_banner_patte
 闭合 named resource string 与 direct sound_id/optional range object，direct float 复用 JDK 26 formatter
 并拒绝 non-finite，字段读取遵循 last-wins；`piercing_weapon` 与 `kinetic_weapon` 进一步复用同一 sound
 holder canonical owner，闭合默认布尔/整数/float 省略、三个 optional Condition 与全部 nested float
-non-finite 拒绝，局部 optional record/float/sound 也已统一 last-wins；
+non-finite 拒绝，局部 optional record/float/sound 也已统一 last-wins；`banner_patterns` layer list 也已
+闭合 RegistryFileCodec named/direct pattern holder、direct asset_id/translation_key 与 dye-color name，
+layer/direct holder 字段均按 CompoundTag last-wins；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

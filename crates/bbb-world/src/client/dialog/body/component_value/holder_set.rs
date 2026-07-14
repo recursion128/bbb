@@ -200,6 +200,7 @@ fn decode_banner_pattern_layers(
             };
             let pattern_value = entries
                 .iter()
+                .rev()
                 .find(|entry| entry.name == "pattern")
                 .map(|entry| &entry.value)
                 .ok_or_else(|| format!("{entry_what} is missing field pattern"))?;
@@ -210,6 +211,7 @@ fn decode_banner_pattern_layers(
             )?;
             let color_value = entries
                 .iter()
+                .rev()
                 .find(|entry| entry.name == "color")
                 .map(|entry| &entry.value)
                 .ok_or_else(|| format!("{entry_what} is missing field color"))?;
@@ -263,6 +265,7 @@ fn decode_direct_banner_pattern(
 ) -> Result<DialogDirectBannerPatternState, String> {
     let asset_id = entries
         .iter()
+        .rev()
         .find(|entry| entry.name == "asset_id")
         .map(|entry| &entry.value)
         .ok_or_else(|| format!("{what} direct holder is missing field asset_id"))?;
@@ -276,6 +279,7 @@ fn decode_direct_banner_pattern(
     })?;
     let translation_key = entries
         .iter()
+        .rev()
         .find(|entry| entry.name == "translation_key")
         .map(|entry| &entry.value)
         .ok_or_else(|| format!("{what} direct holder is missing field translation_key"))?;

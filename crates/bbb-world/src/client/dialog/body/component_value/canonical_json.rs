@@ -5,7 +5,7 @@ use bbb_protocol::{
 };
 
 use super::super::DialogDataComponentPatchState;
-use super::holder_set::DialogRegistryHolderSetState;
+use super::holder_set::{DialogBannerPatternHolderState, DialogRegistryHolderSetState};
 use super::sound_event::{
     DialogKineticWeaponConditionState, DialogKineticWeaponState, DialogPiercingWeaponState,
     DialogSoundEventHolderState,
@@ -451,8 +451,32 @@ fn canonical_component_value_json_utf16_len(
         DialogDataComponentValueState::BreakSound { sound } => sound_event_len(sound)?,
         DialogDataComponentValueState::PiercingWeapon { weapon } => piercing_weapon_len(weapon)?,
         DialogDataComponentValueState::KineticWeapon { weapon } => kinetic_weapon_len(weapon)?,
+        DialogDataComponentValueState::BannerPatterns { layers } => {
+            array_len(layers.iter().map(|layer| {
+                object_len(
+                    [
+                        ("pattern", banner_pattern_holder_len(&layer.pattern)),
+                        ("color", string_len(&layer.color)),
+                    ]
+                    .into_iter(),
+                )
+            }))
+        }
         _ => return None,
     })
+}
+
+fn banner_pattern_holder_len(holder: &DialogBannerPatternHolderState) -> usize {
+    match holder {
+        DialogBannerPatternHolderState::Named { resource_id, .. } => string_len(resource_id),
+        DialogBannerPatternHolderState::Direct { pattern } => object_len(
+            [
+                ("asset_id", string_len(&pattern.asset_id)),
+                ("translation_key", string_len(&pattern.translation_key)),
+            ]
+            .into_iter(),
+        ),
+    }
 }
 
 fn append_sound_range_bits(values: &mut Vec<u32>, sound: Option<&DialogSoundEventHolderState>) {
@@ -1085,6 +1109,35 @@ mod tests {
                 },
             },
             r#"{"contact_cooldown_ticks":5,"delay_ticks":2,"damage_conditions":{"max_duration_ticks":20,"min_relative_speed":2.0},"forward_movement":0.25,"damage_multiplier":2.0,"sound":"minecraft:entity.item.break","hit_sound":{"sound_id":"example:hit","range":8.0}}"#,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_named_and_direct_banner_pattern_layers() {
+        assert_exact(
+            DialogDataComponentValueState::BannerPatterns {
+                layers: vec![
+                    super::super::holder_set::DialogBannerPatternLayerState {
+                        pattern: DialogBannerPatternHolderState::Named {
+                            registry_id: 1,
+                            resource_id: "minecraft:flower".to_string(),
+                        },
+                        color_id: 14,
+                        color: "red".to_string(),
+                    },
+                    super::super::holder_set::DialogBannerPatternLayerState {
+                        pattern: DialogBannerPatternHolderState::Direct {
+                            pattern: super::super::holder_set::DialogDirectBannerPatternState {
+                                asset_id: "example:spiral".to_string(),
+                                translation_key: "block.example.spiral".to_string(),
+                            },
+                        },
+                        color_id: 11,
+                        color: "blue".to_string(),
+                    },
+                ],
+            },
+            r#"[{"pattern":"minecraft:flower","color":"red"},{"pattern":{"asset_id":"example:spiral","translation_key":"block.example.spiral"},"color":"blue"}]"#,
         );
     }
 

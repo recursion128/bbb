@@ -123,7 +123,9 @@ Owner: `bbb-protocol`
   now cover named references and direct sound-id/optional-range objects with exact finite-float
   encoding. Piercing- and kinetic-weapon records reuse that holder projection and now cover their
   defaulted scalars, three optional kinetic conditions, nested floats, and strict non-finite
-  rejection. Dialog click `show_dialog` payloads also decode through the full
+  rejection. Banner-pattern layer lists now cover named/direct pattern holders, direct asset and
+  translation fields, and dye-color names with last-wins field lookup. Dialog click `show_dialog`
+  payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.
   Object-content player profiles likewise reuse the complete `ResolvableProfile.CODEC`
