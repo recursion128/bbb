@@ -14284,6 +14284,68 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
     assert_eq!((tooltip.x, tooltip.y), (120, 65));
     assert_eq!(tooltip.lines[0].text, "Stick");
 
+    assert!(world.focus_dialog_body_item(0));
+    let focused = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        None,
+        InventoryHudLocalState::default(),
+        surface_size,
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(
+        focused
+            .fill_layers
+            .iter()
+            .map(|layer| {
+                (
+                    layer.x,
+                    layer.y,
+                    layer.width,
+                    layer.height,
+                    layer.tint,
+                    layer.stage,
+                )
+            })
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                118,
+                63,
+                32,
+                1,
+                [1.0, 1.0, 1.0, 1.0],
+                HudInventoryFillStage::Foreground
+            ),
+            (
+                118,
+                110,
+                32,
+                1,
+                [1.0, 1.0, 1.0, 1.0],
+                HudInventoryFillStage::Foreground
+            ),
+            (
+                118,
+                64,
+                1,
+                46,
+                [1.0, 1.0, 1.0, 1.0],
+                HudInventoryFillStage::Foreground
+            ),
+            (
+                149,
+                64,
+                1,
+                46,
+                [1.0, 1.0, 1.0, 1.0],
+                HudInventoryFillStage::Foreground
+            ),
+        ]
+    );
+
     let mut patched_world = WorldStore::new();
     patched_world.apply_show_dialog(ShowDialog {
         dialog: DialogHolder::Direct {

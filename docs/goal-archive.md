@@ -14842,3 +14842,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world/native focused regressions 覆盖 lifecycle、focus persistence、三类 focus sprite、三种 selection key、
   Shift reverse、slider one-pixel step、locked arrow no-op 与 action focus release。Item/body/warning/footer 的统一
   Tab/方向 focus graph 继续留在 TODO。
+
+## 2026-07-14：Focus dialog Item body widgets
+
+- [x] 对照 `DialogBodyHandlers.ItemHandler`、`ItemDisplayWidget` 与 `ContainerEventHandler.mouseClicked`，
+  world 将 input-only transient focus 收敛为 serde-skipped body/input owner；Item mouse press 仅以声明 widget
+  rect 接管 focus，description/gap 与 blank click 保持既有 focus，input 或 footer action 接管/释放旧 focus，
+  show/close/wait/replace 继续统一清理。
+- [x] 对照 `GuiGraphicsExtractor.outline`，native 在 floating item 后的 Foreground 阶段按四次 fill 的原始
+  端点和 `-1` 白色生成边框。world/native regressions 覆盖 body/input 切换与 lifecycle、包含右下边界而
+  排除右边界的 widget hit、blank persistence、action release，以及 32x48 Item 的四条 exact fill geometry；
+  warning/body/input/footer 的统一 Tab/方向 focus graph 继续留在 TODO。

@@ -365,8 +365,11 @@ jukebox-song 与 painting-variant 的 persistent `RegistryFixedCodec` 只允许 
 26.1 component catalog 中仅 creative-slot-lock、additional-trade-cost 与 map-post-processing 三项没有
 persistent CODEC，剩余 107 项 persistent component 均有 dialog typed decoder/summary bridge 与 native
 persistent encoder，未知未来形状仍不会被猜测性投影。
+ItemDisplayWidget 已共享 serde-skipped body/input focus owner，mouse press 仅以声明 item widget rect 接管
+focus、blank click 保持既有 focus、input/footer 接管或释放；focused item 在 floating item 后按 vanilla
+`GuiGraphicsExtractor.outline` 的四次 fill 端点输出白色 Foreground outline。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
-Item focus outline、warning/body/input/footer 的统一 Tab/方向 focus navigation、NumberRange/SingleOption
+warning/body/input/footer 的统一 Tab/方向 focus navigation、NumberRange/SingleOption
 超长 label scrolling、Text multiline editor、single-line Text 的 Tab focus traversal、double-click
 word selection 与 IME preedit overlay、
 button-list tooltip/scroll/focus、

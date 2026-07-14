@@ -9,10 +9,10 @@ use bbb_protocol::{
     NbtSummaryValue,
 };
 use bbb_renderer::{
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
-    HudInventoryScreen, HudInventoryTextInputDecoration, HudInventoryTextLabel,
-    HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun, HudTextStyle, HudUvRect,
-    Renderer,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
+    HudInventoryFillStage, HudInventoryItem, HudInventoryScreen, HudInventoryTextInputDecoration,
+    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun,
+    HudTextStyle, HudUvRect, Renderer,
 };
 use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState,
@@ -81,6 +81,15 @@ struct DialogButtonLayout {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct DialogInputLayout {
+    index: usize,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogBodyItemLayout {
     index: usize,
     x: i32,
     y: i32,
@@ -163,13 +172,12 @@ impl DialogBodyBlock {
         match self {
             Self::Text(text) => i32::try_from(text.width).unwrap_or(i32::MAX),
             Self::Item(item) => {
-                item.description
-                    .as_ref()
-                    .map_or(item.widget_width, |description| {
-                        item.widget_width
-                            .saturating_add(ITEM_DESCRIPTION_SPACING)
-                            .saturating_add(i32::try_from(description.width).unwrap_or(i32::MAX))
-                    })
+                dialog_item_dimensions(
+                    item.widget_width,
+                    item.widget_height,
+                    item.description.as_ref(),
+                )
+                .0
             }
         }
     }
@@ -177,14 +185,31 @@ impl DialogBodyBlock {
     fn height(&self) -> i32 {
         match self {
             Self::Text(text) => text.height,
-            Self::Item(item) => item
-                .description
-                .as_ref()
-                .map_or(item.widget_height, |description| {
-                    item.widget_height.max(description.height)
-                }),
+            Self::Item(item) => {
+                dialog_item_dimensions(
+                    item.widget_width,
+                    item.widget_height,
+                    item.description.as_ref(),
+                )
+                .1
+            }
         }
     }
+}
+
+fn dialog_item_dimensions(
+    widget_width: i32,
+    widget_height: i32,
+    description: Option<&DialogTextBlock>,
+) -> (i32, i32) {
+    description.map_or((widget_width, widget_height), |description| {
+        (
+            widget_width
+                .saturating_add(ITEM_DESCRIPTION_SPACING)
+                .saturating_add(i32::try_from(description.width).unwrap_or(i32::MAX)),
+            widget_height.max(description.height),
+        )
+    })
 }
 
 impl SimpleDialogLayout {
@@ -271,20 +296,81 @@ fn simple_dialog_controls(data: &DialogDataState) -> Option<SimpleDialogControls
     }
 }
 
-fn dialog_body_declared_height(body: &DialogBodyState) -> Option<i32> {
+fn dialog_body_declared_dimensions(body: &DialogBodyState) -> Option<(i32, i32)> {
     match body {
-        DialogBodyState::PlainMessage { message } => Some(dialog_text_block(message)?.height),
+        DialogBodyState::PlainMessage { message } => {
+            let text = dialog_text_block(message)?;
+            Some((i32::try_from(text.width).ok()?, text.height))
+        }
         DialogBodyState::Item {
             description,
+            width,
             height,
             ..
-        } => Some(
-            description
-                .as_ref()
-                .and_then(dialog_text_block)
-                .map_or(*height, |text| (*height).max(text.height)),
-        ),
+        } => {
+            let description = description.as_ref().and_then(dialog_text_block);
+            Some(dialog_item_dimensions(
+                *width,
+                *height,
+                description.as_ref(),
+            ))
+        }
     }
+}
+
+fn dialog_body_item_layouts(
+    common: &CommonDialogDataState,
+    surface_size: PhysicalSize<u32>,
+) -> Option<Vec<DialogBodyItemLayout>> {
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let screen_width_i32 = i32::try_from(screen_width).ok()?;
+    let screen_height_i32 = i32::try_from(screen_height).ok()?;
+    let body_dimensions = common
+        .body_data
+        .iter()
+        .map(dialog_body_declared_dimensions)
+        .collect::<Option<Vec<_>>>()?;
+    let input_dimensions = common
+        .input_data
+        .iter()
+        .map(|input| dialog_input_dimensions(&input.control))
+        .collect::<Option<Vec<_>>>()?;
+    let element_count = body_dimensions.len().saturating_add(input_dimensions.len());
+    let content_height = body_dimensions
+        .iter()
+        .map(|(_, height)| height)
+        .chain(input_dimensions.iter().map(|(_, height)| height))
+        .fold(0i32, |total, height| total.saturating_add(*height))
+        .saturating_add(
+            i32::try_from(element_count.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BODY_SPACING),
+        );
+    let mut y = (HEADER_HEIGHT + CONTENT_MARGIN_TOP).min(
+        screen_height_i32
+            .saturating_sub(FOOTER_HEIGHT)
+            .saturating_sub(content_height),
+    );
+    let mut layouts = Vec::new();
+    for (index, (body, (block_width, block_height))) in
+        common.body_data.iter().zip(body_dimensions).enumerate()
+    {
+        if index > 0 {
+            y = y.saturating_add(BODY_SPACING);
+        }
+        if let DialogBodyState::Item { width, height, .. } = body {
+            layouts.push(DialogBodyItemLayout {
+                index,
+                x: screen_width_i32 / 2 - block_width / 2,
+                y: y.saturating_add(vertical_center_offset(block_height, *height)),
+                width: *width,
+                height: *height,
+            });
+        }
+        y = y.saturating_add(block_height);
+    }
+    Some(layouts)
 }
 
 fn dialog_input_dimensions(control: &DialogInputControlState) -> Option<(i32, i32)> {
@@ -344,7 +430,7 @@ fn dialog_input_layouts(
     let body_heights = common
         .body_data
         .iter()
-        .map(dialog_body_declared_height)
+        .map(|body| dialog_body_declared_dimensions(body).map(|(_, height)| height))
         .collect::<Option<Vec<_>>>()?;
     let input_dimensions = common
         .input_data
@@ -710,10 +796,11 @@ pub(super) fn hud_dialog_screen(
         .common
         .body_data
         .iter()
-        .filter_map(|body| match body {
-            DialogBodyState::PlainMessage { message } => {
-                dialog_text_block(message).map(DialogBodyBlock::Text)
-            }
+        .enumerate()
+        .filter_map(|(body_index, body)| match body {
+            DialogBodyState::PlainMessage { message } => dialog_text_block(message)
+                .map(DialogBodyBlock::Text)
+                .map(|block| (body_index, block)),
             DialogBodyState::Item {
                 item,
                 description,
@@ -734,12 +821,13 @@ pub(super) fn hud_dialog_screen(
                 *height,
                 partial_tick,
             )
-            .map(DialogBodyBlock::Item),
+            .map(DialogBodyBlock::Item)
+            .map(|block| (body_index, block)),
         })
         .collect::<Vec<_>>();
-    let body_height = body_blocks
-        .iter()
-        .fold(0i32, |height, block| height.saturating_add(block.height()));
+    let body_height = body_blocks.iter().fold(0i32, |height, (_, block)| {
+        height.saturating_add(block.height())
+    });
     let input_dimensions = controls
         .common
         .input_data
@@ -763,9 +851,10 @@ pub(super) fn hud_dialog_screen(
             .saturating_sub(content_height),
     );
     let mut floating_items = Vec::new();
+    let mut fill_layers = Vec::new();
     let mut item_tooltip = None;
-    for (block_index, block) in body_blocks.into_iter().enumerate() {
-        if block_index > 0 {
+    for (render_index, (body_index, block)) in body_blocks.into_iter().enumerate() {
+        if render_index > 0 {
             body_y = body_y.saturating_add(BODY_SPACING);
         }
         let block_x = screen_width_i32 / 2 - block.width() / 2;
@@ -779,6 +868,15 @@ pub(super) fn hud_dialog_screen(
                     body_y.saturating_add(vertical_center_offset(block_height, item.widget_height));
                 item.item.x = block_x;
                 item.item.y = item_y;
+                if world.dialog_focused_body() == Some(body_index) {
+                    push_dialog_outline_layers(
+                        &mut fill_layers,
+                        block_x,
+                        item_y,
+                        item.widget_width,
+                        item.widget_height,
+                    );
+                }
                 if item.show_tooltip
                     && dialog_widget_contains(
                         block_x,
@@ -800,7 +898,7 @@ pub(super) fn hud_dialog_screen(
                         surface_size,
                         layout.screen_width,
                         layout.screen_height,
-                        block_index,
+                        body_index,
                     );
                 }
                 floating_items.push(item.item);
@@ -1119,7 +1217,7 @@ pub(super) fn hud_dialog_screen(
         height: layout.screen_height,
         background_layers,
         foreground_layers: Vec::new(),
-        fill_layers: Vec::new(),
+        fill_layers,
         slots: Vec::new(),
         floating_items,
         foreground_items: Vec::new(),
@@ -1711,6 +1809,21 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
             }
         })
     });
+    let body_item_hit =
+        dialog_body_item_layouts(controls.common, surface_size).and_then(|layouts| {
+            layouts.into_iter().find(|layout| {
+                dialog_widget_contains(
+                    layout.x,
+                    layout.y,
+                    layout.width,
+                    layout.height,
+                    cursor_position,
+                    surface_size,
+                    screen_width,
+                    screen_height,
+                )
+            })
+        });
     let action = SimpleDialogLayout::new(
         &controls
             .actions
@@ -1755,10 +1868,14 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
             world.begin_dialog_text_input_drag(layout.index);
             return true;
         }
-        None if action.is_some() => {
-            world.clear_dialog_input_focus();
-        }
         None => {}
+    }
+    if let Some(layout) = body_item_hit {
+        world.focus_dialog_body_item(layout.index);
+        return true;
+    }
+    if action.is_some() {
+        world.clear_dialog_focus();
     }
     let Some(action) = action else {
         return true;
@@ -2255,6 +2372,55 @@ fn centered_screen_origin(
     )
 }
 
+fn push_dialog_outline_layers(
+    layers: &mut Vec<HudInventoryFillLayer>,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+) {
+    let right = x.saturating_add(width);
+    let bottom = y.saturating_add(height);
+    push_dialog_fill_layer(layers, x, y, right, y.saturating_add(1));
+    push_dialog_fill_layer(layers, x, bottom.saturating_sub(1), right, bottom);
+    push_dialog_fill_layer(
+        layers,
+        x,
+        y.saturating_add(1),
+        x.saturating_add(1),
+        bottom.saturating_sub(1),
+    );
+    push_dialog_fill_layer(
+        layers,
+        right.saturating_sub(1),
+        y.saturating_add(1),
+        right,
+        bottom.saturating_sub(1),
+    );
+}
+
+fn push_dialog_fill_layer(
+    layers: &mut Vec<HudInventoryFillLayer>,
+    x0: i32,
+    y0: i32,
+    x1: i32,
+    y1: i32,
+) {
+    let width = x0.abs_diff(x1);
+    let height = y0.abs_diff(y1);
+    if width == 0 || height == 0 {
+        return;
+    }
+    layers.push(HudInventoryFillLayer {
+        x: x0.min(x1),
+        y: y0.min(y1),
+        width,
+        height,
+        tint: TEXT_COLOR,
+        stage: HudInventoryFillStage::Foreground,
+    });
+}
+
 fn dialog_text_block(message: &DialogPlainMessageState) -> Option<DialogTextBlock> {
     let width = u32::try_from(message.width).ok()?;
     let text_width = width
@@ -2661,6 +2827,95 @@ mod tests {
         assert_eq!((layer.width, layer.height), (800, 600));
         assert_eq!(layer.uv.min, [0.0, 0.0]);
         assert_eq!(layer.uv.max, [25.0, 18.75]);
+    }
+
+    #[test]
+    fn dialog_item_body_mouse_focus_uses_only_the_declared_widget_rect() {
+        let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "body",
+                NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:item".to_string()),
+                    ),
+                    entry(
+                        "item",
+                        NbtSummaryValue::Compound(vec![entry(
+                            "id",
+                            NbtSummaryValue::String("minecraft:stick".to_string()),
+                        )]),
+                    ),
+                    entry(
+                        "description",
+                        NbtSummaryValue::Compound(vec![
+                            entry("contents", NbtSummaryValue::String("Info".to_string())),
+                            entry("width", NbtSummaryValue::Int(50)),
+                        ]),
+                    ),
+                    entry("width", NbtSummaryValue::Int(32)),
+                    entry("height", NbtSummaryValue::Int(48)),
+                ]),
+            ),
+        ]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let dialog = world.current_dialog().unwrap();
+        let common = dialog
+            .data
+            .as_ref()
+            .and_then(simple_dialog_controls)
+            .unwrap_or_else(|| panic!("dialog decode failed: {:?}", dialog.semantic_error))
+            .common;
+        assert_eq!(
+            dialog_body_item_layouts(common, surface_size).unwrap(),
+            vec![DialogBodyItemLayout {
+                index: 0,
+                x: 118,
+                y: 63,
+                width: 32,
+                height: 48,
+            }]
+        );
+        let mut counters = NetCounters::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(149.0, 110.0)),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_focused_body(), Some(0));
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(150.0, 64.0)),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_focused_body(), Some(0));
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_focused_body(), None);
+        assert!(world.current_dialog().is_some());
     }
 
     #[test]

@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     client::dialog::{
-        CommonDialogDataState, DialogDataState, DialogInputControlState, DialogState,
+        CommonDialogDataState, DialogBodyState, DialogDataState, DialogInputControlState,
+        DialogState,
     },
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
     protocol_block_pos, BlockPos, WorldStore,
@@ -33,7 +34,7 @@ pub struct ClientUiState {
     #[serde(skip)]
     dialog_dragging_number_range_input: Option<usize>,
     #[serde(skip)]
-    dialog_focused_input: Option<usize>,
+    dialog_focus: Option<DialogFocusState>,
     #[serde(skip)]
     dialog_number_range_keyboard_input: Option<usize>,
     #[serde(skip)]
@@ -90,6 +91,12 @@ pub struct DialogTextEditState {
     pub selection: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DialogFocusState {
+    Body { index: usize },
+    Input { index: usize },
+}
+
 impl ClientUiState {
     fn show_dialog(&mut self, dialog: DialogState) {
         if self.current_dialog.is_none() && self.dialog_waiting_ticks.is_none() {
@@ -105,7 +112,7 @@ impl ClientUiState {
         }
         self.dialog_waiting_ticks = None;
         self.dialog_dragging_number_range_input = None;
-        self.dialog_focused_input = None;
+        self.dialog_focus = None;
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
@@ -118,7 +125,7 @@ impl ClientUiState {
             return false;
         }
         self.dialog_dragging_number_range_input = None;
-        self.dialog_focused_input = None;
+        self.dialog_focus = None;
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
@@ -132,7 +139,7 @@ impl ClientUiState {
             return false;
         }
         self.dialog_dragging_number_range_input = None;
-        self.dialog_focused_input = None;
+        self.dialog_focus = None;
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
@@ -171,7 +178,7 @@ impl ClientUiState {
     pub(crate) fn replace_dialog(&mut self) {
         self.current_dialog = None;
         self.dialog_dragging_number_range_input = None;
-        self.dialog_focused_input = None;
+        self.dialog_focus = None;
         self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
@@ -528,13 +535,40 @@ impl WorldStore {
             cursor,
             selection,
         });
-        self.client_ui.dialog_focused_input = Some(index);
+        self.client_ui.dialog_focus = Some(DialogFocusState::Input { index });
         self.client_ui.dialog_number_range_keyboard_input = None;
         true
     }
 
     pub fn dialog_focused_input(&self) -> Option<usize> {
-        self.client_ui.dialog_focused_input
+        match self.client_ui.dialog_focus {
+            Some(DialogFocusState::Input { index }) => Some(index),
+            _ => None,
+        }
+    }
+
+    pub fn dialog_focused_body(&self) -> Option<usize> {
+        match self.client_ui.dialog_focus {
+            Some(DialogFocusState::Body { index }) => Some(index),
+            _ => None,
+        }
+    }
+
+    pub fn focus_dialog_body_item(&mut self, index: usize) -> bool {
+        if !self
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .map(common_dialog_data)
+            .and_then(|common| common.body_data.get(index))
+            .is_some_and(|body| matches!(body, DialogBodyState::Item { .. }))
+        {
+            return false;
+        }
+        self.client_ui.dialog_focus = Some(DialogFocusState::Body { index });
+        self.client_ui.dialog_number_range_keyboard_input = None;
+        self.client_ui.dialog_text_edit = None;
+        self.client_ui.dialog_dragging_text_input = None;
+        true
     }
 
     pub fn focus_dialog_mouse_input(&mut self, index: usize) -> bool {
@@ -555,27 +589,27 @@ impl WorldStore {
         ) {
             return false;
         }
-        self.client_ui.dialog_focused_input = Some(index);
+        self.client_ui.dialog_focus = Some(DialogFocusState::Input { index });
         self.client_ui.dialog_number_range_keyboard_input = number_range.then_some(index);
         self.client_ui.dialog_text_edit = None;
         self.client_ui.dialog_dragging_text_input = None;
         true
     }
 
-    pub fn clear_dialog_input_focus(&mut self) -> bool {
+    pub fn clear_dialog_focus(&mut self) -> bool {
         self.client_ui.dialog_number_range_keyboard_input = None;
         self.client_ui.dialog_dragging_text_input = None;
         self.client_ui.dialog_text_edit = None;
-        self.client_ui.dialog_focused_input.take().is_some()
+        self.client_ui.dialog_focus.take().is_some()
     }
 
     pub fn dialog_number_range_keyboard_can_change(&self, index: usize) -> bool {
-        self.client_ui.dialog_focused_input == Some(index)
+        self.dialog_focused_input() == Some(index)
             && self.client_ui.dialog_number_range_keyboard_input == Some(index)
     }
 
     pub fn toggle_dialog_number_range_keyboard_change(&mut self, index: usize) -> bool {
-        if self.client_ui.dialog_focused_input != Some(index)
+        if self.dialog_focused_input() != Some(index)
             || !matches!(
                 self.client_ui.dialog_input_values.get(index),
                 Some(Some(DialogInputValueState::NumberRange { .. }))
@@ -1008,6 +1042,70 @@ mod tests {
 
         assert!(store.close_dialog());
         assert!(store.current_dialog_input_values().is_empty());
+    }
+
+    #[test]
+    fn dialog_item_body_focus_switches_with_inputs_and_clears_with_lifecycle() {
+        let entry = |name: &str, value| NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        };
+        let mut store = WorldStore::new();
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:notice".to_string()),
+                    ),
+                    entry("title", NbtSummaryValue::String("Focus".to_string())),
+                    entry(
+                        "body",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "type",
+                                NbtSummaryValue::String("minecraft:item".to_string()),
+                            ),
+                            entry(
+                                "item",
+                                NbtSummaryValue::Compound(vec![entry(
+                                    "id",
+                                    NbtSummaryValue::String("minecraft:stick".to_string()),
+                                )]),
+                            ),
+                        ]),
+                    ),
+                    entry(
+                        "inputs",
+                        NbtSummaryValue::List(vec![NbtSummaryValue::Compound(vec![
+                            entry("key", NbtSummaryValue::String("enabled".to_string())),
+                            entry(
+                                "type",
+                                NbtSummaryValue::String("minecraft:boolean".to_string()),
+                            ),
+                            entry("label", NbtSummaryValue::String("Enabled".to_string())),
+                        ])]),
+                    ),
+                ]),
+            },
+        });
+
+        assert!(store.focus_dialog_body_item(0));
+        assert_eq!(store.dialog_focused_body(), Some(0));
+        assert_eq!(store.dialog_focused_input(), None);
+        assert!(!store.focus_dialog_body_item(1));
+        assert_eq!(store.dialog_focused_body(), Some(0));
+
+        assert!(store.focus_dialog_mouse_input(0));
+        assert_eq!(store.dialog_focused_body(), None);
+        assert_eq!(store.dialog_focused_input(), Some(0));
+        assert!(store.focus_dialog_body_item(0));
+        assert_eq!(store.dialog_focused_body(), Some(0));
+        assert_eq!(store.dialog_focused_input(), None);
+
+        assert!(store.close_dialog());
+        assert_eq!(store.dialog_focused_body(), None);
+        assert_eq!(store.dialog_focused_input(), None);
     }
 
     #[test]

@@ -69,7 +69,7 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
-  add the Item focus outline and unified warning/body/input/footer Tab and directional focus graph,
+  add the unified warning/body/input/footer Tab and directional focus graph,
   NumberRange/SingleOption long-label scrolling, the multiline Text editor, and single-line Text
   Tab focus traversal, double-click word selection, and IME preedit overlay,
   remaining button-list action tooltips, and the
@@ -100,7 +100,8 @@ Owner: `bbb-protocol`
   plus validated persistent named/direct instrument and trim holder values while retaining their
   typed summaries; jukebox-song and painting-variant compounds remain rejected because their
   persistent `RegistryFixedCodec` only accepts named resource ids,
-  and item tooltips. The other animal/sound registry variants also use `RegistryFixedCodec`, and
+  item tooltips, and mouse-focused Item widget bounds with the exact white foreground outline.
+  The other animal/sound registry variants also use `RegistryFixedCodec`, and
   all 107 persistent entries in the 26.1 component catalog now have the dialog decode/summary/native
   encoder path; the three network-only entries cannot occur in persistent dialog Item NBT,
   renders and mouse-toggles Boolean inputs with the vanilla checkbox sprites, binds their
