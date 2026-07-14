@@ -14137,3 +14137,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   Identifier list、hidden component set、seed/default omission、四类 custom-model list 与 non-finite
   Gson rejection 均有同置测试，written-book hover `show_item` flat patch 的 32767/32768 边界也有贯通
   回归。show-dialog 和剩余 holder/nested-record/recursive positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize firework and lodestone item patches
+
+- [x] 对照 `FireworkExplosion.CODEC`、`Fireworks.CODEC`、`LodestoneTracker.CODEC`、
+  `GlobalPos.MAP_CODEC` 与 `BlockPos.CODEC`，扩展单一 item-patch canonical owner：explosion 保留 required
+  shape 并省略 empty color/fade list 与 false trail/twinkle，fireworks 省略 zero duration/empty explosion
+  list，lodestone 以 normalized dimension 和三项 signed-int stream 投影 optional target，并省略 tracked=true。
+- [x] star/color/trail、fireworks empty/non-default nested list、negative block coordinate、tracked=false 与
+  written-book hover `show_item` firework patch 的 32767/32768 UTF-16 unit 边界均有定向测试。show-dialog
+  和剩余 registry-holder、typed-NBT、predicate/item-template 及其它 nested-record positive item-patch
+  value 继续由缺口账本追踪。

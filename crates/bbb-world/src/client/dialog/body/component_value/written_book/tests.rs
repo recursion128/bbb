@@ -156,6 +156,18 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         "written book",
     )
     .is_ok());
+
+    let firework_patch_prefix = concat!(
+        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:firework_explosion":{"shape":"star","colors":[1193046],"has_trail":true}}}}"#
+    )
+    .len();
+    let exact_firework_patch_page =
+        component_with_firework_item_patch("x".repeat(32_767 - firework_patch_prefix));
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_firework_patch_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -317,6 +329,16 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),
         (
+            book_with_pages(vec![component_with_firework_item_patch("x".repeat(
+                32_768
+                    - concat!(
+                        r#"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:firework_explosion":{"shape":"star","colors":[1193046],"has_trail":true}}}}"#
+                    )
+                    .len(),
+            ))]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
             book_with_pages(vec![component_with_non_finite_item_patch()]),
             "canonical item component patch contains a non-finite float",
         ),
@@ -417,6 +439,37 @@ fn component_with_non_finite_item_patch() -> NbtSummaryValue {
                             "floats",
                             NbtSummaryValue::List(vec![NbtSummaryValue::Float(f32::NAN.to_bits())]),
                         )]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_firework_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "firework_explosion",
+                        compound(vec![
+                            string_entry("shape", "star"),
+                            value_entry(
+                                "colors",
+                                NbtSummaryValue::List(vec![NbtSummaryValue::Int(0x12_34_56)]),
+                            ),
+                            value_entry("has_trail", NbtSummaryValue::Byte(1)),
+                        ]),
                     )]),
                 ),
             ]),

@@ -1,3 +1,4 @@
+use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 use bbb_protocol::{canonical_f32_json_utf16_len, canonical_json_string_utf16_len};
 
 use super::super::DialogDataComponentPatchState;
@@ -285,8 +286,81 @@ fn canonical_component_value_json_utf16_len(
             }
             object_len(fields.into_iter())
         }
+        DialogDataComponentValueState::FireworkExplosion { explosion } => {
+            firework_explosion_len(explosion)
+        }
+        DialogDataComponentValueState::Fireworks {
+            flight_duration,
+            explosions,
+        } => {
+            let mut fields = Vec::new();
+            if *flight_duration != 0 {
+                fields.push(("flight_duration", flight_duration.to_string().len()));
+            }
+            if !explosions.is_empty() {
+                fields.push((
+                    "explosions",
+                    array_len(explosions.iter().map(firework_explosion_len)),
+                ));
+            }
+            object_len(fields.into_iter())
+        }
+        DialogDataComponentValueState::LodestoneTracker { target, tracked } => {
+            let mut fields = Vec::new();
+            if let Some(target) = target {
+                fields.push((
+                    "target",
+                    object_len(
+                        [
+                            ("dimension", string_len(&target.dimension)),
+                            (
+                                "pos",
+                                array_len(
+                                    [target.pos.x, target.pos.y, target.pos.z]
+                                        .into_iter()
+                                        .map(|value| value.to_string().len()),
+                                ),
+                            ),
+                        ]
+                        .into_iter(),
+                    ),
+                ));
+            }
+            if !*tracked {
+                fields.push(("tracked", bool_len(false)));
+            }
+            object_len(fields.into_iter())
+        }
         _ => return None,
     })
+}
+
+fn firework_explosion_len(explosion: &FireworkExplosionSummary) -> usize {
+    let mut fields = vec![("shape", string_len(explosion.shape.as_str()))];
+    if !explosion.colors.is_empty() {
+        fields.push((
+            "colors",
+            array_len(explosion.colors.iter().map(|value| value.to_string().len())),
+        ));
+    }
+    if !explosion.fade_colors.is_empty() {
+        fields.push((
+            "fade_colors",
+            array_len(
+                explosion
+                    .fade_colors
+                    .iter()
+                    .map(|value| value.to_string().len()),
+            ),
+        ));
+    }
+    if explosion.has_trail {
+        fields.push(("has_trail", bool_len(true)));
+    }
+    if explosion.has_twinkle {
+        fields.push(("has_twinkle", bool_len(true)));
+    }
+    object_len(fields.into_iter())
 }
 
 fn append_non_default_float(
@@ -334,7 +408,11 @@ fn collection_len(values: impl Iterator<Item = usize>) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use bbb_protocol::item_component_value_types::SwingAnimationTypeSummary;
+    use bbb_protocol::item_component_value_types::{
+        FireworkExplosionShapeSummary, SwingAnimationTypeSummary,
+    };
+    use bbb_protocol::packets::chunks::BlockPos;
+    use bbb_protocol::packets::inventory::LodestoneTargetSummary;
 
     use super::*;
 
@@ -470,6 +548,47 @@ mod tests {
             canonical_data_component_patch_json_utf16_len(&non_finite_patch)
                 .unwrap_err()
                 .contains("non-finite")
+        );
+    }
+
+    #[test]
+    fn canonicalizes_firework_and_lodestone_nested_records() {
+        let explosion = FireworkExplosionSummary {
+            shape: FireworkExplosionShapeSummary::Star,
+            colors: vec![0x12_34_56],
+            fade_colors: Vec::new(),
+            has_trail: true,
+            has_twinkle: false,
+        };
+        assert_exact(
+            DialogDataComponentValueState::FireworkExplosion {
+                explosion: explosion.clone(),
+            },
+            r#"{"shape":"star","colors":[1193046],"has_trail":true}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::Fireworks {
+                flight_duration: 0,
+                explosions: Vec::new(),
+            },
+            "{}",
+        );
+        assert_exact(
+            DialogDataComponentValueState::Fireworks {
+                flight_duration: 2,
+                explosions: vec![explosion],
+            },
+            r#"{"flight_duration":2,"explosions":[{"shape":"star","colors":[1193046],"has_trail":true}]}"#,
+        );
+        assert_exact(
+            DialogDataComponentValueState::LodestoneTracker {
+                target: Some(LodestoneTargetSummary {
+                    dimension: "minecraft:overworld".to_string(),
+                    pos: BlockPos { x: 1, y: -2, z: 3 },
+                }),
+                tracked: false,
+            },
+            r#"{"target":{"dimension":"minecraft:overworld","pos":[1,-2,3]},"tracked":false}"#,
         );
     }
 
