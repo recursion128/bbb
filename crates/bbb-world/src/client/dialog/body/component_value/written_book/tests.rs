@@ -526,6 +526,40 @@ fn enforces_blocks_attacks_item_patch_page_boundary_with_session_registries() {
 }
 
 #[test]
+fn enforces_consume_effect_item_patch_page_boundary_with_session_registries() {
+    let mut registries = RegistrySet::default();
+    let speed_id = registries
+        .holder_id_by_resource_id("minecraft:mob_effect", "minecraft:speed")
+        .unwrap();
+    let weakness_id = registries
+        .holder_id_by_resource_id("minecraft:mob_effect", "minecraft:weakness")
+        .unwrap();
+    registries.tags.insert(
+        "minecraft:mob_effect".to_string(),
+        RegistryTagState {
+            registry: "minecraft:mob_effect".to_string(),
+            tags: BTreeMap::from([("example:negative".to_string(), vec![speed_id, weakness_id])]),
+        },
+    );
+    let prefix = concat!(
+        r##"{"text":"item","extra":[""],"hover_event":{"action":"show_item","id":"minecraft:stone","components":{"minecraft:consumable":{"consume_seconds":0.5,"animation":"drink","sound":{"sound_id":"example:consume","range":4.0},"has_consume_particles":false,"on_consume_effects":[{"type":"minecraft:apply_effects","effects":[{"id":"minecraft:speed","amplifier":2,"duration":40,"show_icon":true}],"probability":0.25},{"type":"minecraft:remove_effects","effects":"#example:negative"},{"type":"minecraft:clear_all_effects"},{"type":"minecraft:teleport_randomly","diameter":8.0},{"type":"minecraft:play_sound","sound":"minecraft:entity.generic.eat"}]},"minecraft:death_protection":{"death_effects":[{"type":"minecraft:clear_all_effects"}]}}}}"##
+    )
+    .len();
+    for (limit, expected_error) in [(32_767usize, None), (32_768usize, Some("encodes to 32768"))] {
+        let page = component_with_consume_effect_item_patch("x".repeat(limit - prefix));
+        let result = decode_written_book_content_with_context(
+            &book_with_pages(vec![page]),
+            "written book",
+            DialogDecodeContext::new(Some(&registries), 0),
+        );
+        match expected_error {
+            None => assert!(result.is_ok()),
+            Some(expected) => assert!(result.unwrap_err().contains(expected)),
+        }
+    }
+}
+
+#[test]
 fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
@@ -794,6 +828,10 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_li
         ),
         (
             book_with_pages(vec![component_with_non_finite_blocks_attacks_item_patch()]),
+            "canonical item component patch contains a non-finite Float/Double value",
+        ),
+        (
+            book_with_pages(vec![component_with_non_finite_consume_effect_item_patch()]),
             "canonical item component patch contains a non-finite Float/Double value",
         ),
         (
@@ -1502,6 +1540,108 @@ fn component_with_blocks_attacks_item_patch(extra: String) -> NbtSummaryValue {
     ])
 }
 
+fn component_with_consume_effect_item_patch(extra: String) -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "extra",
+            NbtSummaryValue::List(vec![NbtSummaryValue::String(extra)]),
+        ),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![
+                        value_entry(
+                            "consumable",
+                            compound(vec![
+                                value_entry(
+                                    "consume_seconds",
+                                    NbtSummaryValue::Float(0.5f32.to_bits()),
+                                ),
+                                string_entry("animation", "drink"),
+                                value_entry(
+                                    "sound",
+                                    compound(vec![
+                                        string_entry("sound_id", "example:consume"),
+                                        value_entry(
+                                            "range",
+                                            NbtSummaryValue::Float(4.0f32.to_bits()),
+                                        ),
+                                    ]),
+                                ),
+                                value_entry("has_consume_particles", NbtSummaryValue::Byte(0)),
+                                value_entry(
+                                    "on_consume_effects",
+                                    NbtSummaryValue::List(vec![
+                                        consume_effect(
+                                            "apply_effects",
+                                            vec![
+                                                value_entry(
+                                                    "effects",
+                                                    NbtSummaryValue::List(vec![compound(vec![
+                                                        string_entry("id", "speed"),
+                                                        value_entry(
+                                                            "amplifier",
+                                                            NbtSummaryValue::Int(2),
+                                                        ),
+                                                        value_entry(
+                                                            "duration",
+                                                            NbtSummaryValue::Int(40),
+                                                        ),
+                                                    ])]),
+                                                ),
+                                                value_entry(
+                                                    "probability",
+                                                    NbtSummaryValue::Float(0.25f32.to_bits()),
+                                                ),
+                                            ],
+                                        ),
+                                        consume_effect(
+                                            "remove_effects",
+                                            vec![string_entry("effects", "#example:negative")],
+                                        ),
+                                        consume_effect("clear_all_effects", Vec::new()),
+                                        consume_effect(
+                                            "teleport_randomly",
+                                            vec![value_entry(
+                                                "diameter",
+                                                NbtSummaryValue::Float(8.0f32.to_bits()),
+                                            )],
+                                        ),
+                                        consume_effect(
+                                            "play_sound",
+                                            vec![string_entry("sound", "entity.generic.eat")],
+                                        ),
+                                    ]),
+                                ),
+                            ]),
+                        ),
+                        value_entry(
+                            "death_protection",
+                            compound(vec![value_entry(
+                                "death_effects",
+                                NbtSummaryValue::List(vec![consume_effect(
+                                    "clear_all_effects",
+                                    Vec::new(),
+                                )]),
+                            )]),
+                        ),
+                    ]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn consume_effect(effect_type: &str, mut entries: Vec<NbtSummaryEntry>) -> NbtSummaryValue {
+    entries.insert(0, string_entry("type", effect_type));
+    compound(entries)
+}
+
 fn component_with_non_finite_tool_item_patch() -> NbtSummaryValue {
     compound(vec![
         string_entry("text", "item"),
@@ -1578,6 +1718,41 @@ fn component_with_non_finite_blocks_attacks_item_patch() -> NbtSummaryValue {
                                 value_entry("base", NbtSummaryValue::Float(0.0f32.to_bits())),
                                 value_entry("factor", NbtSummaryValue::Float(f32::NAN.to_bits())),
                             ])]),
+                        )]),
+                    )]),
+                ),
+            ]),
+        ),
+    ])
+}
+
+fn component_with_non_finite_consume_effect_item_patch() -> NbtSummaryValue {
+    compound(vec![
+        string_entry("text", "item"),
+        value_entry(
+            "hover_event",
+            compound(vec![
+                string_entry("action", "show_item"),
+                string_entry("id", "stone"),
+                value_entry(
+                    "components",
+                    compound(vec![value_entry(
+                        "death_protection",
+                        compound(vec![value_entry(
+                            "death_effects",
+                            NbtSummaryValue::List(vec![consume_effect(
+                                "play_sound",
+                                vec![value_entry(
+                                    "sound",
+                                    compound(vec![
+                                        string_entry("sound_id", "example:death"),
+                                        value_entry(
+                                            "range",
+                                            NbtSummaryValue::Float(f32::NAN.to_bits()),
+                                        ),
+                                    ]),
+                                )],
+                            )]),
                         )]),
                     )]),
                 ),

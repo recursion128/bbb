@@ -146,6 +146,9 @@ Owner: `bbb-protocol`
   Blocks-attacks records now encode both outer floats, the defaulted reduction list and item-damage
   record, damage-type holder sets, and both optional sounds. List/record defaults require exact
   structural equality, while every nested and direct-sound float is rejected when non-finite.
+  Consumable/death-protection records and all five dispatched consume-effect variants now encode
+  recursively nested mob-effect details, mob-effect holder sets, and sound holders. Every details
+  record emits `show_icon` per its getter, and every effect/direct-sound float must remain finite.
   Dialog click `show_dialog` payloads also decode through the full
   inline/session-reference `Dialog.CODEC` owner with a shared 64-level semantic-depth budget,
   including recursive item templates and predicates, so registry cycles fail deterministically.

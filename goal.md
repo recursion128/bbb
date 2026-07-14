@@ -440,6 +440,9 @@ object，range float 同样复用 JDK 26 formatter 并严格拒绝 non-finite；
 `blocks_attacks` 的两项 outer float、default reduction list/default item-damage record、damage-type
 HolderSet 与两个 optional sound 也已闭合 canonical；default list/record 仅在 exact structural equality 时
 省略，reduction required base/factor 与所有 nested/direct-sound float 均严格拒绝 non-finite；
+`consumable`/`death_protection` 及共享的五类 dispatched ConsumeEffect 也已闭合 canonical，覆盖递归
+MobEffectInstance details、mob-effect HolderSet 与 sound holder；details 的 `show_icon` 按 getter 语义始终
+重编码，default sound 仅省略 exact named holder，全部 effect/direct-sound float 严格拒绝 non-finite；
 click `show_dialog` 也已由同一中央 visitor 按 `Dialog.CODEC` 解析 inline/session reference holder，
 并让 title/button/body/input、item patch 与 recursive predicate/item-template 路径共享 64 层 Dialog
 semantic depth，registry 自引用/互引用不会重置预算；

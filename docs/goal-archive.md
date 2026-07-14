@@ -14313,3 +14313,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   拒绝与显式 session damage-type tag/singleton registry 下 written-book hover `show_item` blocks-attacks
   patch 的 32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context 与剩余
   predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。
+
+## 2026-07-14：Canonicalize consume-effect item patches
+
+- [x] 对照 `Consumable.CODEC`、`DeathProtection.CODEC` 与五类 `ConsumeEffect` MapCodec，扩展单一
+  item-patch canonical owner：consume time/animation/sound/particles/effect list 与 death-effect list 均按
+  default omission 编码；dispatch type 输出 normalized resource id，remove-effects 复用 mob-effect HolderSet，
+  play-sound 复用 named/direct sound holder。
+- [x] apply-effects 复用完整递归 `MobEffectInstance.Details.MAP_CODEC` 形态；`show_icon` 虽可缺省解码，
+  getter 恒为 present，故每层 canonical record 都显式输出。probability/teleport diameter/consume time 与
+  direct-sound range 均复用 JDK 26 formatter 和 non-finite 门禁；default/full five-variant exact JSON、递归
+  details、NaN 拒绝与显式 session mob-effect tag 下 written-book hover `show_item` consumable +
+  death-protection patch 的 32767/32768 UTF-16 unit 边界均有回归。generic packet show-dialog world context
+  与剩余 predicate/item-template 及其它 nested-record positive item-patch value 继续由缺口账本追踪。

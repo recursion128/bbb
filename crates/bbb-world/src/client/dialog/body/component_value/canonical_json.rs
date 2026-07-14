@@ -1,3 +1,4 @@
+use bbb_protocol::item_component_value_types::ItemUseAnimationSummary;
 use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 use bbb_protocol::{
     canonical_f32_json_utf16_len, canonical_f64_json_utf16_len, canonical_json_string_utf16_len,
@@ -10,7 +11,9 @@ use super::blocks_attacks::{
     DialogBlocksAttacksDamageReductionState, DialogBlocksAttacksItemDamageState,
     DialogBlocksAttacksState,
 };
+use super::consume_effect::{DialogConsumableState, DialogConsumeEffectState};
 use super::holder_set::{DialogBannerPatternHolderState, DialogRegistryHolderSetState};
+use super::potion_contents::{DialogMobEffectDetailsState, DialogMobEffectInstanceState};
 use super::sound_event::{
     DialogKineticWeaponConditionState, DialogKineticWeaponState, DialogPiercingWeaponState,
     DialogSoundEventHolderState,
@@ -147,6 +150,14 @@ fn validate_supported_json_numbers(value: &DialogDataComponentValueState) -> Res
             ]);
             append_sound_range_bits(&mut values, blocks_attacks.block_sound.as_ref());
             append_sound_range_bits(&mut values, blocks_attacks.disabled_sound.as_ref());
+        }
+        DialogDataComponentValueState::Consumable { consumable } => {
+            values.push(consumable.consume_seconds_bits);
+            append_sound_range_bits(&mut values, Some(&consumable.sound));
+            append_consume_effect_float_bits(&mut values, &consumable.on_consume_effects);
+        }
+        DialogDataComponentValueState::DeathProtection { effects } => {
+            append_consume_effect_float_bits(&mut values, effects);
         }
         DialogDataComponentValueState::Bees { occupants } => {
             for occupant in occupants {
@@ -668,6 +679,10 @@ fn canonical_component_value_json_utf16_len(
         DialogDataComponentValueState::BlocksAttacks { blocks_attacks } => {
             blocks_attacks_len(blocks_attacks)?
         }
+        DialogDataComponentValueState::Consumable { consumable } => consumable_len(consumable)?,
+        DialogDataComponentValueState::DeathProtection { effects } => {
+            death_protection_len(effects)?
+        }
         _ => return None,
     })
 }
@@ -715,6 +730,137 @@ fn is_named_sound(sound: &DialogSoundEventHolderState, resource_id: &str) -> boo
             ..
         } if actual == resource_id
     )
+}
+
+fn append_consume_effect_float_bits(values: &mut Vec<u32>, effects: &[DialogConsumeEffectState]) {
+    for effect in effects {
+        match effect {
+            DialogConsumeEffectState::ApplyEffects {
+                probability_bits, ..
+            } => values.push(*probability_bits),
+            DialogConsumeEffectState::TeleportRandomly { diameter_bits } => {
+                values.push(*diameter_bits);
+            }
+            DialogConsumeEffectState::PlaySound { sound } => {
+                append_sound_range_bits(values, Some(sound));
+            }
+            DialogConsumeEffectState::RemoveEffects { .. }
+            | DialogConsumeEffectState::ClearAllEffects => {}
+        }
+    }
+}
+
+fn consumable_len(consumable: &DialogConsumableState) -> Option<usize> {
+    let mut fields = Vec::new();
+    append_non_default_float(
+        &mut fields,
+        "consume_seconds",
+        consumable.consume_seconds_bits,
+        1.6,
+    )?;
+    if consumable.animation != ItemUseAnimationSummary::Eat {
+        fields.push(("animation", string_len(consumable.animation.as_str())));
+    }
+    if !is_named_sound(&consumable.sound, "minecraft:entity.generic.eat") {
+        fields.push(("sound", sound_event_len(&consumable.sound)?));
+    }
+    if !consumable.has_consume_particles {
+        fields.push(("has_consume_particles", bool_len(false)));
+    }
+    if !consumable.on_consume_effects.is_empty() {
+        fields.push((
+            "on_consume_effects",
+            consume_effects_len(&consumable.on_consume_effects)?,
+        ));
+    }
+    Some(object_len(fields.into_iter()))
+}
+
+fn death_protection_len(effects: &[DialogConsumeEffectState]) -> Option<usize> {
+    let mut fields = Vec::new();
+    if !effects.is_empty() {
+        fields.push(("death_effects", consume_effects_len(effects)?));
+    }
+    Some(object_len(fields.into_iter()))
+}
+
+fn consume_effects_len(effects: &[DialogConsumeEffectState]) -> Option<usize> {
+    Some(array_len(
+        effects
+            .iter()
+            .map(consume_effect_len)
+            .collect::<Option<Vec<_>>>()?
+            .into_iter(),
+    ))
+}
+
+fn consume_effect_len(effect: &DialogConsumeEffectState) -> Option<usize> {
+    let mut fields = Vec::new();
+    match effect {
+        DialogConsumeEffectState::ApplyEffects {
+            effects,
+            probability_bits,
+        } => {
+            fields.push(("type", string_len("minecraft:apply_effects")));
+            fields.push((
+                "effects",
+                array_len(effects.iter().map(mob_effect_instance_len)),
+            ));
+            append_non_default_float(&mut fields, "probability", *probability_bits, 1.0)?;
+        }
+        DialogConsumeEffectState::RemoveEffects { effects } => {
+            fields.push(("type", string_len("minecraft:remove_effects")));
+            fields.push(("effects", registry_holder_set_len(effects)?));
+        }
+        DialogConsumeEffectState::ClearAllEffects => {
+            fields.push(("type", string_len("minecraft:clear_all_effects")));
+        }
+        DialogConsumeEffectState::TeleportRandomly { diameter_bits } => {
+            fields.push(("type", string_len("minecraft:teleport_randomly")));
+            append_non_default_float(&mut fields, "diameter", *diameter_bits, 16.0)?;
+        }
+        DialogConsumeEffectState::PlaySound { sound } => {
+            fields.push(("type", string_len("minecraft:play_sound")));
+            fields.push(("sound", sound_event_len(sound)?));
+        }
+    }
+    Some(object_len(fields.into_iter()))
+}
+
+fn mob_effect_instance_len(effect: &DialogMobEffectInstanceState) -> usize {
+    let mut fields = vec![("id", string_len(&effect.effect.resource_id))];
+    append_mob_effect_details_fields(&mut fields, &effect.details);
+    object_len(fields.into_iter())
+}
+
+fn mob_effect_details_len(details: &DialogMobEffectDetailsState) -> usize {
+    let mut fields = Vec::new();
+    append_mob_effect_details_fields(&mut fields, details);
+    object_len(fields.into_iter())
+}
+
+fn append_mob_effect_details_fields(
+    fields: &mut Vec<(&'static str, usize)>,
+    details: &DialogMobEffectDetailsState,
+) {
+    if details.amplifier != 0 {
+        fields.push(("amplifier", details.amplifier.to_string().len()));
+    }
+    if details.duration != 0 {
+        fields.push(("duration", details.duration.to_string().len()));
+    }
+    if details.ambient {
+        fields.push(("ambient", bool_len(true)));
+    }
+    if !details.show_particles {
+        fields.push(("show_particles", bool_len(false)));
+    }
+    // Details.MAP_CODEC decodes an absent field from show_particles, but its getter always
+    // returns Optional.of(showIcon), so every encoded details record includes show_icon.
+    fields.push(("show_icon", bool_len(details.show_icon)));
+    if let Some(hidden_effect) = &details.hidden_effect {
+        fields.push(("hidden_effect", mob_effect_details_len(hidden_effect)));
+    }
 }
 
 fn blocks_attacks_len(blocks_attacks: &DialogBlocksAttacksState) -> Option<usize> {
@@ -1751,6 +1897,93 @@ mod tests {
                 },
             },
             r##"{"slot":"body","equip_sound":{"sound_id":"minecraft:item.armor.equip_generic","range":6.5},"asset_id":"example:llama_carpet","camera_overlay":"minecraft:overlay/powder_snow","allowed_entities":"#example:llamas","dispensable":false,"swappable":false,"damage_on_hurt":false,"equip_on_interact":true,"can_be_sheared":true}"##,
+        );
+    }
+
+    #[test]
+    fn canonicalizes_consumable_and_death_protection_effects() {
+        let effects = vec![
+            DialogConsumeEffectState::ApplyEffects {
+                effects: vec![DialogMobEffectInstanceState {
+                    effect: DialogRegistryHolderReferenceState {
+                        holder_id: 1,
+                        resource_id: "minecraft:speed".to_string(),
+                    },
+                    details: DialogMobEffectDetailsState {
+                        amplifier: 2,
+                        duration: 40,
+                        ambient: false,
+                        show_particles: true,
+                        show_icon: true,
+                        hidden_effect: Some(Box::new(DialogMobEffectDetailsState {
+                            amplifier: 0,
+                            duration: 20,
+                            ambient: true,
+                            show_particles: false,
+                            show_icon: false,
+                            hidden_effect: None,
+                        })),
+                    },
+                }],
+                probability_bits: 0.25f32.to_bits(),
+            },
+            DialogConsumeEffectState::RemoveEffects {
+                effects: DialogRegistryHolderSetState {
+                    holder_set_kind: "named".to_string(),
+                    tag: Some("example:negative".to_string()),
+                    entries: Vec::new(),
+                },
+            },
+            DialogConsumeEffectState::ClearAllEffects,
+            DialogConsumeEffectState::TeleportRandomly {
+                diameter_bits: 8.0f32.to_bits(),
+            },
+            DialogConsumeEffectState::PlaySound {
+                sound: DialogSoundEventHolderState::Named {
+                    registry_id: 0,
+                    resource_id: "minecraft:entity.generic.eat".to_string(),
+                },
+            },
+        ];
+        assert_exact(
+            DialogDataComponentValueState::Consumable {
+                consumable: DialogConsumableState {
+                    consume_seconds_bits: 1.6f32.to_bits(),
+                    animation: ItemUseAnimationSummary::Eat,
+                    sound: DialogSoundEventHolderState::Named {
+                        registry_id: 0,
+                        resource_id: "minecraft:entity.generic.eat".to_string(),
+                    },
+                    has_consume_particles: true,
+                    on_consume_effects: Vec::new(),
+                },
+            },
+            "{}",
+        );
+        assert_exact(
+            DialogDataComponentValueState::Consumable {
+                consumable: DialogConsumableState {
+                    consume_seconds_bits: 0.5f32.to_bits(),
+                    animation: ItemUseAnimationSummary::Drink,
+                    sound: DialogSoundEventHolderState::Direct {
+                        sound_id: "example:consume".to_string(),
+                        fixed_range_bits: Some(4.0f32.to_bits()),
+                    },
+                    has_consume_particles: false,
+                    on_consume_effects: effects.clone(),
+                },
+            },
+            r##"{"consume_seconds":0.5,"animation":"drink","sound":{"sound_id":"example:consume","range":4.0},"has_consume_particles":false,"on_consume_effects":[{"type":"minecraft:apply_effects","effects":[{"id":"minecraft:speed","amplifier":2,"duration":40,"show_icon":true,"hidden_effect":{"duration":20,"ambient":true,"show_particles":false,"show_icon":false}}],"probability":0.25},{"type":"minecraft:remove_effects","effects":"#example:negative"},{"type":"minecraft:clear_all_effects"},{"type":"minecraft:teleport_randomly","diameter":8.0},{"type":"minecraft:play_sound","sound":"minecraft:entity.generic.eat"}]}"##,
+        );
+        assert_exact(
+            DialogDataComponentValueState::DeathProtection {
+                effects: Vec::new(),
+            },
+            "{}",
+        );
+        assert_exact(
+            DialogDataComponentValueState::DeathProtection { effects },
+            r##"{"death_effects":[{"type":"minecraft:apply_effects","effects":[{"id":"minecraft:speed","amplifier":2,"duration":40,"show_icon":true,"hidden_effect":{"duration":20,"ambient":true,"show_particles":false,"show_icon":false}}],"probability":0.25},{"type":"minecraft:remove_effects","effects":"#example:negative"},{"type":"minecraft:clear_all_effects"},{"type":"minecraft:teleport_randomly","diameter":8.0},{"type":"minecraft:play_sound","sound":"minecraft:entity.generic.eat"}]}"##,
         );
     }
 
