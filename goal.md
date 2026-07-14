@@ -343,7 +343,8 @@ FireworkExplosion/Fireworks 的 nested record、collection 与 256 上限共 2 �
 alternative、UUID/property-map 与 skin patch 也已 typed 投影；Repairable 的 registry-aware item
 homogeneous HolderSet（tag/compact/list/session 解析及 context-free 空列表边界）与
 ProvidesBannerPatterns 的动态 banner-pattern HolderSet、JukeboxPlayable 的单一动态 song holder 也已
-typed 投影；BannerPatternLayers 的 named pattern list、DyeColor 与 context-free 空列表也已闭合；Instrument
+typed 投影；BannerPatternLayers 的 named/direct pattern list、direct asset/translation record、DyeColor
+与 context-free 空列表也已闭合；Instrument
 的 RegistryFileCodec named/direct 分支已按 session 顺序或 required sound-event/positive-float/
 description record typed 投影；ProvidesTrimMaterial 与 ArmorTrim 的 trim-material/trim-pattern
 RegistryFileCodec 也已覆盖 session named holder 和 assets/override/identifier/description/decal direct
@@ -393,8 +394,9 @@ flattened NBT 与 DataComponentMatchers，以及 LOCK 的 ItemPredicate/items/co
 predicate owner typed 投影；exact persistent component map 递归进入已有 value codec，partial map 按
 generated 15 项 predicate-type 优先于 AnyValue component type 分发，并覆盖 CollectionPredicate 的
 contains/count/size、MinMaxBounds 交换校验及 recursive container/bundle ItemPredicate；至此 107 项
-persistent catalog registration 均有 typed positive-value dispatch。其余 inline/direct-holder 分支与
-structured Component 的完整 codec/canonical 重编码仍开放；
+persistent catalog registration 均有 typed positive-value dispatch；persistent item-component
+RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的完整 codec/canonical
+重编码仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

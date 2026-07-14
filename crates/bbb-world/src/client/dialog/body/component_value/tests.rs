@@ -1427,12 +1427,54 @@ fn decodes_banner_pattern_layers_with_named_holders_and_dye_colors() {
         panic!("expected banner-patterns component");
     };
     assert_eq!(layers.len(), 2);
-    assert_eq!(layers[0].pattern.holder_id, 1);
-    assert_eq!(layers[0].pattern.resource_id, "minecraft:flower");
+    assert!(matches!(
+        layers[0].pattern,
+        DialogBannerPatternHolderState::Named {
+            registry_id: 1,
+            ref resource_id,
+        } if resource_id == "minecraft:flower"
+    ));
     assert_eq!(layers[0].color_id, 14);
     assert_eq!(layers[0].color, "red");
-    assert_eq!(layers[1].pattern.holder_id, 0);
+    assert!(matches!(
+        layers[1].pattern,
+        DialogBannerPatternHolderState::Named { registry_id: 0, .. }
+    ));
     assert_eq!(layers[1].color_id, 3);
+
+    let direct = decode_supported_component_value(
+        VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+        "minecraft:banner_patterns",
+        &NbtSummaryValue::List(vec![compound(vec![
+            value_entry(
+                "pattern",
+                compound(vec![
+                    string_entry("asset_id", "example:spiral"),
+                    string_entry("translation_key", ""),
+                    value_entry("ignored", NbtSummaryValue::Int(1)),
+                ]),
+            ),
+            string_entry("color", "blue"),
+        ])]),
+        None,
+    )
+    .unwrap();
+    let Some(DialogDataComponentValueState::BannerPatterns { layers }) = direct else {
+        panic!("expected direct banner-pattern layer");
+    };
+    assert!(matches!(
+        layers.as_slice(),
+        [DialogBannerPatternLayerState {
+            pattern: DialogBannerPatternHolderState::Direct {
+                pattern: DialogDirectBannerPatternState {
+                    asset_id,
+                    translation_key,
+                },
+            },
+            color_id: 11,
+            color,
+        }] if asset_id == "example:spiral" && translation_key.is_empty() && color == "blue"
+    ));
 
     let context_free = decode_supported_component_value(
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
@@ -1483,7 +1525,43 @@ fn decodes_banner_pattern_layers_with_named_holders_and_dye_colors() {
                 string_entry("color", "red"),
             ])]),
             Some(&registries),
-            "field pattern holder is not a resource id",
+            "missing field translation_key",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(vec![
+                value_entry(
+                    "pattern",
+                    compound(vec![
+                        string_entry("asset_id", "Bad"),
+                        string_entry("translation_key", "block.bad"),
+                    ]),
+                ),
+                string_entry("color", "red"),
+            ])]),
+            None,
+            "invalid",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(vec![
+                value_entry(
+                    "pattern",
+                    compound(vec![
+                        string_entry("asset_id", "example:flower"),
+                        value_entry("translation_key", NbtSummaryValue::Int(1)),
+                    ]),
+                ),
+                string_entry("color", "red"),
+            ])]),
+            None,
+            "translation_key is not a string",
+        ),
+        (
+            NbtSummaryValue::List(vec![compound(vec![
+                value_entry("pattern", NbtSummaryValue::List(Vec::new())),
+                string_entry("color", "red"),
+            ])]),
+            None,
+            "neither a resource id",
         ),
         (value, None, "without registry context"),
     ] {

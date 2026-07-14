@@ -78,10 +78,11 @@ Owner: `bbb-protocol`
   consume-effect-backed record registrations, plus 1 item-stack-template wrapper
   and 3 item-stack-template collection registrations, plus 2 adventure-mode
   block-predicate registrations and 1 lock ItemPredicate registration, plus 1
-  instrument and 2 trim-material/pattern-backed named/direct registrations. All 107
-  persistent catalog registrations now have a typed positive-value dispatch;
-  complete the remaining inline/direct-holder branches inside those values and
-  canonical persistent Component validation/re-encoding, including
+  instrument, 2 trim-material/pattern-backed named/direct registrations, and 1
+  banner-pattern-layer direct holder. All 107 persistent catalog registrations now
+  have a typed positive-value dispatch and their RegistryFileCodec inline/direct
+  holder branches are complete; finish canonical persistent Component
+  validation/re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
   the corresponding screens, restore the previous screen on clear,
   and route custom-click controls through the active dialog state. Flattened SNBT

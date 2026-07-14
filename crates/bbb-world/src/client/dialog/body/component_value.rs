@@ -108,6 +108,8 @@ use holder_set::{
     DialogRegistryHolderReferenceState, DialogRegistryHolderSetState,
     DialogSuspiciousStewEffectState,
 };
+#[cfg(test)]
+use holder_set::{DialogBannerPatternHolderState, DialogDirectBannerPatternState};
 use instrument::{decode_instrument_holder, DialogInstrumentHolderState};
 use item_stack_collections::{decode_item_stack_template_list, decode_item_stack_template_slots};
 use map_decorations::{decode_map_decorations, DialogMapDecorationState};

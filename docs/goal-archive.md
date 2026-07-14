@@ -13980,3 +13980,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   styled description、default/多项 override、default namespace/duplicate semantic key、resource path 与
   Identifier 校验、missing/wrong fields 均有定向测试；其余 RegistryFileCodec inline/direct-holder 与
   structured Component 精确 codec 仍开放。
+
+## 2026-07-14：Decode direct banner-pattern dialog item layers
+
+- [x] 对照 `BannerPattern.CODEC/DIRECT_CODEC` 与 `BannerPatternLayers.Layer.CODEC`，将每层 pattern
+  从 named-only session holder 扩展为 named/direct alternative，typed 投影 direct `asset_id` 和
+  unrestricted `translation_key`，并保持 DyeColor 与层顺序不变。
+- [x] session named 顺序、context-free direct、default namespace、空 translation key、unknown direct
+  fields、missing/wrong/invalid shape 均有定向测试；全局 `RegistryFileCodec.create` 与 item component
+  codec 审计确认 Instrument、SoundEvent、TrimMaterial、TrimPattern 和 BannerPattern 的 persistent
+  direct surface 至此均已覆盖。JukeboxSong/Enchantment 是 `RegistryFixedCodec`，Potion/MobEffect 是
+  built-in holder codec，PROVIDES_BANNER_PATTERNS 的无 element-codec HolderSet 也不接受 inline value；
+  不将这些 fixed holder 误列为 direct 缺口。structured Component 精确 codec 仍开放。

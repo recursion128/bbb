@@ -24,7 +24,7 @@ use bbb_protocol::{
     },
     item_types::vanilla_item_type_for_resource_id,
     mob_effect_types::vanilla_mob_effect_type_for_resource_id,
-    NbtSummaryValue,
+    NbtSummaryEntry, NbtSummaryValue,
 };
 use bbb_render_types::VillagerModelType;
 use serde::{Deserialize, Serialize};
@@ -68,9 +68,27 @@ pub struct DialogPotDecorationsState {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogBannerPatternLayerState {
-    pub pattern: DialogRegistryHolderReferenceState,
+    pub pattern: DialogBannerPatternHolderState,
     pub color_id: i32,
     pub color: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "holder_kind", rename_all = "snake_case")]
+pub enum DialogBannerPatternHolderState {
+    Named {
+        registry_id: i32,
+        resource_id: String,
+    },
+    Direct {
+        pattern: DialogDirectBannerPatternState,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogDirectBannerPatternState {
+    pub asset_id: String,
+    pub translation_key: String,
 }
 
 pub(super) fn decode_holder_backed_component_value(
@@ -180,12 +198,15 @@ fn decode_banner_pattern_layers(
             let NbtSummaryValue::Compound(entries) = value else {
                 return Err(format!("{entry_what} is not a compound"));
             };
-            let pattern = decode_registry_holder_reference_field(
-                value,
-                "pattern",
-                "minecraft:banner_pattern",
+            let pattern_value = entries
+                .iter()
+                .find(|entry| entry.name == "pattern")
+                .map(|entry| &entry.value)
+                .ok_or_else(|| format!("{entry_what} is missing field pattern"))?;
+            let pattern = decode_banner_pattern_holder(
+                pattern_value,
                 registries,
-                &entry_what,
+                &format!("{entry_what} field pattern"),
             )?;
             let color_value = entries
                 .iter()
@@ -207,6 +228,66 @@ fn decode_banner_pattern_layers(
             })
         })
         .collect()
+}
+
+fn decode_banner_pattern_holder(
+    value: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+    what: &str,
+) -> Result<DialogBannerPatternHolderState, String> {
+    match value {
+        NbtSummaryValue::String(_) => {
+            let holder = decode_registry_holder_reference(
+                value,
+                "minecraft:banner_pattern",
+                registries,
+                what,
+            )?;
+            Ok(DialogBannerPatternHolderState::Named {
+                registry_id: holder.holder_id,
+                resource_id: holder.resource_id,
+            })
+        }
+        NbtSummaryValue::Compound(entries) => Ok(DialogBannerPatternHolderState::Direct {
+            pattern: decode_direct_banner_pattern(entries, what)?,
+        }),
+        _ => Err(format!(
+            "{what} holder is neither a resource id nor a direct banner pattern"
+        )),
+    }
+}
+
+fn decode_direct_banner_pattern(
+    entries: &[NbtSummaryEntry],
+    what: &str,
+) -> Result<DialogDirectBannerPatternState, String> {
+    let asset_id = entries
+        .iter()
+        .find(|entry| entry.name == "asset_id")
+        .map(|entry| &entry.value)
+        .ok_or_else(|| format!("{what} direct holder is missing field asset_id"))?;
+    let NbtSummaryValue::String(raw_asset_id) = asset_id else {
+        return Err(format!(
+            "{what} direct holder field asset_id is not a resource id"
+        ));
+    };
+    let asset_id = normalize_codec_identifier(raw_asset_id).ok_or_else(|| {
+        format!("invalid {what} direct holder field asset_id resource id {raw_asset_id}")
+    })?;
+    let translation_key = entries
+        .iter()
+        .find(|entry| entry.name == "translation_key")
+        .map(|entry| &entry.value)
+        .ok_or_else(|| format!("{what} direct holder is missing field translation_key"))?;
+    let NbtSummaryValue::String(translation_key) = translation_key else {
+        return Err(format!(
+            "{what} direct holder field translation_key is not a string"
+        ));
+    };
+    Ok(DialogDirectBannerPatternState {
+        asset_id,
+        translation_key: translation_key.clone(),
+    })
 }
 
 fn synchronized_registry_variant_component(type_id: i32) -> Option<&'static str> {
@@ -348,29 +429,6 @@ pub(super) fn decode_registry_holder_reference(
         return Err(format!("{what} holder is not a resource id"));
     };
     decode_holder_reference(raw, registry, registries, what)
-}
-
-fn decode_registry_holder_reference_field(
-    value: &NbtSummaryValue,
-    field: &str,
-    registry: &str,
-    registries: Option<&RegistrySet>,
-    what: &str,
-) -> Result<DialogRegistryHolderReferenceState, String> {
-    let NbtSummaryValue::Compound(entries) = value else {
-        return Err(format!("{what} is not a compound"));
-    };
-    let field_value = entries
-        .iter()
-        .find(|entry| entry.name == field)
-        .map(|entry| &entry.value)
-        .ok_or_else(|| format!("{what} is missing field {field}"))?;
-    decode_registry_holder_reference(
-        field_value,
-        registry,
-        registries,
-        &format!("{what} field {field}"),
-    )
 }
 
 pub(super) fn decode_registry_holder_set_field(
