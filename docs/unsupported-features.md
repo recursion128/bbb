@@ -89,9 +89,14 @@ Owner: `bbb-protocol`
   strings now match name/UUID and all six selector types plus the 21 registered
   option grammars, applicability constraints, built-in entity-type lookup, nested
   SNBT/scores/advancements, and full consumption in both selector content and entity
-  data sources. Finish owner-sensitive payloads in generic packet Components and canonical
-  re-encoding, including
-  exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
+  data sources. Registry-independent structured written-book pages now use a semantic
+  Component-to-JsonOps length projection instead of raw NBT size. It exactly covers root/list/full
+  normalization, fuzzy content encoding, unknown/discriminator/default omission, scalar styles,
+  identifier normalization, and click/hover payloads that need no external owner, including the
+  32767/32768 boundary. Finish owner-sensitive payloads in generic packet Components and the
+  remaining canonical value codecs: player/show-dialog/item-patch payloads, custom NBT payloads,
+  Java Float/Double primitive formatting, vector4f shadow colors, and duplicate-compound
+  normalization. Then complete `flatRestrictedCodec(32767)` sizing for every structured page; render
   the corresponding screens, restore the previous screen on clear,
   and route custom-click controls through the active dialog state. Dialog Component holders
   already validate hover `show_item` patches through the complete typed world patch owner and

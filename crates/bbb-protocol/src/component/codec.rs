@@ -67,7 +67,11 @@ pub(super) fn validate_component_style_nbt(
     validate_style(entries, what, 0)
 }
 
-fn validate_component(value: &NbtSummaryValue, what: &str, depth: usize) -> Result<(), String> {
+pub(super) fn validate_component(
+    value: &NbtSummaryValue,
+    what: &str,
+    depth: usize,
+) -> Result<(), String> {
     if depth > MAX_COMPONENT_DEPTH {
         return Err(format!(
             "{what} component nesting exceeds {MAX_COMPONENT_DEPTH}"
@@ -191,7 +195,11 @@ fn visit_content_payloads<'a>(
     Ok(())
 }
 
-fn decoded_content_type<'a>(entries: &'a [NbtSummaryEntry], what: &str, depth: usize) -> &'a str {
+pub(super) fn decoded_content_type<'a>(
+    entries: &'a [NbtSummaryEntry],
+    what: &str,
+    depth: usize,
+) -> &'a str {
     if let Some(NbtSummaryValue::String(content_type)) = find_entry(entries, "type") {
         return content_type;
     }
@@ -423,6 +431,20 @@ fn validate_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), S
     Err(format!("{what} has no matching component data source"))
 }
 
+pub(super) fn decoded_data_source_type<'a>(entries: &'a [NbtSummaryEntry], what: &str) -> &'a str {
+    if let Some(NbtSummaryValue::String(source)) = find_entry(entries, "source") {
+        return source;
+    }
+    if validate_entity_data_source(entries, what).is_ok() {
+        "entity"
+    } else if validate_block_data_source(entries, what).is_ok() {
+        "block"
+    } else {
+        debug_assert!(validate_identifier_field(entries, "storage", what).is_ok());
+        "storage"
+    }
+}
+
 fn validate_entity_data_source(entries: &[NbtSummaryEntry], what: &str) -> Result<(), String> {
     let selector = required_string(entries, "entity", what)?;
     if is_valid_entity_selector(selector) {
@@ -475,7 +497,7 @@ fn validate_object_info(entries: &[NbtSummaryEntry], what: &str) -> Result<(), S
     Err(format!("{what} has no matching component object codec"))
 }
 
-fn decoded_object_type<'a>(entries: &'a [NbtSummaryEntry], what: &str) -> &'a str {
+pub(super) fn decoded_object_type<'a>(entries: &'a [NbtSummaryEntry], what: &str) -> &'a str {
     if let Some(NbtSummaryValue::String(object)) = find_entry(entries, "object") {
         return object;
     }
@@ -810,7 +832,7 @@ fn validate_identifier_field(
         .map_err(|_| format!("{what} field {field} is not a valid identifier: {raw}"))
 }
 
-fn component_bool(value: &NbtSummaryValue) -> Option<bool> {
+pub(super) fn component_bool(value: &NbtSummaryValue) -> Option<bool> {
     Some(match value {
         NbtSummaryValue::Byte(value) => *value != 0,
         NbtSummaryValue::Short(value) => (*value as i8) != 0,
@@ -822,7 +844,7 @@ fn component_bool(value: &NbtSummaryValue) -> Option<bool> {
     })
 }
 
-fn component_i32(value: &NbtSummaryValue) -> Option<i32> {
+pub(super) fn component_i32(value: &NbtSummaryValue) -> Option<i32> {
     Some(match value {
         NbtSummaryValue::Byte(value) => i32::from(*value),
         NbtSummaryValue::Short(value) => i32::from(*value),

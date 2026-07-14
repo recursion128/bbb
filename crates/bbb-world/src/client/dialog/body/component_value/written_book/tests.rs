@@ -106,6 +106,20 @@ fn accepts_written_book_title_page_and_collection_boundaries() {
         )
         .is_ok());
     }
+
+    let exact_structured_page = compound(vec![
+        string_entry("text", &"x".repeat(32_744)),
+        value_entry("bold", NbtSummaryValue::Byte(1)),
+    ]);
+    assert_eq!(
+        canonical_component_json_utf16_len(&exact_structured_page).unwrap(),
+        Some(32_767)
+    );
+    assert!(decode_written_book_content(
+        &book_with_pages(vec![exact_structured_page]),
+        "written book",
+    )
+    .is_ok());
 }
 
 #[test]
@@ -134,7 +148,7 @@ fn follows_filterable_full_first_then_component_fallback() {
 }
 
 #[test]
-fn rejects_malformed_written_book_fields_filterables_and_exact_string_page_limit() {
+fn rejects_malformed_written_book_fields_filterables_and_exact_canonical_page_limit() {
     let cases = [
         (NbtSummaryValue::List(Vec::new()), "is not a compound"),
         (
@@ -226,6 +240,13 @@ fn rejects_malformed_written_book_fields_filterables_and_exact_string_page_limit
         ),
         (
             book_with_pages(vec![NbtSummaryValue::String("😀".repeat(16_383))]),
+            "encodes to 32768 JSON UTF-16 units, maximum is 32767",
+        ),
+        (
+            book_with_pages(vec![compound(vec![
+                string_entry("text", &"x".repeat(32_745)),
+                value_entry("bold", NbtSummaryValue::Byte(1)),
+            ])]),
             "encodes to 32768 JSON UTF-16 units, maximum is 32767",
         ),
         (

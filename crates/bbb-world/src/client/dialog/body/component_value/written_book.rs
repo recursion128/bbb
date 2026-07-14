@@ -1,4 +1,4 @@
-use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
+use bbb_protocol::{canonical_component_json_utf16_len, NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
 use super::super::super::{decode_component, DialogDecodeContext};
@@ -132,18 +132,20 @@ fn decode_page_component(
     if !has_component_shape(value) {
         return Err(format!("{what} is not a component"));
     }
-    // A string component canonicalizes back to this exact JSON string. Structured roots need the
-    // complete Component codec before their canonical JsonOps size can be measured; raw NBT size
-    // is not an equivalent bound.
-    if let NbtSummaryValue::String(text) = value {
-        let encoded_len = json_string_utf16_len(text);
+    let component = decode_component(value, what, context)?;
+    // Vanilla measures the semantic Component after decoding and canonical JsonOps re-encoding.
+    // The protocol owner returns `None` when an owner-sensitive payload or another unimplemented
+    // canonical value codec prevents an exact answer; raw NBT size is never used as a substitute.
+    if let Some(encoded_len) = canonical_component_json_utf16_len(value)
+        .map_err(|error| format!("{what} cannot be canonically encoded: {error}"))?
+    {
         if encoded_len > MAX_WRITTEN_BOOK_PAGE_FLAT_JSON_UTF16_UNITS {
             return Err(format!(
                 "{what} encodes to {encoded_len} JSON UTF-16 units, maximum is {MAX_WRITTEN_BOOK_PAGE_FLAT_JSON_UTF16_UNITS}"
             ));
         }
     }
-    decode_component(value, what, context)
+    Ok(component)
 }
 
 fn has_component_shape(value: &NbtSummaryValue) -> bool {
@@ -168,16 +170,6 @@ fn has_component_shape(value: &NbtSummaryValue) -> bool {
         }),
         _ => false,
     }
-}
-
-fn json_string_utf16_len(value: &str) -> usize {
-    value.chars().fold(2usize, |len, character| {
-        len.saturating_add(match character {
-            '"' | '\\' | '\u{0008}' | '\u{0009}' | '\n' | '\u{000c}' | '\r' => 2,
-            '\u{0000}'..='\u{001f}' | '\u{2028}' | '\u{2029}' => 6,
-            character => character.len_utf16(),
-        })
-    })
 }
 
 #[cfg(test)]

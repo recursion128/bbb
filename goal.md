@@ -380,7 +380,10 @@ non-negative damage 与 creative default 也已 typed 投影；WRITABLE_BOOK_CON
 Filterable<String> page list、compact/full alternative、100 页与 1024 UTF-16 unit 边界也已 typed 投影；
 WRITTEN_BOOK_CONTENT 的 required Filterable<String> title/author、defaulted 0..=3 generation、无
 100 页语义上限的 Filterable<Component> page list 与 resolved 也已 typed 投影，title 32 UTF-16 unit
-和纯字符串 page 的 canonical JSON 32767 UTF-16 unit 边界已精确闭合；共享 Component codec 已闭合
+和纯字符串 page 的 canonical JSON 32767 UTF-16 unit 边界已精确闭合；registry-independent structured
+page 也已按语义 Component 重编码计长，覆盖 special/list/full root、fuzzy content、unknown/type 丢弃、
+default/lenient optional 省略、标量 style、Identifier 规范化与无需外部 owner 的 click/hover payload；
+共享 Component codec 已闭合
 string/non-empty-list/full-compound root、typed/fuzzy 七类 content dispatch、simple/nested content、extra
 与 scalar style validation，并已校验七种 server-allowed click event、三种 hover event 的 discriminator
 及 registry-independent payload；block data-source position 已按 vanilla `BlockPosArgument` 与 Brigadier
@@ -389,7 +392,9 @@ NBT path 也已按 `NbtPathArgument` 闭合 quoted/unquoted/object/index/all/mat
 完整消费与内嵌 26.1 bounded SNBT compound argument；entity selector 也已闭合 name/UUID、六类 `@`
 selector、21 项 registered option 的 grammar/applicability/重复互斥、built-in entity-type lookup、
 nested SNBT/scores/advancements 与完整消费，并同时接入 selector content/entity data source；structured
-Component page 的 generic packet owner 和 canonical JsonOps 重编码长度仍开放；hover
+Component page 的 generic packet owner 和完整 canonical JsonOps 重编码仍开放，当前明确不以 raw NBT
+近似 owner-sensitive player/show-dialog/item-patch、custom NBT payload、Float/Double Java primitive、
+vector4f shadow color 或 duplicate-compound normalization；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
 persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
 已由 Dialog 中央 Component decoder 接入现有 107 项 world type codec 和 session registry context，覆盖
@@ -416,7 +421,8 @@ contains/count/size、MinMaxBounds 交换校验及 recursive container/bundle It
 persistent catalog registration 均有 typed positive-value dispatch；persistent item-component
 RegistryFileCodec inline/direct-holder 分支也已全部闭合。structured Component 的核心 recursive
 structure/content/style/event-envelope validation、block data-source position 与 NBT path command parser
-以及 selector/entity-source command parser 已闭合；generic packet owner 与 canonical 重编码仍开放；
+以及 selector/entity-source command parser 已闭合；registry-independent canonical 重编码已有上述精确
+子集，generic packet owner 与剩余 canonical value codec 仍开放；
 四类 input control 与九类 static/dynamic action 已按 codec typed 投影并同时保留 raw；DialogList 的 play
 tag/direct 同质 HolderSet、session reference、context-free inline-list
 边界、external title 与 default/validation 已 typed 投影，仍缺全部 screen；custom-click 的 resource-id +

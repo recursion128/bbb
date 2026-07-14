@@ -6,9 +6,11 @@ use crate::{
     nbt_summary::{decode_nbt_summary_from_decoder, NbtSummaryEntry, NbtSummaryValue},
 };
 
+mod canonical_json;
 mod codec;
 mod command;
 
+pub use canonical_json::canonical_component_json_utf16_len;
 pub use codec::{validate_component_nbt, visit_component_payloads, ComponentPayload};
 
 /// The client-visible subset of vanilla `net.minecraft.network.chat.Style`
