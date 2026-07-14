@@ -15,10 +15,10 @@ use bbb_renderer::{
     HudTextStyle, HudUvRect, Renderer,
 };
 use bbb_world::{
-    CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState,
-    DialogCommandTemplateState, DialogDataState, DialogInputControlState, DialogInputValueState,
-    DialogItemStackTemplateState, DialogNumberRangeState, DialogPlainMessageState, DialogState,
-    DialogTextState, WorldStore,
+    CommonDialogDataState, DialogActionState, DialogBodyFocusPartState, DialogBodyState,
+    DialogButtonState, DialogCommandTemplateState, DialogDataState, DialogFocusState,
+    DialogInputControlState, DialogInputValueState, DialogItemStackTemplateState,
+    DialogNumberRangeState, DialogPlainMessageState, DialogState, DialogTextState, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -40,6 +40,7 @@ const HEADER_HEIGHT: i32 = 33;
 const FOOTER_HEIGHT: i32 = 33;
 const WARNING_BUTTON_SIZE: i32 = 20;
 const WARNING_BUTTON_SPACING: i32 = 10;
+const BODY_SCROLLBAR_RESERVE: i32 = 10;
 const CONFIRM_BUTTON_WIDTH: u32 = 150;
 const CONFIRM_BUTTON_SPACING: i32 = 4;
 const CONFIRM_ELEMENT_SPACING: i32 = 8;
@@ -127,12 +128,45 @@ struct DialogInputLayout {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct DialogBodyItemLayout {
-    index: usize,
+struct DialogFocusRectangle {
     x: i32,
     y: i32,
     width: i32,
     height: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogFocusNode {
+    target: DialogFocusState,
+    rectangle: DialogFocusRectangle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogBodyFocusContainer {
+    rectangle: DialogFocusRectangle,
+    content_rectangle: DialogFocusRectangle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DialogTopFocusNode {
+    Body(DialogBodyFocusContainer),
+    Target(DialogFocusNode),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DialogFocusGraph {
+    screen: DialogFocusRectangle,
+    body: Vec<DialogFocusNode>,
+    top: Vec<DialogTopFocusNode>,
+    tab: Vec<DialogFocusState>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DialogFocusDirection {
+    Up,
+    Down,
+    Left,
+    Right,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -484,59 +518,17 @@ fn dialog_body_declared_dimensions(body: &DialogBodyState) -> Option<(i32, i32)>
     }
 }
 
-fn dialog_body_item_layouts(
-    common: &CommonDialogDataState,
-    surface_size: PhysicalSize<u32>,
-) -> Option<Vec<DialogBodyItemLayout>> {
-    let screen_width = surface_size.width.clamp(1, 512);
-    let screen_height = surface_size.height.clamp(1, 512);
-    let screen_width_i32 = i32::try_from(screen_width).ok()?;
-    let screen_height_i32 = i32::try_from(screen_height).ok()?;
-    let body_dimensions = common
-        .body_data
-        .iter()
-        .map(dialog_body_declared_dimensions)
-        .collect::<Option<Vec<_>>>()?;
-    let input_dimensions = common
-        .input_data
-        .iter()
-        .map(|input| dialog_input_dimensions(&input.control))
-        .collect::<Option<Vec<_>>>()?;
-    let element_count = body_dimensions.len().saturating_add(input_dimensions.len());
-    let content_height = body_dimensions
-        .iter()
-        .map(|(_, height)| height)
-        .chain(input_dimensions.iter().map(|(_, height)| height))
-        .fold(0i32, |total, height| total.saturating_add(*height))
-        .saturating_add(
-            i32::try_from(element_count.saturating_sub(1))
-                .unwrap_or(i32::MAX)
-                .saturating_mul(BODY_SPACING),
-        );
-    let mut y = (HEADER_HEIGHT + CONTENT_MARGIN_TOP).min(
-        screen_height_i32
-            .saturating_sub(FOOTER_HEIGHT)
-            .saturating_sub(content_height),
+fn dialog_content_y(screen_height: i32, content_height: i32) -> i32 {
+    let container_height = content_height.min(
+        screen_height
+            .saturating_sub(HEADER_HEIGHT)
+            .saturating_sub(FOOTER_HEIGHT),
     );
-    let mut layouts = Vec::new();
-    for (index, (body, (block_width, block_height))) in
-        common.body_data.iter().zip(body_dimensions).enumerate()
-    {
-        if index > 0 {
-            y = y.saturating_add(BODY_SPACING);
-        }
-        if let DialogBodyState::Item { width, height, .. } = body {
-            layouts.push(DialogBodyItemLayout {
-                index,
-                x: screen_width_i32 / 2 - block_width / 2,
-                y: y.saturating_add(vertical_center_offset(block_height, *height)),
-                width: *width,
-                height: *height,
-            });
-        }
-        y = y.saturating_add(block_height);
-    }
-    Some(layouts)
+    (HEADER_HEIGHT + CONTENT_MARGIN_TOP).min(
+        screen_height
+            .saturating_sub(FOOTER_HEIGHT)
+            .saturating_sub(container_height),
+    )
 }
 
 fn dialog_input_dimensions(control: &DialogInputControlState) -> Option<(i32, i32)> {
@@ -613,11 +605,7 @@ fn dialog_input_layouts(
                 .unwrap_or(i32::MAX)
                 .saturating_mul(BODY_SPACING),
         );
-    let mut y = (HEADER_HEIGHT + CONTENT_MARGIN_TOP).min(
-        screen_height_i32
-            .saturating_sub(FOOTER_HEIGHT)
-            .saturating_sub(content_height),
-    );
+    let mut y = dialog_content_y(screen_height_i32, content_height);
     for height in body_heights {
         y = y.saturating_add(height).saturating_add(BODY_SPACING);
     }
@@ -636,6 +624,522 @@ fn dialog_input_layouts(
             Some(layout)
         })
         .collect()
+}
+
+fn dialog_focus_graph(
+    controls: &SimpleDialogControls<'_>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<DialogFocusGraph> {
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let screen_width_i32 = i32::try_from(screen_width).ok()?;
+    let screen_height_i32 = i32::try_from(screen_height).ok()?;
+    let body_dimensions = controls
+        .common
+        .body_data
+        .iter()
+        .map(dialog_body_declared_dimensions)
+        .collect::<Option<Vec<_>>>()?;
+    let input_dimensions = controls
+        .common
+        .input_data
+        .iter()
+        .map(|input| dialog_input_dimensions(&input.control))
+        .collect::<Option<Vec<_>>>()?;
+    let element_count = body_dimensions.len().saturating_add(input_dimensions.len());
+    let content_height = body_dimensions
+        .iter()
+        .map(|(_, height)| height)
+        .chain(input_dimensions.iter().map(|(_, height)| height))
+        .fold(0i32, |total, height| total.saturating_add(*height))
+        .saturating_add(
+            i32::try_from(element_count.saturating_sub(1))
+                .unwrap_or(i32::MAX)
+                .saturating_mul(BODY_SPACING),
+        );
+    let content_width = body_dimensions
+        .iter()
+        .chain(&input_dimensions)
+        .map(|(width, _)| *width)
+        .max()
+        .unwrap_or(0);
+    let content_y = dialog_content_y(screen_height_i32, content_height);
+    let mut y = content_y;
+    let mut body = Vec::new();
+    let mut ordinal = 0usize;
+    for (index, (body_state, (block_width, block_height))) in controls
+        .common
+        .body_data
+        .iter()
+        .zip(body_dimensions.iter().copied())
+        .enumerate()
+    {
+        if ordinal > 0 {
+            y = y.saturating_add(BODY_SPACING);
+        }
+        ordinal = ordinal.saturating_add(1);
+        let block_x = screen_width_i32 / 2 - block_width / 2;
+        match body_state {
+            DialogBodyState::PlainMessage { .. } => body.push(DialogFocusNode {
+                target: DialogFocusState::Body {
+                    index,
+                    part: DialogBodyFocusPartState::Primary,
+                },
+                rectangle: DialogFocusRectangle {
+                    x: block_x,
+                    y,
+                    width: block_width,
+                    height: block_height,
+                },
+            }),
+            DialogBodyState::Item {
+                description,
+                width,
+                height,
+                ..
+            } => {
+                let item_y = y.saturating_add(vertical_center_offset(block_height, *height));
+                body.push(DialogFocusNode {
+                    target: DialogFocusState::Body {
+                        index,
+                        part: DialogBodyFocusPartState::Primary,
+                    },
+                    rectangle: DialogFocusRectangle {
+                        x: block_x,
+                        y: item_y,
+                        width: *width,
+                        height: *height,
+                    },
+                });
+                if let Some(description) = description.as_ref().and_then(dialog_text_block) {
+                    body.push(DialogFocusNode {
+                        target: DialogFocusState::Body {
+                            index,
+                            part: DialogBodyFocusPartState::Description,
+                        },
+                        rectangle: DialogFocusRectangle {
+                            x: block_x
+                                .saturating_add(*width)
+                                .saturating_add(ITEM_DESCRIPTION_SPACING),
+                            y: y.saturating_add(vertical_center_offset(
+                                block_height,
+                                description.height,
+                            )),
+                            width: i32::try_from(description.width).unwrap_or(i32::MAX),
+                            height: description.height,
+                        },
+                    });
+                }
+            }
+        }
+        y = y.saturating_add(block_height);
+    }
+    for (index, (input, (width, height))) in controls
+        .common
+        .input_data
+        .iter()
+        .zip(input_dimensions.iter().copied())
+        .enumerate()
+    {
+        if ordinal > 0 {
+            y = y.saturating_add(BODY_SPACING);
+        }
+        ordinal = ordinal.saturating_add(1);
+        let layout = DialogInputLayout {
+            index,
+            x: screen_width_i32 / 2 - width / 2,
+            y,
+            width,
+            height,
+        };
+        let focus_layout = match &input.control {
+            DialogInputControlState::Boolean { .. }
+            | DialogInputControlState::NumberRange { .. }
+            | DialogInputControlState::SingleOption { .. } => Some(layout),
+            DialogInputControlState::Text {
+                label_visible,
+                multiline: None,
+                ..
+            } => Some(dialog_single_line_text_box_layout(layout, *label_visible)),
+            DialogInputControlState::Text {
+                multiline: Some(_), ..
+            } => None,
+        };
+        if let Some(layout) = focus_layout {
+            body.push(DialogFocusNode {
+                target: DialogFocusState::Input { index },
+                rectangle: DialogFocusRectangle {
+                    x: layout.x,
+                    y: layout.y,
+                    width: layout.width,
+                    height: layout.height,
+                },
+            });
+        }
+        y = y.saturating_add(height);
+    }
+
+    let container_width = content_width.saturating_add(BODY_SCROLLBAR_RESERVE * 2);
+    let container_height = content_height.min(
+        screen_height_i32
+            .saturating_sub(HEADER_HEIGHT)
+            .saturating_sub(FOOTER_HEIGHT),
+    );
+    let container = DialogBodyFocusContainer {
+        rectangle: DialogFocusRectangle {
+            x: screen_width_i32 / 2 - container_width / 2,
+            y: content_y,
+            width: container_width,
+            height: container_height,
+        },
+        content_rectangle: DialogFocusRectangle {
+            x: screen_width_i32 / 2 - container_width / 2,
+            y: content_y,
+            width: container_width,
+            height: content_height,
+        },
+    };
+    let warning = DialogWarningButtonLayout::new(&controls.common.title, surface_size)?;
+    let warning = DialogFocusNode {
+        target: DialogFocusState::WarningButton,
+        rectangle: DialogFocusRectangle {
+            x: warning.x,
+            y: warning.y,
+            width: WARNING_BUTTON_SIZE,
+            height: WARNING_BUTTON_SIZE,
+        },
+    };
+    let action_layout = SimpleDialogLayout::new(
+        &controls
+            .actions
+            .iter()
+            .map(|action| action.width)
+            .collect::<Vec<_>>(),
+        surface_size,
+    )?;
+    let actions = action_layout
+        .buttons
+        .iter()
+        .enumerate()
+        .map(|(index, button)| DialogFocusNode {
+            target: DialogFocusState::Action { index },
+            rectangle: DialogFocusRectangle {
+                x: button.x,
+                y: button.y,
+                width: i32::try_from(button.width).unwrap_or(i32::MAX),
+                height: i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX),
+            },
+        })
+        .collect::<Vec<_>>();
+    let mut top = Vec::with_capacity(actions.len().saturating_add(2));
+    top.push(DialogTopFocusNode::Body(container));
+    top.extend(actions.iter().copied().map(DialogTopFocusNode::Target));
+    top.push(DialogTopFocusNode::Target(warning));
+    let mut tab = Vec::with_capacity(body.len().saturating_add(actions.len()).saturating_add(1));
+    tab.push(warning.target);
+    tab.extend(body.iter().map(|node| node.target));
+    tab.extend(actions.iter().map(|node| node.target));
+    Some(DialogFocusGraph {
+        screen: DialogFocusRectangle {
+            x: 0,
+            y: 0,
+            width: screen_width_i32,
+            height: screen_height_i32,
+        },
+        body,
+        top,
+        tab,
+    })
+}
+
+impl DialogFocusRectangle {
+    fn axis_bound(self, horizontal: bool, positive: bool) -> i32 {
+        let (start, length) = if horizontal {
+            (self.x, self.width)
+        } else {
+            (self.y, self.height)
+        };
+        if positive {
+            start.saturating_add(length).saturating_sub(1)
+        } else {
+            start
+        }
+    }
+
+    fn center(self, horizontal: bool) -> i32 {
+        let low = self.axis_bound(horizontal, false);
+        let high = self.axis_bound(horizontal, true);
+        low.saturating_add(high) / 2
+    }
+
+    fn overlaps_axis(self, other: Self, horizontal: bool) -> bool {
+        self.axis_bound(horizontal, false)
+            .max(other.axis_bound(horizontal, false))
+            <= self
+                .axis_bound(horizontal, true)
+                .min(other.axis_bound(horizontal, true))
+    }
+
+    fn border(self, direction: DialogFocusDirection) -> Self {
+        match direction {
+            DialogFocusDirection::Up => Self {
+                x: self.x,
+                y: self.y.saturating_sub(1),
+                width: self.width,
+                height: 1,
+            },
+            DialogFocusDirection::Down => Self {
+                x: self.x,
+                y: self.y.saturating_add(self.height),
+                width: self.width,
+                height: 1,
+            },
+            DialogFocusDirection::Left => Self {
+                x: self.x.saturating_sub(1),
+                y: self.y,
+                width: 1,
+                height: self.height,
+            },
+            DialogFocusDirection::Right => Self {
+                x: self.x.saturating_add(self.width),
+                y: self.y,
+                width: 1,
+                height: self.height,
+            },
+        }
+    }
+}
+
+impl DialogFocusDirection {
+    fn horizontal(self) -> bool {
+        matches!(self, Self::Left | Self::Right)
+    }
+
+    fn positive(self) -> bool {
+        matches!(self, Self::Down | Self::Right)
+    }
+
+    fn opposite(self) -> Self {
+        match self {
+            Self::Up => Self::Down,
+            Self::Down => Self::Up,
+            Self::Left => Self::Right,
+            Self::Right => Self::Left,
+        }
+    }
+
+    fn is_after(self, value: i32, reference: i32) -> bool {
+        if self.positive() {
+            value > reference
+        } else {
+            value < reference
+        }
+    }
+}
+
+fn ordered_dialog_focus_candidates<T: Copy>(
+    focused: DialogFocusRectangle,
+    direction: DialogFocusDirection,
+    candidates: impl IntoIterator<Item = (T, DialogFocusRectangle)>,
+) -> Vec<T> {
+    let candidates = candidates.into_iter().collect::<Vec<_>>();
+    let horizontal = direction.horizontal();
+    let other_horizontal = !horizontal;
+    let focused_first = focused.axis_bound(horizontal, !direction.positive());
+    let mut exact = candidates
+        .iter()
+        .copied()
+        .enumerate()
+        .filter(|(_, (_, rectangle))| {
+            if !rectangle.overlaps_axis(focused, other_horizontal) {
+                return false;
+            }
+            let first = rectangle.axis_bound(horizontal, !direction.positive());
+            direction.is_after(first, focused_first)
+                || (first == focused_first
+                    && direction.is_after(
+                        rectangle.axis_bound(horizontal, direction.positive()),
+                        focused.axis_bound(horizontal, direction.positive()),
+                    ))
+        })
+        .collect::<Vec<_>>();
+    exact.sort_by(|(left_index, (_, left)), (right_index, (_, right))| {
+        let left_primary = left.axis_bound(horizontal, !direction.positive());
+        let right_primary = right.axis_bound(horizontal, !direction.positive());
+        let primary = if direction.positive() {
+            left_primary.cmp(&right_primary)
+        } else {
+            right_primary.cmp(&left_primary)
+        };
+        primary
+            .then_with(|| {
+                left.axis_bound(other_horizontal, false)
+                    .cmp(&right.axis_bound(other_horizontal, false))
+            })
+            .then_with(|| left_index.cmp(right_index))
+    });
+    let focused_axis = focused.axis_bound(horizontal, direction.positive());
+    let focused_other = focused.center(other_horizontal);
+    let mut vague = candidates
+        .into_iter()
+        .enumerate()
+        .filter_map(|(index, (target, rectangle))| {
+            let candidate_axis = rectangle.axis_bound(horizontal, !direction.positive());
+            if !direction.is_after(candidate_axis, focused_axis) {
+                return None;
+            }
+            let candidate_other = rectangle.center(other_horizontal);
+            let axis_delta = i64::from(candidate_axis) - i64::from(focused_axis);
+            let other_delta = i64::from(candidate_other) - i64::from(focused_other);
+            Some((
+                index,
+                target,
+                axis_delta
+                    .saturating_mul(axis_delta)
+                    .saturating_add(other_delta.saturating_mul(other_delta)),
+            ))
+        })
+        .collect::<Vec<_>>();
+    vague.sort_by_key(|(index, _, distance)| (*distance, *index));
+    exact
+        .into_iter()
+        .map(|(_, (target, _))| target)
+        .chain(vague.into_iter().map(|(_, target, _)| target))
+        .collect()
+}
+
+fn dialog_focus_node(
+    nodes: &[DialogFocusNode],
+    target: DialogFocusState,
+) -> Option<DialogFocusNode> {
+    nodes.iter().copied().find(|node| node.target == target)
+}
+
+fn next_body_focus_from_rectangle(
+    graph: &DialogFocusGraph,
+    focused: DialogFocusRectangle,
+    direction: DialogFocusDirection,
+    excluded: Option<DialogFocusState>,
+) -> Option<DialogFocusState> {
+    ordered_dialog_focus_candidates(
+        focused,
+        direction,
+        graph.body.iter().filter_map(|node| {
+            (Some(node.target) != excluded).then_some((node.target, node.rectangle))
+        }),
+    )
+    .into_iter()
+    .next()
+}
+
+fn resolve_top_focus_candidates(
+    graph: &DialogFocusGraph,
+    focused: DialogFocusRectangle,
+    direction: DialogFocusDirection,
+    excluded: Option<DialogFocusState>,
+    exclude_body: bool,
+    body_previous_focus: Option<DialogFocusRectangle>,
+) -> Option<DialogFocusState> {
+    let candidates = graph
+        .top
+        .iter()
+        .enumerate()
+        .filter_map(|(index, node)| match node {
+            DialogTopFocusNode::Body(container) if !exclude_body && !graph.body.is_empty() => {
+                Some((index, container.rectangle))
+            }
+            DialogTopFocusNode::Target(node) if Some(node.target) != excluded => {
+                Some((index, node.rectangle))
+            }
+            _ => None,
+        });
+    for index in ordered_dialog_focus_candidates(focused, direction, candidates) {
+        match graph.top[index] {
+            DialogTopFocusNode::Target(node) => return Some(node.target),
+            DialogTopFocusNode::Body(container) => {
+                let body_focused = body_previous_focus
+                    .unwrap_or_else(|| container.content_rectangle.border(direction.opposite()));
+                if let Some(target) =
+                    next_body_focus_from_rectangle(graph, body_focused, direction, None)
+                {
+                    return Some(target);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn next_dialog_focus_in_direction(
+    graph: &DialogFocusGraph,
+    current: Option<DialogFocusState>,
+    direction: DialogFocusDirection,
+) -> Option<DialogFocusState> {
+    if let Some(current) = current {
+        if let Some(node) = dialog_focus_node(&graph.body, current) {
+            let border = node.rectangle.border(direction);
+            if let Some(target) =
+                next_body_focus_from_rectangle(graph, border, direction, Some(current))
+            {
+                return Some(target);
+            }
+            return resolve_top_focus_candidates(
+                graph,
+                border,
+                direction,
+                None,
+                true,
+                Some(border),
+            );
+        }
+        let top_node = graph.top.iter().find_map(|node| match node {
+            DialogTopFocusNode::Target(node) if node.target == current => Some(*node),
+            _ => None,
+        })?;
+        let border = top_node.rectangle.border(direction);
+        return resolve_top_focus_candidates(
+            graph,
+            border,
+            direction,
+            Some(current),
+            false,
+            Some(border),
+        );
+    }
+
+    let border = graph.screen.border(direction.opposite());
+    resolve_top_focus_candidates(graph, border, direction, None, false, None)
+}
+
+fn next_dialog_tab_focus(
+    graph: &DialogFocusGraph,
+    current: Option<DialogFocusState>,
+    forward: bool,
+) -> Option<DialogFocusState> {
+    if graph.tab.is_empty() {
+        return None;
+    }
+    let Some(index) =
+        current.and_then(|current| graph.tab.iter().position(|node| *node == current))
+    else {
+        return if forward {
+            graph.tab.first().copied()
+        } else {
+            graph.tab.last().copied()
+        };
+    };
+    if forward {
+        graph
+            .tab
+            .get(index.saturating_add(1))
+            .copied()
+            .or_else(|| graph.tab.first().copied())
+    } else {
+        index
+            .checked_sub(1)
+            .and_then(|index| graph.tab.get(index).copied())
+            .or_else(|| graph.tab.last().copied())
+    }
 }
 
 fn dialog_single_line_text_box_layout(
@@ -951,6 +1455,11 @@ pub(super) fn hud_dialog_screen(
     let highlighted_button = layout.button_at(cursor_position, surface_size);
     let warning_button = DialogWarningButtonLayout::new(&controls.common.title, surface_size)?;
     let warning_button_hovered = warning_button.contains(cursor_position, surface_size);
+    let warning_button_focused = world.dialog_focus() == Some(DialogFocusState::WarningButton);
+    let focused_action = match world.dialog_focus() {
+        Some(DialogFocusState::Action { index }) => Some(index),
+        _ => None,
+    };
 
     let mut text_labels = Vec::new();
     push_text_label(
@@ -1013,11 +1522,7 @@ pub(super) fn hud_dialog_screen(
                 .unwrap_or(i32::MAX)
                 .saturating_mul(BODY_SPACING),
         );
-    let mut body_y = (HEADER_HEIGHT + CONTENT_MARGIN_TOP).min(
-        screen_height_i32
-            .saturating_sub(FOOTER_HEIGHT)
-            .saturating_sub(content_height),
-    );
+    let mut body_y = dialog_content_y(screen_height_i32, content_height);
     let mut floating_items = Vec::new();
     let mut fill_layers = Vec::new();
     let mut item_tooltip = None;
@@ -1029,6 +1534,20 @@ pub(super) fn hud_dialog_screen(
         let block_height = block.height();
         match block {
             DialogBodyBlock::Text(text) => {
+                if world.dialog_focus()
+                    == Some(DialogFocusState::Body {
+                        index: body_index,
+                        part: DialogBodyFocusPartState::Primary,
+                    })
+                {
+                    push_dialog_outline_layers(
+                        &mut fill_layers,
+                        block_x,
+                        body_y,
+                        i32::try_from(text.width).unwrap_or(i32::MAX),
+                        text.height,
+                    );
+                }
                 push_dialog_text_block(&mut text_labels, text, block_x, body_y);
             }
             DialogBodyBlock::Item(mut item) => {
@@ -1036,7 +1555,12 @@ pub(super) fn hud_dialog_screen(
                     body_y.saturating_add(vertical_center_offset(block_height, item.widget_height));
                 item.item.x = block_x;
                 item.item.y = item_y;
-                if world.dialog_focused_body() == Some(body_index) {
+                if world.dialog_focus()
+                    == Some(DialogFocusState::Body {
+                        index: body_index,
+                        part: DialogBodyFocusPartState::Primary,
+                    })
+                {
                     push_dialog_outline_layers(
                         &mut fill_layers,
                         block_x,
@@ -1073,12 +1597,27 @@ pub(super) fn hud_dialog_screen(
                 if let Some(description) = item.description {
                     let description_y = body_y
                         .saturating_add(vertical_center_offset(block_height, description.height));
+                    let description_x = block_x
+                        .saturating_add(item.widget_width)
+                        .saturating_add(ITEM_DESCRIPTION_SPACING);
+                    if world.dialog_focus()
+                        == Some(DialogFocusState::Body {
+                            index: body_index,
+                            part: DialogBodyFocusPartState::Description,
+                        })
+                    {
+                        push_dialog_outline_layers(
+                            &mut fill_layers,
+                            description_x,
+                            description_y,
+                            i32::try_from(description.width).unwrap_or(i32::MAX),
+                            description.height,
+                        );
+                    }
                     push_dialog_text_block(
                         &mut text_labels,
                         description,
-                        block_x
-                            .saturating_add(item.widget_width)
-                            .saturating_add(ITEM_DESCRIPTION_SPACING),
+                        description_x,
                         description_y,
                     );
                 }
@@ -1331,7 +1870,7 @@ pub(super) fn hud_dialog_screen(
         layout.screen_height,
     )];
     background_layers.push(HudInventoryBackgroundLayer {
-        texture: if warning_button_hovered {
+        texture: if warning_button_hovered || warning_button_focused {
             HudInventoryBackgroundTexture::DialogWarningButtonHighlighted
         } else {
             HudInventoryBackgroundTexture::DialogWarningButton
@@ -1348,7 +1887,7 @@ pub(super) fn hud_dialog_screen(
     background_layers.extend(input_layers);
     background_layers.extend(layout.buttons.iter().enumerate().map(|(index, button)| {
         HudInventoryBackgroundLayer {
-            texture: if highlighted_button == Some(index) {
+            texture: if highlighted_button == Some(index) || focused_action == Some(index) {
                 HudInventoryBackgroundTexture::WidgetButtonHighlighted
             } else {
                 HudInventoryBackgroundTexture::WidgetButton
@@ -1363,9 +1902,18 @@ pub(super) fn hud_dialog_screen(
             },
         }
     }));
-    let action_tooltip = highlighted_button.and_then(|index| {
+    let action_tooltip = highlighted_button.or(focused_action).and_then(|index| {
         let tooltip = controls.actions.get(index)?.tooltip.as_ref()?;
-        let (cursor_x, cursor_y) = cursor_screen_position?;
+        let button = layout.buttons.get(index)?;
+        let (cursor_x, cursor_y) = cursor_screen_position.unwrap_or_else(|| {
+            let (origin_x, origin_y) =
+                centered_screen_origin(surface_size, layout.screen_width, layout.screen_height);
+            (
+                i32::try_from(origin_x + i64::from(button.x)).unwrap_or(i32::MAX),
+                i32::try_from(origin_y + i64::from(button.y) + i64::from(BUTTON_HEIGHT))
+                    .unwrap_or(i32::MAX),
+            )
+        });
         let (origin_x, origin_y) =
             centered_screen_origin(surface_size, layout.screen_width, layout.screen_height);
         Some(HudInventoryTooltip {
@@ -1394,8 +1942,18 @@ pub(super) fn hud_dialog_screen(
                 .collect(),
         })
     });
-    let warning_tooltip = warning_button_hovered.then(|| {
-        let (cursor_x, cursor_y) = cursor_screen_position.unwrap_or_default();
+    let warning_tooltip = (warning_button_hovered || warning_button_focused).then(|| {
+        let (cursor_x, cursor_y) = cursor_screen_position.unwrap_or_else(|| {
+            let (origin_x, origin_y) =
+                centered_screen_origin(surface_size, layout.screen_width, layout.screen_height);
+            (
+                i32::try_from(origin_x + i64::from(warning_button.x)).unwrap_or(i32::MAX),
+                i32::try_from(
+                    origin_y + i64::from(warning_button.y) + i64::from(WARNING_BUTTON_SIZE),
+                )
+                .unwrap_or(i32::MAX),
+            )
+        });
         let (origin_x, origin_y) =
             centered_screen_origin(surface_size, layout.screen_width, layout.screen_height);
         HudInventoryTooltip {
@@ -1624,8 +2182,33 @@ pub(crate) fn handle_dialog_key_input(
     )
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn handle_dialog_key_input_with_modifiers(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
+    physical_key: PhysicalKey,
+    state: ElementState,
+    shift_down: bool,
+    control_down: bool,
+) -> bool {
+    handle_dialog_key_input_with_modifiers_for_surface(
+        counters,
+        world,
+        net_commands,
+        clipboard,
+        physical_key,
+        state,
+        shift_down,
+        control_down,
+        PhysicalSize::new(320, 240),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface(
     counters: &mut NetCounters,
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -1634,6 +2217,7 @@ pub(crate) fn handle_dialog_key_input_with_modifiers(
     state: ElementState,
     shift_down: bool,
     control_down: bool,
+    surface_size: PhysicalSize<u32>,
 ) -> bool {
     if world.dialog_warning_is_open() {
         if state != ElementState::Pressed {
@@ -1718,6 +2302,70 @@ pub(crate) fn handle_dialog_key_input_with_modifiers(
         return true;
     }
     if handle_focused_dialog_input_key(world, physical_key, shift_down) {
+        return true;
+    }
+    let PhysicalKey::Code(code) = physical_key else {
+        return true;
+    };
+    if matches!(code, KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space) {
+        match world.dialog_focus() {
+            Some(DialogFocusState::WarningButton) => {
+                world.open_dialog_warning();
+                return true;
+            }
+            Some(DialogFocusState::Action { index }) => {
+                let action = world
+                    .current_dialog()
+                    .and_then(|dialog| dialog.data.as_ref())
+                    .and_then(simple_dialog_controls)
+                    .and_then(|controls| {
+                        Some((
+                            controls.actions.get(index)?.action_data.clone(),
+                            controls.common.after_action.clone(),
+                        ))
+                    });
+                if let Some((action, after_action)) = action {
+                    run_dialog_action(
+                        counters,
+                        world,
+                        net_commands,
+                        clipboard,
+                        action.as_ref(),
+                        &after_action,
+                    );
+                }
+                return true;
+            }
+            _ => {}
+        }
+    }
+    let direction = match code {
+        KeyCode::ArrowUp => Some(DialogFocusDirection::Up),
+        KeyCode::ArrowDown => Some(DialogFocusDirection::Down),
+        KeyCode::ArrowLeft => Some(DialogFocusDirection::Left),
+        KeyCode::ArrowRight => Some(DialogFocusDirection::Right),
+        _ => None,
+    };
+    if code == KeyCode::Tab || direction.is_some() {
+        let next = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(simple_dialog_controls)
+            .and_then(|controls| dialog_focus_graph(&controls, surface_size))
+            .and_then(|graph| {
+                if code == KeyCode::Tab {
+                    next_dialog_tab_focus(&graph, world.dialog_focus(), !shift_down)
+                } else {
+                    next_dialog_focus_in_direction(
+                        &graph,
+                        world.dialog_focus(),
+                        direction.expect("direction checked above"),
+                    )
+                }
+            });
+        if let Some(target) = next {
+            world.focus_dialog_navigation_target(target, code == KeyCode::Tab);
+        }
         return true;
     }
     if physical_key != PhysicalKey::Code(KeyCode::Escape) {
@@ -2141,6 +2789,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     if DialogWarningButtonLayout::new(&controls.common.title, surface_size)
         .is_some_and(|layout| layout.contains(cursor_position, surface_size))
     {
+        world.focus_dialog_navigation_target(DialogFocusState::WarningButton, false);
         world.open_dialog_warning();
         return true;
     }
@@ -2186,21 +2835,25 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
             }
         })
     });
-    let body_item_hit =
-        dialog_body_item_layouts(controls.common, surface_size).and_then(|layouts| {
-            layouts.into_iter().find(|layout| {
-                dialog_widget_contains(
-                    layout.x,
-                    layout.y,
-                    layout.width,
-                    layout.height,
-                    cursor_position,
-                    surface_size,
-                    screen_width,
-                    screen_height,
-                )
-            })
-        });
+    let body_focus_hit = dialog_focus_graph(&controls, surface_size).and_then(|graph| {
+        graph.body.into_iter().find_map(|node| {
+            matches!(node.target, DialogFocusState::Body { .. })
+                .then_some(node)
+                .filter(|node| {
+                    dialog_widget_contains(
+                        node.rectangle.x,
+                        node.rectangle.y,
+                        node.rectangle.width,
+                        node.rectangle.height,
+                        cursor_position,
+                        surface_size,
+                        screen_width,
+                        screen_height,
+                    )
+                })
+                .map(|node| node.target)
+        })
+    });
     let action = SimpleDialogLayout::new(
         &controls
             .actions
@@ -2212,6 +2865,7 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     .and_then(|layout| layout.button_at(cursor_position, surface_size))
     .and_then(|action_index| {
         Some((
+            action_index,
             controls.actions.get(action_index)?.action_data.clone(),
             controls.common.after_action.clone(),
         ))
@@ -2247,23 +2901,26 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         }
         None => {}
     }
-    if let Some(layout) = body_item_hit {
-        world.focus_dialog_body_item(layout.index);
+    if let Some(target) = body_focus_hit {
+        world.focus_dialog_navigation_target(target, false);
         return true;
     }
-    if action.is_some() {
-        world.clear_dialog_focus();
-    }
-    let Some(action) = action else {
+    let Some((action_index, action, after_action)) = action else {
         return true;
     };
+    world.focus_dialog_navigation_target(
+        DialogFocusState::Action {
+            index: action_index,
+        },
+        false,
+    );
     run_dialog_action(
         counters,
         world,
         net_commands,
         clipboard,
-        action.0.as_ref(),
-        &action.1,
+        action.as_ref(),
+        &after_action,
     );
     true
 }
@@ -3405,6 +4062,298 @@ mod tests {
     }
 
     #[test]
+    fn dialog_focus_graph_matches_warning_body_input_and_footer_hierarchy() {
+        assert_eq!(dialog_content_y(240, 205), 33);
+        let plain = NbtSummaryValue::Compound(vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:plain_message".to_string()),
+            ),
+            entry("contents", NbtSummaryValue::String("Plain".to_string())),
+            entry("width", NbtSummaryValue::Int(80)),
+        ]);
+        let item = NbtSummaryValue::Compound(vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:item".to_string()),
+            ),
+            entry(
+                "item",
+                NbtSummaryValue::Compound(vec![entry(
+                    "id",
+                    NbtSummaryValue::String("minecraft:stick".to_string()),
+                )]),
+            ),
+            entry(
+                "description",
+                NbtSummaryValue::Compound(vec![
+                    entry("contents", NbtSummaryValue::String("Info".to_string())),
+                    entry("width", NbtSummaryValue::Int(50)),
+                ]),
+            ),
+            entry("width", NbtSummaryValue::Int(32)),
+            entry("height", NbtSummaryValue::Int(20)),
+        ]);
+        let options = vec![
+            NbtSummaryValue::Compound(vec![
+                entry("id", NbtSummaryValue::String("a".to_string())),
+                entry("initial", NbtSummaryValue::Byte(1)),
+            ]),
+            NbtSummaryValue::Compound(vec![entry("id", NbtSummaryValue::String("b".to_string()))]),
+        ];
+        let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry("body", NbtSummaryValue::List(vec![plain, item])),
+            entry(
+                "inputs",
+                NbtSummaryValue::List(vec![
+                    boolean_input("enabled", "Enabled", false, "yes", "no"),
+                    number_range_input("amount", "Amount", 100, 0.0, 10.0, None, None),
+                    single_option_input("mode", "Mode", 100, true, options),
+                    text_input("name", "Name", 100, false, "ab", 16),
+                ]),
+            ),
+            entry(
+                "action",
+                NbtSummaryValue::Compound(vec![
+                    entry("label", NbtSummaryValue::String("Done".to_string())),
+                    entry(
+                        "tooltip",
+                        NbtSummaryValue::String("Finish dialog".to_string()),
+                    ),
+                    entry("width", NbtSummaryValue::Int(150)),
+                ]),
+            ),
+        ]);
+        let surface_size = PhysicalSize::new(320, 240);
+        let controls = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(simple_dialog_controls)
+            .unwrap();
+        let graph = dialog_focus_graph(&controls, surface_size).unwrap();
+        let expected = vec![
+            DialogFocusState::WarningButton,
+            DialogFocusState::Body {
+                index: 0,
+                part: DialogBodyFocusPartState::Primary,
+            },
+            DialogFocusState::Body {
+                index: 1,
+                part: DialogBodyFocusPartState::Primary,
+            },
+            DialogFocusState::Body {
+                index: 1,
+                part: DialogBodyFocusPartState::Description,
+            },
+            DialogFocusState::Input { index: 0 },
+            DialogFocusState::Input { index: 1 },
+            DialogFocusState::Input { index: 2 },
+            DialogFocusState::Input { index: 3 },
+            DialogFocusState::Action { index: 0 },
+        ];
+        assert_eq!(graph.tab, expected);
+        assert_eq!(
+            next_dialog_focus_in_direction(
+                &graph,
+                Some(DialogFocusState::WarningButton),
+                DialogFocusDirection::Down,
+            ),
+            Some(expected[1])
+        );
+        assert_eq!(
+            next_dialog_focus_in_direction(&graph, Some(expected[1]), DialogFocusDirection::Down,),
+            Some(expected[2])
+        );
+        assert_eq!(
+            next_dialog_focus_in_direction(&graph, Some(expected[2]), DialogFocusDirection::Right,),
+            Some(expected[3])
+        );
+        assert_eq!(
+            next_dialog_focus_in_direction(&graph, Some(expected[7]), DialogFocusDirection::Down,),
+            Some(expected[8])
+        );
+        assert_eq!(
+            next_dialog_focus_in_direction(&graph, Some(expected[8]), DialogFocusDirection::Up,),
+            Some(expected[7])
+        );
+
+        let mut counters = NetCounters::default();
+        for target in &expected {
+            assert!(handle_dialog_key_input_with_modifiers_for_surface(
+                &mut counters,
+                &mut world,
+                &None,
+                None,
+                PhysicalKey::Code(KeyCode::Tab),
+                ElementState::Pressed,
+                false,
+                false,
+                surface_size,
+            ));
+            assert_eq!(world.dialog_focus(), Some(*target));
+            if *target == (DialogFocusState::Input { index: 1 }) {
+                assert!(world.dialog_number_range_keyboard_can_change(1));
+            }
+        }
+        assert!(handle_dialog_key_input_with_modifiers_for_surface(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Tab),
+            ElementState::Pressed,
+            false,
+            false,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_focus(), Some(expected[0]));
+
+        let focused_warning = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(
+            focused_warning.background_layers[1].texture,
+            HudInventoryBackgroundTexture::DialogWarningButtonHighlighted
+        );
+        assert!(focused_warning.tooltip.is_some());
+        assert!(handle_dialog_key_input_with_modifiers_for_surface(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Space),
+            ElementState::Pressed,
+            false,
+            false,
+            surface_size,
+        ));
+        assert!(world.dialog_warning_is_open());
+        assert_eq!(world.dialog_focus(), Some(expected[0]));
+        assert!(handle_dialog_key_input_with_modifiers_for_surface(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+            false,
+            false,
+            surface_size,
+        ));
+        assert!(!world.dialog_warning_is_open());
+
+        assert!(world.focus_dialog_navigation_target(expected[1], false));
+        let focused_plain = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(focused_plain.fill_layers.len(), 4);
+
+        let description = dialog_focus_node(&graph.body, expected[3]).unwrap();
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(
+                f64::from(description.rectangle.x + 1),
+                f64::from(description.rectangle.y + 1),
+            )),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_focus(), Some(expected[3]));
+
+        assert!(world.focus_dialog_navigation_target(expected[7], false));
+        assert_eq!(world.dialog_text_edit_state().unwrap().cursor, 2);
+        assert!(handle_dialog_key_input_with_modifiers_for_surface(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::ArrowLeft),
+            ElementState::Pressed,
+            false,
+            false,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_text_edit_state().unwrap().cursor, 1);
+        assert!(handle_dialog_key_input_with_modifiers_for_surface(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Tab),
+            ElementState::Pressed,
+            false,
+            false,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_focus(), Some(expected[8]));
+        assert_eq!(world.dialog_text_edit_state(), None);
+        let focused_action = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(
+            focused_action.background_layers.last().unwrap().texture,
+            HudInventoryBackgroundTexture::WidgetButtonHighlighted
+        );
+        assert_eq!(
+            focused_action.tooltip.unwrap().lines[0].text,
+            "Finish dialog"
+        );
+        assert!(handle_dialog_key_input_with_modifiers_for_surface(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Enter),
+            ElementState::Pressed,
+            false,
+            false,
+            surface_size,
+        ));
+        assert!(world.current_dialog().is_some());
+        assert_eq!(world.dialog_focus(), Some(expected[8]));
+        assert!(handle_dialog_key_input_with_modifiers_for_surface(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Tab),
+            ElementState::Pressed,
+            true,
+            false,
+            surface_size,
+        ));
+        assert_eq!(world.dialog_focus(), Some(expected[7]));
+        assert_eq!(world.dialog_text_edit_state().unwrap().cursor, 1);
+    }
+
+    #[test]
     fn dialog_item_body_mouse_focus_uses_only_the_declared_widget_rect() {
         let mut world = world_with_notice(vec![
             entry("pause", NbtSummaryValue::Byte(0)),
@@ -3437,21 +4386,27 @@ mod tests {
         ]);
         let surface_size = PhysicalSize::new(320, 240);
         let dialog = world.current_dialog().unwrap();
-        let common = dialog
+        let controls = dialog
             .data
             .as_ref()
             .and_then(simple_dialog_controls)
-            .unwrap_or_else(|| panic!("dialog decode failed: {:?}", dialog.semantic_error))
-            .common;
-        assert_eq!(
-            dialog_body_item_layouts(common, surface_size).unwrap(),
-            vec![DialogBodyItemLayout {
+            .unwrap_or_else(|| panic!("dialog decode failed: {:?}", dialog.semantic_error));
+        let item_focus = dialog_focus_node(
+            &dialog_focus_graph(&controls, surface_size).unwrap().body,
+            DialogFocusState::Body {
                 index: 0,
+                part: DialogBodyFocusPartState::Primary,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            item_focus.rectangle,
+            DialogFocusRectangle {
                 x: 118,
                 y: 63,
                 width: 32,
                 height: 48,
-            }]
+            }
         );
         let mut counters = NetCounters::default();
 

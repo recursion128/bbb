@@ -80,12 +80,12 @@ use level_load_runtime::LevelLoadRuntime;
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     control_renderer_counters, handle_dialog_cursor_moved_with_measurer,
-    handle_dialog_key_input_with_modifiers, handle_dialog_mouse_input_with_modifiers_and_measurer,
-    handle_dialog_mouse_wheel, handle_dialog_text_input, publish_snapshot,
-    pump_network_and_terrain, request_net_disconnect, snapshot_is_running, take_control_screenshot,
-    CameraFovTickState, ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
-    DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
-    LevelEventSoundRandomState, LightmapTickState,
+    handle_dialog_key_input_with_modifiers_for_surface,
+    handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
+    handle_dialog_text_input, publish_snapshot, pump_network_and_terrain, request_net_disconnect,
+    snapshot_is_running, take_control_screenshot, CameraFovTickState, ClientAnimationTickState,
+    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
+    HudDebugNetworkSampler, HudDebugTpsSampler, LevelEventSoundRandomState, LightmapTickState,
 };
 use sky_assets::load_sky_textures;
 use startup::{
@@ -772,7 +772,7 @@ fn main() -> Result<()> {
                     if dialog_open {
                         input.update_screen_modifier_keys(event.physical_key, event.state);
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_dialog_key_input_with_modifiers(
+                        handle_dialog_key_input_with_modifiers_for_surface(
                             &mut net_counters,
                             &mut world,
                             &net_commands,
@@ -781,6 +781,7 @@ fn main() -> Result<()> {
                             event.state,
                             input.shift_down(),
                             input.control_down(),
+                            window.inner_size(),
                         );
                         if !runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);

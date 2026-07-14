@@ -69,9 +69,9 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear;
-  add the unified warning/body/input/footer Tab and directional focus graph,
+  add ScrollableLayout body wheel/focus scrolling and clipping,
   NumberRange/SingleOption long-label scrolling, the multiline Text editor, and single-line Text
-  Tab focus traversal, double-click word selection, and IME preedit overlay,
+  double-click word selection and IME preedit overlay,
   remaining button-list action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
   focus, and clipping; execute open-url and Component-click paths; and
@@ -125,7 +125,11 @@ Owner: `bbb-protocol`
   the close/none/waiting `after_action` transitions, including vanilla's delayed Back
   screen; it also renders the exact dialog warning-button sprites and tooltip, opens the centered
   warning confirmation with mouse/keyboard Disconnect and Back controls, and preserves the warning
-  while its hidden return dialog is replaced or cleared. It still needs the remaining controls and actions before either
+  while its hidden return dialog is replaced or cleared. The main dialog now keeps one transient
+  warning/body/input/footer focus owner, follows vanilla's nested Tab and directional geometry,
+  renders body outlines plus focused warning/action sprites and tooltips, and lets single-line Text
+  traverse by Tab without losing its cursor or selection. It still needs the remaining controls and
+  actions before either
   `ShowDialog` row's `runtime_side_effect` coverage cell can close.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while

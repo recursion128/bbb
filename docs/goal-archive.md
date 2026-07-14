@@ -14868,3 +14868,20 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   Back 才关闭 warning；world/native regressions 覆盖 replacement/clear/back stack、keyboard focus、sprite
   catalog、tooltip、Disconnect command 与旧 Notice/Confirmation header 投影。主 dialog 的统一 Tab/方向
   focus graph 继续留在 TODO。
+
+## 2026-07-14：Unify main dialog keyboard focus navigation
+
+- [x] 对照 `DialogScreen.init`、`ScrollableLayout.Container` 与 `ContainerEventHandler.handleTabNavigation`，
+  world 将 warning、body primary/description、input 与 footer action 收进同一个 serde-skipped focus owner；
+  native 以 warning 的 `tabOrderGroup=-10` 为首，按滚动 body 容器的 widget 注册顺序和 footer 顺序执行
+  Tab/Shift-Tab，并在越界时按 `Screen.clearFocus` 语义循环。
+- [x] 对照 `getBorderForArrowNavigation`、`nextFocusPathInDirection` 与
+  `nextFocusPathVaguelyInDirection`，native 保留 screen/body 两层容器边界、正交轴 overlap、方向主/次排序
+  和 side-center squared-distance fallback；production key path 传入实际 surface，NumberRange 继续按
+  Tab/mouse 与 arrow focus 分别进入可调/不可调模式。
+- [x] PlainMessage、ItemDisplayWidget description 与 item primary 均可由 mouse/keyboard 独立聚焦并投影
+  vanilla 白色 outline；warning/footer 的 focused sprite 和 tooltip 与 hover 合并。single-line Text 的 Tab
+  离开/返回保留 cursor/selection，footer Space/Enter 执行动作，warning Space/Enter 打开确认页；focused
+  regression 覆盖完整 Tab 环、Shift 反向、嵌套方向 geometry、description mouse hit、text cursor persistence、
+  slider mode 及 focus render。ScrollableLayout body 的 wheel/focus scrolling/clipping 与 button-list 的
+  独立 scroll/focus 继续留在 TODO。

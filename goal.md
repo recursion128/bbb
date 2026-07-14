@@ -373,10 +373,16 @@ Dialog warning button 已按 title+10px+20px header row、三张 `dialog/warning
 mouse、Tab/Shift-Tab、方向键、Space/Enter 与 Escape，Disconnect 复用 native net command owner。
 warning 打开期间 ShowDialog 只替换隐藏 return dialog，ClearDialog 只移除隐藏 dialog 并保留 warning，
 Back 后精确回到替换后的 dialog 或原 previous screen。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、
-warning/body/input/footer 的统一 Tab/方向 focus navigation、NumberRange/SingleOption
-超长 label scrolling、Text multiline editor、single-line Text 的 Tab focus traversal、double-click
-word selection 与 IME preedit overlay、
+主 Dialog 已以 serde-skipped world owner 统一 warning/body/input/footer focus；Tab/Shift-Tab 按
+warning 的 `tabOrderGroup=-10`、ScrollableLayout 内部 body（Item 与 description 分离）/input 注册顺序、
+footer 顺序循环，方向键复刻 `ContainerEventHandler` 的两层 exact-overlap/vague-distance geometry。
+PlainMessage/description 取得同样的白色 focus outline，warning/footer 取得 focus sprite/tooltip；
+single-line Text 可用 Tab 离开并在返回时保留 cursor/selection，NumberRange 继续区分 Tab/mouse 的
+keyboard-change mode 与 arrow focus。
+仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、ScrollableLayout body 的
+wheel/focus scrolling 与 clipping、NumberRange/SingleOption
+超长 label scrolling、Text multiline editor、single-line Text 的 double-click word selection 与
+IME preedit overlay、
 button-list tooltip/scroll/focus、
 其余三类 top-level dialog 布局、action-bearing
 open-url 与 Component-click。Boolean input 已按 Checkbox 的 17px box、

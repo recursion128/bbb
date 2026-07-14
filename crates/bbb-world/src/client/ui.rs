@@ -96,9 +96,24 @@ pub struct DialogTextEditState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DialogFocusState {
-    Body { index: usize },
-    Input { index: usize },
+pub enum DialogBodyFocusPartState {
+    Primary,
+    Description,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DialogFocusState {
+    WarningButton,
+    Body {
+        index: usize,
+        part: DialogBodyFocusPartState,
+    },
+    Input {
+        index: usize,
+    },
+    Action {
+        index: usize,
+    },
 }
 
 impl ClientUiState {
@@ -515,7 +530,12 @@ impl WorldStore {
     }
 
     pub fn dialog_text_edit_state(&self) -> Option<DialogTextEditState> {
-        self.client_ui.dialog_text_edit
+        self.client_ui.dialog_text_edit.filter(|edit| {
+            self.client_ui.dialog_focus
+                == Some(DialogFocusState::Input {
+                    index: edit.input_index,
+                })
+        })
     }
 
     pub fn focus_dialog_text_input(
@@ -557,9 +577,13 @@ impl WorldStore {
 
     pub fn dialog_focused_body(&self) -> Option<usize> {
         match self.client_ui.dialog_focus {
-            Some(DialogFocusState::Body { index }) => Some(index),
+            Some(DialogFocusState::Body { index, .. }) => Some(index),
             _ => None,
         }
+    }
+
+    pub fn dialog_focus(&self) -> Option<DialogFocusState> {
+        self.client_ui.dialog_focus
     }
 
     pub fn focus_dialog_body_item(&mut self, index: usize) -> bool {
@@ -572,10 +596,99 @@ impl WorldStore {
         {
             return false;
         }
-        self.client_ui.dialog_focus = Some(DialogFocusState::Body { index });
+        self.client_ui.dialog_focus = Some(DialogFocusState::Body {
+            index,
+            part: DialogBodyFocusPartState::Primary,
+        });
         self.client_ui.dialog_number_range_keyboard_input = None;
-        self.client_ui.dialog_text_edit = None;
         self.client_ui.dialog_dragging_text_input = None;
+        true
+    }
+
+    pub fn focus_dialog_navigation_target(
+        &mut self,
+        target: DialogFocusState,
+        number_range_can_change: bool,
+    ) -> bool {
+        let Some((valid, is_number_range, is_single_line_text)) = self
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .map(|data| {
+                let common = common_dialog_data(data);
+                let valid = match target {
+                    DialogFocusState::WarningButton => true,
+                    DialogFocusState::Body { index, part } => common
+                        .body_data
+                        .get(index)
+                        .is_some_and(|body| match (body, part) {
+                            (_, DialogBodyFocusPartState::Primary) => true,
+                            (
+                                DialogBodyState::Item {
+                                    description: Some(_),
+                                    ..
+                                },
+                                DialogBodyFocusPartState::Description,
+                            ) => true,
+                            _ => false,
+                        }),
+                    DialogFocusState::Input { index } => common.input_data.get(index).is_some(),
+                    DialogFocusState::Action { index } => match data {
+                        DialogDataState::Notice { .. } => index == 0,
+                        DialogDataState::Confirmation { .. } => index < 2,
+                        _ => false,
+                    },
+                };
+                let control = match target {
+                    DialogFocusState::Input { index } => {
+                        common.input_data.get(index).map(|input| &input.control)
+                    }
+                    _ => None,
+                };
+                (
+                    valid,
+                    matches!(control, Some(DialogInputControlState::NumberRange { .. })),
+                    matches!(
+                        control,
+                        Some(DialogInputControlState::Text {
+                            multiline: None,
+                            ..
+                        })
+                    ),
+                )
+            })
+        else {
+            return false;
+        };
+        if !valid {
+            return false;
+        }
+
+        self.client_ui.dialog_focus = Some(target);
+        self.client_ui.dialog_dragging_text_input = None;
+        self.client_ui.dialog_number_range_keyboard_input = match target {
+            DialogFocusState::Input { index } if number_range_can_change && is_number_range => {
+                Some(index)
+            }
+            _ => None,
+        };
+        if let DialogFocusState::Input { index } = target {
+            if is_single_line_text
+                && !self
+                    .client_ui
+                    .dialog_text_edit
+                    .is_some_and(|edit| edit.input_index == index)
+            {
+                let cursor = match self.client_ui.dialog_input_values.get(index) {
+                    Some(Some(DialogInputValueState::Text { value })) => value.chars().count(),
+                    _ => 0,
+                };
+                self.client_ui.dialog_text_edit = Some(DialogTextEditState {
+                    input_index: index,
+                    cursor,
+                    selection: cursor,
+                });
+            }
+        }
         true
     }
 
@@ -599,7 +712,6 @@ impl WorldStore {
         }
         self.client_ui.dialog_focus = Some(DialogFocusState::Input { index });
         self.client_ui.dialog_number_range_keyboard_input = number_range.then_some(index);
-        self.client_ui.dialog_text_edit = None;
         self.client_ui.dialog_dragging_text_input = None;
         true
     }
@@ -607,7 +719,6 @@ impl WorldStore {
     pub fn clear_dialog_focus(&mut self) -> bool {
         self.client_ui.dialog_number_range_keyboard_input = None;
         self.client_ui.dialog_dragging_text_input = None;
-        self.client_ui.dialog_text_edit = None;
         self.client_ui.dialog_focus.take().is_some()
     }
 
@@ -671,6 +782,7 @@ impl WorldStore {
                 .client_ui
                 .dialog_text_edit
                 .is_some_and(|edit| edit.input_index == index)
+            || self.dialog_focused_input() != Some(index)
         {
             return false;
         }
