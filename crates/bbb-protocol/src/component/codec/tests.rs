@@ -352,6 +352,104 @@ fn accepts_hover_text_item_and_entity_event_shapes() {
 }
 
 #[test]
+fn visits_owner_sensitive_payloads_in_recursive_component_positions() {
+    let item_components = compound([("damage", NbtSummaryValue::Int(1))]);
+    let dialog = compound([
+        ("type", string("notice")),
+        ("title", string("Nested dialog")),
+    ]);
+    let item_component = compound([
+        ("text", string("nested item")),
+        (
+            "hover_event",
+            compound([
+                ("action", string("show_item")),
+                ("id", string("diamond")),
+                ("components", item_components.clone()),
+            ]),
+        ),
+    ]);
+    let dialog_component = compound([
+        ("text", string("nested dialog")),
+        (
+            "click_event",
+            compound([
+                ("action", string("show_dialog")),
+                ("dialog", dialog.clone()),
+            ]),
+        ),
+    ]);
+    let value = compound([
+        ("translate", string("component.test")),
+        (
+            "with",
+            list([compound([
+                ("text", string("item")),
+                (
+                    "hover_event",
+                    compound([
+                        ("action", string("show_item")),
+                        ("id", string("diamond")),
+                        ("components", item_components.clone()),
+                    ]),
+                ),
+            ])]),
+        ),
+        (
+            "extra",
+            list([
+                dialog_component.clone(),
+                compound([
+                    ("text", string("entity")),
+                    (
+                        "hover_event",
+                        compound([
+                            ("action", string("show_entity")),
+                            ("id", string("pig")),
+                            ("uuid", string("1-2-3-4-5")),
+                            ("name", dialog_component),
+                        ]),
+                    ),
+                ]),
+            ]),
+        ),
+        (
+            "hover_event",
+            compound([("action", string("show_text")), ("value", item_component)]),
+        ),
+    ]);
+
+    let mut visited = Vec::new();
+    visit_component_payloads(&value, "component", |payload, what| {
+        visited.push((
+            match payload {
+                ComponentPayload::ShowDialog(value) => ("dialog", value.clone()),
+                ComponentPayload::ShowItemComponents(value) => ("item", value.clone()),
+            },
+            what.to_string(),
+        ));
+        Ok(())
+    })
+    .unwrap();
+
+    assert_eq!(visited.len(), 4);
+    assert_eq!(visited[0].0, ("item", item_components));
+    assert!(visited[0]
+        .1
+        .contains("with[0] field hover_event field components"));
+    assert_eq!(visited[1].0, ("dialog", dialog));
+    assert!(visited[1]
+        .1
+        .contains("extra[0] field click_event field dialog"));
+    assert!(visited[2]
+        .1
+        .contains("extra[1] field hover_event field name field click_event field dialog"));
+    assert!(visited[3]
+        .1
+        .contains("hover_event field value field hover_event field components"));
+}
+
+#[test]
 fn rejects_disallowed_or_malformed_click_events() {
     let cases = [
         (string("not a compound"), "not a compound"),

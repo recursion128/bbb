@@ -8,7 +8,7 @@ use crate::{
 
 mod codec;
 
-pub use codec::validate_component_nbt;
+pub use codec::{validate_component_nbt, visit_component_payloads, ComponentPayload};
 
 /// The client-visible subset of vanilla `net.minecraft.network.chat.Style`
 /// (`Style.Serializer.MAP_CODEC`). Each key is `None` when the component chain

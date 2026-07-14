@@ -386,7 +386,9 @@ string/non-empty-list/full-compound root、typed/fuzzy 七类 content dispatch�
 及 registry-independent payload；structured Component page 的 command-backed parser、deep dialog/item
 component value payload、registry-aware value 和 canonical JsonOps 重编码长度仍开放；hover
 `show_item` 的 DataComponentPatch envelope 已进一步按 110 项 catalog 校验 Identifier/default namespace、
-persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义，但正值仍需进入各 type codec；
+persistent gate、remove-unit compound、同符号重复键与 set/remove 覆盖语义；共享 recursive payload visitor
+已让 CUSTOM_NAME/ITEM_NAME/LORE 中的 hover item patch 正值进入既有 107 项 world type codec，其他
+Component 持有位置仍需接入该 visitor；
 POTION_CONTENTS 的 built-in potion compact/full alternative、optional color/name、custom MobEffect
 holder list 与 recursive details defaults/unsigned-byte amplifier 也已 typed 投影；
 CONSUMABLE/DEATH_PROTECTION 的共享 5 分支 ConsumeEffect dispatch、record defaults、mob-effect

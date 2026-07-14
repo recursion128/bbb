@@ -33,6 +33,26 @@ pub fn validate_component_nbt(value: &NbtSummaryValue, what: &str) -> Result<(),
     validate_component(value, what, 0)
 }
 
+/// Registry- or owner-sensitive payloads nested inside an otherwise validated
+/// vanilla Component. Their envelope belongs to the Component codec; decoding
+/// the payload value belongs to the higher semantic owner named by the variant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ComponentPayload<'a> {
+    ShowDialog(&'a NbtSummaryValue),
+    ShowItemComponents(&'a NbtSummaryValue),
+}
+
+/// Validates a Component, then visits payloads whose value codecs require a
+/// higher-level owner (Dialog or persistent data components).
+pub fn visit_component_payloads<'a>(
+    value: &'a NbtSummaryValue,
+    what: &str,
+    mut visitor: impl FnMut(ComponentPayload<'a>, &str) -> Result<(), String>,
+) -> Result<(), String> {
+    validate_component_nbt(value, what)?;
+    visit_component_payloads_inner(value, what, 0, &mut visitor)
+}
+
 pub(super) fn validate_component_style_nbt(
     value: &NbtSummaryValue,
     what: &str,
@@ -63,6 +83,167 @@ fn validate_component(value: &NbtSummaryValue, what: &str, depth: usize) -> Resu
         NbtSummaryValue::Compound(entries) => validate_full_component(entries, what, depth),
         _ => Err(format!("{what} is not a component")),
     }
+}
+
+fn visit_component_payloads_inner<'a>(
+    value: &'a NbtSummaryValue,
+    what: &str,
+    depth: usize,
+    visitor: &mut impl FnMut(ComponentPayload<'a>, &str) -> Result<(), String>,
+) -> Result<(), String> {
+    match value {
+        NbtSummaryValue::String(_) => Ok(()),
+        NbtSummaryValue::List(values) => {
+            for (index, value) in values.iter().enumerate() {
+                visit_component_payloads_inner(
+                    value,
+                    &format!("{what}[{index}]"),
+                    depth + 1,
+                    visitor,
+                )?;
+            }
+            Ok(())
+        }
+        NbtSummaryValue::Compound(entries) => {
+            visit_content_payloads(entries, what, depth, visitor)?;
+            if let Some(NbtSummaryValue::List(values)) = find_entry(entries, "extra") {
+                for (index, value) in values.iter().enumerate() {
+                    visit_component_payloads_inner(
+                        value,
+                        &format!("{what} field extra[{index}]"),
+                        depth + 1,
+                        visitor,
+                    )?;
+                }
+            }
+            visit_style_payloads(entries, what, depth, visitor)
+        }
+        _ => unreachable!("component was validated before payload traversal"),
+    }
+}
+
+fn visit_content_payloads<'a>(
+    entries: &'a [NbtSummaryEntry],
+    what: &str,
+    depth: usize,
+    visitor: &mut impl FnMut(ComponentPayload<'a>, &str) -> Result<(), String>,
+) -> Result<(), String> {
+    let content_type = decoded_content_type(entries, what, depth);
+    match content_type {
+        "translatable" => {
+            if let Some(NbtSummaryValue::List(arguments)) = find_entry(entries, "with") {
+                for (index, argument) in arguments.iter().enumerate() {
+                    if !is_java_primitive(argument) {
+                        visit_component_payloads_inner(
+                            argument,
+                            &format!("{what} field with[{index}]"),
+                            depth + 1,
+                            visitor,
+                        )?;
+                    }
+                }
+            }
+        }
+        "selector" => {
+            if let Some(separator) = find_entry(entries, "separator") {
+                visit_component_payloads_inner(
+                    separator,
+                    &format!("{what} field separator"),
+                    depth + 1,
+                    visitor,
+                )?;
+            }
+        }
+        "nbt" => {
+            if let Some(separator) = find_entry(entries, "separator") {
+                let nested_what = format!("{what} field separator");
+                if validate_component(separator, &nested_what, depth + 1).is_ok() {
+                    visit_component_payloads_inner(separator, &nested_what, depth + 1, visitor)?;
+                }
+            }
+        }
+        "object" => {
+            if let Some(fallback) = find_entry(entries, "fallback") {
+                visit_component_payloads_inner(
+                    fallback,
+                    &format!("{what} field fallback"),
+                    depth + 1,
+                    visitor,
+                )?;
+            }
+        }
+        "text" | "keybind" | "score" => {}
+        _ => unreachable!("component content type was validated before payload traversal"),
+    }
+    Ok(())
+}
+
+fn decoded_content_type<'a>(entries: &'a [NbtSummaryEntry], what: &str, depth: usize) -> &'a str {
+    if let Some(NbtSummaryValue::String(content_type)) = find_entry(entries, "type") {
+        return content_type;
+    }
+    CONTENT_TYPES
+        .into_iter()
+        .find(|content_type| validate_content_type(content_type, entries, what, depth).is_ok())
+        .expect("component content type was validated before payload traversal")
+}
+
+fn visit_style_payloads<'a>(
+    entries: &'a [NbtSummaryEntry],
+    what: &str,
+    depth: usize,
+    visitor: &mut impl FnMut(ComponentPayload<'a>, &str) -> Result<(), String>,
+) -> Result<(), String> {
+    if let Some(NbtSummaryValue::Compound(click_entries)) = find_entry(entries, "click_event") {
+        if matches!(
+            find_entry(click_entries, "action"),
+            Some(NbtSummaryValue::String(action)) if action == "show_dialog"
+        ) {
+            let payload_what = format!("{what} field click_event field dialog");
+            visitor(
+                ComponentPayload::ShowDialog(
+                    find_entry(click_entries, "dialog")
+                        .expect("show-dialog payload was validated before traversal"),
+                ),
+                &payload_what,
+            )?;
+        }
+    }
+    let Some(NbtSummaryValue::Compound(hover_entries)) = find_entry(entries, "hover_event") else {
+        return Ok(());
+    };
+    match find_entry(hover_entries, "action") {
+        Some(NbtSummaryValue::String(action)) if action == "show_text" => {
+            visit_component_payloads_inner(
+                find_entry(hover_entries, "value")
+                    .expect("show-text payload was validated before traversal"),
+                &format!("{what} field hover_event field value"),
+                depth + 1,
+                visitor,
+            )?;
+        }
+        Some(NbtSummaryValue::String(action)) if action == "show_item" => {
+            if let Some(components) = find_entry(hover_entries, "components") {
+                let payload_what = format!("{what} field hover_event field components");
+                visitor(
+                    ComponentPayload::ShowItemComponents(components),
+                    &payload_what,
+                )?;
+            }
+        }
+        Some(NbtSummaryValue::String(action)) if action == "show_entity" => {
+            if let Some(name) = find_entry(hover_entries, "name") {
+                visit_component_payloads_inner(
+                    name,
+                    &format!("{what} field hover_event field name"),
+                    depth + 1,
+                    visitor,
+                )?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 fn validate_full_component(

@@ -14034,3 +14034,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   投影覆盖；empty/positive/removal、unknown/transient、malformed removal 与 semantic duplicate 均有定向
   测试。各 persistent component 的正值 codec 与 registry-aware nested value 仍需在 world component
   context 中复用现有 dialog item patch owner，不能把 key envelope 冒充完整 payload validation。
+
+## 2026-07-14：Validate name and lore hover item values
+
+- [x] 为 protocol Component owner 增加 validation-first、只读的 recursive nested-payload visitor；按实际
+  decoded content 分支遍历 list/with/separator/fallback/extra、show-text/show-entity recursive Component，
+  并把 click `show_dialog` 与 hover `show_item.components` 连同精确路径交给高层 owner，不引入
+  protocol→world 反向依赖。typed/fuzzy dispatch 与 NBT separator lenient optional 仍沿用同一 validator。
+- [x] CUSTOM_NAME/ITEM_NAME/LORE 的 world decoder 接入 visitor，让 hover item patch 正值复用已有 107 项
+  persistent component codec 和 session registry context；三类持有位置中的 malformed `damage` 正值均有
+  贯通拒绝测试。Dialog 标题/按钮等其他 Component 持有位置、click show-dialog 与 canonical 编码继续由
+  缺口账本追踪。

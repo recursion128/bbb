@@ -200,3 +200,50 @@ fn rejects_invalid_text_component_roots_and_lore_bounds() {
         .is_err());
     }
 }
+
+#[test]
+fn validates_hover_item_positive_component_values_in_names_and_lore() {
+    let invalid_hover_item = compound(vec![
+        entry("text", NbtSummaryValue::String("Broken item".to_string())),
+        entry(
+            "hover_event",
+            compound(vec![
+                entry("action", NbtSummaryValue::String("show_item".to_string())),
+                entry("id", NbtSummaryValue::String("diamond".to_string())),
+                entry(
+                    "components",
+                    compound(vec![entry(
+                        "damage",
+                        NbtSummaryValue::String("not an integer".to_string()),
+                    )]),
+                ),
+            ]),
+        ),
+    ]);
+
+    for (type_id, resource_id, value) in [
+        (
+            VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
+            "minecraft:custom_name",
+            invalid_hover_item.clone(),
+        ),
+        (
+            VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+            "minecraft:item_name",
+            invalid_hover_item.clone(),
+        ),
+        (
+            VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+            "minecraft:lore",
+            NbtSummaryValue::List(vec![invalid_hover_item]),
+        ),
+    ] {
+        let error =
+            decode_supported_component_value(type_id, resource_id, &value, None).unwrap_err();
+        assert!(
+            error.contains("hover_event field components")
+                && error.contains("minecraft:damage is not numeric"),
+            "{error:?}"
+        );
+    }
+}

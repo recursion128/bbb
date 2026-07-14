@@ -84,7 +84,8 @@ Owner: `bbb-protocol`
   holder branches are complete. Finish persistent Component command-backed
   selector/NBT/block-position parsing, deep click `show_dialog` and hover
   `show_item` component-patch positive-value validation (its persistent-key/removal/override
-  envelope is validated), registry-aware nested values,
+  envelope is validated, and CUSTOM_NAME/ITEM_NAME/LORE reuse the typed world patch owner),
+  registry-aware nested values in the remaining Component holders,
   and canonical re-encoding, including
   exact `flatRestrictedCodec(32767)` sizing for structured written-book pages; render
   the corresponding screens, restore the previous screen on clear,

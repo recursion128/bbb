@@ -458,11 +458,11 @@ pub(super) fn decode_supported_component_value(
         }
         VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID | VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
             DialogDataComponentValueState::TextComponent {
-                component: decode_text_component(value, &what)?,
+                component: decode_text_component(value, &what, registries)?,
             }
         }
         VANILLA_DATA_COMPONENT_LORE_TYPE_ID => DialogDataComponentValueState::Lore {
-            lines: decode_lore(value, &what)?,
+            lines: decode_lore(value, &what, registries)?,
         },
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID => {
             DialogDataComponentValueState::AttributeModifiers {
