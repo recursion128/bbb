@@ -198,6 +198,14 @@ impl WorldStore {
         self.client_ui.wait_for_dialog_response()
     }
 
+    /// Opens a dialog from a client-side dialog action without recording a
+    /// clientbound ShowDialog packet. Replacing an active dialog preserves the
+    /// original non-dialog previous screen, matching vanilla's dialog stack.
+    pub fn show_dialog_from_action(&mut self, dialog: DialogState) -> bool {
+        self.client_ui.show_dialog(dialog);
+        true
+    }
+
     pub fn close_dialog_waiting_response(&mut self) -> bool {
         self.client_ui.close_dialog_waiting_response()
     }

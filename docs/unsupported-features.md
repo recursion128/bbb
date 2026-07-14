@@ -71,7 +71,7 @@ Owner: `bbb-protocol`
   `DialogBodyHandlers`: add the in-world screen background and warning button/screen;
   render Item bodies, all four input controls, action tooltips, and the
   MultiAction/ServerLinks/DialogList layouts with vanilla scrolling,
-  focus, and clipping; execute open-url, run/suggest-command, show-dialog,
+  focus, and clipping; execute open-url, run/suggest-command,
   change-page, copy-to-clipboard, dynamic action, and Component-click paths; and
   restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current

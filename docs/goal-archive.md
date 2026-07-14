@@ -14442,3 +14442,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `can_close_with_escape` 允许时绑定 no 按钮 action 并强制 CLOSE。双 custom action 的命令顺序、
   `after_action=none` 留屏、Escape restore、精确按钮坐标/宽度/label/hover 均有 focused regression；
   tooltip、inputs 与剩余 button-list dialogs 继续由缺口账本追踪。
+
+## 2026-07-14：Execute static show-dialog actions
+
+- [x] 对照 `DialogScreen.runAction/handleDialogClickEvent` 与
+  `ClientCommonPacketListenerImpl.showDialog`，静态 show-dialog action 现在直接采用 world 已解码的 nested
+  `DialogState` 替换当前 dialog；vanilla 对 NONE/CLOSE/WAIT_FOR_RESPONSE 计算出的 active screen 最终都解包
+  回同一个原始 previous screen，因此本地替换不先制造短暂 close/waiting 状态。
+- [x] 新增不计 clientbound packet 的 `WorldStore::show_dialog_from_action` surface；nested Notice 的
+  `after_action=wait_for_response` replacement、原 advancements previous-screen 保留、无 waiting 中间态、
+  ShowDialog packet counter 不变及最终 restore 均有 focused regression。

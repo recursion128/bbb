@@ -484,6 +484,13 @@ fn run_dialog_action(
                 }
             }
         }
+        Some(DialogActionState::ShowDialog { dialog }) => {
+            // Vanilla computes an active screen from `after_action`, then
+            // `showDialog` unwraps an active Dialog/Waiting screen back to its
+            // original previous screen. All three after-action variants
+            // therefore replace the current dialog while retaining that owner.
+            return world.show_dialog_from_action((**dialog).clone());
+        }
         Some(_) => return false,
     }
     match after_action {
@@ -839,6 +846,73 @@ mod tests {
     }
 
     #[test]
+    fn show_dialog_action_replaces_outer_dialog_and_preserves_previous_screen() {
+        let mut world = WorldStore::new();
+        assert!(world.open_advancements_screen());
+        apply_notice(
+            &mut world,
+            vec![
+                entry(
+                    "after_action",
+                    NbtSummaryValue::String("wait_for_response".to_string()),
+                ),
+                entry(
+                    "action",
+                    NbtSummaryValue::Compound(vec![
+                        entry("label", NbtSummaryValue::String("Open".to_string())),
+                        entry(
+                            "action",
+                            NbtSummaryValue::Compound(vec![
+                                entry(
+                                    "type",
+                                    NbtSummaryValue::String("minecraft:show_dialog".to_string()),
+                                ),
+                                entry(
+                                    "dialog",
+                                    NbtSummaryValue::Compound(vec![
+                                        entry(
+                                            "type",
+                                            NbtSummaryValue::String("minecraft:notice".to_string()),
+                                        ),
+                                        entry(
+                                            "title",
+                                            NbtSummaryValue::String("Inner".to_string()),
+                                        ),
+                                    ]),
+                                ),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ],
+        );
+        let mut counters = NetCounters::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(160.0, 220.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        let Some(DialogDataState::Notice { common, .. }) = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+        else {
+            panic!("expected inner Notice dialog");
+        };
+        assert_eq!(common.title.text, "Inner");
+        assert_eq!(world.dialog_waiting_ticks(), None);
+        assert!(!world.advancements_screen_is_open());
+        assert_eq!(world.counters().show_dialog_packets, 1);
+        assert!(world.close_dialog());
+        assert!(world.advancements_screen_is_open());
+    }
+
+    #[test]
     fn static_custom_notice_action_queues_exact_payload_then_closes() {
         let mut world = world_with_notice(custom_action_fields());
         let mut counters = NetCounters::default();
@@ -1007,7 +1081,13 @@ mod tests {
         assert!(!mouse_world.dialog_screen_is_open());
     }
 
-    fn world_with_notice(mut fields: Vec<NbtSummaryEntry>) -> WorldStore {
+    fn world_with_notice(fields: Vec<NbtSummaryEntry>) -> WorldStore {
+        let mut world = WorldStore::new();
+        apply_notice(&mut world, fields);
+        world
+    }
+
+    fn apply_notice(world: &mut WorldStore, mut fields: Vec<NbtSummaryEntry>) {
         let mut dialog = vec![
             entry(
                 "type",
@@ -1016,13 +1096,11 @@ mod tests {
             entry("title", NbtSummaryValue::String("Notice".to_string())),
         ];
         dialog.append(&mut fields);
-        let mut world = WorldStore::new();
         world.apply_show_dialog(ShowDialog {
             dialog: DialogHolder::Direct {
                 dialog: NbtSummaryValue::Compound(dialog),
             },
         });
-        world
     }
 
     fn world_with_confirmation(mut fields: Vec<NbtSummaryEntry>) -> WorldStore {
