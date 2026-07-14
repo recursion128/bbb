@@ -441,11 +441,16 @@ fn approximate_dialog_text_cursor(text: &str, display_start: usize, width: u32) 
 fn push_slider_track_layers(
     layers: &mut Vec<HudInventoryBackgroundLayer>,
     layout: DialogInputLayout,
+    highlighted: bool,
 ) {
     push_horizontal_nine_slice_layers(
         layers,
         layout,
-        HudInventoryBackgroundTexture::WidgetSlider,
+        if highlighted {
+            HudInventoryBackgroundTexture::WidgetSliderHighlighted
+        } else {
+            HudInventoryBackgroundTexture::WidgetSlider
+        },
         WIDGET_SPRITE_WIDTH,
         1,
     );
@@ -832,6 +837,7 @@ pub(super) fn hud_dialog_screen(
             layout.screen_width,
             layout.screen_height,
         );
+        let focused = world.dialog_focused_input() == Some(input_layout.index);
         match (
             &input.control,
             world.current_dialog_input_values().get(input_layout.index),
@@ -841,7 +847,7 @@ pub(super) fn hud_dialog_screen(
                 Some(Some(DialogInputValueState::Boolean { selected })),
             ) => {
                 input_layers.push(HudInventoryBackgroundLayer {
-                    texture: match (*selected, hovered) {
+                    texture: match (*selected, hovered || focused) {
                         (false, false) => HudInventoryBackgroundTexture::WidgetCheckbox,
                         (false, true) => HudInventoryBackgroundTexture::WidgetCheckboxHighlighted,
                         (true, false) => HudInventoryBackgroundTexture::WidgetCheckboxSelected,
@@ -879,7 +885,13 @@ pub(super) fn hud_dialog_screen(
                 },
                 Some(Some(DialogInputValueState::NumberRange { slider_value_bits })),
             ) => {
-                push_slider_track_layers(&mut input_layers, input_layout);
+                let keyboard_can_change =
+                    world.dialog_number_range_keyboard_can_change(input_layout.index);
+                push_slider_track_layers(
+                    &mut input_layers,
+                    input_layout,
+                    focused && !keyboard_can_change,
+                );
                 let slider_value = f64::from_bits(*slider_value_bits);
                 let handle_offset =
                     (slider_value
@@ -888,6 +900,7 @@ pub(super) fn hud_dialog_screen(
                         ))) as i32;
                 input_layers.push(HudInventoryBackgroundLayer {
                     texture: if hovered
+                        || keyboard_can_change
                         || world.dialog_dragging_number_range_input() == Some(input_layout.index)
                     {
                         HudInventoryBackgroundTexture::WidgetSliderHandleHighlighted
@@ -938,7 +951,7 @@ pub(super) fn hud_dialog_screen(
                 push_horizontal_nine_slice_layers(
                     &mut input_layers,
                     input_layout,
-                    if hovered {
+                    if hovered || focused {
                         HudInventoryBackgroundTexture::WidgetButtonHighlighted
                     } else {
                         HudInventoryBackgroundTexture::WidgetButton
@@ -1253,6 +1266,9 @@ pub(crate) fn handle_dialog_key_input_with_modifiers(
     ) {
         return true;
     }
+    if handle_focused_dialog_input_key(world, physical_key, shift_down) {
+        return true;
+    }
     if physical_key != PhysicalKey::Code(KeyCode::Escape) {
         return true;
     }
@@ -1276,6 +1292,60 @@ pub(crate) fn handle_dialog_key_input_with_modifiers(
         "close",
     );
     true
+}
+
+fn handle_focused_dialog_input_key(
+    world: &mut WorldStore,
+    physical_key: PhysicalKey,
+    shift_down: bool,
+) -> bool {
+    let PhysicalKey::Code(code) = physical_key else {
+        return false;
+    };
+    let Some(index) = world.dialog_focused_input() else {
+        return false;
+    };
+    let control = world
+        .current_dialog()
+        .and_then(|dialog| dialog.data.as_ref())
+        .and_then(simple_dialog_controls)
+        .and_then(|controls| controls.common.input_data.get(index))
+        .map(|input| input.control.clone());
+    let selection = matches!(code, KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space);
+    match control {
+        Some(DialogInputControlState::Boolean { .. }) if selection => {
+            world.toggle_dialog_boolean_input(index);
+            true
+        }
+        Some(DialogInputControlState::SingleOption { .. }) if selection => {
+            cycle_dialog_single_option(world, index, shift_down);
+            true
+        }
+        Some(DialogInputControlState::NumberRange { .. }) if selection => {
+            world.toggle_dialog_number_range_keyboard_change(index);
+            true
+        }
+        Some(DialogInputControlState::NumberRange { width, .. })
+            if world.dialog_number_range_keyboard_can_change(index)
+                && matches!(code, KeyCode::ArrowLeft | KeyCode::ArrowRight) =>
+        {
+            let Some(Some(DialogInputValueState::NumberRange { slider_value_bits })) =
+                world.current_dialog_input_values().get(index)
+            else {
+                return true;
+            };
+            let direction = if code == KeyCode::ArrowLeft {
+                -1.0
+            } else {
+                1.0
+            };
+            let value =
+                f64::from_bits(*slider_value_bits) + direction / f64::from(width.saturating_sub(8));
+            world.set_dialog_number_range_slider_value(index, value);
+            true
+        }
+        _ => false,
+    }
 }
 
 fn handle_focused_dialog_text_key(
@@ -1658,18 +1728,18 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     });
     match input_hit {
         Some(DialogInputMouseHit::Boolean(index)) => {
-            world.clear_dialog_text_input_focus();
+            world.focus_dialog_mouse_input(index);
             world.toggle_dialog_boolean_input(index);
             return true;
         }
         Some(DialogInputMouseHit::NumberRange(layout)) => {
-            world.clear_dialog_text_input_focus();
+            world.focus_dialog_mouse_input(layout.index);
             world.begin_dialog_number_range_drag(layout.index);
             set_dialog_number_range_from_cursor(world, layout, cursor_position, surface_size);
             return true;
         }
         Some(DialogInputMouseHit::SingleOption(layout)) => {
-            world.clear_dialog_text_input_focus();
+            world.focus_dialog_mouse_input(layout.index);
             cycle_dialog_single_option(world, layout.index, shift_down);
             return true;
         }
@@ -1685,9 +1755,10 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
             world.begin_dialog_text_input_drag(layout.index);
             return true;
         }
-        None => {
-            world.clear_dialog_text_input_focus();
+        None if action.is_some() => {
+            world.clear_dialog_input_focus();
         }
+        None => {}
     }
     let Some(action) = action else {
         return true;
@@ -2865,6 +2936,56 @@ mod tests {
             world.current_dialog_input_values(),
             [Some(DialogInputValueState::Boolean { selected: true })]
         );
+        assert_eq!(world.dialog_focused_input(), Some(0));
+        let focused_screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &terrain_textures,
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert!(focused_screen.background_layers.iter().any(|layer| {
+            layer.texture == HudInventoryBackgroundTexture::WidgetCheckboxSelectedHighlighted
+                && (layer.x, layer.y) == (input_layout.x, input_layout.y)
+        }));
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Space),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Enter),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::Boolean { selected: true })]
+        );
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(0.0, 0.0)),
+            surface_size,
+        ));
+        assert_eq!(world.dialog_focused_input(), Some(0));
 
         assert!(handle_dialog_mouse_input(
             &mut counters,
@@ -2877,6 +2998,7 @@ mod tests {
             surface_size,
         ));
         assert!(world.current_dialog().is_some());
+        assert_eq!(world.dialog_focused_input(), None);
         assert_eq!(counters.custom_click_action_commands_queued, 1);
         assert!(matches!(
             rx.try_recv().unwrap(),
@@ -3056,6 +3178,92 @@ mod tests {
             surface_size,
         ));
         assert_eq!(world.dialog_dragging_number_range_input(), None);
+        assert_eq!(world.dialog_focused_input(), Some(0));
+        assert!(world.dialog_number_range_keyboard_can_change(0));
+        let focused_screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(
+            focused_screen
+                .background_layers
+                .iter()
+                .filter(|layer| {
+                    layer.texture == HudInventoryBackgroundTexture::WidgetSliderHandleHighlighted
+                })
+                .count(),
+            1
+        );
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::ArrowLeft),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        let keyboard_value = 1.0f64 - 1.0 / 92.0;
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::NumberRange {
+                slider_value_bits: keyboard_value.to_bits(),
+            })]
+        );
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Space),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert!(!world.dialog_number_range_keyboard_can_change(0));
+        let locked_screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(
+            locked_screen
+                .background_layers
+                .iter()
+                .filter(|layer| {
+                    layer.texture == HudInventoryBackgroundTexture::WidgetSliderHighlighted
+                })
+                .count(),
+            3
+        );
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::ArrowLeft),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::NumberRange {
+                slider_value_bits: keyboard_value.to_bits(),
+            })]
+        );
 
         assert!(handle_dialog_mouse_input(
             &mut counters,
@@ -3284,6 +3492,54 @@ mod tests {
             cursor,
             surface_size,
             true,
+        ));
+        assert_eq!(
+            world.current_dialog_input_values(),
+            [Some(DialogInputValueState::SingleOption {
+                selected_index: 1,
+            })]
+        );
+        assert_eq!(world.dialog_focused_input(), Some(0));
+        let focused_screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState::default(),
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(
+            focused_screen
+                .background_layers
+                .iter()
+                .filter(|layer| {
+                    layer.texture == HudInventoryBackgroundTexture::WidgetButtonHighlighted
+                        && layer.y == input_layout.y
+                })
+                .count(),
+            3
+        );
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::Space),
+            ElementState::Pressed,
+            false,
+            false,
+        ));
+        assert!(handle_dialog_key_input_with_modifiers(
+            &mut counters,
+            &mut world,
+            &net_commands,
+            None,
+            PhysicalKey::Code(KeyCode::NumpadEnter),
+            ElementState::Pressed,
+            true,
+            false,
         ));
         assert_eq!(
             world.current_dialog_input_values(),

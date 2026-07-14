@@ -33,6 +33,10 @@ pub struct ClientUiState {
     #[serde(skip)]
     dialog_dragging_number_range_input: Option<usize>,
     #[serde(skip)]
+    dialog_focused_input: Option<usize>,
+    #[serde(skip)]
+    dialog_number_range_keyboard_input: Option<usize>,
+    #[serde(skip)]
     dialog_text_edit: Option<DialogTextEditState>,
     #[serde(skip)]
     dialog_dragging_text_input: Option<usize>,
@@ -101,6 +105,8 @@ impl ClientUiState {
         }
         self.dialog_waiting_ticks = None;
         self.dialog_dragging_number_range_input = None;
+        self.dialog_focused_input = None;
+        self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
         self.dialog_input_values = initial_dialog_input_values(&dialog);
@@ -112,6 +118,8 @@ impl ClientUiState {
             return false;
         }
         self.dialog_dragging_number_range_input = None;
+        self.dialog_focused_input = None;
+        self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
         self.dialog_input_values.clear();
@@ -124,6 +132,8 @@ impl ClientUiState {
             return false;
         }
         self.dialog_dragging_number_range_input = None;
+        self.dialog_focused_input = None;
+        self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
         self.dialog_input_values.clear();
@@ -161,6 +171,8 @@ impl ClientUiState {
     pub(crate) fn replace_dialog(&mut self) {
         self.current_dialog = None;
         self.dialog_dragging_number_range_input = None;
+        self.dialog_focused_input = None;
+        self.dialog_number_range_keyboard_input = None;
         self.dialog_text_edit = None;
         self.dialog_dragging_text_input = None;
         self.dialog_input_values.clear();
@@ -516,12 +528,67 @@ impl WorldStore {
             cursor,
             selection,
         });
+        self.client_ui.dialog_focused_input = Some(index);
+        self.client_ui.dialog_number_range_keyboard_input = None;
         true
     }
 
-    pub fn clear_dialog_text_input_focus(&mut self) -> bool {
+    pub fn dialog_focused_input(&self) -> Option<usize> {
+        self.client_ui.dialog_focused_input
+    }
+
+    pub fn focus_dialog_mouse_input(&mut self, index: usize) -> bool {
+        let control = self
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .map(common_dialog_data)
+            .and_then(|common| common.input_data.get(index))
+            .map(|input| &input.control);
+        let number_range = matches!(control, Some(DialogInputControlState::NumberRange { .. }));
+        if !matches!(
+            control,
+            Some(
+                DialogInputControlState::Boolean { .. }
+                    | DialogInputControlState::NumberRange { .. }
+                    | DialogInputControlState::SingleOption { .. }
+            )
+        ) {
+            return false;
+        }
+        self.client_ui.dialog_focused_input = Some(index);
+        self.client_ui.dialog_number_range_keyboard_input = number_range.then_some(index);
+        self.client_ui.dialog_text_edit = None;
         self.client_ui.dialog_dragging_text_input = None;
-        self.client_ui.dialog_text_edit.take().is_some()
+        true
+    }
+
+    pub fn clear_dialog_input_focus(&mut self) -> bool {
+        self.client_ui.dialog_number_range_keyboard_input = None;
+        self.client_ui.dialog_dragging_text_input = None;
+        self.client_ui.dialog_text_edit = None;
+        self.client_ui.dialog_focused_input.take().is_some()
+    }
+
+    pub fn dialog_number_range_keyboard_can_change(&self, index: usize) -> bool {
+        self.client_ui.dialog_focused_input == Some(index)
+            && self.client_ui.dialog_number_range_keyboard_input == Some(index)
+    }
+
+    pub fn toggle_dialog_number_range_keyboard_change(&mut self, index: usize) -> bool {
+        if self.client_ui.dialog_focused_input != Some(index)
+            || !matches!(
+                self.client_ui.dialog_input_values.get(index),
+                Some(Some(DialogInputValueState::NumberRange { .. }))
+            )
+        {
+            return false;
+        }
+        if self.client_ui.dialog_number_range_keyboard_input == Some(index) {
+            self.client_ui.dialog_number_range_keyboard_input = None;
+        } else {
+            self.client_ui.dialog_number_range_keyboard_input = Some(index);
+        }
+        true
     }
 
     pub fn begin_dialog_text_input_drag(&mut self, index: usize) -> bool {
@@ -981,6 +1048,11 @@ mod tests {
         );
         assert!(store.begin_dialog_number_range_drag(0));
         assert_eq!(store.dialog_dragging_number_range_input(), Some(0));
+        assert!(store.focus_dialog_mouse_input(0));
+        assert_eq!(store.dialog_focused_input(), Some(0));
+        assert!(store.dialog_number_range_keyboard_can_change(0));
+        assert!(store.toggle_dialog_number_range_keyboard_change(0));
+        assert!(!store.dialog_number_range_keyboard_can_change(0));
         assert!(store.set_dialog_number_range_slider_value(0, 2.0));
         assert_eq!(
             store.current_dialog_input_values(),
@@ -991,6 +1063,7 @@ mod tests {
 
         assert!(store.close_dialog());
         assert_eq!(store.dialog_dragging_number_range_input(), None);
+        assert_eq!(store.dialog_focused_input(), None);
         assert!(store.current_dialog_input_values().is_empty());
     }
 
@@ -1082,6 +1155,7 @@ mod tests {
             })]
         );
         assert!(store.focus_dialog_text_input(0, 1, false));
+        assert_eq!(store.dialog_focused_input(), Some(0));
         assert!(store.focus_dialog_text_input(0, 2, true));
         assert_eq!(
             store.dialog_text_edit_state(),

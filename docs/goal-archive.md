@@ -14830,3 +14830,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   template substitution 精确转义 quote/backslash/SNBT control characters，dynamic custom 保留原始 StringTag；
   world/native regressions 覆盖 lifecycle、supplementary characters、geometry、drag、clipboard 与两种 binding。
   multiline editor、Tab focus traversal、double-click word selection 和 IME preedit overlay 继续留在 TODO。
+
+## 2026-07-14：Operate focused Boolean, NumberRange, and SingleOption inputs
+
+- [x] 对照 `ContainerEventHandler.mouseClicked`、`Checkbox`、`AbstractButton`、`AbstractSliderButton` 与
+  `CycleButton`，world 增加 serde-skipped focused-input 与 slider keyboard-change owner；show/close/wait/
+  replace 清理，blank click 保持既有 focus，切换 input 或触发 footer action 释放旧 input focus。
+- [x] Boolean/SingleOption 在 hover 或 focus 时使用 highlighted sprite，Space/Enter/NumpadEnter 分别 toggle/
+  cycle 且 SingleOption 保留 Shift reverse；NumberRange mouse focus 进入 `canChangeValue`，Space/Enter 切换该
+  mode，Left/Right 以 `1/(width-8)` 调整 double slider position，track 与 handle sprite 精确跟随 focus/mode。
+- [x] world/native focused regressions 覆盖 lifecycle、focus persistence、三类 focus sprite、三种 selection key、
+  Shift reverse、slider one-pixel step、locked arrow no-op 与 action focus release。Item/body/warning/footer 的统一
+  Tab/方向 focus graph 继续留在 TODO。

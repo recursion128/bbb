@@ -366,7 +366,7 @@ jukebox-song 与 painting-variant 的 persistent `RegistryFixedCodec` 只允许 
 persistent CODEC，剩余 107 项 persistent component 均有 dialog typed decoder/summary bridge 与 native
 persistent encoder，未知未来形状仍不会被猜测性投影。
 仍须按 `DialogScreen`/`DialogControlSet` 完成 screen blur/depth-clear、warning button/screen、
-Item/Boolean/NumberRange/SingleOption keyboard focus outline 与键盘操作、NumberRange/SingleOption
+Item focus outline、warning/body/input/footer 的统一 Tab/方向 focus navigation、NumberRange/SingleOption
 超长 label scrolling、Text multiline editor、single-line Text 的 Tab focus traversal、double-click
 word selection 与 IME preedit overlay、
 button-list tooltip/scroll/focus、
@@ -375,9 +375,12 @@ open-url 与 Component-click。Boolean input 已按 Checkbox 的 17px box、
 label、initial/on-true/on-false 与 byte-tag 语义接入 mouse toggle；NumberRange 已按 AbstractSliderButton 的
 200x20 nine-slice/8px handle、double slider position、mouse click/drag、RangeInfo lerp/step/edge 规则、localized
 label-format、Java Float.toString 与 FloatTag 语义接入；static run-command 以及 Boolean/NumberRange-backed
-dynamic run-command/custom 已执行并复用现有 command/custom-click owner。SingleOption 已按 CycleButton 的
+dynamic run-command/custom 已执行并复用现有 command/custom-click owner。Boolean mouse focus 保持 checkbox
+highlight，Space/Enter/NumpadEnter 切换；NumberRange mouse focus 进入 keyboard-change mode，Space/Enter 切换
+mode、左右键按一像素 slider step 更新，track/handle focus sprite 与 `canChangeValue` 一致。SingleOption 已按 CycleButton 的
 initial-or-first、display-or-id、label-visible、普通/Shift 反向 click 与 wheel 双向 wrap 语义接入，id 同时作为
-template substitution 与 StringTag；对应 dynamic action 也已执行。单行 Text 已按 EditBox 的 label gap、
+template substitution 与 StringTag；对应 dynamic action 也已执行，mouse focus 后 Space/Enter/NumpadEnter
+按 Shift 方向切换并保持 button highlight。单行 Text 已按 EditBox 的 label gap、
 20px one-pixel nine-slice、0xE0E0E0 shadow text、focus/cursor/selection/horizontal scroll、mouse press/drag、
 UTF-16 max length、allowed-chat-character filter、codepoint/word/Home/End/Shift/Ctrl-A/C/V/X 编辑接入；
 template substitution 使用 `StringTag.escapeWithoutQuotes`，dynamic custom 使用原始 StringTag。静态

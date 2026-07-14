@@ -69,7 +69,7 @@ Owner: `bbb-protocol`
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
   `DialogBodyHandlers`: add the in-world screen blur/depth-clear and warning button/screen;
-  add Item/Boolean/NumberRange/SingleOption widget keyboard focus outlines and keyboard operation,
+  add the Item focus outline and unified warning/body/input/footer Tab and directional focus graph,
   NumberRange/SingleOption long-label scrolling, the multiline Text editor, and single-line Text
   Tab focus traversal, double-click word selection, and IME preedit overlay,
   remaining button-list action tooltips, and the
@@ -110,6 +110,9 @@ Owner: `bbb-protocol`
   text and FloatTag bindings into the same dynamic actions, renders SingleOption through the
   nine-sliced CycleButton with initial/display/label-visible semantics, cycles forward/backward by
   ordinary/Shift click and wheel with wraparound, binds its id as template text and StringTag, and renders
+  mouse-focused Boolean/NumberRange/SingleOption states with their vanilla focus sprites, toggles Boolean
+  by Space/Enter, toggles NumberRange keyboard-change mode by Space/Enter and moves it by one slider pixel
+  with Left/Right, and cycles SingleOption by Space/Enter with Shift reversal; it renders
   single-line Text through the labeled 20px text-field nine-slice with focus, cursor, selection,
   horizontal scroll, mouse press/drag, UTF-16 max-length and allowed-character filtering, codepoint/word
   navigation, Home/End, Shift selection, and Ctrl-A/C/V/X editing, and binds escaped template text plus
