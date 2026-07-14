@@ -21,7 +21,8 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_CHARGED_PROJECTILES_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID, VANILLA_DATA_COMPONENT_CONTAINER_LOOT_TYPE_ID,
         VANILLA_DATA_COMPONENT_CONTAINER_TYPE_ID, VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
-        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID,
         VANILLA_DATA_COMPONENT_DEBUG_STICK_STATE_TYPE_ID,
         VANILLA_DATA_COMPONENT_DYED_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_ENCHANTABLE_TYPE_ID,
@@ -32,10 +33,12 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_FIREWORK_EXPLOSION_TYPE_ID, VANILLA_DATA_COMPONENT_FOOD_TYPE_ID,
         VANILLA_DATA_COMPONENT_GLIDER_TYPE_ID,
         VANILLA_DATA_COMPONENT_INTANGIBLE_PROJECTILE_TYPE_ID,
-        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID,
+        VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
+        VANILLA_DATA_COMPONENT_LODESTONE_TRACKER_TYPE_ID, VANILLA_DATA_COMPONENT_LORE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_DECORATIONS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_MINIMUM_ATTACK_CHARGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_NOTE_BLOCK_SOUND_TYPE_ID,
         VANILLA_DATA_COMPONENT_OMINOUS_BOTTLE_AMPLIFIER_TYPE_ID,
@@ -76,6 +79,7 @@ mod map_decorations;
 mod potion_contents;
 mod profile;
 mod sound_event;
+mod text_component;
 mod tool;
 mod typed_data;
 mod writable_book;
@@ -101,12 +105,15 @@ use sound_event::{
     decode_kinetic_weapon, decode_piercing_weapon, decode_sound_event_holder,
     DialogKineticWeaponState, DialogPiercingWeaponState, DialogSoundEventHolderState,
 };
+use text_component::{decode_lore, decode_text_component};
 use tool::{decode_tool, DialogToolState};
 use typed_data::{
     decode_builtin_block_entity_data, decode_builtin_entity_data, decode_custom_data,
     DialogTypedBlockEntityDataState, DialogTypedEntityDataState,
 };
 use writable_book::{decode_writable_book_content, DialogFilterableStringState};
+
+use super::super::DialogTextState;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogStringMapEntryState {
@@ -138,6 +145,12 @@ pub enum DialogDataComponentValueState {
     },
     Rarity {
         value: ItemRaritySummary,
+    },
+    TextComponent {
+        component: DialogTextState,
+    },
+    Lore {
+        lines: Vec<DialogTextState>,
     },
     StringEnum {
         value_id: i32,
@@ -408,6 +421,14 @@ pub(super) fn decode_supported_component_value(
                 .ok_or_else(|| format!("unknown {what} rarity {raw}"))?;
             DialogDataComponentValueState::Rarity { value }
         }
+        VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID | VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID => {
+            DialogDataComponentValueState::TextComponent {
+                component: decode_text_component(value, &what)?,
+            }
+        }
+        VANILLA_DATA_COMPONENT_LORE_TYPE_ID => DialogDataComponentValueState::Lore {
+            lines: decode_lore(value, &what)?,
+        },
         VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID => decode_use_effects(value, &what)?,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID => decode_swing_animation(value, &what)?,
         VANILLA_DATA_COMPONENT_BLOCK_STATE_TYPE_ID => decode_block_state(value, &what)?,

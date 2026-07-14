@@ -13909,3 +13909,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [ ] Rust canonical `String` 只容纳 Unicode scalar value，仍不能保留 Java UTF-16 可产生的 lone
   surrogate；`u`/`U`/`N` escape 指向 surrogate code point 时继续显式拒绝。其余 Component、holder、
   list/compound-record Codec 与 native screens 仍开放。
+
+## 2026-07-14：Decode text-component dialog item components
+
+- [x] 新建 `client/dialog/body/component_value/text_component.rs` semantic owner；对照
+  `ComponentSerialization.CODEC` 与 `ItemLore.CODEC`，让 CUSTOM_NAME/ITEM_NAME 复用 dialog 已有的
+  string/non-empty-list/compound Component root、raw NBT 与 inherited styled-run 投影，让 LORE 保留
+  ordered Component lines 并实施 vanilla 256 行上限。
+- [x] plain/styled/translated Component、raw NBT、style、空/256 行边界、错误 Component root、非列表与
+  257 行均有定向测试，ItemStackTemplate component patch 也断言新的 typed value；其余 Component、
+  holder、list/compound-record Codec 与 native screens 仍开放。

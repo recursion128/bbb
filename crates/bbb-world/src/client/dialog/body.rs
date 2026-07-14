@@ -392,7 +392,16 @@ mod tests {
                     resource_id: "minecraft:custom_name".to_string(),
                     removed: false,
                     value: Some(NbtSummaryValue::String("Named".to_string())),
-                    value_data: None,
+                    value_data: Some(DialogDataComponentValueState::TextComponent {
+                        component: DialogTextState {
+                            text: "Named".to_string(),
+                            runs: vec![bbb_protocol::StyledTextRun {
+                                text: "Named".to_string(),
+                                style: bbb_protocol::ComponentStyle::default(),
+                            }],
+                            component: NbtSummaryValue::String("Named".to_string()),
+                        },
+                    }),
                 }],
             })
         );
@@ -739,13 +748,20 @@ mod tests {
                 value: ItemRaritySummary::Rare,
             })
         );
-        for resource_id in [
-            "minecraft:custom_name",
-            "minecraft:item_name",
-            "minecraft:lore",
-        ] {
-            assert_eq!(value(resource_id), None);
-        }
+        assert!(matches!(
+            value("minecraft:custom_name"),
+            Some(DialogDataComponentValueState::TextComponent { component })
+                if component.text == "item.example"
+        ));
+        assert!(matches!(
+            value("minecraft:item_name"),
+            Some(DialogDataComponentValueState::TextComponent { component })
+                if component.text == "Item"
+        ));
+        assert!(matches!(
+            value("minecraft:lore"),
+            Some(DialogDataComponentValueState::Lore { lines }) if lines.is_empty()
+        ));
     }
 
     #[test]

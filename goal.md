@@ -326,6 +326,8 @@ PlainMessage/Item envelope、item id/count、description/default/range；compone
 catalog 投影 stable type/resource identity、set/remove、persistent gate 与覆盖语义并无损保留 raw，正值的
 max-stack/max-damage/damage/repair-cost int range、minimum-attack-charge/potion-duration-scale float
 range、glint bool、三项 unit、三项 Identifier 与 Rarity 共 14 个 primitive 注册项已 typed 投影；
+CUSTOM_NAME/ITEM_NAME 的 Component alternative 与 LORE 的 256-entry Component list 也已复用共享
+styled-run/raw-NBT surface typed 投影；
 16 项生成 built-in enum 与 tropical-fish pattern 共 17 个 StringRepresentable 注册项也已按严格
 serialized name typed 投影；MapItemColor/MapId 与 0..=4 OminousBottleAmplifier scalar wrapper、
 UseEffects/SwingAnimation defaulted flat record 及 BlockItemStateProperties string map 共 6 个注册项也已
