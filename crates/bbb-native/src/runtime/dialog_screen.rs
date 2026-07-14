@@ -1,14 +1,16 @@
 use bbb_control::NetCounters;
+use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
-use bbb_protocol::packets::CustomClickAction;
+use bbb_protocol::packets::{CustomClickAction, GameType, ItemStackSummary};
 use bbb_renderer::{
-    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryScreen,
-    HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine, HudStyledTextRun,
-    HudTextStyle, HudUvRect,
+    HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryItem,
+    HudInventoryScreen, HudInventoryTextLabel, HudInventoryTooltip, HudInventoryTooltipLine,
+    HudStyledTextRun, HudTextStyle, HudUvRect,
 };
 use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyState, DialogButtonState, DialogDataState,
-    DialogState, DialogTextState, WorldStore,
+    DialogItemStackTemplateState, DialogPlainMessageState, DialogState, DialogTextState,
+    WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -16,8 +18,12 @@ use winit::event::{ElementState, MouseButton};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
 use crate::input::DebugClipboard;
+use crate::terrain_runtime::TerrainTextureState;
 
-use super::hud_ascii_approx_char_width;
+use super::{
+    block_item_3d_model, hud_ascii_approx_char_width, hud_item_icon_for_stack,
+    hud_item_tooltip_lines, InventoryHudLocalState,
+};
 
 // Vanilla `HeaderAndFooterLayout` uses 33-pixel header/footer frames and places
 // content 30 pixels below the header. `DialogScreen` stacks body elements at a
@@ -26,6 +32,8 @@ const HEADER_HEIGHT: i32 = 33;
 const FOOTER_HEIGHT: i32 = 33;
 const CONTENT_MARGIN_TOP: i32 = 30;
 const BODY_SPACING: i32 = 10;
+const ITEM_DESCRIPTION_SPACING: i32 = 2;
+const FOCUSABLE_TEXT_PADDING: i32 = 4;
 const SIMPLE_BUTTON_SPACING: i32 = 8;
 const BUTTON_HEIGHT: u32 = 20;
 const BUTTON_TEXT_Y_OFFSET: i32 = 6;
@@ -56,6 +64,58 @@ struct SimpleDialogLayout {
     screen_width: u32,
     screen_height: u32,
     buttons: Vec<DialogButtonLayout>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct DialogTextBlock {
+    width: u32,
+    height: i32,
+    lines: Vec<DialogTextLine>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct DialogItemBlock {
+    stack: ItemStackSummary,
+    item: HudInventoryItem,
+    widget_width: i32,
+    widget_height: i32,
+    description: Option<DialogTextBlock>,
+    show_tooltip: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum DialogBodyBlock {
+    Text(DialogTextBlock),
+    Item(DialogItemBlock),
+}
+
+impl DialogBodyBlock {
+    fn width(&self) -> i32 {
+        match self {
+            Self::Text(text) => i32::try_from(text.width).unwrap_or(i32::MAX),
+            Self::Item(item) => {
+                item.description
+                    .as_ref()
+                    .map_or(item.widget_width, |description| {
+                        item.widget_width
+                            .saturating_add(ITEM_DESCRIPTION_SPACING)
+                            .saturating_add(i32::try_from(description.width).unwrap_or(i32::MAX))
+                    })
+            }
+        }
+    }
+
+    fn height(&self) -> i32 {
+        match self {
+            Self::Text(text) => text.height,
+            Self::Item(item) => item
+                .description
+                .as_ref()
+                .map_or(item.widget_height, |description| {
+                    item.widget_height.max(description.height)
+                }),
+        }
+    }
 }
 
 impl SimpleDialogLayout {
@@ -183,9 +243,13 @@ impl WaitingLayout {
 }
 
 pub(super) fn hud_dialog_screen(
+    world: &WorldStore,
     dialog: &DialogState,
-    cursor_position: Option<(i32, i32)>,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    local_state: &InventoryHudLocalState,
     surface_size: PhysicalSize<u32>,
+    partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
     let controls = simple_dialog_controls(dialog.data.as_ref()?)?;
     let layout = SimpleDialogLayout::new(
@@ -198,9 +262,10 @@ pub(super) fn hud_dialog_screen(
     )?;
     let screen_width_i32 = i32::try_from(layout.screen_width).ok()?;
     let screen_height_i32 = i32::try_from(layout.screen_height).ok()?;
-    let cursor_screen_position = cursor_position;
-    let cursor_position =
-        cursor_position.map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
+    let cursor_screen_position = local_state.cursor_position;
+    let cursor_position = local_state
+        .cursor_position
+        .map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
     let highlighted_button = layout.button_at(cursor_position, surface_size);
 
     let mut text_labels = Vec::new();
@@ -217,22 +282,34 @@ pub(super) fn hud_dialog_screen(
         .iter()
         .filter_map(|body| match body {
             DialogBodyState::PlainMessage { message } => {
-                let max_width = u32::try_from(message.width)
-                    .ok()?
-                    .clamp(1, layout.screen_width);
-                Some(wrapped_text_lines(&message.contents, max_width))
+                dialog_text_block(message).map(DialogBodyBlock::Text)
             }
-            DialogBodyState::Item { .. } => None,
+            DialogBodyState::Item {
+                item,
+                description,
+                show_decorations,
+                show_tooltip,
+                width,
+                height,
+            } => dialog_item_block(
+                world,
+                item_runtime,
+                terrain_textures,
+                local_state,
+                item,
+                description.as_ref(),
+                *show_decorations,
+                *show_tooltip,
+                *width,
+                *height,
+                partial_tick,
+            )
+            .map(DialogBodyBlock::Item),
         })
-        .filter(|lines| !lines.is_empty())
         .collect::<Vec<_>>();
-    let body_height = body_blocks.iter().fold(0i32, |height, lines| {
-        height.saturating_add(
-            i32::try_from(lines.len())
-                .unwrap_or(i32::MAX)
-                .saturating_mul(TEXT_LINE_HEIGHT),
-        )
-    });
+    let body_height = body_blocks
+        .iter()
+        .fold(0i32, |height, block| height.saturating_add(block.height()));
     let body_height = body_height.saturating_add(
         i32::try_from(body_blocks.len().saturating_sub(1))
             .unwrap_or(i32::MAX)
@@ -243,25 +320,63 @@ pub(super) fn hud_dialog_screen(
             .saturating_sub(FOOTER_HEIGHT)
             .saturating_sub(body_height),
     );
-    for (block_index, lines) in body_blocks.into_iter().enumerate() {
+    let mut floating_items = Vec::new();
+    let mut item_tooltip = None;
+    for (block_index, block) in body_blocks.into_iter().enumerate() {
         if block_index > 0 {
             body_y = body_y.saturating_add(BODY_SPACING);
         }
-        for line in lines {
-            let line_width_i32 = i32::try_from(line.width).unwrap_or(i32::MAX);
-            text_labels.push(HudInventoryTextLabel {
-                x: screen_width_i32 / 2 - line_width_i32 / 2,
-                y: body_y,
-                width: line.width.max(1),
-                text: line.text,
-                tint: TEXT_COLOR,
-                background: None,
-                input: None,
-                shadow: false,
-                runs: line.runs,
-            });
-            body_y = body_y.saturating_add(TEXT_LINE_HEIGHT);
+        let block_x = screen_width_i32 / 2 - block.width() / 2;
+        let block_height = block.height();
+        match block {
+            DialogBodyBlock::Text(text) => {
+                push_dialog_text_block(&mut text_labels, text, block_x, body_y);
+            }
+            DialogBodyBlock::Item(mut item) => {
+                let item_y =
+                    body_y.saturating_add(vertical_center_offset(block_height, item.widget_height));
+                item.item.x = block_x;
+                item.item.y = item_y;
+                if item.show_tooltip
+                    && dialog_widget_contains(
+                        block_x,
+                        item_y,
+                        item.widget_width,
+                        item.widget_height,
+                        cursor_position,
+                        surface_size,
+                        layout.screen_width,
+                        layout.screen_height,
+                    )
+                {
+                    item_tooltip = dialog_item_tooltip(
+                        world,
+                        item_runtime,
+                        &item.stack,
+                        local_state.advanced_item_tooltips,
+                        cursor_screen_position,
+                        surface_size,
+                        layout.screen_width,
+                        layout.screen_height,
+                        block_index,
+                    );
+                }
+                floating_items.push(item.item);
+                if let Some(description) = item.description {
+                    let description_y = body_y
+                        .saturating_add(vertical_center_offset(block_height, description.height));
+                    push_dialog_text_block(
+                        &mut text_labels,
+                        description,
+                        block_x
+                            .saturating_add(item.widget_width)
+                            .saturating_add(ITEM_DESCRIPTION_SPACING),
+                        description_y,
+                    );
+                }
+            }
         }
+        body_y = body_y.saturating_add(block_height);
     }
 
     for (action, button) in controls.actions.iter().zip(&layout.buttons) {
@@ -295,7 +410,7 @@ pub(super) fn hud_dialog_screen(
             },
         }
     }));
-    let tooltip = highlighted_button.and_then(|index| {
+    let action_tooltip = highlighted_button.and_then(|index| {
         let tooltip = controls.actions.get(index)?.tooltip.as_ref()?;
         let (cursor_x, cursor_y) = cursor_screen_position?;
         let (origin_x, origin_y) =
@@ -334,13 +449,13 @@ pub(super) fn hud_dialog_screen(
         foreground_layers: Vec::new(),
         fill_layers: Vec::new(),
         slots: Vec::new(),
-        floating_items: Vec::new(),
+        floating_items,
         foreground_items: Vec::new(),
         ghost_items: Vec::new(),
         entity_previews: Vec::new(),
         text_labels,
         hovered_slot_id: None,
-        tooltip,
+        tooltip: action_tooltip.or(item_tooltip),
     })
 }
 
@@ -603,6 +718,166 @@ fn centered_screen_origin(
         (i64::from(surface_size.width.max(1)) - i64::from(screen_width)) / 2,
         (i64::from(surface_size.height.max(1)) - i64::from(screen_height)) / 2,
     )
+}
+
+fn dialog_text_block(message: &DialogPlainMessageState) -> Option<DialogTextBlock> {
+    let width = u32::try_from(message.width).ok()?;
+    let text_width = width
+        .saturating_sub(u32::try_from(FOCUSABLE_TEXT_PADDING * 2).unwrap_or_default())
+        .max(1);
+    let lines = wrapped_text_lines(&message.contents, text_width);
+    let height = i32::try_from(lines.len())
+        .unwrap_or(i32::MAX)
+        .saturating_mul(TEXT_LINE_HEIGHT)
+        .saturating_add(FOCUSABLE_TEXT_PADDING * 2);
+    Some(DialogTextBlock {
+        width,
+        height,
+        lines,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn dialog_item_block(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    terrain_textures: &TerrainTextureState,
+    local_state: &InventoryHudLocalState,
+    item: &DialogItemStackTemplateState,
+    description: Option<&DialogPlainMessageState>,
+    show_decorations: bool,
+    show_tooltip: bool,
+    width: i32,
+    height: i32,
+    partial_tick: f32,
+) -> Option<DialogItemBlock> {
+    if item
+        .component_data
+        .as_ref()
+        .is_some_and(|patch| !patch.entries.is_empty())
+    {
+        return None;
+    }
+    let item_runtime = item_runtime?;
+    let stack = ItemStackSummary {
+        item_id: Some(item_runtime.item_protocol_id(&item.resource_id)?),
+        count: item.count,
+        component_patch: Default::default(),
+    };
+    let icon = hud_item_icon_for_stack(
+        world,
+        Some(item_runtime),
+        &stack,
+        None,
+        false,
+        false,
+        false,
+        false,
+        local_state.shift_down,
+        local_state.keybind_context,
+        0,
+        partial_tick,
+    )?;
+    Some(DialogItemBlock {
+        item: HudInventoryItem {
+            x: 0,
+            y: 0,
+            scale: 1.0,
+            scale_y: 1.0,
+            icon,
+            scissor: None,
+            draw_decorations: show_decorations,
+            block_model: block_item_3d_model(&stack, Some(item_runtime), terrain_textures),
+        },
+        stack,
+        widget_width: width,
+        widget_height: height,
+        description: description.and_then(dialog_text_block),
+        show_tooltip,
+    })
+}
+
+fn push_dialog_text_block(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    text: DialogTextBlock,
+    x: i32,
+    y: i32,
+) {
+    let center_x = x.saturating_add(i32::try_from(text.width).unwrap_or(i32::MAX) / 2);
+    let mut line_y = y.saturating_add(FOCUSABLE_TEXT_PADDING);
+    for line in text.lines {
+        let line_width_i32 = i32::try_from(line.width).unwrap_or(i32::MAX);
+        labels.push(HudInventoryTextLabel {
+            x: center_x.saturating_sub(line_width_i32 / 2),
+            y: line_y,
+            width: line.width.max(1),
+            text: line.text,
+            tint: TEXT_COLOR,
+            background: None,
+            input: None,
+            shadow: false,
+            runs: line.runs,
+        });
+        line_y = line_y.saturating_add(TEXT_LINE_HEIGHT);
+    }
+}
+
+fn vertical_center_offset(available_height: i32, child_height: i32) -> i32 {
+    available_height
+        .saturating_sub(child_height)
+        .saturating_add(1)
+        / 2
+}
+
+#[allow(clippy::too_many_arguments)]
+fn dialog_widget_contains(
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+) -> bool {
+    let Some(cursor) = cursor_position else {
+        return false;
+    };
+    let (origin_x, origin_y) = centered_screen_origin(surface_size, screen_width, screen_height);
+    let left = origin_x + i64::from(x);
+    let top = origin_y + i64::from(y);
+    cursor.x >= left as f64
+        && cursor.x < (left + i64::from(width)) as f64
+        && cursor.y >= top as f64
+        && cursor.y < (top + i64::from(height)) as f64
+}
+
+#[allow(clippy::too_many_arguments)]
+fn dialog_item_tooltip(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    stack: &ItemStackSummary,
+    advanced: bool,
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+    screen_width: u32,
+    screen_height: u32,
+    block_index: usize,
+) -> Option<HudInventoryTooltip> {
+    let (cursor_x, cursor_y) = cursor_position?;
+    let (origin_x, origin_y) = centered_screen_origin(surface_size, screen_width, screen_height);
+    Some(HudInventoryTooltip {
+        slot_id: u16::try_from(block_index).unwrap_or(u16::MAX),
+        x: i32::try_from(i64::from(cursor_x) - origin_x).ok()?,
+        y: i32::try_from(i64::from(cursor_y) - origin_y).ok()?,
+        lines: hud_item_tooltip_lines(
+            world,
+            item_runtime,
+            stack,
+            advanced,
+            world.gameplay().game_type == GameType::Creative.id(),
+        )?,
+    })
 }
 
 fn inworld_menu_background_layer(
@@ -926,10 +1201,18 @@ mod tests {
             ),
             entry("no", custom_button("No", None, 100, "example:no", None)),
         ]);
+        let terrain_textures = TerrainTextureState::default();
         let screen = hud_dialog_screen(
+            &world,
             world.current_dialog().unwrap(),
-            Some((100, 220)),
+            None,
+            &terrain_textures,
+            &InventoryHudLocalState {
+                cursor_position: Some((100, 220)),
+                ..Default::default()
+            },
             PhysicalSize::new(320, 240),
+            0.0,
         )
         .unwrap();
 

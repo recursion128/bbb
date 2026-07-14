@@ -14169,8 +14169,9 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
             .collect::<Vec<_>>(),
         vec![
             ("Native Notice", 122, 12, 76),
-            ("Alpha", 145, 63, 30),
-            ("Beta", 148, 72, 24),
+            ("Alp", 151, 67, 18),
+            ("haB", 151, 76, 18),
+            ("eta", 151, 85, 18),
             ("Continue", 132, 219, 56),
         ]
     );
@@ -14200,6 +14201,134 @@ fn hud_inventory_screen_projects_notice_dialog_text_body_and_hovered_action() {
         idle.background_layers[1].texture,
         HudInventoryBackgroundTexture::WidgetButton
     );
+}
+
+#[test]
+fn hud_inventory_screen_projects_unpatched_dialog_item_body_and_hover_tooltip() {
+    let entry = |name: &str, value| NbtSummaryEntry {
+        name: name.to_string(),
+        value,
+    };
+    let mut world = WorldStore::new();
+    world.apply_show_dialog(ShowDialog {
+        dialog: DialogHolder::Direct {
+            dialog: NbtSummaryValue::Compound(vec![
+                entry(
+                    "type",
+                    NbtSummaryValue::String("minecraft:notice".to_string()),
+                ),
+                entry("title", NbtSummaryValue::String("Item Body".to_string())),
+                entry(
+                    "body",
+                    NbtSummaryValue::Compound(vec![
+                        entry(
+                            "type",
+                            NbtSummaryValue::String("minecraft:item".to_string()),
+                        ),
+                        entry(
+                            "item",
+                            NbtSummaryValue::Compound(vec![
+                                entry("id", NbtSummaryValue::String("minecraft:stick".to_string())),
+                                entry("count", NbtSummaryValue::Int(3)),
+                            ]),
+                        ),
+                        entry(
+                            "description",
+                            NbtSummaryValue::Compound(vec![
+                                entry("contents", NbtSummaryValue::String("Info".to_string())),
+                                entry("width", NbtSummaryValue::Int(50)),
+                            ]),
+                        ),
+                        entry("width", NbtSummaryValue::Int(32)),
+                        entry("height", NbtSummaryValue::Int(48)),
+                    ]),
+                ),
+            ]),
+        },
+    });
+    let item_runtime = recipe_book_ghost_item_runtime();
+    let terrain_textures = TerrainTextureState::default();
+    let surface_size = winit::dpi::PhysicalSize::new(320, 240);
+
+    let screen = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        None,
+        InventoryHudLocalState {
+            cursor_position: Some((120, 65)),
+            ..Default::default()
+        },
+        surface_size,
+        0.0,
+    )
+    .unwrap();
+
+    assert_eq!(screen.floating_items.len(), 1);
+    let item = &screen.floating_items[0];
+    assert_eq!((item.x, item.y), (118, 63));
+    assert!(item.draw_decorations);
+    assert_eq!(
+        item.icon
+            .count_label
+            .as_ref()
+            .map(|label| label.text.as_str()),
+        Some("3")
+    );
+    assert!(item.block_model.is_none());
+    assert!(screen
+        .text_labels
+        .iter()
+        .any(|label| { label.text == "Info" && (label.x, label.y, label.width) == (165, 83, 24) }));
+    let tooltip = screen.tooltip.as_ref().unwrap();
+    assert_eq!((tooltip.x, tooltip.y), (120, 65));
+    assert_eq!(tooltip.lines[0].text, "Stick");
+
+    let mut patched_world = WorldStore::new();
+    patched_world.apply_show_dialog(ShowDialog {
+        dialog: DialogHolder::Direct {
+            dialog: NbtSummaryValue::Compound(vec![
+                entry(
+                    "type",
+                    NbtSummaryValue::String("minecraft:notice".to_string()),
+                ),
+                entry("title", NbtSummaryValue::String("Patched".to_string())),
+                entry(
+                    "body",
+                    NbtSummaryValue::Compound(vec![
+                        entry(
+                            "type",
+                            NbtSummaryValue::String("minecraft:item".to_string()),
+                        ),
+                        entry(
+                            "item",
+                            NbtSummaryValue::Compound(vec![
+                                entry("id", NbtSummaryValue::String("minecraft:stick".to_string())),
+                                entry(
+                                    "components",
+                                    NbtSummaryValue::Compound(vec![entry(
+                                        "minecraft:custom_name",
+                                        NbtSummaryValue::String("Named".to_string()),
+                                    )]),
+                                ),
+                            ]),
+                        ),
+                    ]),
+                ),
+            ]),
+        },
+    });
+    let patched = hud_inventory_screen_with_local_state_for_surface(
+        &patched_world,
+        Some(&item_runtime),
+        &terrain_textures,
+        None,
+        InventoryHudLocalState::default(),
+        surface_size,
+        0.0,
+    )
+    .unwrap();
+    assert!(patched.floating_items.is_empty());
 }
 
 #[test]

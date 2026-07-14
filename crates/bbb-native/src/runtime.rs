@@ -6032,7 +6032,15 @@ fn hud_inventory_screen_with_local_state_for_surface(
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
     if let Some(dialog) = world.current_dialog() {
-        return hud_dialog_screen(dialog, local_state.cursor_position, surface_size);
+        return hud_dialog_screen(
+            world,
+            dialog,
+            item_runtime,
+            terrain_textures,
+            &local_state,
+            surface_size,
+            partial_tick,
+        );
     }
     if let Some(waiting_ticks) = world.dialog_waiting_ticks() {
         return Some(hud_waiting_response_screen(
@@ -9660,8 +9668,22 @@ fn hud_inventory_tooltip(
         .iter()
         .find(|layout| layout.slot_id == slot_id)?;
     let slot = container.slots.iter().find(|slot| slot.slot == slot_id)?;
-    let map_data = slot
-        .item
+    Some(HudInventoryTooltip {
+        slot_id: u16::try_from(slot_id).ok()?,
+        x: layout.x,
+        y: layout.y,
+        lines: hud_item_tooltip_lines(world, item_runtime, &slot.item, advanced, creative)?,
+    })
+}
+
+fn hud_item_tooltip_lines(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    item: &ItemStackSummary,
+    advanced: bool,
+    creative: bool,
+) -> Option<Vec<HudInventoryTooltipLine>> {
+    let map_data = item
         .component_patch
         .map_id
         .and_then(|map_id| world.map_item(map_id))
@@ -9672,7 +9694,7 @@ fn hud_inventory_tooltip(
     let enchantment_keys = world_enchantment_keys(world);
     let enchantment_definitions = world.enchantment_tooltip_definitions_in_holder_order();
     let enchantment_attribute_modifiers =
-        world.enchantment_attribute_modifiers(&slot.item.component_patch.enchantments);
+        world.enchantment_attribute_modifiers(&item.component_patch.enchantments);
     let attribute_keys = world_attribute_keys(world);
     let attack_damage_id = registry_key_id(
         attribute_keys.as_deref(),
@@ -9685,45 +9707,43 @@ fn hud_inventory_tooltip(
         VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
     );
     let peaceful = world.difficulty().difficulty == "peaceful";
-    let lines = item_runtime?.tooltip_lines_for_stack_with_context(
-        &slot.item,
-        NativeItemTooltipOptions {
-            advanced,
-            creative,
-            peaceful,
-            map_data,
-            enchantment_keys: enchantment_keys.as_deref(),
-            enchantment_definitions: enchantment_definitions.as_deref(),
-            enchantment_attribute_modifiers: Some(&enchantment_attribute_modifiers),
-            attribute_keys: attribute_keys.as_deref(),
-            player_base_attack_damage: Some(
-                world
-                    .local_player_attribute_base_value(attack_damage_id)
-                    .unwrap_or(1.0),
-            ),
-            player_base_attack_speed: Some(
-                world
-                    .local_player_attribute_base_value(attack_speed_id)
-                    .unwrap_or(4.0),
-            ),
-            gamemaster_permission: world.local_player_has_gamemaster_permission(),
-            item_disabled: !world.is_feature_enabled("minecraft:vanilla"),
-            tooltip_tick_rate: Some(world.ticking().tick_rate),
-        },
-    )?;
-    Some(HudInventoryTooltip {
-        slot_id: u16::try_from(slot_id).ok()?,
-        x: layout.x,
-        y: layout.y,
-        lines: lines
-            .into_iter()
-            .map(|line| HudInventoryTooltipLine {
-                text: line.text,
-                tint: line.tint,
-                runs: line.runs,
-            })
-            .collect(),
-    })
+    item_runtime?
+        .tooltip_lines_for_stack_with_context(
+            item,
+            NativeItemTooltipOptions {
+                advanced,
+                creative,
+                peaceful,
+                map_data,
+                enchantment_keys: enchantment_keys.as_deref(),
+                enchantment_definitions: enchantment_definitions.as_deref(),
+                enchantment_attribute_modifiers: Some(&enchantment_attribute_modifiers),
+                attribute_keys: attribute_keys.as_deref(),
+                player_base_attack_damage: Some(
+                    world
+                        .local_player_attribute_base_value(attack_damage_id)
+                        .unwrap_or(1.0),
+                ),
+                player_base_attack_speed: Some(
+                    world
+                        .local_player_attribute_base_value(attack_speed_id)
+                        .unwrap_or(4.0),
+                ),
+                gamemaster_permission: world.local_player_has_gamemaster_permission(),
+                item_disabled: !world.is_feature_enabled("minecraft:vanilla"),
+                tooltip_tick_rate: Some(world.ticking().tick_rate),
+            },
+        )
+        .map(|lines| {
+            lines
+                .into_iter()
+                .map(|line| HudInventoryTooltipLine {
+                    text: line.text,
+                    tint: line.tint,
+                    runs: line.runs,
+                })
+                .collect()
+        })
 }
 
 fn hud_inventory_floating_items(

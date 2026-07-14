@@ -14492,3 +14492,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   均先提交全 surface 背景层；800x600 surface 配合 512px centered-screen 限宽、32px repeat UV、普通
   widget UV 仍 clamp 及 waiting 延迟按钮层次均有 focused regression。vanilla blur-before-screen 与
   depth-clear ordering 继续由明确 renderer 缺口追踪。
+
+## 2026-07-14：Project unpatched dialog Item bodies
+
+- [x] 对照 `DialogBodyHandlers.ItemHandler`、`ItemDisplayWidget` 与 `FocusableTextWidget`，把无非空
+  component patch 的 ItemStackTemplate 接入 native item runtime：item draw 保持 16px，不用 widget
+  width/height 缩放图标；声明尺寸只参与 layout、hover/focus bounds，description 以 2px horizontal
+  spacing 与 vertical-middle 排列。PlainMessage 与 description 同时修正为 4px widget padding，wrap width
+  使用 `maxWidth-8`，文本继续居中。
+- [x] item body 复用既有 flat/3D block icon、count/durability decorations、keybind/shift model context 与
+  registry-aware item tooltip owner；`show_decorations`、`show_tooltip` 和 cursor anchor 均通过 typed
+  world→native HUD 路径。32x48 `stick x3`、50px description 的精确坐标/count/tooltip 与非空
+  custom-name patch 保守不投影均有 focused regression。任意 component-patched template 的 typed
+  dialog state→`DataComponentPatchSummary` bridge 及 keyboard focus outline 继续由缺口账本追踪。
