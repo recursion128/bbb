@@ -189,6 +189,8 @@ Every worker prompt should include:
 The authoritative pre-commit gate is defined in `goal.md` under "提交前门禁".
 Do not copy the command list into other files; point at `goal.md` instead.
 `scripts/cargo-dev.sh gate` runs exactly that gate against `/tmp/bbb-target-main`.
+Developers may optionally run `scripts/install-hooks.sh` to install the seconds-only local
+pre-commit checks; it is never installed automatically and does not replace the full gate.
 
 Focused crate tests are useful while developing, but the default merge gate is the full
 workspace check + test suite. If a command cannot run, state the reason and the residual risk.
