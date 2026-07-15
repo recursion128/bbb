@@ -11462,6 +11462,11 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         0,
         vec![RegistryPacketEntry::stub("example:custom")],
     );
+    world.record_registry_entries(
+        "minecraft:instrument",
+        0,
+        vec![RegistryPacketEntry::stub("example:custom_horn")],
+    );
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 63,
@@ -11498,11 +11503,13 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                     item_id: Some(0),
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added: 1,
+                        added: 2,
                         added_type_ids: vec![
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
                         ],
                         damage_type_id: Some(0),
+                        instrument_id: Some(0),
                         ..Default::default()
                     },
                 }),
@@ -11566,7 +11573,8 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
     assert!(
         snbt.contains(
             "block_pos: [I; 0, 1, 2], Item: {id: \"minecraft:diamond\", components: \
-         {\"minecraft:damage_type\": \"example:custom\"}}, \
+         {\"minecraft:damage_type\": \"example:custom\", \
+         \"minecraft:instrument\": \"example:custom_horn\"}}, \
          ItemRotation: 3b"
         ),
         "unexpected item-frame SNBT: {snbt}"

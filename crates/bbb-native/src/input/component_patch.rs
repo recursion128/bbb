@@ -26,6 +26,7 @@ pub(super) struct PersistentSnbtContext<'a> {
     pub trim_pattern_keys: Option<&'a [String]>,
     pub painting_variant_keys: Option<&'a [String]>,
     pub damage_type_keys: Option<&'a [String]>,
+    pub instrument_keys: Option<&'a [String]>,
 }
 
 #[derive(Clone, Copy)]
@@ -1333,14 +1334,17 @@ fn encode_block_entity_data(
 fn encode_instrument(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
         return Some(debug_nbt_summary_snbt(persistent));
     }
-    Some(debug_snbt_string(
-        VanillaInstrumentIdentity::for_vanilla_registry_id(patch.instrument_id?)?.resource_id(),
-    ))
+    let holder_id = patch.instrument_id?;
+    let resource_id = match context.instrument_keys {
+        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
+        None => VanillaInstrumentIdentity::for_vanilla_registry_id(holder_id)?.resource_id(),
+    };
+    Some(debug_snbt_string(resource_id))
 }
 
 fn encode_provides_trim_material(
@@ -2601,7 +2605,7 @@ mod tests {
     }
 
     #[test]
-    fn instrument_encoder_supports_vanilla_named_holders_only() {
+    fn instrument_encoder_uses_session_order_or_fixed_catalog() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             instrument_id: Some(5),
             ..Default::default()
@@ -2611,11 +2615,54 @@ mod tests {
             Some("\"minecraft:call_goat_horn\"".to_string())
         );
 
+        let instrument_keys = ["example:custom".to_string()];
+        patch.instrument_id = Some(0);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    instrument_keys: Some(&instrument_keys),
+                    ..Default::default()
+                },
+            ),
+            Some("\"example:custom\"".to_string())
+        );
+
+        patch.instrument_id = Some(1);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    instrument_keys: Some(&instrument_keys),
+                    ..Default::default()
+                },
+            ),
+            None
+        );
+
         patch.instrument_id = Some(8);
         assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
         patch.instrument_id = None;
         patch.instrument_description = Some("Custom horn".to_string());
         assert_eq!(encode_added_component_value_snbt(61, &patch, None), None);
+
+        patch.codec_backed_nbt.insert(
+            component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+            bbb_protocol::packets::NbtSummaryValue::String("example:persistent".to_string()),
+        );
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    instrument_keys: Some(&instrument_keys),
+                    ..Default::default()
+                },
+            ),
+            Some("\"example:persistent\"".to_string())
+        );
     }
 
     #[test]
@@ -2689,6 +2736,7 @@ mod tests {
             trim_pattern_keys: Some(&pattern_keys),
             painting_variant_keys: None,
             damage_type_keys: None,
+            instrument_keys: None,
         };
         let patch = bbb_protocol::packets::DataComponentPatchSummary {
             provides_trim_material_id: Some(0),

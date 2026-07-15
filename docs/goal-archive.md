@@ -15192,3 +15192,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   无同步 contents 的路径继续使用生成的 50 项 26.1 catalog。
 - [x] F3 可保存的递归 ItemStack context 贯通 damage-type holder order；回归覆盖 custom holder 的
   单值、DamageResistant、BlocksAttacks 与 item-frame Item SNBT，unknown holder 继续安全省略。
+
+## 2026-07-15：Fix persistent instrument holder identity
+
+- [x] 对照 vanilla 26.1 `Instrument.CODEC`、`Instrument.STREAM_CODEC` 与
+  `InstrumentComponent.CODEC`，named instrument component 的 persistent SNBT 由当前 session
+  instrument holder order 解析 resource id；没有同步 contents 时才使用生成的八项 26.1 catalog。
+- [x] F3 可保存的递归 ItemStack context 贯通 instrument holder order；回归覆盖自定义 holder、
+  unknown holder、固定 catalog fallback、codec-backed raw 优先级与 item-frame Item SNBT。网络 direct
+  summary 不足以无损重建 sound/use-duration/range/Component 时继续安全省略。

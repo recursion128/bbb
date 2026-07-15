@@ -93,6 +93,10 @@ pub(crate) fn world_damage_type_keys(world: &WorldStore) -> Option<Vec<String>> 
     world_registry_keys(world, "minecraft:damage_type")
 }
 
+pub(crate) fn world_instrument_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world_registry_keys(world, "minecraft:instrument")
+}
+
 pub(crate) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
     world_registry_keys(world, "minecraft:attribute")
 }

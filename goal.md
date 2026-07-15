@@ -442,7 +442,9 @@ entity variant/villager render projection 已统一消费单一 checked holder l
 painting-variant 的同步 entry 已按 `PaintingVariant.DIRECT_CODEC` 投影，bounds/center 与
 named F3 持久化不再解释固定 ordinal；direct holder 持久化与 painting renderer 仍开放；
 damage-type 的 persistent single holder、DamageResistant holder set 与 BlocksAttacks 两处
-holder set 已统一消费 session wire order；tag shape 与无 session 的 26.1 基线保持不变；完整
+holder set 已统一消费 session wire order；tag shape 与无 session 的 26.1 基线保持不变；named
+instrument component 的 persistent holder 同样按 session wire order 输出，自定义/reordered key 不再误套
+八项 bootstrap ordinal，direct holder 仍仅在已有经 CODEC 验证的 raw value 时无损保留；完整
 numeric tags 已有 checked ordered holder/resource resolution，F3 与 piglin-loved 已消费窄 tag query；完整
 dimension-type 当前 client fields 已改用共享 bounded NBT frontend 单次投影，其中
 min_y/height/logical_height 按 vanilla 范围与 16 对齐约束原子决定 world shape；native
