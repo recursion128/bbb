@@ -3532,7 +3532,8 @@ impl EntityStore {
                 let wither_head_targets = wither_head_targets_by_id.get(&identity.id).copied();
                 let camel_is_standing =
                     entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_STANDING_ID;
-                let camel_is_dashing = camel_is_dashing(&metadata.data_values);
+                let camel_is_dashing =
+                    camel_is_dashing(identity.entity_type_id, &metadata.data_values);
                 let copper_golem_is_idle = copper_golem_is_idle(&metadata.data_values);
                 let copper_golem_is_getting_item =
                     copper_golem_is_getting_item(&metadata.data_values);

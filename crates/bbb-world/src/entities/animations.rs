@@ -21,6 +21,7 @@ use super::schema::{
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
@@ -35,9 +36,7 @@ use super::schema::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
-    VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAMEL_DASH_DATA_ID as CAMEL_DASH_DATA_ID,
-    VANILLA_CAMEL_DEFAULT_DASH as CAMEL_DEFAULT_DASH,
-    VANILLA_CAT_DEFAULT_IS_LYING as CAT_DEFAULT_IS_LYING,
+    VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAT_DEFAULT_IS_LYING as CAT_DEFAULT_IS_LYING,
     VANILLA_CAT_DEFAULT_RELAX_STATE_ONE as CAT_DEFAULT_RELAX_STATE_ONE,
     VANILLA_CAT_IS_LYING_DATA_ID as CAT_IS_LYING_DATA_ID,
     VANILLA_CAT_RELAX_STATE_ONE_DATA_ID as CAT_RELAX_STATE_ONE_DATA_ID,
@@ -5952,10 +5951,12 @@ pub(crate) fn guardian_is_moving(entity_type_id: i32, data_values: &[EntityDataV
 }
 
 /// Vanilla `Camel.isDashing()` (`entityData.get(DASH)`): the synced boolean that gates the looping
-/// dash gallop. Read straight from the entity metadata in the tick loop; non-camels (whose synced slot
-/// `19` is not this boolean) fall back to `false`.
-pub(crate) fn camel_is_dashing(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, CAMEL_DASH_DATA_ID, CAMEL_DEFAULT_DASH)
+/// dash gallop. The generated accessor supplies Camel/CamelHusk membership, wire index and default
+/// while excluding the unrelated `AbstractNautilus.DASH` accessor.
+pub(crate) fn camel_is_dashing(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_camel_dash_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `CopperGolem.getState() == IDLE`: `COPPER_GOLEM_STATE` is a synced enum id (data id 17,

@@ -16465,3 +16465,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   PolarBear membership 下读取该槽位。
 - animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
   这些平行事实源。
+
+## 2026-07-15：统一推导 Camel dash metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Camel.DASH` 解析 Camel 与 CamelHusk 的
+  membership、wire id 19 与 boolean typed default false，并通过 owner 校验与同名的
+  `AbstractNautilus.DASH` 分离。
+- world tick 显式传递 entity type，animation 生产消费者删除固定 accessor/default 别名；
+  生成器 reverse guard 禁止恢复这些平行事实源或丢失 store 调用处的 entity-type 传递。

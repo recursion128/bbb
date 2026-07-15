@@ -23095,6 +23095,21 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_camel_dash_does_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        let store = include_str!("../store.rs");
+        assert!(animations.contains("vanilla_entity_metadata_camel_dash_accessor_for_entity_type"));
+        assert!(store.contains("camel_is_dashing(identity.entity_type_id, &metadata.data_values)"));
+        for removed in ["CAMEL_DASH_DATA_ID", "CAMEL_DEFAULT_DASH"] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(!store.contains(removed), "store restored {removed}");
+        }
+    }
+
+    #[test]
     fn production_polar_bear_standing_does_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         assert!(animations
