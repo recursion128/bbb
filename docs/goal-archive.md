@@ -16520,3 +16520,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   enum typed default `IDLING(0)`；animation state transition 继续消费生成的七个 state id。
 - animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
   平行事实源或绕过 entity-type-aware accessor。
+
+## 2026-07-15：统一推导 Armadillo animation-state metadata accessor
+
+- `bbb-world` 现在从生成 schema 的 `Armadillo.ARMADILLO_STATE` 解析 membership、wire
+  id 18 与 enum typed default `IDLE(0)`；metadata transition 与 peek event 的惰性状态
+  初始化共用这一 accessor，状态 ordinal 继续由生成器拥有。
+- animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
+  平行事实源或漏掉任一消费路径。

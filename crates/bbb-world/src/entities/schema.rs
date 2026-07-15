@@ -1056,6 +1056,26 @@ pub fn vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Armadillo animation-state accessor and its typed default.
+pub fn vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "ARMADILLO_STATE")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.armadillo.Armadillo",
+            "ARMADILLO_STATE",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Pillager charging-crossbow accessor and its typed default.
 pub fn vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3566,6 +3586,26 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_armadillo_state_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ARMADILLO_ID
+            ),
+            Some((18, 0))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SNIFFER_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(-1),
             None
         );
     }

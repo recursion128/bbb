@@ -19,6 +19,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
+    vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
@@ -40,8 +41,7 @@ use super::schema::{
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,
-    VanillaVehicleMetadataAccessors, VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
-    VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
+    VanillaVehicleMetadataAccessors,
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
@@ -4092,16 +4092,21 @@ impl EntityClientAnimationState {
                 // or transition timer but must still be tracked so a later roll re-anchors correctly.
                 // `ARMADILLO_STATE` is serialized as the `ArmadilloState` enum (serializer 36), so it
                 // arrives as an `EnumId`, not a plain `Int`.
-                let state_id = entity_data_enum_id(
-                    data_values,
-                    ARMADILLO_STATE_DATA_ID,
-                    EntityDataEnumSerializer::ArmadilloState,
-                    ARMADILLO_DEFAULT_STATE,
-                );
-                if let Some(armadillo) = self.armadillo.as_mut() {
-                    armadillo.set_state(state_id, self.age_ticks);
-                } else if state_id != ARMADILLO_DEFAULT_STATE {
-                    self.armadillo = Some(ArmadilloAnimationState::new(state_id, self.age_ticks));
+                if let Some((data_id, default)) =
+                    vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(entity_type_id)
+                {
+                    let state_id = entity_data_enum_id(
+                        data_values,
+                        data_id,
+                        EntityDataEnumSerializer::ArmadilloState,
+                        default,
+                    );
+                    if let Some(armadillo) = self.armadillo.as_mut() {
+                        armadillo.set_state(state_id, self.age_ticks);
+                    } else if state_id != default {
+                        self.armadillo =
+                            Some(ArmadilloAnimationState::new(state_id, self.age_ticks));
+                    }
                 }
             }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
@@ -4276,11 +4281,13 @@ impl EntityClientAnimationState {
             // `setupAnimationStates()` consumes it by stopping the old peek and immediately
             // restarting it for the current SCARED state.
             let age_ticks = self.age_ticks;
-            self.armadillo
-                .get_or_insert_with(|| {
-                    ArmadilloAnimationState::new(ARMADILLO_DEFAULT_STATE, age_ticks)
-                })
-                .peek_received_client = true;
+            if let Some((_, default)) =
+                vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(entity_type_id)
+            {
+                self.armadillo
+                    .get_or_insert_with(|| ArmadilloAnimationState::new(default, age_ticks))
+                    .peek_received_client = true;
+            }
         } else if entity_type_id == VANILLA_ENTITY_TYPE_CREAKING_ID
             && matches!(
                 event_id,

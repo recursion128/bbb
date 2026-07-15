@@ -23285,6 +23285,23 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_armadillo_state_does_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        assert_eq!(
+            animations
+                .matches("vanilla_entity_metadata_armadillo_state_accessor_for_entity_type")
+                .count(),
+            3
+        );
+        for removed in ["ARMADILLO_STATE_DATA_ID", "ARMADILLO_DEFAULT_STATE"] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source
