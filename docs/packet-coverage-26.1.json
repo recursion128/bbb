@@ -23,10 +23,11 @@
         "command_surface": {
           "evidence": [
             "crates/bbb-net/src/status.rs#status_ping",
-            "crates/bbb-net/src/event_stream.rs#ClientIntent::Login"
+            "crates/bbb-net/src/event_stream.rs#run_offline_event_stream",
+            "crates/bbb-net/src/event_stream.rs#reconnect_for_transfer"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -42,15 +43,19 @@
           "evidence": [
             "crates/bbb-net/src/types/connection.rs#connection_addresses_delegate_handshake_host_validation",
             "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence",
-            "crates/bbb-net/src/event_stream.rs#ClientIntent::Login"
+            "crates/bbb-net/src/event_stream.rs#run_offline_event_stream",
+            "crates/bbb-net/src/event_stream.rs#reconnect_for_transfer",
+            "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#handshake_and_status_codecs_match_vanilla_sequence_payloads",
-            "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence"
+            "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence",
+            "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies",
+            "crates/bbb-protocol/src/packet_coverage.rs#status_and_handshake_packet_families_are_closed"
           ],
           "gap": null,
           "status": "complete"

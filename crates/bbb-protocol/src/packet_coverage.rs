@@ -181,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn status_packet_family_is_closed_with_handshake_transfer_gaps_explicit() {
+    fn status_and_handshake_packet_families_are_closed() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let status_entries: Vec<_> = ledger
             .entries
@@ -208,22 +208,14 @@ mod tests {
             .iter()
             .find(|entry| entry.state == "handshake")
             .unwrap();
-        assert_eq!(
-            handshake.coverage["encoder"].status,
-            PacketCoverageStatus::Complete
-        );
-        assert_eq!(
-            handshake.coverage["tests"].status,
-            PacketCoverageStatus::Complete
-        );
-        assert_eq!(
-            handshake.coverage["ack_response"].status,
-            PacketCoverageStatus::NotApplicable
-        );
-        for dimension in ["command_surface", "state_guard"] {
-            assert_eq!(
-                handshake.coverage[dimension].status,
-                PacketCoverageStatus::Partial
+        for (dimension, cell) in &handshake.coverage {
+            assert!(
+                matches!(
+                    cell.status,
+                    PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
+                ),
+                "{dimension} remains {:?}",
+                cell.status
             );
         }
     }

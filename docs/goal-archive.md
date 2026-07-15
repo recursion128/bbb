@@ -15120,3 +15120,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `RawConnection` 提供不等待新 socket input 的 buffered packet decode，重连前完成 closing drain 后才丢弃旧
   transport。configuration/play focused regressions 均覆盖 cookie carry、latest target 以及 Ping suppression；play
   StoreCookie runtime coverage 因而闭合。Transfer 的 seen-player/insecure-chat-warning carry 仍单独保持 partial。
+
+## 2026-07-15：Close handshake Transfer-intent coverage
+
+- [x] `SERVERBOUND_CLIENT_INTENTION` 的 Status、Login 与 Transfer 三条 production command surface 均已接入；
+  Transfer 重连 socket test 锁定目标 host/port、protocol version 和 wire intent `3`，初始 offline login 与 status
+  ping 路径继续分别拥有 intent `2`/`1` 的状态顺序。
+- [x] handshake command-surface/state-guard 提升为 complete，结构回归改为要求 handshake 与 status family 只含
+  complete/not-applicable cell；该 256-entry 覆盖行不再保留已过时的 Transfer intent partial。
