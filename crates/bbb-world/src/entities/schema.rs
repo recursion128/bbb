@@ -231,6 +231,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub sound_source_kind: VanillaEntitySoundSourceKind,
     pub is_living: bool,
     pub is_animal: bool,
+    pub is_tamable_animal: bool,
     pub is_projectile: bool,
     pub is_hurting_projectile: bool,
     pub is_wind_charge: bool,
@@ -422,6 +423,14 @@ pub fn vanilla_entity_metadata_type_is_animal(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+/// Returns whether the generated vanilla runtime class inherits `TamableAnimal`.
+pub fn vanilla_entity_metadata_type_is_tamable_animal(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_tamable_animal)
+        .unwrap_or(false)
+}
+
 /// Returns whether the generated vanilla runtime class inherits `Projectile`.
 pub fn vanilla_entity_metadata_type_is_projectile(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
@@ -574,13 +583,15 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
-        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
 
@@ -851,6 +862,13 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.is_tamable_animal)
+                .count(),
+            5
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_projectile)
                 .count(),
             19
@@ -1008,6 +1026,21 @@ mod tests {
             VANILLA_ENTITY_TYPE_DOLPHIN_ID
         ));
         assert!(!vanilla_entity_metadata_type_is_animal(-1));
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            VANILLA_ENTITY_TYPE_PARROT_ID,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        ] {
+            assert!(vanilla_entity_metadata_type_is_tamable_animal(
+                entity_type_id
+            ));
+        }
+        assert!(!vanilla_entity_metadata_type_is_tamable_animal(
+            VANILLA_ENTITY_TYPE_HORSE_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_tamable_animal(-1));
         assert!(vanilla_entity_metadata_type_is_projectile(
             VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
         ));

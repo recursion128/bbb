@@ -15365,3 +15365,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   player/item/experience-orb/lightning/monster 与显式 hostile override 全部消费 generated query。
   Rabbit 在当前无 metadata 的调用边界保持原 neutral fallback；generator-emitted 反向门禁禁止旧 hostile
   lookup 复生，并修复旧表遗漏 `Parched`、将其错误归入 neutral 的偏差。
+
+## 2026-07-15：Generate tamable-animal membership
+
+- [x] entity metadata generator 从 26.1 runtime class hierarchy 派生 `TamableAnimal`
+  membership；157 项目录中精确覆盖 Cat、Parrot、Wolf、Nautilus 与 ZombieNautilus。
+- [x] event-6/7 驯服粒子消费者删除 Cat/Parrot/Wolf 手写 type 表和重复的 Nautilus 分支，
+  统一组合 generated `TamableAnimal` 与 generated `AbstractHorse` query；generator-emitted
+  反向门禁禁止该消费者重新引入实体常量 membership。

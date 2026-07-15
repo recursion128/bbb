@@ -489,13 +489,7 @@ pub(crate) fn is_vanilla_abstract_nautilus_type(entity_type_id: i32) -> bool {
 
 pub(crate) fn is_vanilla_taming_particle_entity_type(entity_type_id: i32) -> bool {
     is_vanilla_abstract_horse_type(entity_type_id)
-        || is_vanilla_abstract_nautilus_type(entity_type_id)
-        || matches!(
-            entity_type_id,
-            VANILLA_ENTITY_TYPE_CAT_ID
-                | VANILLA_ENTITY_TYPE_PARROT_ID
-                | VANILLA_ENTITY_TYPE_WOLF_ID
-        )
+        || schema::vanilla_entity_metadata_type_is_tamable_animal(entity_type_id)
 }
 
 pub(crate) fn is_vanilla_can_equip_saddle_type(entity_type_id: i32) -> bool {

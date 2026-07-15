@@ -1551,7 +1551,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
 
     use bbb_protocol::packets::{
@@ -4056,6 +4056,15 @@ mod tests {
                     z: -6.0,
                 },
             )),
+            PlayClientbound::AddEntity(add_entity(
+                133,
+                VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+                Vec3d {
+                    x: 5.0,
+                    y: 68.0,
+                    z: -7.0,
+                },
+            )),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 130,
                 event_id: TAMING_SUCCEEDED_EVENT_ID,
@@ -4069,6 +4078,10 @@ mod tests {
                 event_id: TAMING_SUCCEEDED_EVENT_ID,
             }),
             PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 133,
+                event_id: TAMING_SUCCEEDED_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 404,
                 event_id: TAMING_FAILED_EVENT_ID,
             }),
@@ -4077,7 +4090,7 @@ mod tests {
             assert!(leftover.is_none());
         }
 
-        assert_eq!(effects.entity_taming_particles.len(), 2);
+        assert_eq!(effects.entity_taming_particles.len(), 3);
         let state = effects.entity_taming_particles[0];
         assert_eq!(state.entity_id, 130);
         assert!(state.success);
@@ -4104,7 +4117,10 @@ mod tests {
         );
         assert!((state.width - 1.396_484_4).abs() < 1.0e-6);
         assert!((state.height - 1.6).abs() < 1.0e-6);
-        assert_eq!(store.counters().entity_events_applied, 3);
+        let state = effects.entity_taming_particles[2];
+        assert_eq!(state.entity_id, 133);
+        assert!(state.success);
+        assert_eq!(store.counters().entity_events_applied, 4);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 
