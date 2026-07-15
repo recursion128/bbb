@@ -18,6 +18,9 @@ from vanilla_java_source import (
 RENDERER_PACKAGE = "net.minecraft.client.renderer.entity"
 ENTITY_RENDERERS_CLASS = RENDERER_PACKAGE + ".EntityRenderers"
 THROWN_ITEM_RENDERER_CLASS = RENDERER_PACKAGE + ".ThrownItemRenderer"
+ABSTRACT_FELINE_MODEL_CLASS = (
+    "net.minecraft.client.model.animal.feline.AbstractFelineModel"
+)
 SPECIAL_AVATAR_ENTITY_TYPES = frozenset({"MANNEQUIN", "PLAYER"})
 
 
@@ -31,6 +34,7 @@ class EntityRendererRegistration:
     constant_name: str
     renderer_class: str
     static_full_block_light: bool
+    uses_abstract_feline_model: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -172,6 +176,31 @@ def _validate_thrown_item_full_bright_contract(
         )
 
 
+def _renderer_hierarchy_references_superclass_type(
+    renderer_class: str,
+    target_class: str,
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> bool:
+    target_simple_name = target_class.rsplit(".", 1)[-1]
+    current = type_by_name[renderer_class]
+    while True:
+        source = source_by_type[current.fqcn]
+        superclass = current.node.child_by_field_name("superclass")
+        if (
+            superclass is not None
+            and source.imports.get(target_simple_name) == target_class
+            and any(
+                source.text(node) == target_simple_name
+                for node in (superclass, *descendants(superclass))
+            )
+        ):
+            return True
+        if current.superclass is None or current.superclass not in type_by_name:
+            return False
+        current = type_by_name[current.superclass]
+
+
 def extract_entity_renderer_registrations(
     entity_renderers_source: JavaSource,
     renderer_sources: list[JavaSource],
@@ -293,6 +322,12 @@ def extract_entity_renderer_registrations(
                 constant_name,
                 renderer_class.removeprefix(RENDERER_PACKAGE + "."),
                 static_full_block_light,
+                _renderer_hierarchy_references_superclass_type(
+                    renderer_class,
+                    ABSTRACT_FELINE_MODEL_CLASS,
+                    source_by_type,
+                    type_by_name,
+                ),
             )
         )
 

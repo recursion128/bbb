@@ -75,6 +75,9 @@ def render(source_root: Path) -> str:
                 "        static_full_block_light: "
                 + str(entry.static_full_block_light).lower()
                 + ",",
+                "        uses_abstract_feline_model: "
+                + str(entry.uses_abstract_feline_model).lower()
+                + ",",
                 "    },",
             ]
         )
@@ -94,6 +97,12 @@ def render(source_root: Path) -> str:
             "    fn native_model_selection_does_not_restore_noop_renderer_membership() {",
             '        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
             '        assert!(!source.contains("VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn world_projection_does_not_restore_feline_type_membership() {",
+            '        let source = include_str!("../dimensions.rs");',
+            '        assert!(!source.contains("fn vanilla_feline_family"));',
             "    }",
             "}",
             "",

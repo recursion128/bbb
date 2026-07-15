@@ -30,12 +30,23 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.BLAZE, BlazeRenderer::new);
                     register(EntityType.EYE_OF_ENDER,
                         context -> new ThrownItemRenderer<>(context, 1.0F, true));
+                    register(EntityType.CAT, CatRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
             """,
         )
         renderer_sources = [
+            java(
+                "net/minecraft/client/renderer/entity/CatRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                import net.minecraft.client.model.animal.feline.AbstractFelineModel;
+                public class CatRenderer extends AgeableMobRenderer<
+                    Object, Object, AbstractFelineModel<Object>
+                > {}
+                """,
+            ),
             java(
                 "net/minecraft/client/renderer/entity/EntityRenderer.java",
                 """
@@ -87,7 +98,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
         entries = extract_entity_renderer_registrations(
             entity_renderers,
             renderer_sources,
-            ["BLAZE", "EYE_OF_ENDER", "MANNEQUIN", "PLAYER"],
+            ["BLAZE", "EYE_OF_ENDER", "CAT", "MANNEQUIN", "PLAYER"],
         )
 
         self.assertEqual(
@@ -97,12 +108,14 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     entry.constant_name,
                     entry.renderer_class,
                     entry.static_full_block_light,
+                    entry.uses_abstract_feline_model,
                 )
                 for entry in entries
             ],
             [
-                (0, "BLAZE", "BlazeRenderer", True),
-                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True),
+                (0, "BLAZE", "BlazeRenderer", True, False),
+                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False),
+                (2, "CAT", "CatRenderer", False, True),
             ],
         )
 

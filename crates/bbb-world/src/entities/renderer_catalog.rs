@@ -10,6 +10,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     constant_name: &'static str,
     renderer_class: &'static str,
     static_full_block_light: bool,
+    uses_abstract_feline_model: bool,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -33,16 +34,22 @@ pub fn vanilla_entity_renderer_is_noop(entity_type_id: i32) -> bool {
         .is_some_and(|entry| entry.renderer_class == "NoopRenderer")
 }
 
+pub(super) fn vanilla_entity_renderer_uses_abstract_feline_model(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.uses_abstract_feline_model)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
 
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
-        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MARKER_ID,
+        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAT_ID,
+        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+        VANILLA_ENTITY_TYPE_MARKER_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
         VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_VEX_ID,
         VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
@@ -116,5 +123,25 @@ mod tests {
         }
         assert!(!vanilla_entity_renderer_is_noop(-1));
         assert!(!vanilla_entity_renderer_is_noop(157));
+    }
+
+    #[test]
+    fn generated_feline_model_membership_matches_renderer_superclass_types() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.uses_abstract_feline_model)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual,
+            vec![VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID]
+        );
+        for entity_type_id in actual {
+            assert!(vanilla_entity_renderer_uses_abstract_feline_model(
+                entity_type_id
+            ));
+        }
+        assert!(!vanilla_entity_renderer_uses_abstract_feline_model(-1));
+        assert!(!vanilla_entity_renderer_uses_abstract_feline_model(157));
     }
 }

@@ -1242,15 +1242,6 @@ pub(crate) fn vanilla_is_fox(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_FOX_ID
 }
 
-/// Whether the entity renders through vanilla `AbstractFelineModel`: cat and ocelot both feed
-/// `FelineRenderState.isCrouching` / `isSprinting` into the same pose branches.
-pub(crate) fn vanilla_feline_family(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_CAT_ID | VANILLA_ENTITY_TYPE_OCELOT_ID
-    )
-}
-
 /// Whether the entity renders through vanilla `CatRenderer` rather than `OcelotRenderer`. Only cats
 /// project `TamableAnimal.isInSittingPose()` into `FelineRenderState.isSitting`.
 pub(crate) fn vanilla_is_cat(entity_type_id: i32) -> bool {

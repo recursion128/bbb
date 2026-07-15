@@ -15410,3 +15410,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `NoopRenderer`，其他因独立 item/weather/runtime pass 而不在 3D entity scene 绘制的类型保持原 owner。
 - [x] catalog exact-set 与 native 既有三实体回归覆盖正向行为，generator-emitted 反向门禁阻止
   `kind.rs` 恢复旧实体常量 membership。
+
+## 2026-07-15：Generate AbstractFelineModel renderer membership
+
+- [x] entity renderer extractor 沿 registered renderer class hierarchy 检查 superclass CST type
+  reference，生成 `AbstractFelineModel` membership；26.1 精确覆盖 CatRenderer 与 OcelotRenderer，
+  不从实体名或 metadata class 猜测 presentation family。
+- [x] world store 直接消费 renderer catalog query，删除 `dimensions.rs` 的 Cat/Ocelot type helper；
+  crouching/sprinting pose gate 保持不变，catalog exact-set、Python fixture 与 generator-emitted
+  反向门禁覆盖 owner 和消费者边界。

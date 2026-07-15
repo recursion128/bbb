@@ -96,10 +96,10 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_feline_family,
-    vanilla_illager_aggressive_arm_pose_family, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
-    vanilla_is_cat, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
-    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_eye_height_for_entity_data, vanilla_illager_aggressive_arm_pose_family,
+    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_cat, vanilla_is_enderman,
+    vanilla_is_fox, vanilla_is_vex, vanilla_is_wither, vanilla_living_entity_type,
+    vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_piglin_melee_attack_family, vanilla_render_scale, vanilla_zombie_model_family,
     ENTITY_DATA_POSE_ID,
@@ -111,6 +111,7 @@ use crate::entities::dragon::{
 use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
+use crate::entities::renderer_catalog::vanilla_entity_renderer_uses_abstract_feline_model;
 use crate::entities::schema::{
     vanilla_entity_metadata_type_is_item_frame, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
@@ -1711,7 +1712,7 @@ impl EntityStore {
         let fox_is_sitting = fox_flags & FOX_FLAG_SITTING != 0;
         let fox_is_pouncing = fox_flags & FOX_FLAG_POUNCING != 0;
         let fox_is_faceplanted = fox_flags & FOX_FLAG_FACEPLANTED != 0;
-        let is_feline = vanilla_feline_family(identity.entity_type_id);
+        let is_feline = vanilla_entity_renderer_uses_abstract_feline_model(identity.entity_type_id);
         // Vanilla `CatRenderer` / `OcelotRenderer.extractRenderState` copies
         // `Entity.isCrouching()` and `Entity.isSprinting()` into `FelineRenderState`. The former is the
         // synced `Pose.CROUCHING`; the latter is shared entity flags bit 3. `CatRenderer` additionally
