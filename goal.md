@@ -388,9 +388,9 @@ item icon 及 decorations 共享 centered HUD scissor。由于 `ScrollableLayout
 Text multiline editor 已按 `MultiLineEditBox`/`MultilineTextField` 接入 active-font wrap、显式 newline、
 4px inset、9px line、nested scissor、UTF-16 counter、line/character limit、cursor/selection、键盘/clipboard 编辑、
 cursor reveal 与 6px scrollbar drag；`ScrollableLayout.Container` 继续优先截获 wheel。
-仍须按 `DialogScreen`/`DialogControlSet` 完成 ServerLinks top-level dialog 的
-button-list scroll/focus 布局、action-bearing
-open-url 与 Component-click。Boolean input 已按 Checkbox 的 17px box、
+五类 top-level Dialog 与 button-list scroll/focus 布局均已接入；仍须按
+`DialogScreen`/`DialogControlSet` 执行 action-bearing open-url（含 chat-links、
+`ConfirmLinkScreen` 与 platform opener）及 Component-click。Boolean input 已按 Checkbox 的 17px box、
 label、initial/on-true/on-false 与 byte-tag 语义接入 mouse toggle；NumberRange 已按 AbstractSliderButton 的
 200x20 nine-slice/8px handle、double slider position、mouse click/drag、RangeInfo lerp/step/edge 规则、localized
 label-format、Java Float.toString 与 FloatTag 语义接入；static run-command 以及 Boolean/NumberRange-backed

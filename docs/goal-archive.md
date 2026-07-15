@@ -15002,3 +15002,16 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   reveal；exit 同时作为 Escape cancel，缺失时按 vanilla 使用 5px footer。world/native regressions 覆盖
   reference/direct/context-free 三类 target、external title、统一按钮宽度、三列末行居中、无 exit overflow、
   footer-aware focus container 与 action replacement。
+
+## 2026-07-14：Render ServerLinks dialogs
+
+- [x] 对照 `ServerLinksDialogScreen.createListActions`、`ServerLinks.Entry.displayName` 与
+  `ButtonListDialogScreen`，native 从 world canonical `server_links` 顺序生成父 Dialog `button_width` 的
+  body buttons；known type 使用 26.1 `known_server_link.*` en_us 文案，custom type 保留 trusted Component
+  summary label，协议/world 已过滤的 http/https URI 原样形成 generated OpenUrl action，列表按钮无 tooltip。
+- [x] ServerLinks 接入与 MultiAction/DialogList 相同的 controls、grid/content metrics、2px row/column spacing、
+  partial-row centering、10px body spacing、scissor、wheel/scrollbar、Tab/方向 focus 与 keyboard reveal；
+  optional exit 保持 footer action/Escape cancel，空 server-links 加无 exit 时使用 5px footer 且只留下 warning focus。
+- [x] native regressions 覆盖 known/custom label、URI trust 过滤、uniform two-column/partial-row geometry、generated
+  OpenUrl payload、无 tooltip、mouse focus、optional exit 与 empty-list Escape close；完整 Dialog screen regressions
+  保持通过。OpenUrl 的 chat-links/`ConfirmLinkScreen`/platform opener 仍由下一独立 platform slice 完成。

@@ -759,6 +759,7 @@ impl WorldStore {
         target: DialogFocusState,
         number_range_can_change: bool,
     ) -> bool {
+        let server_link_count = self.server_links().len();
         let Some((valid, is_number_range, is_text, is_multiline_text)) = self
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
@@ -805,7 +806,11 @@ impl WorldStore {
                                     .len()
                                     .saturating_add(usize::from(exit_action.is_some()))
                         }
-                        _ => false,
+                        DialogDataState::ServerLinks { exit_action, .. } => {
+                            index
+                                < server_link_count
+                                    .saturating_add(usize::from(exit_action.is_some()))
+                        }
                     },
                 };
                 let control = match target {

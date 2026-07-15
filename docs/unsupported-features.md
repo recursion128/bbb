@@ -68,8 +68,8 @@ Owner: `bbb-protocol`
   requested host and port.
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
-  `DialogBodyHandlers`: add the ServerLinks layout with vanilla scrolling,
-  focus, and clipping; execute open-url and Component-click paths; and
+  `DialogBodyHandlers`: execute open-url through the vanilla chat-links/
+  `ConfirmLinkScreen`/platform-opener flow and execute Component-click paths; and
   restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
   Notice/Confirmation projection already sends static custom id/payload, lays out

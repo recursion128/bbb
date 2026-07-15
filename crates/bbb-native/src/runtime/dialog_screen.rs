@@ -21,7 +21,7 @@ use bbb_world::{
     DialogButtonState, DialogCommandTemplateState, DialogDataState, DialogFocusState,
     DialogInputControlState, DialogInputValueState, DialogItemStackTemplateState,
     DialogNumberRangeState, DialogPlainMessageState, DialogState, DialogTextMultilineState,
-    DialogTextState, WorldStore,
+    DialogTextState, ServerLinkState, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -544,27 +544,41 @@ enum DialogControlAction<'a> {
         label: &'a DialogTextState,
         width: i32,
     },
+    ServerLink {
+        label: &'a str,
+        url: &'a str,
+        width: i32,
+    },
 }
 
 impl<'a> DialogControlAction<'a> {
     fn width(self) -> i32 {
         match self {
             Self::Button(button) => button.width,
-            Self::DialogListEntry { width, .. } => width,
+            Self::DialogListEntry { width, .. } | Self::ServerLink { width, .. } => width,
         }
     }
 
-    fn label(self) -> &'a DialogTextState {
+    fn styled_label(self) -> Option<&'a DialogTextState> {
         match self {
-            Self::Button(button) => &button.label,
-            Self::DialogListEntry { label, .. } => label,
+            Self::Button(button) => Some(&button.label),
+            Self::DialogListEntry { label, .. } => Some(label),
+            Self::ServerLink { .. } => None,
+        }
+    }
+
+    fn label_text(self) -> &'a str {
+        match self {
+            Self::Button(button) => &button.label.text,
+            Self::DialogListEntry { label, .. } => &label.text,
+            Self::ServerLink { label, .. } => label,
         }
     }
 
     fn tooltip(self) -> Option<&'a DialogTextState> {
         match self {
             Self::Button(button) => button.tooltip.as_ref(),
-            Self::DialogListEntry { .. } => None,
+            Self::DialogListEntry { .. } | Self::ServerLink { .. } => None,
         }
     }
 
@@ -572,6 +586,11 @@ impl<'a> DialogControlAction<'a> {
         match self {
             Self::Button(button) => DialogControlActivation::Action(button.action_data.clone()),
             Self::DialogListEntry { index, .. } => DialogControlActivation::DialogListEntry(index),
+            Self::ServerLink { url, .. } => {
+                DialogControlActivation::Action(Some(DialogActionState::OpenUrl {
+                    url: url.to_string(),
+                }))
+            }
         }
     }
 }
@@ -600,7 +619,10 @@ impl DialogControls<'_> {
     }
 }
 
-fn dialog_controls(data: &DialogDataState) -> Option<DialogControls<'_>> {
+fn dialog_controls<'a>(
+    data: &'a DialogDataState,
+    server_links: &'a [ServerLinkState],
+) -> Option<DialogControls<'a>> {
     match data {
         DialogDataState::Notice { common, action } => Some(DialogControls {
             common,
@@ -676,7 +698,50 @@ fn dialog_controls(data: &DialogDataState) -> Option<DialogControls<'_>> {
                 },
             })
         }
-        _ => None,
+        DialogDataState::ServerLinks {
+            common,
+            exit_action,
+            columns,
+            button_width,
+        } => {
+            let mut all_actions = server_links
+                .iter()
+                .map(|link| DialogControlAction::ServerLink {
+                    label: server_link_display_label(link),
+                    url: &link.url,
+                    width: *button_width,
+                })
+                .collect::<Vec<_>>();
+            all_actions.extend(exit_action.iter().map(DialogControlAction::Button));
+            Some(DialogControls {
+                common,
+                actions: all_actions,
+                body_action_count: server_links.len(),
+                body_action_columns: *columns,
+                cancel: exit_action.as_ref(),
+                footer_height: if exit_action.is_some() {
+                    FOOTER_HEIGHT
+                } else {
+                    5
+                },
+            })
+        }
+    }
+}
+
+fn server_link_display_label(link: &ServerLinkState) -> &str {
+    match link.known_type.as_deref() {
+        Some("report_bug") => "Report Server Bug",
+        Some("community_guidelines") => "Community Guidelines",
+        Some("support") => "Support",
+        Some("status") => "Status",
+        Some("feedback") => "Feedback",
+        Some("community") => "Community",
+        Some("website") => "Website",
+        Some("forums") => "Forums",
+        Some("news") => "News",
+        Some("announcements") => "Announcements",
+        _ => &link.label,
     }
 }
 
@@ -2214,7 +2279,7 @@ pub(super) fn hud_dialog_screen_with_measurer(
     text_measurer: &dyn DialogTextMeasurer,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
-    let controls = dialog_controls(dialog.data.as_ref()?)?;
+    let controls = dialog_controls(dialog.data.as_ref()?, world.server_links())?;
     let layout = DialogFooterLayout::new(
         &controls
             .footer_actions()
@@ -2723,9 +2788,9 @@ pub(super) fn hud_dialog_screen_with_measurer(
                 WIDGET_SPRITE_WIDTH,
                 3,
             );
-            push_centered_text_label(
+            push_centered_dialog_control_label(
                 &mut text_labels,
-                action.label(),
+                *action,
                 button.x + i32::try_from(button.width).unwrap_or(i32::MAX) / 2,
                 button.y + BUTTON_TEXT_Y_OFFSET,
             );
@@ -2736,9 +2801,9 @@ pub(super) fn hud_dialog_screen_with_measurer(
     let scroll_text_labels = text_labels.split_off(scroll_text_start);
 
     for (action, button) in controls.footer_actions().iter().zip(&layout.buttons) {
-        push_centered_text_label(
+        push_centered_dialog_control_label(
             &mut text_labels,
-            action.label(),
+            *action,
             button.x + i32::try_from(button.width).unwrap_or(i32::MAX) / 2,
             button.y + BUTTON_TEXT_Y_OFFSET,
         );
@@ -2946,7 +3011,7 @@ fn dialog_preedit_projection(
     }
     let snapshot = focused_dialog_text_snapshot(world)?;
     let dialog = world.current_dialog()?;
-    let controls = dialog_controls(dialog.data.as_ref()?)?;
+    let controls = dialog_controls(dialog.data.as_ref()?, world.server_links())?;
     let scroll_layout =
         dialog_body_scroll_layout(&controls, surface_size, world.dialog_body_scroll_amount())?;
     let input_layout =
@@ -3449,7 +3514,7 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
                 let action = world
                     .current_dialog()
                     .and_then(|dialog| dialog.data.as_ref())
-                    .and_then(dialog_controls)
+                    .and_then(|data| dialog_controls(data, world.server_links()))
                     .and_then(|controls| {
                         Some((
                             controls.actions.get(index)?.activation(),
@@ -3483,7 +3548,7 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
         let next = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .and_then(|controls| {
                 let layout = dialog_body_scroll_layout(&controls, surface_size, scroll_amount)?;
                 dialog_focus_graph_at_scroll(&controls, surface_size, layout.scroll_amount)
@@ -3511,7 +3576,7 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
     let Some(controls) = world
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
-        .and_then(dialog_controls)
+        .and_then(|data| dialog_controls(data, world.server_links()))
     else {
         return true;
     };
@@ -3541,7 +3606,7 @@ fn reveal_dialog_keyboard_focus(
     let Some((layout, focused)) = world
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
-        .and_then(dialog_controls)
+        .and_then(|data| dialog_controls(data, world.server_links()))
         .and_then(|controls| {
             let layout = dialog_body_scroll_layout(&controls, surface_size, scroll_amount)?;
             let graph =
@@ -3581,7 +3646,7 @@ fn handle_focused_dialog_input_key(
     let control = world
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
-        .and_then(dialog_controls)
+        .and_then(|data| dialog_controls(data, world.server_links()))
         .and_then(|controls| controls.common.input_data.get(index))
         .map(|input| input.control.clone());
     let selection = matches!(code, KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space);
@@ -3797,7 +3862,7 @@ fn focused_dialog_text_snapshot(world: &WorldStore) -> Option<FocusedDialogTextS
         .current_dialog()?
         .data
         .as_ref()
-        .and_then(dialog_controls)?
+        .and_then(|data| dialog_controls(data, world.server_links()))?
         .common
         .input_data
         .get(edit.input_index)
@@ -4257,7 +4322,11 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
-    let Some(controls) = dialog.data.as_ref().and_then(dialog_controls) else {
+    let Some(controls) = dialog
+        .data
+        .as_ref()
+        .and_then(|data| dialog_controls(data, world.server_links()))
+    else {
         return true;
     };
     if DialogWarningButtonLayout::new(&controls.common.title, surface_size)
@@ -4714,7 +4783,11 @@ fn cycle_dialog_single_option(world: &mut WorldStore, index: usize, reverse: boo
         let Some(dialog) = world.current_dialog() else {
             return false;
         };
-        let Some(controls) = dialog.data.as_ref().and_then(dialog_controls) else {
+        let Some(controls) = dialog
+            .data
+            .as_ref()
+            .and_then(|data| dialog_controls(data, world.server_links()))
+        else {
             return false;
         };
         let Some(input) = controls.common.input_data.get(index) else {
@@ -4758,7 +4831,11 @@ pub(crate) fn handle_dialog_mouse_wheel(
     let Some(dialog) = world.current_dialog() else {
         return false;
     };
-    let Some(controls) = dialog.data.as_ref().and_then(dialog_controls) else {
+    let Some(controls) = dialog
+        .data
+        .as_ref()
+        .and_then(|data| dialog_controls(data, world.server_links()))
+    else {
         return true;
     };
     let screen_width = surface_size.width.clamp(1, 512);
@@ -4826,7 +4903,7 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
         let state = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .and_then(|controls| {
                 let scroll_layout = dialog_body_scroll_layout(
                     &controls,
@@ -4909,7 +4986,7 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
         let Some((layout, scrollbar, cursor_y)) = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .and_then(|controls| {
                 let layout = dialog_body_scroll_layout(
                     &controls,
@@ -4947,7 +5024,7 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
         let layout = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .and_then(|controls| {
                 let scroll_layout = dialog_body_scroll_layout(
                     &controls,
@@ -4994,7 +5071,7 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
     let layout = world
         .current_dialog()
         .and_then(|dialog| dialog.data.as_ref())
-        .and_then(dialog_controls)
+        .and_then(|data| dialog_controls(data, world.server_links()))
         .and_then(|controls| {
             let scroll_layout = dialog_body_scroll_layout(
                 &controls,
@@ -5178,7 +5255,7 @@ fn bound_dialog_input_values(
         .current_dialog()?
         .data
         .as_ref()
-        .and_then(dialog_controls)?;
+        .and_then(|data| dialog_controls(data, world.server_links()))?;
     let values = world.current_dialog_input_values();
     let mut bound = BTreeMap::new();
     for (index, input) in controls.common.input_data.iter().enumerate() {
@@ -5588,6 +5665,25 @@ fn push_centered_text_label(
     });
 }
 
+fn push_centered_dialog_control_label(
+    labels: &mut Vec<HudInventoryTextLabel>,
+    action: DialogControlAction<'_>,
+    center_x: i32,
+    y: i32,
+) {
+    if let Some(label) = action.styled_label() {
+        push_centered_text_label(labels, label, center_x, y);
+    } else {
+        push_centered_runs_text_label(
+            labels,
+            vec![HudStyledTextRun::plain(action.label_text())],
+            center_x,
+            y,
+            None,
+        );
+    }
+}
+
 fn push_centered_runs_text_label(
     labels: &mut Vec<HudInventoryTextLabel>,
     runs: Vec<HudStyledTextRun>,
@@ -5783,7 +5879,10 @@ fn char_approx_width(ch: char, style: HudTextStyle) -> u32 {
 #[cfg(test)]
 mod tests {
     use bbb_protocol::{
-        packets::{DialogHolder, ShowDialog},
+        packets::{
+            DialogHolder, ServerLinkEntry, ServerLinkKnownType, ServerLinkType, ServerLinks,
+            ShowDialog,
+        },
         NbtSummaryEntry, NbtSummaryValue,
     };
 
@@ -5847,7 +5946,7 @@ mod tests {
             &world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap()
                 .common
                 .title,
@@ -6060,7 +6159,7 @@ mod tests {
         let controls = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .unwrap();
         let graph = dialog_focus_graph(&controls, surface_size).unwrap();
         let expected = vec![
@@ -6325,7 +6424,7 @@ mod tests {
         let controls = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .unwrap();
         let layout = dialog_body_scroll_layout(&controls, surface_size, 0.0).unwrap();
         assert_eq!(
@@ -6489,7 +6588,7 @@ mod tests {
         let controls = dialog
             .data
             .as_ref()
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .unwrap_or_else(|| panic!("dialog decode failed: {:?}", dialog.semantic_error));
         let item_focus = dialog_focus_node(
             &dialog_focus_graph(&controls, surface_size).unwrap().body,
@@ -6785,7 +6884,7 @@ mod tests {
         let controls = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .unwrap();
         assert_eq!(controls.body_action_count, 5);
         assert_eq!(controls.footer_height, FOOTER_HEIGHT);
@@ -6951,7 +7050,7 @@ mod tests {
         let controls = dialog
             .data
             .as_ref()
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .unwrap_or_else(|| panic!("invalid multi-action dialog: {:?}", dialog.semantic_error));
         assert_eq!(controls.footer_height, 5);
         assert!(controls.footer_actions().is_empty());
@@ -6997,7 +7096,7 @@ mod tests {
         let controls = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .unwrap();
         assert_eq!(
             dialog_body_action_grid_layout(&controls).unwrap(),
@@ -7046,7 +7145,7 @@ mod tests {
         let controls = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .unwrap();
         assert_eq!(controls.body_action_count, 5);
         assert_eq!(controls.footer_height, FOOTER_HEIGHT);
@@ -7054,7 +7153,7 @@ mod tests {
             .body_actions()
             .iter()
             .all(|action| action.width() == 70 && action.tooltip().is_none()));
-        assert_eq!(controls.body_actions()[3].label().text, "External 3");
+        assert_eq!(controls.body_actions()[3].label_text(), "External 3");
         assert_eq!(
             dialog_body_action_grid_layout(&controls).unwrap(),
             DialogBodyActionGridLayout {
@@ -7173,7 +7272,7 @@ mod tests {
         let controls = world
             .current_dialog()
             .and_then(|dialog| dialog.data.as_ref())
-            .and_then(dialog_controls)
+            .and_then(|data| dialog_controls(data, world.server_links()))
             .unwrap();
         assert_eq!(controls.footer_height, 5);
         assert!(controls.footer_actions().is_empty());
@@ -7210,6 +7309,167 @@ mod tests {
             target.data,
             Some(DialogDataState::Notice { ref common, .. }) if common.title.text == "Target 8"
         ));
+    }
+
+    #[test]
+    fn server_links_dialog_projects_canonical_links_and_generated_open_url_actions() {
+        let mut world = world_with_server_links_dialog(
+            vec![
+                ServerLinkEntry {
+                    link_type: ServerLinkType::Known(ServerLinkKnownType::Support),
+                    url: "https://example.invalid/support".to_string(),
+                },
+                ServerLinkEntry {
+                    link_type: ServerLinkType::Known(ServerLinkKnownType::BugReport),
+                    url: "https://example.invalid/bugs".to_string(),
+                },
+                ServerLinkEntry {
+                    link_type: ServerLinkType::Custom {
+                        label: "Rules".to_string(),
+                    },
+                    url: "http://example.invalid/rules".to_string(),
+                },
+                ServerLinkEntry {
+                    link_type: ServerLinkType::Known(ServerLinkKnownType::Website),
+                    url: "ftp://example.invalid/rejected".to_string(),
+                },
+            ],
+            vec![
+                entry("columns", NbtSummaryValue::Int(2)),
+                entry("button_width", NbtSummaryValue::Int(90)),
+                entry(
+                    "exit_action",
+                    custom_button("Back", Some("Exit tip"), 100, "example:back", None),
+                ),
+            ],
+        );
+        assert_eq!(world.counters().server_link_invalid_entries, 1);
+        let surface_size = PhysicalSize::new(320, 240);
+        let controls = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(|data| dialog_controls(data, world.server_links()))
+            .unwrap();
+        assert_eq!(controls.body_action_count, 3);
+        assert_eq!(controls.footer_height, FOOTER_HEIGHT);
+        assert_eq!(
+            controls
+                .body_actions()
+                .iter()
+                .map(|action| action.label_text())
+                .collect::<Vec<_>>(),
+            vec!["Support", "Report Server Bug", "Rules"]
+        );
+        assert!(controls
+            .body_actions()
+            .iter()
+            .all(|action| action.width() == 90 && action.tooltip().is_none()));
+        assert!(matches!(
+            controls.body_actions()[0].activation(),
+            DialogControlActivation::Action(Some(DialogActionState::OpenUrl { url }))
+                if url == "https://example.invalid/support"
+        ));
+        assert_eq!(
+            dialog_body_action_grid_layout(&controls).unwrap(),
+            DialogBodyActionGridLayout {
+                width: 182,
+                height: 42,
+                buttons: vec![
+                    DialogButtonLayout {
+                        x: 0,
+                        y: 0,
+                        width: 90,
+                    },
+                    DialogButtonLayout {
+                        x: 92,
+                        y: 0,
+                        width: 90,
+                    },
+                    DialogButtonLayout {
+                        x: 46,
+                        y: 22,
+                        width: 90,
+                    },
+                ],
+            }
+        );
+        assert_eq!(
+            dialog_focus_graph(&controls, surface_size).unwrap().tab,
+            vec![
+                DialogFocusState::WarningButton,
+                DialogFocusState::Action { index: 0 },
+                DialogFocusState::Action { index: 1 },
+                DialogFocusState::Action { index: 2 },
+                DialogFocusState::Action { index: 3 },
+            ]
+        );
+
+        let screen = hud_dialog_screen(
+            &world,
+            world.current_dialog().unwrap(),
+            None,
+            &TerrainTextureState::default(),
+            &InventoryHudLocalState {
+                cursor_position: Some((70, 64)),
+                ..Default::default()
+            },
+            surface_size,
+            0.0,
+        )
+        .unwrap();
+        assert!(screen
+            .scroll_area
+            .as_ref()
+            .unwrap()
+            .text_labels
+            .iter()
+            .any(|label| label.text == "Report Server Bug"));
+        assert_eq!(screen.tooltip, None);
+
+        let mut counters = NetCounters::default();
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(70.0, 64.0)),
+            surface_size,
+        ));
+        assert_eq!(
+            world.dialog_focus(),
+            Some(DialogFocusState::Action { index: 0 })
+        );
+        assert!(world.current_dialog().is_some());
+    }
+
+    #[test]
+    fn empty_server_links_dialog_uses_five_pixel_footer_and_escape_close() {
+        let mut world = world_with_server_links_dialog(Vec::new(), Vec::new());
+        let surface_size = PhysicalSize::new(320, 120);
+        let controls = world
+            .current_dialog()
+            .and_then(|dialog| dialog.data.as_ref())
+            .and_then(|data| dialog_controls(data, world.server_links()))
+            .unwrap();
+        assert_eq!(controls.body_action_count, 0);
+        assert_eq!(controls.footer_height, 5);
+        assert!(controls.actions.is_empty());
+        assert_eq!(
+            dialog_focus_graph(&controls, surface_size).unwrap().tab,
+            vec![DialogFocusState::WarningButton]
+        );
+        let mut counters = NetCounters::default();
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert!(world.current_dialog().is_none());
     }
 
     #[test]
@@ -7252,7 +7512,7 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap();
             dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
@@ -7468,7 +7728,7 @@ mod tests {
             let controls = dialog
                 .data
                 .as_ref()
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap_or_else(|| panic!("invalid range dialog: {:?}", dialog.semantic_error));
             dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
@@ -7813,7 +8073,7 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap();
             dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
@@ -8096,7 +8356,7 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap();
             dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
@@ -8415,7 +8675,7 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap();
             dialog_input_layouts(&controls, surface_size).unwrap()[0]
         };
@@ -8526,7 +8786,7 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap();
             let input_layout = dialog_input_layouts(&controls, surface_size).unwrap()[0];
             dialog_multiline_text_box_layout(input_layout, false)
@@ -8579,7 +8839,7 @@ mod tests {
             let controls = world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap();
             let input_layout = dialog_input_layouts(&controls, surface_size).unwrap()[0];
             (
@@ -8591,7 +8851,7 @@ mod tests {
             &world
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, world.server_links()))
                 .unwrap(),
             surface_size,
         )
@@ -8754,7 +9014,7 @@ mod tests {
             let controls = single
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, single.server_links()))
                 .unwrap();
             let layout = dialog_input_layouts(&controls, surface_size).unwrap()[0];
             dialog_single_line_text_box_layout(layout, false)
@@ -8830,7 +9090,7 @@ mod tests {
             let controls = multiline
                 .current_dialog()
                 .and_then(|dialog| dialog.data.as_ref())
-                .and_then(dialog_controls)
+                .and_then(|data| dialog_controls(data, multiline.server_links()))
                 .unwrap();
             let layout = dialog_input_layouts(&controls, surface_size).unwrap()[0];
             dialog_multiline_text_box_layout(layout, false)
@@ -9552,6 +9812,28 @@ mod tests {
                 DialogHolder::ContextFree { dialog }
             } else {
                 DialogHolder::Direct { dialog }
+            },
+        });
+        world
+    }
+
+    fn world_with_server_links_dialog(
+        links: Vec<ServerLinkEntry>,
+        mut fields: Vec<NbtSummaryEntry>,
+    ) -> WorldStore {
+        let mut world = WorldStore::new();
+        world.apply_server_links(ServerLinks { links });
+        let mut dialog = vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:server_links".to_string()),
+            ),
+            entry("title", NbtSummaryValue::String("Links".to_string())),
+        ];
+        dialog.append(&mut fields);
+        world.apply_show_dialog(ShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(dialog),
             },
         });
         world
