@@ -26,6 +26,7 @@ use super::schema::{
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
@@ -42,8 +43,6 @@ use super::schema::{
     VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS as SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
     VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
-    VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
-    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
@@ -1719,15 +1718,14 @@ impl EntityStore {
                 & ENTITY_SHARED_FLAG_SPRINTING
                 != 0;
         let feline_is_sitting = vanilla_is_cat(identity.entity_type_id)
-            && self
-                .metadata_byte(
-                    id,
-                    TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                    TAMABLE_ANIMAL_DEFAULT_FLAGS,
-                )
-                .unwrap_or(TAMABLE_ANIMAL_DEFAULT_FLAGS)
-                & TAMABLE_ANIMAL_SITTING_FLAG
-                != 0;
+            && vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
+                identity.entity_type_id,
+            )
+            .is_some_and(|(data_id, default)| {
+                self.metadata_byte(id, data_id, default).unwrap_or(default)
+                    & TAMABLE_ANIMAL_SITTING_FLAG
+                    != 0
+            });
         // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms
         // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & 1`). The generated
         // accessor owns the Vex membership, wire id and default, so every other type stays idle.

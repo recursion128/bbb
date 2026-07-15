@@ -103,6 +103,7 @@ use bbb_world::{
     VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
     VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
+    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
 };
 use std::{
     collections::BTreeMap,
@@ -6094,7 +6095,6 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
-    const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
     const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
     const PARROT_VARIANT_DATA_ID: u8 = 20;
 

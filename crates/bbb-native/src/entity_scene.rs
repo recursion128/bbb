@@ -34,6 +34,7 @@ use bbb_renderer::{
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
 #[cfg(test)]
 use bbb_world::WolfVariantAssetPresentation;
@@ -252,8 +253,6 @@ use bbb_world::{
     VANILLA_STRIDER_SUFFOCATING_DATA_ID as STRIDER_SUFFOCATING_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
-    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_TAMABLE_ANIMAL_FLAG_TAME as TAMABLE_ANIMAL_TAME_FLAG,
 };

@@ -67,6 +67,7 @@ pub use schema::{
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type, vanilla_entity_metadata_schema,
     vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
+    vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_type_is_slime,

@@ -119,16 +119,16 @@ pub(super) fn panda_model_kind(
 /// the ocelot has no breed, so it carries the default (ignored when `!cat`). `collar` mirrors vanilla
 /// `CatRenderer` (`isTame() ? getCollarColor() : null`): the dyed collar of a tame cat only.
 pub(super) fn feline_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     cat: bool,
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
-    let tame = (entity_data_byte(
-        values,
-        TAMABLE_ANIMAL_FLAGS_DATA_ID,
-        TAMABLE_ANIMAL_DEFAULT_FLAGS,
-    ) & TAMABLE_ANIMAL_TAME_FLAG)
-        != 0;
+    let tame =
+        vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
+            .is_some_and(|(data_id, default)| {
+                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_TAME_FLAG != 0
+            });
     EntityModelKind::Feline {
         cat,
         baby: ageable_baby(values),
@@ -663,16 +663,16 @@ pub(super) fn player_info_profile_resolvable(
 }
 
 pub(super) fn wolf_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     game_time: i64,
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
-    let tame = (entity_data_byte(
-        values,
-        TAMABLE_ANIMAL_FLAGS_DATA_ID,
-        TAMABLE_ANIMAL_DEFAULT_FLAGS,
-    ) & TAMABLE_ANIMAL_TAME_FLAG)
-        != 0;
+    let tame =
+        vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
+            .is_some_and(|(data_id, default)| {
+                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_TAME_FLAG != 0
+            });
     EntityModelKind::Wolf {
         baby: ageable_baby(values),
         tame,
@@ -883,12 +883,11 @@ pub(super) fn wolf_tail_angle(
         // `Wolf.getTailAngle()` angry branch returns this exact constant.
         return 1.5393804;
     }
-    let tame = (entity_data_byte(
-        values,
-        TAMABLE_ANIMAL_FLAGS_DATA_ID,
-        TAMABLE_ANIMAL_DEFAULT_FLAGS,
-    ) & TAMABLE_ANIMAL_TAME_FLAG)
-        != 0;
+    let tame =
+        vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
+            .is_some_and(|(data_id, default)| {
+                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_TAME_FLAG != 0
+            });
     if !tame {
         return WILD_TAIL_ANGLE;
     }
@@ -906,12 +905,10 @@ pub(super) fn wolf_sitting(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
-        && (entity_data_byte(
-            values,
-            TAMABLE_ANIMAL_FLAGS_DATA_ID,
-            TAMABLE_ANIMAL_DEFAULT_FLAGS,
-        ) & TAMABLE_ANIMAL_SITTING_FLAG)
-            != 0
+        && vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
+            .is_some_and(|(data_id, default)| {
+                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_SITTING_FLAG != 0
+            })
 }
 
 /// Vanilla `ParrotModel.getPose == SITTING` (`Parrot.isInSittingPose()`): the `TamableAnimal`
@@ -922,12 +919,10 @@ pub(super) fn parrot_sitting(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID
-        && (entity_data_byte(
-            values,
-            TAMABLE_ANIMAL_FLAGS_DATA_ID,
-            TAMABLE_ANIMAL_DEFAULT_FLAGS,
-        ) & TAMABLE_ANIMAL_SITTING_FLAG)
-            != 0
+        && vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
+            .is_some_and(|(data_id, default)| {
+                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_SITTING_FLAG != 0
+            })
 }
 
 /// Vanilla `Raider.isCelebrating()` (the synced `IS_CELEBRATING` boolean, id 16): drives the evoker and

@@ -77,6 +77,8 @@ use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
+use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -265,11 +267,6 @@ use bbb_world::{
     VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
     VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
-    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
-    VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
 };
 use bbb_world::{
     VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
@@ -6964,8 +6961,11 @@ fn debug_llama_variant_save_id(variant: i32) -> i32 {
 fn debug_push_trader_llama_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = debug_entity_data_byte_present(entity, TAMABLE_ANIMAL_FLAGS_DATA_ID)
-        .unwrap_or(TAMABLE_ANIMAL_DEFAULT_FLAGS);
+    let flags = vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
+        entity.entity_type_id,
+    )
+    .map(|(data_id, default)| debug_entity_data_byte_present(entity, data_id).unwrap_or(default))
+    .unwrap_or(0);
     fields.push(format!(
         "Sitting: {}",
         debug_snbt_bool(flags & TAMABLE_ANIMAL_SITTING_FLAG != 0)

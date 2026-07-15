@@ -1200,7 +1200,6 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
 fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
-    const TAMABLE_ANIMAL_FLAGS_DATA_ID: u8 = 18;
     const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
     const POSE_STANDING: i32 = 0;
     const POSE_CROUCHING: i32 = 5;
@@ -1243,7 +1242,10 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         vec![
             protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_CROUCHING),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
+            protocol_byte_data(
+                VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                TAMABLE_ANIMAL_SITTING_FLAG,
+            ),
         ],
     ));
     assert_eq!(state(&store, 76), (true, true, true));
@@ -1253,7 +1255,10 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         77,
         vec![
             protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_CROUCHING),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
+            protocol_byte_data(
+                VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                TAMABLE_ANIMAL_SITTING_FLAG,
+            ),
         ],
     ));
     assert_eq!(state(&store, 77), (true, false, false));
@@ -1264,7 +1269,10 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         vec![
             protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_CROUCHING),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
+            protocol_byte_data(
+                VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
+                TAMABLE_ANIMAL_SITTING_FLAG,
+            ),
         ],
     ));
     assert_eq!(state(&store, 78), (false, false, false));
@@ -1275,7 +1283,7 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         vec![
             protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_STANDING),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, 0),
+            protocol_byte_data(VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID, 0),
         ],
     ));
     assert_eq!(state(&store, 76), (false, false, false));

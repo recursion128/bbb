@@ -15,6 +15,7 @@ use bbb_world::{
     VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING,
     VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID, VANILLA_CAT_IS_LYING_DATA_ID,
     VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
@@ -9898,6 +9899,7 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
     // An untamed cat carries no collar even with a color set.
     assert_eq!(
         collar_of(&feline_model_kind(
+            VANILLA_ENTITY_TYPE_CAT_ID,
             &[protocol_int_data(CAT_COLLAR_COLOR_DATA_ID, 5)],
             true,
             None,
@@ -9907,6 +9909,7 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
     // A tame cat with no explicit color defaults to RED (14).
     assert_eq!(
         collar_of(&feline_model_kind(
+            VANILLA_ENTITY_TYPE_CAT_ID,
             &[protocol_byte_data(
                 TAMABLE_ANIMAL_FLAGS_DATA_ID,
                 TAMABLE_ANIMAL_TAME_FLAG
@@ -9919,6 +9922,7 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
     // A tame cat shows its dyed collar color.
     assert_eq!(
         collar_of(&feline_model_kind(
+            VANILLA_ENTITY_TYPE_CAT_ID,
             &[
                 protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
                 protocol_int_data(CAT_COLLAR_COLOR_DATA_ID, 5),
@@ -9931,6 +9935,7 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
     // A tame ocelot still has no collar.
     assert_eq!(
         collar_of(&feline_model_kind(
+            VANILLA_ENTITY_TYPE_OCELOT_ID,
             &[protocol_byte_data(
                 TAMABLE_ANIMAL_FLAGS_DATA_ID,
                 TAMABLE_ANIMAL_TAME_FLAG

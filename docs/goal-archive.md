@@ -16267,3 +16267,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   与 byte 默认值 0 的 typed accessor；native debug save projection 用它读取 `PlayerCreated`，
   并继续使用生成的 player-created mask。
 - native input 删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 TamableAnimal metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `TamableAnimal.DATA_FLAGS_ID` 解析继承 membership、
+  wire id 18 与 byte 默认值 0 的 typed accessor；Cat、Wolf、Parrot、Nautilus 与
+  ZombieNautilus 的 world/native presentation、mount inventory 和 native debug 共同消费它，
+  并继续使用生成的 sitting/tame flag masks。
+- 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。
