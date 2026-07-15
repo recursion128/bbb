@@ -26,6 +26,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_parrot_variant_accessor_for_entity_type,
     vanilla_entity_metadata_phantom_size_accessor_for_entity_type,
+    vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type,
     vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type,
     vanilla_entity_metadata_rabbit_type_accessor_for_entity_type,
     vanilla_entity_metadata_salmon_variant_accessor_for_entity_type,

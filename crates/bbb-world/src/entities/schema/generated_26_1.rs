@@ -23095,6 +23095,19 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_polar_bear_standing_does_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        assert!(animations
+            .contains("vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type"));
+        for removed in ["POLAR_BEAR_STANDING_DATA_ID", "POLAR_BEAR_DEFAULT_STANDING"] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

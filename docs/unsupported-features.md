@@ -285,6 +285,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers must not restore fixed accessor/default
   aliases or read another entity family's slot 19 as the playing-dead flag.
+  PolarBear standing membership, wire index and typed default must remain derived from generated
+  `PolarBear.DATA_STANDING_ID`; world animation consumers must not restore fixed accessor/default
+  aliases or read the standing flag without generated PolarBear membership.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

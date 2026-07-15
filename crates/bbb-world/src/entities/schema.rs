@@ -920,6 +920,26 @@ pub fn vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated PolarBear standing accessor and its typed default.
+pub fn vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_STANDING_ID")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.polarbear.PolarBear",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited TamableAnimal flags accessor and its typed default.
 pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
     entity_type_id: i32,
@@ -1835,8 +1855,9 @@ mod tests {
         VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
         VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
         VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
-        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
+        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
@@ -3227,6 +3248,26 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_polar_bear_standing_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_POLAR_BEAR_ID
+            ),
+            Some((18, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PANDA_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(-1),
             None
         );
     }

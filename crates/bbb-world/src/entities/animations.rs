@@ -25,6 +25,7 @@ use super::schema::{
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
@@ -61,8 +62,6 @@ use super::schema::{
     VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW as PIGLIN_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID as PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
     VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW as PILLAGER_DEFAULT_CHARGING_CROSSBOW,
-    VANILLA_POLAR_BEAR_DEFAULT_STANDING as POLAR_BEAR_DEFAULT_STANDING,
-    VANILLA_POLAR_BEAR_STANDING_DATA_ID as POLAR_BEAR_STANDING_DATA_ID,
     VANILLA_SNIFFER_DEFAULT_STATE as SNIFFER_DEFAULT_STATE,
     VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
@@ -3913,11 +3912,12 @@ impl EntityClientAnimationState {
         }
         match entity_type_id {
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => {
-                let target_standing = entity_data_bool(
-                    data_values,
-                    POLAR_BEAR_STANDING_DATA_ID,
-                    POLAR_BEAR_DEFAULT_STANDING,
-                );
+                let target_standing =
+                    vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
+                        entity_type_id,
+                    )
+                    .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+                    .unwrap_or_default();
                 if let Some(standing) = self.polar_bear_standing.as_mut() {
                     standing.set_target(target_standing);
                 } else if target_standing {
