@@ -1258,9 +1258,9 @@ entity_model_source_state! {
     pub bat_resting: bool,
     /// Vanilla `BeeRenderState.hasStinger` (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`):
     /// whether the bee still carries its stinger, which `BeeModel.setupAnim` toggles as the
-    /// stinger cube's `visible` flag. Projected only for the bee
-    /// ([`vanilla_is_bee`](crate::entities::dimensions)) and defaults to `true` (a bee that has
-    /// not stung still has its stinger; every other entity is unaffected).
+    /// stinger cube's `visible` flag. Projected only for the entity carrying the generated Bee
+    /// flags accessor and defaults to `true` (a bee that has not stung still has its stinger;
+    /// every other entity is unaffected).
     #[serde(default = "entity_model_source_default_true")]
     pub bee_has_stinger: bool,
     /// Vanilla `BeeRenderState.rollAmount` (`Bee.getRollAmount(partialTick)`, the lerped client

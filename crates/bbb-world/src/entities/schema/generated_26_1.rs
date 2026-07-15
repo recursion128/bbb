@@ -22193,6 +22193,24 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_bee_flags_do_not_restore_type_or_accessor_constants() {
+        let store = include_str!("../store.rs");
+        assert!(store.contains("vanilla_entity_metadata_bee_flags_accessor_for_entity_type"));
+        assert!(!store.contains("vanilla_is_bee"));
+        let animations = include_str!("../animations.rs");
+        assert!(animations.contains("vanilla_entity_metadata_bee_flags_accessor_for_entity_type"));
+        for removed in ["BEE_FLAGS_DATA_ID", "BEE_DEFAULT_FLAGS"] {
+            assert!(!store.contains(removed), "store restored {removed}");
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+        }
+        let dimensions = include_str!("../dimensions.rs");
+        assert!(!dimensions.contains("fn vanilla_is_bee"));
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

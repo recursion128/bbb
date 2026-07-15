@@ -16215,3 +16215,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   与 byte 默认值 0，再结合生成的 `FLAG_RESTING` 投影 `BatRenderState.isResting`。
 - dimensions 删除单类型 `vanilla_is_bat`，store 删除固定 accessor/default 别名；生成器
   reverse guard 禁止生产路径恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Bee render metadata accessor
+
+- `bbb-world` 现在从生成 schema 的 `Bee.DATA_FLAGS_ID` 同时解析 Bee membership、wire id 18
+  与 byte 默认值 0；store 的 stinger projection 和 animations 的 roll accumulator 共同消费
+  该 accessor，并继续使用生成的 `FLAG_HAS_STUNG` / `FLAG_ROLL` masks。
+- dimensions 删除单类型 `vanilla_is_bee`，两个消费者删除固定 accessor/default 别名；生成器
+  reverse guard 禁止生产路径恢复这些平行事实源。

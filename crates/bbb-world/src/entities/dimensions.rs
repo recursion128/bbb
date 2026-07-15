@@ -1117,13 +1117,6 @@ pub(crate) fn vanilla_animal_entity_type(entity_type_id: i32) -> bool {
     vanilla_entity_metadata_type_is_animal(entity_type_id)
 }
 
-/// Whether the entity is rendered with the vanilla `BeeModel`. Its `setupAnim` hides the
-/// stinger cube once the bee has stung (`hasStinger = !Bee.hasStung()`, the synced
-/// `DATA_FLAGS_ID & 4`), so the stinger projection is gated to this one type.
-pub(crate) fn vanilla_is_bee(entity_type_id: i32) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_BEE_ID
-}
-
 /// Whether the entity is rendered with the vanilla `FoxModel`. Its `setupAnim` reads the
 /// fox's own `DATA_FLAGS_ID` (19) crouch/sleep/sit/pounce/faceplant bits and the two eased
 /// `interestedAngle`/`crouchAmount` accumulators, so those projections are gated to this one

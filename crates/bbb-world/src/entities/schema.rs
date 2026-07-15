@@ -479,6 +479,26 @@ pub(crate) fn vanilla_entity_metadata_bat_flags_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Bee flags accessor and its typed default.
+pub(crate) fn vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i8)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.bee.Bee",
+            "BYTE",
+            Some(VanillaEntityMetadataDefault::Byte(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated WitherBoss invulnerability-ticks accessor and its typed default.
 ///
 /// The accessor owner supplies both the Wither presentation membership and its wire index, so
@@ -894,7 +914,7 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
         VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID,
-        VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID, VANILLA_ENTITY_TYPE_BAT_ID,
+        VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID, VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_BEE_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
@@ -1947,6 +1967,24 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_bat_flags_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_bee_flags_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_bee_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_BEE_ID),
+            Some((18, 0))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_bee_flags_accessor_for_entity_type(-1),
             None
         );
     }

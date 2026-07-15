@@ -15,6 +15,7 @@ use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::EnderDragonAnimationState;
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
+    vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
@@ -34,7 +35,6 @@ use super::schema::{
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
     VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD as AXOLOTL_DEFAULT_PLAYING_DEAD,
     VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID as AXOLOTL_PLAYING_DEAD_DATA_ID,
-    VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAMEL_DASH_DATA_ID as CAMEL_DASH_DATA_ID,
     VANILLA_CAMEL_DEFAULT_DASH as CAMEL_DEFAULT_DASH,
     VANILLA_CAT_DEFAULT_IS_LYING as CAT_DEFAULT_IS_LYING,
@@ -1127,8 +1127,8 @@ pub struct ShulkerPeekAnimationState {
 }
 
 /// Canonical client-side bee barrel-roll animation, mirroring vanilla
-/// `Bee.updateRollAmount`. While the synced `FLAG_ROLL` (mask `2` of the bee
-/// flags byte, data id [`BEE_FLAGS_DATA_ID`]) is set, `rollAmount` climbs toward
+/// `Bee.updateRollAmount`. While the synced `FLAG_ROLL` (mask `2` in the byte resolved through the
+/// generated Bee flags accessor) is set, `rollAmount` climbs toward
 /// `1` by `0.2`/tick; otherwise it falls toward `0` by `0.24`/tick.
 /// `getRollAmount(partialTick)` lerps the pair, driving `BeeModel.setupAnim`'s
 /// near-π `bone.xRot` flip that tips a rolling bee onto its back.
@@ -3954,7 +3954,7 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_BEE_ID => {
-                let rolling = bee_is_rolling(data_values);
+                let rolling = bee_is_rolling(entity_type_id, data_values);
                 if let Some(roll) = self.bee_roll.as_mut() {
                     roll.set_rolling(rolling);
                 } else if rolling {
@@ -6195,8 +6195,10 @@ fn shulker_target_peek_amount(data_values: &[EntityDataValue]) -> f32 {
 }
 
 /// Vanilla `Bee.isRolling()` = `getFlag(FLAG_ROLL)` = `(flags & 2) != 0`.
-fn bee_is_rolling(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, BEE_FLAGS_DATA_ID, BEE_DEFAULT_FLAGS) & BEE_FLAG_ROLL != 0
+fn bee_is_rolling(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_bee_flags_accessor_for_entity_type(entity_type_id).is_some_and(
+        |(data_id, default)| entity_data_byte(data_values, data_id, default) & BEE_FLAG_ROLL != 0,
+    )
 }
 
 fn panda_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
