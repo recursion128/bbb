@@ -460,7 +460,8 @@
         "crates/bbb-protocol/src/packets/data_components.rs#fn potion_contents_rejects_holders_outside_the_builtin_registry",
         "crates/bbb-world/src/registries/tests.rs#fn potion_registry_data_cannot_remap_the_builtin_holder_order",
         "crates/bbb-item-model/src/item_runtime/tooltip.rs#fn vanilla_potion_effects_follow_26_1_bootstrap_order",
-        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn vanilla_potion_resource_ids_follow_26_1_bootstrap_order"
+        "crates/bbb-protocol/src/potion_types.rs#fn potion_catalog_preserves_vanilla_order_and_effects",
+        "crates/bbb-native/src/input/tests.rs#fn item_stack_snbt_preserves_potion_contents_and_omits_unknown_potions"
       ],
       "decision": "Vanilla 26.1 owns potions in the immutable 46-entry client built-in registry. PotionContents validates its optional holder at the protocol boundary against the generated order, and world lookup preserves checked static identity in both directions. Tooltip, model-predicate, and persistent-input consumers share the generated resource ids and effects; reversed configuration RegistryData cannot remap any identity."
     },

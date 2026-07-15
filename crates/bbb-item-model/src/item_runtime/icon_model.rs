@@ -38,10 +38,6 @@ use super::{
 };
 use bbb_protocol::potion_types::vanilla_potion;
 
-pub fn vanilla_potion_resource_id(potion_id: i32) -> Option<&'static str> {
-    vanilla_potion(potion_id).map(|potion| potion.resource_id)
-}
-
 const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
 const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 
@@ -465,14 +461,6 @@ fn bundle_item_weight(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn vanilla_potion_resource_ids_follow_26_1_bootstrap_order() {
-        assert_eq!(vanilla_potion_resource_id(0), Some("minecraft:water"));
-        assert_eq!(vanilla_potion_resource_id(45), Some("minecraft:infested"));
-        assert_eq!(vanilla_potion_resource_id(46), None);
-        assert_eq!(vanilla_potion_resource_id(-1), None);
-    }
 
     #[test]
     fn bundle_item_weight_treats_empty_bundle_component_as_nested_bundle() {

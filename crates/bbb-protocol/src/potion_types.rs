@@ -542,6 +542,7 @@ mod tests {
                 let source = fs::read_to_string(&path).unwrap();
                 if source.contains("const VANILLA_POTION_KEYS")
                     || source.contains("const VANILLA_POTION_EFFECTS_BY_ID")
+                    || source.contains("fn vanilla_potion_resource_id(")
                 {
                     violations.push(display.to_string());
                 }

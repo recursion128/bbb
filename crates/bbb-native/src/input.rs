@@ -332,7 +332,8 @@ use crate::entity_scene::{
 use crate::entity_scene::{PUFFERFISH_DEFAULT_PUFF_STATE, PUFFERFISH_PUFF_STATE_DATA_ID};
 use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
-use bbb_item_model::{vanilla_potion_resource_id, ItemModelKeybindContext, NativeItemRuntime};
+use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
+use bbb_protocol::potion_types::vanilla_potion;
 use bbb_renderer::{
     BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, FrogModelVariant,
     PigModelVariant, VillagerModelType, WolfModelVariant, ZombieNautilusModelVariant,
@@ -5820,7 +5821,7 @@ fn debug_potion_contents_component_snbt(
     if let Some(potion_id) = patch.potion_id {
         fields.push(format!(
             "potion: {}",
-            debug_snbt_string(vanilla_potion_resource_id(potion_id)?)
+            debug_snbt_string(vanilla_potion(potion_id)?.resource_id)
         ));
     }
     if let Some(custom_color) = patch.potion_custom_color {

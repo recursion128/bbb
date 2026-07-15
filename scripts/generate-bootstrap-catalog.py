@@ -1008,7 +1008,7 @@ def render_potion_catalog(entries: list[PotionEntry]) -> str:
             "                let display = path.to_string_lossy();",
             "                if display.ends_with(\"/potion_types.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
-            "                if source.contains(\"const VANILLA_POTION_KEYS\") || source.contains(\"const VANILLA_POTION_EFFECTS_BY_ID\") { violations.push(display.to_string()); }",
+            "                if source.contains(\"const VANILLA_POTION_KEYS\") || source.contains(\"const VANILLA_POTION_EFFECTS_BY_ID\") || source.contains(\"fn vanilla_potion_resource_id(\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",

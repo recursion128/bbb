@@ -15254,3 +15254,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `VanillaMobEffect` 与三个本地 lookup；unknown id 的省略、灰色 tint 与空 modifier 语义保持不变。
 - [x] `generate-gameplay-id-catalog.py` 扩展 owner 生成的反向门禁，阻止历史 mob-effect
   type/lookup 别名复生；owner catalog 与 item-runtime potion/stew/icon predicate 回归覆盖直接消费路径。
+
+## 2026-07-15：Remove item-model potion resource lookup bridge
+
+- [x] native persistent potion-content encoder 直接消费 `bbb-protocol::potion_types::vanilla_potion`
+  entry 的 resource identity，删除 item-model 的单消费者转发函数、两层 re-export 与重复顺序测试。
+- [x] `generate-bootstrap-catalog.py` 扩展 potion owner 的生成门禁，阻止
+  `vanilla_potion_resource_id` 跨 crate 兼容桥复生；owner catalog 与 native persistent encoder
+  回归继续覆盖合法边界和 unknown holder 省略。
