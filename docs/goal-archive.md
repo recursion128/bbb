@@ -16174,3 +16174,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - `bbb-world` 提供唯一 typed lookup；native HUD debug projection 已移除三路 entity-type
   dispatch、Spider class query 和资源字面量。该 slice 只收敛选择元数据，实际 post-chain
   renderer 执行仍按 unsupported ledger 推进。
+
+## 2026-07-15：从 class override 生成 minecart display offset
+
+- entity metadata generator 沿 `AbstractMinecart` 继承图解析最近的
+  `getDefaultDisplayOffset`：Chest 为 8、Hopper 为 1，其余五类 minecart 继承 base 6，生成
+  按 entity type id 排序的 7 项 typed table。
+- `bbb-world` 查询对非 minecart 返回 `None`；world display projection 与 native F3+I save
+  projection 统一消费该表，移除了 Chest/Hopper 类型 match 及三个独立 offset 常量。生成器
+  reverse guard 锁定两个生产消费者不恢复分派。

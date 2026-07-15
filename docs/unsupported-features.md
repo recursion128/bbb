@@ -178,6 +178,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
   projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This
   only owns selection metadata; executing the post chains remains in the renderer queue below.
+  Per-minecart default display offsets must remain generated from the nearest
+  `getDefaultDisplayOffset` class override; world render and native save projection must not
+  restore Chest/Hopper exception arms or standalone virtual-default constants.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

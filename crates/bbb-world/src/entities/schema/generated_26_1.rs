@@ -1060,15 +1060,6 @@ pub const VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE: VanillaEntityMetadataDefault =
 const GENERATED_VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS: i32 = 300;
 pub const VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS: i32 =
     GENERATED_VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS;
-const GENERATED_VANILLA_ABSTRACT_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 6;
-pub const VANILLA_ABSTRACT_MINECART_DEFAULT_DISPLAY_OFFSET: i32 =
-    GENERATED_VANILLA_ABSTRACT_MINECART_DEFAULT_DISPLAY_OFFSET;
-const GENERATED_VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 8;
-pub const VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET: i32 =
-    GENERATED_VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET;
-const GENERATED_VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET: i32 = 1;
-pub const VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET: i32 =
-    GENERATED_VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET;
 
 pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCatalogEntry] = &[
     VanillaEntityMetadataClassCatalogEntry {
@@ -19415,6 +19406,16 @@ pub const VANILLA_ENTITY_CAMERA_POST_EFFECTS_26_1: &[(i32, &str)] = &[
     (124, "minecraft:spider"),
 ];
 
+pub const VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1: &[(i32, i32)] = &[
+    (25, 8),
+    (29, 6),
+    (56, 6),
+    (65, 1),
+    (85, 6),
+    (122, 6),
+    (133, 6),
+];
+
 const ENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_SHARED_FLAGS_ID",
@@ -21869,6 +21870,24 @@ mod generated_catalog_guards {
         assert!(!body.contains("minecraft:creeper"));
         assert!(!body.contains("minecraft:spider"));
         assert!(!body.contains("minecraft:invert"));
+    }
+
+    #[test]
+    fn production_minecart_display_offset_does_not_restore_type_dispatch() {
+        let source = include_str!("../schema.rs");
+        let body = source
+            .split("fn vanilla_minecart_default_display_offset")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("minecart display-offset query source");
+        assert!(body.contains("VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        assert!(!body.contains("match entity_type_id"));
+        let store = include_str!("../store.rs");
+        assert!(store.contains("vanilla_minecart_default_display_offset(identity.entity_type_id)?"));
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        assert!(input.contains("vanilla_minecart_default_display_offset(entity.entity_type_id)"));
     }
 
     #[test]

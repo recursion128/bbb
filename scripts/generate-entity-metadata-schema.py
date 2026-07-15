@@ -2655,6 +2655,45 @@ def class_zero_argument_boolean_method(
     return value
 
 
+def class_zero_argument_integer_method(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    method_name: str,
+    cache: dict[str, int],
+) -> int:
+    """Interpret the nearest scalar integer override along one class hierarchy."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(
+            f"unknown class in {method_name} integer hierarchy: {owner}"
+        )
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == method_name and len(method.parameters) == 0
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.{method_name}/0: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(
+                f"{owner}: no {method_name}/0 override or superclass"
+            )
+        value = class_zero_argument_integer_method(
+            result, class_map, item.superclass, method_name, cache
+        )
+        cache[owner] = value
+        return value
+
+    value = method_return_integer(result, owner, method_name)
+    cache[owner] = value
+    return value
+
+
 def class_is_pickable_without_type_tag(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -3261,6 +3300,7 @@ def render(result: ExtractionResult) -> str:
     collidability_cache: dict[str, str] = {}
     sound_source_cache: dict[str, str] = {}
     boat_ride_height_cache: dict[str, str] = {}
+    minecart_display_offset_cache: dict[str, int] = {}
     can_use_every_slot_cache: dict[str, bool] = {}
     illager_celebrating_cache: dict[str, bool] = {}
     for java_class in class_map:
@@ -3476,9 +3516,6 @@ def render(result: ExtractionResult) -> str:
 
     virtual_values = {
         "VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS": integer_constants(result, "net.minecraft.world.entity.Entity")["TOTAL_AIR_SUPPLY"],
-        "VANILLA_ABSTRACT_MINECART_DEFAULT_DISPLAY_OFFSET": method_return_integer(result, "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart", "getDefaultDisplayOffset"),
-        "VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET": method_return_integer(result, "net.minecraft.world.entity.vehicle.minecart.MinecartChest", "getDefaultDisplayOffset"),
-        "VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET": method_return_integer(result, "net.minecraft.world.entity.vehicle.minecart.MinecartHopper", "getDefaultDisplayOffset"),
     }
     for name, value in virtual_values.items():
         lines.append(f"const GENERATED_{name}: i32 = {value};")
@@ -3642,6 +3679,27 @@ def render(result: ExtractionResult) -> str:
         "",
     ])
 
+    lines.append(
+        "pub const VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1: &[(i32, i32)] = &["
+    )
+    for item in result.entity_types:
+        if extends_class(
+            item.runtime_class,
+            "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart",
+        ):
+            offset = class_zero_argument_integer_method(
+                result,
+                class_map,
+                item.runtime_class,
+                "getDefaultDisplayOffset",
+                minecart_display_offset_cache,
+            )
+            lines.append(f"    ({item.entity_type_id}, {offset}),")
+    lines.extend([
+        "];",
+        "",
+    ])
+
     for family in FAMILIES:
         own = [item for item in result.accessors if item.owner == family.java_class]
         lines.append(f"const {family.rust_name.upper()}_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[")
@@ -3739,6 +3797,24 @@ def render(result: ExtractionResult) -> str:
             '        assert!(!body.contains("minecraft:creeper"));',
             '        assert!(!body.contains("minecraft:spider"));',
             '        assert!(!body.contains("minecraft:invert"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_minecart_display_offset_does_not_restore_type_dispatch() {",
+            '        let source = include_str!("../schema.rs");',
+            '        let body = source',
+            '            .split("fn vanilla_minecart_default_display_offset")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n}"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("minecart display-offset query source");',
+            '        assert!(body.contains("VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1"));',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
+            '        assert!(!body.contains("match entity_type_id"));',
+            '        let store = include_str!("../store.rs");',
+            '        assert!(store.contains("vanilla_minecart_default_display_offset(identity.entity_type_id)?"));',
+            '        let input = include_str!("../../../../bbb-native/src/input.rs");',
+            '        assert!(input.contains("vanilla_minecart_default_display_offset(entity.entity_type_id)"));',
             "    }",
             "",
             "    #[test]",

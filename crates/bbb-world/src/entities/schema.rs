@@ -5,10 +5,6 @@
 //! compatibility queries, and virtual-default resolution used by world/native
 //! consumers. Ordinary builds never read the external vanilla source tree.
 
-use bbb_protocol::entity_types::{
-    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaEntityMetadataFamily {
     Entity,
@@ -777,12 +773,11 @@ pub fn vanilla_entity_metadata_type_has_custom_inventory_screen(entity_type_id: 
         .unwrap_or(false)
 }
 
-pub const fn vanilla_minecart_default_display_offset(entity_type_id: i32) -> i32 {
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID => VANILLA_CHEST_MINECART_DEFAULT_DISPLAY_OFFSET,
-        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID => VANILLA_HOPPER_MINECART_DEFAULT_DISPLAY_OFFSET,
-        _ => VANILLA_ABSTRACT_MINECART_DEFAULT_DISPLAY_OFFSET,
-    }
+pub fn vanilla_minecart_default_display_offset(entity_type_id: i32) -> Option<i32> {
+    VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1
+        .binary_search_by_key(&entity_type_id, |(candidate, _)| *candidate)
+        .ok()
+        .map(|index| VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1[index].1)
 }
 
 #[cfg(test)]
@@ -798,13 +793,15 @@ mod tests {
         VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID, VANILLA_ENTITY_TYPE_BAT_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
-        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
         VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
         VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
         VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
@@ -815,8 +812,9 @@ mod tests {
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
         VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
@@ -3485,14 +3483,31 @@ mod tests {
         );
         assert_eq!(VANILLA_ENTITY_DEFAULT_MAX_AIR_SUPPLY_TICKS, 300);
         assert_eq!(
-            vanilla_minecart_default_display_offset(VANILLA_ENTITY_TYPE_CHEST_MINECART_ID),
-            8
+            VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1.len(),
+            7
         );
+        assert!(VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1
+            .windows(2)
+            .all(|entries| entries[0].0 < entries[1].0));
+        for (entity_type_id, expected) in [
+            (VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, 8),
+            (VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, 6),
+            (VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, 6),
+            (VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, 1),
+            (VANILLA_ENTITY_TYPE_MINECART_ID, 6),
+            (VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, 6),
+            (VANILLA_ENTITY_TYPE_TNT_MINECART_ID, 6),
+        ] {
+            assert_eq!(
+                vanilla_minecart_default_display_offset(entity_type_id),
+                Some(expected)
+            );
+        }
         assert_eq!(
-            vanilla_minecart_default_display_offset(VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID),
-            1
+            vanilla_minecart_default_display_offset(VANILLA_ENTITY_TYPE_PLAYER_ID),
+            None
         );
-        assert_eq!(vanilla_minecart_default_display_offset(-1), 6);
+        assert_eq!(vanilla_minecart_default_display_offset(-1), None);
         assert_eq!(
             VANILLA_ARMOR_STAND_DEFAULT_LEFT_ARM_POSE,
             [-10.0, 0.0, -10.0]

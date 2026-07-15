@@ -949,7 +949,7 @@ impl EntityStore {
                 registries,
             )?
         };
-        let default_offset = vanilla_minecart_default_display_offset(identity.entity_type_id);
+        let default_offset = vanilla_minecart_default_display_offset(identity.entity_type_id)?;
         let display_offset = self
             .metadata_int(id, MINECART_DISPLAY_OFFSET_DATA_ID, default_offset)
             .unwrap_or(default_offset);

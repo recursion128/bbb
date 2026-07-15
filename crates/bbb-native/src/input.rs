@@ -6573,7 +6573,11 @@ fn debug_push_minecart_additional_save_data(
             ));
         }
     }
-    let default_display_offset = vanilla_minecart_default_display_offset(entity.entity_type_id);
+    let Some(default_display_offset) =
+        vanilla_minecart_default_display_offset(entity.entity_type_id)
+    else {
+        return;
+    };
     let display_offset = debug_entity_data_int_present(entity, MINECART_DISPLAY_OFFSET_DATA_ID)
         .unwrap_or(default_display_offset);
     if display_offset != default_display_offset {
