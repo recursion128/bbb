@@ -15344,3 +15344,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 门禁跳过测试 fixture 与其他 generator 输出，避免把 wire 样本或完整 item registry 误判为
   第二事实源；现有 4/21/1/3/17 项集合、协议 ID 投影与 menu 行为均未改变。item 资源 membership
   审计闭合，开放 ledger 收窄为 block/entity membership 与其余跨 crate registry/ordinal 审计。
+
+## 2026-07-15：Guard generated block memberships against parallel owners
+
+- [x] block-membership generator 现在从同一 catalog name 列表输出 production-source 反向门禁，覆盖
+  50 个 class/property/tag 派生集合；生产 Rust 重新声明同名 `const`/`static` owner 会直接失败，
+  四项以上集合若在 `matches!` 中改名或重排成精确 boolean 副本也会被检出。
+- [x] 门禁跳过测试 fixture、当前 owner 与其他 generator 输出，完整 block registry 不会误报；审计确认
+  chest/model/map-color/shape 的 keyed payload 分支是不同语义，不按包含关系误报；minecart rail 与 native
+  custom-head 两个纯 boolean 副本已删除，直接消费 generated terrain owner API。
+  既有 terrain/collision/outline 语义不变，开放 ledger 收窄为继续发现尚未 catalog 化的 block/entity
+  membership 与其余跨 crate registry/ordinal 审计。

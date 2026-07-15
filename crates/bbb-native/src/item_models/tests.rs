@@ -737,13 +737,17 @@ fn custom_head_skull_items_are_reserved_for_the_skull_renderer() {
         "minecraft:piglin_head",
     ] {
         assert!(
-            is_custom_head_skull_item_id(resource_id),
+            bbb_world::block_name_is_floor_skull(resource_id),
             "{resource_id} should not use the generic CustomHeadLayer item path"
         );
     }
 
-    assert!(!is_custom_head_skull_item_id("minecraft:carved_pumpkin"));
-    assert!(!is_custom_head_skull_item_id("minecraft:white_banner"));
+    assert!(!bbb_world::block_name_is_floor_skull(
+        "minecraft:carved_pumpkin"
+    ));
+    assert!(!bbb_world::block_name_is_floor_skull(
+        "minecraft:white_banner"
+    ));
 }
 
 #[test]

@@ -13,7 +13,7 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::terrain::block_name_is_bed;
+use crate::terrain::{block_name_is_bed, block_name_is_rail};
 use crate::{BlockPos, PaintingVariantClientProjection, TerrainLight, WorldStore};
 
 mod animations;
@@ -3143,7 +3143,7 @@ impl WorldStore {
 
     fn rail_shape_at(&self, pos: BlockPos) -> Option<MinecartRailShape> {
         let block = self.probe_block(pos)?;
-        if !is_vanilla_rail_block_name(block.block_name.as_deref()?) {
+        if !block_name_is_rail(block.block_name.as_deref()?) {
             return None;
         }
         MinecartRailShape::from_vanilla_name(block.block_properties.get("shape")?)
@@ -3563,16 +3563,6 @@ fn model_target_world_aabb(target: EntityModelTargetState) -> ([f64; 3], [f64; 3
             target.position.y + f64::from(target.bounds.max[1]),
             target.position.z + f64::from(target.bounds.max[2]),
         ],
-    )
-}
-
-fn is_vanilla_rail_block_name(name: &str) -> bool {
-    matches!(
-        name,
-        "minecraft:rail"
-            | "minecraft:powered_rail"
-            | "minecraft:detector_rail"
-            | "minecraft:activator_rail"
     )
 }
 

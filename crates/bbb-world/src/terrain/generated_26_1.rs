@@ -1101,6 +1101,8 @@ pub(super) const VANILLA_ORE_BLOCKS: &[&str] = &[
 
 #[cfg(test)]
 mod tests {
+    use std::{fs, path::Path};
+
     use super::*;
 
     #[test]
@@ -1167,5 +1169,219 @@ mod tests {
         assert_eq!(VANILLA_BUTTON_BLOCKS.len(), 14);
         assert_eq!(VANILLA_PRESSURE_PLATE_BLOCKS.len(), 16);
         assert_eq!(VANILLA_CROP_BLOCKS.len(), 8);
+    }
+
+    #[test]
+    fn production_sources_do_not_redeclare_block_memberships() {
+        fn has_exact_resource_literals(source: &str, resources: &[&str]) -> bool {
+            source.matches("\"minecraft:").count() == resources.len()
+                && resources
+                    .iter()
+                    .all(|resource| source.contains(&format!("\"{resource}\"")))
+        }
+
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let display = path.to_string_lossy();
+                if display.ends_with("/terrain/generated_26_1.rs")
+                    || display.ends_with("/tests.rs")
+                    || display.contains("/tests/")
+                {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
+                if production.trim_start().starts_with("// @generated") {
+                    continue;
+                }
+                if production.contains("fn is_vanilla_rail_block_name(")
+                    || production.contains("fn is_custom_head_skull_item_id(")
+                {
+                    violations.push(format!(
+                        "{}: restored removed block membership lookup",
+                        display
+                    ));
+                }
+                for line in production
+                    .lines()
+                    .filter(|line| line.contains("const ") || line.contains("static "))
+                {
+                    for name in [
+                        "VANILLA_NO_TERRAIN_PARTICLE_BLOCKS",
+                        "VANILLA_NO_COLLISION_BLOCKS",
+                        "VANILLA_AIR_BLOCKS",
+                        "VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS",
+                        "VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS",
+                        "VANILLA_FLOOR_TORCH_BLOCKS",
+                        "VANILLA_WALL_TORCH_BLOCKS",
+                        "VANILLA_IRON_BARS_CLASS_BLOCKS",
+                        "VANILLA_COPPER_GRATE_BLOCKS",
+                        "VANILLA_FIXED_SOURCE_WATER_BLOCKS",
+                        "VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS",
+                        "VANILLA_LEAVES_BLOCKS",
+                        "VANILLA_SAPLING_BLOCKS",
+                        "VANILLA_SHELF_BLOCKS",
+                        "VANILLA_CHEST_BLOCKS",
+                        "VANILLA_AMETHYST_CLUSTER_BLOCKS",
+                        "VANILLA_FLOOR_SKULL_BLOCKS",
+                        "VANILLA_WALL_SKULL_BLOCKS",
+                        "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
+                        "VANILLA_BARS_BLOCKS",
+                        "VANILLA_SLAB_BLOCKS",
+                        "VANILLA_STAIR_BLOCKS",
+                        "VANILLA_WALL_BLOCKS",
+                        "VANILLA_FENCE_BLOCKS",
+                        "VANILLA_FENCE_GATE_BLOCKS",
+                        "VANILLA_WOOL_CARPET_BLOCKS",
+                        "VANILLA_FLOWER_POT_BLOCKS",
+                        "VANILLA_BED_BLOCKS",
+                        "VANILLA_CANDLE_BLOCKS",
+                        "VANILLA_CANDLE_CAKE_BLOCKS",
+                        "VANILLA_CHAIN_BLOCKS",
+                        "VANILLA_COPPER_GOLEM_STATUE_BLOCKS",
+                        "VANILLA_LANTERN_BLOCKS",
+                        "VANILLA_LIGHTNING_ROD_BLOCKS",
+                        "VANILLA_HANGING_SIGN_BLOCKS",
+                        "VANILLA_SHULKER_BOX_BLOCKS",
+                        "VANILLA_ANVIL_BLOCKS",
+                        "VANILLA_CAMPFIRE_BLOCKS",
+                        "VANILLA_CAULDRON_BLOCKS",
+                        "VANILLA_LOG_BLOCKS",
+                        "VANILLA_PLANK_BLOCKS",
+                        "VANILLA_DOOR_BLOCKS",
+                        "VANILLA_TRAPDOOR_BLOCKS",
+                        "VANILLA_RAIL_BLOCKS",
+                        "VANILLA_STANDING_SIGN_BLOCKS",
+                        "VANILLA_WALL_SIGN_BLOCKS",
+                        "VANILLA_BUTTON_BLOCKS",
+                        "VANILLA_PRESSURE_PLATE_BLOCKS",
+                        "VANILLA_CROP_BLOCKS",
+                        "VANILLA_ORE_BLOCKS",
+                    ] {
+                        if line.contains(name) {
+                            violations.push(format!(
+                                "{}: parallel block membership declaration `{}`",
+                                display,
+                                line.trim()
+                            ));
+                        }
+                    }
+                }
+                for expression in production
+                    .split("matches!(")
+                    .skip(1)
+                    .filter_map(|tail| tail.split_once(')').map(|(expression, _)| expression))
+                {
+                    for (name, resources) in [
+                        (
+                            "VANILLA_NO_TERRAIN_PARTICLE_BLOCKS",
+                            VANILLA_NO_TERRAIN_PARTICLE_BLOCKS,
+                        ),
+                        ("VANILLA_NO_COLLISION_BLOCKS", VANILLA_NO_COLLISION_BLOCKS),
+                        ("VANILLA_AIR_BLOCKS", VANILLA_AIR_BLOCKS),
+                        (
+                            "VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS",
+                            VANILLA_SAME_BLOCK_ALL_FACE_SKIP_RENDERING_BLOCKS,
+                        ),
+                        (
+                            "VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS",
+                            VANILLA_SAME_BLOCK_VERTICAL_FACE_SKIP_RENDERING_BLOCKS,
+                        ),
+                        ("VANILLA_FLOOR_TORCH_BLOCKS", VANILLA_FLOOR_TORCH_BLOCKS),
+                        ("VANILLA_WALL_TORCH_BLOCKS", VANILLA_WALL_TORCH_BLOCKS),
+                        (
+                            "VANILLA_IRON_BARS_CLASS_BLOCKS",
+                            VANILLA_IRON_BARS_CLASS_BLOCKS,
+                        ),
+                        ("VANILLA_COPPER_GRATE_BLOCKS", VANILLA_COPPER_GRATE_BLOCKS),
+                        (
+                            "VANILLA_FIXED_SOURCE_WATER_BLOCKS",
+                            VANILLA_FIXED_SOURCE_WATER_BLOCKS,
+                        ),
+                        (
+                            "VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS",
+                            VANILLA_HALF_TRANSPARENT_SKIP_RENDERING_BLOCKS,
+                        ),
+                        ("VANILLA_LEAVES_BLOCKS", VANILLA_LEAVES_BLOCKS),
+                        ("VANILLA_SAPLING_BLOCKS", VANILLA_SAPLING_BLOCKS),
+                        ("VANILLA_SHELF_BLOCKS", VANILLA_SHELF_BLOCKS),
+                        ("VANILLA_CHEST_BLOCKS", VANILLA_CHEST_BLOCKS),
+                        (
+                            "VANILLA_AMETHYST_CLUSTER_BLOCKS",
+                            VANILLA_AMETHYST_CLUSTER_BLOCKS,
+                        ),
+                        ("VANILLA_FLOOR_SKULL_BLOCKS", VANILLA_FLOOR_SKULL_BLOCKS),
+                        ("VANILLA_WALL_SKULL_BLOCKS", VANILLA_WALL_SKULL_BLOCKS),
+                        (
+                            "VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS",
+                            VANILLA_INVISIBLE_RENDER_SHAPE_BLOCKS,
+                        ),
+                        ("VANILLA_BARS_BLOCKS", VANILLA_BARS_BLOCKS),
+                        ("VANILLA_SLAB_BLOCKS", VANILLA_SLAB_BLOCKS),
+                        ("VANILLA_STAIR_BLOCKS", VANILLA_STAIR_BLOCKS),
+                        ("VANILLA_WALL_BLOCKS", VANILLA_WALL_BLOCKS),
+                        ("VANILLA_FENCE_BLOCKS", VANILLA_FENCE_BLOCKS),
+                        ("VANILLA_FENCE_GATE_BLOCKS", VANILLA_FENCE_GATE_BLOCKS),
+                        ("VANILLA_WOOL_CARPET_BLOCKS", VANILLA_WOOL_CARPET_BLOCKS),
+                        ("VANILLA_FLOWER_POT_BLOCKS", VANILLA_FLOWER_POT_BLOCKS),
+                        ("VANILLA_BED_BLOCKS", VANILLA_BED_BLOCKS),
+                        ("VANILLA_CANDLE_BLOCKS", VANILLA_CANDLE_BLOCKS),
+                        ("VANILLA_CANDLE_CAKE_BLOCKS", VANILLA_CANDLE_CAKE_BLOCKS),
+                        ("VANILLA_CHAIN_BLOCKS", VANILLA_CHAIN_BLOCKS),
+                        (
+                            "VANILLA_COPPER_GOLEM_STATUE_BLOCKS",
+                            VANILLA_COPPER_GOLEM_STATUE_BLOCKS,
+                        ),
+                        ("VANILLA_LANTERN_BLOCKS", VANILLA_LANTERN_BLOCKS),
+                        ("VANILLA_LIGHTNING_ROD_BLOCKS", VANILLA_LIGHTNING_ROD_BLOCKS),
+                        ("VANILLA_HANGING_SIGN_BLOCKS", VANILLA_HANGING_SIGN_BLOCKS),
+                        ("VANILLA_SHULKER_BOX_BLOCKS", VANILLA_SHULKER_BOX_BLOCKS),
+                        ("VANILLA_ANVIL_BLOCKS", VANILLA_ANVIL_BLOCKS),
+                        ("VANILLA_CAMPFIRE_BLOCKS", VANILLA_CAMPFIRE_BLOCKS),
+                        ("VANILLA_CAULDRON_BLOCKS", VANILLA_CAULDRON_BLOCKS),
+                        ("VANILLA_LOG_BLOCKS", VANILLA_LOG_BLOCKS),
+                        ("VANILLA_PLANK_BLOCKS", VANILLA_PLANK_BLOCKS),
+                        ("VANILLA_DOOR_BLOCKS", VANILLA_DOOR_BLOCKS),
+                        ("VANILLA_TRAPDOOR_BLOCKS", VANILLA_TRAPDOOR_BLOCKS),
+                        ("VANILLA_RAIL_BLOCKS", VANILLA_RAIL_BLOCKS),
+                        ("VANILLA_STANDING_SIGN_BLOCKS", VANILLA_STANDING_SIGN_BLOCKS),
+                        ("VANILLA_WALL_SIGN_BLOCKS", VANILLA_WALL_SIGN_BLOCKS),
+                        ("VANILLA_BUTTON_BLOCKS", VANILLA_BUTTON_BLOCKS),
+                        (
+                            "VANILLA_PRESSURE_PLATE_BLOCKS",
+                            VANILLA_PRESSURE_PLATE_BLOCKS,
+                        ),
+                        ("VANILLA_CROP_BLOCKS", VANILLA_CROP_BLOCKS),
+                        ("VANILLA_ORE_BLOCKS", VANILLA_ORE_BLOCKS),
+                    ] {
+                        if resources.len() >= 4
+                            && has_exact_resource_literals(expression, resources)
+                        {
+                            violations
+                                .push(format!("{}: parallel {name} resource membership", display));
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut violations = Vec::new();
+        visit(
+            Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap(),
+            &mut violations,
+        );
+        assert!(
+            violations.is_empty(),
+            "parallel block memberships:\n{}",
+            violations.join("\n")
+        );
     }
 }

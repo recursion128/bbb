@@ -1488,7 +1488,7 @@ fn bake_custom_head_item(
     }
     if item_runtime
         .item_resource_id(item_id)
-        .is_some_and(is_custom_head_skull_item_id)
+        .is_some_and(bbb_world::block_name_is_floor_skull)
     {
         return;
     }
@@ -1521,19 +1521,6 @@ fn bake_custom_head_item(
             flat_glint_translucent_meshes,
         );
     }
-}
-
-pub(super) fn is_custom_head_skull_item_id(resource_id: &str) -> bool {
-    matches!(
-        resource_id,
-        "minecraft:skeleton_skull"
-            | "minecraft:wither_skeleton_skull"
-            | "minecraft:player_head"
-            | "minecraft:zombie_head"
-            | "minecraft:creeper_head"
-            | "minecraft:dragon_head"
-            | "minecraft:piglin_head"
-    )
 }
 
 fn entity_hand_using_item(instance: &EntityModelInstance, off_hand: bool) -> bool {
