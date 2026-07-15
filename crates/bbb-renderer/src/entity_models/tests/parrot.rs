@@ -585,10 +585,21 @@ fn parrot_textured_render_matches_vanilla_renderer() {
         assert!(entity_model_texture_refs().contains(&expected));
     }
 
-    // `Parrot.Variant.byId` folds out-of-range ids back to the `RED_BLUE` default.
+    // `Parrot.Variant.byId` clamps out-of-range ids to the nearest endpoint.
     assert_eq!(ParrotModelVariant::from_id(0), ParrotModelVariant::RedBlue);
     assert_eq!(ParrotModelVariant::from_id(4), ParrotModelVariant::Gray);
-    assert_eq!(ParrotModelVariant::from_id(99), ParrotModelVariant::RedBlue);
+    assert_eq!(
+        ParrotModelVariant::from_id(-99),
+        ParrotModelVariant::RedBlue
+    );
+    assert_eq!(ParrotModelVariant::from_id(99), ParrotModelVariant::Gray);
+    for (id, variant) in variant_textures
+        .iter()
+        .map(|(variant, _)| *variant)
+        .enumerate()
+    {
+        assert_eq!(variant.vanilla_id(), id as i32);
+    }
     assert_eq!(parrot_entity_texture_refs().len(), 5);
 
     let images: Vec<EntityModelTextureImage> = parrot_entity_texture_refs()

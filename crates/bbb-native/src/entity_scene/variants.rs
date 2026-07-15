@@ -88,14 +88,14 @@ pub(super) fn shulker_model_kind(
 /// (the synced `DATA_VARIANT_ID` int, mapped through `Parrot.Variant.byId`). Renders through the
 /// dedicated [`EntityModelKind::Parrot`] (`variant` selecting the texture).
 pub(super) fn parrot_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
+    let variant = vanilla_entity_metadata_parrot_variant_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_int(values, data_id, default))
+        .unwrap_or_default();
     EntityModelKind::Parrot {
-        variant: ParrotModelVariant::from_id(entity_data_int(
-            values,
-            PARROT_VARIANT_DATA_ID,
-            PARROT_DEFAULT_VARIANT,
-        )),
+        variant: ParrotModelVariant::from_id(variant),
     }
 }
 

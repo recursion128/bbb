@@ -21,7 +21,8 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
     VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING,
     VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID, VANILLA_CAT_IS_LYING_DATA_ID,
-    VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
+    VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
+    VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
@@ -9029,7 +9030,7 @@ fn entity_model_kind_maps_tadpole_to_real_model() {
 #[test]
 fn entity_model_kind_maps_parrot_to_real_model() {
     // The parrot resolves to the real `ParrotModel` at its STANDING rest pose, textured per the
-    // five `Parrot.Variant` colours read from the synced `DATA_VARIANT_ID` (19, INT) via
+    // five `Parrot.Variant` colours read from the synced `DATA_VARIANT_ID` (20, INT) via
     // `Parrot.Variant.byId`. The head look, per-pose offsets, and wing flap / dance animations are
     // deferred entity-side state.
     let parrot_variant = |id: i32| EntityDataValue {
@@ -9044,14 +9045,15 @@ fn entity_model_kind_maps_parrot_to_real_model() {
             variant: ParrotModelVariant::RedBlue,
         }
     );
-    // Each id selects its colour; out-of-range folds back to RED_BLUE.
+    // Each id selects its colour; out-of-range values clamp to the nearest endpoint.
     for (id, variant) in [
+        (-99, ParrotModelVariant::RedBlue),
         (0, ParrotModelVariant::RedBlue),
         (1, ParrotModelVariant::Blue),
         (2, ParrotModelVariant::Green),
         (3, ParrotModelVariant::YellowBlue),
         (4, ParrotModelVariant::Gray),
-        (99, ParrotModelVariant::RedBlue),
+        (99, ParrotModelVariant::Gray),
     ] {
         assert_eq!(
             entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[parrot_variant(id)]),

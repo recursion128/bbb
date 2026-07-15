@@ -1360,15 +1360,25 @@ pub enum ParrotModelVariant {
 }
 
 impl ParrotModelVariant {
-    /// Vanilla `Parrot.Variant.byId` (clamped via `byId`'s modulo): maps the synced `DATA_VARIANT_ID`
-    /// int to a colour, defaulting to `RED_BLUE` for the out-of-range ids vanilla folds back to `0`.
+    /// Vanilla `Parrot.Variant.byId`, backed by `ByIdMap.continuous(..., CLAMP)`.
     pub fn from_id(id: i32) -> Self {
         match id {
+            i32::MIN..=0 => Self::RedBlue,
             1 => Self::Blue,
             2 => Self::Green,
             3 => Self::YellowBlue,
-            4 => Self::Gray,
-            _ => Self::RedBlue,
+            4..=i32::MAX => Self::Gray,
+        }
+    }
+
+    /// Vanilla `Parrot.Variant.id`, used by the save-data debug projection.
+    pub const fn vanilla_id(self) -> i32 {
+        match self {
+            Self::RedBlue => 0,
+            Self::Blue => 1,
+            Self::Green => 2,
+            Self::YellowBlue => 3,
+            Self::Gray => 4,
         }
     }
 }

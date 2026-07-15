@@ -264,6 +264,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   TropicalFish packed-variant membership, wire index and typed default must remain derived from
   generated `TropicalFish.DATA_ID_TYPE_VARIANT`; native model/debug consumers must not restore
   fixed accessor/default aliases and must continue using generated mask/shift constants.
+  Parrot variant membership, wire index and typed default must remain derived from generated
+  `Parrot.DATA_VARIANT_ID`; native model/debug consumers must not restore fixed accessor/default
+  aliases or a local ordinal bound, and ids must follow vanilla `ByIdMap` endpoint clamping.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

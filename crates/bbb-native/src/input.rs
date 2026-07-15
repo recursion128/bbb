@@ -81,6 +81,7 @@ use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_salmon_variant_accessor_for_entity_type;
@@ -136,8 +137,6 @@ use bbb_world::{
     VANILLA_PANDA_DEFAULT_MAIN_GENE as PANDA_DEFAULT_MAIN_GENE,
     VANILLA_PANDA_HIDDEN_GENE_DATA_ID as PANDA_HIDDEN_GENE_DATA_ID,
     VANILLA_PANDA_MAIN_GENE_DATA_ID as PANDA_MAIN_GENE_DATA_ID,
-    VANILLA_PARROT_DEFAULT_VARIANT as PARROT_DEFAULT_VARIANT,
-    VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PRIMED_TNT_DEFAULT_FUSE as PRIMED_TNT_DEFAULT_FUSE,
     VANILLA_PRIMED_TNT_FUSE_DATA_ID as PRIMED_TNT_FUSE_DATA_ID,
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
@@ -285,7 +284,8 @@ use bbb_protocol::potion_types::vanilla_potion;
 use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_renderer::{
     BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, FrogModelVariant,
-    PigModelVariant, VillagerModelType, WolfModelVariant, ZombieNautilusModelVariant,
+    ParrotModelVariant, PigModelVariant, VillagerModelType, WolfModelVariant,
+    ZombieNautilusModelVariant,
 };
 use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
 use bbb_world::{
@@ -464,7 +464,6 @@ const TNT_MINECART_DEFAULT_FUSE: i32 = -1;
 const AGEABLE_MOB_CLIENT_ADULT_AGE: i32 = 1;
 const AGEABLE_MOB_CLIENT_BABY_AGE: i32 = -1;
 const LLAMA_MAX_VARIANT: i32 = 3;
-const PARROT_MAX_VARIANT: i32 = 4;
 const SLIME_MIN_SIZE: i32 = 1;
 const SLIME_MAX_SIZE: i32 = 127;
 const RAVAGER_DEFAULT_ATTACK_TICK: i32 = 0;
@@ -7337,10 +7336,16 @@ fn debug_panda_gene_name(gene: i32) -> &'static str {
 }
 
 fn debug_push_parrot_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let variant = debug_entity_data_int_present(entity, PARROT_VARIANT_DATA_ID)
-        .unwrap_or(PARROT_DEFAULT_VARIANT)
-        .clamp(PARROT_DEFAULT_VARIANT, PARROT_MAX_VARIANT);
-    fields.push(format!("Variant: {variant}"));
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_parrot_variant_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let variant = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
+    fields.push(format!(
+        "Variant: {}",
+        ParrotModelVariant::from_id(variant).vanilla_id()
+    ));
 }
 
 fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
