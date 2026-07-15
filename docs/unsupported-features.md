@@ -187,6 +187,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   FurnaceMinecart fuel membership, wire index and default must remain derived from generated
   `MinecartFurnace.DATA_ID_FUEL`; default display-block projection must not restore a furnace type
   predicate or fixed accessor/default aliases.
+  PrimedTnt fuse/block-state membership, wire indices and typed defaults must remain derived
+  together from generated `DATA_FUSE_ID` and `DATA_BLOCK_STATE_ID`; model, fuse interpolation and
+  smoke consumers must not restore a TNT type predicate or fixed accessor/default aliases.
   Living-entity scale sanitization must remain generated from the nearest `sanitizeScale`
   override, including HappyGhast/Shulker maximum clamps and EnderDragon's fixed 1.0 result;
   dimensions/render projection must not restore a type switch or local cap constants.

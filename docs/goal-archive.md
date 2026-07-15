@@ -16583,3 +16583,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   不再以显式 FurnaceMinecart predicate 配合固定 accessor/default aliases。
 - 既有 vehicle semantic test 继续锁定 fuel metadata 对默认 furnace block `lit` 属性的影响；
   生成器 reverse guard 禁止恢复平行事实源。
+
+## 2026-07-15：统一推导 PrimedTnt metadata accessors
+
+- `bbb-world` 现在从生成 schema 成对解析 `PrimedTnt.DATA_FUSE_ID` 与
+  `DATA_BLOCK_STATE_ID` 的 membership、wire id 8/9，以及 fuse 80 和
+  `minecraft:tnt[unstable=false]` typed defaults。
+- 模型、fuse 插值与 client smoke 三条路径删除 TNT type predicate 和固定 accessor/default
+  aliases；既有语义测试锁定 block-state 覆盖、倒计时插值及 post-decrement smoke 判据，
+  生成器 reverse guard 禁止恢复平行事实源。

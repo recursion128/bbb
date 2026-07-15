@@ -268,6 +268,14 @@ pub(crate) struct VanillaVehicleMetadataAccessors {
     pub(crate) damage_default: f32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct VanillaPrimedTntMetadataAccessors {
+    pub(crate) fuse_data_id: u8,
+    pub(crate) fuse_default: i32,
+    pub(crate) block_state_data_id: u8,
+    pub(crate) block_state_default: VanillaEntityMetadataDefault,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct VanillaGuardianMetadataAccessors {
     pub(crate) moving_data_id: u8,
@@ -1374,6 +1382,45 @@ pub(crate) fn vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_
     }
 }
 
+/// Resolves the generated PrimedTnt fuse and block-state accessors with typed defaults.
+///
+/// Requiring both owner fields makes their schema membership the single type gate shared by
+/// model, fuse interpolation, and client smoke projection.
+pub(crate) fn vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaPrimedTntMetadataAccessors> {
+    let fuse = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FUSE_ID")?;
+    let block_state =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_BLOCK_STATE_ID")?;
+    match (
+        (fuse.owner, fuse.serializer_name, fuse.typed_default),
+        (
+            block_state.owner,
+            block_state.serializer_name,
+            block_state.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.item.PrimedTnt",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(fuse_default)),
+            ),
+            (
+                "net.minecraft.world.entity.item.PrimedTnt",
+                "BLOCK_STATE",
+                Some(block_state_default @ VanillaEntityMetadataDefault::BlockStateDefault { .. }),
+            ),
+        ) => Some(VanillaPrimedTntMetadataAccessors {
+            fuse_data_id: fuse.data_id,
+            fuse_default,
+            block_state_data_id: block_state.data_id,
+            block_state_default,
+        }),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited Guardian moving and attack-target accessors with typed defaults.
 pub(crate) fn vanilla_entity_metadata_guardian_accessors_for_entity_type(
     entity_type_id: i32,
@@ -2213,7 +2260,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
         VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
         VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
@@ -4046,6 +4093,30 @@ mod tests {
                 vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
                     entity_type_id
                 ),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_primed_tnt_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_TNT_ID
+            ),
+            Some(VanillaPrimedTntMetadataAccessors {
+                fuse_data_id: 8,
+                fuse_default: 80,
+                block_state_data_id: 9,
+                block_state_default: VanillaEntityMetadataDefault::BlockStateDefault {
+                    resource_id: "minecraft:tnt",
+                    properties: &[("unstable", "false")],
+                },
+            })
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_TNT_MINECART_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

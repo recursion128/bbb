@@ -27,6 +27,7 @@ use super::schema::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
+    vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
@@ -70,9 +71,8 @@ use super::{
     VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
     VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    VANILLA_MAX_AIR_SUPPLY_TICKS,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -133,8 +133,6 @@ use crate::entities::schema::{
     VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID,
     VANILLA_PLAYER_ABSORPTION_DATA_ID, VANILLA_PLAYER_DEFAULT_ABSORPTION,
     VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
-    VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID, VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE,
-    VANILLA_PRIMED_TNT_DEFAULT_FUSE, VANILLA_PRIMED_TNT_FUSE_DATA_ID,
     VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID, VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING,
 };
 use crate::registries::RegistrySet;
@@ -978,12 +976,11 @@ impl EntityStore {
         registries: &RegistrySet,
     ) -> Option<EntityBlockModelState> {
         let identity = self.identity(id)?;
-        if identity.entity_type_id != VANILLA_ENTITY_TYPE_TNT_ID {
-            return None;
-        }
+        let accessors =
+            vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(identity.entity_type_id)?;
 
         let state_id = self
-            .metadata_block_state(id, VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID)
+            .metadata_block_state(id, accessors.block_state_data_id)
             .unwrap_or(None);
         if let Some(state_id) = state_id {
             let state = registries.block_state(state_id)?;
@@ -996,7 +993,7 @@ impl EntityStore {
             });
         }
 
-        default_primed_tnt_block_state(registries)
+        default_primed_tnt_block_state(registries, accessors.block_state_default)
     }
 
     pub(crate) fn primed_tnt_fuse_remaining_in_ticks(
@@ -1005,16 +1002,11 @@ impl EntityStore {
         partial_ticks: f32,
     ) -> Option<f32> {
         let identity = self.identity(id)?;
-        if identity.entity_type_id != VANILLA_ENTITY_TYPE_TNT_ID {
-            return None;
-        }
+        let accessors =
+            vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(identity.entity_type_id)?;
         let fuse = self
-            .metadata_int(
-                id,
-                VANILLA_PRIMED_TNT_FUSE_DATA_ID,
-                VANILLA_PRIMED_TNT_DEFAULT_FUSE,
-            )
-            .unwrap_or(VANILLA_PRIMED_TNT_DEFAULT_FUSE);
+            .metadata_int(id, accessors.fuse_data_id, accessors.fuse_default)
+            .unwrap_or(accessors.fuse_default);
         Some(fuse as f32 - partial_ticks + 1.0)
     }
 
@@ -1035,16 +1027,14 @@ impl EntityStore {
             let Some((identity, transform)) = query.get() else {
                 continue;
             };
-            if identity.entity_type_id != VANILLA_ENTITY_TYPE_TNT_ID {
+            let Some(accessors) = vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
+                identity.entity_type_id,
+            ) else {
                 continue;
-            }
+            };
             let fuse = self
-                .metadata_int(
-                    identity.id,
-                    VANILLA_PRIMED_TNT_FUSE_DATA_ID,
-                    VANILLA_PRIMED_TNT_DEFAULT_FUSE,
-                )
-                .unwrap_or(VANILLA_PRIMED_TNT_DEFAULT_FUSE);
+                .metadata_int(identity.id, accessors.fuse_data_id, accessors.fuse_default)
+                .unwrap_or(accessors.fuse_default);
             // Vanilla `PrimedTnt.tick` decrements fuse first and only emits smoke when the
             // resulting fuse remains positive.
             if fuse <= 1 {
@@ -4021,11 +4011,14 @@ fn default_minecart_display_block_state(
     }
 }
 
-fn default_primed_tnt_block_state(registries: &RegistrySet) -> Option<EntityBlockModelState> {
+fn default_primed_tnt_block_state(
+    registries: &RegistrySet,
+    default: crate::entities::schema::VanillaEntityMetadataDefault,
+) -> Option<EntityBlockModelState> {
     let crate::entities::schema::VanillaEntityMetadataDefault::BlockStateDefault {
         resource_id,
         properties,
-    } = VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE
+    } = default
     else {
         unreachable!("generated PrimedTnt block-state default has the wrong kind")
     };

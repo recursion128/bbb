@@ -21897,6 +21897,22 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_primed_tnt_projection_does_not_restore_fixed_accessors() {
+        let source = include_str!("../store.rs");
+        assert_eq!(
+            source
+                .matches("vanilla_entity_metadata_primed_tnt_accessors_for_entity_type")
+                .count(),
+            4
+        );
+        assert!(!source.contains("VANILLA_ENTITY_TYPE_TNT_ID"));
+        assert!(!source.contains("VANILLA_PRIMED_TNT_FUSE_DATA_ID"));
+        assert!(!source.contains("VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID"));
+        assert!(!source.contains("VANILLA_PRIMED_TNT_DEFAULT_FUSE"));
+        assert!(!source.contains("VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE"));
+    }
+
+    #[test]
     fn production_entity_scale_does_not_restore_type_dispatch() {
         let source = include_str!("../dimensions.rs");
         let body = source
