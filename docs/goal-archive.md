@@ -15502,3 +15502,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native celebrating projection 删除 Evoker/Vindicator 手写 type gate，直接消费 world
   generated query；`Raider.IS_CELEBRATING` metadata 解码与 casting/aggressive 优先级仍归原
   语义 owner。catalog exact-set、既有 native 四类行为回归与 generator-emitted 反向门禁覆盖该边界。
+
+## 2026-07-15：Consume generated saveable-projectile dimensions
+
+- [x] `vanilla_saved_projectile_bounds` 删除 18 项 projectile type/size 手写 match，改为
+  组合 generated `Projectile` class membership、`EntityType.Builder.noSave` 属性与已生成的
+  `sized(width, height)`；FishingHook 仍因 `noSave` 排除，left-owner 碰撞算法未改。
+- [x] world 聚焦测试遍历全部 18 项 saveable projectile，将 lifecycle bounds 与 generated
+  width/height 逐项比较，并锁定 FishingHook/非 projectile 排除；core-registry generator
+  输出反向门禁防止尺寸表回流。

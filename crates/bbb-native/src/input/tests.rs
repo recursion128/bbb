@@ -11809,10 +11809,14 @@ fn wind_charge_dispatch_uses_the_world_generated_catalog() {
 
     assert!(include_str!("../entity_scene/kind.rs")
         .contains("bbb_world::vanilla_entity_type_is_wind_charge(entity_type_id)"));
-    assert!(
-        include_str!("../../../bbb-world/src/entities/projectiles.rs")
-            .contains("super::vanilla_entity_type_is_wind_charge(entity_type_id)")
-    );
+    let projectile_source = include_str!("../../../bbb-world/src/entities/projectiles.rs");
+    let initial_state = projectile_source
+        .split("fn initial_hurting_projectile_state")
+        .nth(1)
+        .and_then(|source| source.split_once("\n}"))
+        .map(|(body, _)| body)
+        .expect("hurting-projectile initial state source");
+    assert!(initial_state.contains("is_vanilla_wind_charge_type(entity_type_id)"));
 }
 
 #[test]

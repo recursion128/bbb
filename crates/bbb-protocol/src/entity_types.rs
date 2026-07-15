@@ -2992,6 +2992,18 @@ mod tests {
     }
 
     #[test]
+    fn production_saved_projectile_bounds_do_not_redeclare_dimensions() {
+        let source = include_str!("../../bbb-world/src/entities/projectiles.rs");
+        let body = source
+            .split("fn vanilla_saved_projectile_bounds")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("saved projectile bounds source");
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+    }
+
+    #[test]
     fn passenger_attachments_come_from_generated_builder_metadata() {
         assert_eq!(
             vanilla_entity_type_passenger_attachments(VANILLA_ENTITY_TYPE_CHICKEN_ID),

@@ -1,6 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use bbb_protocol::entity_types::vanilla_entity_type_is_serializable;
+use bbb_protocol::entity_types::{
+    vanilla_entity_type_dimensions, vanilla_entity_type_is_serializable,
+};
 use bbb_protocol::packets::ProjectilePower as ProtocolProjectilePower;
 
 use uuid::Uuid;
@@ -23,19 +25,13 @@ use super::{
     is_vanilla_boat_type, is_vanilla_minecart_type, vanilla_living_entity_type,
     EntityHurtingProjectile, EntityIdentity, EntityMount, EntityPickBoundsState,
     EntityProjectileLifecycle, EntityStore, EntityTransform, EntityVec3, ProjectileLifecycleState,
-    VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
-    VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_EGG_ID,
-    VANILLA_ENTITY_TYPE_ENDER_PEARL_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
     VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
     VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
-    VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
     VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
-    VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
-    VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_TNT_ID,
-    VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+    VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+    VANILLA_ENTITY_TYPE_TRIDENT_ID,
 };
 
 const DEFAULT_HURTING_PROJECTILE_ACCELERATION_POWER: f64 = 0.1;
@@ -153,26 +149,9 @@ pub(crate) fn is_vanilla_saved_projectile_type(entity_type_id: i32) -> bool {
 pub(crate) fn vanilla_saved_projectile_bounds(
     entity_type_id: i32,
 ) -> Option<EntityPickBoundsState> {
-    let size = match entity_type_id {
-        _ if super::vanilla_entity_type_is_wind_charge(entity_type_id) => 0.3125,
-        VANILLA_ENTITY_TYPE_ARROW_ID
-        | VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID
-        | VANILLA_ENTITY_TYPE_TRIDENT_ID => 0.5,
-        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID | VANILLA_ENTITY_TYPE_FIREBALL_ID => 1.0,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
-        | VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID
-        | VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => 0.3125,
-        VANILLA_ENTITY_TYPE_EGG_ID
-        | VANILLA_ENTITY_TYPE_ENDER_PEARL_ID
-        | VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
-        | VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID
-        | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID
-        | VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID
-        | VANILLA_ENTITY_TYPE_SNOWBALL_ID
-        | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID => 0.25,
-        _ => return None,
-    };
-    Some(EntityPickBoundsState::from_base_size(size, size, 0.0))
+    is_vanilla_saved_projectile_type(entity_type_id).then_some(())?;
+    let [width, height] = vanilla_entity_type_dimensions(entity_type_id)?;
+    Some(EntityPickBoundsState::from_base_size(width, height, 0.0))
 }
 
 impl EntityStore {
@@ -449,8 +428,9 @@ mod tests {
     use super::*;
     use crate::WorldStore;
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
+        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_WIND_CHARGE_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
     };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityDataValue as ProtocolEntityDataValue,
@@ -477,6 +457,26 @@ mod tests {
         assert!(!is_vanilla_saved_projectile_type(
             VANILLA_ENTITY_TYPE_OAK_BOAT_ID
         ));
+    }
+
+    #[test]
+    fn saveable_projectile_bounds_use_generated_builder_dimensions() {
+        for entity_type_id in (0..157).filter(|id| is_vanilla_saved_projectile_type(*id)) {
+            let [width, height] = vanilla_entity_type_dimensions(entity_type_id).unwrap();
+            assert_eq!(
+                vanilla_saved_projectile_bounds(entity_type_id),
+                Some(EntityPickBoundsState::from_base_size(width, height, 0.0)),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(
+            vanilla_saved_projectile_bounds(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID),
+            None
+        );
+        assert_eq!(
+            vanilla_saved_projectile_bounds(VANILLA_ENTITY_TYPE_OAK_BOAT_ID),
+            None
+        );
     }
 
     #[test]

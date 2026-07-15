@@ -162,6 +162,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generator reject those bridges from production sources.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
+  Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
+  membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Hoglin/Zoglin shared attack-animation event and tick membership must remain derived from the
   generated `HoglinBase` interface graph rather than parallel entity-type tables.
   Illager celebrating-arm-pose membership must remain derived from the nearest generated
