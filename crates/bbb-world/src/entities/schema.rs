@@ -258,6 +258,24 @@ pub struct VanillaAbstractArrowMetadataAccessors {
     pub in_ground_default: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VanillaArmorStandMetadataAccessors {
+    pub client_flags_data_id: u8,
+    pub client_flags_default: i8,
+    pub head_pose_data_id: u8,
+    pub head_pose_default: [f32; 3],
+    pub body_pose_data_id: u8,
+    pub body_pose_default: [f32; 3],
+    pub left_arm_pose_data_id: u8,
+    pub left_arm_pose_default: [f32; 3],
+    pub right_arm_pose_data_id: u8,
+    pub right_arm_pose_default: [f32; 3],
+    pub left_leg_pose_data_id: u8,
+    pub left_leg_pose_default: [f32; 3],
+    pub right_leg_pose_data_id: u8,
+    pub right_leg_pose_default: [f32; 3],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
@@ -616,6 +634,63 @@ pub fn vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
         }),
         _ => None,
     }
+}
+
+/// Resolves the generated ArmorStand flags and pose accessors with typed defaults.
+pub fn vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaArmorStandMetadataAccessors> {
+    let client_flags =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_CLIENT_FLAGS")?;
+    let client_flags_default = match (
+        client_flags.owner,
+        client_flags.serializer_name,
+        client_flags.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.decoration.ArmorStand",
+            "BYTE",
+            Some(VanillaEntityMetadataDefault::Byte(default)),
+        ) => default,
+        _ => return None,
+    };
+    let rotations = |java_name| -> Option<(u8, [f32; 3])> {
+        let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, java_name)?;
+        match (
+            accessor.owner,
+            accessor.serializer_name,
+            accessor.typed_default,
+        ) {
+            (
+                "net.minecraft.world.entity.decoration.ArmorStand",
+                "ROTATIONS",
+                Some(VanillaEntityMetadataDefault::Rotations(default)),
+            ) => Some((accessor.data_id, default)),
+            _ => None,
+        }
+    };
+    let (head_pose_data_id, head_pose_default) = rotations("DATA_HEAD_POSE")?;
+    let (body_pose_data_id, body_pose_default) = rotations("DATA_BODY_POSE")?;
+    let (left_arm_pose_data_id, left_arm_pose_default) = rotations("DATA_LEFT_ARM_POSE")?;
+    let (right_arm_pose_data_id, right_arm_pose_default) = rotations("DATA_RIGHT_ARM_POSE")?;
+    let (left_leg_pose_data_id, left_leg_pose_default) = rotations("DATA_LEFT_LEG_POSE")?;
+    let (right_leg_pose_data_id, right_leg_pose_default) = rotations("DATA_RIGHT_LEG_POSE")?;
+    Some(VanillaArmorStandMetadataAccessors {
+        client_flags_data_id: client_flags.data_id,
+        client_flags_default,
+        head_pose_data_id,
+        head_pose_default,
+        body_pose_data_id,
+        body_pose_default,
+        left_arm_pose_data_id,
+        left_arm_pose_default,
+        right_arm_pose_data_id,
+        right_arm_pose_default,
+        left_leg_pose_data_id,
+        left_leg_pose_default,
+        right_leg_pose_data_id,
+        right_leg_pose_default,
+    })
 }
 
 /// Resolves the generated Panda flags accessor and its typed default.
@@ -2261,6 +2336,41 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_armor_stand_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+            ),
+            Some(VanillaArmorStandMetadataAccessors {
+                client_flags_data_id: 15,
+                client_flags_default: 0,
+                head_pose_data_id: 16,
+                head_pose_default: [0.0, 0.0, 0.0],
+                body_pose_data_id: 17,
+                body_pose_default: [0.0, 0.0, 0.0],
+                left_arm_pose_data_id: 18,
+                left_arm_pose_default: [-10.0, 0.0, -10.0],
+                right_arm_pose_data_id: 19,
+                right_arm_pose_default: [-15.0, 0.0, 10.0],
+                left_leg_pose_data_id: 20,
+                left_leg_pose_default: [-1.0, 0.0, -1.0],
+                right_leg_pose_data_id: 21,
+                right_leg_pose_default: [1.0, 0.0, 1.0],
+            })
+        );
+        assert_eq!(
+            vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_armor_stand_accessors_for_entity_type(-1),
             None
         );
     }

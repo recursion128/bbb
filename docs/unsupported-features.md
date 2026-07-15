@@ -214,6 +214,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   AbstractArrow flags, pierce-level and in-ground membership, inherited wire indices and defaults
   must remain derived from generated `AbstractArrow.ID_FLAGS`, `PIERCE_LEVEL` and `IN_GROUND`;
   animation, projectile lifecycle and native debug consumers must not restore fixed accessor aliases.
+  ArmorStand client flags and six pose accessors, wire indices and typed defaults must remain
+  derived from the generated `ArmorStand` schema; world bounds/pickability and native model/debug
+  consumers must not restore fixed metadata aliases or use the renderer preview pose as wire truth.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

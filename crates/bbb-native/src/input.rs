@@ -74,6 +74,7 @@ use bbb_protocol::{
 };
 use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
@@ -149,29 +150,16 @@ use bbb_world::{
 };
 use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
-    TagQueryResponseState, WorldStore,
+    TagQueryResponseState, VanillaArmorStandMetadataAccessors, WorldStore,
     VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
     VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
     VANILLA_ABSTRACT_HORSE_FLAG_TAME as ABSTRACT_HORSE_FLAG_TAME,
     VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
-    VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE as ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE as ARMOR_STAND_DEFAULT_BODY_POSE,
-    VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE as ARMOR_STAND_DEFAULT_HEAD_POSE,
-    VANILLA_ARMOR_STAND_DEFAULT_LEFT_ARM_POSE as ARMOR_STAND_DEFAULT_LEFT_ARM_POSE,
-    VANILLA_ARMOR_STAND_DEFAULT_LEFT_LEG_POSE as ARMOR_STAND_DEFAULT_LEFT_LEG_POSE,
-    VANILLA_ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE as ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE,
-    VANILLA_ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE as ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE,
-    VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID as ARMOR_STAND_HEAD_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID as ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID as ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID as ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
@@ -6761,6 +6749,11 @@ fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: 
 }
 
 fn debug_push_armor_stand_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some(accessors) =
+        vanilla_entity_metadata_armor_stand_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     if let Some(shared_flags) = debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID)
     {
         fields.push(format!(
@@ -6769,7 +6762,7 @@ fn debug_push_armor_stand_additional_save_data(entity: &EntityState, fields: &mu
         ));
     }
     if let Some(client_flags) =
-        debug_entity_data_byte_present(entity, ARMOR_STAND_CLIENT_FLAGS_DATA_ID)
+        debug_entity_data_byte_present(entity, accessors.client_flags_data_id)
     {
         fields.push(format!(
             "Small: {}",
@@ -6787,48 +6780,51 @@ fn debug_push_armor_stand_additional_save_data(entity: &EntityState, fields: &mu
             fields.push("Marker: 1b".to_string());
         }
     }
-    if let Some(pose) = debug_armor_stand_pose_snbt(entity) {
+    if let Some(pose) = debug_armor_stand_pose_snbt(entity, accessors) {
         fields.push(format!("Pose: {pose}"));
     }
 }
 
-fn debug_armor_stand_pose_snbt(entity: &EntityState) -> Option<String> {
+fn debug_armor_stand_pose_snbt(
+    entity: &EntityState,
+    accessors: VanillaArmorStandMetadataAccessors,
+) -> Option<String> {
     let pose_fields = [
         (
             "Head",
-            debug_entity_data_rotations_present(entity, ARMOR_STAND_HEAD_POSE_DATA_ID)
-                .unwrap_or(ARMOR_STAND_DEFAULT_HEAD_POSE),
-            ARMOR_STAND_DEFAULT_HEAD_POSE,
+            debug_entity_data_rotations_present(entity, accessors.head_pose_data_id)
+                .unwrap_or(accessors.head_pose_default),
+            accessors.head_pose_default,
         ),
         (
             "Body",
-            debug_entity_data_rotations_present(entity, ARMOR_STAND_BODY_POSE_DATA_ID)
-                .unwrap_or(ARMOR_STAND_DEFAULT_BODY_POSE),
-            ARMOR_STAND_DEFAULT_BODY_POSE,
+            debug_entity_data_rotations_present(entity, accessors.body_pose_data_id)
+                .unwrap_or(accessors.body_pose_default),
+            accessors.body_pose_default,
         ),
         (
             "LeftArm",
-            debug_entity_data_rotations_present(entity, ARMOR_STAND_LEFT_ARM_POSE_DATA_ID)
-                .unwrap_or(ARMOR_STAND_DEFAULT_LEFT_ARM_POSE),
-            ARMOR_STAND_DEFAULT_LEFT_ARM_POSE,
+            debug_entity_data_rotations_present(entity, accessors.left_arm_pose_data_id)
+                .unwrap_or(accessors.left_arm_pose_default),
+            accessors.left_arm_pose_default,
         ),
         (
             "RightArm",
-            debug_entity_data_rotations_present(entity, ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID)
-                .unwrap_or(ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE),
-            ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE,
+            debug_entity_data_rotations_present(entity, accessors.right_arm_pose_data_id)
+                .unwrap_or(accessors.right_arm_pose_default),
+            accessors.right_arm_pose_default,
         ),
         (
             "LeftLeg",
-            debug_entity_data_rotations_present(entity, ARMOR_STAND_LEFT_LEG_POSE_DATA_ID)
-                .unwrap_or(ARMOR_STAND_DEFAULT_LEFT_LEG_POSE),
-            ARMOR_STAND_DEFAULT_LEFT_LEG_POSE,
+            debug_entity_data_rotations_present(entity, accessors.left_leg_pose_data_id)
+                .unwrap_or(accessors.left_leg_pose_default),
+            accessors.left_leg_pose_default,
         ),
         (
             "RightLeg",
-            debug_entity_data_rotations_present(entity, ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID)
-                .unwrap_or(ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE),
-            ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE,
+            debug_entity_data_rotations_present(entity, accessors.right_leg_pose_data_id)
+                .unwrap_or(accessors.right_leg_pose_default),
+            accessors.right_leg_pose_default,
         ),
     ];
     let mut fields = Vec::new();

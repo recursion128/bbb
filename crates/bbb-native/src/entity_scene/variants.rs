@@ -1218,55 +1218,59 @@ pub(super) fn entity_type_bounds_placeholder(
 }
 
 pub(super) fn armor_stand_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
+    let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(entity_type_id)
+        .expect("generated ArmorStand metadata accessor bundle");
     let flags = entity_data_byte(
         values,
-        ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-        ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+        accessors.client_flags_data_id,
+        accessors.client_flags_default,
     );
     EntityModelKind::ArmorStand {
         small: flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0,
         marker: flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0,
         show_arms: flags & ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS != 0,
         show_base_plate: flags & ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE == 0,
-        pose: armor_stand_pose(values),
+        pose: armor_stand_pose(values, accessors),
     }
 }
 
 pub(super) fn armor_stand_pose(
     values: &[bbb_protocol::packets::EntityDataValue],
+    accessors: VanillaArmorStandMetadataAccessors,
 ) -> ArmorStandModelPose {
     ArmorStandModelPose {
         head: entity_data_rotations(
             values,
-            ARMOR_STAND_HEAD_POSE_DATA_ID,
-            DEFAULT_ARMOR_STAND_MODEL_POSE.head,
+            accessors.head_pose_data_id,
+            accessors.head_pose_default,
         ),
         body: entity_data_rotations(
             values,
-            ARMOR_STAND_BODY_POSE_DATA_ID,
-            DEFAULT_ARMOR_STAND_MODEL_POSE.body,
+            accessors.body_pose_data_id,
+            accessors.body_pose_default,
         ),
         left_arm: entity_data_rotations(
             values,
-            ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
-            DEFAULT_ARMOR_STAND_MODEL_POSE.left_arm,
+            accessors.left_arm_pose_data_id,
+            accessors.left_arm_pose_default,
         ),
         right_arm: entity_data_rotations(
             values,
-            ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
-            DEFAULT_ARMOR_STAND_MODEL_POSE.right_arm,
+            accessors.right_arm_pose_data_id,
+            accessors.right_arm_pose_default,
         ),
         left_leg: entity_data_rotations(
             values,
-            ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
-            DEFAULT_ARMOR_STAND_MODEL_POSE.left_leg,
+            accessors.left_leg_pose_data_id,
+            accessors.left_leg_pose_default,
         ),
         right_leg: entity_data_rotations(
             values,
-            ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID,
-            DEFAULT_ARMOR_STAND_MODEL_POSE.right_leg,
+            accessors.right_leg_pose_data_id,
+            accessors.right_leg_pose_default,
         ),
     }
 }

@@ -11,12 +11,11 @@ use crate::{HurtingProjectileState, ProjectilePowerUpdateState, WorldStore};
 
 use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
+    vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_hurting_projectile, vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_metadata_type_is_projectile, vanilla_entity_metadata_type_is_wind_charge,
     VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS as ABSTRACT_ARROW_FLAG_NO_PHYSICS,
-    VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_MARKER_FLAG,
-    VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
 };
 use super::{
     EntityHurtingProjectile, EntityIdentity, EntityMount, EntityPickBoundsState,
@@ -349,15 +348,19 @@ impl EntityStore {
             return false;
         }
         identity.entity_type_id != VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
-            || self
-                .metadata_byte(
+            || vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+                identity.entity_type_id,
+            )
+            .is_some_and(|accessors| {
+                self.metadata_byte(
                     id,
-                    ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-                    ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+                    accessors.client_flags_data_id,
+                    accessors.client_flags_default,
                 )
-                .unwrap_or(ARMOR_STAND_DEFAULT_CLIENT_FLAGS)
-                & ARMOR_STAND_MARKER_FLAG
-                == 0
+                .unwrap_or(accessors.client_flags_default)
+                    & ARMOR_STAND_MARKER_FLAG
+                    == 0
+            })
     }
 }
 
@@ -402,6 +405,7 @@ mod tests {
     use crate::entities::schema::{
         VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
         VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+        VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     };
     use crate::WorldStore;
     use bbb_protocol::entity_types::{

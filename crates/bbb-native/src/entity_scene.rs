@@ -28,10 +28,11 @@ use bbb_renderer::{
     SpearKineticWeapon, TropicalFishModelShape, TropicalFishPattern, UndeadHorseModelFamily,
     VillagerModelData, VillagerModelProfession, VillagerModelType, WolfArmorCrackiness,
     WolfModelVariant, ZombieNautilusModelVariant, ZombieVariantModelFamily,
-    DEFAULT_ARMOR_STAND_MODEL_POSE, ENTITY_DEFAULT_OUTLINE_COLOR,
+    ENTITY_DEFAULT_OUTLINE_COLOR,
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
+use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
@@ -59,23 +60,15 @@ use bbb_world::{
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
     FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
-    LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
+    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, VanillaArmorStandMetadataAccessors,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WolfVariantPresentation, WorldStore,
     ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
-    VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE as ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
-    VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID as ARMOR_STAND_HEAD_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID as ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID as ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID as ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID,
     VANILLA_ARROW_DEFAULT_EFFECT_COLOR as ARROW_DEFAULT_EFFECT_COLOR,
     VANILLA_ARROW_EFFECT_COLOR_DATA_ID as ARROW_EFFECT_COLOR_DATA_ID,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION as AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION,

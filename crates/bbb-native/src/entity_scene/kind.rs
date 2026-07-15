@@ -43,7 +43,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
             player_model_kind(entity_type_id, data_values)
         }
-        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => armor_stand_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => armor_stand_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_ZOMBIE_ID => EntityModelKind::Zombie {
             baby: zombie_baby(data_values),
         },

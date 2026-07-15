@@ -16284,3 +16284,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   与三者的 native debug 消费它，并继续使用生成的 arrow tag 和 crit/no-physics flag masks。
 - 生产消费者删除固定 accessor/default 别名与独立 arrow-tag membership helper；生成器
   reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 ArmorStand metadata accessors
+
+- `bbb-world` 现在公开从生成 schema 的 `ArmorStand.DATA_CLIENT_FLAGS` 与六个 pose
+  accessors 解析 membership、wire ids 15..21 及 byte/rotations typed defaults 的 accessor
+  bundle；world bounds/pickability、native model projection 与 native debug 共同消费它，
+  并继续使用生成的 small/show-arms/no-baseplate/marker masks。
+- metadata 生产消费者删除固定 accessor/default 别名，native model 不再把 renderer preview
+  pose 当作 wire default；生成器 reverse guard 禁止恢复这些平行事实源。

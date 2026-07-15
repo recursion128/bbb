@@ -22417,6 +22417,65 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_armor_stand_accessors_do_not_restore_fixed_metadata_facts() {
+        let dimensions = include_str!("../dimensions.rs");
+        let projectiles = include_str!("../projectiles.rs");
+        let projectiles = projectiles.split("#[cfg(test)]\nmod tests").next().unwrap();
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        for source in [
+            dimensions,
+            projectiles,
+            native_scene,
+            native_variants,
+            native_input,
+        ] {
+            assert!(
+                source.contains("vanilla_entity_metadata_armor_stand_accessors_for_entity_type")
+            );
+        }
+        for removed in [
+            "ARMOR_STAND_CLIENT_FLAGS_DATA_ID",
+            "ARMOR_STAND_DEFAULT_CLIENT_FLAGS",
+            "ARMOR_STAND_HEAD_POSE_DATA_ID",
+            "ARMOR_STAND_BODY_POSE_DATA_ID",
+            "ARMOR_STAND_LEFT_ARM_POSE_DATA_ID",
+            "ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID",
+            "ARMOR_STAND_LEFT_LEG_POSE_DATA_ID",
+            "ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID",
+            "ARMOR_STAND_DEFAULT_HEAD_POSE",
+            "ARMOR_STAND_DEFAULT_BODY_POSE",
+            "ARMOR_STAND_DEFAULT_LEFT_ARM_POSE",
+            "ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE",
+            "ARMOR_STAND_DEFAULT_LEFT_LEG_POSE",
+            "ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE",
+            "DEFAULT_ARMOR_STAND_MODEL_POSE",
+        ] {
+            assert!(
+                !dimensions.contains(removed),
+                "dimensions restored {removed}"
+            );
+            assert!(
+                !projectiles.contains(removed),
+                "projectiles restored {removed}"
+            );
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_variants.contains(removed),
+                "native variants restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_iron_golem_flags_do_not_restore_accessor_constants() {
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         assert!(native_input

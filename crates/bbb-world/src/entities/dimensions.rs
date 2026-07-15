@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::schema::{
+    vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
@@ -26,10 +27,8 @@ use super::schema::{
     vanilla_entity_metadata_type_is_slime, vanilla_entity_scale_sanitizer,
     VanillaEntityScaleSanitizer, VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
-    VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
     VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
     VANILLA_INTERACTION_DEFAULT_HEIGHT as INTERACTION_DEFAULT_HEIGHT,
@@ -199,7 +198,7 @@ fn vanilla_bounds_for_entity_data(
 ) -> Option<EntityPickBoundsState> {
     let scale_dimensions = scales_with_living_scale_attribute(entity_type_id, data_values);
     let bounds = if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
-        armor_stand_pick_bounds(data_values)?
+        armor_stand_pick_bounds(entity_type_id, data_values)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_MANNEQUIN_ID
     {
@@ -260,7 +259,9 @@ pub(crate) fn vanilla_model_source_bounds_for_entity_data(
     client_animations: Option<EntityClientAnimationState>,
     painting_variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<EntityPickBoundsState> {
-    if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID && armor_stand_is_marker(data_values) {
+    if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+        && armor_stand_is_marker(entity_type_id, data_values)
+    {
         // Vanilla `ArmorStand.MARKER_DIMENSIONS = EntityDimensions.fixed(0.0F, 0.0F)`:
         // marker stands are not pickable, but they still submit their marker render model.
         let bounds = EntityPickBoundsState::from_base_size(0.0, 0.0, 0.0);
@@ -992,9 +993,12 @@ fn wind_charge_pick_bounds(entity_type_id: i32) -> EntityPickBoundsState {
     }
 }
 
-fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPickBoundsState> {
-    let flags = armor_stand_client_flags(data_values);
-    if armor_stand_is_marker(data_values) {
+fn armor_stand_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    let flags = armor_stand_client_flags(entity_type_id, data_values)?;
+    if flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
         return None;
     }
     if entity_data_pose(data_values) == VANILLA_ENTITY_POSE_SLEEPING_ID {
@@ -1012,16 +1016,18 @@ fn armor_stand_pick_bounds(data_values: &[EntityDataValue]) -> Option<EntityPick
     ))
 }
 
-fn armor_stand_client_flags(data_values: &[EntityDataValue]) -> i8 {
-    entity_data_byte(
+fn armor_stand_client_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> Option<i8> {
+    let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(entity_type_id)?;
+    Some(entity_data_byte(
         data_values,
-        ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-        ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
-    )
+        accessors.client_flags_data_id,
+        accessors.client_flags_default,
+    ))
 }
 
-fn armor_stand_is_marker(data_values: &[EntityDataValue]) -> bool {
-    armor_stand_client_flags(data_values) & ARMOR_STAND_CLIENT_FLAG_MARKER != 0
+fn armor_stand_is_marker(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    armor_stand_client_flags(entity_type_id, data_values)
+        .is_some_and(|flags| flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0)
 }
 
 fn apply_living_scale(
