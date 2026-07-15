@@ -1253,8 +1253,7 @@ entity_model_source_state! {
     /// Vanilla `BatRenderState.isResting` (`Bat.isResting`, the synced `DATA_ID_FLAGS & 1`):
     /// the bat is hanging at rest, which `BatModel.setupAnim` shows by swapping to the
     /// `BatAnimation.BAT_RESTING` upside-down pose (and applying a head look). Projected only
-    /// for the bat ([`vanilla_is_bat`](crate::entities::dimensions)); `false` for every other
-    /// entity.
+    /// for the entity carrying the generated Bat flags accessor; `false` for every other entity.
     #[serde(default)]
     pub bat_resting: bool,
     /// Vanilla `BeeRenderState.hasStinger` (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`):

@@ -22,13 +22,13 @@ use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
+    vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
-    VANILLA_BAT_DEFAULT_FLAGS as BAT_DEFAULT_FLAGS, VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS,
     VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
@@ -90,8 +90,8 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
-    vanilla_is_cat, vanilla_is_fox, vanilla_is_vex, vanilla_living_entity_type,
+    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_bee, vanilla_is_cat,
+    vanilla_is_fox, vanilla_is_vex, vanilla_living_entity_type,
     vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale, ENTITY_DATA_POSE_ID,
@@ -1675,12 +1675,12 @@ impl EntityStore {
         // Vanilla `BatModel.setupAnim` swaps to the `BAT_RESTING` hanging pose while
         // `Bat.isResting` (`DATA_ID_FLAGS & 1`). Only the bat defines that flags byte, so
         // the projection is gated to it and defaults to flying otherwise.
-        let bat_resting = vanilla_is_bat(identity.entity_type_id)
-            && self
-                .metadata_byte(id, BAT_FLAGS_DATA_ID, BAT_DEFAULT_FLAGS)
-                .unwrap_or(BAT_DEFAULT_FLAGS)
-                & BAT_FLAG_RESTING
-                != 0;
+        let bat_resting =
+            vanilla_entity_metadata_bat_flags_accessor_for_entity_type(identity.entity_type_id)
+                .is_some_and(|(data_id, default)| {
+                    self.metadata_byte(id, data_id, default).unwrap_or(default) & BAT_FLAG_RESTING
+                        != 0
+                });
         // Vanilla `BeeModel.setupAnim` hides the stinger cube once `Bee.hasStung`
         // (`DATA_FLAGS_ID & 4`). Only the bee defines that flags byte; every other entity keeps
         // its stinger field at the `true` default (and never renders a stinger anyway).

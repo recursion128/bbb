@@ -1117,14 +1117,6 @@ pub(crate) fn vanilla_animal_entity_type(entity_type_id: i32) -> bool {
     vanilla_entity_metadata_type_is_animal(entity_type_id)
 }
 
-/// Whether the entity is rendered with the vanilla `BatModel`. Its `setupAnim` swaps to
-/// the `BatAnimation.BAT_RESTING` hanging pose (and applies a head look) while
-/// `Bat.isResting` (the synced `DATA_ID_FLAGS & 1`) is set, so the resting projection is
-/// gated to this one type — only the bat defines that flags byte.
-pub(crate) fn vanilla_is_bat(entity_type_id: i32) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_BAT_ID
-}
-
 /// Whether the entity is rendered with the vanilla `BeeModel`. Its `setupAnim` hides the
 /// stinger cube once the bee has stung (`hasStinger = !Bee.hasStung()`, the synced
 /// `DATA_FLAGS_ID & 4`), so the stinger projection is gated to this one type.

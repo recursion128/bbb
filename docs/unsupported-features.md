@@ -190,6 +190,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   EnderMan carried-block/creepy render membership, wire indices and defaults must remain derived
   together from generated `DATA_CARRY_STATE`/`DATA_CREEPY`; world projection must not restore an
   EnderMan type predicate or fixed accessor aliases.
+  Bat resting membership, wire index and default must remain derived from generated
+  `Bat.DATA_ID_FLAGS`; world projection must not restore a Bat type predicate or fixed accessor
+  aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class
