@@ -40,6 +40,7 @@ use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
+    vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,
     vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,
     VanillaVehicleMetadataAccessors,
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
@@ -64,8 +65,6 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_SCENTING_ID as SNIFFER_STATE_SCENTING_ID,
     VANILLA_SNIFFER_STATE_SEARCHING_ID as SNIFFER_STATE_SEARCHING_ID,
     VANILLA_SNIFFER_STATE_SNIFFING_ID as SNIFFER_STATE_SNIFFING_ID,
-    VANILLA_WARDEN_ANGER_LEVEL_DATA_ID as WARDEN_ANGER_LEVEL_DATA_ID,
-    VANILLA_WARDEN_DEFAULT_ANGER_LEVEL as WARDEN_DEFAULT_ANGER_LEVEL,
     VANILLA_WITHER_DEFAULT_TARGET_B as WITHER_DEFAULT_TARGET_B,
     VANILLA_WITHER_DEFAULT_TARGET_C as WITHER_DEFAULT_TARGET_C,
     VANILLA_WITHER_TARGET_B_DATA_ID as WITHER_TARGET_B_DATA_ID,
@@ -6096,14 +6095,12 @@ pub(crate) fn entity_is_fall_flying(data_values: &[EntityDataValue]) -> bool {
 /// Vanilla `Warden.getHeartBeatDelay()` = `40 - floor(clamp(clientAngerLevel /
 /// AngerLevel.ANGRY.minimumAnger, 0, 1) · 30)`: the period (in client ticks)
 /// between heartbeats, shrinking from `40` (calm) to `10` (fully angry) as the
-/// synced anger rises. Read straight from the entity metadata in the tick loop;
-/// non-wardens (whose synced slot `16` is not an int) fall back to the calm `40`.
-pub(crate) fn warden_heartbeat_delay(data_values: &[EntityDataValue]) -> u32 {
-    let anger = entity_data_int(
-        data_values,
-        WARDEN_ANGER_LEVEL_DATA_ID,
-        WARDEN_DEFAULT_ANGER_LEVEL,
-    );
+/// synced anger rises. The generated accessor supplies membership, wire index and typed default;
+/// non-wardens fall back to the calm `40` without reading another family's slot `16`.
+pub(crate) fn warden_heartbeat_delay(entity_type_id: i32, data_values: &[EntityDataValue]) -> u32 {
+    let anger = vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_int(data_values, data_id, default))
+        .unwrap_or_default();
     let ratio = (anger as f32 / WARDEN_ANGRY_MINIMUM_ANGER as f32).clamp(0.0, 1.0);
     (40 - (ratio * 30.0).floor() as i32) as u32
 }

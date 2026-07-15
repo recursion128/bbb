@@ -3524,7 +3524,8 @@ impl EntityStore {
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
                 let in_water = in_water_by_id.get(&identity.id).copied().unwrap_or(false);
                 let is_moving = guardian_is_moving(identity.entity_type_id, &metadata.data_values);
-                let warden_heartbeat_delay = warden_heartbeat_delay(&metadata.data_values);
+                let warden_heartbeat_delay =
+                    warden_heartbeat_delay(identity.entity_type_id, &metadata.data_values);
                 let guardian_attack_target_id =
                     guardian_attack_target_id(identity.entity_type_id, &metadata.data_values);
                 let wither_head_targets = wither_head_targets_by_id.get(&identity.id).copied();

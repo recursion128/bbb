@@ -1617,6 +1617,50 @@ fn warden_tendril_event_drives_client_animation_pulse() {
 }
 
 #[test]
+fn warden_client_anger_drives_heartbeat_period() {
+    const WARDEN_CLIENT_ANGER_LEVEL_DATA_ID: u8 = 16;
+    const WARDEN_ANGRY_MINIMUM_ANGER: i32 = 80;
+
+    let heart = |store: &WorldStore, id: i32, partial: f32| {
+        store
+            .entity_model_sources_at_partial_tick(partial)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .heart_animation
+    };
+
+    let mut calm = WorldStore::new();
+    calm.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    ));
+    calm.advance_entity_client_animations(39);
+    assert_eq!(heart(&calm, 82, 1.0), 0.0);
+    calm.advance_entity_client_animations(1);
+    assert_eq!(heart(&calm, 82, 0.0), 1.0);
+    assert!((heart(&calm, 82, 1.0) - 0.9).abs() < 1.0e-6);
+
+    let mut angry = WorldStore::new();
+    angry.apply_add_entity(protocol_add_entity_with_type(
+        83,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    ));
+    assert!(angry.apply_set_entity_data(ProtocolSetEntityData {
+        id: 83,
+        values: vec![protocol_int_data(
+            WARDEN_CLIENT_ANGER_LEVEL_DATA_ID,
+            WARDEN_ANGRY_MINIMUM_ANGER,
+        )],
+    }));
+    angry.advance_entity_client_animations(9);
+    assert_eq!(heart(&angry, 83, 1.0), 0.0);
+    angry.advance_entity_client_animations(1);
+    assert_eq!(heart(&angry, 83, 0.0), 1.0);
+    assert!((heart(&angry, 83, 1.0) - 0.9).abs() < 1.0e-6);
+}
+
+#[test]
 fn probes_entity_status_from_world_store() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity(123));

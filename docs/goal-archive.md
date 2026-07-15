@@ -16528,3 +16528,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   初始化共用这一 accessor，状态 ordinal 继续由生成器拥有。
 - animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
   平行事实源或漏掉任一消费路径。
+
+## 2026-07-15：统一推导 Warden client-anger metadata accessor
+
+- `bbb-world` 现在从生成 schema 的 `Warden.CLIENT_ANGER_LEVEL` 解析 membership、wire
+  id 16 与 int typed default 0；world tick 显式携带 entity type，再按 vanilla 公式把 anger
+  映射为 calm 40 tick 到 fully-angry 10 tick 的 heartbeat 周期。
+- animation 生产消费者删除固定 accessor/default 别名；semantic test 锁定两个周期端点，
+  生成器 reverse guard 禁止恢复平行事实源或丢失 entity-type 传递。
