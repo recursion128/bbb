@@ -26,6 +26,7 @@ use super::schema::{
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
@@ -122,8 +123,7 @@ use crate::entities::schema::{
     VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN as ENTITY_SHARED_FLAG_DESCENDING,
     VANILLA_ENTITY_SHARED_FLAG_SPRINTING as ENTITY_SHARED_FLAG_SPRINTING,
     VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID, VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID,
-    VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, VANILLA_FURNACE_MINECART_DEFAULT_FUEL,
-    VANILLA_FURNACE_MINECART_FUEL_DATA_ID, VANILLA_HUMANOID_ARM_LEFT_ID,
+    VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, VANILLA_HUMANOID_ARM_LEFT_ID,
     VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
     VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
@@ -927,15 +927,13 @@ impl EntityStore {
                 properties: state.properties.clone(),
             }
         } else {
-            let furnace_has_fuel = identity.entity_type_id
-                == VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
-                && self
-                    .metadata_bool(
-                        id,
-                        VANILLA_FURNACE_MINECART_FUEL_DATA_ID,
-                        VANILLA_FURNACE_MINECART_DEFAULT_FUEL,
-                    )
-                    .unwrap_or(VANILLA_FURNACE_MINECART_DEFAULT_FUEL);
+            let furnace_has_fuel =
+                vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
+                    identity.entity_type_id,
+                )
+                .is_some_and(|(data_id, default)| {
+                    self.metadata_bool(id, data_id, default).unwrap_or(default)
+                });
             default_minecart_display_block_state(
                 identity.entity_type_id,
                 furnace_has_fuel,

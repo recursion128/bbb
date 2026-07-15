@@ -1351,6 +1351,29 @@ pub(crate) fn vanilla_entity_metadata_vehicle_accessors_for_entity_type(
     }
 }
 
+/// Resolves the generated MinecartFurnace fuel accessor and its typed default.
+///
+/// The owner also supplies the furnace-minecart membership, so display projection does not need a
+/// parallel type predicate or fixed data-id import.
+pub(crate) fn vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_FUEL")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.vehicle.minecart.MinecartFurnace",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited Guardian moving and attack-target accessors with typed defaults.
 pub(crate) fn vanilla_entity_metadata_guardian_accessors_for_entity_type(
     entity_type_id: i32,
@@ -4008,6 +4031,24 @@ mod tests {
             vanilla_entity_metadata_vehicle_accessors_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_furnace_minecart_fuel_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID
+            ),
+            Some((13, false))
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_MINECART_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                None
+            );
+        }
     }
 
     #[test]

@@ -184,6 +184,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Per-minecart default display offsets must remain generated from the nearest
   `getDefaultDisplayOffset` class override; world render and native save projection must not
   restore Chest/Hopper exception arms or standalone virtual-default constants.
+  FurnaceMinecart fuel membership, wire index and default must remain derived from generated
+  `MinecartFurnace.DATA_ID_FUEL`; default display-block projection must not restore a furnace type
+  predicate or fixed accessor/default aliases.
   Living-entity scale sanitization must remain generated from the nearest `sanitizeScale`
   override, including HappyGhast/Shulker maximum clamps and EnderDragon's fixed 1.0 result;
   dimensions/render projection must not restore a type switch or local cap constants.

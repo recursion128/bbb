@@ -16575,3 +16575,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 既有语义测试继续锁定 Goat 的 0.55 age scale 与 long-jump dimensions 组合，以及
   PolarBear 的 0.5 inherited scale 与 client standing-height animation 组合；生成器 reverse
   guard 禁止恢复固定 AgeableMob aliases。
+
+## 2026-07-15：统一推导 FurnaceMinecart fuel metadata accessor
+
+- Minecart 默认 display-block 投影现在从生成 schema 的
+  `MinecartFurnace.DATA_ID_FUEL` 解析 membership、wire id 13 与 boolean typed default false，
+  不再以显式 FurnaceMinecart predicate 配合固定 accessor/default aliases。
+- 既有 vehicle semantic test 继续锁定 fuel metadata 对默认 furnace block `lit` 属性的影响；
+  生成器 reverse guard 禁止恢复平行事实源。
