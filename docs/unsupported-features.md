@@ -162,6 +162,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generator reject those bridges from production sources.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
+  Hoglin/Zoglin shared attack-animation event and tick membership must remain derived from the
+  generated `HoglinBase` interface graph rather than parallel entity-type tables.
   Keep static data-component-map membership such as
   `DataComponents.COMMON_ITEM_COMPONENTS` in the generated component catalog;
   pack/item consumers must not reconstruct those type-id sets by hand.

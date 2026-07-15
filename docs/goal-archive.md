@@ -15483,3 +15483,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   ZombieNautilus baby projection；Pillager 等在同一 index 拥有其他 BOOLEAN accessor 的类型仍保持
   非 baby。catalog count/family-index、world semantic regression 与 metadata-generator 反向门禁覆盖
   该边界。
+
+## 2026-07-15：Derive Hoglin attack-animation membership from class graph
+
+- [x] world 的 Hoglin/Zoglin event-4 攻击计时器初始化与逐 tick 递减删除两份手写
+  entity-type membership，改为沿 generated vanilla class/interface graph 查询 `HoglinBase`；
+  `HoglinBase.getAttackAnimationRemainingTicks`、两个实现类的 `handleEntityEvent(4)` 与 `aiStep`
+  共同界定该能力。
+- [x] generated graph exact-set 测试锁定 Hoglin/Zoglin 两项，既有 world 回归覆盖事件启动、
+  递减和 Chicken 排除，metadata-generator 反向门禁防止两项常量表回流。

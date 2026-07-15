@@ -21240,4 +21240,10 @@ mod generated_catalog_guards {
             .expect("baby projection source");
         assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
     }
+
+    #[test]
+    fn production_hoglin_animation_does_not_restore_entity_type_membership() {
+        let source = include_str!("../animations.rs");
+        assert!(!source.contains("VANILLA_ENTITY_TYPE_HOGLIN_ID | VANILLA_ENTITY_TYPE_ZOGLIN_ID"));
+    }
 }

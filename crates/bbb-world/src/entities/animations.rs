@@ -15,6 +15,7 @@ use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::EnderDragonAnimationState;
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
+    vanilla_entity_metadata_type_is_hoglin_base,
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
     VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID as ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
@@ -4266,10 +4267,8 @@ impl EntityClientAnimationState {
             } else {
                 ravager.stunned_tick = RAVAGER_STUN_TICKS;
             }
-        } else if matches!(
-            entity_type_id,
-            VANILLA_ENTITY_TYPE_HOGLIN_ID | VANILLA_ENTITY_TYPE_ZOGLIN_ID
-        ) && event_id == HOGLIN_ATTACK_EVENT_ID
+        } else if vanilla_entity_metadata_type_is_hoglin_base(entity_type_id)
+            && event_id == HOGLIN_ATTACK_EVENT_ID
         {
             // Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event 4 → `attackAnimationRemainingTicks = 10`.
             self.hoglin
@@ -5562,7 +5561,7 @@ impl EntityClientAnimationState {
                     }
                 }
             }
-            VANILLA_ENTITY_TYPE_HOGLIN_ID | VANILLA_ENTITY_TYPE_ZOGLIN_ID => {
+            entity_type_id if vanilla_entity_metadata_type_is_hoglin_base(entity_type_id) => {
                 if let Some(hoglin) = self.hoglin.as_mut() {
                     hoglin.advance_client_tick();
                     if hoglin.is_settled() {

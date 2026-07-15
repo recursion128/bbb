@@ -413,6 +413,22 @@ pub fn vanilla_entity_metadata_type_is_leashable(entity_type_id: i32) -> bool {
     vanilla_class_is_or_implements(runtime_class, LEASHABLE, 0)
 }
 
+/// Returns whether the generated vanilla runtime class implements `HoglinBase`.
+///
+/// Vanilla uses this interface for the shared Hoglin/Zoglin attack-animation timer exposed to
+/// their renderer. Entity-event application and client-tick advancement remain owned by the world
+/// animation state.
+pub(crate) fn vanilla_entity_metadata_type_is_hoglin_base(entity_type_id: i32) -> bool {
+    const HOGLIN_BASE: &str = "net.minecraft.world.entity.monster.hoglin.HoglinBase";
+    let Some(runtime_class) = VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .and_then(|entry| entry.runtime_class)
+    else {
+        return false;
+    };
+    vanilla_class_is_or_implements(runtime_class, HOGLIN_BASE, 0)
+}
+
 fn vanilla_class_is_or_implements(java_class: &str, target: &str, depth: usize) -> bool {
     if java_class == target {
         return true;
@@ -716,6 +732,24 @@ mod tests {
         ));
         assert!(!vanilla_entity_metadata_type_is_leashable(-1));
         assert!(!vanilla_entity_metadata_type_is_leashable(157));
+    }
+
+    #[test]
+    fn generated_class_graph_resolves_hoglin_base_capability() {
+        let members = VANILLA_ENTITY_TYPE_METADATA_26_1
+            .iter()
+            .filter(|entry| vanilla_entity_metadata_type_is_hoglin_base(entry.entity_type_id))
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            members,
+            vec![VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID]
+        );
+        assert!(!vanilla_entity_metadata_type_is_hoglin_base(
+            VANILLA_ENTITY_TYPE_CHICKEN_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_hoglin_base(-1));
+        assert!(!vanilla_entity_metadata_type_is_hoglin_base(157));
     }
 
     #[test]
