@@ -111,6 +111,23 @@ fn debug_passenger_vehicle_targets_follow_vanilla_boat_attachment_slab() {
         Some(rear.bounds),
         EntityPickBoundsState::from_base_size(0.9, 0.0625, 0.0),
     );
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        11,
+        VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        22,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 11,
+        passenger_ids: vec![22],
+    }));
+    let raft = store
+        .entity_debug_passenger_vehicle_target(22)
+        .expect("raft passenger target");
+    assert!((raft.position.y - 64.5).abs() < 1.0e-6);
     assert_eq!(store.entity_debug_passenger_vehicle_target(10), None);
 }
 

@@ -2494,6 +2494,50 @@ def class_sound_source_kind(
     return value
 
 
+def class_boat_ride_height_multiplier(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    cache: dict[str, str],
+) -> str:
+    """Resolve the concrete boat class ``rideHeight`` multiplier."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(f"unknown boat class in rideHeight hierarchy: {owner}")
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == "rideHeight" and len(method.parameters) == 1
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.rideHeight/1: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(f"{owner}: no rideHeight override or superclass")
+        value = class_boat_ride_height_multiplier(
+            result, class_map, item.superclass, cache
+        )
+        cache[owner] = value
+        return value
+
+    expression = method_single_return_expression(result, owner, "rideHeight")
+    compact = expression.replace(" ", "")
+    multipliers = {
+        "dimensions.height()/3.0F": "(1.0_f32 / 3.0).to_bits()",
+        "dimensions.height()*0.8888889F": "0.888_888_9_f32.to_bits()",
+    }
+    if compact not in multipliers:
+        raise ExtractionError(
+            f"{owner}.rideHeight: unsupported return expression {expression!r}"
+        )
+    value = multipliers[compact]
+    cache[owner] = value
+    return value
+
+
 def method_mask(result: ExtractionResult, owner: str, name: str, mode: str) -> tuple[int, str]:
     source, method = method_for(result, owner, name)
     body = method.node.child_by_field_name("body")
@@ -2688,6 +2732,7 @@ def render(result: ExtractionResult) -> str:
     class_map = {item.fqcn: item for item in result.classes}
     pickable_cache: dict[str, bool] = {}
     sound_source_cache: dict[str, str] = {}
+    boat_ride_height_cache: dict[str, str] = {}
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -2982,6 +3027,7 @@ def render(result: ExtractionResult) -> str:
                 f"        is_hurting_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile')).lower()},",
                 f"        is_wind_charge: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge')).lower()},",
                 f"        is_boat: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractBoat')).lower()},",
+                f"        boat_ride_height_multiplier_bits: {'Some(' + class_boat_ride_height_multiplier(result, class_map, item.runtime_class, boat_ride_height_cache) + ')' if extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractBoat') else 'None'},",
                 f"        is_abstract_chest_boat: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractChestBoat')).lower()},",
                 f"        is_minecart: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.minecart.AbstractMinecart')).lower()},",
                 f"        is_abstract_horse: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.equine.AbstractHorse')).lower()},",
@@ -3074,6 +3120,13 @@ def render(result: ExtractionResult) -> str:
             "            .map(|(body, _)| body)",
             '            .expect("taming particle type query source");',
             '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_boat_ride_height_does_not_restore_raft_membership() {",
+            '        let source = include_str!("../dimensions.rs");',
+            '        let removed_lookup = ["fn is_vanilla_", "raft_type("].concat();',
+            "        assert!(!source.contains(&removed_lookup));",
             "    }",
             "}",
             "",

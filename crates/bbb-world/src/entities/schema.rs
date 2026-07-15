@@ -236,6 +236,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_hurting_projectile: bool,
     pub is_wind_charge: bool,
     pub is_boat: bool,
+    pub boat_ride_height_multiplier_bits: Option<u32>,
     pub is_abstract_chest_boat: bool,
     pub is_minecart: bool,
     pub is_abstract_horse: bool,
@@ -460,6 +461,16 @@ pub fn vanilla_entity_metadata_type_is_boat(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+/// Returns the generated concrete boat `rideHeight(EntityDimensions)` multiplier.
+pub fn vanilla_entity_metadata_type_boat_ride_height_multiplier(
+    entity_type_id: i32,
+) -> Option<f32> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.boat_ride_height_multiplier_bits)
+        .map(f32::from_bits)
+}
+
 pub fn vanilla_entity_metadata_type_is_abstract_chest_boat(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
@@ -582,6 +593,7 @@ mod tests {
     };
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+        VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID, VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
@@ -589,10 +601,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
         VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
 
     use super::*;
@@ -897,6 +910,21 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.boat_ride_height_multiplier_bits.is_some())
+                .count(),
+            20
+        );
+        for entry in VANILLA_ENTITY_TYPE_METADATA_26_1 {
+            assert_eq!(
+                entry.is_boat,
+                entry.boat_ride_height_multiplier_bits.is_some(),
+                "{}",
+                entry.resource_id
+            );
+        }
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_abstract_chest_boat)
                 .count(),
             10
@@ -1041,6 +1069,32 @@ mod tests {
             VANILLA_ENTITY_TYPE_HORSE_ID
         ));
         assert!(!vanilla_entity_metadata_type_is_tamable_animal(-1));
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_type_boat_ride_height_multiplier(entity_type_id),
+                Some(1.0_f32 / 3.0)
+            );
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
+            VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_type_boat_ride_height_multiplier(entity_type_id),
+                Some(0.888_888_9)
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_type_boat_ride_height_multiplier(VANILLA_ENTITY_TYPE_HORSE_ID),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_boat_ride_height_multiplier(-1),
+            None
+        );
         assert!(vanilla_entity_metadata_type_is_projectile(
             VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
         ));

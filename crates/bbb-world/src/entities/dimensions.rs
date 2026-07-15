@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 
 pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::schema::{
+    vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_type_is_pickable,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
@@ -536,11 +537,10 @@ fn boat_passenger_attachment_point(
         }
     }
 
-    let ride_height = if is_vanilla_raft_type(vehicle_entity_type_id) {
-        bounds_height(vehicle_bounds) * 0.888_888_9
-    } else {
-        bounds_height(vehicle_bounds) / 3.0
-    };
+    let ride_height_multiplier =
+        vanilla_entity_metadata_type_boat_ride_height_multiplier(vehicle_entity_type_id)
+            .expect("generated vanilla boat type must have a ride-height multiplier");
+    let ride_height = bounds_height(vehicle_bounds) * ride_height_multiplier;
     [0.0, ride_height, offset]
 }
 
@@ -626,13 +626,6 @@ fn rotated_y(point: [f32; 3], y_rot: f32) -> [f64; 3] {
 
 fn is_vanilla_chest_boat_or_raft_type(entity_type_id: i32) -> bool {
     super::vanilla_entity_type_is_chest_boat(entity_type_id)
-}
-
-fn is_vanilla_raft_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID | VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID
-    )
 }
 
 fn is_vanilla_rearing_horse_passenger_attachment_type(entity_type_id: i32) -> bool {

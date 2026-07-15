@@ -15373,3 +15373,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] event-6/7 驯服粒子消费者删除 Cat/Parrot/Wolf 手写 type 表和重复的 Nautilus 分支，
   统一组合 generated `TamableAnimal` 与 generated `AbstractHorse` query；generator-emitted
   反向门禁禁止该消费者重新引入实体常量 membership。
+
+## 2026-07-15：Generate boat ride-height multipliers
+
+- [x] entity metadata generator 沿 26.1 runtime class hierarchy 解析四个 concrete boat
+  `rideHeight(EntityDimensions)` 实现，直接从 `height / 3.0F` 与 `height * 0.8888889F`
+  生成 20 项 boat type 的 multiplier；未知或新增公式会令 maintenance generation 失败。
+- [x] passenger attachment 删除 Bamboo raft/chest-raft 手写 membership 与两份数值公式，
+  统一消费 generated multiplier；普通 boat/chest boat 与 raft/chest raft 语义测试锁定两种结果，
+  generator-emitted 反向门禁禁止旧 raft helper 复生。
