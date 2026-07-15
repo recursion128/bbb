@@ -16473,3 +16473,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `AbstractNautilus.DASH` 分离。
 - world tick 显式传递 entity type，animation 生产消费者删除固定 accessor/default 别名；
   生成器 reverse guard 禁止恢复这些平行事实源或丢失 store 调用处的 entity-type 传递。
+
+## 2026-07-15：统一推导 Wolf interested metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Wolf.DATA_INTERESTED_ID` 解析 membership、
+  wire id 20 与 boolean typed default false；world tick 的 interested-angle/head-roll ease
+  显式携带 entity type，不再把其他 family 的同号槽位当成 interested。
+- animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
+  这些平行事实源或丢失 store 调用处的 entity-type 传递。

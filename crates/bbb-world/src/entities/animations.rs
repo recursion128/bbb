@@ -30,8 +30,9 @@ use super::schema::{
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
-    vanilla_entity_metadata_vehicle_accessors_for_entity_type, VanillaVehicleMetadataAccessors,
-    VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
+    vanilla_entity_metadata_vehicle_accessors_for_entity_type,
+    vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,
+    VanillaVehicleMetadataAccessors, VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
     VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
@@ -75,8 +76,6 @@ use super::schema::{
     VANILLA_WITHER_DEFAULT_TARGET_C as WITHER_DEFAULT_TARGET_C,
     VANILLA_WITHER_TARGET_B_DATA_ID as WITHER_TARGET_B_DATA_ID,
     VANILLA_WITHER_TARGET_C_DATA_ID as WITHER_TARGET_C_DATA_ID,
-    VANILLA_WOLF_DEFAULT_INTERESTED as WOLF_DEFAULT_INTERESTED,
-    VANILLA_WOLF_INTERESTED_DATA_ID as WOLF_INTERESTED_DATA_ID,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid,
@@ -6247,13 +6246,12 @@ fn fox_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> i8 {
         .unwrap_or(0)
 }
 
-/// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`.
-pub(crate) fn wolf_is_interested(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(
-        data_values,
-        WOLF_INTERESTED_DATA_ID,
-        WOLF_DEFAULT_INTERESTED,
-    )
+/// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`. The generated accessor
+/// supplies Wolf membership, wire index and default before the client-side head-roll ease reads it.
+pub(crate) fn wolf_is_interested(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_wolf_interested_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `Cat.isLying()` = `entityData.get(IS_LYING)`.
