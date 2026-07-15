@@ -439,6 +439,7 @@ mod tests {
                     || source.contains("const VANILLA_ENCHANTMENTS")
                     || source.contains("const VANILLA_ENCHANTMENT_TOOLTIP_ORDER")
                     || source.contains("fn vanilla_enchantment_resource_id(")
+                    || source.contains("fn vanilla_enchantment_max_level(")
                 {
                     violations.push(display.to_string());
                 }

@@ -1401,7 +1401,8 @@ mod tests {
             None
         );
         assert_eq!(
-            vanilla_enchantment_max_level("minecraft:sharpness"),
+            VanillaEnchantmentIdentity::for_resource_id("minecraft:sharpness")
+                .map(VanillaEnchantmentIdentity::max_level),
             Some(5)
         );
         assert!(enchantment_is_curse("minecraft:binding_curse", None));
@@ -2488,7 +2489,10 @@ fn push_enchantment_tooltip_line(
         enchantment_description(language, enchantment_key, definition);
     let max_level = definition
         .map(|definition| definition.max_level)
-        .or_else(|| vanilla_enchantment_max_level(enchantment_key))
+        .or_else(|| {
+            VanillaEnchantmentIdentity::for_resource_id(enchantment_key)
+                .map(VanillaEnchantmentIdentity::max_level)
+        })
         .unwrap_or(1);
     if level != 1 || max_level != 1 {
         let appended_style = component_runs
@@ -2575,11 +2579,6 @@ fn enchantment_definition_for_holder(
     definitions: Option<&[Option<EnchantmentTooltipDefinition>]>,
 ) -> Option<&EnchantmentTooltipDefinition> {
     definitions?.get(usize::try_from(holder_id).ok()?)?.as_ref()
-}
-
-fn vanilla_enchantment_max_level(enchantment_key: &str) -> Option<i32> {
-    VanillaEnchantmentIdentity::for_resource_id(enchantment_key)
-        .map(VanillaEnchantmentIdentity::max_level)
 }
 
 fn enchantment_is_curse(enchantment_key: &str, enchantment_tags: Option<&TagCatalog>) -> bool {

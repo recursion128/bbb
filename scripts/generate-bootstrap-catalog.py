@@ -1152,7 +1152,7 @@ def render_enchantment_catalog(
             "                let display = path.to_string_lossy();",
             "                if display.ends_with(\"/enchantments/generated_26_1.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
-            "                if source.contains(\"enum VanillaEnchantmentIdentity\") || source.contains(\"struct VanillaEnchantment {\") || source.contains(\"const VANILLA_ENCHANTMENTS\") || source.contains(\"const VANILLA_ENCHANTMENT_TOOLTIP_ORDER\") || source.contains(\"fn vanilla_enchantment_resource_id(\") { violations.push(display.to_string()); }",
+            "                if source.contains(\"enum VanillaEnchantmentIdentity\") || source.contains(\"struct VanillaEnchantment {\") || source.contains(\"const VANILLA_ENCHANTMENTS\") || source.contains(\"const VANILLA_ENCHANTMENT_TOOLTIP_ORDER\") || source.contains(\"fn vanilla_enchantment_resource_id(\") || source.contains(\"fn vanilla_enchantment_max_level(\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",

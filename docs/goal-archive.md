@@ -15314,3 +15314,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   文本与 attribute modifier 收集顺序保持 vanilla `PotionContents.forEachEffect` 语义。
 - [x] potion owner 的 bootstrap-generated 反向门禁禁止历史 effects lookup bridge 复生；46 项
   potion/effect 顺序回归与完整 item tooltip fixture 覆盖直接消费路径和 unknown holder 省略。
+
+## 2026-07-15：Remove item-model enchantment max-level lookup bridge
+
+- [x] enchantment tooltip 在没有 synchronized definition 时直接组合 generated
+  `VanillaEnchantmentIdentity::for_resource_id` 与 `max_level`，删除同构本地 helper；session
+  definition 继续优先，level suffix 条件保持 vanilla `Enchantment.getFullname` 语义。
+- [x] enchantment owner 的 bootstrap-generated 反向门禁禁止历史
+  `vanilla_enchantment_max_level` bridge 复生；43 项 identity/max-level catalog 与 synced/default
+  tooltip 回归继续覆盖直接消费路径。
