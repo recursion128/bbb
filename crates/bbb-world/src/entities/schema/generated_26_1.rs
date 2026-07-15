@@ -22240,6 +22240,33 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_panda_flags_do_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        assert!(animations.contains("vanilla_entity_metadata_panda_flags_accessor_for_entity_type"));
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        assert!(
+            native_scene.contains("vanilla_entity_metadata_panda_flags_accessor_for_entity_type")
+        );
+        let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        assert!(native_variants
+            .contains("vanilla_entity_metadata_panda_flags_accessor_for_entity_type"));
+        for removed in ["PANDA_FLAGS_DATA_ID", "PANDA_DEFAULT_FLAGS"] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_variants.contains(removed),
+                "native variants restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

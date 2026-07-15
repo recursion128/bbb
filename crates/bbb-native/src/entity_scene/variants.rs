@@ -980,10 +980,9 @@ pub(super) fn panda_is_sneezing(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
-        && (entity_data_byte(values, PANDA_FLAGS_DATA_ID, PANDA_DEFAULT_FLAGS)
-            & PANDA_SNEEZING_FLAG)
-            != 0
+    vanilla_entity_metadata_panda_flags_accessor_for_entity_type(entity_type_id).is_some_and(
+        |(data_id, default)| entity_data_byte(values, data_id, default) & PANDA_SNEEZING_FLAG != 0,
+    )
 }
 
 /// Vanilla `PandaRenderState.sneezeTime = Panda.getSneezeCounter()` (the synced `SNEEZE_COUNTER` int, id
@@ -1019,9 +1018,9 @@ pub(super) fn panda_is_sitting(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
-        && (entity_data_byte(values, PANDA_FLAGS_DATA_ID, PANDA_DEFAULT_FLAGS) & PANDA_SITTING_FLAG)
-            != 0
+    vanilla_entity_metadata_panda_flags_accessor_for_entity_type(entity_type_id).is_some_and(
+        |(data_id, default)| entity_data_byte(values, data_id, default) & PANDA_SITTING_FLAG != 0,
+    )
 }
 
 /// Vanilla `PandaRenderState.isScared = Panda.isScared()` = `isWorried() && level.isThundering()`.

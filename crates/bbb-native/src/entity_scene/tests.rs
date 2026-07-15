@@ -4224,7 +4224,7 @@ fn entity_model_instances_project_panda_unhappy_and_sneezing() {
             protocol_int_data(PANDA_SNEEZE_COUNTER_DATA_ID, 9),
             protocol_int_data(PANDA_EAT_COUNTER_DATA_ID, 4),
             protocol_byte_data(
-                PANDA_FLAGS_DATA_ID,
+                bbb_world::VANILLA_PANDA_FLAGS_DATA_ID,
                 PANDA_SNEEZING_FLAG | PANDA_ROLLING_FLAG | PANDA_SITTING_FLAG | PANDA_ON_BACK_FLAG,
             ),
         ],
@@ -4270,7 +4270,7 @@ fn entity_model_instances_project_panda_unhappy_and_sneezing() {
         values: vec![
             protocol_int_data(PANDA_UNHAPPY_COUNTER_DATA_ID, 0),
             protocol_int_data(PANDA_EAT_COUNTER_DATA_ID, 0),
-            protocol_byte_data(PANDA_FLAGS_DATA_ID, 0),
+            protocol_byte_data(bbb_world::VANILLA_PANDA_FLAGS_DATA_ID, 0),
         ],
     }));
     let calmed = panda(&world, 0.0);

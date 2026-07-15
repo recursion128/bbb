@@ -202,6 +202,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Vex charging membership, wire index and default must remain derived from generated
   `Vex.DATA_FLAGS_ID`; world projection must not restore a Vex type predicate or fixed accessor
   aliases.
+  Panda pose/sneeze membership, wire index and default must remain derived from generated
+  `Panda.DATA_ID_FLAGS`; world animation and native render projection must not restore fixed
+  accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

@@ -16238,3 +16238,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   与 byte 默认值 0，再结合生成的 `FLAG_IS_CHARGING` 投影 charging pose。
 - dimensions 删除单类型 `vanilla_is_vex`，store 删除固定 accessor/default 别名；生成器
   reverse guard 禁止生产路径恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Panda render metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Panda.DATA_ID_FLAGS` 解析 membership、wire id 23
+  与 byte 默认值 0 的 typed accessor；world pose animation 与 native sneeze/sitting render
+  projection 共同消费它，并继续使用生成的 flag masks。
+- 两个生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。

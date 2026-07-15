@@ -17,6 +17,7 @@ use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_rendere
 use super::schema::{
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
@@ -64,8 +65,6 @@ use super::schema::{
     VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET as GUARDIAN_DEFAULT_ATTACK_TARGET,
     VANILLA_GUARDIAN_DEFAULT_MOVING as GUARDIAN_DEFAULT_MOVING,
     VANILLA_GUARDIAN_MOVING_DATA_ID as GUARDIAN_MOVING_DATA_ID,
-    VANILLA_PANDA_DEFAULT_FLAGS as PANDA_DEFAULT_FLAGS,
-    VANILLA_PANDA_FLAGS_DATA_ID as PANDA_FLAGS_DATA_ID,
     VANILLA_PANDA_FLAG_ON_BACK as PANDA_FLAG_ON_BACK,
     VANILLA_PANDA_FLAG_ROLLING as PANDA_FLAG_ROLLING,
     VANILLA_PANDA_FLAG_SITTING as PANDA_FLAG_SITTING,
@@ -3965,7 +3964,7 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_PANDA_ID => {
-                let (sitting, on_back, rolling) = panda_pose_flags(data_values);
+                let (sitting, on_back, rolling) = panda_pose_flags(entity_type_id, data_values);
                 if let Some(panda) = self.panda.as_mut() {
                     panda.set_flags(sitting, on_back, rolling);
                 } else if sitting || on_back || rolling {
@@ -6202,8 +6201,10 @@ fn bee_is_rolling(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool 
     )
 }
 
-fn panda_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
-    let flags = entity_data_byte(data_values, PANDA_FLAGS_DATA_ID, PANDA_DEFAULT_FLAGS);
+fn panda_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (bool, bool, bool) {
+    let flags = vanilla_entity_metadata_panda_flags_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_byte(data_values, data_id, default))
+        .unwrap_or(0);
     (
         flags & PANDA_FLAG_SITTING != 0,
         flags & PANDA_FLAG_ON_BACK != 0,
