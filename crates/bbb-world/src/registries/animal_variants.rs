@@ -9,6 +9,7 @@ pub const CHICKEN_VARIANT_REGISTRY: &str = "minecraft:chicken_variant";
 pub const COW_VARIANT_REGISTRY: &str = "minecraft:cow_variant";
 pub const PIG_VARIANT_REGISTRY: &str = "minecraft:pig_variant";
 pub const CAT_VARIANT_REGISTRY: &str = "minecraft:cat_variant";
+pub const FROG_VARIANT_REGISTRY: &str = "minecraft:frog_variant";
 
 /// The serialized model selector shared by the chicken, cow, and pig variant codecs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,6 +52,20 @@ pub struct CatVariantProjectionError {
     pub reason: &'static str,
 }
 
+/// The client presentation field carried by one synchronized frog variant element.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrogVariantPresentation {
+    pub asset_id: String,
+    pub texture_path: String,
+}
+
+/// Identifies the exact frog `NETWORK_CODEC` field that could not be projected.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrogVariantProjectionError {
+    pub field: String,
+    pub reason: &'static str,
+}
+
 impl WorldStore {
     /// Decodes a synchronized chicken/cow/pig variant element in current server holder order.
     /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
@@ -82,6 +97,21 @@ impl WorldStore {
             return Ok(None);
         };
         decode_cat_variant(raw_data).map(Some)
+    }
+
+    /// Decodes a synchronized frog variant element in current server holder order.
+    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    pub fn synchronized_frog_variant_presentation(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<FrogVariantPresentation>, FrogVariantProjectionError> {
+        let Some(entry) = self.registry_entry_by_holder_id(FROG_VARIANT_REGISTRY, holder_id) else {
+            return Ok(None);
+        };
+        let Some(raw_data) = entry.raw_data() else {
+            return Ok(None);
+        };
+        decode_frog_variant(raw_data).map(Some)
     }
 }
 
@@ -133,6 +163,24 @@ fn decode_cat_variant(
         adult_texture_path,
         baby_asset_id,
         baby_texture_path,
+    })
+}
+
+fn decode_frog_variant(
+    raw_data: &[u8],
+) -> Result<FrogVariantPresentation, FrogVariantProjectionError> {
+    let root = decode_nbt_root(raw_data)
+        .map_err(|_| frog_error("<root>", "invalid NBT"))?
+        .ok_or_else(|| frog_error("<root>", "missing root compound"))?;
+    let NbtValue::Compound(fields) = root else {
+        return Err(frog_error("<root>", "expected compound"));
+    };
+
+    let (asset_id, texture_path) =
+        decode_resource_texture(&fields, "asset_id").map_err(FrogVariantProjectionError::from)?;
+    Ok(FrogVariantPresentation {
+        asset_id,
+        texture_path,
     })
 }
 
@@ -197,6 +245,15 @@ impl From<ResourceTextureProjectionError> for CatVariantProjectionError {
     }
 }
 
+impl From<ResourceTextureProjectionError> for FrogVariantProjectionError {
+    fn from(error: ResourceTextureProjectionError) -> Self {
+        Self {
+            field: error.field,
+            reason: error.reason,
+        }
+    }
+}
+
 fn resource_texture_error(
     field: impl Into<String>,
     reason: &'static str,
@@ -216,6 +273,13 @@ fn error(field: impl Into<String>, reason: &'static str) -> FarmAnimalVariantPro
 
 fn cat_error(field: impl Into<String>, reason: &'static str) -> CatVariantProjectionError {
     CatVariantProjectionError {
+        field: field.into(),
+        reason,
+    }
+}
+
+fn frog_error(field: impl Into<String>, reason: &'static str) -> FrogVariantProjectionError {
+    FrogVariantProjectionError {
         field: field.into(),
         reason,
     }
@@ -338,6 +402,26 @@ mod tests {
     }
 
     #[test]
+    fn decodes_frog_network_codec_shape_and_rejects_invalid_assets() {
+        assert_eq!(
+            decode_frog_variant(&variant_nbt(None, Some("example:entity/frog/blue"), None,))
+                .unwrap(),
+            FrogVariantPresentation {
+                asset_id: "example:entity/frog/blue".to_string(),
+                texture_path: "example:textures/entity/frog/blue.png".to_string(),
+            }
+        );
+        assert_eq!(
+            decode_frog_variant(&variant_nbt(None, Some("Example:entity/frog/blue"), None,))
+                .unwrap_err(),
+            FrogVariantProjectionError {
+                field: "asset_id".to_string(),
+                reason: "invalid texture identifier",
+            }
+        );
+    }
+
+    #[test]
     fn world_query_uses_server_holder_order_and_omits_stubs() {
         let mut store = WorldStore::new();
         store.record_registry_entries(
@@ -416,6 +500,38 @@ mod tests {
         );
         assert_eq!(
             store.synchronized_cat_variant_presentation(2).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn frog_world_query_uses_server_holder_order_and_omits_stubs() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            FROG_VARIANT_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_raw_data(
+                    "example:blue",
+                    variant_nbt(None, Some("example:entity/frog/blue"), None),
+                ),
+                RegistryPacketEntry::stub("minecraft:cold"),
+            ],
+        );
+
+        assert_eq!(
+            store.synchronized_frog_variant_presentation(0).unwrap(),
+            Some(FrogVariantPresentation {
+                asset_id: "example:entity/frog/blue".to_string(),
+                texture_path: "example:textures/entity/frog/blue.png".to_string(),
+            })
+        );
+        assert_eq!(
+            store.synchronized_frog_variant_presentation(1).unwrap(),
+            None
+        );
+        assert_eq!(
+            store.synchronized_frog_variant_presentation(2).unwrap(),
             None
         );
     }

@@ -42,7 +42,8 @@ use bbb_world::{
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
-    GuardianBeamSource as WorldGuardianBeamSource, LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
+    FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
+    LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
@@ -316,6 +317,10 @@ trait EntityVariantRegistryLookup {
         None
     }
 
+    fn frog_variant_presentation(&self, _holder_id: i32) -> Option<FrogVariantPresentation> {
+        None
+    }
+
     fn ready_texture(&self, _asset_id: &str) -> Option<EntityDynamicTexture> {
         None
     }
@@ -352,6 +357,13 @@ impl EntityVariantRegistryLookup for EntityVariantRenderContext<'_> {
     fn cat_variant_presentation(&self, holder_id: i32) -> Option<CatVariantPresentation> {
         self.world
             .synchronized_cat_variant_presentation(holder_id)
+            .ok()
+            .flatten()
+    }
+
+    fn frog_variant_presentation(&self, holder_id: i32) -> Option<FrogVariantPresentation> {
+        self.world
+            .synchronized_frog_variant_presentation(holder_id)
             .ok()
             .flatten()
     }

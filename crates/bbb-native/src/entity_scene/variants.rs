@@ -414,6 +414,29 @@ pub(super) fn ready_cat_variant_texture(
     registries.ready_texture(asset_id)
 }
 
+/// Selects the synchronized frog `NETWORK_CODEC` texture only after its resource is resident.
+/// Until then the entity keeps the holder-identity built-in texture chosen by `kind`.
+pub(super) fn ready_frog_variant_texture(
+    kind: &EntityModelKind,
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    registries: Option<&dyn EntityVariantRegistryLookup>,
+) -> Option<EntityDynamicTexture> {
+    if !matches!(kind, EntityModelKind::Frog { .. })
+        || entity_type_id != VANILLA_ENTITY_TYPE_FROG_ID
+    {
+        return None;
+    }
+    let holder_id = entity_data_registry_holder_id(
+        values,
+        FROG_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::FrogVariant,
+    )?;
+    let registries = registries?;
+    let presentation = registries.frog_variant_presentation(holder_id)?;
+    registries.ready_texture(&presentation.asset_id)
+}
+
 fn entity_data_registry_holder_id(
     values: &[bbb_protocol::packets::EntityDataValue],
     data_id: u8,

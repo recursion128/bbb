@@ -5,13 +5,14 @@ use bbb_pack::PackRoots;
 use bbb_renderer::{DynamicEntityTextureImage, EntityDynamicTexture, Renderer};
 use bbb_world::{
     WorldStore, CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY,
-    PIG_VARIANT_REGISTRY,
+    FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
 };
 
-const ANIMAL_VARIANT_REGISTRIES: [&str; 4] = [
+const ANIMAL_VARIANT_REGISTRIES: [&str; 5] = [
     CAT_VARIANT_REGISTRY,
     CHICKEN_VARIANT_REGISTRY,
     COW_VARIANT_REGISTRY,
+    FROG_VARIANT_REGISTRY,
     PIG_VARIANT_REGISTRY,
 ];
 
@@ -84,29 +85,42 @@ impl NativeEntityVariantTextureRuntime {
             for holder_id in 0..entry_count {
                 let holder_id = i32::try_from(holder_id)
                     .expect("registry entry count must fit the protocol holder id");
-                let presentation = if registry == CAT_VARIANT_REGISTRY {
-                    world
+                let presentation = match registry {
+                    CAT_VARIANT_REGISTRY => world
                         .synchronized_cat_variant_presentation(holder_id)
                         .map(|presentation| {
                             presentation.map(|presentation| {
-                                (presentation.adult_asset_id, presentation.baby_asset_id)
+                                (
+                                    presentation.adult_asset_id,
+                                    Some(presentation.baby_asset_id),
+                                )
                             })
                         })
-                        .map_err(|error| (error.field, error.reason))
-                } else {
-                    world
+                        .map_err(|error| (error.field, error.reason)),
+                    FROG_VARIANT_REGISTRY => world
+                        .synchronized_frog_variant_presentation(holder_id)
+                        .map(|presentation| {
+                            presentation.map(|presentation| (presentation.asset_id, None))
+                        })
+                        .map_err(|error| (error.field, error.reason)),
+                    _ => world
                         .synchronized_farm_animal_variant_presentation(registry, holder_id)
                         .map(|presentation| {
                             presentation.map(|presentation| {
-                                (presentation.adult_asset_id, presentation.baby_asset_id)
+                                (
+                                    presentation.adult_asset_id,
+                                    Some(presentation.baby_asset_id),
+                                )
                             })
                         })
-                        .map_err(|error| (error.field, error.reason))
+                        .map_err(|error| (error.field, error.reason)),
                 };
                 match presentation {
-                    Ok(Some((adult_asset_id, baby_asset_id))) => {
-                        self.ensure_asset_with_uploader(&adult_asset_id, uploader);
-                        self.ensure_asset_with_uploader(&baby_asset_id, uploader);
+                    Ok(Some((asset_id, secondary_asset_id))) => {
+                        self.ensure_asset_with_uploader(&asset_id, uploader);
+                        if let Some(secondary_asset_id) = secondary_asset_id {
+                            self.ensure_asset_with_uploader(&secondary_asset_id, uploader);
+                        }
                     }
                     Ok(None) => {}
                     Err((field, reason)) => {
@@ -225,13 +239,13 @@ mod tests {
 
     use super::*;
     use bbb_protocol::{
-        entity_types::VANILLA_ENTITY_TYPE_CAT_ID,
+        entity_types::{VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_FROG_ID},
         packets::{
             AddEntity, EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind,
             SetEntityData, Vec3d,
         },
     };
-    use bbb_world::VANILLA_CAT_VARIANT_DATA_ID;
+    use bbb_world::{VANILLA_CAT_VARIANT_DATA_ID, VANILLA_FROG_VARIANT_DATA_ID};
     use uuid::Uuid;
 
     #[derive(Default)]
@@ -404,6 +418,76 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn synchronized_frog_asset_reaches_the_entity_instance() {
+        let root = unique_temp_dir("frog-variant-texture-runtime");
+        let sources = root.join("sources/26.1");
+        write_png(
+            &sources.join("assets/example/textures/entity/frog/blue.png"),
+            48,
+            48,
+        );
+        let roots = PackRoots {
+            mc_code_root: root.clone(),
+            sources_dir: sources.clone(),
+            assets_dir: sources.join("assets/minecraft"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            FROG_VARIANT_REGISTRY,
+            0,
+            vec![bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:blue",
+                frog_variant_nbt("example:entity/frog/blue"),
+            )],
+        );
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+
+        assert_eq!(uploader.images.len(), 1);
+        assert_eq!(uploader.images[0].size, [48, 48]);
+        let texture = runtime
+            .ready_texture("example:entity/frog/blue")
+            .expect("successful upload must publish the frog texture");
+        world.apply_add_entity(AddEntity {
+            id: 74,
+            uuid: Uuid::from_u128(74),
+            entity_type_id: VANILLA_ENTITY_TYPE_FROG_ID,
+            position: Vec3d::default(),
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 74,
+            values: vec![EntityDataValue {
+                data_id: VANILLA_FROG_VARIANT_DATA_ID,
+                serializer_id: 27,
+                value: EntityDataValueKind::RegistryId {
+                    serializer: EntityDataRegistryHolder::FrogVariant,
+                    id: 0,
+                },
+            }],
+        }));
+        let instances =
+            crate::entity_scene::entity_model_instances_from_world_with_variant_textures_at_partial_tick(
+                &world,
+                None,
+                &runtime,
+                1.0,
+            );
+        assert_eq!(instances.len(), 1);
+        assert_eq!(instances[0].dynamic_texture, Some(texture));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     fn write_png(path: &Path, width: u32, height: u32) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         image::RgbaImage::from_pixel(width, height, image::Rgba([7, 11, 13, 255]))
@@ -424,6 +508,13 @@ mod tests {
         let mut payload = vec![10];
         write_nbt_string_tag(&mut payload, "asset_id", adult_asset_id);
         write_nbt_string_tag(&mut payload, "baby_asset_id", baby_asset_id);
+        payload.push(0);
+        payload
+    }
+
+    fn frog_variant_nbt(asset_id: &str) -> Vec<u8> {
+        let mut payload = vec![10];
+        write_nbt_string_tag(&mut payload, "asset_id", asset_id);
         payload.push(0);
         payload
     }

@@ -12,8 +12,9 @@ mod trim_patterns;
 
 pub use animal_variants::{
     CatVariantPresentation, CatVariantProjectionError, FarmAnimalVariantModel,
-    FarmAnimalVariantPresentation, FarmAnimalVariantProjectionError, CAT_VARIANT_REGISTRY,
-    CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
+    FarmAnimalVariantPresentation, FarmAnimalVariantProjectionError, FrogVariantPresentation,
+    FrogVariantProjectionError, CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY,
+    COW_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
 };
 pub use biomes::{
     BiomeClientProjection, BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier,

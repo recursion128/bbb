@@ -46,10 +46,11 @@ pub use crate::registries::{
     BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier, BlockStateInfo,
     BlockStateRegistry, CatVariantPresentation, CatVariantProjectionError,
     EnchantmentAttributeModifier, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
-    FarmAnimalVariantProjectionError, RegistryContentState, RegistryEntrySource, RegistryPacket,
-    RegistryPacketEntry, RegistrySet, RegistryTagState, RegistryValidationError,
-    ResolvedRegistryEntry, UnresolvedRegistryTagHolder, CAT_VARIANT_REGISTRY,
-    CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
+    FarmAnimalVariantProjectionError, FrogVariantPresentation, FrogVariantProjectionError,
+    RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
+    RegistryTagState, RegistryValidationError, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
+    CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY,
+    PIG_VARIANT_REGISTRY,
 };
 pub use crate::shulker_box_blocks::{
     shulker_box_color_for_block_name, ShulkerBoxAnimationStatus, ShulkerBoxColorKind,
