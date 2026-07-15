@@ -66,6 +66,9 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     public AllayRenderer() {
                         this.addLayer(new ItemInHandLayer(this));
                     }
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isAggressive = entity.isAggressive();
+                    }
                     private void addLayer(Object layer) {}
                 }
                 """,
@@ -188,17 +191,18 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     entry.uses_abstract_feline_model,
                     entry.uses_abstract_horse_renderer,
                     entry.uses_mob_item_in_hand_layer,
+                    entry.extracts_mob_aggressive,
                 )
                 for entry in entries
             ],
             [
-                (0, "BLAZE", "BlazeRenderer", True, False, False, False),
-                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False, False),
-                (2, "CAT", "CatRenderer", False, True, False, False),
-                (3, "HORSE", "HorseRenderer", False, False, True, False),
-                (4, "ALLAY", "AllayRenderer", False, False, False, True),
-                (5, "ARMOR_STAND", "ArmorStandRenderer", False, False, False, False),
-                (6, "VEX", "VexRenderer", False, False, False, True),
+                (0, "BLAZE", "BlazeRenderer", True, False, False, False, False),
+                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False, False, False),
+                (2, "CAT", "CatRenderer", False, True, False, False, False),
+                (3, "HORSE", "HorseRenderer", False, False, True, False, False),
+                (4, "ALLAY", "AllayRenderer", False, False, False, True, True),
+                (5, "ARMOR_STAND", "ArmorStandRenderer", False, False, False, False, False),
+                (6, "VEX", "VexRenderer", False, False, False, True, True),
             ],
         )
 

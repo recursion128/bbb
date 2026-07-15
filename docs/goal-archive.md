@@ -15438,3 +15438,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world main-arm projection 删除 zombie/piglin/illager/skeleton 等手工拼接表，直接消费
   renderer owner query，并补齐原表遗漏的 Allay/CopperGolem left-handed projection；Python
   fixture、catalog exact-set、world projection 回归与 generator-emitted 反向门禁覆盖该边界。
+
+## 2026-07-15：Generate renderer Mob-aggressive projection
+
+- [x] entity renderer extractor 沿注册 renderer 继承链生成
+  `state.isAggressive = entity.isAggressive()` 的精确 14-type membership；覆盖
+  AbstractZombie/AbstractSkeleton/Illager、ZombieVillager 与 ZombifiedPiglin renderer，且保留
+  GiantMobRenderer 未赋值的 vanilla 默认 false。
+- [x] world aggressive projection 删除 zombie/piglin/illager 三份 dimensions helper，直接组合
+  renderer query 与 metadata owner 的 AbstractPiglin membership；补齐 skeleton/zombified-piglin
+  状态，修正 Giant，并按 IllagerRenderer 真实提取保留 Evoker 字段（模型不消费其 arm pose）。
+  catalog exact-set、Python inherited fixture、world semantic tests 与 generator-emitted 三 helper
+  反向门禁覆盖该边界。

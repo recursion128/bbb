@@ -473,7 +473,7 @@ fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
 }
 
 #[test]
-fn entity_model_sources_project_aggressive_for_zombie_model_family() {
+fn entity_model_sources_project_aggressive_for_renderer_extractors() {
     // Vanilla Mob.DATA_MOB_FLAGS_ID (15); MOB_FLAG_AGGRESSIVE (4), LEFTHANDED is bit 2.
     const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
     const MOB_FLAG_AGGRESSIVE: i8 = 4;
@@ -517,23 +517,34 @@ fn entity_model_sources_project_aggressive_for_zombie_model_family() {
     assert!(set_mob_flags(&mut store, 80, MOB_FLAG_LEFTHANDED));
     assert!(!aggressive(&store, 80));
 
-    // A chicken is a Mob too (it carries the mob-flags byte), but it does not render with the
-    // zombie model's `animateZombieArms`, so the projection is gated out: a stray aggressive
-    // bit never reaches the chicken's render state.
-    store.apply_add_entity(protocol_add_entity_with_type(
-        81,
-        VANILLA_ENTITY_TYPE_CHICKEN_ID,
-    ));
-    assert!(set_mob_flags(&mut store, 81, MOB_FLAG_AGGRESSIVE));
-    assert!(!aggressive(&store, 81));
+    // These renderer paths assign `state.isAggressive = entity.isAggressive()` directly, including
+    // the skeleton and zombified-piglin families that the old hand-maintained table missed.
+    for (id, entity_type_id) in [
+        (81, VANILLA_ENTITY_TYPE_SKELETON_ID),
+        (82, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+        assert!(set_mob_flags(&mut store, id, MOB_FLAG_AGGRESSIVE));
+        assert!(aggressive(&store, id));
+    }
+
+    // GiantMobRenderer uses ZombieRenderState but never assigns its isAggressive field; chicken has
+    // no renderer consumer for the flag either. Both stay at the vanilla render-state default.
+    for (id, entity_type_id) in [
+        (83, VANILLA_ENTITY_TYPE_GIANT_ID),
+        (84, VANILLA_ENTITY_TYPE_CHICKEN_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+        assert!(set_mob_flags(&mut store, id, MOB_FLAG_AGGRESSIVE));
+        assert!(!aggressive(&store, id));
+    }
 }
 
 #[test]
 fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
     // The aggressive flag also drives the piglin/brute `ATTACKING_WITH_MELEE_WEAPON`, the vindicator /
-    // pillager `ATTACKING` arm pose, and the illusioner `BOW_AND_ARROW` aim — so `is_aggressive` is
-    // projected for those types too. The evoker has no `isAggressive` branch in `getArmPose`, so it is
-    // NOT projected.
+    // pillager `ATTACKING` arm pose, and the illusioner `BOW_AND_ARROW` aim. IllagerRenderer extracts
+    // the flag for every illager render state; EvokerModel simply does not consume it for arm pose.
     const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
     const MOB_FLAG_AGGRESSIVE: i8 = 4;
 
@@ -553,6 +564,7 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
         (91, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
         (92, VANILLA_ENTITY_TYPE_VINDICATOR_ID),
         (93, VANILLA_ENTITY_TYPE_ILLUSIONER_ID),
+        (94, VANILLA_ENTITY_TYPE_EVOKER_ID),
         (95, VANILLA_ENTITY_TYPE_PILLAGER_ID),
     ] {
         store.apply_add_entity(protocol_add_entity_with_type(id, type_id));
@@ -572,20 +584,6 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
             aggressive(&store, id),
             "aggressive projects: type {type_id}"
         );
-    }
-
-    // The evoker has no aggressive arm pose, so a stray aggressive bit never flips an unused pose.
-    for (id, type_id) in [(94, VANILLA_ENTITY_TYPE_EVOKER_ID)] {
-        store.apply_add_entity(protocol_add_entity_with_type(id, type_id));
-        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-            id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
-                value: EntityDataValueKind::Byte(MOB_FLAG_AGGRESSIVE),
-            }],
-        }));
-        assert!(!aggressive(&store, id), "gated out: type {type_id}");
     }
 }
 

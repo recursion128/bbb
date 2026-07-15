@@ -84,6 +84,9 @@ def render(source_root: Path) -> str:
                 "        uses_mob_item_in_hand_layer: "
                 + str(entry.uses_mob_item_in_hand_layer).lower()
                 + ",",
+                "        extracts_mob_aggressive: "
+                + str(entry.extracts_mob_aggressive).lower()
+                + ",",
                 "    },",
             ]
         )
@@ -125,6 +128,14 @@ def render(source_root: Path) -> str:
             "    fn world_projection_does_not_restore_mob_item_in_hand_membership() {",
             '        let source = include_str!("../store.rs");',
             '        assert!(!source.contains("fn vanilla_mob_item_in_hand_layer_type"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn world_projection_does_not_restore_aggressive_renderer_memberships() {",
+            '        let source = include_str!("../dimensions.rs");',
+            '        assert!(!source.contains("fn vanilla_zombie_model_family"));',
+            '        assert!(!source.contains("fn vanilla_piglin_melee_attack_family"));',
+            '        assert!(!source.contains("fn vanilla_illager_aggressive_arm_pose_family"));',
             "    }",
             "}",
             "",

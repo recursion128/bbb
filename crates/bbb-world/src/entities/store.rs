@@ -94,13 +94,11 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_illager_aggressive_arm_pose_family,
-    vanilla_is_baby, vanilla_is_bat, vanilla_is_bee, vanilla_is_cat, vanilla_is_enderman,
-    vanilla_is_fox, vanilla_is_vex, vanilla_is_wither, vanilla_living_entity_type,
-    vanilla_model_source_bounds_for_entity_data,
+    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
+    vanilla_is_cat, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
+    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
-    vanilla_piglin_melee_attack_family, vanilla_render_scale, vanilla_zombie_model_family,
-    ENTITY_DATA_POSE_ID,
+    vanilla_render_scale, ENTITY_DATA_POSE_ID,
 };
 use crate::entities::dragon::{
     ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
@@ -110,12 +108,14 @@ use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
 use crate::entities::renderer_catalog::{
+    vanilla_entity_renderer_extracts_mob_aggressive,
     vanilla_entity_renderer_uses_abstract_feline_model,
     vanilla_entity_renderer_uses_abstract_horse_renderer,
     vanilla_entity_renderer_uses_mob_item_in_hand_layer,
 };
 use crate::entities::schema::{
-    vanilla_entity_metadata_type_is_item_frame, vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_item_frame,
+    vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
     VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
@@ -1601,20 +1601,19 @@ impl EntityStore {
             .unwrap_or(0)
             & ENTITY_SHARED_FLAG_GLOWING
             != 0;
-        // Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): the zombie-model family
-        // consumes it (their held-out `animateZombieArms` arm drop deepens when aggressive),
-        // the piglin/brute drive `ATTACKING_WITH_MELEE_WEAPON` (raise + swing a melee weapon)
-        // with it, and the vindicator / pillager (`ATTACKING`) plus illusioner (`BOW_AND_ARROW` aim)
-        // resolve their arm pose from it. Every such type is a Mob carrying the flags byte;
-        // other entities have no mob-flags byte (or do not use those arms), so they stay calm.
-        let is_aggressive = (vanilla_zombie_model_family(identity.entity_type_id)
-            || vanilla_piglin_melee_attack_family(identity.entity_type_id)
-            || vanilla_illager_aggressive_arm_pose_family(identity.entity_type_id))
-            && self
-                .metadata_byte(id, VANILLA_MOB_FLAGS_DATA_ID, 0)
-                .unwrap_or(0)
-                & MOB_FLAG_AGGRESSIVE
-                != 0;
+        // Vanilla renderer `extractRenderState` assignments project `Mob.isAggressive()` for the
+        // zombie/zombie-villager/zombified-piglin, skeleton, and illager paths. PiglinRenderer
+        // instead projects `entity.getArmPose()`; bbb resolves that pose from the same synced Mob
+        // flag plus held-item state, so the generated AbstractPiglin class membership is composed
+        // here. Other entities do not consume the bit through a supported renderer pose.
+        let is_aggressive =
+            (vanilla_entity_renderer_extracts_mob_aggressive(identity.entity_type_id)
+                || vanilla_entity_metadata_type_is_abstract_piglin(identity.entity_type_id))
+                && self
+                    .metadata_byte(id, VANILLA_MOB_FLAGS_DATA_ID, 0)
+                    .unwrap_or(0)
+                    & MOB_FLAG_AGGRESSIVE
+                    != 0;
         // Vanilla `VillagerRenderer` / `WanderingTraderRenderer.extractRenderState`:
         // `state.isUnhappy = entity.getUnhappyCounter() > 0`. The counter is defined on
         // `AbstractVillager` at synced int id 18, so only villager-family renderers read it.

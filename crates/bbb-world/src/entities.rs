@@ -1204,10 +1204,9 @@ entity_model_source_state! {
     #[serde(default)]
     pub outline_color: u32,
     /// Vanilla `Mob.isAggressive()` (`DATA_MOB_FLAGS_ID & 4`): whether the mob is in its
-    /// aggressive AI state, which deepens the held-out `animateZombieArms` arm drop
-    /// (`-π / 1.5` aggressive vs `-π / 2.25` calm). Projected only for the zombie-model
-    /// family ([`vanilla_zombie_model_family`](crate::entities::dimensions)); `false` for
-    /// every other entity (which has no mob-flags byte or does not use those arms).
+    /// aggressive AI state. Renderer-owned extraction projects it for zombie, skeleton, and
+    /// illager render states; bbb also resolves the regular piglin/brute arm pose from this flag.
+    /// `false` for entity render paths that do not consume the synced Mob bit.
     #[serde(default)]
     pub is_aggressive: bool,
     /// Vanilla `VillagerRenderState.isUnhappy` (`AbstractVillager.getUnhappyCounter() > 0`, synced INT id

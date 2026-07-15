@@ -1167,48 +1167,6 @@ pub(crate) fn vanilla_animal_entity_type(entity_type_id: i32) -> bool {
     vanilla_entity_metadata_type_is_animal(entity_type_id)
 }
 
-/// Entities rendered with the vanilla `ZombieModel` / `GiantZombieModel`, whose
-/// `setupAnim` overrides the arms with `AnimationUtils.animateZombieArms` (the held-out
-/// pose, whose `armDrop` deepens for an aggressive mob). Together with
-/// [`vanilla_piglin_melee_attack_family`] these are the consumers of the synced `Mob`
-/// aggressive flag, so the `is_aggressive` projection is gated to them — every one is a
-/// `Mob` carrying the `DATA_MOB_FLAGS_ID` byte.
-pub(crate) fn vanilla_zombie_model_family(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_DROWNED_ID
-            | VANILLA_ENTITY_TYPE_HUSK_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
-            | VANILLA_ENTITY_TYPE_GIANT_ID
-    )
-}
-
-/// The regular piglin and the piglin brute, whose vanilla `getArmPose` returns
-/// `ATTACKING_WITH_MELEE_WEAPON` when `isAggressive() && isHoldingMeleeWeapon()` —
-/// `PiglinModel` then raises (`holdWeaponHigh`) and swings (`swingWeaponDown`) the weapon.
-/// Both consume the synced `Mob` aggressive flag, so the `is_aggressive` projection covers
-/// them. The zombified piglin is excluded: it is a `Zombie` whose `animateZombieArms` pose
-/// is deferred (covered by [`vanilla_zombie_model_family`] semantics, not the piglin pose).
-pub(crate) fn vanilla_piglin_melee_attack_family(entity_type_id: i32) -> bool {
-    super::vanilla_entity_type_is_abstract_piglin(entity_type_id)
-}
-
-/// The illagers whose vanilla `getArmPose` branches on `isAggressive()`, and whose bbb arm pose is
-/// resolved from it: the vindicator (`isAggressive → ATTACKING`, the `swingWeaponDown` axe), the
-/// illusioner (`!casting && isAggressive → BOW_AND_ARROW`, the bow aim), and the pillager
-/// (`!isChargingCrossbow && !isHolding(CROSSBOW) && isAggressive → ATTACKING`). They consume the synced
-/// `Mob` aggressive flag, so the `is_aggressive` projection covers them. The evoker never reads
-/// `isAggressive` (`getArmPose` is `SPELLCASTING > CELEBRATING > CROSSED`), so it remains gated out.
-pub(crate) fn vanilla_illager_aggressive_arm_pose_family(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID
-            | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
-            | VANILLA_ENTITY_TYPE_PILLAGER_ID
-    )
-}
-
 /// Whether the entity is rendered with the vanilla `BatModel`. Its `setupAnim` swaps to
 /// the `BatAnimation.BAT_RESTING` hanging pose (and applies a head look) while
 /// `Bat.isResting` (the synced `DATA_ID_FLAGS & 1`) is set, so the resting projection is

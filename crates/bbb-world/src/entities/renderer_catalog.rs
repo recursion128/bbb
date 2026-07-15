@@ -13,6 +13,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     uses_abstract_feline_model: bool,
     uses_abstract_horse_renderer: bool,
     uses_mob_item_in_hand_layer: bool,
+    extracts_mob_aggressive: bool,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -49,6 +50,11 @@ pub(super) fn vanilla_entity_renderer_uses_abstract_horse_renderer(entity_type_i
 pub(super) fn vanilla_entity_renderer_uses_mob_item_in_hand_layer(entity_type_id: i32) -> bool {
     vanilla_entity_renderer_registration(entity_type_id)
         .is_some_and(|entry| entry.uses_mob_item_in_hand_layer)
+}
+
+pub(super) fn vanilla_entity_renderer_extracts_mob_aggressive(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.extracts_mob_aggressive)
 }
 
 #[cfg(test)]
@@ -237,6 +243,45 @@ mod tests {
         ));
         assert!(!vanilla_entity_renderer_uses_mob_item_in_hand_layer(
             VANILLA_ENTITY_TYPE_PLAYER_ID
+        ));
+    }
+
+    #[test]
+    fn generated_aggressive_projection_matches_renderer_extractors() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.extracts_mob_aggressive)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual,
+            vec![
+                VANILLA_ENTITY_TYPE_BOGGED_ID,
+                VANILLA_ENTITY_TYPE_DROWNED_ID,
+                VANILLA_ENTITY_TYPE_EVOKER_ID,
+                VANILLA_ENTITY_TYPE_HUSK_ID,
+                VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+                VANILLA_ENTITY_TYPE_PARCHED_ID,
+                VANILLA_ENTITY_TYPE_PILLAGER_ID,
+                VANILLA_ENTITY_TYPE_SKELETON_ID,
+                VANILLA_ENTITY_TYPE_STRAY_ID,
+                VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+                VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+            ]
+        );
+        for entity_type_id in actual {
+            assert!(vanilla_entity_renderer_extracts_mob_aggressive(
+                entity_type_id
+            ));
+        }
+        assert!(!vanilla_entity_renderer_extracts_mob_aggressive(
+            VANILLA_ENTITY_TYPE_GIANT_ID
+        ));
+        assert!(!vanilla_entity_renderer_extracts_mob_aggressive(
+            VANILLA_ENTITY_TYPE_PIGLIN_ID
         ));
     }
 }

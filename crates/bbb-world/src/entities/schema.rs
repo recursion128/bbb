@@ -1200,13 +1200,6 @@ mod tests {
         }
         let dimensions_source = include_str!("dimensions.rs");
         assert!(!dimensions_source.contains("ITEM_FRAME_ENTITY_TYPE_IDS"));
-        let piglin_query = dimensions_source
-            .split("fn vanilla_piglin_melee_attack_family")
-            .nth(1)
-            .and_then(|source| source.split_once("\n}"))
-            .map(|(body, _)| body)
-            .expect("piglin class query source");
-        assert!(!piglin_query.contains("matches!"));
         let chest_boat_query = dimensions_source
             .split("fn is_vanilla_chest_boat_or_raft_type")
             .nth(1)

@@ -40,6 +40,7 @@ class EntityRendererRegistration:
     uses_abstract_feline_model: bool
     uses_abstract_horse_renderer: bool
     uses_mob_item_in_hand_layer: bool
+    extracts_mob_aggressive: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -246,6 +247,29 @@ def _renderer_hierarchy_constructs_type(
         current = type_by_name[current.superclass]
 
 
+def _renderer_hierarchy_extracts_mob_aggressive(
+    renderer_class: str,
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> bool:
+    expected = "state.isAggressive = entity.isAggressive ()"
+    current = type_by_name[renderer_class]
+    while True:
+        source = source_by_type[current.fqcn]
+        for method in source.methods_for(current):
+            if method.name != "extractRenderState" or len(method.parameters) != 3:
+                continue
+            if any(
+                node.type == "assignment_expression"
+                and source.expression(node).canonical == expected
+                for node in descendants(method.node)
+            ):
+                return True
+        if current.superclass is None or current.superclass not in type_by_name:
+            return False
+        current = type_by_name[current.superclass]
+
+
 def extract_entity_renderer_registrations(
     entity_renderers_source: JavaSource,
     renderer_sources: list[JavaSource],
@@ -386,6 +410,11 @@ def extract_entity_renderer_registrations(
                 and _renderer_hierarchy_constructs_type(
                     renderer_class,
                     ITEM_IN_HAND_LAYER_CLASS,
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_extracts_mob_aggressive(
+                    renderer_class,
                     source_by_type,
                     type_by_name,
                 ),

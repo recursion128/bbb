@@ -1663,7 +1663,8 @@ fn entity_model_instances_project_aggressive_for_zombie_family() {
 #[test]
 fn entity_model_instances_project_aggressive_for_pillager_attacking_pose() {
     // Vanilla `Pillager.getArmPose`: after crossbow charge/hold checks, an aggressive pillager returns
-    // `ATTACKING`. The evoker has no aggressive branch, so the same mob flag stays gated out there.
+    // `ATTACKING`. Shared `IllagerRenderer.extractRenderState` still copies `isAggressive` for the
+    // evoker, although the evoker arm-pose resolver ignores that field.
     const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
     const MOB_FLAG_AGGRESSIVE: i8 = 4;
 
@@ -1705,7 +1706,7 @@ fn entity_model_instances_project_aggressive_for_pillager_attacking_pose() {
             MOB_FLAG_AGGRESSIVE,
         )],
     }));
-    assert!(!aggressive(&world, 92));
+    assert!(aggressive(&world, 92));
 }
 
 #[test]
