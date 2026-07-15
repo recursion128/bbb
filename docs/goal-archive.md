@@ -16142,3 +16142,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `DATA_STRAY_CONVERSION_ID`（wire id 16、默认 false）；Stray 与未知实体不会误入该投影。
 - native shake projection 已移除 Skeleton 类型分支和生产索引别名；生成器 reverse guard、
   world 查询测试及 Skeleton/Stray native 对照测试会阻止旧 membership 回流。
+
+## 2026-07-15：从 metadata hierarchy 推导 strider suffocating shake
+
+- `bbb-world` 现在从生成 schema 解析 Strider 独有的 `DATA_SUFFOCATING`（wire id 19、
+  默认 false），并明确排除同索引布尔字段的 Pig 与未知实体。
+- native shake projection 已移除 Strider 类型分支，仍由模型 owner 合法共享 accessor 常量
+  选择 cold texture；函数级生成 reverse guard 与 Strider/Pig 对照测试锁定该边界。

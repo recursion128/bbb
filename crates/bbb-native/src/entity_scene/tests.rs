@@ -1210,6 +1210,11 @@ fn entity_model_instances_shake_striders_while_suffocating() {
         VANILLA_ENTITY_TYPE_STRIDER_ID,
         [1.0, 64.0, -2.0],
     ));
+    world.apply_add_entity(protocol_add_entity(
+        87,
+        VANILLA_ENTITY_TYPE_PIG_ID,
+        [3.0, 64.0, -2.0],
+    ));
     world.advance_entity_client_animations(2);
 
     let strider = |world: &WorldStore| {
@@ -1247,6 +1252,21 @@ fn entity_model_instances_shake_striders_while_suffocating() {
             baby: false,
             cold: true
         }
+    );
+
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 87,
+        values: vec![protocol_bool_data(STRIDER_SUFFOCATING_DATA_ID, true)],
+    }));
+    let pig_body_rot = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25)
+        .into_iter()
+        .find(|instance| instance.entity_id == 87)
+        .unwrap()
+        .render_state
+        .body_rot;
+    assert_eq!(
+        pig_body_rot, 0.0,
+        "Pig does not own Strider.DATA_SUFFOCATING"
     );
 }
 

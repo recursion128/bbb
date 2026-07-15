@@ -362,6 +362,20 @@ pub fn vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_ty
     }
 }
 
+/// Resolves the generated Strider suffocating accessor and its typed default.
+pub fn vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SUFFOCATING")?;
+    match (accessor.serializer_name, accessor.typed_default) {
+        ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
+            Some((accessor.data_id, default))
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the nearest generated boolean `DATA_BABY_ID` accessor and its typed default.
 ///
 /// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
@@ -3175,6 +3189,22 @@ mod tests {
         assert_eq!(VANILLA_STRIDER_SUFFOCATING_DATA_ID, 19);
         assert_eq!(VANILLA_STRIDER_DEFAULT_BOOST_TIME, 0);
         assert!(!VANILLA_STRIDER_DEFAULT_SUFFOCATING);
+        assert_eq!(
+            vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_STRIDER_ID
+            ),
+            Some((19, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIG_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(-1),
+            None
+        );
         let zoglin = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Zoglin);
         assert_eq!(zoglin.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(zoglin.inherited_field_count, 16);
