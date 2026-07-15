@@ -761,6 +761,26 @@ pub fn vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated TropicalFish packed-variant accessor and its typed default.
+pub fn vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_TYPE_VARIANT")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.fish.TropicalFish",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited TamableAnimal flags accessor and its typed default.
 pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
     entity_type_id: i32,
@@ -1684,12 +1704,12 @@ mod tests {
         VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
         VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
         VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
 
     use super::*;
@@ -2907,6 +2927,26 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_tropical_fish_variant_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID
+            ),
+            Some((17, 0))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(-1),
             None
         );
     }

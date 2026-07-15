@@ -43,6 +43,7 @@ use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
 #[cfg(test)]
 use bbb_world::WolfVariantAssetPresentation;
@@ -229,11 +230,9 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_TROPICAL_FISH_BASE_COLOR_MASK as TROPICAL_FISH_BASE_COLOR_MASK,
     VANILLA_TROPICAL_FISH_BASE_COLOR_SHIFT as TROPICAL_FISH_BASE_COLOR_SHIFT,
-    VANILLA_TROPICAL_FISH_DEFAULT_VARIANT as TROPICAL_FISH_DEFAULT_VARIANT,
     VANILLA_TROPICAL_FISH_PATTERN_COLOR_MASK as TROPICAL_FISH_PATTERN_COLOR_MASK,
     VANILLA_TROPICAL_FISH_PATTERN_COLOR_SHIFT as TROPICAL_FISH_PATTERN_COLOR_SHIFT,
     VANILLA_TROPICAL_FISH_PATTERN_MASK as TROPICAL_FISH_PATTERN_MASK,
-    VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_TURTLE_DEFAULT_HAS_EGG as TURTLE_DEFAULT_HAS_EGG,

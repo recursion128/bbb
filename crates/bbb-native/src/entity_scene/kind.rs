@@ -343,12 +343,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_TNT_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_TRIDENT_ID => EntityModelKind::Trident,
-        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => EntityModelKind::TropicalFish {
-            shape: tropical_fish_shape(data_values),
-            base_color: tropical_fish_base_color(data_values),
-            pattern: tropical_fish_pattern(data_values),
-            pattern_color: tropical_fish_pattern_color(data_values),
-        },
+        VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => {
+            tropical_fish_model_kind(entity_type_id, data_values)
+        }
         VANILLA_ENTITY_TYPE_TURTLE_ID => EntityModelKind::Turtle {
             baby: ageable_baby(data_values),
         },

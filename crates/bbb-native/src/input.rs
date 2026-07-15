@@ -89,6 +89,7 @@ use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 use bbb_world::{
@@ -234,10 +235,6 @@ use bbb_world::{
     VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID as PIG_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_PIG_SOUND_VARIANT_DATA_ID as PIG_SOUND_VARIANT_DATA_ID,
     VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_TROPICAL_FISH_DEFAULT_VARIANT as TROPICAL_FISH_DEFAULT_VARIANT,
-    VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
@@ -7673,8 +7670,14 @@ fn debug_push_tadpole_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let variant = debug_entity_data_int_present(entity, TROPICAL_FISH_VARIANT_DATA_ID)
-        .unwrap_or(TROPICAL_FISH_DEFAULT_VARIANT);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let variant = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
     fields.push(format!("Variant: {variant}"));
 }
 

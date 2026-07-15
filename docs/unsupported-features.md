@@ -261,6 +261,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Salmon variant membership, wire index and typed default must remain derived from generated
   `Salmon.DATA_TYPE`; world bounds and native model/debug consumers must not restore fixed
   accessor/default aliases or bypass the existing clamped variant mapping.
+  TropicalFish packed-variant membership, wire index and typed default must remain derived from
+  generated `TropicalFish.DATA_ID_TYPE_VARIANT`; native model/debug consumers must not restore
+  fixed accessor/default aliases and must continue using generated mask/shift constants.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

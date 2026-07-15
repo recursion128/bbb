@@ -16393,3 +16393,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   small/medium/large clamp、尺寸与 NBT 名称映射保持不变。
 - 生产消费者删除固定 accessor/default 别名，world bounds 删除平行 Salmon type
   predicate；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 TropicalFish packed variant metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `TropicalFish.DATA_ID_TYPE_VARIANT` 解析
+  membership、wire id 17 与 int typed default 0；native model 一次读取 packed variant 后
+  投影 shape/base color/pattern/pattern color，native debug 共用同一 accessor 来源。
+- 生产消费者删除固定 accessor/default 别名，并继续使用生成的 packed mask/shift 常量；
+  生成器 reverse guard 禁止恢复平行 accessor 事实源。
