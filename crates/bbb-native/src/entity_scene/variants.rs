@@ -5,10 +5,10 @@ pub(super) fn villager_model_data(
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> VillagerModelData {
-    let data_id = match entity_type_id {
-        VANILLA_ENTITY_TYPE_VILLAGER_ID => VILLAGER_DATA_DATA_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => ZOMBIE_VILLAGER_DATA_DATA_ID,
-        _ => return VillagerModelData::DEFAULT,
+    let Some(data_id) =
+        bbb_world::vanilla_entity_metadata_villager_data_accessor_for_entity_type(entity_type_id)
+    else {
+        return VillagerModelData::DEFAULT;
     };
     values
         .iter()

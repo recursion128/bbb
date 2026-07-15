@@ -21989,6 +21989,22 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_villager_model_data_does_not_restore_accessor_id_switch() {
+        let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let body = source
+            .split("fn villager_model_data")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("villager model-data projection source");
+        assert!(body.contains("vanilla_entity_metadata_villager_data_accessor_for_entity_type"));
+        assert!(!body.contains("VILLAGER_DATA_DATA_ID"));
+        assert!(!body.contains("ZOMBIE_VILLAGER_DATA_DATA_ID"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_VILLAGER_ID"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID"));
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

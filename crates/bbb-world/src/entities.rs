@@ -61,6 +61,7 @@ pub use schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
+    vanilla_entity_metadata_villager_data_accessor_for_entity_type,
     VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataClassCatalogEntry,
     VanillaEntityMetadataDefault, VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
     VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagCatalogEntry,

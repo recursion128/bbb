@@ -9411,6 +9411,15 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
         VillagerModelData::DEFAULT,
         "zombie villager data lives at id 20, not the villager id 19"
     );
+    assert_eq!(
+        villager_model_data(
+            VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+            &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 6, 14, 9)],
+            None,
+        ),
+        VillagerModelData::DEFAULT,
+        "wandering traders do not own DATA_VILLAGER_DATA"
+    );
 }
 
 #[test]

@@ -165,6 +165,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generator reject those bridges from production sources.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
+  Per-entity metadata accessor-id consumers must likewise query the generated schema hierarchy;
+  in particular, villager model projection must resolve `DATA_VILLAGER_DATA` there rather than
+  restoring a Villager/ZombieVillager type-to-index switch.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

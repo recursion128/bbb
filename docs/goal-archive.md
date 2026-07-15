@@ -16119,3 +16119,11 @@ load/clear 语义与 blur 型 screen stratum 均已与 vanilla 对齐。debug ov
 F3 toggle/keymap、左右列基础 entry、F3+1..4 图表与
 lightmap、F3+B/G/H/A/C/D/I/L/N/P/S/T/V/Esc/F4/F6 各动作与 shell、GameModeSwitcher、
 PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive）。
+
+## 2026-07-15：从生成 schema 推导 villager model metadata accessor
+
+- `bbb-world` 现在沿生成的 metadata class hierarchy 解析最近的
+  `DATA_VILLAGER_DATA`，校验 `VILLAGER_DATA` serializer，并分别得到 Villager 的 wire id 19、
+  ZombieVillager 的 wire id 20；WanderingTrader 与未知实体类型不会误入该投影。
+- native villager model projection 已移除手写的实体类型到 accessor id 分支，直接消费上述
+  语义 owner；生成器产出的 reverse guard 与 world/native tests 会阻止旧分支回流。

@@ -330,6 +330,19 @@ pub fn vanilla_entity_metadata_accessor_for_entity_type(
     }
 }
 
+/// Resolves the nearest generated `DATA_VILLAGER_DATA` accessor for an entity type.
+///
+/// Villager and ZombieVillager declare the same semantic field at different wire indices. The
+/// generated schema hierarchy owns both membership and index selection, so render consumers do
+/// not need a parallel entity-type switch.
+pub fn vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<u8> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_VILLAGER_DATA")?;
+    (accessor.serializer_name == "VILLAGER_DATA").then_some(accessor.data_id)
+}
+
 /// Resolves the nearest generated boolean `DATA_BABY_ID` accessor and its typed default.
 ///
 /// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
@@ -723,10 +736,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
         VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
         VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
         VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
 
     use super::*;
@@ -2303,6 +2317,28 @@ mod tests {
         assert_eq!(
             zombie_villager_data.default_expression,
             "this.initializeVillagerData ()"
+        );
+        assert_eq!(
+            vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID
+            ),
+            Some(19)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+            ),
+            Some(20)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_villager_data_accessor_for_entity_type(-1),
+            None
         );
         let furnace_minecart =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::MinecartFurnace);

@@ -38,6 +38,7 @@ use bbb_world::WolfVariantAssetPresentation;
 use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
+use bbb_world::VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID as ZOMBIE_VILLAGER_CONVERTING_DATA_ID;
 use bbb_world::{
     vanilla_entity_type_illager_arm_pose_uses_celebrating, vanilla_entity_type_is_living,
     ArmorMaterialKind as WorldArmorMaterialKind, CatVariantPresentation,
@@ -268,9 +269,9 @@ use bbb_world::{
     VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
+#[cfg(test)]
 use bbb_world::{
     VANILLA_VILLAGER_DATA_DATA_ID as VILLAGER_DATA_DATA_ID,
-    VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID as ZOMBIE_VILLAGER_CONVERTING_DATA_ID,
     VANILLA_ZOMBIE_VILLAGER_DATA_DATA_ID as ZOMBIE_VILLAGER_DATA_DATA_ID,
 };
 pub(crate) use bbb_world::{
