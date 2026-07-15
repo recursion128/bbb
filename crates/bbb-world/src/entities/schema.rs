@@ -276,6 +276,16 @@ pub struct VanillaArmorStandMetadataAccessors {
     pub right_leg_pose_default: [f32; 3],
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VanillaInteractionMetadataAccessors {
+    pub width_data_id: u8,
+    pub width_default: f32,
+    pub height_data_id: u8,
+    pub height_default: f32,
+    pub response_data_id: u8,
+    pub response_default: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
@@ -691,6 +701,52 @@ pub fn vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
         right_leg_pose_data_id,
         right_leg_pose_default,
     })
+}
+
+/// Resolves the generated Interaction dimensions and response accessors with typed defaults.
+pub fn vanilla_entity_metadata_interaction_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaInteractionMetadataAccessors> {
+    let width = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_WIDTH_ID")?;
+    let height =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_HEIGHT_ID")?;
+    let response =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_RESPONSE_ID")?;
+    match (
+        (width.owner, width.serializer_name, width.typed_default),
+        (height.owner, height.serializer_name, height.typed_default),
+        (
+            response.owner,
+            response.serializer_name,
+            response.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.Interaction",
+                "FLOAT",
+                Some(VanillaEntityMetadataDefault::Float(width_default)),
+            ),
+            (
+                "net.minecraft.world.entity.Interaction",
+                "FLOAT",
+                Some(VanillaEntityMetadataDefault::Float(height_default)),
+            ),
+            (
+                "net.minecraft.world.entity.Interaction",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(response_default)),
+            ),
+        ) => Some(VanillaInteractionMetadataAccessors {
+            width_data_id: width.data_id,
+            width_default,
+            height_data_id: height.data_id,
+            height_default,
+            response_data_id: response.data_id,
+            response_default,
+        }),
+        _ => None,
+    }
 }
 
 /// Resolves the generated Panda flags accessor and its typed default.
@@ -1181,9 +1237,10 @@ mod tests {
         VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
         VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
         VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
         VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
         VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
@@ -2371,6 +2428,33 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_armor_stand_accessors_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_interaction_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_interaction_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_INTERACTION_ID
+            ),
+            Some(VanillaInteractionMetadataAccessors {
+                width_data_id: 8,
+                width_default: 1.0,
+                height_data_id: 9,
+                height_default: 1.0,
+                response_data_id: 10,
+                response_default: false,
+            })
+        );
+        assert_eq!(
+            vanilla_entity_metadata_interaction_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_interaction_accessors_for_entity_type(-1),
             None
         );
     }

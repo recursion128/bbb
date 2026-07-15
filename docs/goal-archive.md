@@ -16293,3 +16293,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   并继续使用生成的 small/show-arms/no-baseplate/marker masks。
 - metadata 生产消费者删除固定 accessor/default 别名，native model 不再把 renderer preview
   pose 当作 wire default；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Interaction metadata accessors
+
+- `bbb-world` 现在公开从生成 schema 的 `Interaction.DATA_WIDTH_ID`、`DATA_HEIGHT_ID` 与
+  `DATA_RESPONSE_ID` 解析 membership、wire ids 8/9/10 及 typed defaults 1.0/1.0/false 的
+  accessor bundle；world pick bounds 与 native debug 共同消费它。
+- 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。

@@ -217,6 +217,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   ArmorStand client flags and six pose accessors, wire indices and typed defaults must remain
   derived from the generated `ArmorStand` schema; world bounds/pickability and native model/debug
   consumers must not restore fixed metadata aliases or use the renderer preview pose as wire truth.
+  Interaction width, height and response membership, wire indices and typed defaults must remain
+  derived from generated `DATA_WIDTH_ID`, `DATA_HEIGHT_ID` and `DATA_RESPONSE_ID`; world bounds and
+  native debug consumers must not restore fixed metadata aliases.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

@@ -1,6 +1,7 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
+pub use crate::entities::VanillaInteractionMetadataAccessors;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
@@ -11,6 +12,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type, vanilla_entity_metadata_field,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type, vanilla_entity_metadata_schema,
     vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type,

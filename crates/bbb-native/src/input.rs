@@ -78,6 +78,7 @@ use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
@@ -313,12 +314,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET as ABSTRACT_FISH_DEFAULT_FROM_BUCKET,
     VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID as ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-    VANILLA_INTERACTION_DEFAULT_HEIGHT as INTERACTION_DEFAULT_HEIGHT,
-    VANILLA_INTERACTION_DEFAULT_RESPONSE as INTERACTION_DEFAULT_RESPONSE,
-    VANILLA_INTERACTION_DEFAULT_WIDTH as INTERACTION_DEFAULT_WIDTH,
-    VANILLA_INTERACTION_HEIGHT_DATA_ID as INTERACTION_HEIGHT_DATA_ID,
-    VANILLA_INTERACTION_RESPONSE_DATA_ID as INTERACTION_RESPONSE_DATA_ID,
-    VANILLA_INTERACTION_WIDTH_DATA_ID as INTERACTION_WIDTH_DATA_ID,
 };
 use bbb_world::{
     VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION as ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
@@ -7509,12 +7504,17 @@ fn debug_push_piglin_additional_save_data(entity: &EntityState, fields: &mut Vec
 }
 
 fn debug_push_interaction_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let width = debug_entity_data_float_present(entity, INTERACTION_WIDTH_DATA_ID)
-        .unwrap_or(INTERACTION_DEFAULT_WIDTH);
-    let height = debug_entity_data_float_present(entity, INTERACTION_HEIGHT_DATA_ID)
-        .unwrap_or(INTERACTION_DEFAULT_HEIGHT);
-    let response = debug_entity_data_bool_present(entity, INTERACTION_RESPONSE_DATA_ID)
-        .unwrap_or(INTERACTION_DEFAULT_RESPONSE);
+    let Some(accessors) =
+        vanilla_entity_metadata_interaction_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let width = debug_entity_data_float_present(entity, accessors.width_data_id)
+        .unwrap_or(accessors.width_default);
+    let height = debug_entity_data_float_present(entity, accessors.height_data_id)
+        .unwrap_or(accessors.height_default);
+    let response = debug_entity_data_bool_present(entity, accessors.response_data_id)
+        .unwrap_or(accessors.response_default);
     if let Some(width) = debug_snbt_float(width) {
         fields.push(format!("width: {width}"));
     }

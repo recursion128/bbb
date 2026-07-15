@@ -21,6 +21,7 @@ pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID
 use super::schema::{
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
+    vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
@@ -31,10 +32,6 @@ use super::schema::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
     VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-    VANILLA_INTERACTION_DEFAULT_HEIGHT as INTERACTION_DEFAULT_HEIGHT,
-    VANILLA_INTERACTION_DEFAULT_WIDTH as INTERACTION_DEFAULT_WIDTH,
-    VANILLA_INTERACTION_HEIGHT_DATA_ID as INTERACTION_DATA_HEIGHT_ID,
-    VANILLA_INTERACTION_WIDTH_DATA_ID as INTERACTION_DATA_WIDTH_ID,
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE as PUFFERFISH_DEFAULT_PUFF_STATE,
@@ -220,7 +217,7 @@ fn vanilla_bounds_for_entity_data(
     } else if let Some(bounds) = baby_pick_bounds(entity_type_id, data_values) {
         bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
-        interaction_pick_bounds(data_values)
+        interaction_pick_bounds(entity_type_id, data_values)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID
     {
@@ -697,20 +694,24 @@ fn shulker_progress_pick_bounds(
     bounds
 }
 
-fn interaction_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
-    EntityPickBoundsState::from_base_size(
+fn interaction_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    let accessors = vanilla_entity_metadata_interaction_accessors_for_entity_type(entity_type_id)?;
+    Some(EntityPickBoundsState::from_base_size(
         entity_data_float(
             data_values,
-            INTERACTION_DATA_WIDTH_ID,
-            INTERACTION_DEFAULT_WIDTH,
+            accessors.width_data_id,
+            accessors.width_default,
         ),
         entity_data_float(
             data_values,
-            INTERACTION_DATA_HEIGHT_ID,
-            INTERACTION_DEFAULT_HEIGHT,
+            accessors.height_data_id,
+            accessors.height_default,
         ),
         0.0,
-    )
+    ))
 }
 
 fn avatar_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
