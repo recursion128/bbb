@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     client::dialog::{
-        CommonDialogDataState, DialogBodyState, DialogDataState, DialogInputControlState,
-        DialogState,
+        decode_component_click_dialog, CommonDialogDataState, DialogBodyState, DialogDataState,
+        DialogInputControlState, DialogState,
     },
     entities::{is_vanilla_abstract_horse_type, is_vanilla_abstract_nautilus_type},
     protocol_block_pos, BlockPos, WorldStore,
@@ -498,6 +498,21 @@ impl WorldStore {
     /// original non-dialog previous screen, matching vanilla's dialog stack.
     pub fn show_dialog_from_action(&mut self, dialog: DialogState) -> bool {
         self.client_ui.show_dialog(dialog);
+        true
+    }
+
+    /// Decodes and opens a ShowDialog click event with the registry context of
+    /// its containing dialog, without recording a clientbound packet.
+    pub fn show_dialog_from_component_click(&mut self, dialog: &NbtSummaryValue) -> bool {
+        let context_free = self
+            .current_dialog()
+            .is_some_and(|current| current.holder_kind == "context_free");
+        let target =
+            decode_component_click_dialog(dialog, (!context_free).then_some(&self.registries));
+        let Ok(target) = target else {
+            return false;
+        };
+        self.client_ui.show_dialog(target);
         true
     }
 

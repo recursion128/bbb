@@ -68,8 +68,8 @@ Owner: `bbb-protocol`
   requested host and port.
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
-  `DialogBodyHandlers`: execute Component-click paths; and restore native-owned
-  chat/sign/debug and warning return-screen stacks when dialogs clear. The current
+  `DialogBodyHandlers`: restore native-owned chat/sign/debug and warning return-screen
+  stacks when dialogs clear. The current
   Notice/Confirmation projection already sends static custom id/payload, lays out
   Confirmation's two footer actions with its no-button Escape binding and styled hover tooltips,
   projects unpatched, registry-independent text/scalar-patched, typed registry-holder-patched,
@@ -124,8 +124,11 @@ Owner: `bbb-protocol`
   traverse by Tab without losing its cursor or selection. OpenUrl now honors startup-owned vanilla
   chat-links/chat-links-prompt defaults, projects the untrusted ConfirmLinkScreen with URL, warning,
   Yes/Copy/No controls, defers after-action until confirmation, and dispatches accepted HTTP(S) URIs
-  to the exact platform command without a shell. It still needs the remaining controls and
-  actions before either
+  to the exact platform command without a shell. PlainMessage and Item-description
+  `FocusableTextWidget` projections now preserve glyph-level Component click spans, leave padding
+  focus-only, and route all seven server-reachable click actions through the existing Dialog
+  action/world/net/platform owners with the parent after-action. It still needs the remaining
+  native screen-stack owners before either
   `ShowDialog` row's `runtime_side_effect` coverage cell can close.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while

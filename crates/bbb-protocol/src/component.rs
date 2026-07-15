@@ -41,8 +41,8 @@ pub struct ComponentStyle {
     #[serde(default)]
     pub color: Option<u32>,
     /// Click event carried by the run (`click_event` in the 26.1 Style codec).
-    /// The renderer-facing HUD run projection ignores this today, but control
-    /// and local debug feedback preserve it for interactive actions.
+    /// Native Dialog text hit testing consumes it at glyph granularity; other
+    /// renderer projections may retain it without making the text interactive.
     #[serde(default)]
     pub click_event: Option<ComponentClickEvent>,
 }

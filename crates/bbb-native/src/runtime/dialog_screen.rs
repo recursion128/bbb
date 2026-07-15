@@ -6,7 +6,7 @@ use bbb_net::NetCommand;
 use bbb_protocol::{
     java_float_to_string,
     packets::{CustomClickAction, GameType, ItemStackSummary},
-    NbtSummaryValue,
+    ComponentClickEvent, NbtSummaryValue, StyledTextRun,
 };
 use bbb_renderer::{
     HudInventoryBackgroundLayer, HudInventoryBackgroundTexture, HudInventoryFillLayer,
@@ -107,6 +107,14 @@ struct DialogTextLine {
     text: String,
     width: u32,
     runs: Vec<HudStyledTextRun>,
+    click_spans: Vec<DialogTextClickSpan>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DialogTextClickSpan {
+    x: u32,
+    width: u32,
+    event: ComponentClickEvent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -4722,7 +4730,6 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
                             screen_height,
                         ))
                     .then_some(node)
-                    .map(|node| node.target)
                 })
             });
     let footer_action = DialogFooterLayout::new(
@@ -4805,7 +4812,8 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         }
         None => {}
     }
-    if let Some(target) = body_navigation_hit {
+    if let Some(node) = body_navigation_hit {
+        let target = node.target;
         let action = match target {
             DialogFocusState::Action { index } => controls
                 .actions
@@ -4813,8 +4821,48 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
                 .map(|action| (action.activation(), controls.common.after_action.clone())),
             _ => None,
         };
+        let component_click = match target {
+            DialogFocusState::Body {
+                index,
+                part: DialogBodyFocusPartState::Primary,
+            } => match controls.common.body_data.get(index) {
+                Some(DialogBodyState::PlainMessage { message }) => dialog_text_click_event_at(
+                    message,
+                    node.rectangle,
+                    cursor_position,
+                    surface_size,
+                ),
+                _ => None,
+            },
+            DialogFocusState::Body {
+                index,
+                part: DialogBodyFocusPartState::Description,
+            } => match controls.common.body_data.get(index) {
+                Some(DialogBodyState::Item {
+                    description: Some(description),
+                    ..
+                }) => dialog_text_click_event_at(
+                    description,
+                    node.rectangle,
+                    cursor_position,
+                    surface_size,
+                ),
+                _ => None,
+            },
+            _ => None,
+        };
+        let component_after_action = controls.common.after_action.clone();
         world.focus_dialog_navigation_target(target, false);
-        if let Some((activation, after_action)) = action {
+        if let Some(event) = component_click {
+            run_dialog_component_click_event(
+                counters,
+                world,
+                net_commands,
+                clipboard,
+                &event,
+                &component_after_action,
+            );
+        } else if let Some((activation, after_action)) = action {
             run_dialog_control_activation(
                 counters,
                 world,
@@ -5444,6 +5492,45 @@ fn run_dialog_control_activation(
     }
 }
 
+fn run_dialog_component_click_event(
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    clipboard: Option<&mut dyn DebugClipboard>,
+    event: &ComponentClickEvent,
+    after_action: &str,
+) -> bool {
+    let action = match event {
+        ComponentClickEvent::OpenFile { .. } => return false,
+        ComponentClickEvent::OpenUrl { url } => DialogActionState::OpenUrl { url: url.clone() },
+        ComponentClickEvent::RunCommand { command } => DialogActionState::RunCommand {
+            command: command.clone(),
+        },
+        ComponentClickEvent::SuggestCommand { command } => DialogActionState::SuggestCommand {
+            command: command.clone(),
+        },
+        ComponentClickEvent::ShowDialog { dialog } => {
+            return world.show_dialog_from_component_click(dialog);
+        }
+        ComponentClickEvent::ChangePage { page } => DialogActionState::ChangePage { page: *page },
+        ComponentClickEvent::CopyToClipboard { value } => DialogActionState::CopyToClipboard {
+            value: value.clone(),
+        },
+        ComponentClickEvent::Custom { id, payload } => DialogActionState::Custom {
+            id: id.clone(),
+            payload: payload.clone(),
+        },
+    };
+    run_dialog_action(
+        counters,
+        world,
+        net_commands,
+        clipboard,
+        Some(&action),
+        after_action,
+    )
+}
+
 fn run_dialog_action(
     counters: &mut NetCounters,
     world: &mut WorldStore,
@@ -5760,6 +5847,45 @@ fn dialog_text_block(message: &DialogPlainMessageState) -> Option<DialogTextBloc
     })
 }
 
+fn dialog_text_click_event_at(
+    message: &DialogPlainMessageState,
+    rectangle: DialogFocusRectangle,
+    cursor_position: Option<PhysicalPosition<f64>>,
+    surface_size: PhysicalSize<u32>,
+) -> Option<ComponentClickEvent> {
+    let cursor = cursor_position?;
+    if !cursor.x.is_finite() || !cursor.y.is_finite() {
+        return None;
+    }
+    let screen_width = surface_size.width.clamp(1, 512);
+    let screen_height = surface_size.height.clamp(1, 512);
+    let (origin_x, origin_y) = centered_screen_origin(surface_size, screen_width, screen_height);
+    let cursor_x = i32::try_from((cursor.x.floor() as i64).saturating_sub(origin_x)).ok()?;
+    let cursor_y = i32::try_from((cursor.y.floor() as i64).saturating_sub(origin_y)).ok()?;
+    let line_y = cursor_y
+        .saturating_sub(rectangle.y)
+        .saturating_sub(FOCUSABLE_TEXT_PADDING);
+    if line_y < 0 || line_y >= rectangle.height.saturating_sub(FOCUSABLE_TEXT_PADDING * 2) {
+        return None;
+    }
+    let line_index = usize::try_from(line_y / TEXT_LINE_HEIGHT).ok()?;
+    let block = dialog_text_block(message)?;
+    let line = block.lines.get(line_index)?;
+    let line_x = rectangle
+        .x
+        .saturating_add(rectangle.width / 2)
+        .saturating_sub(i32::try_from(line.width).unwrap_or(i32::MAX) / 2);
+    let x = cursor_x.saturating_sub(line_x);
+    if x < 0 {
+        return None;
+    }
+    let x = u32::try_from(x).ok()?;
+    line.click_spans
+        .iter()
+        .find(|span| x >= span.x && x < span.x.saturating_add(span.width))
+        .map(|span| span.event.clone())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn dialog_item_block(
     world: &WorldStore,
@@ -6070,7 +6196,8 @@ fn wrapped_text_lines(text: &DialogTextState, max_width: u32) -> Vec<DialogTextL
     let mut lines = Vec::new();
     let mut current = empty_text_line();
     let mut ended_with_newline = false;
-    for run in dialog_text_runs(text) {
+    for source_run in dialog_source_runs(text) {
+        let run = hud_dialog_text_run(&source_run);
         for ch in run.text.chars() {
             if ch == '\n' {
                 lines.push(current);
@@ -6085,6 +6212,19 @@ fn wrapped_text_lines(text: &DialogTextState, max_width: u32) -> Vec<DialogTextL
                 current = empty_text_line();
                 if ch.is_whitespace() {
                     continue;
+                }
+            }
+            if let Some(event) = &source_run.style.click_event {
+                if let Some(last) = current.click_spans.last_mut().filter(|last| {
+                    last.event == *event && last.x.saturating_add(last.width) == current.width
+                }) {
+                    last.width = last.width.saturating_add(advance);
+                } else {
+                    current.click_spans.push(DialogTextClickSpan {
+                        x: current.width,
+                        width: advance,
+                        event: event.clone(),
+                    });
                 }
             }
             current.text.push(ch);
@@ -6138,29 +6278,39 @@ fn empty_text_line() -> DialogTextLine {
         text: String::new(),
         width: 0,
         runs: Vec::new(),
+        click_spans: Vec::new(),
     }
 }
 
 fn dialog_text_runs(text: &DialogTextState) -> Vec<HudStyledTextRun> {
-    let runs = text
-        .runs
+    dialog_source_runs(text)
         .iter()
-        .map(|run| HudStyledTextRun {
-            text: run.text.clone(),
-            style: HudTextStyle {
-                bold: run.style.bold == Some(true),
-                italic: run.style.italic == Some(true),
-                underlined: run.style.underlined == Some(true),
-                strikethrough: run.style.strikethrough == Some(true),
-                obfuscated: run.style.obfuscated == Some(true),
-            },
-            color: run.style.color,
-        })
-        .collect::<Vec<_>>();
-    if runs.is_empty() {
-        vec![HudStyledTextRun::plain(text.text.clone())]
+        .map(hud_dialog_text_run)
+        .collect()
+}
+
+fn dialog_source_runs(text: &DialogTextState) -> Vec<StyledTextRun> {
+    if text.runs.is_empty() {
+        vec![StyledTextRun {
+            text: text.text.clone(),
+            style: Default::default(),
+        }]
     } else {
-        runs
+        text.runs.clone()
+    }
+}
+
+fn hud_dialog_text_run(run: &StyledTextRun) -> HudStyledTextRun {
+    HudStyledTextRun {
+        text: run.text.clone(),
+        style: HudTextStyle {
+            bold: run.style.bold == Some(true),
+            italic: run.style.italic == Some(true),
+            underlined: run.style.underlined == Some(true),
+            strikethrough: run.style.strikethrough == Some(true),
+            obfuscated: run.style.obfuscated == Some(true),
+        },
+        color: run.style.color,
     }
 }
 
@@ -6945,6 +7095,241 @@ mod tests {
         ));
         assert_eq!(world.dialog_focused_body(), None);
         assert!(world.current_dialog().is_some());
+    }
+
+    #[test]
+    fn plain_message_component_click_requires_a_clickable_glyph() {
+        let event = ComponentClickEvent::CopyToClipboard {
+            value: "copied value".to_string(),
+        };
+        let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "body",
+                plain_message_body(
+                    clickable_component(
+                        "Copy",
+                        "copy_to_clipboard",
+                        vec![entry(
+                            "value",
+                            NbtSummaryValue::String("copied value".to_string()),
+                        )],
+                    ),
+                    80,
+                ),
+            ),
+        ]);
+        let DialogBodyState::PlainMessage { message } = &world
+            .current_dialog()
+            .unwrap()
+            .data
+            .as_ref()
+            .and_then(|data| dialog_controls(data, world.server_links()))
+            .unwrap()
+            .common
+            .body_data[0]
+        else {
+            panic!("expected plain-message body");
+        };
+        assert_eq!(
+            dialog_text_block(message).unwrap().lines[0].click_spans,
+            [DialogTextClickSpan {
+                x: 0,
+                width: 24,
+                event,
+            }]
+        );
+        let mut clipboard = MockDialogClipboard::default();
+        let mut counters = NetCounters::default();
+        let surface_size = PhysicalSize::new(320, 240);
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            Some(&mut clipboard),
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(121.0, 64.0)),
+            surface_size,
+        ));
+        assert_eq!(clipboard.text, None);
+        assert_eq!(
+            world.dialog_focus(),
+            Some(DialogFocusState::Body {
+                index: 0,
+                part: DialogBodyFocusPartState::Primary,
+            })
+        );
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            Some(&mut clipboard),
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(149.0, 68.0)),
+            surface_size,
+        ));
+        assert_eq!(clipboard.text.as_deref(), Some("copied value"));
+        assert!(world.current_dialog().is_some());
+    }
+
+    #[test]
+    fn item_description_component_click_opens_untrusted_url_prompt() {
+        let mut world = world_with_notice(vec![
+            entry("pause", NbtSummaryValue::Byte(0)),
+            entry("after_action", NbtSummaryValue::String("none".to_string())),
+            entry(
+                "body",
+                NbtSummaryValue::Compound(vec![
+                    entry(
+                        "type",
+                        NbtSummaryValue::String("minecraft:item".to_string()),
+                    ),
+                    entry(
+                        "item",
+                        NbtSummaryValue::Compound(vec![entry(
+                            "id",
+                            NbtSummaryValue::String("minecraft:stick".to_string()),
+                        )]),
+                    ),
+                    entry(
+                        "description",
+                        NbtSummaryValue::Compound(vec![
+                            entry(
+                                "contents",
+                                clickable_component(
+                                    "Info",
+                                    "open_url",
+                                    vec![entry(
+                                        "url",
+                                        NbtSummaryValue::String(
+                                            "https://example.invalid/info".to_string(),
+                                        ),
+                                    )],
+                                ),
+                            ),
+                            entry("width", NbtSummaryValue::Int(50)),
+                        ]),
+                    ),
+                    entry("width", NbtSummaryValue::Int(32)),
+                    entry("height", NbtSummaryValue::Int(48)),
+                ]),
+            ),
+        ]);
+        let mut counters = NetCounters::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(166.0, 84.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert_eq!(
+            world.dialog_link_confirmation(),
+            Some(&DialogLinkConfirmationState {
+                url: "https://example.invalid/info".to_string(),
+                after_action: "none".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn plain_message_run_command_click_applies_parent_after_action() {
+        let mut world = world_with_notice(vec![
+            entry(
+                "after_action",
+                NbtSummaryValue::String("wait_for_response".to_string()),
+            ),
+            entry(
+                "body",
+                plain_message_body(
+                    clickable_component(
+                        "Run",
+                        "run_command",
+                        vec![entry(
+                            "command",
+                            NbtSummaryValue::String("/say component".to_string()),
+                        )],
+                    ),
+                    80,
+                ),
+            ),
+        ]);
+        let mut counters = NetCounters::default();
+        let (tx, mut rx) = mpsc::channel(1);
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &Some(tx),
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(152.0, 68.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert_eq!(counters.chat_command_commands_queued, 1);
+        assert!(matches!(
+            rx.try_recv().unwrap(),
+            NetCommand::ChatCommand(command) if command.command == "say component"
+        ));
+        assert_eq!(world.dialog_waiting_ticks(), Some(0));
+    }
+
+    #[test]
+    fn plain_message_show_dialog_click_replaces_parent_without_packet_count() {
+        let mut world = WorldStore::new();
+        assert!(world.open_advancements_screen());
+        apply_notice(
+            &mut world,
+            vec![
+                entry(
+                    "after_action",
+                    NbtSummaryValue::String("wait_for_response".to_string()),
+                ),
+                entry(
+                    "body",
+                    plain_message_body(
+                        clickable_component(
+                            "Show",
+                            "show_dialog",
+                            vec![entry("dialog", notice_dialog("Inner", None))],
+                        ),
+                        80,
+                    ),
+                ),
+            ],
+        );
+        let mut counters = NetCounters::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(149.0, 68.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert!(matches!(
+            world.current_dialog().and_then(|dialog| dialog.data.as_ref()),
+            Some(DialogDataState::Notice { common, .. }) if common.title.text == "Inner"
+        ));
+        assert_eq!(world.counters().show_dialog_packets, 1);
+        assert!(world.close_dialog());
+        assert!(world.advancements_screen_is_open());
     }
 
     #[test]
@@ -9991,6 +10376,30 @@ mod tests {
             ));
         }
         NbtSummaryValue::Compound(button)
+    }
+
+    fn plain_message_body(contents: NbtSummaryValue, width: i32) -> NbtSummaryValue {
+        NbtSummaryValue::Compound(vec![
+            entry(
+                "type",
+                NbtSummaryValue::String("minecraft:plain_message".to_string()),
+            ),
+            entry("contents", contents),
+            entry("width", NbtSummaryValue::Int(width)),
+        ])
+    }
+
+    fn clickable_component(
+        text: &str,
+        action: &str,
+        mut action_fields: Vec<NbtSummaryEntry>,
+    ) -> NbtSummaryValue {
+        let mut click_event = vec![entry("action", NbtSummaryValue::String(action.to_string()))];
+        click_event.append(&mut action_fields);
+        NbtSummaryValue::Compound(vec![
+            entry("text", NbtSummaryValue::String(text.to_string())),
+            entry("click_event", NbtSummaryValue::Compound(click_event)),
+        ])
     }
 
     fn boolean_input(

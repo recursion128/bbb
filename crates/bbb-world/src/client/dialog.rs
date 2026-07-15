@@ -235,6 +235,13 @@ pub(super) fn decode_dialog_data(
     decode_dialog_data_inner(dialog, registries, 0)
 }
 
+pub(crate) fn decode_component_click_dialog(
+    dialog: &NbtSummaryValue,
+    registries: Option<&RegistrySet>,
+) -> Result<DialogState, String> {
+    action::decode_action_dialog_holder(dialog, registries, 1)
+}
+
 fn decode_dialog_data_inner(
     dialog: &NbtSummaryValue,
     registries: Option<&RegistrySet>,

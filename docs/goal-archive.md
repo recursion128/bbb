@@ -15033,3 +15033,17 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `xdg-open <URI>`；参数直接交给 `Command` 而不经过 shell，子进程 stdio 关闭并由后台线程回收。
   world/native/startup/platform regressions 覆盖 prompt lifecycle、deferred after-action、disabled/direct 模式、
   HUD geometry、键鼠 copy/cancel/accept、参数默认值、三平台 argv 与 HTTP(S) 校验。
+
+## 2026-07-15：Execute Dialog body Component click events
+
+- [x] 对照 `DialogBodyHandlers.PlainMessageHandler`、`DialogBodyHandlers.ItemHandler`、
+  `FocusableTextWidget`、`AbstractStringWidget.onClick` 与 `ActiveTextCollector.ClickableStyleFinder`，仅为
+  PlainMessage 和 Item description 的 styled run 建立逐行 click span；鼠标必须落在携带 ClickEvent 的实际
+  glyph/空白 advance 上，widget padding 与同行剩余区域只更新 focus，不执行 action。
+- [x] 对照 `DialogScreen.runAction/handleDialogClickEvent` 与 `Screen.defaultHandleClickEvent`，把 OpenUrl、
+  RunCommand、SuggestCommand、ShowDialog、ChangePage、CopyToClipboard、Custom 七种 server-reachable event
+  映射到既有 Dialog action、world、net、clipboard 与 platform owner，并使用父 Dialog 的 `after_action`；
+  server codec 不可达的 OpenFile 继续 fail closed。Component ShowDialog 复用 registry/context-free holder
+  解码与 `ClientCommonPacketListenerImpl.showDialog` 的 previous-screen 解包语义，不增加 clientbound packet 计数。
+- [x] native focused regressions 覆盖 glyph/padding 命中、Item description OpenUrl prompt、RunCommand +
+  WAIT_FOR_RESPONSE、nested ShowDialog + canonical previous-screen restore；完整 41 项 Dialog screen test 集通过。

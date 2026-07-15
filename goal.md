@@ -392,7 +392,10 @@ cursor reveal 与 6px scrollbar drag；`ScrollableLayout.Container` 继续优先
 `Screen.clickUrlAction` 接入默认启用的 chat-links/chat-links-prompt 启动配置、untrusted
 `ConfirmLinkScreen` 的 URL/警告/Yes/Copy/No 布局与键鼠生命周期，并通过不经 shell 的 platform
 opener 执行 Windows/macOS/Unix 原版命令；prompt 回调后才执行 close/none/wait-for-response，关闭 prompt
-时立即打开且保持当前 Dialog。仍须按 `DialogScreen`/`DialogControlSet` 执行 Component-click。Boolean input 已按 Checkbox 的 17px box、
+时立即打开且保持当前 Dialog。PlainMessage 与 Item description 现按 `FocusableTextWidget` 的实际文字
+advance 生成 Component click span，padding/同行空白只取得 focus 而不触发事件；七种服务端可达 click action
+均复用现有 Dialog action/world/net/platform owner，并按父 Dialog 的 `after_action` 运行，网络不可达的
+OpenFile 继续 fail closed。Boolean input 已按 Checkbox 的 17px box、
 label、initial/on-true/on-false 与 byte-tag 语义接入 mouse toggle；NumberRange 已按 AbstractSliderButton 的
 200x20 nine-slice/8px handle、double slider position、mouse click/drag、RangeInfo lerp/step/edge 规则、localized
 label-format、Java Float.toString 与 FloatTag 语义接入；static run-command 以及 Boolean/NumberRange-backed
