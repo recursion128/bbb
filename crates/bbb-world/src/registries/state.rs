@@ -50,6 +50,9 @@ pub struct RegistryPacket {
     /// configuration RegistryData collection.
     #[serde(default)]
     pub configuration_synchronized: bool,
+    /// Whether this registry belongs to vanilla's immutable client static layer.
+    #[serde(default)]
+    pub client_built_in: bool,
     #[serde(default)]
     pub entries: Vec<RegistryPacketEntry>,
 }

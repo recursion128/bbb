@@ -58,9 +58,10 @@ Owner: `bbb-protocol`
   returning an empty configuration response.
 - Apply the validators declared by the generated
   `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory and finish the
-  built-in-only/holder-consumer inventory. Production RegistryData collection now
+  holder-consumer inventory. Production RegistryData collection now
   admits only the source-derived 28-entry catalog into canonical holder contents
-  while retaining other packets solely as diagnostics.
+  while retaining other packets solely as diagnostics; the separate generated
+  95-entry `BuiltInRegistries` inventory classifies the complete client static layer.
 - Complete the remaining configuration/play transfer runtime behavior. Production
   now stops using the old transport, carries cookies and the login identity, opens
   the requested target with a Transfer-intent handshake, resets connection-local

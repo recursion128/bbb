@@ -15145,3 +15145,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   duplicate 与 configuration transaction 路径保持不变。
 - [x] `minecraft:sound_event` 加入统一静态双向 holder 查询，非法 element packet 不再重排音频 reference；
   configuration→play 音频投影回到生成的 1902 项 vanilla 顺序，同时合法动态 `jukebox_song` 继续提交。
+
+## 2026-07-15：Generate the client built-in registry inventory
+
+- [x] 从 vanilla 26.1 `BuiltInRegistries` 四种 registration helper 与 `Registries` key 生成完整 95 项
+  客户端 static-layer catalog，保留声明顺序、field/key constant、resource id、intrusive-holder helper
+  与 default resource id；生成测试锁定唯一性并证明与 28 项 synchronized catalog 不相交。
+- [x] `RegistryPacket.client_built_in` 使用生成 lookup，让 production 诊断明确区分同步 registry、已知客户端
+  static registry 与未知名字；biome/item/custom/sound-event focused tests 锁定三类行为。
