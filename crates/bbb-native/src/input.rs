@@ -75,6 +75,7 @@ use bbb_protocol::{
 use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -233,9 +234,7 @@ use bbb_world::{
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MOOSHROOM_TYPE_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS,
     VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT_ID,
-    VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
     VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
     VANILLA_FOX_TRUSTED_DATA_ID_0 as FOX_TRUSTED_DATA_ID_0,
@@ -7027,8 +7026,11 @@ fn debug_push_cat_additional_save_data(
 }
 
 fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags =
-        debug_entity_data_byte_present(entity, FOX_FLAGS_DATA_ID).unwrap_or(FOX_DEFAULT_FLAGS);
+    let flags = vanilla_entity_metadata_fox_flags_accessor_for_entity_type(entity.entity_type_id)
+        .map(|(data_id, default)| {
+            debug_entity_data_byte_present(entity, data_id).unwrap_or(default)
+        })
+        .unwrap_or(0);
     let trusted = [FOX_TRUSTED_DATA_ID_0, FOX_TRUSTED_DATA_ID_1]
         .into_iter()
         .filter_map(|data_id| debug_entity_data_optional_living_reference_present(entity, data_id))

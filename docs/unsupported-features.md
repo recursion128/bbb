@@ -196,9 +196,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Bee stinger/nectar/debug membership plus flags wire index and default must remain derived from
   generated `Bee.DATA_FLAGS_ID`; world and native consumers must not restore a Bee type predicate
   or fixed accessor aliases.
-  Fox pose membership plus pose/animation wire index and default must remain derived from
-  generated `Fox.DATA_FLAGS_ID`; store must not restore a Fox type predicate, and neither flags
-  consumer may restore fixed accessor aliases.
+  Fox pose/debug membership plus flags wire index and default must remain derived from generated
+  `Fox.DATA_FLAGS_ID`; world and native debug consumers must not restore a Fox type predicate or
+  fixed accessor aliases.
   Vex charging membership, wire index and default must remain derived from generated
   `Vex.DATA_FLAGS_ID`; world and native render projection must not restore a Vex type predicate or
   fixed accessor aliases.

@@ -500,7 +500,7 @@ pub fn vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
 }
 
 /// Resolves the generated Fox flags accessor and its typed default.
-pub(crate) fn vanilla_entity_metadata_fox_flags_accessor_for_entity_type(
+pub fn vanilla_entity_metadata_fox_flags_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i8)> {
     let accessor =

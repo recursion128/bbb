@@ -22242,15 +22242,21 @@ mod generated_catalog_guards {
     #[test]
     fn production_fox_flags_do_not_restore_type_or_accessor_constants() {
         let store = include_str!("../store.rs");
-        assert!(store.contains("vanilla_entity_metadata_fox_flags_accessor_for_entity_type"));
-        assert!(!store.contains("vanilla_is_fox"));
         let animations = include_str!("../animations.rs");
-        assert!(animations.contains("vanilla_entity_metadata_fox_flags_accessor_for_entity_type"));
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        for source in [store, animations, native_input] {
+            assert!(source.contains("vanilla_entity_metadata_fox_flags_accessor_for_entity_type"));
+        }
+        assert!(!store.contains("vanilla_is_fox"));
         for removed in ["FOX_FLAGS_DATA_ID", "FOX_DEFAULT_FLAGS"] {
             assert!(!store.contains(removed), "store restored {removed}");
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
             );
         }
         let dimensions = include_str!("../dimensions.rs");
