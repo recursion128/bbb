@@ -555,8 +555,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   food/consumable/death-protection/potion-contents/
   weapon/
   tool-block-holder-rules/
-  damage-type-named-holder (fixed vanilla bootstrap catalog is generated;
-  dynamic-registry remapping remains)/
   use-effects/use-remainder/
   use-cooldown/tooltip-display/attack-range/
   swing-animation/resource/color (including dye/base-color)/map/ominous/firework/custom-model-data/

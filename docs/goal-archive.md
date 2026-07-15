@@ -15183,3 +15183,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] painting metadata 缓存当前 holder 投影并驱动 3D bounds/center；F3 本地实体持久化按 session
   holder order 输出 named `variant` 与 legacy 2D `facing`。协议 direct asset id 改用资源标识符校验，
   回归覆盖重排后的 dennis/kebab 尺寸与 summon SNBT。direct holder 持久化及 painting renderer 继续开放。
+
+## 2026-07-15：Fix persistent damage-type holder identity
+
+- [x] 对照 vanilla 26.1 `DamageType.CODEC/STREAM_CODEC`、`DamageResistant.CODEC` 与
+  `BlocksAttacks.CODEC`，把 persistent 单 holder、DamageResistant types、damage reductions type 和
+  bypassed_by 四条路径统一解析为当前 session 的 damage-type resource id；named tag 保持 `#tag`，
+  无同步 contents 的路径继续使用生成的 50 项 26.1 catalog。
+- [x] F3 可保存的递归 ItemStack context 贯通 damage-type holder order；回归覆盖 custom holder 的
+  单值、DamageResistant、BlocksAttacks 与 item-frame Item SNBT，unknown holder 继续安全省略。

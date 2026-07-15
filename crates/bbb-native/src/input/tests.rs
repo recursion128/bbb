@@ -9992,7 +9992,10 @@ fn item_stack_snbt_preserves_resolvable_damage_resistant_holder_sets() {
     );
 
     patch.damage_resistant_type_registry_ids = vec![0];
-    assert_eq!(debug_damage_resistant_component_snbt(&patch), None);
+    assert_eq!(
+        debug_damage_resistant_component_snbt(&patch),
+        Some("{types: \"minecraft:in_fire\"}".to_string())
+    );
 }
 
 #[test]
@@ -11454,6 +11457,11 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
     );
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    world.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![RegistryPacketEntry::stub("example:custom")],
+    );
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 63,
@@ -11489,7 +11497,14 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
                     item_id: Some(0),
                     count: 1,
-                    component_patch: DataComponentPatchSummary::default(),
+                    component_patch: DataComponentPatchSummary {
+                        added: 1,
+                        added_type_ids: vec![
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+                        ],
+                        damage_type_id: Some(0),
+                        ..Default::default()
+                    },
                 }),
             },
             ProtocolEntityDataValue {
@@ -11550,7 +11565,8 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
     assert!(
         snbt.contains(
-            "block_pos: [I; 0, 1, 2], Item: {id: \"minecraft:diamond\"}, \
+            "block_pos: [I; 0, 1, 2], Item: {id: \"minecraft:diamond\", components: \
+         {\"minecraft:damage_type\": \"example:custom\"}}, \
          ItemRotation: 3b"
         ),
         "unexpected item-frame SNBT: {snbt}"

@@ -6,7 +6,6 @@ use bbb_protocol::attribute_modifier_types::{
 use bbb_protocol::builtin_enum_component_values::{
     builtin_enum_component_value_name, vanilla_dye_color_name,
 };
-use bbb_protocol::damage_types::vanilla_damage_type_resource_id as damage_type_resource_id;
 use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::equipment_slots::{
     vanilla_equipment_slot_by_id, vanilla_equipment_slot_group, VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
@@ -26,6 +25,7 @@ pub(super) struct PersistentSnbtContext<'a> {
     pub trim_material_keys: Option<&'a [String]>,
     pub trim_pattern_keys: Option<&'a [String]>,
     pub painting_variant_keys: Option<&'a [String]>,
+    pub damage_type_keys: Option<&'a [String]>,
 }
 
 #[derive(Clone, Copy)]
@@ -596,10 +596,11 @@ fn encode_minimum_attack_charge(
 fn encode_damage_type(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    Some(debug_snbt_string(damage_type_resource_id(
+    Some(debug_snbt_string(debug_damage_type_resource_id(
         patch.damage_type_id?,
+        context.damage_type_keys,
     )?))
 }
 
@@ -891,9 +892,9 @@ fn encode_use_cooldown(
 fn encode_damage_resistant(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_damage_resistant_component_snbt(patch)
+    debug_damage_resistant_component_snbt_with_keys(patch, context.damage_type_keys)
 }
 
 fn encode_tool(
@@ -1126,7 +1127,7 @@ fn encode_death_protection(
 fn encode_blocks_attacks(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let blocks_attacks = patch.blocks_attacks.as_ref()?;
     let block_delay = f32::from_bits(blocks_attacks.block_delay_seconds_bits);
@@ -1163,7 +1164,7 @@ fn encode_blocks_attacks(
         let reductions = blocks_attacks
             .damage_reductions
             .iter()
-            .map(damage_reduction_snbt)
+            .map(|reduction| damage_reduction_snbt(reduction, context.damage_type_keys))
             .collect::<Option<Vec<_>>>()?
             .join(", ");
         fields.push(format!("damage_reductions: [{reductions}]"));
@@ -1187,7 +1188,11 @@ fn encode_blocks_attacks(
     if let Some(bypassed_by) = &blocks_attacks.bypassed_by {
         fields.push(format!(
             "bypassed_by: {}",
-            damage_type_holder_set_snbt(&bypassed_by.registry_ids, bypassed_by.tag.as_deref())?
+            debug_damage_type_holder_set_snbt(
+                &bypassed_by.registry_ids,
+                bypassed_by.tag.as_deref(),
+                context.damage_type_keys,
+            )?
         ));
     }
     if let Some(block_sound) = &blocks_attacks.block_sound {
@@ -1207,6 +1212,7 @@ fn encode_blocks_attacks(
 
 fn damage_reduction_snbt(
     reduction: &bbb_protocol::packets::DamageReductionSummary,
+    damage_type_keys: Option<&[String]>,
 ) -> Option<String> {
     let angle = f32::from_bits(reduction.horizontal_blocking_angle_bits);
     if angle <= 0.0 || !angle.is_finite() {
@@ -1222,7 +1228,11 @@ fn damage_reduction_snbt(
     if let Some(damage_types) = &reduction.damage_types {
         fields.push(format!(
             "type: {}",
-            damage_type_holder_set_snbt(&damage_types.registry_ids, damage_types.tag.as_deref())?
+            debug_damage_type_holder_set_snbt(
+                &damage_types.registry_ids,
+                damage_types.tag.as_deref(),
+                damage_type_keys,
+            )?
         ));
     }
     fields.push(format!(
@@ -1234,30 +1244,6 @@ fn damage_reduction_snbt(
         debug_snbt_float(f32::from_bits(reduction.factor_bits))?
     ));
     Some(format!("{{{}}}", fields.join(", ")))
-}
-
-fn damage_type_holder_set_snbt(registry_ids: &[i32], tag: Option<&str>) -> Option<String> {
-    if let Some(tag) = tag {
-        return registry_ids
-            .is_empty()
-            .then(|| debug_snbt_string(&format!("#{tag}")));
-    }
-    let resource_ids = registry_ids
-        .iter()
-        .map(|id| damage_type_resource_id(*id))
-        .collect::<Option<Vec<_>>>()?;
-    Some(match resource_ids.as_slice() {
-        [] => "[]".to_string(),
-        [resource_id] => debug_snbt_string(resource_id),
-        resource_ids => format!(
-            "[{}]",
-            resource_ids
-                .iter()
-                .map(|resource_id| debug_snbt_string(resource_id))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-    })
 }
 
 fn encode_piercing_weapon(
@@ -2222,6 +2208,33 @@ mod tests {
             )
         );
 
+        patch
+            .blocks_attacks
+            .as_mut()
+            .unwrap()
+            .bypassed_by
+            .as_mut()
+            .unwrap()
+            .registry_ids = vec![0];
+        let damage_type_keys = ["example:custom".to_string()];
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    damage_type_keys: Some(&damage_type_keys),
+                    ..Default::default()
+                },
+            ),
+            Some(
+                "{block_delay_seconds: 0.25f, disable_cooldown_scale: 1.5f, \
+                 damage_reductions: [{type: \"#minecraft:bypasses_shield\", \
+                 base: 1.0f, factor: 0.5f}], bypassed_by: \"example:custom\", \
+                 block_sound: {sound_id: \"minecraft:item.shield.block\"}}"
+                    .to_string()
+            )
+        );
+
         patch.blocks_attacks = Some(BlocksAttacksSummary {
             block_delay_seconds_bits: 0.0_f32.to_bits(),
             disable_cooldown_scale_bits: 1.0_f32.to_bits(),
@@ -2260,7 +2273,7 @@ mod tests {
     }
 
     #[test]
-    fn damage_type_encoder_uses_protocol_catalog() {
+    fn damage_type_encoders_use_session_order_or_fixed_catalog() {
         assert_eq!(
             bbb_protocol::damage_types::vanilla_damage_type_resource_id(49),
             Some("minecraft:mace_smash")
@@ -2273,6 +2286,36 @@ mod tests {
             encode_added_component_value_snbt(8, &patch, None),
             Some("\"minecraft:mace_smash\"".to_string())
         );
+
+        let damage_type_keys = ["example:custom".to_string()];
+        patch.damage_type_id = Some(0);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    damage_type_keys: Some(&damage_type_keys),
+                    ..Default::default()
+                },
+            ),
+            Some("\"example:custom\"".to_string())
+        );
+
+        patch.damage_type_id = None;
+        patch.damage_resistant_type_registry_ids = vec![0];
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    damage_type_keys: Some(&damage_type_keys),
+                    ..Default::default()
+                },
+            ),
+            Some("{types: \"example:custom\"}".to_string())
+        );
+
+        patch.damage_resistant_type_registry_ids.clear();
         patch.damage_type_id = Some(50);
         assert_eq!(encode_added_component_value_snbt(8, &patch, None), None);
         patch.damage_type_id = Some(-1);
@@ -2645,6 +2688,7 @@ mod tests {
             trim_material_keys: Some(&material_keys),
             trim_pattern_keys: Some(&pattern_keys),
             painting_variant_keys: None,
+            damage_type_keys: None,
         };
         let patch = bbb_protocol::packets::DataComponentPatchSummary {
             provides_trim_material_id: Some(0),

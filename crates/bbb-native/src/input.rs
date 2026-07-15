@@ -5264,6 +5264,7 @@ fn debug_push_firework_rocket_additional_save_data(
         let trim_material_keys = crate::item_models::world_trim_material_keys(world);
         let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
         let painting_variant_keys = crate::item_models::world_painting_variant_keys(world);
+        let damage_type_keys = crate::item_models::world_damage_type_keys(world);
         fields.push(format!(
             "FireworksItem: {}",
             debug_firework_rocket_item_stack(
@@ -5273,6 +5274,7 @@ fn debug_push_firework_rocket_additional_save_data(
                     trim_material_keys: trim_material_keys.as_deref(),
                     trim_pattern_keys: trim_pattern_keys.as_deref(),
                     painting_variant_keys: painting_variant_keys.as_deref(),
+                    damage_type_keys: damage_type_keys.as_deref(),
                 },
             )
         ));
@@ -6067,16 +6069,62 @@ fn debug_repairable_component_snbt(
     Some(format!("{{items: {items}}}"))
 }
 
+fn debug_damage_type_resource_id(
+    holder_id: i32,
+    damage_type_keys: Option<&[String]>,
+) -> Option<&str> {
+    match damage_type_keys {
+        Some(keys) => keys
+            .get(usize::try_from(holder_id).ok()?)
+            .map(String::as_str),
+        None => bbb_protocol::damage_types::vanilla_damage_type_resource_id(holder_id),
+    }
+}
+
+fn debug_damage_type_holder_set_snbt(
+    registry_ids: &[i32],
+    tag: Option<&str>,
+    damage_type_keys: Option<&[String]>,
+) -> Option<String> {
+    if let Some(tag) = tag {
+        return registry_ids
+            .is_empty()
+            .then(|| debug_snbt_string(&format!("#{tag}")));
+    }
+    let resource_ids = registry_ids
+        .iter()
+        .map(|id| debug_damage_type_resource_id(*id, damage_type_keys))
+        .collect::<Option<Vec<_>>>()?;
+    Some(match resource_ids.as_slice() {
+        [] => "[]".to_string(),
+        [resource_id] => debug_snbt_string(resource_id),
+        resource_ids => format!(
+            "[{}]",
+            resource_ids
+                .iter()
+                .map(|resource_id| debug_snbt_string(resource_id))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    })
+}
+
+#[cfg(test)]
 fn debug_damage_resistant_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
 ) -> Option<String> {
-    let types = if let Some(tag) = patch.damage_resistant_type_tag.as_deref() {
-        debug_snbt_string(&format!("#{tag}"))
-    } else if patch.damage_resistant_type_registry_ids.is_empty() {
-        "[]".to_string()
-    } else {
-        return None;
-    };
+    debug_damage_resistant_component_snbt_with_keys(patch, None)
+}
+
+fn debug_damage_resistant_component_snbt_with_keys(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    damage_type_keys: Option<&[String]>,
+) -> Option<String> {
+    let types = debug_damage_type_holder_set_snbt(
+        &patch.damage_resistant_type_registry_ids,
+        patch.damage_resistant_type_tag.as_deref(),
+        damage_type_keys,
+    )?;
     Some(format!("{{types: {types}}}"))
 }
 
@@ -6559,6 +6607,7 @@ fn debug_push_item_frame_additional_save_data(
         let trim_material_keys = crate::item_models::world_trim_material_keys(world);
         let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
         let painting_variant_keys = crate::item_models::world_painting_variant_keys(world);
+        let damage_type_keys = crate::item_models::world_damage_type_keys(world);
         if let Some(item) = debug_item_stack_snbt_with_context(
             resource_id,
             stack.count,
@@ -6568,6 +6617,7 @@ fn debug_push_item_frame_additional_save_data(
                 trim_material_keys: trim_material_keys.as_deref(),
                 trim_pattern_keys: trim_pattern_keys.as_deref(),
                 painting_variant_keys: painting_variant_keys.as_deref(),
+                damage_type_keys: damage_type_keys.as_deref(),
             },
         ) {
             fields.push(format!("Item: {item}"));

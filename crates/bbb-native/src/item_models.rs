@@ -89,6 +89,10 @@ pub(crate) fn world_painting_variant_keys(world: &WorldStore) -> Option<Vec<Stri
     world_registry_keys(world, "minecraft:painting_variant")
 }
 
+pub(crate) fn world_damage_type_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world_registry_keys(world, "minecraft:damage_type")
+}
+
 pub(crate) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
     world_registry_keys(world, "minecraft:attribute")
 }
