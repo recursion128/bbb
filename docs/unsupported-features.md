@@ -252,6 +252,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Pufferfish puff-state membership, wire index and typed default must remain derived from generated
   `PUFF_STATE`; world bounds and native model/debug consumers must not restore fixed
   accessor/default aliases or read the slot without generated Pufferfish membership.
+  Slime size membership, inherited wire index and typed default must remain derived from generated
+  `Slime.ID_SIZE`; world bounds/passenger attachment and native Slime/MagmaCube model/debug
+  consumers must not restore fixed accessor/default aliases or parallel family predicates.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

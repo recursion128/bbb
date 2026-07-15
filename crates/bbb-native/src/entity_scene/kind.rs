@@ -300,7 +300,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => EntityModelKind::LlamaSpit,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {
-            size: slime_size(data_values),
+            size: slime_size(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
@@ -322,7 +322,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => EntityModelKind::ShulkerBullet,
         VANILLA_ENTITY_TYPE_SILVERFISH_ID => EntityModelKind::Silverfish,
         VANILLA_ENTITY_TYPE_SLIME_ID => EntityModelKind::Slime {
-            size: slime_size(data_values),
+            size: slime_size(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_SPIDER_ID => EntityModelKind::Spider,
         VANILLA_ENTITY_TYPE_SQUID_ID => EntityModelKind::Squid {

@@ -24,11 +24,12 @@ use super::schema::{
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
+    vanilla_entity_metadata_slime_size_accessor_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
-    vanilla_entity_metadata_type_is_slime, vanilla_entity_scale_sanitizer,
-    VanillaEntityScaleSanitizer, VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
+    vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer,
+    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
@@ -38,8 +39,6 @@ use super::schema::{
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
-    VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
-    VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
@@ -224,8 +223,8 @@ fn vanilla_bounds_for_entity_data(
         block_attached::painting_pick_bounds(add_entity_data, data_values, painting_variant)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
         EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0)
-    } else if vanilla_entity_metadata_type_is_slime(entity_type_id) {
-        slime_pick_bounds(data_values)
+    } else if let Some(bounds) = slime_pick_bounds(entity_type_id, data_values) {
+        bounds
     } else if let Some(bounds) = pufferfish_pick_bounds(entity_type_id, data_values) {
         bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SALMON_ID {
@@ -477,13 +476,14 @@ fn vanilla_passenger_attachment_point(
         passenger_index,
     );
 
-    if vanilla_entity_metadata_type_is_slime(vehicle_entity_type_id) {
+    if let Some((data_id, default)) =
+        vanilla_entity_metadata_slime_size_accessor_for_entity_type(vehicle_entity_type_id)
+    {
         point = [
             0.0,
             bounds_height(vehicle_bounds)
                 - 0.015625
-                    * entity_data_int(vehicle_data_values, SLIME_SIZE_DATA_ID, SLIME_DEFAULT_SIZE)
-                        as f32
+                    * entity_data_int(vehicle_data_values, data_id, default) as f32
                     * vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32,
             0.0,
         ];
@@ -943,9 +943,18 @@ fn baby_pick_bounds(
     })
 }
 
-fn slime_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
-    let size = entity_data_int(data_values, SLIME_SIZE_DATA_ID, SLIME_DEFAULT_SIZE) as f32;
-    EntityPickBoundsState::from_base_size(SLIME_BASE_SIZE * size, SLIME_BASE_SIZE * size, 0.0)
+fn slime_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    let (data_id, default) =
+        vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)?;
+    let size = entity_data_int(data_values, data_id, default) as f32;
+    Some(EntityPickBoundsState::from_base_size(
+        SLIME_BASE_SIZE * size,
+        SLIME_BASE_SIZE * size,
+        0.0,
+    ))
 }
 
 fn pufferfish_pick_bounds(

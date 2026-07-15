@@ -1283,8 +1283,13 @@ pub(super) fn armor_stand_pose(
     }
 }
 
-pub(super) fn slime_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
-    entity_data_int(values, SLIME_SIZE_DATA_ID, SLIME_DEFAULT_SIZE)
+pub(super) fn slime_size(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> i32 {
+    vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_int(values, data_id, default))
+        .unwrap_or_default()
 }
 
 pub(super) fn phantom_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {

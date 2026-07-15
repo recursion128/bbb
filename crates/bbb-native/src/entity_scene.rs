@@ -39,6 +39,7 @@ use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
 #[cfg(test)]
@@ -83,8 +84,6 @@ use bbb_world::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SHARED_FLAG_ON_FIRE as ENTITY_SHARED_FLAG_ON_FIRE,
     VANILLA_LIVING_ENTITY_HEALTH_DATA_ID as LIVING_ENTITY_HEALTH_DATA_ID,
-    VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
-    VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_TRIDENT_DEFAULT_FOIL as TRIDENT_DEFAULT_FOIL,
     VANILLA_TRIDENT_FOIL_DATA_ID as TRIDENT_FOIL_DATA_ID,
 };

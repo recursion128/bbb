@@ -84,6 +84,7 @@ use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
@@ -176,8 +177,6 @@ use bbb_world::{
     VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
     VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
-    VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
-    VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
@@ -7405,8 +7404,13 @@ fn debug_push_sheep_additional_save_data(entity: &EntityState, fields: &mut Vec<
 }
 
 fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let size = debug_entity_data_int_present(entity, SLIME_SIZE_DATA_ID)
-        .unwrap_or(SLIME_DEFAULT_SIZE)
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let size = debug_entity_data_int_present(entity, data_id)
+        .unwrap_or(default)
         .clamp(SLIME_MIN_SIZE, SLIME_MAX_SIZE);
     fields.push(format!("Size: {}", size - 1));
 }

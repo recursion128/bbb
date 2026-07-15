@@ -704,6 +704,25 @@ pub fn vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(
     }
 }
 
+/// Resolves the inherited Slime size accessor and its typed default.
+pub fn vanilla_entity_metadata_slime_size_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "ID_SIZE")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.Slime",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited TamableAnimal flags accessor and its typed default.
 pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
     entity_type_id: i32,
@@ -1611,16 +1630,17 @@ mod tests {
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-        VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
         VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
         VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
         VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
@@ -2784,6 +2804,30 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_slime_size_accessor_owns_inherited_membership_index_and_default() {
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_SLIME_ID,
+            VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id),
+                Some((16, 1)),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_slime_size_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_slime_size_accessor_for_entity_type(-1),
             None
         );
     }

@@ -16369,3 +16369,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   0/1/2 puff-state 尺寸与模型投影保持不变。
 - 生产消费者删除固定 accessor/default 别名，world bounds 删除平行 Pufferfish type
   predicate；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Slime size metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Slime.ID_SIZE` 解析 Slime/MagmaCube 继承
+  membership、wire id 16 与 int typed default 1；world pick bounds/乘坐偏移、native 两种
+  模型与 debug 共同消费它。
+- 生产消费者删除固定 accessor/default 别名，world dimensions 删除平行 Slime family
+  predicate；动画与 debug save-chain 调度继续使用生成的类层次 membership。

@@ -22766,6 +22766,36 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_slime_size_does_not_restore_accessor_constants() {
+        let dimensions = include_str!("../dimensions.rs");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        for source in [dimensions, native_scene, native_variants, native_input] {
+            assert!(source.contains("vanilla_entity_metadata_slime_size_accessor_for_entity_type"));
+        }
+        for removed in ["SLIME_SIZE_DATA_ID", "SLIME_DEFAULT_SIZE"] {
+            assert!(
+                !dimensions.contains(removed),
+                "dimensions restored {removed}"
+            );
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_variants.contains(removed),
+                "native variants restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
+        }
+        assert!(!dimensions.contains("vanilla_entity_metadata_type_is_slime"));
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source
