@@ -16567,3 +16567,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   曲线消费路径共用 accessor。
 - Camel-only 0.6 baby scale 改走生成 inherited baby accessor，并继续排除覆写 `isBaby() =
   false` 的 CamelHusk；Camel reverse guard 扩展到 dash/pose/dimensions 三条路径。
+
+## 2026-07-15：统一推导 Goat 与 PolarBear baby bounds metadata accessors
+
+- Goat 与 PolarBear 的 specialized pick bounds 现在从生成的 inherited
+  `AgeableMob.DATA_BABY_ID` accessor 读取 baby 状态，不再固定 wire id/default。
+- 既有语义测试继续锁定 Goat 的 0.55 age scale 与 long-jump dimensions 组合，以及
+  PolarBear 的 0.5 inherited scale 与 client standing-height animation 组合；生成器 reverse
+  guard 禁止恢复固定 AgeableMob aliases。

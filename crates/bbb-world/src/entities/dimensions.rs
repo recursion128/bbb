@@ -33,8 +33,6 @@ use super::schema::{
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer,
-    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
-    VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
@@ -201,11 +199,11 @@ fn vanilla_bounds_for_entity_data(
     } else if vanilla_entity_metadata_type_is_camel(entity_type_id) {
         camel_pick_bounds(entity_type_id, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID {
-        goat_pick_bounds(data_values)
+        goat_pick_bounds(entity_type_id, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SNIFFER_ID {
         sniffer_pick_bounds(entity_type_id, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_POLAR_BEAR_ID {
-        polar_bear_pick_bounds(data_values, client_animations)?
+        polar_bear_pick_bounds(entity_type_id, data_values, client_animations)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
         shulker_pick_bounds(entity_type_id, data_values, client_animations)?
     } else if let Some(bounds) = baby_pick_bounds(entity_type_id, data_values) {
@@ -637,14 +635,11 @@ fn vanilla_eye_height_override_for_type(entity_type_id: i32) -> Option<f32> {
 }
 
 fn polar_bear_pick_bounds(
+    entity_type_id: i32,
     data_values: &[EntityDataValue],
     client_animations: Option<EntityClientAnimationState>,
 ) -> Option<EntityPickBoundsState> {
-    let bounds = if entity_data_bool(
-        data_values,
-        AGEABLE_MOB_BABY_DATA_ID,
-        AGEABLE_MOB_DEFAULT_BABY,
-    ) {
+    let bounds = if vanilla_is_baby(entity_type_id, data_values) {
         vanilla_pick_bounds_for_type(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID)?
             .scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE)
     } else {
@@ -828,7 +823,7 @@ fn camel_body_anchor_animation_y_offset(
     base_sit_offset
 }
 
-fn goat_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
+fn goat_pick_bounds(entity_type_id: i32, data_values: &[EntityDataValue]) -> EntityPickBoundsState {
     let bounds = if entity_data_pose(data_values) == VANILLA_ENTITY_POSE_LONG_JUMPING_ID {
         EntityPickBoundsState::from_base_size(0.9, 1.3, 0.0)
             .scale_dimensions(GOAT_LONG_JUMPING_SCALE)
@@ -836,11 +831,7 @@ fn goat_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
         EntityPickBoundsState::from_base_size(0.9, 1.3, 0.0)
     };
 
-    if entity_data_bool(
-        data_values,
-        AGEABLE_MOB_BABY_DATA_ID,
-        AGEABLE_MOB_DEFAULT_BABY,
-    ) {
+    if vanilla_is_baby(entity_type_id, data_values) {
         bounds.scale_dimensions(GOAT_BABY_SCALE)
     } else {
         bounds

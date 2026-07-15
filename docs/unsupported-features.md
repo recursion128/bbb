@@ -167,6 +167,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generator reject those bridges from production sources.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
+  Goat and PolarBear specialized bounds must query that generated accessor instead of restoring
+  fixed `AgeableMob.DATA_BABY_ID` aliases; their vanilla 0.55/0.5 age scales and Goat long-jump /
+  PolarBear standing composition remain dimensions-owned behavior.
   Per-entity metadata accessor-id consumers must likewise query the generated schema hierarchy;
   in particular, villager model projection must resolve `DATA_VILLAGER_DATA` there rather than
   restoring a Villager/ZombieVillager type-to-index switch, and Skeleton freeze-conversion shake
