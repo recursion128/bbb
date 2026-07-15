@@ -103,6 +103,13 @@ fn mooshroom_exposes_stable_model_keys() {
             "mooshroom_baby"
         );
     }
+    assert_eq!(MooshroomVariant::from_vanilla_id(-1), MooshroomVariant::Red);
+    assert_eq!(
+        MooshroomVariant::from_vanilla_id(2),
+        MooshroomVariant::Brown
+    );
+    assert_eq!(MooshroomVariant::Red.serialized_name(), "red");
+    assert_eq!(MooshroomVariant::Brown.serialized_name(), "brown");
 }
 
 #[test]

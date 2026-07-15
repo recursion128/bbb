@@ -114,7 +114,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
         VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, variant_registries),
         VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, variant_registries),
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID => mooshroom_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID => mooshroom_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_PANDA_ID => panda_model_kind(data_values),
         VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer {
             baby: ageable_baby(data_values),

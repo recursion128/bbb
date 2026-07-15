@@ -23,6 +23,7 @@ use bbb_world::{
     VANILLA_BAT_FLAG_RESTING, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_CAT_IS_LYING_DATA_ID, VANILLA_CAT_RELAX_STATE_ONE_DATA_ID,
     VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
+    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
@@ -8456,17 +8457,23 @@ fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
         }
     );
     // The synced `MushroomCow.DATA_TYPE` (index 18) selects the brown coat (id 1; `ByIdMap` CLAMP
-    // folds any id ≥ 1 to brown).
-    assert_eq!(
-        entity_model_kind(
-            VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-            &[protocol_int_data(MUSHROOM_COW_TYPE_DATA_ID, 1)]
-        ),
-        EntityModelKind::Mooshroom {
-            baby: false,
-            variant: MooshroomVariant::Brown,
-        }
-    );
+    // folds out-of-range ids to the nearest endpoint).
+    for (id, variant) in [
+        (-1, MooshroomVariant::Red),
+        (1, MooshroomVariant::Brown),
+        (2, MooshroomVariant::Brown),
+    ] {
+        assert_eq!(
+            entity_model_kind(
+                VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+                &[protocol_int_data(MUSHROOM_COW_TYPE_DATA_ID, id)]
+            ),
+            EntityModelKind::Mooshroom {
+                baby: false,
+                variant,
+            }
+        );
+    }
 }
 
 #[test]

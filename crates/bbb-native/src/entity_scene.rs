@@ -36,6 +36,7 @@ use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
@@ -102,8 +103,6 @@ use bbb_world::{
     COW_VARIANT_REGISTRY,
     VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID as COW_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_COW_VARIANT_DATA_ID as COW_VARIANT_DATA_ID,
-    VANILLA_MUSHROOM_COW_DEFAULT_TYPE as MUSHROOM_COW_DEFAULT_TYPE,
-    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
 };
 use bbb_world::{
     PIG_VARIANT_REGISTRY,

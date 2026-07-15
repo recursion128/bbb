@@ -1345,6 +1345,14 @@ impl MooshroomVariant {
             Self::Red
         }
     }
+
+    /// Vanilla `StringRepresentable` name used by the save-data codec.
+    pub const fn serialized_name(self) -> &'static str {
+        match self {
+            Self::Red => "red",
+            Self::Brown => "brown",
+        }
+    }
 }
 
 /// Vanilla `Parrot.Variant` (the synced `DATA_VARIANT_ID` int): the five parrot colours, sharing one

@@ -16425,3 +16425,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - renderer 的 `FoxModelVariant` 保持 vanilla `ByIdMap.continuous(..., ZERO)` 非法 id 回退
   RED，并公开 `StringRepresentable` 名称供 debug 共用。生产消费者删除固定
   accessor/default 别名与平行名称映射；生成器 reverse guard 禁止恢复这些事实源。
+
+## 2026-07-15：统一推导 MushroomCow variant metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `MushroomCow.DATA_TYPE` 解析 membership、wire id
+  18 与 int typed default 0；native model 与 debug 共同消费它。
+- renderer 的 `MooshroomVariant` 保持 vanilla `ByIdMap.continuous(..., CLAMP)` 端点钳制，
+  并公开 `StringRepresentable` 名称供 debug 共用。生产消费者删除固定 accessor/default
+  别名与平行名称映射；生成器 reverse guard 禁止恢复这些事实源。

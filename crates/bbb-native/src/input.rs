@@ -83,6 +83,7 @@ use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
@@ -214,8 +215,6 @@ use bbb_world::{
     VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID as COW_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_COW_SOUND_VARIANT_DATA_ID as COW_SOUND_VARIANT_DATA_ID,
     VANILLA_COW_VARIANT_DATA_ID as COW_VARIANT_DATA_ID,
-    VANILLA_MUSHROOM_COW_DEFAULT_TYPE as MOOSHROOM_DEFAULT_TYPE_ID,
-    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MOOSHROOM_TYPE_DATA_ID,
 };
 use bbb_world::{
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
@@ -282,8 +281,8 @@ use bbb_protocol::potion_types::vanilla_potion;
 use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_renderer::{
     AxolotlModelVariant, BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant,
-    FoxModelVariant, FrogModelVariant, ParrotModelVariant, PigModelVariant, VillagerModelType,
-    WolfModelVariant, ZombieNautilusModelVariant,
+    FoxModelVariant, FrogModelVariant, MooshroomVariant, ParrotModelVariant, PigModelVariant,
+    VillagerModelType, WolfModelVariant, ZombieNautilusModelVariant,
 };
 use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
 use bbb_world::{
@@ -7240,19 +7239,15 @@ fn debug_push_cow_additional_save_data(
 }
 
 fn debug_push_mooshroom_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let variant = debug_entity_data_int_present(entity, MOOSHROOM_TYPE_DATA_ID)
-        .unwrap_or(MOOSHROOM_DEFAULT_TYPE_ID);
+    let variant = vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
+        entity.entity_type_id,
+    )
+    .map(|(data_id, default)| debug_entity_data_int_present(entity, data_id).unwrap_or(default))
+    .unwrap_or_default();
     fields.push(format!(
         "Type: {}",
-        debug_snbt_string(debug_mooshroom_variant_name(variant))
+        debug_snbt_string(MooshroomVariant::from_vanilla_id(variant).serialized_name())
     ));
-}
-
-fn debug_mooshroom_variant_name(variant: i32) -> &'static str {
-    match variant {
-        1 => "brown",
-        _ => "red",
-    }
 }
 
 fn debug_push_goat_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

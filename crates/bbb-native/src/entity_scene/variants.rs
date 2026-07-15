@@ -538,15 +538,16 @@ fn entity_data_registry_holder_id(
 /// generic quadruped stand-in. The red/brown body texture and adult-only mushroom block-model layer are
 /// projected from the synced `MushroomCow.DATA_TYPE` (index 18).
 pub(super) fn mooshroom_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
+    let variant =
+        vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(entity_type_id)
+            .map(|(data_id, default)| entity_data_int(values, data_id, default))
+            .unwrap_or_default();
     EntityModelKind::Mooshroom {
         baby: ageable_baby(values),
-        variant: MooshroomVariant::from_vanilla_id(entity_data_int(
-            values,
-            MUSHROOM_COW_TYPE_DATA_ID,
-            MUSHROOM_COW_DEFAULT_TYPE,
-        )),
+        variant: MooshroomVariant::from_vanilla_id(variant),
     }
 }
 
