@@ -15221,3 +15221,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 一个 registry-name→ordered keys context 覆盖全部共用 `encode_named_variant` 分支，并保留
   “未下发 registry 才用 26.1 fallback、已下发但 holder 越界则省略”的来源语义。回归覆盖全部
   12 个 custom key、fixed fallback、unknown holder 与 item-frame 递归 ItemStack SNBT。
+
+## 2026-07-15：Fix persistent jukebox-song holder identity
+
+- [x] 对照 vanilla 26.1 `JukeboxSong.CODEC` 的 `RegistryFixedCodec`、允许 direct network value 的
+  `JukeboxSong.STREAM_CODEC` 与 `JukeboxPlayable.CODEC`，named component holder 按当前 session
+  jukebox-song order 输出 persistent key；未下发 registry 时才使用资源包 song catalog。
+- [x] 回归覆盖 custom holder、session unknown holder、resource fallback、direct network song 安全省略
+  与 item-frame 递归 ItemStack SNBT；不把 direct sound/description/length/comparator payload 猜造成
+  persistent compound。

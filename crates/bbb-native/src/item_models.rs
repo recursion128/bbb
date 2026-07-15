@@ -101,6 +101,10 @@ pub(crate) fn world_banner_pattern_keys(world: &WorldStore) -> Option<Vec<String
     world_registry_keys(world, "minecraft:banner_pattern")
 }
 
+pub(crate) fn world_jukebox_song_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world_registry_keys(world, "minecraft:jukebox_song")
+}
+
 const SYNCHRONIZED_VARIANT_REGISTRIES: [&str; 12] = [
     "minecraft:wolf_variant",
     "minecraft:wolf_sound_variant",

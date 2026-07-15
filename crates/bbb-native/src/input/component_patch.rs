@@ -28,6 +28,7 @@ pub(super) struct PersistentSnbtContext<'a> {
     pub damage_type_keys: Option<&'a [String]>,
     pub instrument_keys: Option<&'a [String]>,
     pub banner_pattern_keys: Option<&'a [String]>,
+    pub jukebox_song_keys: Option<&'a [String]>,
     pub synchronized_variant_keys: Option<&'a BTreeMap<&'static str, Vec<String>>>,
 }
 
@@ -1544,11 +1545,12 @@ fn encode_jukebox_playable(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    Some(debug_snbt_string(
-        context
-            .item_runtime?
-            .jukebox_song_resource_id(patch.jukebox_song_id?)?,
-    ))
+    let holder_id = patch.jukebox_song_id?;
+    let resource_id = match context.jukebox_song_keys {
+        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
+        None => context.item_runtime?.jukebox_song_resource_id(holder_id)?,
+    };
+    Some(debug_snbt_string(resource_id))
 }
 
 fn encode_provides_banner_patterns(
@@ -2887,6 +2889,7 @@ mod tests {
             damage_type_keys: None,
             instrument_keys: None,
             banner_pattern_keys: None,
+            jukebox_song_keys: None,
             synchronized_variant_keys: None,
         };
         let patch = bbb_protocol::packets::DataComponentPatchSummary {
@@ -2980,7 +2983,7 @@ mod tests {
     }
 
     #[test]
-    fn jukebox_playable_encoder_uses_fixed_registry_holders_only() {
+    fn jukebox_playable_encoder_uses_session_order_or_resource_fallback() {
         let item_runtime = NativeItemRuntime::empty_for_test();
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             jukebox_song_id: Some(1),
@@ -2991,6 +2994,35 @@ mod tests {
             Some("\"minecraft:cat\"".to_string())
         );
         assert_eq!(encode_added_component_value_snbt(64, &patch, None), None);
+
+        let jukebox_song_keys = ["example:custom".to_string()];
+        patch.jukebox_song_id = Some(0);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    item_runtime: Some(&item_runtime),
+                    jukebox_song_keys: Some(&jukebox_song_keys),
+                    ..Default::default()
+                },
+            ),
+            Some("\"example:custom\"".to_string())
+        );
+
+        patch.jukebox_song_id = Some(1);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    item_runtime: Some(&item_runtime),
+                    jukebox_song_keys: Some(&jukebox_song_keys),
+                    ..Default::default()
+                },
+            ),
+            None
+        );
 
         patch.jukebox_song_id = Some(21);
         assert_eq!(

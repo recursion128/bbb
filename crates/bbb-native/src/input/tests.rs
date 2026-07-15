@@ -11480,6 +11480,11 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         0,
         vec![RegistryPacketEntry::stub("example:custom_wolf")],
     );
+    world.record_registry_entries(
+        "minecraft:jukebox_song",
+        0,
+        vec![RegistryPacketEntry::stub("example:custom_song")],
+    );
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 63,
@@ -11516,13 +11521,14 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                     item_id: Some(0),
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added: 5,
+                        added: 6,
                         added_type_ids: vec![
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
                         ],
                         damage_type_id: Some(0),
                         instrument_id: Some(0),
@@ -11534,6 +11540,7 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                             color_id: 14,
                         }],
                         wolf_variant_id: Some(0),
+                        jukebox_song_id: Some(0),
                         ..Default::default()
                     },
                 }),
@@ -11601,7 +11608,8 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
          \"minecraft:instrument\": \"example:custom_horn\", \
          \"minecraft:provides_banner_patterns\": \"example:custom_pattern\", \
          \"minecraft:banner_patterns\": [{pattern: \"example:custom_pattern\", color: \"red\"}], \
-         \"minecraft:wolf/variant\": \"example:custom_wolf\"}}, \
+         \"minecraft:wolf/variant\": \"example:custom_wolf\", \
+         \"minecraft:jukebox_playable\": \"example:custom_song\"}}, \
          ItemRotation: 3b"
         ),
         "unexpected item-frame SNBT: {snbt}"

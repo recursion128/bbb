@@ -448,7 +448,8 @@ instrument component 的 persistent holder 同样按 session wire order 输出�
 provides-banner-patterns holder set 与 banner-pattern layer named holder 也已统一使用 session wire order，
 tag 与 direct asset/translation payload 保持原形；12 个 synchronized animal/sound variant component
 的 persistent `RegistryFixedCodec` key 同样由 session wire order 解析，villager type 继续保持客户端
-built-in fixed identity；banner tooltip/render 的 typed entry 消费仍开放；完整
+built-in fixed identity；named jukebox-playable component 也按 session song order 持久化，direct network
+song 继续依 `RegistryFixedCodec` 约束安全省略；banner tooltip/render 的 typed entry 消费仍开放；完整
 numeric tags 已有 checked ordered holder/resource resolution，F3 与 piglin-loved 已消费窄 tag query；完整
 dimension-type 当前 client fields 已改用共享 bounded NBT frontend 单次投影，其中
 min_y/height/logical_height 按 vanilla 范围与 16 对齐约束原子决定 world shape；native
