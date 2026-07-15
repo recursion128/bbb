@@ -1,12 +1,8 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::OnceLock,
-};
+use std::collections::{BTreeMap, HashMap};
 
 use bbb_pack::{
     ItemCuboidModelCatalog, ItemModelDefinition, ItemModelProperty, ItemModelPropertyKind,
-    ItemTintSource, JukeboxSongRegistry, SelectCase, SoundEventRegistry, TagCatalog,
-    TerrainColorMaps,
+    ItemTintSource, JukeboxSongRegistry, SelectCase, TagCatalog, TerrainColorMaps,
 };
 use bbb_protocol::attribute_modifier_types::{
     attribute_modifier_display_id, attribute_modifier_operation_id,
@@ -23,6 +19,7 @@ use bbb_protocol::packets::{
     NbtSummaryValue, SoundEventSummary, TrimMaterialSummary, TrimPatternSummary,
     WrittenBookContentSummary,
 };
+use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_render_types::VillagerModelType;
 use bbb_world::VanillaTrimPatternIdentity;
 use chrono::{
@@ -5711,7 +5708,7 @@ fn sound_event_exact_match(expected: &ExactSoundEvent, actual: &SoundEventSummar
     match expected {
         ExactSoundEvent::RegistryKey(expected) => actual
             .registry_id
-            .and_then(vanilla_sound_event_key)
+            .and_then(vanilla_sound_event_resource_id)
             .is_some_and(|actual| actual == *expected),
         ExactSoundEvent::Direct(expected) => {
             actual.registry_id.is_none()
@@ -5719,13 +5716,6 @@ fn sound_event_exact_match(expected: &ExactSoundEvent, actual: &SoundEventSummar
                 && actual.fixed_range_bits == expected.fixed_range_bits
         }
     }
-}
-
-fn vanilla_sound_event_key(registry_id: i32) -> Option<&'static str> {
-    static VANILLA_SOUND_EVENTS: OnceLock<SoundEventRegistry> = OnceLock::new();
-    VANILLA_SOUND_EVENTS
-        .get_or_init(SoundEventRegistry::vanilla_26_1)
-        .event_id(registry_id)
 }
 
 fn potion_contents_component_predicate_is_supported(property: &ItemModelProperty) -> bool {

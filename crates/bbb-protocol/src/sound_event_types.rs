@@ -1985,6 +1985,7 @@ mod tests {
                 let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
                 if production.contains("fn vanilla_sound_event_resource_id(")
                     || production.contains("fn debug_vanilla_sound_event_resource_id(")
+                    || production.contains("fn vanilla_sound_event_key(")
                 {
                     violations.push(display.to_string());
                 }

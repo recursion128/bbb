@@ -15270,3 +15270,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `OnceLock` 转发桥；named/direct/unknown sound holder 语义保持不变。
 - [x] `generate-sound-event-catalog.py` 生成反向结构门禁，阻止 production code 重新声明
   sound-event resource lookup bridge；1902 项 owner catalog 与 native persistent sound 回归覆盖直接路径。
+
+## 2026-07-15：Remove item-model sound-event catalog lookup bridge
+
+- [x] item-model 的 exact jukebox-song component predicate 直接消费
+  `bbb-protocol::sound_event_types::vanilla_sound_event_resource_id`，删除为相同固定 holder
+  identity 懒构造 `bbb_pack::SoundEventRegistry` 的 `OnceLock` 转发桥；direct 与 unknown holder
+  比较语义保持不变。
+- [x] sound-event owner 的 generated 反向结构门禁纳入历史 `vanilla_sound_event_key` helper，
+  阻止 item-model 或其他 production crate 恢复平行 id→resource catalog lookup。
