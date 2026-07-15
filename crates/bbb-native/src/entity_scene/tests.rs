@@ -1150,6 +1150,16 @@ fn entity_model_instances_shake_zombie_family_while_converting() {
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
         [3.0, 64.0, -2.0],
     ));
+    world.apply_add_entity(protocol_add_entity(
+        86,
+        VANILLA_ENTITY_TYPE_HUSK_ID,
+        [5.0, 64.0, -2.0],
+    ));
+    world.apply_add_entity(protocol_add_entity(
+        87,
+        VANILLA_ENTITY_TYPE_DROWNED_ID,
+        [7.0, 64.0, -2.0],
+    ));
     world.advance_entity_client_animations(2);
 
     let shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
@@ -1166,14 +1176,25 @@ fn entity_model_instances_shake_zombie_family_while_converting() {
     assert_eq!(body_rot(&world, 84), 0.0);
     assert_eq!(body_rot(&world, 85), 0.0);
 
-    // AbstractZombieRenderer.isShaking ORs in DATA_DROWNED_CONVERSION_ID (18).
+    // AbstractZombieRenderer.isShaking ORs in DATA_DROWNED_CONVERSION_ID (18) for the
+    // registered Zombie, Husk, and Drowned renderers.
+    for id in [84, 86, 87] {
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: vec![protocol_bool_data(ZOMBIE_DROWNED_CONVERSION_DATA_ID, true)],
+        }));
+        assert!((body_rot(&world, id) - shake).abs() < 1e-6);
+    }
+
+    // ZombieVillagerRenderer does not inherit AbstractZombieRenderer, so inherited
+    // Zombie.DATA_DROWNED_CONVERSION_ID does not affect its shake projection.
     assert!(world.apply_set_entity_data(SetEntityData {
-        id: 84,
+        id: 85,
         values: vec![protocol_bool_data(ZOMBIE_DROWNED_CONVERSION_DATA_ID, true)],
     }));
-    assert!((body_rot(&world, 84) - shake).abs() < 1e-6);
+    assert_eq!(body_rot(&world, 85), 0.0);
 
-    // ZombieVillagerRenderer additionally ORs in DATA_CONVERTING_ID (19).
+    // ZombieVillagerRenderer independently ORs in DATA_CONVERTING_ID (19).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 85,
         values: vec![protocol_bool_data(ZOMBIE_VILLAGER_CONVERTING_DATA_ID, true)],

@@ -124,6 +124,9 @@ def render(source_root: Path) -> str:
                 "        extracts_casting_spell: "
                 + str(entry.extracts_casting_spell).lower()
                 + ",",
+                "        extracts_zombie_underwater_converting: "
+                + str(entry.extracts_zombie_underwater_converting).lower()
+                + ",",
                 "    },",
             ]
         )
@@ -203,6 +206,21 @@ def render(source_root: Path) -> str:
             "    fn native_projection_does_not_restore_spellcaster_illager_membership() {",
             '        let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");',
             '        assert!(!source.contains("fn illager_spellcasting"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_shaking_does_not_restore_zombie_renderer_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");',
+            '        let body = source',
+            '            .split("fn entity_shaking")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n}"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("entity shaking projection source");',
+            '        assert!(body.contains("vanilla_entity_renderer_extracts_zombie_underwater_converting"));',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_ZOMBIE_ID"));',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_HUSK_ID"));',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_DROWNED_ID"));',
             "    }",
             "",
             "    #[test]",

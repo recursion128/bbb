@@ -81,6 +81,10 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.WANDERING_TRADER, WanderingTraderRenderer::new);
                     register(EntityType.EVOKER, EvokerRenderer::new);
                     register(EntityType.ILLUSIONER, IllusionerRenderer::new);
+                    register(EntityType.ZOMBIE, ZombieRenderer::new);
+                    register(EntityType.HUSK, HuskRenderer::new);
+                    register(EntityType.DROWNED, DrownedRenderer::new);
+                    register(EntityType.ZOMBIE_VILLAGER, ZombieVillagerRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -184,6 +188,42 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 """,
             ),
             java(
+                "net/minecraft/client/renderer/entity/ZombieRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class ZombieRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isConverting = entity.isUnderWaterConverting();
+                    }
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/HuskRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class HuskRenderer extends ZombieRenderer {}
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/DrownedRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class DrownedRenderer extends ZombieRenderer {}
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/ZombieVillagerRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class ZombieVillagerRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isConverting = entity.isConverting();
+                    }
+                }
+                """,
+            ),
+            java(
                 "net/minecraft/client/renderer/entity/AbstractHorseRenderer.java",
                 """
                 package net.minecraft.client.renderer.entity;
@@ -273,6 +313,10 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "ILLUSIONER",
                 "EGG",
                 "FIREBALL",
+                "ZOMBIE",
+                "HUSK",
+                "DROWNED",
+                "ZOMBIE_VILLAGER",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -309,7 +353,19 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (10, "ILLUSIONER", "IllusionerRenderer", False, None, False, False, False, False, False, True),
                 (11, "EGG", "ThrownItemRenderer", False, 1065353216, False, False, False, False, False, False),
                 (12, "FIREBALL", "ThrownItemRenderer", True, 1077936128, False, False, False, False, False, False),
+                (13, "ZOMBIE", "ZombieRenderer", False, None, False, False, False, False, False, False),
+                (14, "HUSK", "HuskRenderer", False, None, False, False, False, False, False, False),
+                (15, "DROWNED", "DrownedRenderer", False, None, False, False, False, False, False, False),
+                (16, "ZOMBIE_VILLAGER", "ZombieVillagerRenderer", False, None, False, False, False, False, False, False),
             ],
+        )
+        self.assertEqual(
+            [
+                entry.constant_name
+                for entry in entries
+                if entry.extracts_zombie_underwater_converting
+            ],
+            ["ZOMBIE", "HUSK", "DROWNED"],
         )
 
 

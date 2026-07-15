@@ -17,6 +17,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     extracts_mob_aggressive: bool,
     extracts_unhappy_counter: bool,
     extracts_casting_spell: bool,
+    extracts_zombie_underwater_converting: bool,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -88,6 +89,11 @@ pub(super) fn vanilla_entity_renderer_extracts_unhappy_counter(entity_type_id: i
 pub(super) fn vanilla_entity_renderer_extracts_casting_spell(entity_type_id: i32) -> bool {
     vanilla_entity_renderer_registration(entity_type_id)
         .is_some_and(|entry| entry.extracts_casting_spell)
+}
+
+pub fn vanilla_entity_renderer_extracts_zombie_underwater_converting(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.extracts_zombie_underwater_converting)
 }
 
 #[cfg(test)]
@@ -409,5 +415,30 @@ mod tests {
         assert!(!vanilla_entity_renderer_extracts_casting_spell(
             VANILLA_ENTITY_TYPE_VINDICATOR_ID
         ));
+    }
+
+    #[test]
+    fn generated_zombie_underwater_conversion_projection_matches_renderer_extractors() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.extracts_zombie_underwater_converting)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual,
+            vec![
+                VANILLA_ENTITY_TYPE_DROWNED_ID,
+                VANILLA_ENTITY_TYPE_HUSK_ID,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            ]
+        );
+        for entity_type_id in actual {
+            assert!(vanilla_entity_renderer_extracts_zombie_underwater_converting(entity_type_id));
+        }
+        assert!(
+            !vanilla_entity_renderer_extracts_zombie_underwater_converting(
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+            )
+        );
     }
 }

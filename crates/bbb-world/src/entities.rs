@@ -51,6 +51,7 @@ use dimensions::{vanilla_client_position_for_entity_data, vanilla_is_cat};
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
 pub use renderer_catalog::{
+    vanilla_entity_renderer_extracts_zombie_underwater_converting,
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_is_noop,
     vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,
 };

@@ -857,8 +857,9 @@ pub(super) fn entity_body_shake_degrees(age_ticks: u32, is_shaking: bool) -> f32
 /// Vanilla `LivingEntityRenderer.isShaking`: the base renderer's `isFullyFrozen`,
 /// plus the per-renderer conversion overrides. `AbstractZombieRenderer.isShaking`
 /// ORs in `Zombie.isUnderWaterConverting()` (synced `DATA_DROWNED_CONVERSION_ID`,
-/// id 18) for the whole zombie family, and `ZombieVillagerRenderer` additionally
-/// ORs in `ZombieVillager.isConverting()` (synced `DATA_CONVERTING_ID`, id 19).
+/// id 18) for its registered Zombie, Husk, and Drowned renderers;
+/// `ZombieVillagerRenderer` independently ORs in `ZombieVillager.isConverting()`
+/// (synced `DATA_CONVERTING_ID`, id 19).
 /// `StriderRenderer.isShaking` additionally ORs in `Strider.isSuffocating()`
 /// (synced `DATA_SUFFOCATING`, id 19), the same flag that selects the cold
 /// texture. `PiglinRenderer` / `HoglinRenderer` OR in `isConverting()`, which is
@@ -876,25 +877,23 @@ pub(super) fn entity_shaking(
     if is_fully_frozen {
         return true;
     }
+    if bbb_world::vanilla_entity_renderer_extracts_zombie_underwater_converting(entity_type_id)
+        && entity_data_bool(
+            data_values,
+            ZOMBIE_DROWNED_CONVERSION_DATA_ID,
+            ZOMBIE_DEFAULT_DROWNED_CONVERSION,
+        )
+    {
+        return true;
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_SKELETON_ID => entity_data_bool(
             data_values,
             SKELETON_STRAY_CONVERSION_DATA_ID,
             SKELETON_DEFAULT_STRAY_CONVERSION,
         ),
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID
-        | VANILLA_ENTITY_TYPE_HUSK_ID
-        | VANILLA_ENTITY_TYPE_DROWNED_ID => entity_data_bool(
-            data_values,
-            ZOMBIE_DROWNED_CONVERSION_DATA_ID,
-            ZOMBIE_DEFAULT_DROWNED_CONVERSION,
-        ),
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => {
-            entity_data_bool(
-                data_values,
-                ZOMBIE_DROWNED_CONVERSION_DATA_ID,
-                ZOMBIE_DEFAULT_DROWNED_CONVERSION,
-            ) || entity_data_bool(data_values, ZOMBIE_VILLAGER_CONVERTING_DATA_ID, false)
+            entity_data_bool(data_values, ZOMBIE_VILLAGER_CONVERTING_DATA_ID, false)
         }
         VANILLA_ENTITY_TYPE_STRIDER_ID => entity_data_bool(
             data_values,

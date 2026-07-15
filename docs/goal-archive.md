@@ -16127,3 +16127,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   ZombieVillager 的 wire id 20；WanderingTrader 与未知实体类型不会误入该投影。
 - native villager model projection 已移除手写的实体类型到 accessor id 分支，直接消费上述
   语义 owner；生成器产出的 reverse guard 与 world/native tests 会阻止旧分支回流。
+
+## 2026-07-15：从 renderer hierarchy 推导 zombie underwater-conversion shake
+
+- entity renderer generator 现在沿每项注册 renderer 的继承链提取
+  `state.isConverting = entity.isUnderWaterConverting()`，精确得到 Zombie、Husk、Drowned
+  三项，并排除使用独立 `ZombieVillagerRenderer` 的 ZombieVillager。
+- native shake projection 已移除三类型分支并消费 renderer catalog；回归测试同时修正了
+  ZombieVillager 误读继承 metadata id 18 的偏差，其 renderer 仅用自身 converting id 19。

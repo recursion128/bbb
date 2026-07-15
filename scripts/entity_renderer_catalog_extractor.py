@@ -47,6 +47,7 @@ class EntityRendererRegistration:
     extracts_mob_aggressive: bool
     extracts_unhappy_counter: bool
     extracts_casting_spell: bool
+    extracts_zombie_underwater_converting: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -572,6 +573,12 @@ def extract_entity_renderer_registrations(
                 _renderer_hierarchy_contains_extract_assignment(
                     renderer_class,
                     "state.isCastingSpell = entity.isCastingSpell ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isConverting = entity.isUnderWaterConverting ()",
                     source_by_type,
                     type_by_name,
                 ),
