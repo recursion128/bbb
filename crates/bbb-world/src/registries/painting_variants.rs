@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
-    painting_variants::{vanilla_painting_variant, VanillaPaintingVariant},
+    painting_variants::{
+        vanilla_painting_variant, vanilla_painting_variant_for_resource_id, VanillaPaintingVariant,
+    },
     WorldStore,
 };
 
@@ -47,7 +49,7 @@ impl WorldStore {
             if entry.has_data {
                 return Ok(None);
             }
-            return Ok(vanilla_painting_variant_by_resource_id(&entry.id)
+            return Ok(vanilla_painting_variant_for_resource_id(&entry.id)
                 .map(client_projection_from_vanilla));
         }
 
@@ -56,14 +58,6 @@ impl WorldStore {
         }
         Ok(vanilla_painting_variant(holder_id).map(client_projection_from_vanilla))
     }
-}
-
-fn vanilla_painting_variant_by_resource_id(
-    resource_id: &str,
-) -> Option<&'static VanillaPaintingVariant> {
-    crate::painting_variants::VANILLA_PAINTING_VARIANTS
-        .iter()
-        .find(|variant| variant.resource_id == resource_id)
 }
 
 fn client_projection_from_vanilla(

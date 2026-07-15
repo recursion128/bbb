@@ -15288,3 +15288,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `generate-bootstrap-catalog.py` 扩展 painting owner 的反向结构门禁，阻止 production
   code 重新声明 `vanilla_painting_variant` lookup bridge；51 项顺序/尺寸/author catalog test
   与 item tooltip 回归继续覆盖直接消费路径。
+
+## 2026-07-15：Own painting-variant reverse catalog lookup
+
+- [x] painting generated owner 新增 resource→entry typed API 与全 catalog 双向回归；world
+  synchronized known-pack stub 直接消费该 API，删除 registry consumer 对 owner slice 的本地线性
+  扫描 helper，reordered session holder 仍按 resource identity 投影尺寸与 asset。
+- [x] bootstrap generator 的反向门禁只排除确切 owner 路径，不再误排除同名
+  `registries/painting_variants.rs`；并禁止历史 `vanilla_painting_variant_by_resource_id`
+  consumer helper 复生。

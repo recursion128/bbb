@@ -376,6 +376,14 @@ pub fn vanilla_painting_variant(id: i32) -> Option<&'static VanillaPaintingVaria
     VANILLA_PAINTING_VARIANTS.get(usize::try_from(id).ok()?)
 }
 
+pub fn vanilla_painting_variant_for_resource_id(
+    resource_id: &str,
+) -> Option<&'static VanillaPaintingVariant> {
+    VANILLA_PAINTING_VARIANTS
+        .iter()
+        .find(|variant| variant.resource_id == resource_id)
+}
+
 pub fn vanilla_painting_variant_resource_id(id: i32) -> Option<&'static str> {
     vanilla_painting_variant(id).map(|variant| variant.resource_id)
 }
@@ -413,6 +421,16 @@ mod tests {
         assert!(!vanilla_painting_variant(19).unwrap().has_author);
         let dennis = vanilla_painting_variant(50).unwrap();
         assert_eq!((dennis.width, dennis.height), (3, 3));
+        for entry in VANILLA_PAINTING_VARIANTS {
+            assert_eq!(
+                vanilla_painting_variant_for_resource_id(entry.resource_id),
+                Some(entry)
+            );
+        }
+        assert_eq!(
+            vanilla_painting_variant_for_resource_id("minecraft:missing"),
+            None
+        );
     }
 
     #[test]
@@ -428,7 +446,7 @@ mod tests {
                     continue;
                 }
                 let display = path.to_string_lossy();
-                if display.ends_with("/painting_variants.rs")
+                if display.ends_with("/bbb-world/src/painting_variants.rs")
                     || display.ends_with("/tests.rs")
                     || display.contains("/tests/")
                 {
@@ -439,6 +457,8 @@ mod tests {
                     || source.contains("struct VanillaPaintingVariant")
                     || source.contains("const VANILLA_PAINTING_VARIANTS")
                     || source.contains("fn vanilla_painting_variant_resource_id(")
+                    || source.contains("fn vanilla_painting_variant_for_resource_id(")
+                    || source.contains("fn vanilla_painting_variant_by_resource_id(")
                     || source.contains("fn vanilla_painting_variant(")
                 {
                     violations.push(display.to_string());
