@@ -439,6 +439,8 @@ wire-order bulk lookup 也已供 item-model enchantment/trim-material/attribute 
 reverse lookup 已供 HUD targeted block/fluid tag identity 消费；完整
 audio holder-order projection 已从 active world registry 派生并在 Finish 后原子切换；完整
 entity variant/villager render projection 已统一消费单一 checked holder lookup；完整
+painting-variant 的同步 entry 已按 `PaintingVariant.DIRECT_CODEC` 投影，bounds/center 与
+named F3 持久化不再解释固定 ordinal；direct holder 持久化与 painting renderer 仍开放；
 numeric tags 已有 checked ordered holder/resource resolution，F3 与 piglin-loved 已消费窄 tag query；完整
 dimension-type 当前 client fields 已改用共享 bounded NBT frontend 单次投影，其中
 min_y/height/logical_height 按 vanilla 范围与 16 对齐约束原子决定 world shape；native

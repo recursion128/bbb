@@ -25,6 +25,7 @@ pub(super) struct PersistentSnbtContext<'a> {
     pub item_runtime: Option<&'a NativeItemRuntime>,
     pub trim_material_keys: Option<&'a [String]>,
     pub trim_pattern_keys: Option<&'a [String]>,
+    pub painting_variant_keys: Option<&'a [String]>,
 }
 
 #[derive(Clone, Copy)]
@@ -1792,14 +1793,17 @@ fn encode_tropical_fish_pattern_color(
 fn encode_painting_variant(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if patch.painting_variant_direct.is_some() {
         return None;
     }
-    Some(debug_snbt_string(vanilla_painting_variant_resource_id(
-        patch.painting_variant_id?,
-    )?))
+    let holder_id = patch.painting_variant_id?;
+    let resource_id = match context.painting_variant_keys {
+        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
+        None => vanilla_painting_variant_resource_id(holder_id)?,
+    };
+    Some(debug_snbt_string(resource_id))
 }
 
 fn encode_builtin_enum(
@@ -2640,6 +2644,7 @@ mod tests {
             item_runtime: None,
             trim_material_keys: Some(&material_keys),
             trim_pattern_keys: Some(&pattern_keys),
+            painting_variant_keys: None,
         };
         let patch = bbb_protocol::packets::DataComponentPatchSummary {
             provides_trim_material_id: Some(0),
@@ -2769,7 +2774,7 @@ mod tests {
     }
 
     #[test]
-    fn painting_variant_encoder_uses_fixed_registry_holders_only() {
+    fn painting_variant_encoder_uses_session_order_or_fixed_baseline() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             painting_variant_id: Some(50),
             ..Default::default()
@@ -2777,6 +2782,20 @@ mod tests {
         assert_eq!(
             encode_added_component_value_snbt(102, &patch, None),
             Some("\"minecraft:dennis\"".to_string())
+        );
+
+        let painting_keys = ["example:custom".to_string()];
+        patch.painting_variant_id = Some(0);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                102,
+                &patch,
+                PersistentSnbtContext {
+                    painting_variant_keys: Some(&painting_keys),
+                    ..Default::default()
+                },
+            ),
+            Some("\"example:custom\"".to_string())
         );
 
         patch.painting_variant_id = Some(51);

@@ -1,3 +1,4 @@
+use crate::PaintingVariantClientProjection;
 use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
@@ -174,6 +175,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     data_values: &[EntityDataValue],
     attributes: &[AttributeSnapshot],
     client_animations: Option<EntityClientAnimationState>,
+    painting_variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<EntityPickBoundsState> {
     let scale_dimensions = scales_with_living_scale_attribute(entity_type_id, data_values);
     let bounds = if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID {
@@ -205,7 +207,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     {
         block_attached::item_frame_pick_bounds(add_entity_data, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PAINTING_ID {
-        block_attached::painting_pick_bounds(add_entity_data, data_values)?
+        block_attached::painting_pick_bounds(add_entity_data, data_values, painting_variant)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
         EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0)
     } else if is_vanilla_slime_type(entity_type_id) {
@@ -236,6 +238,7 @@ pub(crate) fn vanilla_model_source_bounds_for_entity_data(
     data_values: &[EntityDataValue],
     attributes: &[AttributeSnapshot],
     client_animations: Option<EntityClientAnimationState>,
+    painting_variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<EntityPickBoundsState> {
     if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID && armor_stand_is_marker(data_values) {
         // Vanilla `ArmorStand.MARKER_DIMENSIONS = EntityDimensions.fixed(0.0F, 0.0F)`:
@@ -254,6 +257,7 @@ pub(crate) fn vanilla_model_source_bounds_for_entity_data(
         data_values,
         attributes,
         client_animations,
+        painting_variant,
     )
 }
 
@@ -263,6 +267,7 @@ pub(crate) fn vanilla_eye_height_for_entity_data(
     data_values: &[EntityDataValue],
     attributes: &[AttributeSnapshot],
     client_animations: Option<EntityClientAnimationState>,
+    painting_variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<f32> {
     if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
         // Vanilla 26.1 `EntityDimensions.defaultEyeHeight`: `height * 0.85F`.
@@ -274,6 +279,7 @@ pub(crate) fn vanilla_eye_height_for_entity_data(
         data_values,
         attributes,
         client_animations,
+        painting_variant,
     )?;
     let height = bounds_height(bounds);
     let base_eye_height = vanilla_eye_height_override_for_type(entity_type_id)
@@ -287,6 +293,7 @@ pub(crate) fn vanilla_client_position_for_entity_data(
     packet_position: EntityVec3,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
+    painting_variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<EntityVec3> {
     if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID
@@ -298,7 +305,12 @@ pub(crate) fn vanilla_client_position_for_entity_data(
         ));
     }
     if entity_type_id == VANILLA_ENTITY_TYPE_PAINTING_ID {
-        return block_attached::painting_center(packet_position, add_entity_data, data_values);
+        return block_attached::painting_center(
+            packet_position,
+            add_entity_data,
+            data_values,
+            painting_variant,
+        );
     }
     if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
         return Some(block_attached::leash_knot_position(packet_position));
@@ -318,8 +330,14 @@ pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
         return None;
     }
 
-    let dimensions =
-        vanilla_pick_bounds_for_entity_data(entity_type_id, 0, data_values, attributes, None)?;
+    let dimensions = vanilla_pick_bounds_for_entity_data(
+        entity_type_id,
+        0,
+        data_values,
+        attributes,
+        None,
+        None,
+    )?;
     let scale = camel_age_scale(entity_type_id, data_values)
         * vanilla_render_scale(entity_type_id, attributes);
     let last_pose_change_tick = entity_data_long(

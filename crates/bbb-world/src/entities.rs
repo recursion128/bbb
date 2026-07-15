@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::terrain::block_name_is_bed;
-use crate::{BlockPos, TerrainLight, WorldStore};
+use crate::{BlockPos, PaintingVariantClientProjection, TerrainLight, WorldStore};
 
 mod animations;
 mod components;
@@ -647,6 +647,9 @@ pub struct EntityState {
     #[serde(default, skip_serializing_if = "bool_is_false")]
     pub on_ground_no_blocks: bool,
     pub data_values: Vec<ProtocolEntityDataValue>,
+    /// Client fields projected from the painting variant holder through the active registry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub painting_variant_projection: Option<PaintingVariantClientProjection>,
     pub equipment: Vec<ProtocolEquipmentSlotUpdate>,
     pub attributes: Vec<ProtocolAttributeSnapshot>,
     pub vehicle_id: Option<i32>,
@@ -2336,6 +2339,7 @@ impl WorldStore {
                 packet_position,
                 packet.data,
                 &[],
+                None,
             )
             .unwrap_or(packet_position),
             position_base: packet_position,

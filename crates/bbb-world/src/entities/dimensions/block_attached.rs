@@ -9,9 +9,8 @@ use crate::entities::{
     VANILLA_ITEM_FRAME_DEFAULT_ROTATION,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_DATA_ITEM_ID,
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_DATA_ROTATION_ID,
-    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_DATA_VARIANT_ID,
 };
-use crate::painting_variants::vanilla_painting_variant;
+use crate::PaintingVariantClientProjection;
 
 use super::{
     entity_data_direction, vanilla_direction_from_3d_data, EntityPickBoundsState, VanillaAxis,
@@ -42,9 +41,10 @@ pub(super) fn item_frame_pick_bounds(
 pub(super) fn painting_pick_bounds(
     add_entity_data: i32,
     data_values: &[EntityDataValue],
+    variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<EntityPickBoundsState> {
     let direction = hanging_direction(add_entity_data, data_values);
-    let (width, height) = painting_variant_size(data_values);
+    let (width, height) = painting_variant_size(variant);
     let (x_size, y_size, z_size) = painting_size_for_direction(direction, width, height)?;
     Some(EntityPickBoundsState::from_centered_size(
         x_size, y_size, z_size, 0.0,
@@ -64,9 +64,10 @@ pub(super) fn painting_center(
     packet_position: EntityVec3,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
+    variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<EntityVec3> {
     let direction = hanging_direction(add_entity_data, data_values);
-    let (width, height) = painting_variant_size(data_values);
+    let (width, height) = painting_variant_size(variant);
     let left = horizontal_counter_clockwise(direction)?;
     let mut center = hanging_wall_center(packet_position, direction);
     if (width as i32) % 2 == 0 {
@@ -219,22 +220,9 @@ fn item_stack_has_map_component(item: &ItemStackSummary) -> bool {
             .contains(&VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID)
 }
 
-fn painting_variant_size(data_values: &[EntityDataValue]) -> (f32, f32) {
-    data_values
-        .iter()
-        .find(|value| value.data_id == PAINTING_DATA_VARIANT_ID)
-        .and_then(|value| match &value.value {
-            EntityDataValueKind::PaintingVariant(variant) => {
-                if let Some(direct) = &variant.direct {
-                    return positive_painting_size(direct.width, direct.height);
-                }
-                variant
-                    .registry_id
-                    .and_then(vanilla_painting_variant)
-                    .and_then(|variant| positive_painting_size(variant.width, variant.height))
-            }
-            _ => None,
-        })
+fn painting_variant_size(variant: Option<&PaintingVariantClientProjection>) -> (f32, f32) {
+    variant
+        .and_then(|variant| positive_painting_size(variant.width, variant.height))
         .unwrap_or((1.0, 1.0))
 }
 

@@ -4,6 +4,7 @@ use bbb_protocol::packets::{
     SetEquipment as ProtocolSetEquipment, UpdateAttributes as ProtocolUpdateAttributes,
 };
 
+use crate::PaintingVariantClientProjection;
 use crate::WorldStore;
 
 use super::dimensions::vanilla_living_entity_type;
@@ -11,6 +12,7 @@ use super::schema::{
     VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
     VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
+    VANILLA_PAINTING_VARIANT_DATA_ID,
 };
 
 impl WorldStore {
@@ -20,6 +22,8 @@ impl WorldStore {
         let id = packet.id;
         let is_local_player = self.local_player_id == Some(id);
         let updated_values = packet.values.clone();
+        let painting_variant_projection =
+            self.painting_variant_projection_from_metadata(&updated_values);
         let mut local_living_entity_flags = None;
         let Some(()) = self.entities.with_metadata_mut(id, |metadata| {
             for value in packet.values {
@@ -39,6 +43,9 @@ impl WorldStore {
                 }
             }
             metadata.data_values.sort_by_key(|value| value.data_id);
+            if let Some(projection) = painting_variant_projection {
+                metadata.painting_variant_projection = projection;
+            }
         }) else {
             self.counters.entity_data_updates_ignored += 1;
             return false;
@@ -55,6 +62,37 @@ impl WorldStore {
         }
         self.counters.entity_data_updates_applied += 1;
         true
+    }
+
+    fn painting_variant_projection_from_metadata(
+        &mut self,
+        values: &[bbb_protocol::packets::EntityDataValue],
+    ) -> Option<Option<PaintingVariantClientProjection>> {
+        let variant = values.iter().find_map(|value| {
+            (value.data_id == VANILLA_PAINTING_VARIANT_DATA_ID)
+                .then_some(&value.value)
+                .and_then(|value| match value {
+                    EntityDataValueKind::PaintingVariant(variant) => Some(variant),
+                    _ => None,
+                })
+        })?;
+        if let Some(direct) = variant.direct.as_ref() {
+            return Some(Some(PaintingVariantClientProjection {
+                width: direct.width,
+                height: direct.height,
+                asset_id: direct.asset_id.clone(),
+            }));
+        }
+        let Some(holder_id) = variant.registry_id else {
+            return Some(None);
+        };
+        Some(match self.painting_variant_client_projection(holder_id) {
+            Ok(projection) => projection,
+            Err(err) => {
+                self.record_apply_error("painting_variant", err);
+                None
+            }
+        })
     }
 
     fn sync_local_using_item_from_living_entity_flags(&mut self, flags: i8) {

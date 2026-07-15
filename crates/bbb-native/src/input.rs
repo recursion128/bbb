@@ -38,10 +38,10 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
         VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -189,6 +189,7 @@ use bbb_world::{
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
     VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
     VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
+    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS as SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
@@ -4937,6 +4938,9 @@ fn debug_push_entity_additional_save_data(
         _ if bbb_world::vanilla_entity_type_is_item_frame(entity.entity_type_id) => {
             debug_push_item_frame_additional_save_data(world, entity, item_runtime, fields);
         }
+        VANILLA_ENTITY_TYPE_PAINTING_ID => {
+            debug_push_painting_additional_save_data(world, entity, fields);
+        }
         VANILLA_ENTITY_TYPE_TNT_ID => {
             debug_push_primed_tnt_additional_save_data(world, entity, fields);
         }
@@ -5259,6 +5263,7 @@ fn debug_push_firework_rocket_additional_save_data(
     if debug_entity_data_item_stack_present(entity, FIREWORK_ROCKET_ITEM_DATA_ID).is_some() {
         let trim_material_keys = crate::item_models::world_trim_material_keys(world);
         let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
+        let painting_variant_keys = crate::item_models::world_painting_variant_keys(world);
         fields.push(format!(
             "FireworksItem: {}",
             debug_firework_rocket_item_stack(
@@ -5267,6 +5272,7 @@ fn debug_push_firework_rocket_additional_save_data(
                     item_runtime,
                     trim_material_keys: trim_material_keys.as_deref(),
                     trim_pattern_keys: trim_pattern_keys.as_deref(),
+                    painting_variant_keys: painting_variant_keys.as_deref(),
                 },
             )
         ));
@@ -6552,6 +6558,7 @@ fn debug_push_item_frame_additional_save_data(
     {
         let trim_material_keys = crate::item_models::world_trim_material_keys(world);
         let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
+        let painting_variant_keys = crate::item_models::world_painting_variant_keys(world);
         if let Some(item) = debug_item_stack_snbt_with_context(
             resource_id,
             stack.count,
@@ -6560,6 +6567,7 @@ fn debug_push_item_frame_additional_save_data(
                 item_runtime,
                 trim_material_keys: trim_material_keys.as_deref(),
                 trim_pattern_keys: trim_pattern_keys.as_deref(),
+                painting_variant_keys: painting_variant_keys.as_deref(),
             },
         ) {
             fields.push(format!("Item: {item}"));
@@ -6581,6 +6589,50 @@ fn debug_push_item_frame_additional_save_data(
 fn debug_item_frame_facing_legacy_id(entity: &EntityState) -> i32 {
     debug_entity_data_direction_legacy_id_present(entity, HANGING_ENTITY_DIRECTION_DATA_ID)
         .unwrap_or_else(|| debug_vanilla_direction_legacy_id(entity.data))
+}
+
+fn debug_push_painting_additional_save_data(
+    world: &WorldStore,
+    entity: &EntityState,
+    fields: &mut Vec<String>,
+) {
+    if let Some(block_pos) = debug_snbt_block_pos("block_pos", entity.position_base) {
+        fields.push(block_pos);
+    }
+    fields.push(format!(
+        "facing: {}b",
+        debug_painting_facing_legacy_2d_id(entity)
+    ));
+    if let Some(resource_id) = debug_entity_data_painting_variant_named_id(entity).and_then(|id| {
+        debug_registry_resource_id(world, "minecraft:painting_variant", id, |id| {
+            vanilla_painting_variant_resource_id(id)
+        })
+    }) {
+        fields.push(format!("variant: {}", debug_snbt_string(resource_id)));
+    }
+}
+
+fn debug_painting_facing_legacy_2d_id(entity: &EntityState) -> i32 {
+    match debug_item_frame_facing_legacy_id(entity) {
+        3 => 0, // south
+        4 => 1, // west
+        2 => 2, // north
+        5 => 3, // east
+        _ => 0,
+    }
+}
+
+fn debug_entity_data_painting_variant_named_id(entity: &EntityState) -> Option<i32> {
+    entity
+        .data_values
+        .iter()
+        .find(|value| value.data_id == PAINTING_VARIANT_DATA_ID)
+        .and_then(|value| match &value.value {
+            EntityDataValueKind::PaintingVariant(variant) if variant.direct.is_none() => {
+                variant.registry_id
+            }
+            _ => None,
+        })
 }
 
 fn debug_vanilla_direction_legacy_id(data: i32) -> i32 {

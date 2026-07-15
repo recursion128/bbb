@@ -34,8 +34,9 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
     VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
     VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-    VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+    VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+    VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
     VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID,
     VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
     VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
@@ -11618,6 +11619,62 @@ fn shift_f3_i_with_permission_copies_local_glow_item_frame_save_nbt_to_clipboard
     assert_eq!(
         messages[0].content,
         "[Debug]: Copied client-side entity data to clipboard"
+    );
+}
+
+#[test]
+fn local_painting_save_nbt_and_bounds_follow_synchronized_holder_order() {
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:painting_variant",
+        0,
+        vec![
+            RegistryPacketEntry::stub("minecraft:dennis"),
+            RegistryPacketEntry::stub("minecraft:kebab"),
+        ],
+    );
+    world.apply_add_entity(AddEntity {
+        id: 64,
+        uuid: Uuid::from_u128(64),
+        entity_type_id: VANILLA_ENTITY_TYPE_PAINTING_ID,
+        position: ProtocolVec3d {
+            x: 0.0,
+            y: 1.0,
+            z: 2.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 3,
+    });
+    assert!(world.apply_set_entity_data(ProtocolSetEntityData {
+        id: 64,
+        values: vec![ProtocolEntityDataValue {
+            data_id: PAINTING_VARIANT_DATA_ID,
+            serializer_id: 34,
+            value: EntityDataValueKind::PaintingVariant(
+                bbb_protocol::packets::PaintingVariantData {
+                    registry_id: Some(0),
+                    direct: None,
+                },
+            ),
+        }],
+    }));
+
+    assert_eq!(
+        world.probe_entity_pick_bounds(64),
+        Some(bbb_world::EntityPickBoundsState::from_centered_size(
+            3.0, 3.0, 0.0625, 0.0,
+        ))
+    );
+    assert_eq!(
+        debug_copy_recreate_entity_command(&world, None, 64, true)
+            .unwrap()
+            .command,
+        "/summon minecraft:painting 0.50 1.50 2.03 {Motion: [0.0d, 0.0d, 0.0d], \
+         Rotation: [0.0f, 0.0f], block_pos: [I; 0, 1, 2], facing: 0b, \
+         variant: \"minecraft:dennis\"}"
     );
 }
 

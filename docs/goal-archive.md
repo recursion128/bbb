@@ -15174,3 +15174,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   projectiles、bundle、container 与 adventure exact-component ItemStack；无 session registry 的
   offline/test 路径保留显式 vanilla 26.1 fallback。回归覆盖 tooltip 双 registry 重排、pattern
   predicate 的 sentry/spire 反序，以及自定义 material/pattern 的 persistent SNBT resource id。
+
+## 2026-07-15：Fix synchronized painting holder identity
+
+- [x] 对照 vanilla 26.1 `PaintingVariant.DIRECT_CODEC`、`Painting.calculateBoundingBox` 与
+  `Painting.recreateFromPacket`，由 world registry owner 投影同步 entry 的 width、height、asset id；
+  known-pack stub 按 resource identity 查询生成 catalog，不再把 server holder ordinal 当作 vanilla ordinal。
+- [x] painting metadata 缓存当前 holder 投影并驱动 3D bounds/center；F3 本地实体持久化按 session
+  holder order 输出 named `variant` 与 legacy 2D `facing`。协议 direct asset id 改用资源标识符校验，
+  回归覆盖重排后的 dennis/kebab 尺寸与 summon SNBT。direct holder 持久化及 painting renderer 继续开放。

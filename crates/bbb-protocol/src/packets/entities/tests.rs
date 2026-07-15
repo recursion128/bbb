@@ -786,6 +786,25 @@ fn rejects_invalid_entity_data_global_pos_dimension() {
 }
 
 #[test]
+fn rejects_invalid_direct_painting_variant_asset_id() {
+    let mut payload = Encoder::new();
+    payload.write_var_i32(123);
+    payload.write_u8(9);
+    payload.write_var_i32(34);
+    payload.write_var_i32(0);
+    payload.write_var_i32(1);
+    payload.write_var_i32(1);
+    payload.write_string("minecraft:Painting/Kebab");
+
+    let err = decode_play_clientbound(
+        ids::play::CLIENTBOUND_SET_ENTITY_DATA,
+        &payload.into_inner(),
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("invalid resource location"));
+}
+
+#[test]
 fn decodes_registered_entity_variant_data_serializers() {
     let registry_cases = [
         (21, EntityDataRegistryHolder::CatVariant),

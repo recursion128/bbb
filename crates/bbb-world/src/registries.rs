@@ -5,6 +5,7 @@ mod damage_types;
 mod enchantments;
 mod environment_attributes;
 mod instruments;
+mod painting_variants;
 mod sound_variants;
 mod state;
 mod store;
@@ -39,6 +40,9 @@ pub(crate) use environment_attributes::{
     decode_client_environment_attributes, EnvironmentAttributeProjectionError,
 };
 pub use instruments::VanillaInstrumentIdentity;
+pub use painting_variants::{
+    PaintingVariantClientProjection, PaintingVariantProjectionError, PAINTING_VARIANT_REGISTRY,
+};
 pub(crate) use sound_variants::{
     RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY, CHICKEN_SOUND_VARIANT_REGISTRY,
     COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,

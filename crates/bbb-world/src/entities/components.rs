@@ -13,6 +13,7 @@ use super::{
     ProjectileLifecycleState,
 };
 use crate::BlockPos;
+use crate::PaintingVariantClientProjection;
 
 // Match the protocol decoder's per-packet allocation guard while also preventing
 // several packets received within one client tick from accumulating without bound.
@@ -48,6 +49,7 @@ pub(crate) struct EntitySupportingBlock {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityMetadata {
     pub(crate) data_values: Vec<ProtocolEntityDataValue>,
+    pub(crate) painting_variant_projection: Option<PaintingVariantClientProjection>,
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -153,6 +155,7 @@ impl From<&EntityState> for EntityMetadata {
     fn from(state: &EntityState) -> Self {
         Self {
             data_values: state.data_values.clone(),
+            painting_variant_projection: state.painting_variant_projection.clone(),
         }
     }
 }
@@ -447,6 +450,7 @@ impl EntitySupportingBlock {
 impl EntityMetadata {
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.data_values = self.data_values;
+        state.painting_variant_projection = self.painting_variant_projection;
     }
 }
 

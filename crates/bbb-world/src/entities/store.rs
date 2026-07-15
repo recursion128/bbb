@@ -807,6 +807,7 @@ impl EntityStore {
             &standing_data,
             &attributes.attributes,
             Some(client_animations.animations),
+            metadata.painting_variant_projection.as_ref(),
         )
     }
 
@@ -1190,6 +1191,7 @@ impl EntityStore {
             &metadata.data_values,
             &attributes.attributes,
             Some(client_animations.animations),
+            metadata.painting_variant_projection.as_ref(),
         )
     }
 
@@ -1230,6 +1232,7 @@ impl EntityStore {
             &metadata.data_values,
             &attributes.attributes,
             Some(client_animations.animations),
+            metadata.painting_variant_projection.as_ref(),
         )?;
         if let Some(display) = self.minecart_display_block_state(identity.id, registries) {
             bounds = bounds.expand_towards_y(display.display_offset as f32 * 0.75 / 16.0);
@@ -1361,6 +1364,7 @@ impl EntityStore {
             transform.position_base,
             identity.data,
             &metadata.data_values,
+            metadata.painting_variant_projection.as_ref(),
         )?;
         transform.position = position;
         Some(())
@@ -2441,6 +2445,7 @@ impl EntityStore {
             data_values,
             attributes,
             Some(client_animations),
+            None,
         )?;
         let attack = client_animations.guardian_attack.unwrap_or_default();
         let attack_duration = guardian_attack_duration(entity_type_id);
@@ -2547,6 +2552,7 @@ impl EntityStore {
             &metadata.data_values,
             &attributes.attributes,
             Some(client_animations.animations),
+            metadata.painting_variant_projection.as_ref(),
         )?;
         Some(EntityCameraPoseState {
             id: identity.id,
@@ -2641,6 +2647,7 @@ impl EntityStore {
                 &metadata.data_values,
                 &attributes.attributes,
                 Some(client_animations.animations),
+                metadata.painting_variant_projection.as_ref(),
             ) {
                 eye_positions.insert(identity.id, (transform.position, eye_height));
             }
@@ -3821,6 +3828,7 @@ impl EntityStore {
             main_supporting_block_pos: None,
             on_ground_no_blocks: false,
             data_values: Vec::new(),
+            painting_variant_projection: None,
             equipment: Vec::new(),
             attributes: Vec::new(),
             vehicle_id: None,
@@ -4080,6 +4088,7 @@ fn append_client_tick_particle_triggers(
         data_values,
         attributes,
         Some(client_animations),
+        None,
     ) else {
         return;
     };

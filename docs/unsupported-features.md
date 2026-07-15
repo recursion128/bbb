@@ -533,9 +533,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   server tag-query response, which is the complete NBT authority; private
   owner/target/inventory/timer/RNG fields are not client work and must not be
   synthesized from defaults. Remaining observable work includes registry-backed
-  entity-data projection (the fixed vanilla entity/block-entity type catalogs
-  are generated; server dynamic-registry ordering remains), packed variant
-  projection, remaining codec-backed SNBT projection (component removals are complete;
+  entity-data projection beyond painting-variant bounds/center and named F3
+  persistence (the fixed vanilla entity/block-entity type catalogs are generated),
+  packed variant projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
   `inBlockState` and `item`, attribute-modifier override-display Component trees,
   and lossless persistent reconstruction for direct instrument, direct trim

@@ -869,7 +869,7 @@ fn decode_direct_painting_variant_data(
     Ok(DirectPaintingVariantData {
         width: decoder.read_var_i32()?,
         height: decoder.read_var_i32()?,
-        asset_id: decoder.read_string(MAX_RESOURCE_LOCATION_CHARS)?,
+        asset_id: read_resource_location(decoder)?,
         title: decode_optional_component(decoder)?,
         author: decode_optional_component(decoder)?,
     })
