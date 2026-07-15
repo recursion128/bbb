@@ -33,6 +33,11 @@ pub(super) fn entity_model_kind_with_time_and_registries(
     if bbb_world::vanilla_entity_renderer_is_noop(entity_type_id) {
         return EntityModelKind::NoRender;
     }
+    // Vanilla `ThrownItemRenderer` submits a camera-facing item sprite. The native item-entity
+    // billboard layer owns that path, so the 3D model scene suppresses every generated registration.
+    if bbb_world::vanilla_entity_renderer_thrown_item_scale(entity_type_id).is_some() {
+        return EntityModelKind::NoRender;
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, variant_registries),
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
@@ -187,12 +192,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID => {
             entity_type_bounds_placeholder("dragon_fireball_entity_type_bounds", 1.0, 1.0)
         }
-        // Thrown-item projectiles (vanilla `ThrownItemRenderer`) render as a camera-facing item sprite,
-        // emitted by the item-entity billboard layer (`thrown_item_projectile_billboards_from_world`),
-        // so the 3D model scene draws nothing for them.
-        VANILLA_ENTITY_TYPE_EGG_ID | VANILLA_ENTITY_TYPE_SNOWBALL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => EntityModelKind::EnderDragon,
-        VANILLA_ENTITY_TYPE_ENDER_PEARL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID => boat(BoatModelFamily::Acacia, false),
         VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID => boat(BoatModelFamily::Acacia, true),
         VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID => boat(BoatModelFamily::Bamboo, false),
@@ -253,18 +253,10 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ENDERMITE_ID => EntityModelKind::Endermite,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => EntityModelKind::EndCrystal,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => EntityModelKind::EvokerFangs,
-        // Thrown bottles/potions also render as item sprites via the billboard layer (see above).
-        VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID
-        | VANILLA_ENTITY_TYPE_SPLASH_POTION_ID
-        | VANILLA_ENTITY_TYPE_LINGERING_POTION_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
             entity_type_bounds_placeholder("experience_orb_entity_type_bounds", 0.5, 0.5)
         }
-        // The eye of ender also renders as an item sprite via the billboard layer (see above).
-        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => EntityModelKind::NoRender,
-        // The large fireball also renders as a (3× scaled) item sprite via the billboard layer.
-        VANILLA_ENTITY_TYPE_FIREBALL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
             entity_type_bounds_placeholder("fishing_bobber_entity_type_bounds", 0.25, 0.25)
@@ -324,8 +316,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SLIME_ID => EntityModelKind::Slime {
             size: slime_size(data_values),
         },
-        // The small fireball also renders as a (0.75× scaled) item sprite via the billboard layer.
-        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_SPIDER_ID => EntityModelKind::Spider,
         VANILLA_ENTITY_TYPE_SQUID_ID => EntityModelKind::Squid {
             glow: false,

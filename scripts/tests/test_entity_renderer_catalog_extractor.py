@@ -30,6 +30,9 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.BLAZE, BlazeRenderer::new);
                     register(EntityType.EYE_OF_ENDER,
                         context -> new ThrownItemRenderer<>(context, 1.0F, true));
+                    register(EntityType.EGG, ThrownItemRenderer::new);
+                    register(EntityType.FIREBALL,
+                        context -> new ThrownItemRenderer<>(context, 3.0F, true));
                     register(EntityType.CAT, CatRenderer::new);
                     register(EntityType.HORSE, HorseRenderer::new);
                     register(EntityType.ALLAY, AllayRenderer::new);
@@ -198,6 +201,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                         final float scale,
                         final boolean fullBright
                     ) {
+                        this.scale = scale;
                         this.fullBright = fullBright;
                     }
                     public ThrownItemRenderer(final EntityRendererProvider.Context context) {
@@ -228,6 +232,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "WANDERING_TRADER",
                 "EVOKER",
                 "ILLUSIONER",
+                "EGG",
+                "FIREBALL",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -240,6 +246,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     entry.constant_name,
                     entry.renderer_class,
                     entry.static_full_block_light,
+                    entry.thrown_item_scale_bits,
                     entry.uses_abstract_feline_model,
                     entry.uses_abstract_horse_renderer,
                     entry.uses_mob_item_in_hand_layer,
@@ -250,17 +257,19 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 for entry in entries
             ],
             [
-                (0, "BLAZE", "BlazeRenderer", True, False, False, False, False, False, False),
-                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False, False, False, False, False),
-                (2, "CAT", "CatRenderer", False, True, False, False, False, False, False),
-                (3, "HORSE", "HorseRenderer", False, False, True, False, False, False, False),
-                (4, "ALLAY", "AllayRenderer", False, False, False, True, True, False, False),
-                (5, "ARMOR_STAND", "ArmorStandRenderer", False, False, False, False, False, False, False),
-                (6, "VEX", "VexRenderer", False, False, False, True, True, False, False),
-                (7, "VILLAGER", "VillagerRenderer", False, False, False, False, False, True, False),
-                (8, "WANDERING_TRADER", "WanderingTraderRenderer", False, False, False, False, False, True, False),
-                (9, "EVOKER", "EvokerRenderer", False, False, False, False, False, False, True),
-                (10, "ILLUSIONER", "IllusionerRenderer", False, False, False, False, False, False, True),
+                (0, "BLAZE", "BlazeRenderer", True, None, False, False, False, False, False, False),
+                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, 1065353216, False, False, False, False, False, False),
+                (2, "CAT", "CatRenderer", False, None, True, False, False, False, False, False),
+                (3, "HORSE", "HorseRenderer", False, None, False, True, False, False, False, False),
+                (4, "ALLAY", "AllayRenderer", False, None, False, False, True, True, False, False),
+                (5, "ARMOR_STAND", "ArmorStandRenderer", False, None, False, False, False, False, False, False),
+                (6, "VEX", "VexRenderer", False, None, False, False, True, True, False, False),
+                (7, "VILLAGER", "VillagerRenderer", False, None, False, False, False, False, True, False),
+                (8, "WANDERING_TRADER", "WanderingTraderRenderer", False, None, False, False, False, False, True, False),
+                (9, "EVOKER", "EvokerRenderer", False, None, False, False, False, False, False, True),
+                (10, "ILLUSIONER", "IllusionerRenderer", False, None, False, False, False, False, False, True),
+                (11, "EGG", "ThrownItemRenderer", False, 1065353216, False, False, False, False, False, False),
+                (12, "FIREBALL", "ThrownItemRenderer", True, 1077936128, False, False, False, False, False, False),
             ],
         )
 

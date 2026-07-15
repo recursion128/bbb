@@ -10,6 +10,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     constant_name: &'static str,
     renderer_class: &'static str,
     static_full_block_light: bool,
+    thrown_item_scale_bits: Option<u32>,
     uses_abstract_feline_model: bool,
     uses_abstract_horse_renderer: bool,
     uses_mob_item_in_hand_layer: bool,
@@ -37,6 +38,22 @@ pub fn vanilla_entity_renderer_has_static_full_block_light(entity_type_id: i32) 
 pub fn vanilla_entity_renderer_is_noop(entity_type_id: i32) -> bool {
     vanilla_entity_renderer_registration(entity_type_id)
         .is_some_and(|entry| entry.renderer_class == "NoopRenderer")
+}
+
+pub fn vanilla_entity_renderer_thrown_item_scale(entity_type_id: i32) -> Option<f32> {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .and_then(|entry| entry.thrown_item_scale_bits)
+        .map(f32::from_bits)
+}
+
+pub fn vanilla_entity_renderer_thrown_item_scales() -> impl Iterator<Item = (i32, f32)> {
+    VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+        .iter()
+        .filter_map(|entry| {
+            entry
+                .thrown_item_scale_bits
+                .map(|bits| (entry.entity_type_id, f32::from_bits(bits)))
+        })
 }
 
 pub(super) fn vanilla_entity_renderer_uses_abstract_feline_model(entity_type_id: i32) -> bool {
@@ -79,18 +96,21 @@ mod tests {
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
-        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
-        VANILLA_ENTITY_TYPE_MARKER_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MARKER_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
         VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
@@ -166,6 +186,46 @@ mod tests {
         }
         assert!(!vanilla_entity_renderer_is_noop(-1));
         assert!(!vanilla_entity_renderer_is_noop(157));
+    }
+
+    #[test]
+    fn generated_thrown_item_renderer_scales_match_provider_constructors() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter_map(|entry| {
+                entry
+                    .thrown_item_scale_bits
+                    .map(|bits| (entry.entity_type_id, bits))
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual,
+            vec![
+                (VANILLA_ENTITY_TYPE_EGG_ID, 1.0_f32.to_bits()),
+                (VANILLA_ENTITY_TYPE_ENDER_PEARL_ID, 1.0_f32.to_bits()),
+                (VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, 1.0_f32.to_bits()),
+                (VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, 1.0_f32.to_bits()),
+                (VANILLA_ENTITY_TYPE_FIREBALL_ID, 3.0_f32.to_bits()),
+                (VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, 1.0_f32.to_bits()),
+                (VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, 1.0_f32.to_bits()),
+                (VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, 0.75_f32.to_bits()),
+                (VANILLA_ENTITY_TYPE_SNOWBALL_ID, 1.0_f32.to_bits()),
+            ]
+        );
+        assert_eq!(
+            vanilla_entity_renderer_thrown_item_scales()
+                .map(|(entity_type_id, scale)| (entity_type_id, scale.to_bits()))
+                .collect::<Vec<_>>(),
+            actual
+        );
+        for (entity_type_id, bits) in actual {
+            assert_eq!(
+                vanilla_entity_renderer_thrown_item_scale(entity_type_id).map(f32::to_bits),
+                Some(bits)
+            );
+        }
+        assert_eq!(vanilla_entity_renderer_thrown_item_scale(-1), None);
+        assert_eq!(vanilla_entity_renderer_thrown_item_scale(157), None);
     }
 
     #[test]

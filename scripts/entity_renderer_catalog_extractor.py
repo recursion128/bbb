@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import struct
 from dataclasses import dataclass
 
 from vanilla_java_source import (
@@ -37,6 +38,7 @@ class EntityRendererRegistration:
     constant_name: str
     renderer_class: str
     static_full_block_light: bool
+    thrown_item_scale_bits: int | None
     uses_abstract_feline_model: bool
     uses_abstract_horse_renderer: bool
     uses_mob_item_in_hand_layer: bool
@@ -117,7 +119,18 @@ def _returns_constant_full_block_light(source: JavaSource, method: JavaMethod) -
     )
 
 
-def _validate_thrown_item_full_bright_contract(
+def _float_literal_bits(source: JavaSource, expression: JavaExpression) -> int:
+    if expression.node.type != "decimal_floating_point_literal":
+        _fail(source, expression, "ThrownItemRenderer scale is not a float literal")
+    spelling = expression.canonical.replace("_", "").removesuffix("F").removesuffix("f")
+    try:
+        value = float(spelling)
+        return struct.unpack("!I", struct.pack("!f", value))[0]
+    except (OverflowError, ValueError, struct.error):
+        _fail(source, expression, "invalid ThrownItemRenderer scale literal")
+
+
+def _validate_thrown_item_constructor_contract(
     source_by_type: dict[str, JavaSource],
     type_by_name: dict[str, JavaType],
 ) -> None:
@@ -178,9 +191,31 @@ def _validate_thrown_item_full_bright_contract(
         for node in descendants(constructors[0].node)
         if node.type == "assignment_expression"
     ]
+    if "this.scale = scale" not in assignments:
+        raise EntityRendererCatalogExtractionError(
+            "ThrownItemRenderer constructor does not retain scale"
+        )
     if "this.fullBright = fullBright" not in assignments:
         raise EntityRendererCatalogExtractionError(
             "ThrownItemRenderer constructor does not retain fullBright"
+        )
+    default_constructors = [
+        method
+        for method in source.methods_for(renderer_type)
+        if method.is_constructor and len(method.parameters) == 1
+    ]
+    if len(default_constructors) != 1:
+        raise EntityRendererCatalogExtractionError(
+            "ThrownItemRenderer must define one default constructor"
+        )
+    invocations = [
+        source.expression(node).canonical
+        for node in descendants(default_constructors[0].node)
+        if node.type == "explicit_constructor_invocation"
+    ]
+    if invocations != ["this (context, 1.0F, false);"]:
+        raise EntityRendererCatalogExtractionError(
+            "unsupported ThrownItemRenderer default constructor"
         )
 
 
@@ -307,7 +342,7 @@ def extract_entity_renderer_registrations(
             "entity type registry contains duplicate constants"
         )
 
-    _validate_thrown_item_full_bright_contract(source_by_type, type_by_name)
+    _validate_thrown_item_constructor_contract(source_by_type, type_by_name)
 
     calls = [
         call
@@ -372,13 +407,18 @@ def extract_entity_renderer_registrations(
                 break
             current = type_by_name[current.superclass]
 
+        thrown_item_scale_bits = None
         if renderer_class == THROWN_ITEM_RENDERER_CLASS:
             if not constructor_arguments:
                 static_full_block_light = False
+                thrown_item_scale_bits = 0x3F800000
             elif (
                 len(constructor_arguments) == 3
                 and constructor_arguments[2].node.type in {"true", "false"}
             ):
+                thrown_item_scale_bits = _float_literal_bits(
+                    entity_renderers_source, constructor_arguments[1]
+                )
                 static_full_block_light = constructor_arguments[2].node.type == "true"
             else:
                 _fail(
@@ -393,6 +433,7 @@ def extract_entity_renderer_registrations(
                 constant_name,
                 renderer_class.removeprefix(RENDERER_PACKAGE + "."),
                 static_full_block_light,
+                thrown_item_scale_bits,
                 _renderer_hierarchy_references_superclass_type(
                     renderer_class,
                     ABSTRACT_FELINE_MODEL_CLASS,

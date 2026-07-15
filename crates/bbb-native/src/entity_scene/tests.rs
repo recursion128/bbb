@@ -9167,7 +9167,7 @@ fn entity_model_kind_skips_thrown_item_projectiles_for_the_billboard_layer() {
     // The thrown-item projectiles (vanilla `ThrownItemRenderer`) render as a camera-facing item
     // sprite via the item-entity billboard layer, so the 3D model scene draws nothing for them — the
     // model kind is `NoRender` rather than the former placeholder box.
-    for &(type_id, _scale) in THROWN_ITEM_PROJECTILE_BILLBOARDS {
+    for (type_id, _scale) in bbb_world::vanilla_entity_renderer_thrown_item_scales() {
         assert_eq!(
             entity_model_kind(type_id, &[]),
             EntityModelKind::NoRender,

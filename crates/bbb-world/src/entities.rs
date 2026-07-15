@@ -52,6 +52,7 @@ pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDrago
 use movement::entity_vec3;
 pub use renderer_catalog::{
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_is_noop,
+    vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,
 };
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{

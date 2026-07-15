@@ -152,7 +152,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   plus `AbstractFelineModel` / `AbstractHorseRenderer` hierarchy memberships and the
   `MobRenderer` + inherited/direct `ItemInHandLayer` intersection, along with inherited
   `extractRenderState` Mob-aggressive, unhappy-counter and spell-casting projections, are now
-  source-generated; continue
+  source-generated. `ThrownItemRenderer` registration membership and constructor sprite scale
+  must likewise remain renderer-generated; native billboard/model suppression must not restore a
+  parallel entity-type/scale table. Continue
   migrating renderer-class-derived model/pose memberships through that owner. Emit every new
   generated-catalog consumer guard or migrated generated-catalog consumer guard
   from that catalog's generator rather than hand-editing its checked-in output.

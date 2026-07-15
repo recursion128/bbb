@@ -3,9 +3,11 @@ use std::collections::BTreeSet;
 use bbb_renderer::{
     ItemEntityBillboard, ItemEntityBillboardLayer, ItemEntityBillboardOrientation, ItemEntityUvRect,
 };
-use bbb_world::{FireworkRocketItemState, ItemEntityStackState, TerrainLight, WorldStore};
+use bbb_world::{
+    vanilla_entity_renderer_thrown_item_scales, FireworkRocketItemState, ItemEntityStackState,
+    TerrainLight, WorldStore,
+};
 
-use crate::entity_scene::THROWN_ITEM_PROJECTILE_BILLBOARDS;
 use bbb_item_model::{ItemAtlasIcon, ItemAtlasIconLayer, ItemAtlasUvRect, NativeItemRuntime};
 
 /// Vanilla `ItemEntityRenderer` lifts the dropped item sprite to sit above the entity's ground
@@ -44,7 +46,7 @@ pub(crate) fn item_entity_billboards_from_world(
 
     // Thrown-item projectiles (snowball, egg, ender pearl, potions, fireballs, …) render the same item
     // sprite via vanilla `ThrownItemRenderer`, centered on the entity at that renderer's sprite scale.
-    for &(type_id, scale) in THROWN_ITEM_PROJECTILE_BILLBOARDS {
+    for (type_id, scale) in vanilla_entity_renderer_thrown_item_scales() {
         for state in world.item_stacks_for_entity_types(&[type_id]) {
             if let Some(icon) = item_runtime.icon_for_stack(&state.stack) {
                 billboards.push(item_entity_billboard_from_icon(

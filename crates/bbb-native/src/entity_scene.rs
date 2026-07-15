@@ -401,22 +401,6 @@ impl EntityVariantRegistryLookup for EntityVariantRenderContext<'_> {
     }
 }
 
-/// The thrown-item projectiles whose vanilla `ThrownItemRenderer` draws a camera-facing item sprite,
-/// paired with that renderer's sprite scale (`poseStack.scale(scale)`). They render through the
-/// item-entity billboard layer rather than the 3D model scene (see
-/// [`crate::item_entities::item_entity_billboards_from_world`]). Most are unit scale; the two fireballs
-/// are the only non-unit `ThrownItemRenderer` registrations (`fireball` ×3.0, `small_fireball` ×0.75).
-pub(crate) const THROWN_ITEM_PROJECTILE_BILLBOARDS: &[(i32, f32)] = &[
-    (VANILLA_ENTITY_TYPE_EGG_ID, 1.0),
-    (VANILLA_ENTITY_TYPE_ENDER_PEARL_ID, 1.0),
-    (VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID, 1.0),
-    (VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, 1.0),
-    (VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, 1.0),
-    (VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, 1.0),
-    (VANILLA_ENTITY_TYPE_SNOWBALL_ID, 1.0),
-    (VANILLA_ENTITY_TYPE_FIREBALL_ID, 3.0),
-    (VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, 0.75),
-];
 const ENTITY_HITBOX_COLOR: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const ENTITY_EYE_HEIGHT_COLOR: [f32; 4] = [1.0, 0.0, 0.0, 1.0];
 const ENTITY_DRAGON_PART_HITBOX_COLOR: [f32; 4] = [0.25, 1.0, 0.0, 1.0];

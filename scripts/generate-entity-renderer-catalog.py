@@ -75,6 +75,13 @@ def render(source_root: Path) -> str:
                 "        static_full_block_light: "
                 + str(entry.static_full_block_light).lower()
                 + ",",
+                "        thrown_item_scale_bits: "
+                + (
+                    f"Some({entry.thrown_item_scale_bits})"
+                    if entry.thrown_item_scale_bits is not None
+                    else "None"
+                )
+                + ",",
                 "        uses_abstract_feline_model: "
                 + str(entry.uses_abstract_feline_model).lower()
                 + ",",
@@ -154,6 +161,29 @@ def render(source_root: Path) -> str:
             "    fn native_projection_does_not_restore_spellcaster_illager_membership() {",
             '        let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");',
             '        assert!(!source.contains("fn illager_spellcasting"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_thrown_item_projection_does_not_restore_renderer_table() {",
+            '        let scene = include_str!("../../../../bbb-native/src/entity_scene.rs");',
+            '        assert!(!scene.contains("THROWN_ITEM_PROJECTILE_BILLBOARDS"));',
+            '        let billboards = include_str!("../../../../bbb-native/src/item_entities.rs");',
+            '        assert!(billboards.contains("vanilla_entity_renderer_thrown_item_scales"));',
+            '        let kinds = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
+            '        assert!(kinds.contains("vanilla_entity_renderer_thrown_item_scale"));',
+            '        for removed in [',
+            '            "VANILLA_ENTITY_TYPE_EGG_ID",',
+            '            "VANILLA_ENTITY_TYPE_ENDER_PEARL_ID",',
+            '            "VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID",',
+            '            "VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID",',
+            '            "VANILLA_ENTITY_TYPE_FIREBALL_ID",',
+            '            "VANILLA_ENTITY_TYPE_LINGERING_POTION_ID",',
+            '            "VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID",',
+            '            "VANILLA_ENTITY_TYPE_SNOWBALL_ID",',
+            '            "VANILLA_ENTITY_TYPE_SPLASH_POTION_ID",',
+            '        ] {',
+            '            assert!(!kinds.contains(removed), "restored {removed}");',
+            "        }",
             "    }",
             "}",
             "",

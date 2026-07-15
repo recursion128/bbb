@@ -15574,3 +15574,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   提到 type match 之前，删除 Donkey/Mule 二项表与 Llama/TraderLlama 重复基类调用；两个
   Llama 分支仍按原顺序追加子类字段，四类既有 F3+I 回归与 generator-emitted 反向门禁
   锁定该边界。
+
+## 2026-07-15：Generate ThrownItemRenderer sprite scale
+
+- [x] entity renderer extractor 在已有 provider/full-bright 解析上生成 `ThrownItemRenderer`
+  membership 与构造器 sprite-scale bits，默认构造器锁定 1.0，Fireball/SmallFireball 分别锁定
+  3.0/0.75，共9 项。
+- [x] native 删除 9 项 `THROWN_ITEM_PROJECTILE_BILLBOARDS` 表和 model-kind 中分散的
+  `NoRender` type arms；billboard 枚举与 3D model 抑制直接消费 renderer owner 查询，exact-set/
+  scale/full-bright/Python fixture/native 回归与 generator-emitted 反向门禁锁定该边界。
