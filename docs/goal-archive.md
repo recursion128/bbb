@@ -16225,6 +16225,8 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   该 accessor，并继续使用生成的 `FLAG_HAS_STUNG` / `FLAG_ROLL` masks。
 - dimensions 删除单类型 `vanilla_is_bee`，两个消费者删除固定 accessor/default 别名；生成器
   reverse guard 禁止生产路径恢复这些平行事实源。
+- 后续 audit 将同一 accessor 公开给 native nectar render 与 debug save projection，删除两条
+  路径的固定 accessor/default 别名，并把 reverse guard 扩到全部五个生产消费者。
 
 ## 2026-07-15：统一推导 Fox render metadata accessor
 

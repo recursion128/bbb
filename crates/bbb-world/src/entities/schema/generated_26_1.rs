@@ -22202,15 +22202,37 @@ mod generated_catalog_guards {
     #[test]
     fn production_bee_flags_do_not_restore_type_or_accessor_constants() {
         let store = include_str!("../store.rs");
-        assert!(store.contains("vanilla_entity_metadata_bee_flags_accessor_for_entity_type"));
-        assert!(!store.contains("vanilla_is_bee"));
         let animations = include_str!("../animations.rs");
-        assert!(animations.contains("vanilla_entity_metadata_bee_flags_accessor_for_entity_type"));
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        for source in [
+            store,
+            animations,
+            native_scene,
+            native_variants,
+            native_input,
+        ] {
+            assert!(source.contains("vanilla_entity_metadata_bee_flags_accessor_for_entity_type"));
+        }
+        assert!(!store.contains("vanilla_is_bee"));
         for removed in ["BEE_FLAGS_DATA_ID", "BEE_DEFAULT_FLAGS"] {
             assert!(!store.contains(removed), "store restored {removed}");
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
+            );
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_variants.contains(removed),
+                "native variants restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
             );
         }
         let dimensions = include_str!("../dimensions.rs");

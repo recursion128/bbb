@@ -74,6 +74,7 @@ use bbb_protocol::{
 };
 use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -84,7 +85,6 @@ use bbb_world::{
     VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID as AXOLOTL_FROM_BUCKET_DATA_ID,
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID,
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
-    VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
     VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
     VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
@@ -7439,8 +7439,11 @@ fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 }
 
 fn debug_push_bee_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags =
-        debug_entity_data_byte_present(entity, BEE_FLAGS_DATA_ID).unwrap_or(BEE_DEFAULT_FLAGS);
+    let flags = vanilla_entity_metadata_bee_flags_accessor_for_entity_type(entity.entity_type_id)
+        .map(|(data_id, default)| {
+            debug_entity_data_byte_present(entity, data_id).unwrap_or(default)
+        })
+        .unwrap_or(0);
     let has_nectar = flags & BEE_FLAG_HAS_NECTAR != 0;
     let has_stung = flags & BEE_FLAG_HAS_STUNG != 0;
     fields.push(format!("HasNectar: {}", debug_snbt_bool(has_nectar)));

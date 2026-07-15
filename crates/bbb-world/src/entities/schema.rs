@@ -480,7 +480,7 @@ pub fn vanilla_entity_metadata_bat_flags_accessor_for_entity_type(
 }
 
 /// Resolves the generated Bee flags accessor and its typed default.
-pub(crate) fn vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
+pub fn vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i8)> {
     let accessor =

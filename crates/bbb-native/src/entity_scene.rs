@@ -32,6 +32,7 @@ use bbb_renderer::{
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
+use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
 #[cfg(test)]
@@ -129,7 +130,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
     VANILLA_BEE_DEFAULT_ANGER_END_TIME as BEE_DEFAULT_ANGER_END_TIME,
-    VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
 };
 pub(crate) use bbb_world::{

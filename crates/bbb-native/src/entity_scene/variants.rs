@@ -768,10 +768,9 @@ pub(super) fn bee_has_nectar(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    if entity_type_id != VANILLA_ENTITY_TYPE_BEE_ID {
-        return false;
-    }
-    entity_data_byte(values, BEE_FLAGS_DATA_ID, BEE_DEFAULT_FLAGS) & BEE_FLAG_HAS_NECTAR != 0
+    vanilla_entity_metadata_bee_flags_accessor_for_entity_type(entity_type_id).is_some_and(
+        |(data_id, default)| entity_data_byte(values, data_id, default) & BEE_FLAG_HAS_NECTAR != 0,
+    )
 }
 
 /// The three projected camel sit/stand elapsed-seconds values, each `-1.0` when its
