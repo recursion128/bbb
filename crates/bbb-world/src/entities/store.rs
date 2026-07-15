@@ -2428,7 +2428,7 @@ impl EntityStore {
         if !vanilla_entity_metadata_type_is_guardian(entity_type_id) {
             return None;
         }
-        let attack_target_id = guardian_attack_target_id(data_values);
+        let attack_target_id = guardian_attack_target_id(entity_type_id, data_values);
         if attack_target_id == 0 {
             return None;
         }
@@ -3527,9 +3527,10 @@ impl EntityStore {
                 // this mutable pass, defaulting to `false` for non-consumers, and the
                 // synced `Guardian.DATA_ID_MOVING` flag read from the metadata here.
                 let in_water = in_water_by_id.get(&identity.id).copied().unwrap_or(false);
-                let is_moving = guardian_is_moving(&metadata.data_values);
+                let is_moving = guardian_is_moving(identity.entity_type_id, &metadata.data_values);
                 let warden_heartbeat_delay = warden_heartbeat_delay(&metadata.data_values);
-                let guardian_attack_target_id = guardian_attack_target_id(&metadata.data_values);
+                let guardian_attack_target_id =
+                    guardian_attack_target_id(identity.entity_type_id, &metadata.data_values);
                 let wither_head_targets = wither_head_targets_by_id.get(&identity.id).copied();
                 let camel_is_standing =
                     entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_STANDING_ID;

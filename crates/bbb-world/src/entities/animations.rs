@@ -21,6 +21,7 @@ use super::schema::{
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_guardian_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
@@ -54,10 +55,6 @@ use super::schema::{
     VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_INTERESTED as FOX_FLAG_INTERESTED,
-    VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID as GUARDIAN_ATTACK_TARGET_DATA_ID,
-    VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET as GUARDIAN_DEFAULT_ATTACK_TARGET,
-    VANILLA_GUARDIAN_DEFAULT_MOVING as GUARDIAN_DEFAULT_MOVING,
-    VANILLA_GUARDIAN_MOVING_DATA_ID as GUARDIAN_MOVING_DATA_ID,
     VANILLA_PANDA_FLAG_ON_BACK as PANDA_FLAG_ON_BACK,
     VANILLA_PANDA_FLAG_ROLLING as PANDA_FLAG_ROLLING,
     VANILLA_PANDA_FLAG_SITTING as PANDA_FLAG_SITTING,
@@ -2764,14 +2761,21 @@ pub(crate) fn guardian_attack_duration(entity_type_id: i32) -> i32 {
     }
 }
 
-/// Vanilla `Guardian.DATA_ID_ATTACK_TARGET` (synced int at index `17`, the active target entity id, or
-/// `0` for none). Read straight from the entity metadata; non-guardians (whose slot `17` is not this
-/// field) are gated out by the caller.
-pub(crate) fn guardian_attack_target_id(data_values: &[EntityDataValue]) -> i32 {
+/// Vanilla `Guardian.DATA_ID_ATTACK_TARGET` (the active target entity id, or `0` for none). The
+/// generated accessor bundle supplies the inherited wire index/default and excludes non-guardians.
+pub(crate) fn guardian_attack_target_id(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> i32 {
+    let Some(accessors) =
+        vanilla_entity_metadata_guardian_accessors_for_entity_type(entity_type_id)
+    else {
+        return 0;
+    };
     entity_data_int(
         data_values,
-        GUARDIAN_ATTACK_TARGET_DATA_ID,
-        GUARDIAN_DEFAULT_ATTACK_TARGET,
+        accessors.attack_target_data_id,
+        accessors.attack_target_default,
     )
 }
 
@@ -5935,13 +5939,18 @@ pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
         )
 }
 
-/// Vanilla `Guardian.isMoving()` = the synced `DATA_ID_MOVING` boolean (default
-/// `false`). Read straight from the entity metadata in the tick loop.
-pub(crate) fn guardian_is_moving(data_values: &[EntityDataValue]) -> bool {
+/// Vanilla `Guardian.isMoving()` = the synced `DATA_ID_MOVING` boolean. The generated accessor
+/// bundle supplies the inherited wire index/default and excludes non-guardians.
+pub(crate) fn guardian_is_moving(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    let Some(accessors) =
+        vanilla_entity_metadata_guardian_accessors_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
     entity_data_bool(
         data_values,
-        GUARDIAN_MOVING_DATA_ID,
-        GUARDIAN_DEFAULT_MOVING,
+        accessors.moving_data_id,
+        accessors.moving_default,
     )
 }
 

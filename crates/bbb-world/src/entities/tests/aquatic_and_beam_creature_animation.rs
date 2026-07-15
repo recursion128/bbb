@@ -1,8 +1,8 @@
 use super::*;
-use crate::entities::schema::{
-    VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID, VANILLA_GUARDIAN_MOVING_DATA_ID,
-};
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_LONG_JUMPING_ID;
+
+const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = 16;
+const VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
 
 #[test]
 fn entity_model_sources_project_creeper_swelling_fuse() {

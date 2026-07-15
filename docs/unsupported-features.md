@@ -232,6 +232,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `DATA_IS_IGNITED`; world animation plus native model/debug consumers must not restore fixed
   metadata aliases, and the native powered-model projection must not restore a Creeper type
   predicate alongside the accessor membership.
+  Guardian moving and attack-target membership, inherited wire indices and typed defaults must
+  remain derived together from generated `DATA_ID_MOVING` and `DATA_ID_ATTACK_TARGET`; world
+  animation/beam consumers must not restore fixed metadata aliases or read those slots without
+  generated Guardian membership.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

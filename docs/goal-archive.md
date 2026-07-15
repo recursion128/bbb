@@ -16323,3 +16323,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   world fuse 动画、native power layer 与 native debug 共同消费该 bundle。
 - 生产消费者删除 Creeper 固定 accessor/default 别名与 model type predicate；生成器 reverse
   guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Guardian metadata accessors
+
+- `bbb-world` 现在从生成 schema 的 `Guardian.DATA_ID_MOVING` 与 `DATA_ID_ATTACK_TARGET`
+  解析 Guardian/ElderGuardian 继承 membership、wire ids 16/17 及 typed defaults false/0；
+  movement/spike/tail 动画、attack counter 与 beam target 共享该 bundle。
+- world 消费者删除固定 accessor/default 别名，并显式携带 entity type 避免误读其他 family
+  的同号槽位；生成器 reverse guard 禁止恢复这些平行事实源。

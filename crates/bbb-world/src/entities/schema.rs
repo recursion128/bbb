@@ -269,6 +269,14 @@ pub(crate) struct VanillaVehicleMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct VanillaGuardianMetadataAccessors {
+    pub(crate) moving_data_id: u8,
+    pub(crate) moving_default: bool,
+    pub(crate) attack_target_data_id: u8,
+    pub(crate) attack_target_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaAbstractArrowMetadataAccessors {
     pub flags_data_id: u8,
     pub flags_default: i8,
@@ -728,6 +736,43 @@ pub(crate) fn vanilla_entity_metadata_vehicle_accessors_for_entity_type(
             hurt_dir_default,
             damage_data_id: damage.data_id,
             damage_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the inherited Guardian moving and attack-target accessors with typed defaults.
+pub(crate) fn vanilla_entity_metadata_guardian_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaGuardianMetadataAccessors> {
+    let moving =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_MOVING")?;
+    let attack_target =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_ATTACK_TARGET")?;
+    match (
+        (moving.owner, moving.serializer_name, moving.typed_default),
+        (
+            attack_target.owner,
+            attack_target.serializer_name,
+            attack_target.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.monster.Guardian",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(moving_default)),
+            ),
+            (
+                "net.minecraft.world.entity.monster.Guardian",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(attack_target_default)),
+            ),
+        ) => Some(VanillaGuardianMetadataAccessors {
+            moving_data_id: moving.data_id,
+            moving_default,
+            attack_target_data_id: attack_target.data_id,
+            attack_target_default,
         }),
         _ => None,
     }
@@ -1422,10 +1467,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
-        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
-        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
         VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
@@ -2649,6 +2695,36 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_vehicle_accessors_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_guardian_accessors_own_inherited_membership_indices_and_defaults() {
+        let expected = VanillaGuardianMetadataAccessors {
+            moving_data_id: 16,
+            moving_default: false,
+            attack_target_data_id: 17,
+            attack_target_default: 0,
+        };
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+            VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_guardian_accessors_for_entity_type(entity_type_id),
+                Some(expected),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_guardian_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_guardian_accessors_for_entity_type(-1),
             None
         );
     }
@@ -4093,10 +4169,6 @@ mod tests {
         assert_eq!(guardian.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(guardian.inherited_field_count, 16);
         assert_eq!(guardian.own_fields.len(), 2);
-        assert_eq!(VANILLA_GUARDIAN_MOVING_DATA_ID, 16);
-        assert_eq!(VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID, 17);
-        assert!(!VANILLA_GUARDIAN_DEFAULT_MOVING);
-        assert_eq!(VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET, 0);
         assert_eq!(
             guardian
                 .own_fields

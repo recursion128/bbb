@@ -329,11 +329,6 @@ pub const VANILLA_FISHING_HOOK_BITING_DATA_ID: u8 = GENERATED_VANILLA_FISHING_HO
 const GENERATED_VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID: u8 = 8;
 pub const VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID: u8 =
     GENERATED_VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID;
-const GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = 16;
-pub const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = GENERATED_VANILLA_GUARDIAN_MOVING_DATA_ID;
-const GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
-pub const VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 =
-    GENERATED_VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID;
 const GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
 pub const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID;
 const GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
@@ -932,11 +927,6 @@ pub const VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY: i32 =
     GENERATED_VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY;
 const GENERATED_VANILLA_FISHING_HOOK_DEFAULT_BITING: bool = false;
 pub const VANILLA_FISHING_HOOK_DEFAULT_BITING: bool = GENERATED_VANILLA_FISHING_HOOK_DEFAULT_BITING;
-const GENERATED_VANILLA_GUARDIAN_DEFAULT_MOVING: bool = false;
-pub const VANILLA_GUARDIAN_DEFAULT_MOVING: bool = GENERATED_VANILLA_GUARDIAN_DEFAULT_MOVING;
-const GENERATED_VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 = 0;
-pub const VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET: i32 =
-    GENERATED_VANILLA_GUARDIAN_DEFAULT_ATTACK_TARGET;
 const GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
 pub const VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 =
     GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS;
@@ -22412,6 +22402,26 @@ mod generated_catalog_guards {
             assert!(
                 !native_input.contains(removed),
                 "native input restored {removed}"
+            );
+        }
+    }
+
+    #[test]
+    fn production_guardian_accessors_do_not_restore_fixed_metadata_facts() {
+        let animations = include_str!("../animations.rs");
+        let store = include_str!("../store.rs");
+        assert!(animations.contains("vanilla_entity_metadata_guardian_accessors_for_entity_type"));
+        assert!(store.contains("guardian_is_moving(identity.entity_type_id"));
+        assert!(store.contains("guardian_attack_target_id(identity.entity_type_id"));
+        for removed in [
+            "GUARDIAN_MOVING_DATA_ID",
+            "GUARDIAN_DEFAULT_MOVING",
+            "GUARDIAN_ATTACK_TARGET_DATA_ID",
+            "GUARDIAN_DEFAULT_ATTACK_TARGET",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
             );
         }
     }
