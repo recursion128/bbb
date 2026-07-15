@@ -290,6 +290,7 @@ case "$cmd" in
   gate)
     export CARGO_TARGET_DIR=/tmp/bbb-target-main
     cargo fmt --all --check
+    scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests
     git diff --check
     RUSTFLAGS='-D warnings' cargo check --workspace
     RUSTFLAGS='-D warnings' cargo test --workspace

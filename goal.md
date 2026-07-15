@@ -101,6 +101,7 @@
 ## 提交前门禁
 
 - `cargo fmt --all --check`
+- `scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests`
 - `git diff --check`
 - `RUSTFLAGS='-D warnings' CARGO_TARGET_DIR=/tmp/bbb-target-main cargo check --workspace`
 - `RUSTFLAGS='-D warnings' CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`
