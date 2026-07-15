@@ -2,9 +2,32 @@
   "schema_version": 1,
   "families": [
     {
+      "id": "network-holder-or-inline-sound-event",
+      "selector": {
+        "kind": "network_holder_or_inline",
+        "source_paths": [
+          "net/minecraft/sounds/SoundEvent.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/audio_runtime/resolver.rs#pub struct AudioCommandResolver",
+      "evidence": [
+        "vanilla:net/minecraft/sounds/SoundEvent.java#ByteBufCodecs.holder(Registries.SOUND_EVENT",
+        "vanilla:net/minecraft/core/registries/BuiltInRegistries.java#Registry<SoundEvent> SOUND_EVENT = registerSimple",
+        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
+        "crates/bbb-pack/src/sound_event_registry.rs#pub fn vanilla_26_1",
+        "crates/bbb-native/src/runtime/events/dispatcher.rs#fn sound_event_registry_from_world",
+        "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#fn non_synchronized_sound_event_registry_data_keeps_static_audio_reference_resolution"
+      ],
+      "decision": "Vanilla 26.1 sound_event is a client built-in registry, so reference holders use the generated static order while direct holders retain their inline location and fixed range."
+    },
+    {
       "id": "network-holder-or-inline",
       "selector": {
-        "kind": "network_holder_or_inline"
+        "kind": "network_holder_or_inline",
+        "exclude_source_paths": [
+          "net/minecraft/sounds/SoundEvent.java"
+        ]
       },
       "status": "partial",
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",

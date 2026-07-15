@@ -691,24 +691,25 @@
     {
       "call_site": "net/minecraft/sounds/SoundEvent.java:26:96:ByteBufCodecs.holder",
       "column": 96,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/audio_runtime/resolver.rs#pub struct AudioCommandResolver",
+      "decision": "Vanilla 26.1 sound_event is a client built-in registry, so reference holders use the generated static order while direct holders retain their inline location and fixed range.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
-        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
+        "vanilla:net/minecraft/sounds/SoundEvent.java#ByteBufCodecs.holder(Registries.SOUND_EVENT",
+        "vanilla:net/minecraft/core/registries/BuiltInRegistries.java#Registry<SoundEvent> SOUND_EVENT = registerSimple",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "crates/bbb-pack/src/sound_event_registry.rs#pub fn vanilla_26_1",
+        "crates/bbb-native/src/runtime/events/dispatcher.rs#fn sound_event_registry_from_world",
+        "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#fn non_synchronized_sound_event_registry_data_keeps_static_audio_reference_resolution"
       ],
       "factory": "ByteBufCodecs.holder",
-      "family": "network-holder-or-inline",
+      "family": "network-holder-or-inline-sound-event",
       "kind": "network_holder_or_inline",
       "line": 26,
       "owner": "net.minecraft.sounds.SoundEvent",
       "registry_expression": "Registries.SOUND_EVENT",
       "resource_id": "minecraft:sound_event",
       "source_path": "net/minecraft/sounds/SoundEvent.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/util/debug/DebugGameEventInfo.java:13:7:ByteBufCodecs.holderRegistry",

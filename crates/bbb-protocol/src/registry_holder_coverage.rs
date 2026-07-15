@@ -139,7 +139,8 @@ mod tests {
                 *counts.entry(entry.family.as_str()).or_insert(0usize) += 1;
                 counts
             });
-        assert_eq!(counts["network-holder-or-inline"], 9);
+        assert_eq!(counts["network-holder-or-inline"], 8);
+        assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
         assert_eq!(counts["network-holder-reference"], 25);
         assert_eq!(counts["network-holder-reference-debug"], 2);
         assert_eq!(counts["network-holder-reference-helper"], 1);
@@ -158,7 +159,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            191
+            190
         );
         assert_eq!(
             ledger
@@ -176,9 +177,16 @@ mod tests {
                 .count(),
             1
         );
-        assert!(ledger
+        let complete = ledger
             .entries
             .iter()
-            .all(|entry| entry.status != RegistryHolderCoverageStatus::Complete));
+            .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
+            .collect::<Vec<_>>();
+        assert_eq!(complete.len(), 1);
+        assert_eq!(
+            complete[0].resource_id.as_deref(),
+            Some("minecraft:sound_event")
+        );
+        assert_eq!(complete[0].family, "network-holder-or-inline-sound-event");
     }
 }

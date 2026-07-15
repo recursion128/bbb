@@ -747,11 +747,12 @@ canonical holder contents，其他 packet 只保留诊断，静态 sound-event �
 26.1 顺序。另由 `BuiltInRegistries` 生成 95 项客户端 static registry、注册 helper 与 default key，
 packet 诊断可区分 synchronized、built-in 和 unknown。当前另从 11 种
 Holder/HolderSet/TagKey Codec factory 生成 194 个具体或泛型 CST 调用点，保留
-source/owner/shape/registry expression；全部 194 行已进入生成的 coverage ledger，四种 network
-shape 与七种 persistent Codec shape 共 191 行映射到当前 resource-id/tag resolver 并保持
-`partial`，2 个 typed debug 调用带重启判据 `deferred`，vanilla `holderSet` 内部 helper
-自调用带证据 `not-applicable`。validator 执行以及各 owning decoder/encoder 的 resolver
-context/custom-reorder 闭合仍是 foundation 剩余工作。
+source/owner/shape/registry expression；全部 194 行已进入生成的 coverage ledger，`sound_event`
+reference/direct holder 已按 built-in 静态顺序、direct payload、world ownership 与 audio runtime
+跨层闭合为 `complete`；其余四种 network shape 与七种 persistent Codec shape 共 190 行映射到
+当前 resource-id/tag resolver 并保持 `partial`，2 个 typed debug 调用带重启判据
+`deferred`，vanilla `holderSet` 内部 helper 自调用带证据 `not-applicable`。validator 执行以及
+各 owning decoder/encoder 的 resolver context/custom-reorder 闭合仍是 foundation 剩余工作。
 
 完成标准：由 vanilla 26.1 network-synced registry 清单和全部 Holder/HolderSet codec
 消费点派生覆盖 inventory，每项都映射到 resolver consumer、带证据的 `not-applicable`
