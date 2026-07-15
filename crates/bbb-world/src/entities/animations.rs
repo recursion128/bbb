@@ -29,6 +29,7 @@ use super::schema::{
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
+    vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
@@ -52,8 +53,6 @@ use super::schema::{
     VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_IDLE_ID as COPPER_GOLEM_STATE_IDLE_ID,
-    VANILLA_ENDER_DRAGON_DEFAULT_PHASE as ENDER_DRAGON_DEFAULT_PHASE,
-    VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_INTERESTED as FOX_FLAG_INTERESTED,
     VANILLA_PANDA_FLAG_ON_BACK as PANDA_FLAG_ON_BACK,
@@ -4109,18 +4108,20 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => {
-                let phase_id = entity_data_int(
-                    data_values,
-                    ENDER_DRAGON_PHASE_DATA_ID,
-                    ENDER_DRAGON_DEFAULT_PHASE,
-                );
-                if let Some(dragon) = self.ender_dragon.as_mut() {
-                    dragon.set_phase(phase_id);
-                } else {
-                    self.ender_dragon = Some(EnderDragonAnimationState {
-                        phase_id,
-                        ..EnderDragonAnimationState::default()
-                    });
+                if let Some((data_id, default)) =
+                    vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+                        entity_type_id,
+                    )
+                {
+                    let phase_id = entity_data_int(data_values, data_id, default);
+                    if let Some(dragon) = self.ender_dragon.as_mut() {
+                        dragon.set_phase(phase_id);
+                    } else {
+                        self.ender_dragon = Some(EnderDragonAnimationState {
+                            phase_id,
+                            ..EnderDragonAnimationState::default()
+                        });
+                    }
                 }
             }
             _ => {}

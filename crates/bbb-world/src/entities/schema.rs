@@ -1096,6 +1096,25 @@ pub fn vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated EnderDragon phase accessor and its typed default.
+pub fn vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_PHASE")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.boss.enderdragon.EnderDragon",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Pillager charging-crossbow accessor and its typed default.
 pub fn vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3646,6 +3665,26 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_ender_dragon_phase_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
+            ),
+            Some((16, 10))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_WITHER_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(-1),
             None
         );
     }

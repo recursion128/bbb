@@ -316,6 +316,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Warden client-anger membership, wire index and typed default must remain derived from generated
   `Warden.CLIENT_ANGER_LEVEL`; heartbeat consumers must carry entity type and must not restore fixed
   accessor/default aliases or read another family's slot 16 as anger.
+  EnderDragon phase membership, wire index and typed default must remain derived from generated
+  `EnderDragon.DATA_PHASE`; metadata animation consumers must not restore fixed accessor/default
+  aliases or duplicate generated phase ordinals and sitting membership.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

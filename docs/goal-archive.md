@@ -16536,3 +16536,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   映射为 calm 40 tick 到 fully-angry 10 tick 的 heartbeat 周期。
 - animation 生产消费者删除固定 accessor/default 别名；semantic test 锁定两个周期端点，
   生成器 reverse guard 禁止恢复平行事实源或丢失 entity-type 传递。
+
+## 2026-07-15：统一推导 EnderDragon phase metadata accessor
+
+- `bbb-world` 现在从生成 schema 的 `EnderDragon.DATA_PHASE` 解析 membership、wire id 16
+  与 int typed default `HOVERING(10)`；metadata transition 继续驱动 dragon flight history、
+  sitting pose 与 part pick projection。
+- animation 生产消费者删除固定 accessor/default 别名；phase ordinals、sitting membership
+  与 dragon serde/default 继续直接消费生成事实，reverse guard 禁止恢复平行 metadata 读取。
