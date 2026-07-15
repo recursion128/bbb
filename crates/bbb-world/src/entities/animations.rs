@@ -24,6 +24,7 @@ use super::schema::{
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
+    vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
@@ -44,12 +45,11 @@ use super::schema::{
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
     VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL,
-    VANILLA_COPPER_GOLEM_DEFAULT_STATE as COPPER_GOLEM_DEFAULT_STATE,
-    VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID,
     VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_IDLE_ID as COPPER_GOLEM_STATE_IDLE_ID,
     VANILLA_ENDER_DRAGON_DEFAULT_PHASE as ENDER_DRAGON_DEFAULT_PHASE,
     VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
@@ -5953,44 +5953,40 @@ pub(crate) fn camel_is_dashing(entity_type_id: i32, data_values: &[EntityDataVal
         .unwrap_or_default()
 }
 
-/// Vanilla `CopperGolem.getState() == IDLE`: `COPPER_GOLEM_STATE` is a synced enum id (data id 17,
-/// serializer 37). The client starts the idle spin only in this state; every missing or mismatched
-/// value falls back to the vanilla default `IDLE`.
-pub(crate) fn copper_golem_is_idle(data_values: &[EntityDataValue]) -> bool {
-    copper_golem_state_id(data_values) == COPPER_GOLEM_DEFAULT_STATE
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct CopperGolemAnimationFlags {
+    pub(crate) idle: bool,
+    pub(crate) getting_item: bool,
+    pub(crate) getting_no_item: bool,
+    pub(crate) dropping_item: bool,
+    pub(crate) dropping_no_item: bool,
 }
 
-/// Vanilla `CopperGolem.getState() == GETTING_ITEM`: starts the no-item/get chest interaction
-/// animation (`COPPER_GOLEM_CHEST_INTERACTION_NOITEM_GET`) and stops every other interaction timer.
-pub(crate) fn copper_golem_is_getting_item(data_values: &[EntityDataValue]) -> bool {
-    copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_GETTING_ITEM_ID
-}
-
-/// Vanilla `CopperGolem.getState() == GETTING_NO_ITEM`: starts the no-item/noget chest interaction
-/// animation (`COPPER_GOLEM_CHEST_INTERACTION_NOITEM_NOGET`) and stops every other interaction timer.
-pub(crate) fn copper_golem_is_getting_no_item(data_values: &[EntityDataValue]) -> bool {
-    copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID
-}
-
-/// Vanilla `CopperGolem.getState() == DROPPING_ITEM`: starts the item/drop chest interaction
-/// animation (`COPPER_GOLEM_CHEST_INTERACTION_ITEM_DROP`) and stops every other interaction timer.
-pub(crate) fn copper_golem_is_dropping_item(data_values: &[EntityDataValue]) -> bool {
-    copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_DROPPING_ITEM_ID
-}
-
-/// Vanilla `CopperGolem.getState() == DROPPING_NO_ITEM`: starts the item/nodrop chest interaction
-/// animation (`COPPER_GOLEM_CHEST_INTERACTION_ITEM_NODROP`) and stops every other interaction timer.
-pub(crate) fn copper_golem_is_dropping_no_item(data_values: &[EntityDataValue]) -> bool {
-    copper_golem_state_id(data_values) == COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID
-}
-
-fn copper_golem_state_id(data_values: &[EntityDataValue]) -> i32 {
-    entity_data_enum_id(
+/// Resolves the generated `CopperGolem.COPPER_GOLEM_STATE` once, then projects the mutually
+/// exclusive IDLE / GETTING_ITEM / GETTING_NO_ITEM / DROPPING_ITEM / DROPPING_NO_ITEM animation
+/// gates in vanilla enum order. Non-CopperGolem entities own none of these states.
+pub(crate) fn copper_golem_animation_flags(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> CopperGolemAnimationFlags {
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type(entity_type_id)
+    else {
+        return CopperGolemAnimationFlags::default();
+    };
+    let state_id = entity_data_enum_id(
         data_values,
-        COPPER_GOLEM_STATE_DATA_ID,
+        data_id,
         EntityDataEnumSerializer::CopperGolemState,
-        COPPER_GOLEM_DEFAULT_STATE,
-    )
+        default,
+    );
+    CopperGolemAnimationFlags {
+        idle: state_id == COPPER_GOLEM_STATE_IDLE_ID,
+        getting_item: state_id == COPPER_GOLEM_STATE_GETTING_ITEM_ID,
+        getting_no_item: state_id == COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
+        dropping_item: state_id == COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
+        dropping_no_item: state_id == COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID,
+    }
 }
 
 /// Vanilla `Pillager.isChargingCrossbow()` (`entityData.get(IS_CHARGING_CROSSBOW)`): the synced boolean

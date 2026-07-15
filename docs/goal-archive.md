@@ -16505,3 +16505,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   default false；owner 校验排除其他 illager 与 PiglinBrute。
 - world tick 显式传递 entity type，animation 生产消费者删除四个固定 accessor/default
   别名；生成器 reverse guard 禁止恢复这些事实源或丢失 entity-type 传递。
+
+## 2026-07-15：统一推导 CopperGolem animation-state metadata accessor
+
+- `bbb-world` 现在从生成 schema 的 `CopperGolem.COPPER_GOLEM_STATE` 解析 membership、
+  wire id 17 与 enum typed default 0；world tick 一次读取 state，再按生成 ordinal 投影五个
+  互斥动画 gate。
+- animation 生产消费者删除固定 accessor/default 别名与五次重复 state read；生成器
+  reverse guard 禁止恢复这些事实源或丢失 entity-type 传递。

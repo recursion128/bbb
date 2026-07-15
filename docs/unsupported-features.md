@@ -304,6 +304,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   derived from generated `Pillager.IS_CHARGING_CROSSBOW` and
   `Piglin.DATA_IS_CHARGING_CROSSBOW`; world animation consumers must not restore fixed
   accessor/default aliases or treat PiglinBrute as owning the regular Piglin accessor.
+  CopperGolem animation-state membership, wire index and typed default must remain derived from
+  generated `CopperGolem.COPPER_GOLEM_STATE`; world animation consumers must resolve it once per
+  tick, must not restore fixed accessor/default aliases, and must keep generated state ordinals.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

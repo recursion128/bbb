@@ -75,14 +75,13 @@ use super::{
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
-    camel_is_dashing, cat_is_lying, cat_relax_state_one, copper_golem_is_dropping_item,
-    copper_golem_is_dropping_no_item, copper_golem_is_getting_item,
-    copper_golem_is_getting_no_item, copper_golem_is_idle, creaking_can_move,
-    creaking_is_tearing_down, entity_animation_uses_in_water, entity_chunk_coordinate,
-    entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
-    piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
-    warden_heartbeat_delay, wither_side_head_target_ids, wither_side_head_target_rotation,
-    wolf_is_interested, EntityClientTickParticleTriggers, WitherHeadTargetRotations,
+    camel_is_dashing, cat_is_lying, cat_relax_state_one, copper_golem_animation_flags,
+    creaking_can_move, creaking_is_tearing_down, entity_animation_uses_in_water,
+    entity_chunk_coordinate, entity_is_fall_flying, guardian_attack_duration,
+    guardian_attack_target_id, guardian_is_moving, piglin_is_charging_crossbow,
+    pillager_is_charging_crossbow, player_is_using_item, warden_heartbeat_delay,
+    wither_side_head_target_ids, wither_side_head_target_rotation, wolf_is_interested,
+    EntityClientTickParticleTriggers, WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -3533,15 +3532,8 @@ impl EntityStore {
                     entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_STANDING_ID;
                 let camel_is_dashing =
                     camel_is_dashing(identity.entity_type_id, &metadata.data_values);
-                let copper_golem_is_idle = copper_golem_is_idle(&metadata.data_values);
-                let copper_golem_is_getting_item =
-                    copper_golem_is_getting_item(&metadata.data_values);
-                let copper_golem_is_getting_no_item =
-                    copper_golem_is_getting_no_item(&metadata.data_values);
-                let copper_golem_is_dropping_item =
-                    copper_golem_is_dropping_item(&metadata.data_values);
-                let copper_golem_is_dropping_no_item =
-                    copper_golem_is_dropping_no_item(&metadata.data_values);
+                let copper_golem_animation =
+                    copper_golem_animation_flags(identity.entity_type_id, &metadata.data_values);
                 let allay_is_dancing =
                     allay_is_dancing(identity.entity_type_id, &metadata.data_values);
                 let allay_has_item_in_hand = equipment.is_some_and(|equipment| {
@@ -3588,11 +3580,11 @@ impl EntityStore {
                     wither_head_targets,
                     camel_is_standing,
                     camel_is_dashing,
-                    copper_golem_is_idle,
-                    copper_golem_is_getting_item,
-                    copper_golem_is_getting_no_item,
-                    copper_golem_is_dropping_item,
-                    copper_golem_is_dropping_no_item,
+                    copper_golem_animation.idle,
+                    copper_golem_animation.getting_item,
+                    copper_golem_animation.getting_no_item,
+                    copper_golem_animation.dropping_item,
+                    copper_golem_animation.dropping_no_item,
                     allay_is_dancing,
                     allay_has_item_in_hand,
                     axolotl_is_playing_dead,
