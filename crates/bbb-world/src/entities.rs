@@ -500,15 +500,8 @@ pub(crate) fn is_vanilla_can_wear_horse_armor_type(entity_type_id: i32) -> bool 
     vanilla_entity_type_can_wear_horse_armor(entity_type_id)
 }
 
-pub(crate) fn is_vanilla_horse_slot_always_active_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_LLAMA_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
-    )
+pub(crate) fn vanilla_entity_type_can_use_every_equipment_slot(entity_type_id: i32) -> bool {
+    schema::vanilla_entity_metadata_type_can_use_every_equipment_slot(entity_type_id)
 }
 
 pub(crate) fn is_vanilla_llama_type(entity_type_id: i32) -> bool {

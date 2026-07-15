@@ -15382,3 +15382,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] passenger attachment 删除 Bamboo raft/chest-raft 手写 membership 与两份数值公式，
   统一消费 generated multiplier；普通 boat/chest boat 与 raft/chest raft 语义测试锁定两种结果，
   generator-emitted 反向门禁禁止旧 raft helper 复生。
+
+## 2026-07-15：Generate equipment-slot class behavior
+
+- [x] entity metadata generator 严格解析 26.1 最近的 `canUseSlot(EquipmentSlot)` class
+  override，将 literal `true` 与六个动态 slot/存活/幼年/驯服/禁用 override 分离；新增或未知表达式
+  会令 maintenance generation 失败。
+- [x] mount saddle slot 删除 Horse/Llama/SkeletonHorse/TraderLlama/ZombieHorse 手写表，改用
+  generated constant-true behavior；AbstractHorse caller 与 can-equip-saddle 目录仍先限定适用实体，
+  Camel/Donkey/Mule 的驯服/幼年 gate 及 Nautilus 的独立 owner 保持不变，generator-emitted
+  反向门禁禁止旧 helper 复生。

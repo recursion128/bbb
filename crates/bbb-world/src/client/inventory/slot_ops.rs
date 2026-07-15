@@ -14,7 +14,7 @@ pub(super) fn mount_horse_saddle_slot_is_active(
     if !crate::entities::is_vanilla_can_equip_saddle_type(entity_type_id) {
         return false;
     }
-    if crate::entities::is_vanilla_horse_slot_always_active_type(entity_type_id) {
+    if crate::entities::vanilla_entity_type_can_use_every_equipment_slot(entity_type_id) {
         return true;
     }
     !mount_entity_is_ageable_baby(data_values)

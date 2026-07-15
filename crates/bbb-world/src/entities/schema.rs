@@ -237,6 +237,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_wind_charge: bool,
     pub is_boat: bool,
     pub boat_ride_height_multiplier_bits: Option<u32>,
+    pub can_use_every_equipment_slot: bool,
     pub is_abstract_chest_boat: bool,
     pub is_minecart: bool,
     pub is_abstract_horse: bool,
@@ -471,6 +472,14 @@ pub fn vanilla_entity_metadata_type_boat_ride_height_multiplier(
         .map(f32::from_bits)
 }
 
+/// Returns whether the nearest generated `LivingEntity.canUseSlot` implementation is constant true.
+pub fn vanilla_entity_metadata_type_can_use_every_equipment_slot(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.can_use_every_equipment_slot)
+        .unwrap_or(false)
+}
+
 pub fn vanilla_entity_metadata_type_is_abstract_chest_boat(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
@@ -595,17 +604,19 @@ mod tests {
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
         VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID, VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-        VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
 
     use super::*;
@@ -925,6 +936,13 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.can_use_every_equipment_slot)
+                .count(),
+            82
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_abstract_chest_boat)
                 .count(),
             10
@@ -1095,6 +1113,30 @@ mod tests {
             vanilla_entity_metadata_type_boat_ride_height_multiplier(-1),
             None
         );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+            VANILLA_ENTITY_TYPE_LLAMA_ID,
+        ] {
+            assert!(vanilla_entity_metadata_type_can_use_every_equipment_slot(
+                entity_type_id
+            ));
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_DONKEY_ID,
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_PIG_ID,
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+        ] {
+            assert!(!vanilla_entity_metadata_type_can_use_every_equipment_slot(
+                entity_type_id
+            ));
+        }
+        assert!(!vanilla_entity_metadata_type_can_use_every_equipment_slot(
+            -1
+        ));
         assert!(vanilla_entity_metadata_type_is_projectile(
             VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
         ));

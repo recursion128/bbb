@@ -2538,6 +2538,57 @@ def class_boat_ride_height_multiplier(
     return value
 
 
+def class_can_use_every_equipment_slot(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    cache: dict[str, bool],
+) -> bool:
+    """Resolve whether the nearest ``canUseSlot`` implementation is constant true."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        return False
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == "canUseSlot" and len(method.parameters) == 1
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.canUseSlot/1: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            value = False
+        else:
+            value = class_can_use_every_equipment_slot(
+                result, class_map, item.superclass, cache
+            )
+        cache[owner] = value
+        return value
+
+    expression = method_single_return_expression(result, owner, "canUseSlot")
+    compact = expression.replace(" ", "")
+    dynamic_expressions = {
+        "slot!=EquipmentSlot.SADDLE?super.canUseSlot(slot):this.isAlive()&&!this.isBaby()&&this.isTamed()",
+        "slot!=EquipmentSlot.BODY?super.canUseSlot(slot):this.isAlive()&&!this.isBaby()",
+        "slot!=EquipmentSlot.SADDLE&&slot!=EquipmentSlot.BODY?super.canUseSlot(slot):this.isAlive()&&!this.isBaby()&&this.isTame()",
+        "slot!=EquipmentSlot.SADDLE?super.canUseSlot(slot):this.isAlive()&&!this.isBaby()",
+        "slot!=EquipmentSlot.BODY&&slot!=EquipmentSlot.SADDLE&&!this.isDisabled(slot)",
+    }
+    if compact == "true":
+        value = True
+    elif compact in dynamic_expressions:
+        value = False
+    else:
+        raise ExtractionError(
+            f"{owner}.canUseSlot: unsupported return expression {expression!r}"
+        )
+    cache[owner] = value
+    return value
+
+
 def method_mask(result: ExtractionResult, owner: str, name: str, mode: str) -> tuple[int, str]:
     source, method = method_for(result, owner, name)
     body = method.node.child_by_field_name("body")
@@ -2733,6 +2784,7 @@ def render(result: ExtractionResult) -> str:
     pickable_cache: dict[str, bool] = {}
     sound_source_cache: dict[str, str] = {}
     boat_ride_height_cache: dict[str, str] = {}
+    can_use_every_slot_cache: dict[str, bool] = {}
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -2748,6 +2800,13 @@ def render(result: ExtractionResult) -> str:
         ):
             class_sound_source_kind(
                 result, class_map, java_class, sound_source_cache
+            )
+        if any(
+            method.name == "canUseSlot" and len(method.parameters) == 1
+            for method in source.methods_for(java_class)
+        ):
+            class_can_use_every_equipment_slot(
+                result, class_map, java_class, can_use_every_slot_cache
             )
     own_counts: dict[str, int] = {}
     for accessor in result.accessors:
@@ -3028,6 +3087,7 @@ def render(result: ExtractionResult) -> str:
                 f"        is_wind_charge: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.AbstractWindCharge')).lower()},",
                 f"        is_boat: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractBoat')).lower()},",
                 f"        boat_ride_height_multiplier_bits: {'Some(' + class_boat_ride_height_multiplier(result, class_map, item.runtime_class, boat_ride_height_cache) + ')' if extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractBoat') else 'None'},",
+                f"        can_use_every_equipment_slot: {str(class_can_use_every_equipment_slot(result, class_map, item.runtime_class, can_use_every_slot_cache)).lower()},",
                 f"        is_abstract_chest_boat: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.boat.AbstractChestBoat')).lower()},",
                 f"        is_minecart: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.vehicle.minecart.AbstractMinecart')).lower()},",
                 f"        is_abstract_horse: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.equine.AbstractHorse')).lower()},",
@@ -3126,6 +3186,13 @@ def render(result: ExtractionResult) -> str:
             "    fn production_boat_ride_height_does_not_restore_raft_membership() {",
             '        let source = include_str!("../dimensions.rs");',
             '        let removed_lookup = ["fn is_vanilla_", "raft_type("].concat();',
+            "        assert!(!source.contains(&removed_lookup));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_mount_slots_do_not_restore_always_active_type_membership() {",
+            '        let source = include_str!("../../entities.rs");',
+            '        let removed_lookup = ["is_vanilla_horse_slot_", "always_active_type"].concat();',
             "        assert!(!source.contains(&removed_lookup));",
             "    }",
             "}",
