@@ -97,6 +97,7 @@ use bbb_world::{
     ChunkSection, ChunkState, ItemEquipmentSlot, LightData, LocalPlayerPoseState, PaletteDomain,
     PaletteKind, PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState, WorldStore,
     VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
 };
 use bbb_world::{
     VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,

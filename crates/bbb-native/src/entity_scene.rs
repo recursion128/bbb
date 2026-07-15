@@ -35,6 +35,7 @@ use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
@@ -215,10 +216,6 @@ use bbb_world::{
     VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW as PILLAGER_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_RAIDER_CELEBRATING_DATA_ID as RAIDER_IS_CELEBRATING_DATA_ID,
     VANILLA_RAIDER_DEFAULT_CELEBRATING as RAIDER_DEFAULT_CELEBRATING,
-};
-pub(crate) use bbb_world::{
-    VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE as PUFFERFISH_DEFAULT_PUFF_STATE,
-    VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
 };
 use bbb_world::{
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,

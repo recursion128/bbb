@@ -283,7 +283,6 @@ use crate::entity_scene::{
     END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
 use crate::entity_scene::{PHANTOM_DEFAULT_SIZE, PHANTOM_SIZE_DATA_ID};
-use crate::entity_scene::{PUFFERFISH_DEFAULT_PUFF_STATE, PUFFERFISH_PUFF_STATE_DATA_ID};
 use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
@@ -293,6 +292,7 @@ use bbb_renderer::{
     BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, FrogModelVariant,
     PigModelVariant, VillagerModelType, WolfModelVariant, ZombieNautilusModelVariant,
 };
+use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
 use bbb_world::{
     CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
     PigSoundVariantIdentity, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
@@ -7606,8 +7606,14 @@ fn debug_push_pig_additional_save_data(
 }
 
 fn debug_push_pufferfish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let puff_state = debug_entity_data_int_present(entity, PUFFERFISH_PUFF_STATE_DATA_ID)
-        .unwrap_or(PUFFERFISH_DEFAULT_PUFF_STATE);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let puff_state = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
     fields.push(format!("PuffState: {puff_state}"));
 }
 

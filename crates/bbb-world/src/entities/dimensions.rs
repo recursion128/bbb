@@ -22,6 +22,7 @@ use super::schema::{
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
+    vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
@@ -35,8 +36,6 @@ use super::schema::{
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
-    VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE as PUFFERFISH_DEFAULT_PUFF_STATE,
-    VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
@@ -227,8 +226,8 @@ fn vanilla_bounds_for_entity_data(
         EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0)
     } else if vanilla_entity_metadata_type_is_slime(entity_type_id) {
         slime_pick_bounds(data_values)
-    } else if entity_type_id == VANILLA_ENTITY_TYPE_PUFFERFISH_ID {
-        pufferfish_pick_bounds(data_values)
+    } else if let Some(bounds) = pufferfish_pick_bounds(entity_type_id, data_values) {
+        bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SALMON_ID {
         salmon_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PHANTOM_ID {
@@ -949,18 +948,19 @@ fn slime_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
     EntityPickBoundsState::from_base_size(SLIME_BASE_SIZE * size, SLIME_BASE_SIZE * size, 0.0)
 }
 
-fn pufferfish_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
-    let puff_state = entity_data_int(
-        data_values,
-        PUFFERFISH_PUFF_STATE_DATA_ID,
-        PUFFERFISH_DEFAULT_PUFF_STATE,
-    );
+fn pufferfish_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    let (data_id, default) =
+        vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(entity_type_id)?;
+    let puff_state = entity_data_int(data_values, data_id, default);
     let scale = match puff_state {
         0 => 0.5,
         1 => 0.7,
         _ => 1.0,
     };
-    EntityPickBoundsState::from_base_size(0.7, 0.7, 0.0).scale_dimensions(scale)
+    Some(EntityPickBoundsState::from_base_size(0.7, 0.7, 0.0).scale_dimensions(scale))
 }
 
 fn salmon_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
