@@ -15556,3 +15556,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   generated query 的私有兼容 helper，各消费者改从 schema semantic owner 导入。
 - [x] 既有 native 端到端坐下/坐姿/起立回归扩展到 CamelHusk，generated catalog 精确两项
   membership 与 generator-emitted 反向门禁防止两项表或 forwarding helper 回流。
+
+## 2026-07-15：Consume generated debug-save class memberships
+
+- [x] native F3+I entity save-data 分发删除 Camel/CamelHusk、Guardian/ElderGuardian 与
+  Slime/MagmaCube 三组手写二项表，直接消费 metadata generator 的 Camel/Guardian/Slime
+  类层次 membership。
+- [x] world 同时删除 Slime/Guardian 私有 forwarding helper，动画、尺寸、乘坐与光束消费者
+  改从 schema semantic owner 导入；既有三组 base/subclass F3+I 回归与 generator-emitted 反向门禁
+  锁定该边界。

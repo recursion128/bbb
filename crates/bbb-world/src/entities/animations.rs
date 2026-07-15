@@ -15,7 +15,8 @@ use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::EnderDragonAnimationState;
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
-    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_hoglin_base,
+    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
+    vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
     VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID as ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
@@ -100,8 +101,8 @@ use super::schema::{
     VANILLA_WOLF_INTERESTED_DATA_ID as WOLF_INTERESTED_DATA_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_slime_type, is_vanilla_vehicle_entity_type,
-    vanilla_entity_type_is_squid, EntityTransform, EntityVec3,
+    is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid,
+    EntityTransform, EntityVec3,
     VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
     VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
@@ -2762,12 +2763,6 @@ impl GuardianAttackAnimationState {
     pub(crate) fn attack_time(&self, partial_tick: f32) -> f32 {
         self.client_side_attack_time as f32 + partial_tick
     }
-}
-
-/// Whether the entity type is a guardian or elder guardian (the two `Guardian` subclasses carrying the
-/// attack beam + the `DATA_ID_ATTACK_TARGET` int at slot `17`).
-pub(crate) fn is_guardian_entity_type(entity_type_id: i32) -> bool {
-    super::schema::vanilla_entity_metadata_type_is_guardian(entity_type_id)
 }
 
 /// Vanilla `Guardian.getAttackDuration()`: `80` for a guardian, `60` for an elder guardian.
@@ -5703,7 +5698,7 @@ impl EntityClientAnimationState {
                     pose.advance_client_tick();
                 }
             }
-            _ if is_guardian_entity_type(entity_type_id) => {
+            _ if vanilla_entity_metadata_type_is_guardian(entity_type_id) => {
                 // Vanilla `Guardian.aiStep` reads `isInWater()` (the world fact
                 // threaded in) and the synced `isMoving()` flag (`DATA_ID_MOVING`).
                 self.guardian_tail
@@ -5842,7 +5837,7 @@ impl EntityClientAnimationState {
                 // synced ground flag defaults to on-ground (wings still), the safe
                 // common case.
                 .advance_client_tick(transform.on_ground.unwrap_or(true)),
-            _ if is_vanilla_slime_type(entity_type_id) => self
+            _ if vanilla_entity_metadata_type_is_slime(entity_type_id) => self
                 .slime
                 .get_or_insert_with(SlimeAnimationState::default)
                 // Vanilla `Slime.tick` reads `onGround()` for the squish target. A
@@ -5933,7 +5928,7 @@ impl EntityClientAnimationState {
 /// probe for every other entity. Adding a consumer (the frog swim-idle, wolf wet shade,
 /// dolphin, axolotl, fish, …) is just another arm here.
 pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
-    is_guardian_entity_type(entity_type_id)
+    vanilla_entity_metadata_type_is_guardian(entity_type_id)
         || vanilla_entity_type_is_squid(entity_type_id)
         || matches!(
             entity_type_id,

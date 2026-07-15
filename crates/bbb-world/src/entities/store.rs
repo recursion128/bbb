@@ -21,7 +21,8 @@ use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 
 use super::schema::{
-    vanilla_entity_metadata_type_is_camel, vanilla_minecart_default_display_offset,
+    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
+    vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_BAT_DEFAULT_FLAGS as BAT_DEFAULT_FLAGS, VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
@@ -85,10 +86,9 @@ use crate::entities::animations::{
     copper_golem_is_getting_no_item, copper_golem_is_idle, creaking_can_move,
     creaking_is_tearing_down, entity_animation_uses_in_water, entity_chunk_coordinate,
     entity_is_fall_flying, guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
-    is_guardian_entity_type, piglin_is_charging_crossbow, pillager_is_charging_crossbow,
-    player_is_using_item, warden_heartbeat_delay, wither_side_head_target_ids,
-    wither_side_head_target_rotation, wolf_is_interested, EntityClientTickParticleTriggers,
-    WitherHeadTargetRotations,
+    piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
+    warden_heartbeat_delay, wither_side_head_target_ids, wither_side_head_target_rotation,
+    wolf_is_interested, EntityClientTickParticleTriggers, WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -2427,7 +2427,7 @@ impl EntityStore {
         position: super::EntityVec3,
         partial_ticks: f32,
     ) -> Option<super::GuardianBeamSource> {
-        if !is_guardian_entity_type(entity_type_id) {
+        if !vanilla_entity_metadata_type_is_guardian(entity_type_id) {
             return None;
         }
         let attack_target_id = guardian_attack_target_id(data_values);

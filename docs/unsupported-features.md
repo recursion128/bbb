@@ -179,6 +179,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Camel sit/sit-pose/stand-up animation membership must consume the generated `Camel` class
   hierarchy directly, including CamelHusk, rather than a parallel two-type table or forwarding
   compatibility query.
+  Debug entity save-data dispatch for Camel, Guardian, and Slime families must consume their
+  generated class memberships rather than parallel base/subclass type pairs.
   Keep static data-component-map membership such as
   `DataComponents.COMMON_ITEM_COMPONENTS` in the generated component catalog;
   pack/item consumers must not reconstruct those type-id sets by hand.

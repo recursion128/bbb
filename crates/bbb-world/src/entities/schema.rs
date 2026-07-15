@@ -1372,7 +1372,6 @@ mod tests {
             "is_vanilla_abstract_nautilus_type",
             "is_vanilla_llama_type",
             "vanilla_entity_type_is_squid",
-            "is_vanilla_slime_type",
             "is_vanilla_can_equip_saddle_type",
             "is_vanilla_can_wear_horse_armor_type",
         ] {
@@ -1394,15 +1393,13 @@ mod tests {
             .expect("chest boat class query source");
         assert!(!chest_boat_query.contains("matches!"));
         let animations_source = include_str!("animations.rs");
-        for function in ["is_guardian_entity_type", "is_flying_animal"] {
-            let body = animations_source
-                .split(&format!("fn {function}"))
-                .nth(1)
-                .and_then(|source| source.split_once("\n}"))
-                .map(|(body, _)| body)
-                .expect("animation membership query source");
-            assert!(!body.contains("matches!"));
-        }
+        let flying_animal_query = animations_source
+            .split("fn is_flying_animal")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("flying-animal membership query source");
+        assert!(!flying_animal_query.contains("matches!"));
         let arrow_query = animations_source
             .split("fn is_vanilla_arrow_type")
             .nth(1)

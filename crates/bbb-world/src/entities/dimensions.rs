@@ -23,6 +23,7 @@ use super::schema::{
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
+    vanilla_entity_metadata_type_is_slime,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
@@ -49,8 +50,8 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_minecart_type, is_vanilla_slime_type,
-    vanilla_entity_type_is_squid, EntityClientAnimationState, EntityVec3,
+    is_vanilla_boat_type, is_vanilla_minecart_type, vanilla_entity_type_is_squid,
+    EntityClientAnimationState, EntityVec3,
 };
 use bbb_protocol::entity_types::*;
 
@@ -231,7 +232,7 @@ fn vanilla_bounds_for_entity_data(
         block_attached::painting_pick_bounds(add_entity_data, data_values, painting_variant)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
         EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0)
-    } else if is_vanilla_slime_type(entity_type_id) {
+    } else if vanilla_entity_metadata_type_is_slime(entity_type_id) {
         slime_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PUFFERFISH_ID {
         pufferfish_pick_bounds(data_values)
@@ -482,7 +483,7 @@ fn vanilla_passenger_attachment_point(
         passenger_index,
     );
 
-    if is_vanilla_slime_type(vehicle_entity_type_id) {
+    if vanilla_entity_metadata_type_is_slime(vehicle_entity_type_id) {
         point = [
             0.0,
             bounds_height(vehicle_bounds)
