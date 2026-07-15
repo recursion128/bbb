@@ -15334,3 +15334,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   唤魔者尖牙和经验球不再错误进入拾取目标；实体尺寸与拾取资格分离，确保这些不可拾取实体仍保留
   模型、眼高和粒子锚点，F3+I 也不再通过准星命中它们（direct save-NBT encoder 覆盖保留）。catalog
   exact-count/正反例、旧表反向守卫及 world/native 回归覆盖该边界。
+
+## 2026-07-15：Guard generated item memberships against parallel owners
+
+- [x] item-membership generator 现在随 checked-in catalog 输出 production-source 反向门禁，禁止
+  brewing potion/ingredient、enchanting lapis、cartography additional slot 与 recipe-specific
+  crafting remainder 重新出现同义 `const`/`static` owner；较长集合还按完整 resource literal
+  membership 检出改名或重排后的手抄副本。
+- [x] 门禁跳过测试 fixture 与其他 generator 输出，避免把 wire 样本或完整 item registry 误判为
+  第二事实源；现有 4/21/1/3/17 项集合、协议 ID 投影与 menu 行为均未改变。item 资源 membership
+  审计闭合，开放 ledger 收窄为 block/entity membership 与其余跨 crate registry/ordinal 审计。
