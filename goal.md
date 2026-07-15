@@ -753,7 +753,9 @@ reference/direct holder 已按 built-in 静态顺序、direct payload、world ow
 server order、完整 NETWORK_CODEC presentation、dynamic adult/baby texture upload 与 entity render
 闭合为 `complete`；villager type/profession 三个 reference holder 也已按 built-in 固定顺序、
 entity metadata、item component/model 与 renderer 闭合，并测试 configuration RegistryData
-不得重排。其余四种 network shape 与七种 persistent Codec shape 共 184 行映射到
+不得重排；world_clock 的 synchronized unit registry、SetTime holder id、dimension default
+resource/session identity 与 merge/tick/day-time 投影也已用反序 registry 闭合。其余四种
+network shape 与七种 persistent Codec shape 共 183 行映射到
 当前 resource-id/tag resolver 并保持 `partial`，2 个 typed debug 调用带重启判据
 `deferred`，vanilla `holderSet` 内部 helper 自调用带证据 `not-applicable`。validator 执行以及
 各 owning decoder/encoder 的 resolver context/custom-reorder 闭合仍是 foundation 剩余工作。

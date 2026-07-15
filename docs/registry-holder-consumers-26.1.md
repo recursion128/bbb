@@ -23,10 +23,10 @@ the number of concrete vanilla call sites tied to its registry for diagnostics.
 
 The generated
 `docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 194 calls to
-16 checked families. The four network shapes and seven persistent Codec shapes
+17 checked families. The four network shapes and seven persistent Codec shapes
 name their current bbb resource-id or tag resolver surface. They remain
 `partial` until the owning decoder/encoder receives registry context and the
-registry family has custom-reorder tests; this accounts for 184 rows. The
+registry family has custom-reorder tests; this accounts for 183 rows. The
 `sound_event` reference/direct stream codec is `complete`: vanilla owns it in
 the client built-in layer, and bbb's generated static order, direct holder
 payload, world ownership, and audio runtime resolution have cross-layer tests.
@@ -37,6 +37,10 @@ The three villager type/profession reference calls are `complete` against their
 generated client built-in order across entity metadata, item components,
 item-model predicates, and rendering; configuration registry injection is
 explicitly tested not to remap them.
+The synchronized unit-valued `world_clock` stream holder is `complete`: SetTime
+retains the server holder ids, while the active dimension's default clock
+resource id resolves through the session order before merge, tick, and day-time
+projection; a reversed custom order covers that identity boundary.
 The two typed debug holder calls are narrowly `deferred` until raw debug payload
 retention is replaced by the `DEBUG_SUBSCRIPTION` value codecs. The generic
 `holderRegistry` delegation inside vanilla `holderSet` is `not-applicable` as a

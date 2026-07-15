@@ -774,24 +774,27 @@
     {
       "call_site": "net/minecraft/world/clock/WorldClock.java:14:96:ByteBufCodecs.holderRegistry",
       "column": 96,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/level.rs#pub fn apply_world_time",
+      "decision": "The synchronized unit-valued world-clock registry preserves server holder order; SetTime retains those holder ids, and the active dimension default resource id selects the matching session identity before clock merge and ticking.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holderRegistry",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_registry_id",
-        "crates/bbb-protocol/src/packets/entities.rs#EntityDataValueKind::RegistryId",
-        "crates/bbb-protocol/src/packets/serverbound.rs#fn encode_hashed_stack",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id"
+        "vanilla:net/minecraft/world/clock/WorldClock.java#ByteBufCodecs.holderRegistry(Registries.WORLD_CLOCK)",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.WORLD_CLOCK, WorldClock.DIRECT_CODEC)",
+        "vanilla:net/minecraft/network/protocol/game/ClientboundSetTimePacket.java#WorldClock.STREAM_CODEC",
+        "vanilla:net/minecraft/client/ClientClockManager.java#public void handleUpdates",
+        "crates/bbb-protocol/src/packets/client_state.rs#pub(super) fn decode_play_time",
+        "crates/bbb-protocol/src/packets/client_state/tests.rs#fn decodes_game_event_and_set_time",
+        "crates/bbb-world/src/level.rs#pub fn apply_world_time",
+        "crates/bbb-world/src/level.rs#fn world_time_selects_dimension_default_clock_by_session_holder_identity"
       ],
       "factory": "ByteBufCodecs.holderRegistry",
-      "family": "network-holder-reference",
+      "family": "network-holder-reference-world-clock",
       "kind": "network_holder_reference",
       "line": 14,
       "owner": "net.minecraft.world.clock.WorldClock",
       "registry_expression": "Registries.WORLD_CLOCK",
       "resource_id": "minecraft:world_clock",
       "source_path": "net/minecraft/world/clock/WorldClock.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/damagesource/DamageType.java:23:58:RegistryFixedCodec.create",
