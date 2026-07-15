@@ -241,6 +241,14 @@ pub enum VanillaEntityScaleSanitizer {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct VanillaEndermanRenderMetadataAccessors {
+    pub(crate) carried_block_state_data_id: u8,
+    pub(crate) carried_block_state_default: Option<i32>,
+    pub(crate) creepy_data_id: u8,
+    pub(crate) creepy_default: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -407,6 +415,46 @@ pub fn vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
         ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
             Some((accessor.data_id, default))
         }
+        _ => None,
+    }
+}
+
+/// Resolves the generated EnderMan render metadata accessors and their typed defaults.
+///
+/// `EndermanRenderer.extractRenderState` reads both carried-block and creepy state, so this
+/// descriptor keeps their membership, wire indices, serializers, and defaults on one schema-owned
+/// path instead of a parallel entity-type predicate and fixed aliases.
+pub(crate) fn vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaEndermanRenderMetadataAccessors> {
+    let carried =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_CARRY_STATE")?;
+    let creepy = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_CREEPY")?;
+    match (
+        (
+            carried.owner,
+            carried.serializer_name,
+            carried.typed_default,
+        ),
+        (creepy.owner, creepy.serializer_name, creepy.typed_default),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.monster.EnderMan",
+                "OPTIONAL_BLOCK_STATE",
+                Some(VanillaEntityMetadataDefault::OptionalBlockStateNone),
+            ),
+            (
+                "net.minecraft.world.entity.monster.EnderMan",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(creepy_default)),
+            ),
+        ) => Some(VanillaEndermanRenderMetadataAccessors {
+            carried_block_state_data_id: carried.data_id,
+            carried_block_state_default: None,
+            creepy_data_id: creepy.data_id,
+            creepy_default,
+        }),
         _ => None,
     }
 }
@@ -1836,6 +1884,31 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_enderman_render_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_ENDERMAN_ID
+            ),
+            Some(VanillaEndermanRenderMetadataAccessors {
+                carried_block_state_data_id: 16,
+                carried_block_state_default: None,
+                creepy_data_id: 17,
+                creepy_default: false,
+            })
+        );
+        assert_eq!(
+            vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_enderman_render_accessors_for_entity_type(-1),
             None
         );
     }

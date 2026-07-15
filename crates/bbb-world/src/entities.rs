@@ -1233,7 +1233,7 @@ entity_model_source_state! {
     /// Vanilla `EndermanRenderState.carriedBlock` non-empty (`Enderman.getCarriedBlock`
     /// present, the synced `DATA_CARRY_STATE`): the enderman is holding a block, which
     /// `EndermanModel.setupAnim` poses both arms forward to carry (`xRot = -0.5`, `zRot =
-    /// ±0.05`). Projected only for the enderman ([`vanilla_is_enderman`](crate::entities::dimensions));
+    /// ±0.05`). Projected only for the entity carrying the generated EnderMan render accessors;
     /// `false` for every other entity.
     #[serde(default)]
     pub enderman_carrying: bool,

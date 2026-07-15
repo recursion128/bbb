@@ -22,6 +22,7 @@ use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
+    vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_minecart_default_display_offset,
@@ -31,10 +32,6 @@ use super::schema::{
     VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_BEE_DEFAULT_FLAGS as BEE_DEFAULT_FLAGS,
     VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
-    VANILLA_ENDERMAN_CARRY_STATE_DATA_ID as ENDERMAN_CARRY_STATE_DATA_ID,
-    VANILLA_ENDERMAN_CREEPY_DATA_ID as ENDERMAN_CREEPY_DATA_ID,
-    VANILLA_ENDERMAN_DEFAULT_CARRY_STATE as ENDERMAN_DEFAULT_CARRY_STATE,
-    VANILLA_ENDERMAN_DEFAULT_CREEPY as ENDERMAN_DEFAULT_CREEPY,
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS, VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
@@ -94,8 +91,8 @@ use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
     vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
-    vanilla_is_cat, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex,
-    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_is_cat, vanilla_is_fox, vanilla_is_vex, vanilla_living_entity_type,
+    vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale, ENTITY_DATA_POSE_ID,
 };
@@ -904,10 +901,12 @@ impl EntityStore {
 
     pub(crate) fn enderman_carried_block_state_id(&self, id: i32) -> Option<Option<i32>> {
         let identity = self.identity(id)?;
-        if !vanilla_is_enderman(identity.entity_type_id) {
+        let Some(accessors) = vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+            identity.entity_type_id,
+        ) else {
             return Some(None);
-        }
-        self.metadata_optional_block_state(id, ENDERMAN_CARRY_STATE_DATA_ID)
+        };
+        self.metadata_optional_block_state(id, accessors.carried_block_state_data_id)
     }
 
     pub(crate) fn minecart_display_block_state(
@@ -1655,13 +1654,13 @@ impl EntityStore {
         // the synced `DATA_CARRY_STATE`) poses both arms forward, and `isCreepy` (the
         // synced `DATA_CREEPY`) drops the head / raises the hat. Only the enderman defines
         // these accessors, so the projections are gated to it and default off otherwise.
-        let is_enderman = vanilla_is_enderman(identity.entity_type_id);
-        let enderman_carried_block_state_id = if is_enderman {
-            self.metadata_optional_block_state(id, ENDERMAN_CARRY_STATE_DATA_ID)
-                .unwrap_or(ENDERMAN_DEFAULT_CARRY_STATE)
-        } else {
-            None
-        };
+        let enderman_accessors = vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+            identity.entity_type_id,
+        );
+        let enderman_carried_block_state_id = enderman_accessors.and_then(|accessors| {
+            self.metadata_optional_block_state(id, accessors.carried_block_state_data_id)
+                .unwrap_or(accessors.carried_block_state_default)
+        });
         let enderman_carrying = enderman_carried_block_state_id.is_some();
         let enderman_carried_block = enderman_carried_block_state_id
             .and_then(|state_id| registries.block_state(state_id))
@@ -1669,10 +1668,10 @@ impl EntityStore {
                 name: state.name.clone(),
                 properties: state.properties.clone(),
             });
-        let enderman_creepy = is_enderman
-            && self
-                .metadata_bool(id, ENDERMAN_CREEPY_DATA_ID, ENDERMAN_DEFAULT_CREEPY)
-                .unwrap_or(ENDERMAN_DEFAULT_CREEPY);
+        let enderman_creepy = enderman_accessors.is_some_and(|accessors| {
+            self.metadata_bool(id, accessors.creepy_data_id, accessors.creepy_default)
+                .unwrap_or(accessors.creepy_default)
+        });
         // Vanilla `BatModel.setupAnim` swaps to the `BAT_RESTING` hanging pose while
         // `Bat.isResting` (`DATA_ID_FLAGS & 1`). Only the bat defines that flags byte, so
         // the projection is gated to it and defaults to flying otherwise.

@@ -16200,3 +16200,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   共享这一事实源。
 - dimensions 删除单类型 `vanilla_is_wither`，store 删除固定 accessor/default 别名；生成器
   reverse guard 禁止生产路径恢复这些平行事实源。
+
+## 2026-07-15：统一推导 EnderMan render metadata accessors
+
+- `bbb-world` 现在将生成 schema 中 EnderMan 的 `DATA_CARRY_STATE`（id 16、optional block
+  state、默认 empty）与 `DATA_CREEPY`（id 17、boolean、默认 false）组合为一个 typed
+  render-accessor descriptor，并用于 block query、carried-block model 与 creepy pose。
+- dimensions 删除单类型 `vanilla_is_enderman`，store 删除四个固定 accessor/default 别名；
+  生成器 reverse guard 禁止生产路径恢复这些平行事实源。

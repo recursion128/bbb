@@ -1146,15 +1146,6 @@ pub(crate) fn vanilla_is_cat(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_CAT_ID
 }
 
-/// Whether the entity is rendered with the vanilla `EndermanModel`. Its `setupAnim`
-/// poses the arms forward to hold a block (`!carriedBlock.isEmpty()`) and drops the
-/// head/raises the hat when staring at a player (`isCreepy`), so the carried-block and
-/// creepy projections are gated to this one type — the synced `DATA_CARRY_STATE` /
-/// `DATA_CREEPY` accessors only exist on the enderman.
-pub(crate) fn vanilla_is_enderman(entity_type_id: i32) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_ENDERMAN_ID
-}
-
 /// Whether the entity is rendered with the vanilla `VexModel`. Its `setupAnim` levels the
 /// body (`xRot = 0`) and raises both arms into the charging pose (`setArmsCharging`) while
 /// `Vex.isCharging` (the synced `DATA_FLAGS_ID & 1`), so the charging projection is gated to

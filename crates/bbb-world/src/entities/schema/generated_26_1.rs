@@ -22163,6 +22163,25 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_enderman_projection_does_not_restore_type_or_accessor_constants() {
+        let source = include_str!("../store.rs");
+        assert!(
+            source.contains("vanilla_entity_metadata_enderman_render_accessors_for_entity_type")
+        );
+        for removed in [
+            "vanilla_is_enderman",
+            "ENDERMAN_CARRY_STATE_DATA_ID",
+            "ENDERMAN_CREEPY_DATA_ID",
+            "ENDERMAN_DEFAULT_CARRY_STATE",
+            "ENDERMAN_DEFAULT_CREEPY",
+        ] {
+            assert!(!source.contains(removed), "restored {removed}");
+        }
+        let dimensions = include_str!("../dimensions.rs");
+        assert!(!dimensions.contains("fn vanilla_is_enderman"));
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source
