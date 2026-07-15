@@ -58,7 +58,7 @@ Owner: `bbb-protocol`
   returning an empty configuration response.
 - Apply the validators declared by the generated
   `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory, and close the owning
-  decoder/encoder registry context plus custom-reorder tests behind the 183
+  decoder/encoder registry context plus custom-reorder tests behind the 178
   `partial` network and persistent rows in
   `docs/registry-holder-consumer-coverage-26.1.json` before marking those
   families complete.

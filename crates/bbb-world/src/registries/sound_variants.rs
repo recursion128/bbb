@@ -288,35 +288,54 @@ mod tests {
     }
 
     #[test]
-    fn world_query_uses_server_holder_order_and_omits_stubs() {
-        let mut store = WorldStore::new();
-        store.record_registry_entries(
-            CAT_SOUND_VARIANT_REGISTRY,
-            0,
-            vec![
-                RegistryPacketEntry::with_raw_data(
-                    "example:custom",
-                    sound_variant_nbt(CAT_SOUND_FIELDS, true),
-                ),
-                RegistryPacketEntry::stub("minecraft:classic"),
-            ],
-        );
+    fn world_queries_use_server_holder_order_for_every_sound_variant_shape() {
+        let cases = [
+            (CAT_SOUND_VARIANT_REGISTRY, CAT_SOUND_FIELDS, true),
+            (CHICKEN_SOUND_VARIANT_REGISTRY, CHICKEN_SOUND_FIELDS, true),
+            (COW_SOUND_VARIANT_REGISTRY, COW_SOUND_FIELDS, false),
+            (PIG_SOUND_VARIANT_REGISTRY, PIG_SOUND_FIELDS, true),
+            (WOLF_SOUND_VARIANT_REGISTRY, WOLF_SOUND_FIELDS, true),
+        ];
 
-        assert_eq!(
-            store
-                .synchronized_sound_variant_death_sound(CAT_SOUND_VARIANT_REGISTRY, 0, true)
-                .unwrap(),
-            Some(RegistrySoundEvent::Direct {
-                location: "example:baby_death".to_string(),
-                fixed_range: Some(24.0),
-            })
-        );
-        assert_eq!(
-            store
-                .synchronized_sound_variant_death_sound(CAT_SOUND_VARIANT_REGISTRY, 1, false)
-                .unwrap(),
-            None
-        );
+        for (registry, fields, age_sets) in cases {
+            let mut store = WorldStore::new();
+            store.record_registry_entries(
+                registry,
+                0,
+                vec![
+                    RegistryPacketEntry::with_raw_data(
+                        "example:custom",
+                        sound_variant_nbt(fields, age_sets),
+                    ),
+                    RegistryPacketEntry::stub("minecraft:classic"),
+                ],
+            );
+
+            let expected = if age_sets {
+                RegistrySoundEvent::Direct {
+                    location: "example:baby_death".to_string(),
+                    fixed_range: Some(24.0),
+                }
+            } else {
+                RegistrySoundEvent::Named {
+                    resource_id: "minecraft:entity.example.adult_death".to_string(),
+                }
+            };
+            assert_eq!(
+                store
+                    .synchronized_sound_variant_death_sound(registry, 0, true)
+                    .unwrap(),
+                Some(expected),
+                "{registry}"
+            );
+            assert_eq!(
+                store
+                    .synchronized_sound_variant_death_sound(registry, 1, false)
+                    .unwrap(),
+                None,
+                "{registry}"
+            );
+        }
     }
 
     fn sound_variant_nbt(fields: &[&str], age_sets: bool) -> Vec<u8> {

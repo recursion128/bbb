@@ -148,6 +148,38 @@
       "decision": "The synchronized unit-valued world-clock registry preserves server holder order; SetTime retains those holder ids, and the active dimension default resource id selects the matching session identity before clock merge and ticking."
     },
     {
+      "id": "network-holder-reference-animal-sound-variants",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java",
+          "net/minecraft/world/entity/animal/cow/CowSoundVariant.java",
+          "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
+          "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
+          "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
+      "evidence": [
+        "vanilla:net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ChickenSoundVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/world/entity/animal/cow/CowSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CowSoundVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/world/entity/animal/feline/CatSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CatSoundVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/world/entity/animal/pig/PigSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<PigSoundVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<WolfSoundVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.CAT_SOUND_VARIANT, CatSoundVariant.NETWORK_CODEC, RegistryValidator.nonEmpty())",
+        "vanilla:net/minecraft/network/syncher/EntityDataSerializers.java#CAT_SOUND_VARIANT = EntityDataSerializer.forValueType(CatSoundVariant.STREAM_CODEC)",
+        "crates/bbb-protocol/src/packets/entities.rs#pub enum EntityDataRegistryHolder",
+        "crates/bbb-protocol/src/packets/entities/tests.rs#fn decodes_registered_entity_variant_data_serializers",
+        "crates/bbb-world/src/registries/sound_variants.rs#fn decodes_all_synchronized_sound_variant_shapes_and_holder_forms",
+        "crates/bbb-world/src/registries/sound_variants.rs#fn world_queries_use_server_holder_order_for_every_sound_variant_shape",
+        "crates/bbb-world/src/client/audio.rs#pub fn living_death_sound_for_entity",
+        "crates/bbb-world/src/client/audio.rs#fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds",
+        "crates/bbb-world/src/client/audio.rs#fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload"
+      ],
+      "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five codec shapes project their required SoundEvent holders, and adult/baby death sounds reach positioned audio with custom order, direct range, stub, and malformed-payload coverage."
+    },
+    {
       "id": "network-holder-reference",
       "selector": {
         "kind": "network_holder_reference",
@@ -155,9 +187,14 @@
           "net/minecraft/network/codec/ByteBufCodecs.java",
           "net/minecraft/util/debug/DebugGameEventInfo.java",
           "net/minecraft/util/debug/DebugPoiInfo.java",
+          "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java",
           "net/minecraft/world/entity/animal/chicken/ChickenVariant.java",
+          "net/minecraft/world/entity/animal/cow/CowSoundVariant.java",
           "net/minecraft/world/entity/animal/cow/CowVariant.java",
+          "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
           "net/minecraft/world/entity/animal/pig/PigVariant.java",
+          "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
+          "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
           "net/minecraft/world/entity/npc/villager/VillagerData.java",
           "net/minecraft/world/entity/npc/villager/VillagerType.java",
           "net/minecraft/world/clock/WorldClock.java"
