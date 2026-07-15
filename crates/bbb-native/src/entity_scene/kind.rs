@@ -316,7 +316,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             puff_state: pufferfish_puff_state(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_SALMON_ID => EntityModelKind::Salmon {
-            size: salmon_model_size(data_values),
+            size: salmon_model_size(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_SHULKER_ID => shulker_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => EntityModelKind::ShulkerBullet,

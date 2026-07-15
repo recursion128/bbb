@@ -1311,13 +1311,13 @@ pub(super) fn pufferfish_puff_state(
 }
 
 pub(super) fn salmon_model_size(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> SalmonModelSize {
-    SalmonModelSize::from_vanilla_id(entity_data_int(
-        values,
-        SALMON_VARIANT_DATA_ID,
-        SALMON_DEFAULT_VARIANT,
-    ))
+    let variant = vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_int(values, data_id, default))
+        .unwrap_or_default();
+    SalmonModelSize::from_vanilla_id(variant)
 }
 
 pub(super) fn tropical_fish_shape(

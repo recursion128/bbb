@@ -83,6 +83,7 @@ use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_salmon_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
@@ -235,8 +236,6 @@ use bbb_world::{
     VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
-    VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_TROPICAL_FISH_DEFAULT_VARIANT as TROPICAL_FISH_DEFAULT_VARIANT,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
@@ -7645,8 +7644,12 @@ fn debug_rabbit_type_save_id(rabbit_type: i32, default: i32) -> i32 {
 }
 
 fn debug_push_salmon_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let variant = debug_entity_data_int_present(entity, SALMON_VARIANT_DATA_ID)
-        .unwrap_or(SALMON_DEFAULT_VARIANT);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let variant = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
     fields.push(format!(
         "type: {}",
         debug_snbt_string(debug_salmon_variant_name(variant))

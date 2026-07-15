@@ -258,6 +258,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Phantom size membership, wire index and typed default must remain derived from generated
   `Phantom.ID_SIZE`; world bounds and native model/debug consumers must not restore fixed
   accessor/default aliases or confuse it with the same-named Slime accessor.
+  Salmon variant membership, wire index and typed default must remain derived from generated
+  `Salmon.DATA_TYPE`; world bounds and native model/debug consumers must not restore fixed
+  accessor/default aliases or bypass the existing clamped variant mapping.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

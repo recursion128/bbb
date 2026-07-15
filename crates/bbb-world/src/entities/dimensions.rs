@@ -24,6 +24,7 @@ use super::schema::{
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_phantom_size_accessor_for_entity_type,
     vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type,
+    vanilla_entity_metadata_salmon_variant_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_slime_size_accessor_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
@@ -36,8 +37,6 @@ use super::schema::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
     VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-    VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
-    VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
@@ -226,8 +225,8 @@ fn vanilla_bounds_for_entity_data(
         bounds
     } else if let Some(bounds) = pufferfish_pick_bounds(entity_type_id, data_values) {
         bounds
-    } else if entity_type_id == VANILLA_ENTITY_TYPE_SALMON_ID {
-        salmon_pick_bounds(data_values)
+    } else if let Some(bounds) = salmon_pick_bounds(entity_type_id, data_values) {
+        bounds
     } else if let Some(bounds) = phantom_pick_bounds(entity_type_id, data_values) {
         bounds
     } else if super::vanilla_entity_type_is_wind_charge(entity_type_id) {
@@ -971,14 +970,19 @@ fn pufferfish_pick_bounds(
     Some(EntityPickBoundsState::from_base_size(0.7, 0.7, 0.0).scale_dimensions(scale))
 }
 
-fn salmon_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
-    let variant = entity_data_int(data_values, SALMON_VARIANT_DATA_ID, SALMON_DEFAULT_VARIANT);
+fn salmon_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<EntityPickBoundsState> {
+    let (data_id, default) =
+        vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(entity_type_id)?;
+    let variant = entity_data_int(data_values, data_id, default);
     let scale = match variant {
         i32::MIN..=0 => 0.5,
         1 => 1.0,
         _ => 1.5,
     };
-    EntityPickBoundsState::from_base_size(0.7, 0.4, 0.0).scale_dimensions(scale)
+    Some(EntityPickBoundsState::from_base_size(0.7, 0.4, 0.0).scale_dimensions(scale))
 }
 
 fn phantom_pick_bounds(

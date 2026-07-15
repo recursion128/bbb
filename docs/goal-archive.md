@@ -16385,3 +16385,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   bounds、native model 与 debug 共同消费它。
 - 生产消费者删除固定 accessor/default 别名，world bounds 删除平行 Phantom type
   predicate；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Salmon variant metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Salmon.DATA_TYPE` 解析 membership、wire id 17
+  与 int typed default 1；world pick bounds、native model 与 debug 共同消费它，现有
+  small/medium/large clamp、尺寸与 NBT 名称映射保持不变。
+- 生产消费者删除固定 accessor/default 别名，world bounds 删除平行 Salmon type
+  predicate；生成器 reverse guard 禁止恢复这些平行事实源。
