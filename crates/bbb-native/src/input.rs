@@ -334,6 +334,7 @@ use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_D
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_protocol::potion_types::vanilla_potion;
+use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_renderer::{
     BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, FrogModelVariant,
     PigModelVariant, VillagerModelType, WolfModelVariant, ZombieNautilusModelVariant,
@@ -5624,7 +5625,7 @@ fn debug_consumable_component_snbt(
         ));
     }
     let is_default_sound = sound.registry_id.is_some_and(|registry_id| {
-        debug_vanilla_sound_event_resource_id(registry_id) == Some("minecraft:entity.generic.eat")
+        vanilla_sound_event_resource_id(registry_id) == Some("minecraft:entity.generic.eat")
     });
     if !is_default_sound {
         fields.push(format!(
@@ -6364,7 +6365,7 @@ fn debug_sound_event_component_snbt(
     sound_event: &bbb_protocol::packets::SoundEventSummary,
 ) -> Option<String> {
     if let Some(registry_id) = sound_event.registry_id {
-        let resource_id = debug_vanilla_sound_event_resource_id(registry_id)?;
+        let resource_id = vanilla_sound_event_resource_id(registry_id)?;
         return Some(debug_snbt_string(resource_id));
     }
 
@@ -6379,14 +6380,6 @@ fn debug_sound_event_component_snbt(
         ));
     }
     Some(format!("{{{}}}", fields.join(", ")))
-}
-
-fn debug_vanilla_sound_event_resource_id(registry_id: i32) -> Option<&'static str> {
-    static VANILLA_SOUND_EVENTS: std::sync::OnceLock<bbb_pack::SoundEventRegistry> =
-        std::sync::OnceLock::new();
-    VANILLA_SOUND_EVENTS
-        .get_or_init(bbb_pack::SoundEventRegistry::vanilla_26_1)
-        .event_id(registry_id)
 }
 
 fn debug_piercing_weapon_component_snbt(

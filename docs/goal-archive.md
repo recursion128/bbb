@@ -15262,3 +15262,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `generate-bootstrap-catalog.py` 扩展 potion owner 的生成门禁，阻止
   `vanilla_potion_resource_id` 跨 crate 兼容桥复生；owner catalog 与 native persistent encoder
   回归继续覆盖合法边界和 unknown holder 省略。
+
+## 2026-07-15：Remove native sound-event catalog lookup bridge
+
+- [x] native persistent sound/component encoder 直接消费 `bbb-protocol::sound_event_types` 的
+  generated id→resource lookup，删除为相同固定身份懒构造 `bbb_pack::SoundEventRegistry` 的
+  `OnceLock` 转发桥；named/direct/unknown sound holder 语义保持不变。
+- [x] `generate-sound-event-catalog.py` 生成反向结构门禁，阻止 production code 重新声明
+  sound-event resource lookup bridge；1902 项 owner catalog 与 native persistent sound 回归覆盖直接路径。

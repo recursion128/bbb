@@ -996,7 +996,7 @@ fn encode_equippable(
         .equip_sound
         .registry_id
         .is_some_and(|registry_id| {
-            debug_vanilla_sound_event_resource_id(registry_id)
+            vanilla_sound_event_resource_id(registry_id)
                 == Some("minecraft:item.armor.equip_generic")
         });
     if !equip_sound_is_default {
@@ -1043,8 +1043,7 @@ fn encode_equippable(
             .shearing_sound
             .registry_id
             .is_some_and(|registry_id| {
-                debug_vanilla_sound_event_resource_id(registry_id)
-                    == Some("minecraft:item.shears.snip")
+                vanilla_sound_event_resource_id(registry_id) == Some("minecraft:item.shears.snip")
             });
     if !shearing_sound_is_default {
         fields.push(format!(
@@ -2160,7 +2159,7 @@ mod tests {
 
         let sound_registry_id = |resource_id| {
             (0..2048)
-                .find(|id| debug_vanilla_sound_event_resource_id(*id) == Some(resource_id))
+                .find(|id| vanilla_sound_event_resource_id(*id) == Some(resource_id))
                 .unwrap()
         };
         let mut patch = DataComponentPatchSummary {
