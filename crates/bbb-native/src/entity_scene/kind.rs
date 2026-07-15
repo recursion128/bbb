@@ -226,14 +226,16 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(data_values),
             rolled_up: armadillo_rolled_up(data_values),
         },
-        VANILLA_ENTITY_TYPE_AXOLOTL_ID => EntityModelKind::Axolotl {
-            baby: ageable_baby(data_values),
-            variant: AxolotlModelVariant::from_id(entity_data_int(
-                data_values,
-                AXOLOTL_VARIANT_DATA_ID,
-                AXOLOTL_DEFAULT_VARIANT,
-            )),
-        },
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
+            let variant =
+                vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(entity_type_id)
+                    .map(|(data_id, default)| entity_data_int(data_values, data_id, default))
+                    .unwrap_or_default();
+            EntityModelKind::Axolotl {
+                baby: ageable_baby(data_values),
+                variant: AxolotlModelVariant::from_id(variant),
+            }
+        }
         VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,
         VANILLA_ENTITY_TYPE_BEE_ID => EntityModelKind::Bee {
             baby: ageable_baby(data_values),

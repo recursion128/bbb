@@ -16409,3 +16409,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - renderer 的 `ParrotModelVariant` 现在按 vanilla `ByIdMap.continuous(..., CLAMP)` 处理非法
   id：低端钳制为 RED_BLUE，高端钳制为 GRAY；debug 共用其反向 ordinal 映射。生产消费者
   删除固定 accessor/default 别名与本地最大值；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Axolotl variant metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Axolotl.DATA_VARIANT` 解析 membership、wire id
+  18 与 int typed default 0；native model 与 debug 共同消费它。
+- renderer 的 `AxolotlModelVariant` 保持 vanilla `ByIdMap.continuous(..., ZERO)` 非法 id
+  回退 LUCY，并公开反向 ordinal 供 debug 共用。生产消费者删除固定 accessor/default
+  别名与平行 save-id normalizer；生成器 reverse guard 禁止恢复这些事实源。

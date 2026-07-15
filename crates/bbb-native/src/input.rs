@@ -75,6 +75,7 @@ use bbb_protocol::{
 use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
@@ -99,9 +100,7 @@ use bbb_world::{
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET as AXOLOTL_DEFAULT_FROM_BUCKET,
-    VANILLA_AXOLOTL_DEFAULT_VARIANT as AXOLOTL_DEFAULT_VARIANT,
     VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID as AXOLOTL_FROM_BUCKET_DATA_ID,
-    VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID,
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
     VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
     VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
@@ -283,8 +282,8 @@ use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_protocol::potion_types::vanilla_potion;
 use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_renderer::{
-    BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant, FrogModelVariant,
-    ParrotModelVariant, PigModelVariant, VillagerModelType, WolfModelVariant,
+    AxolotlModelVariant, BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant,
+    FrogModelVariant, ParrotModelVariant, PigModelVariant, VillagerModelType, WolfModelVariant,
     ZombieNautilusModelVariant,
 };
 use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
@@ -7155,20 +7154,17 @@ fn debug_push_turtle_additional_save_data(entity: &EntityState, fields: &mut Vec
 }
 
 fn debug_push_axolotl_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let variant = debug_entity_data_int_present(entity, AXOLOTL_VARIANT_DATA_ID)
-        .map(debug_axolotl_variant_save_id)
-        .unwrap_or(AXOLOTL_DEFAULT_VARIANT);
+    let Some((variant_data_id, default_variant)) =
+        vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let variant = debug_entity_data_int_present(entity, variant_data_id).unwrap_or(default_variant);
+    let variant = AxolotlModelVariant::from_id(variant).vanilla_id();
     let from_bucket = debug_entity_data_bool_present(entity, AXOLOTL_FROM_BUCKET_DATA_ID)
         .unwrap_or(AXOLOTL_DEFAULT_FROM_BUCKET);
     fields.push(format!("Variant: {variant}"));
     fields.push(format!("FromBucket: {}", debug_snbt_bool(from_bucket)));
-}
-
-fn debug_axolotl_variant_save_id(variant: i32) -> i32 {
-    match variant {
-        0..=4 => variant,
-        _ => AXOLOTL_DEFAULT_VARIANT,
-    }
 }
 
 fn debug_push_abstract_fish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

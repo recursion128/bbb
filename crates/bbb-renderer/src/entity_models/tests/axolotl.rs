@@ -232,13 +232,14 @@ fn axolotl_procedural_sub_animations_pose_the_body() {
 #[test]
 fn axolotl_textured_render_matches_vanilla_renderer() {
     // `AxolotlRenderer.TEXTURE_BY_TYPE`: the five `Axolotl.Variant` colours × {adult, baby}.
-    for variant in [
+    let variants = [
         AxolotlModelVariant::Lucy,
         AxolotlModelVariant::Wild,
         AxolotlModelVariant::Gold,
         AxolotlModelVariant::Cyan,
         AxolotlModelVariant::Blue,
-    ] {
+    ];
+    for variant in variants {
         for baby in [false, true] {
             let texture = axolotl_texture_ref(variant, baby);
             let passes = axolotl_textured_layer_passes(variant, baby);
@@ -267,6 +268,11 @@ fn axolotl_textured_render_matches_vanilla_renderer() {
             );
             assert!(entity_model_texture_refs().contains(&texture));
         }
+    }
+    assert_eq!(AxolotlModelVariant::from_id(-1), AxolotlModelVariant::Lucy);
+    assert_eq!(AxolotlModelVariant::from_id(5), AxolotlModelVariant::Lucy);
+    for (id, variant) in variants.into_iter().enumerate() {
+        assert_eq!(variant.vanilla_id(), id as i32);
     }
     assert_eq!(
         axolotl_entity_texture_refs(),

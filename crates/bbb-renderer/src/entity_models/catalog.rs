@@ -1427,6 +1427,17 @@ impl AxolotlModelVariant {
             _ => Self::Lucy,
         }
     }
+
+    /// Vanilla `Axolotl.Variant.getId`, used by the save-data debug projection.
+    pub const fn vanilla_id(self) -> i32 {
+        match self {
+            Self::Lucy => 0,
+            Self::Wild => 1,
+            Self::Gold => 2,
+            Self::Cyan => 3,
+            Self::Blue => 4,
+        }
+    }
 }
 
 /// Vanilla `Rabbit.Variant` (the synced `DATA_TYPE_ID` int): the seven rabbit colours, sharing one
