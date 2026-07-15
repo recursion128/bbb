@@ -5062,7 +5062,8 @@ fn entity_light_coords_applies_vanilla_per_renderer_block_light_overrides() {
         entity_light_coords(VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, &[], dark),
         15 << 4
     );
-    // The full set also covers the wither, wither skull, dragon fireball, shulker bullet, allay, and vex.
+    // The source-derived full set also covers the direct renderer overrides and the three
+    // `ThrownItemRenderer(..., true)` registrations.
     for full_bright in [
         VANILLA_ENTITY_TYPE_WITHER_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
@@ -5070,6 +5071,9 @@ fn entity_light_coords_applies_vanilla_per_renderer_block_light_overrides() {
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
         VANILLA_ENTITY_TYPE_ALLAY_ID,
         VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
     ] {
         assert_eq!(entity_light_coords(full_bright, &[], dark), 15 << 4);
     }

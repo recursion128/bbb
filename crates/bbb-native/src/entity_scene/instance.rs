@@ -997,21 +997,10 @@ pub(super) fn entity_light_coords(
     } else {
         u32::from(light.block.min(15))
     };
-    // Vanilla full-bright renderers (`getBlockLightLevel` returns `15` unconditionally): these glow with
-    // their own internal fire / energy regardless of the surrounding block light. The complete 26.1 set is
-    // `BlazeRenderer`, `MagmaCubeRenderer`, `WitherBossRenderer`, `WitherSkullRenderer`,
-    // `DragonFireballRenderer`, `ShulkerBulletRenderer`, `AllayRenderer`, and `VexRenderer`.
-    if matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_BLAZE_ID
-            | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
-            | VANILLA_ENTITY_TYPE_WITHER_ID
-            | VANILLA_ENTITY_TYPE_WITHER_SKULL_ID
-            | VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID
-            | VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
-            | VANILLA_ENTITY_TYPE_ALLAY_ID
-            | VANILLA_ENTITY_TYPE_VEX_ID
-    ) {
+    // Vanilla renderer registrations plus their nearest `getBlockLightLevel` override determine the
+    // static-full-bright set. This includes `ThrownItemRenderer(..., true)` providers as well as renderer
+    // classes whose override directly returns 15.
+    if bbb_world::vanilla_entity_renderer_has_static_full_block_light(entity_type_id) {
         block = 15;
     }
     // Vanilla `ItemFrameRenderer.getBlockLightLevel`: glow item frames keep their surrounding light, but

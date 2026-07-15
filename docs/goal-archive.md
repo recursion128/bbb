@@ -15392,3 +15392,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   generated constant-true behavior；AbstractHorse caller 与 can-equip-saddle 目录仍先限定适用实体，
   Camel/Donkey/Mule 的驯服/幼年 gate 及 Nautilus 的独立 owner 保持不变，generator-emitted
   反向门禁禁止旧 helper 复生。
+
+## 2026-07-15：Generate entity renderer registrations and static full brightness
+
+- [x] 新建独立于协议与 metadata schema 的 entity renderer catalog；generator 通过统一
+  Tree-sitter Java frontend 对齐 `EntityType` registry 与 `EntityRenderers` 的 155 条显式
+  provider 注册，保留 renderer class identity，并验证仅 PLAYER/MANNEQUIN 走独立 avatar 分派。
+- [x] generator 沿 renderer 继承链解析最近 `getBlockLightLevel` 的 literal-15 覆盖，并验证
+  `ThrownItemRenderer` 的 `fullBright` 构造参数契约；native 删除 8 项手写集合，统一消费 generated
+  query，补齐旧实现漏掉的 EyeOfEnder、Fireball 与 SmallFireball。catalog exact-count/完整 11 项集合、
+  Python CST fixture、native light packing 与 generator-emitted 反向门禁覆盖该边界。
