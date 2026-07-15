@@ -1229,8 +1229,8 @@ fn drip_particle_commands_carry_vanilla_child_templates() {
         {
             let child_type = vanilla_particle_type(*child_particle_type_id).unwrap();
             assert_eq!(child.particle_type_id, *child_particle_type_id);
-            assert_eq!(child.particle_id, child_type.name);
-            assert!(!child.sprite_ids.is_empty(), "{}", child_type.name);
+            assert_eq!(child.particle_id, child_type.resource_id);
+            assert!(!child.sprite_ids.is_empty(), "{}", child_type.resource_id);
         }
     }
 }

@@ -1,4 +1,44 @@
-use crate::particle_registry::particle_type_ids;
+/// Declares the particle ids used by the native runtime from their generated
+/// protocol-catalog resource identities. Registry reorderings therefore
+/// rederive every constant instead of drifting a parallel numeric table.
+macro_rules! particle_type_ids {
+    (
+        expect_registry_len = $len:literal;
+        $( $vis:vis const $name:ident = $lit:literal; )+
+    ) => {
+        $(
+            $vis const $name: i32 = match bbb_protocol::particle_types::vanilla_particle_type_id_for_resource_id($lit) {
+                Some(id) => id,
+                None => panic!("particle type name not present in generated catalog"),
+            };
+        )+
+
+        #[cfg(test)]
+        const PARTICLE_TYPE_ID_NAME_PAIRS: &[(i32, &str)] = &[
+            $( ($name, $lit), )+
+        ];
+
+        #[cfg(test)]
+        #[test]
+        fn particle_type_id_constants_match_registry() {
+            assert_eq!(
+                bbb_protocol::particle_types::VANILLA_PARTICLE_TYPES.len(),
+                $len,
+                "generated particle catalog length changed (possible truncation); \
+                 re-verify the particle type id constants and update expect_registry_len",
+            );
+            for &(value, name) in PARTICLE_TYPE_ID_NAME_PAIRS {
+                let info = bbb_protocol::particle_types::vanilla_particle_type(value)
+                    .expect("particle type id constant out of registry range");
+                assert_eq!(
+                    info.resource_id, name,
+                    "constant declared for {name:?} resolved to id {value} = {:?}",
+                    info.resource_id,
+                );
+            }
+        }
+    };
+}
 
 pub(super) const COMPOSTER_FILL_LEVEL_EVENT: i32 = 1500;
 pub(super) const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;

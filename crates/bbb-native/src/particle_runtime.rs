@@ -9,12 +9,15 @@ use bbb_pack::{
     AtlasLayout, AtlasPacker, AtlasSprite, PackRoots, ParticleDefinitionCatalog,
     ParticleSpriteCatalog, SpriteImage,
 };
-use bbb_protocol::codec::Decoder;
 use bbb_protocol::item_types::{VANILLA_ITEM_ENDER_EYE_ID, VANILLA_ITEM_SPLASH_POTION_ID};
 use bbb_protocol::packets::{
     decode_data_component_patch_summary, BlockPos, ClientParticleStatus,
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemStackSummary, LevelEvent,
     LevelParticles, Vec3d,
+};
+use bbb_protocol::{
+    codec::Decoder,
+    particle_types::{vanilla_particle_type, ParticleTypeCatalogEntry},
 };
 use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleEntityTargetSource,
@@ -36,9 +39,8 @@ use bbb_world::{
     VillagerParticleState, WitchMagicParticleState,
 };
 
-use crate::{
-    particle_registry::{vanilla_particle_type, ParticleTypeInfo},
-    terrain_runtime::{BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState},
+use crate::terrain_runtime::{
+    BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState,
 };
 
 const PARTICLE_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
@@ -526,7 +528,7 @@ struct ParticleCommandResolver {
 
 #[derive(Debug, Clone)]
 struct SimpleParticleTemplate {
-    particle_type: ParticleTypeInfo,
+    particle_type: &'static ParticleTypeCatalogEntry,
     sprite_ids: Vec<String>,
     missing_sprite_count: usize,
 }

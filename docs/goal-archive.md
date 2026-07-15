@@ -15230,3 +15230,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 回归覆盖 custom holder、session unknown holder、resource fallback、direct network song 安全省略
   与 item-frame 递归 ItemStack SNBT；不把 direct sound/description/length/comparator payload 猜造成
   persistent compound。
+
+## 2026-07-15：Remove native particle catalog lookup bridge
+
+- [x] native particle runtime 直接消费 `bbb-protocol` 生成的 `ParticleTypeCatalogEntry` 与
+  `vanilla_particle_type`，删除仅重命名 `resource_id` 字段的 `ParticleTypeInfo` 包装、转发 lookup
+  及其重复 registry 测试；行为所需 particle id 继续按 resource identity 在编译期从 catalog 派生。
+- [x] `generate-core-registry-catalog.py` 生成反向结构门禁，阻止生产代码重新声明 particle catalog
+  lookup/type bridge；generator update/check 与 native constant/runtime 回归共同锁定唯一事实源。

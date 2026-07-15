@@ -45,7 +45,6 @@ mod item_registry_test_fixture;
 mod lectern_book_scene;
 mod level_load_runtime;
 mod map_textures;
-mod particle_registry;
 mod particle_runtime;
 mod platform;
 mod recipe_book_ui;

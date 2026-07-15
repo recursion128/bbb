@@ -750,7 +750,7 @@ pub const fn vanilla_particle_type_id_for_resource_id(resource_id: &str) -> Opti
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::{collections::HashSet, fs, path::Path};
 
     use super::*;
 
@@ -798,5 +798,45 @@ mod tests {
         );
         assert_eq!(vanilla_particle_type(-1), None);
         assert_eq!(vanilla_particle_type(117), None);
+    }
+
+    #[test]
+    fn production_sources_do_not_redeclare_particle_catalog_lookups() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let display = path.to_string_lossy();
+                if display.ends_with("/particle_types.rs")
+                    || display.ends_with("/tests.rs")
+                    || display.contains("/tests/")
+                {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
+                if production.contains("struct ParticleTypeInfo")
+                    || production.contains("fn vanilla_particle_type(")
+                    || production.contains("fn particle_type_id(")
+                {
+                    violations.push(display.to_string());
+                }
+            }
+        }
+        let mut violations = Vec::new();
+        visit(
+            Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap(),
+            &mut violations,
+        );
+        assert!(
+            violations.is_empty(),
+            "parallel particle catalog lookup bridges: {violations:?}"
+        );
     }
 }

@@ -108,7 +108,7 @@ impl ParticleCommandResolver {
             };
         };
         let (sprite_ids, missing_sprite_count) =
-            if let Some(definition) = self.definitions.definition(particle_type.name) {
+            if let Some(definition) = self.definitions.definition(particle_type.resource_id) {
                 let sprite_ids = definition.textures.clone();
                 let missing_sprite_count = sprite_ids
                     .iter()
@@ -739,7 +739,7 @@ impl ParticleCommandResolver {
             });
         };
         let (sprite_ids, missing_sprite_count) =
-            if let Some(definition) = self.definitions.definition(particle_type.name) {
+            if let Some(definition) = self.definitions.definition(particle_type.resource_id) {
                 let sprite_ids = definition.textures.clone();
                 let missing_sprite_count = sprite_ids
                     .iter()
@@ -803,7 +803,7 @@ impl ParticleCommandResolver {
     pub(super) fn command(
         &self,
         packet: &LevelParticles,
-        particle_type: ParticleTypeInfo,
+        particle_type: &'static ParticleTypeCatalogEntry,
         sprite_ids: &[String],
         position: Vec3d,
         velocity: Vec3d,
@@ -831,7 +831,7 @@ impl ParticleCommandResolver {
 
     pub(super) fn command_for_type(
         &self,
-        particle_type: ParticleTypeInfo,
+        particle_type: &'static ParticleTypeCatalogEntry,
         sprite_ids: &[String],
         position: Vec3d,
         velocity: Vec3d,
@@ -851,7 +851,7 @@ impl ParticleCommandResolver {
         });
         ParticleSpawnCommand {
             particle_type_id: particle_type.id,
-            particle_id: particle_type.name.to_string(),
+            particle_id: particle_type.resource_id.to_string(),
             sprite_ids,
             position: [position.x, position.y, position.z],
             velocity: [velocity.x, velocity.y, velocity.z],
@@ -1008,7 +1008,7 @@ impl ParticleCommandResolver {
 
     pub(super) fn child_spawn_templates_for_type(
         &self,
-        particle_type: ParticleTypeInfo,
+        particle_type: &'static ParticleTypeCatalogEntry,
     ) -> Vec<ParticleChildSpawnTemplate> {
         let child_particle_type_ids = match particle_type.id {
             EXPLOSION_EMITTER_PARTICLE_TYPE_ID => vec![EXPLOSION_PARTICLE_TYPE_ID],
@@ -1063,7 +1063,7 @@ impl ParticleCommandResolver {
             })
             .map(|template| ParticleChildSpawnTemplate {
                 particle_type_id: template.particle_type.id,
-                particle_id: template.particle_type.name.to_string(),
+                particle_id: template.particle_type.resource_id.to_string(),
                 sprite_ids: template.sprite_ids,
             })
             .collect()
