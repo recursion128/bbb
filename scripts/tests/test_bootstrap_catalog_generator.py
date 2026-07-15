@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -16,6 +17,71 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class BootstrapCatalogGeneratorTests(unittest.TestCase):
+    def test_registry_holder_coverage_requires_one_family_per_network_row(self) -> None:
+        entry = GENERATOR.RegistryHolderConsumerEntry(
+            "net/minecraft/example/Test.java",
+            7,
+            11,
+            "net.minecraft.example.Test",
+            "ByteBufCodecs.holderRegistry",
+            "network_holder_reference",
+            "Registries.ITEM",
+            "minecraft:item",
+        )
+        locator = (
+            "scripts/generate-bootstrap-catalog.py#"
+            "def render_registry_holder_coverage_ledger"
+        )
+        family = {
+            "id": "reference",
+            "selector": {"kind": "network_holder_reference"},
+            "status": "complete",
+            "consumer": locator,
+            "evidence": [locator],
+            "decision": "covered by the focused generator fixture",
+        }
+        rendered = json.loads(
+            GENERATOR.render_registry_holder_coverage_ledger(
+                [entry], [family], Path("/unused")
+            )
+        )
+        self.assertEqual(rendered["entries"][0]["family"], "reference")
+
+        with self.assertRaisesRegex(ValueError, "expected one.*got"):
+            GENERATOR.render_registry_holder_coverage_ledger(
+                [entry], [family, {**family, "id": "duplicate"}], Path("/unused")
+            )
+
+    def test_registry_holder_coverage_deferred_family_requires_restart_condition(
+        self,
+    ) -> None:
+        entry = GENERATOR.RegistryHolderConsumerEntry(
+            "net/minecraft/example/Test.java",
+            7,
+            11,
+            "net.minecraft.example.Test",
+            "TagKey.streamCodec",
+            "network_tag",
+            "Registries.ITEM",
+            "minecraft:item",
+        )
+        locator = (
+            "scripts/generate-bootstrap-catalog.py#"
+            "def render_registry_holder_coverage_ledger"
+        )
+        family = {
+            "id": "deferred-tag",
+            "selector": {"kind": "network_tag"},
+            "status": "deferred",
+            "consumer": None,
+            "evidence": [locator],
+            "decision": "not scheduled",
+        }
+        with self.assertRaisesRegex(ValueError, "lacks a restart condition"):
+            GENERATOR.render_registry_holder_coverage_ledger(
+                [entry], [family], Path("/unused")
+            )
+
     def test_vanilla_texture_dimensions_reads_png_ihdr(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

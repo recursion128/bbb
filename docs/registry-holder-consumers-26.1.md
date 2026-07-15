@@ -21,10 +21,21 @@ concrete `Registries` or `BuiltInRegistries` constant. Generic helper calls are
 kept with no resource id instead of being discarded. `RegistryPacket` exposes
 the number of concrete vanilla call sites tied to its registry for diagnostics.
 
-This source inventory does not claim bbb consumer parity. The remaining ledger
-work is to map every row or shared family to the world resolver consumer that
-implements it, a vanilla-backed not-applicable decision, or a narrow deferred
-condition, then close each registry family's custom-reorder tests.
+The generated
+`docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 49 network
+factory calls to six checked families. Reference/inline, reference-only,
+holder-set/tag, and tag-only calls name their current bbb decoder and world
+resolver evidence and remain `partial` until registry context and custom-reorder
+tests are closed. The two typed debug holder calls are narrowly `deferred` until
+raw debug payload retention is replaced by the `DEBUG_SUBSCRIPTION` value
+codecs. The generic `holderRegistry` delegation inside vanilla `holderSet` is
+`not-applicable` as a distinct consumer because every concrete holder-set call
+is inventoried separately.
+
+The remaining ledger work is to classify the 145 persistent Codec call sites
+with the same evidence standard and close each applicable registry family's
+context threading and custom-reorder tests. Neither catalog presence nor a raw
+numeric-id decoder is sufficient evidence for `complete`.
 
 Regenerate and verify the inventory through the existing bootstrap catalog
 generator. The authoritative pre-commit gate remains the one in `goal.md`.

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -107,6 +108,12 @@ DEFAULT_REGISTRY_DATA_TYPES_OUTPUT = (
 )
 DEFAULT_REGISTRY_HOLDER_CONSUMERS_OUTPUT = (
     REPO_ROOT / "crates/bbb-protocol/src/registry_holder_consumers.rs"
+)
+DEFAULT_REGISTRY_HOLDER_COVERAGE_OUTPUT = (
+    REPO_ROOT / "docs/registry-holder-consumer-coverage-26.1.json"
+)
+DEFAULT_REGISTRY_HOLDER_COVERAGE_OVERRIDES = (
+    REPO_ROOT / "scripts/data/registry-holder-consumer-coverage-26.1.json"
 )
 
 TRIM_MATERIALS_SOURCE = Path(
@@ -334,6 +341,16 @@ def parse_args() -> argparse.Namespace:
         "--registry-holder-consumers-output",
         type=Path,
         default=DEFAULT_REGISTRY_HOLDER_CONSUMERS_OUTPUT,
+    )
+    parser.add_argument(
+        "--registry-holder-coverage-output",
+        type=Path,
+        default=DEFAULT_REGISTRY_HOLDER_COVERAGE_OUTPUT,
+    )
+    parser.add_argument(
+        "--registry-holder-coverage-overrides",
+        type=Path,
+        default=DEFAULT_REGISTRY_HOLDER_COVERAGE_OVERRIDES,
     )
     parser.add_argument("--check", action="store_true")
     return parser.parse_args()
@@ -705,6 +722,186 @@ def render_registry_holder_consumers(
         "",
     ))
     return "\n".join(lines)
+
+
+def registry_holder_consumer_call_site(entry: RegistryHolderConsumerEntry) -> str:
+    return f"{entry.source_path}:{entry.line}:{entry.column}:{entry.factory}"
+
+
+def load_registry_holder_coverage_families(path: Path) -> list[dict[str, object]]:
+    def strict_object(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError(f"{path}: duplicate JSON key {key!r}")
+            value[key] = item
+        return value
+
+    value = json.loads(path.read_text(), object_pairs_hook=strict_object)
+    if value.get("schema_version") != 1 or not isinstance(value.get("families"), list):
+        raise ValueError(f"{path}: invalid registry holder coverage schema")
+    return value["families"]
+
+
+def validate_registry_holder_coverage_locator(
+    locator: str,
+    context: str,
+    source_root: Path,
+) -> None:
+    if "#" not in locator:
+        raise ValueError(f"{context}: malformed locator {locator!r}")
+    path_text, symbol = locator.split("#", 1)
+    if not symbol:
+        raise ValueError(f"{context}: locator lacks symbol {locator!r}")
+    if path_text.startswith("vanilla:"):
+        root = source_root
+        path_text = path_text.removeprefix("vanilla:")
+    else:
+        root = REPO_ROOT
+    path = Path(path_text)
+    if path.is_absolute() or ".." in path.parts:
+        raise ValueError(f"{context}: locator path must be relative {locator!r}")
+    source_path = root / path
+    if not source_path.is_file():
+        raise ValueError(f"{context}: locator file does not exist: {locator}")
+    if symbol not in source_path.read_text():
+        raise ValueError(f"{context}: locator symbol not found: {locator}")
+
+
+def registry_holder_family_matches(
+    entry: RegistryHolderConsumerEntry,
+    selector: dict[str, object],
+) -> bool:
+    allowed_keys = {"kind", "source_paths", "exclude_source_paths"}
+    unknown_keys = set(selector) - allowed_keys
+    if unknown_keys:
+        raise ValueError(f"unknown registry holder coverage selector keys: {sorted(unknown_keys)}")
+    kind = selector.get("kind")
+    if kind is not None and entry.kind != kind:
+        return False
+    source_paths = selector.get("source_paths")
+    if source_paths is not None:
+        if not isinstance(source_paths, list) or not all(
+            isinstance(item, str) and item for item in source_paths
+        ):
+            raise ValueError("registry holder coverage source_paths must be strings")
+        if entry.source_path not in source_paths:
+            return False
+    exclude_source_paths = selector.get("exclude_source_paths", [])
+    if not isinstance(exclude_source_paths, list) or not all(
+        isinstance(item, str) and item for item in exclude_source_paths
+    ):
+        raise ValueError("registry holder coverage exclude_source_paths must be strings")
+    return entry.source_path not in exclude_source_paths
+
+
+def render_registry_holder_coverage_ledger(
+    entries: list[RegistryHolderConsumerEntry],
+    families: list[dict[str, object]],
+    source_root: Path,
+) -> str:
+    allowed_statuses = {"complete", "partial", "deferred", "not-applicable"}
+    normalized_families: list[dict[str, object]] = []
+    family_ids: set[str] = set()
+    for family in families:
+        if not isinstance(family, dict):
+            raise ValueError("registry holder coverage family must be an object")
+        unknown_keys = set(family) - {
+            "id",
+            "selector",
+            "status",
+            "consumer",
+            "evidence",
+            "decision",
+        }
+        if unknown_keys:
+            raise ValueError(f"registry holder coverage family has unknown keys {sorted(unknown_keys)}")
+        family_id = family.get("id")
+        selector = family.get("selector")
+        status = family.get("status")
+        consumer = family.get("consumer")
+        evidence = family.get("evidence")
+        decision = family.get("decision")
+        if not isinstance(family_id, str) or not family_id or family_id in family_ids:
+            raise ValueError(f"invalid or duplicate registry holder coverage family id {family_id!r}")
+        family_ids.add(family_id)
+        if not isinstance(selector, dict):
+            raise ValueError(f"{family_id}: selector must be an object")
+        if status not in allowed_statuses:
+            raise ValueError(f"{family_id}: invalid status {status!r}")
+        if consumer is not None and not isinstance(consumer, str):
+            raise ValueError(f"{family_id}: consumer must be a locator or null")
+        if not isinstance(evidence, list) or not evidence or not all(
+            isinstance(item, str) and item for item in evidence
+        ):
+            raise ValueError(f"{family_id}: evidence must contain non-empty locators")
+        if not isinstance(decision, str) or not decision:
+            raise ValueError(f"{family_id}: decision must be a non-empty string")
+        if status in {"complete", "partial"} and consumer is None:
+            raise ValueError(f"{family_id}: {status} family lacks a consumer")
+        if status == "partial" and not decision.startswith("docs/unsupported-features.md#"):
+            raise ValueError(f"{family_id}: partial decision must point to the gap ledger")
+        if status == "deferred" and not decision.startswith("restart: "):
+            raise ValueError(f"{family_id}: deferred decision lacks a restart condition")
+        if status == "not-applicable" and consumer is not None:
+            raise ValueError(f"{family_id}: not-applicable family must not name a consumer")
+        if consumer is not None:
+            validate_registry_holder_coverage_locator(consumer, family_id, source_root)
+        for locator in evidence:
+            validate_registry_holder_coverage_locator(locator, family_id, source_root)
+        normalized_families.append(family)
+
+    ledger_entries = []
+    used_families: set[str] = set()
+    for entry in entries:
+        if not entry.kind.startswith("network_"):
+            continue
+        matches = [
+            family
+            for family in normalized_families
+            if registry_holder_family_matches(entry, family["selector"])
+        ]
+        call_site = registry_holder_consumer_call_site(entry)
+        if len(matches) != 1:
+            raise ValueError(
+                f"{call_site}: expected one registry holder coverage family, got "
+                f"{[family['id'] for family in matches]}"
+            )
+        family = matches[0]
+        used_families.add(family["id"])
+        ledger_entries.append(
+            {
+                "call_site": call_site,
+                "source_path": entry.source_path,
+                "line": entry.line,
+                "column": entry.column,
+                "owner": entry.owner,
+                "factory": entry.factory,
+                "kind": entry.kind,
+                "registry_expression": entry.registry_expression,
+                "resource_id": entry.resource_id,
+                "family": family["id"],
+                "status": family["status"],
+                "consumer": family["consumer"],
+                "evidence": family["evidence"],
+                "decision": family["decision"],
+            }
+        )
+    unused_families = family_ids - used_families
+    if unused_families:
+        raise ValueError(f"unused registry holder coverage families: {sorted(unused_families)}")
+    value = {
+        "schema_version": 1,
+        "vanilla_version": "26.1",
+        "generated_by": "scripts/generate-bootstrap-catalog.py",
+        "update_command": "scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py",
+        "check_command": "scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check",
+        "coverage_families": "scripts/data/registry-holder-consumer-coverage-26.1.json",
+        "allowed_statuses": sorted(allowed_statuses),
+        "scope": "All vanilla network Holder, HolderSet, and TagKey factory call sites. Persistent Codec call sites remain in the source inventory for the next coverage stage.",
+        "entries": ledger_entries,
+    }
+    return json.dumps(value, indent=2, sort_keys=True) + "\n"
 
 
 def render_potion_catalog(entries: list[PotionEntry]) -> str:
@@ -3124,6 +3321,7 @@ def format_rust(rendered: str) -> str:
 
 def generate(
     source_root: Path,
+    registry_holder_coverage_overrides: Path,
 ) -> tuple[str, ...]:
     trim_materials = trim_material_entries(
         parse_java(source_root, TRIM_MATERIALS_SOURCE)
@@ -3286,6 +3484,9 @@ def generate(
         registries,
         built_in_registry_data,
     )
+    registry_holder_coverage_families = load_registry_holder_coverage_families(
+        registry_holder_coverage_overrides
+    )
     banner_texture_dimensions = {
         entry.asset_id: vanilla_texture_dimensions(
             source_root,
@@ -3343,6 +3544,11 @@ def generate(
             )
         ),
         format_rust(render_registry_holder_consumers(registry_holder_consumers)),
+        render_registry_holder_coverage_ledger(
+            registry_holder_consumers,
+            registry_holder_coverage_families,
+            source_root,
+        ),
     )
 
 
@@ -3383,7 +3589,8 @@ def main() -> int:
         generated_map_decorations,
         generated_registry_data_types,
         generated_registry_holder_consumers,
-    ) = generate(args.source_root)
+        generated_registry_holder_coverage,
+    ) = generate(args.source_root, args.registry_holder_coverage_overrides)
     if args.check:
         matches = check_generated(args.output, generated)
         matches &= check_generated(args.potion_catalog_output, generated_potions)
@@ -3454,6 +3661,10 @@ def main() -> int:
             args.registry_holder_consumers_output,
             generated_registry_holder_consumers,
         )
+        matches &= check_generated(
+            args.registry_holder_coverage_output,
+            generated_registry_holder_coverage,
+        )
         return 0 if matches else 1
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(generated)
@@ -3498,6 +3709,10 @@ def main() -> int:
     args.registry_holder_consumers_output.parent.mkdir(parents=True, exist_ok=True)
     args.registry_holder_consumers_output.write_text(
         generated_registry_holder_consumers
+    )
+    args.registry_holder_coverage_output.parent.mkdir(parents=True, exist_ok=True)
+    args.registry_holder_coverage_output.write_text(
+        generated_registry_holder_coverage
     )
     return 0
 
