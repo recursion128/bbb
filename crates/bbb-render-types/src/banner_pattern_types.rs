@@ -388,6 +388,7 @@ mod tests {
                     || source.contains("struct VanillaBannerPattern {")
                     || source.contains("const VANILLA_BANNER_PATTERNS")
                     || source.contains("fn vanilla_banner_pattern_resource_id(")
+                    || source.contains("fn vanilla_banner_pattern_translation_key(")
                 {
                     violations.push(display.to_string());
                 }

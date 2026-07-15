@@ -596,7 +596,8 @@ fn push_banner_pattern_tooltip_lines(
         let Some(translation_key) = layer.translation_key.as_deref().or_else(|| {
             layer
                 .registry_id
-                .and_then(vanilla_banner_pattern_translation_key)
+                .and_then(BannerPatternKind::for_vanilla_registry_id)
+                .map(BannerPatternKind::translation_key)
         }) else {
             continue;
         };
@@ -608,10 +609,6 @@ fn push_banner_pattern_tooltip_lines(
             TOOLTIP_TEXT_GRAY,
         ));
     }
-}
-
-fn vanilla_banner_pattern_translation_key(registry_id: i32) -> Option<&'static str> {
-    BannerPatternKind::for_vanilla_registry_id(registry_id).map(BannerPatternKind::translation_key)
 }
 
 fn italic_gray_tooltip_line(text: String) -> NativeItemTooltipLine {
@@ -1123,15 +1120,21 @@ mod tests {
             ]
         );
         assert_eq!(
-            vanilla_banner_pattern_translation_key(5),
+            BannerPatternKind::for_vanilla_registry_id(5).map(BannerPatternKind::translation_key),
             Some("block.minecraft.banner.stripe_bottom")
         );
         assert_eq!(
-            vanilla_banner_pattern_translation_key(42),
+            BannerPatternKind::for_vanilla_registry_id(42).map(BannerPatternKind::translation_key),
             Some("block.minecraft.banner.guster")
         );
-        assert_eq!(vanilla_banner_pattern_translation_key(43), None);
-        assert_eq!(vanilla_banner_pattern_translation_key(-1), None);
+        assert_eq!(
+            BannerPatternKind::for_vanilla_registry_id(43).map(BannerPatternKind::translation_key),
+            None
+        );
+        assert_eq!(
+            BannerPatternKind::for_vanilla_registry_id(-1).map(BannerPatternKind::translation_key),
+            None
+        );
         assert_eq!(
             BannerPatternKind::for_vanilla_registry_id(5).map(BannerPatternKind::resource_id),
             Some("minecraft:stripe_bottom")

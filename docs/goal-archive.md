@@ -15297,3 +15297,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] bootstrap generator 的反向门禁只排除确切 owner 路径，不再误排除同名
   `registries/painting_variants.rs`；并禁止历史 `vanilla_painting_variant_by_resource_id`
   consumer helper 复生。
+
+## 2026-07-15：Remove item-model banner-pattern translation lookup bridge
+
+- [x] banner layer tooltip 的 fixed fallback 直接组合 generated
+  `BannerPatternKind::for_vanilla_registry_id` 与 `translation_key`，删除仅转发这两个 typed
+  owner API 的本地 helper；direct synchronized translation key 与六层 tooltip 上限不变。
+- [x] `generate-bootstrap-catalog.py` 扩展 banner-pattern identity owner 的反向门禁，禁止
+  production code 重声明历史 `vanilla_banner_pattern_translation_key` bridge；43 项 ordinal/
+  resource/translation catalog 与 tooltip fixture 继续覆盖直接消费路径。
