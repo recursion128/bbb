@@ -571,6 +571,11 @@ mod tests {
                     || production.contains("fn attribute_modifier(\n")
                     || production.contains("const BEACON_PRIMARY_EFFECT_ROWS")
                     || production.contains("const BEACON_SECONDARY_EFFECTS")
+                    || production.contains("struct VanillaMobEffect")
+                    || production.contains("fn vanilla_mob_effect(")
+                    || production.contains("fn vanilla_mob_effect_key(")
+                    || production.contains("fn vanilla_mob_effect_category(")
+                    || production.contains("fn vanilla_mob_effect_attribute_modifiers(")
                     || production.contains("fn vanilla_mob_effect_resource_id(")
                 {
                     violations.push(display.to_string());

@@ -914,7 +914,7 @@ def render_mob_effects(
             "                if display.ends_with(\"/mob_effect_types.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
             "                let production = source.split(\"#[cfg(test)]\").next().unwrap_or(&source);",
-            "                if production.contains(\"SPEED_ATTRIBUTE_MODIFIERS\") || production.contains(\"fn attribute_modifier(\\n\") || production.contains(\"const BEACON_PRIMARY_EFFECT_ROWS\") || production.contains(\"const BEACON_SECONDARY_EFFECTS\") || production.contains(\"fn vanilla_mob_effect_resource_id(\") { violations.push(display.to_string()); }",
+            "                if production.contains(\"SPEED_ATTRIBUTE_MODIFIERS\") || production.contains(\"fn attribute_modifier(\\n\") || production.contains(\"const BEACON_PRIMARY_EFFECT_ROWS\") || production.contains(\"const BEACON_SECONDARY_EFFECTS\") || production.contains(\"struct VanillaMobEffect\") || production.contains(\"fn vanilla_mob_effect(\") || production.contains(\"fn vanilla_mob_effect_key(\") || production.contains(\"fn vanilla_mob_effect_category(\") || production.contains(\"fn vanilla_mob_effect_attribute_modifiers(\") || production.contains(\"fn vanilla_mob_effect_resource_id(\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",

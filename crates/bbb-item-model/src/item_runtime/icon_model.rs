@@ -15,6 +15,7 @@ use bbb_protocol::attribute_modifier_types::{
 };
 use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::equipment_slots::vanilla_equipment_slot_group_for_serialized_name;
+use bbb_protocol::mob_effect_types::vanilla_mob_effect_type;
 use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
     FireworkExplosionSummary, ItemEnchantmentSummary, ItemRaritySummary, ItemStackTemplateSummary,
@@ -30,7 +31,6 @@ use chrono::{
 use chrono_tz::{OffsetName, Tz};
 use serde_json::Value;
 
-use super::mob_effects::vanilla_mob_effect_key;
 use super::{
     first_texture_ref, generated_layer_texture_refs, ItemIconTextureLayer, ItemIconTextureRef,
     ItemModelCompassContext, ItemModelKeybindContext, ItemModelTimeContext, ItemModelUseContext,
@@ -5982,7 +5982,8 @@ fn mob_effect_instance_exact_match(
     expected: &ExactMobEffectInstance<'_>,
     actual: &MobEffectInstanceSummary,
 ) -> bool {
-    vanilla_mob_effect_key(actual.effect_id) == Some(expected.effect_key)
+    vanilla_mob_effect_type(actual.effect_id).map(|effect| effect.resource_id)
+        == Some(expected.effect_key)
         && expected.details.matches_instance(actual)
 }
 

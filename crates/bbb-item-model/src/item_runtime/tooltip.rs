@@ -16,6 +16,7 @@ use bbb_protocol::{
         vanilla_entity_type_allowed_in_peaceful, vanilla_entity_type_only_op_can_set_nbt,
     },
     equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUPS,
+    mob_effect_types::{vanilla_mob_effect_type, MobEffectCategory},
     packets::{
         AdventureModePredicateSummary, AttributeModifierSummary, PaintingVariantSummary,
         SuspiciousStewEffectSummary,
@@ -36,10 +37,6 @@ use bbb_world::{
 };
 
 use super::icon_model::effective_attribute_modifiers;
-use super::mob_effects::{
-    vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
-    VanillaMobEffectCategory,
-};
 use super::*;
 use bbb_protocol::potion_types::{vanilla_potion, VanillaPotionEffect};
 
@@ -1631,7 +1628,8 @@ fn push_potion_effect_tooltip_line(
     tooltip_tick_rate: f32,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let Some(effect_key) = vanilla_mob_effect_key(effect_id) else {
+    let Some(effect_key) = vanilla_mob_effect_type(effect_id).map(|effect| effect.resource_id)
+    else {
         return;
     };
     lines.push(NativeItemTooltipLine::plain(
@@ -1647,7 +1645,9 @@ fn collect_potion_effect_attribute_modifiers(
 ) {
     let amplifier_scale = f64::from(amplifier) + 1.0;
     lines.extend(
-        vanilla_mob_effect_attribute_modifiers(effect_id)
+        vanilla_mob_effect_type(effect_id)
+            .map(|effect| effect.attribute_modifiers)
+            .unwrap_or(&[])
             .iter()
             .filter_map(|modifier| {
                 Some(PotionAttributeModifierLine {
@@ -1941,7 +1941,9 @@ fn push_suspicious_stew_tooltip_lines(
         return;
     }
     for effect in effects {
-        let Some(effect_key) = vanilla_mob_effect_key(effect.effect_id) else {
+        let Some(effect_key) =
+            vanilla_mob_effect_type(effect.effect_id).map(|effect| effect.resource_id)
+        else {
             continue;
         };
         lines.push(NativeItemTooltipLine::plain(
@@ -1981,11 +1983,9 @@ fn potion_effect_tooltip_text(
 }
 
 fn mob_effect_tooltip_tint_for_id(effect_id: i32) -> [f32; 4] {
-    match vanilla_mob_effect_category(effect_id) {
-        Some(VanillaMobEffectCategory::Harmful) => TOOLTIP_TEXT_RED,
-        Some(VanillaMobEffectCategory::Beneficial | VanillaMobEffectCategory::Neutral) => {
-            TOOLTIP_TEXT_BLUE
-        }
+    match vanilla_mob_effect_type(effect_id).map(|effect| effect.category) {
+        Some(MobEffectCategory::Harmful) => TOOLTIP_TEXT_RED,
+        Some(MobEffectCategory::Beneficial | MobEffectCategory::Neutral) => TOOLTIP_TEXT_BLUE,
         None => TOOLTIP_TEXT_GRAY,
     }
 }
