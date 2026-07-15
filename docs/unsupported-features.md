@@ -57,10 +57,9 @@ Owner: `bbb-protocol`
   intersection to the existing 64-entry response encoder instead of always
   returning an empty configuration response.
 - Apply the validators declared by the generated
-  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory; classify the remaining
-  145 persistent Codec rows in the generated 194-call-site
-  Holder/HolderSet/TagKey inventory; and close the resolver context plus
-  custom-reorder tests behind the 46 `partial` network rows in
+  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory, and close the owning
+  decoder/encoder registry context plus custom-reorder tests behind the 191
+  `partial` network and persistent rows in
   `docs/registry-holder-consumer-coverage-26.1.json` before marking those
   families complete.
 - Complete the remaining configuration/play transfer runtime behavior. Production

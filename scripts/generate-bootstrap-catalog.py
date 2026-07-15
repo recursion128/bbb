@@ -854,8 +854,6 @@ def render_registry_holder_coverage_ledger(
     ledger_entries = []
     used_families: set[str] = set()
     for entry in entries:
-        if not entry.kind.startswith("network_"):
-            continue
         matches = [
             family
             for family in normalized_families
@@ -898,7 +896,7 @@ def render_registry_holder_coverage_ledger(
         "check_command": "scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py --check",
         "coverage_families": "scripts/data/registry-holder-consumer-coverage-26.1.json",
         "allowed_statuses": sorted(allowed_statuses),
-        "scope": "All vanilla network Holder, HolderSet, and TagKey factory call sites. Persistent Codec call sites remain in the source inventory for the next coverage stage.",
+        "scope": "All vanilla Holder, HolderSet, and TagKey network stream-codec and persistent Codec factory call sites.",
         "entries": ledger_entries,
     }
     return json.dumps(value, indent=2, sort_keys=True) + "\n"

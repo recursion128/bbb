@@ -9,6 +9,46 @@
   "coverage_families": "scripts/data/registry-holder-consumer-coverage-26.1.json",
   "entries": [
     {
+      "call_site": "net/minecraft/advancements/criterion/BeeNestDestroyedTrigger.java:31:16:Registry.holderByNameCodec",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 31,
+      "owner": "net.minecraft.advancements.criterion.BeeNestDestroyedTrigger.TriggerInstance",
+      "registry_expression": "BuiltInRegistries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/advancements/criterion/BeeNestDestroyedTrigger.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/BlockPredicate.java:31:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 31,
+      "owner": "net.minecraft.advancements.criterion.BlockPredicate",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/advancements/criterion/BlockPredicate.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/advancements/criterion/BlockPredicate.java:39:30:ByteBufCodecs.holderSet",
       "column": 30,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -30,6 +70,304 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/advancements/criterion/EnchantmentPredicate.java:17:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 17,
+      "owner": "net.minecraft.advancements.criterion.EnchantmentPredicate",
+      "registry_expression": "Registries.ENCHANTMENT",
+      "resource_id": "minecraft:enchantment",
+      "source_path": "net/minecraft/advancements/criterion/EnchantmentPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/EnterBlockTrigger.java:30:19:Registry.holderByNameCodec",
+      "column": 19,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 30,
+      "owner": "net.minecraft.advancements.criterion.EnterBlockTrigger.TriggerInstance",
+      "registry_expression": "BuiltInRegistries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/advancements/criterion/EnterBlockTrigger.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/EntityTypePredicate.java:13:59:RegistryCodecs.homogeneousList",
+      "column": 59,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 13,
+      "owner": "net.minecraft.advancements.criterion.EntityTypePredicate",
+      "registry_expression": "Registries.ENTITY_TYPE",
+      "resource_id": "minecraft:entity_type",
+      "source_path": "net/minecraft/advancements/criterion/EntityTypePredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/FluidPredicate.java:17:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 17,
+      "owner": "net.minecraft.advancements.criterion.FluidPredicate",
+      "registry_expression": "Registries.FLUID",
+      "resource_id": "minecraft:fluid",
+      "source_path": "net/minecraft/advancements/criterion/FluidPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/ItemPredicate.java:19:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 19,
+      "owner": "net.minecraft.advancements.criterion.ItemPredicate",
+      "registry_expression": "Registries.ITEM",
+      "resource_id": "minecraft:item",
+      "source_path": "net/minecraft/advancements/criterion/ItemPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/LocationPredicate.java:32:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 32,
+      "owner": "net.minecraft.advancements.criterion.LocationPredicate",
+      "registry_expression": "Registries.BIOME",
+      "resource_id": "minecraft:worldgen/biome",
+      "source_path": "net/minecraft/advancements/criterion/LocationPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/LocationPredicate.java:33:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 33,
+      "owner": "net.minecraft.advancements.criterion.LocationPredicate",
+      "registry_expression": "Registries.STRUCTURE",
+      "resource_id": "minecraft:worldgen/structure",
+      "source_path": "net/minecraft/advancements/criterion/LocationPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/PlayerPredicate.java:260:81:Registry.holderByNameCodec",
+      "column": 81,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 260,
+      "owner": "net.minecraft.advancements.criterion.PlayerPredicate.StatMatcher",
+      "registry_expression": "type.getRegistry ()",
+      "resource_id": null,
+      "source_path": "net/minecraft/advancements/criterion/PlayerPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/SlideDownBlockTrigger.java:30:19:Registry.holderByNameCodec",
+      "column": 19,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 30,
+      "owner": "net.minecraft.advancements.criterion.SlideDownBlockTrigger.TriggerInstance",
+      "registry_expression": "BuiltInRegistries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/advancements/criterion/SlideDownBlockTrigger.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/advancements/criterion/TagPredicate.java:13:23:TagKey.codec",
+      "column": 23,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 13,
+      "owner": "net.minecraft.advancements.criterion.TagPredicate",
+      "registry_expression": "registryKey",
+      "resource_id": null,
+      "source_path": "net/minecraft/advancements/criterion/TagPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/RegistryCodecs.java:17:14:HolderSetCodec.create",
+      "column": 14,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public static <E> Codec<HolderSet<E>> create(",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "HolderSetCodec.create",
+      "family": "persistent-holder-set-custom",
+      "kind": "persistent_holder_set_custom",
+      "line": 17,
+      "owner": "net.minecraft.core.RegistryCodecs",
+      "registry_expression": "registryKey",
+      "resource_id": null,
+      "source_path": "net/minecraft/core/RegistryCodecs.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/RegistryCodecs.java:17:49:RegistryFileCodec.create",
+      "column": 49,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 17,
+      "owner": "net.minecraft.core.RegistryCodecs",
+      "registry_expression": "registryKey",
+      "resource_id": null,
+      "source_path": "net/minecraft/core/RegistryCodecs.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/RegistryCodecs.java:25:14:HolderSetCodec.create",
+      "column": 14,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public static <E> Codec<HolderSet<E>> create(",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "HolderSetCodec.create",
+      "family": "persistent-holder-set-custom",
+      "kind": "persistent_holder_set_custom",
+      "line": 25,
+      "owner": "net.minecraft.core.RegistryCodecs",
+      "registry_expression": "registryKey",
+      "resource_id": null,
+      "source_path": "net/minecraft/core/RegistryCodecs.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/RegistryCodecs.java:25:49:RegistryFixedCodec.create",
+      "column": 49,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 25,
+      "owner": "net.minecraft.core.RegistryCodecs",
+      "registry_expression": "registryKey",
+      "resource_id": null,
+      "source_path": "net/minecraft/core/RegistryCodecs.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/component/DataComponents.java:285:25:RegistryCodecs.homogeneousList",
+      "column": 25,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 285,
+      "owner": "net.minecraft.core.component.DataComponents",
+      "registry_expression": "Registries.BANNER_PATTERN",
+      "resource_id": "minecraft:banner_pattern",
+      "source_path": "net/minecraft/core/component/DataComponents.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/core/component/DataComponents.java:286:31:ByteBufCodecs.holderSet",
       "column": 31,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -48,6 +386,145 @@
       "registry_expression": "Registries.BANNER_PATTERN",
       "resource_id": "minecraft:banner_pattern",
       "source_path": "net/minecraft/core/component/DataComponents.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/component/predicates/AttributeModifiersPredicate.java:52:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 52,
+      "owner": "net.minecraft.core.component.predicates.AttributeModifiersPredicate.EntryPredicate",
+      "registry_expression": "Registries.ATTRIBUTE",
+      "resource_id": "minecraft:attribute",
+      "source_path": "net/minecraft/core/component/predicates/AttributeModifiersPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/component/predicates/JukeboxPlayablePredicate.java:19:20:RegistryCodecs.homogeneousList",
+      "column": 20,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 19,
+      "owner": "net.minecraft.core.component.predicates.JukeboxPlayablePredicate",
+      "registry_expression": "Registries.JUKEBOX_SONG",
+      "resource_id": "minecraft:jukebox_song",
+      "source_path": "net/minecraft/core/component/predicates/JukeboxPlayablePredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/component/predicates/PotionsPredicate.java:16:56:RegistryCodecs.homogeneousList",
+      "column": 56,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 16,
+      "owner": "net.minecraft.core.component.predicates.PotionsPredicate",
+      "registry_expression": "Registries.POTION",
+      "resource_id": "minecraft:potion",
+      "source_path": "net/minecraft/core/component/predicates/PotionsPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/component/predicates/TrimPredicate.java:20:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 20,
+      "owner": "net.minecraft.core.component.predicates.TrimPredicate",
+      "registry_expression": "Registries.TRIM_MATERIAL",
+      "resource_id": "minecraft:trim_material",
+      "source_path": "net/minecraft/core/component/predicates/TrimPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/component/predicates/TrimPredicate.java:21:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 21,
+      "owner": "net.minecraft.core.component.predicates.TrimPredicate",
+      "registry_expression": "Registries.TRIM_PATTERN",
+      "resource_id": "minecraft:trim_pattern",
+      "source_path": "net/minecraft/core/component/predicates/TrimPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/core/component/predicates/VillagerTypePredicate.java:14:61:RegistryCodecs.homogeneousList",
+      "column": 61,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 14,
+      "owner": "net.minecraft.core.component.predicates.VillagerTypePredicate",
+      "registry_expression": "Registries.VILLAGER_TYPE",
+      "resource_id": "minecraft:villager_type",
+      "source_path": "net/minecraft/core/component/predicates/VillagerTypePredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/gametest/framework/TestEnvironmentDefinition.java:37:56:RegistryFileCodec.create",
+      "column": 56,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 37,
+      "owner": "net.minecraft.gametest.framework.TestEnvironmentDefinition",
+      "registry_expression": "Registries.TEST_ENVIRONMENT",
+      "resource_id": "minecraft:test_environment",
+      "source_path": "net/minecraft/gametest/framework/TestEnvironmentDefinition.java",
       "status": "partial"
     },
     {
@@ -113,6 +590,64 @@
       "status": "not-applicable"
     },
     {
+      "call_site": "net/minecraft/resources/HolderSetCodec.java:40:46:TagKey.hashedCodec",
+      "column": 46,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.hashedCodec",
+      "family": "persistent-hashed-tag",
+      "kind": "persistent_hashed_tag",
+      "line": 40,
+      "owner": "net.minecraft.resources.HolderSetCodec",
+      "registry_expression": "registryKey",
+      "resource_id": null,
+      "source_path": "net/minecraft/resources/HolderSetCodec.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/server/dialog/Dialog.java:22:34:RegistryFileCodec.create",
+      "column": 34,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 22,
+      "owner": "net.minecraft.server.dialog.Dialog",
+      "registry_expression": "Registries.DIALOG",
+      "resource_id": "minecraft:dialog",
+      "source_path": "net/minecraft/server/dialog/Dialog.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/server/dialog/Dialog.java:23:42:RegistryCodecs.homogeneousList",
+      "column": 42,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-inline",
+      "kind": "persistent_holder_set_or_inline",
+      "line": 23,
+      "owner": "net.minecraft.server.dialog.Dialog",
+      "registry_expression": "Registries.DIALOG",
+      "resource_id": "minecraft:dialog",
+      "source_path": "net/minecraft/server/dialog/Dialog.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/server/dialog/Dialog.java:24:72:ByteBufCodecs.holder",
       "column": 72,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -132,6 +667,25 @@
       "registry_expression": "Registries.DIALOG",
       "resource_id": "minecraft:dialog",
       "source_path": "net/minecraft/server/dialog/Dialog.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/sounds/SoundEvent.java:22:58:RegistryFileCodec.create",
+      "column": 58,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 22,
+      "owner": "net.minecraft.sounds.SoundEvent",
+      "registry_expression": "Registries.SOUND_EVENT",
+      "resource_id": "minecraft:sound_event",
+      "source_path": "net/minecraft/sounds/SoundEvent.java",
       "status": "partial"
     },
     {
@@ -197,6 +751,26 @@
       "status": "deferred"
     },
     {
+      "call_site": "net/minecraft/world/clock/WorldClock.java:13:58:RegistryFixedCodec.create",
+      "column": 58,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 13,
+      "owner": "net.minecraft.world.clock.WorldClock",
+      "registry_expression": "Registries.WORLD_CLOCK",
+      "resource_id": "minecraft:world_clock",
+      "source_path": "net/minecraft/world/clock/WorldClock.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/clock/WorldClock.java:14:96:ByteBufCodecs.holderRegistry",
       "column": 96,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -216,6 +790,26 @@
       "registry_expression": "Registries.WORLD_CLOCK",
       "resource_id": "minecraft:world_clock",
       "source_path": "net/minecraft/world/clock/WorldClock.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/damagesource/DamageType.java:23:58:RegistryFixedCodec.create",
+      "column": 58,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 23,
+      "owner": "net.minecraft.world.damagesource.DamageType",
+      "registry_expression": "Registries.DAMAGE_TYPE",
+      "resource_id": "minecraft:damage_type",
+      "source_path": "net/minecraft/world/damagesource/DamageType.java",
       "status": "partial"
     },
     {
@@ -241,6 +835,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/effect/MobEffect.java:40:57:Registry.holderByNameCodec",
+      "column": 57,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 40,
+      "owner": "net.minecraft.world.effect.MobEffect",
+      "registry_expression": "BuiltInRegistries.MOB_EFFECT",
+      "resource_id": "minecraft:mob_effect",
+      "source_path": "net/minecraft/world/effect/MobEffect.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/effect/MobEffect.java:41:95:ByteBufCodecs.holderRegistry",
       "column": 95,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -260,6 +874,26 @@
       "registry_expression": "Registries.MOB_EFFECT",
       "resource_id": "minecraft:mob_effect",
       "source_path": "net/minecraft/world/effect/MobEffect.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/ai/attributes/Attribute.java:13:57:Registry.holderByNameCodec",
+      "column": 57,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 13,
+      "owner": "net.minecraft.world.entity.ai.attributes.Attribute",
+      "registry_expression": "BuiltInRegistries.ATTRIBUTE",
+      "resource_id": "minecraft:attribute",
+      "source_path": "net/minecraft/world/entity/ai/attributes/Attribute.java",
       "status": "partial"
     },
     {
@@ -285,6 +919,66 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/entity/ai/attributes/AttributeInstance.java:204:16:Registry.holderByNameCodec",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 204,
+      "owner": "net.minecraft.world.entity.ai.attributes.AttributeInstance.Packed",
+      "registry_expression": "BuiltInRegistries.ATTRIBUTE",
+      "resource_id": "minecraft:attribute",
+      "source_path": "net/minecraft/world/entity/ai/attributes/AttributeInstance.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/ai/village/poi/PoiRecord.java:93:16:RegistryFixedCodec.create",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 93,
+      "owner": "net.minecraft.world.entity.ai.village.poi.PoiRecord.Packed",
+      "registry_expression": "Registries.POINT_OF_INTEREST_TYPE",
+      "resource_id": "minecraft:point_of_interest_type",
+      "source_path": "net/minecraft/world/entity/ai/village/poi/PoiRecord.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java:16:67:RegistryFixedCodec.create",
+      "column": 67,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 16,
+      "owner": "net.minecraft.world.entity.animal.chicken.ChickenSoundVariant",
+      "registry_expression": "Registries.CHICKEN_SOUND_VARIANT",
+      "resource_id": "minecraft:chicken_sound_variant",
+      "source_path": "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java:17:105:ByteBufCodecs.holderRegistry",
       "column": 105,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -304,6 +998,26 @@
       "registry_expression": "Registries.CHICKEN_SOUND_VARIANT",
       "resource_id": "minecraft:chicken_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/animal/chicken/ChickenVariant.java:38:62:RegistryFixedCodec.create",
+      "column": 62,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 38,
+      "owner": "net.minecraft.world.entity.animal.chicken.ChickenVariant",
+      "registry_expression": "Registries.CHICKEN_VARIANT",
+      "resource_id": "minecraft:chicken_variant",
+      "source_path": "net/minecraft/world/entity/animal/chicken/ChickenVariant.java",
       "status": "partial"
     },
     {
@@ -329,6 +1043,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/entity/animal/cow/CowSoundVariant.java:16:63:RegistryFixedCodec.create",
+      "column": 63,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 16,
+      "owner": "net.minecraft.world.entity.animal.cow.CowSoundVariant",
+      "registry_expression": "Registries.COW_SOUND_VARIANT",
+      "resource_id": "minecraft:cow_sound_variant",
+      "source_path": "net/minecraft/world/entity/animal/cow/CowSoundVariant.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/entity/animal/cow/CowSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
       "column": 101,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -348,6 +1082,26 @@
       "registry_expression": "Registries.COW_SOUND_VARIANT",
       "resource_id": "minecraft:cow_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/cow/CowSoundVariant.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/animal/cow/CowVariant.java:37:58:RegistryFixedCodec.create",
+      "column": 58,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 37,
+      "owner": "net.minecraft.world.entity.animal.cow.CowVariant",
+      "registry_expression": "Registries.COW_VARIANT",
+      "resource_id": "minecraft:cow_variant",
+      "source_path": "net/minecraft/world/entity/animal/cow/CowVariant.java",
       "status": "partial"
     },
     {
@@ -373,6 +1127,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/entity/animal/feline/CatSoundVariant.java:16:63:RegistryFixedCodec.create",
+      "column": 63,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 16,
+      "owner": "net.minecraft.world.entity.animal.feline.CatSoundVariant",
+      "registry_expression": "Registries.CAT_SOUND_VARIANT",
+      "resource_id": "minecraft:cat_sound_variant",
+      "source_path": "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/entity/animal/feline/CatSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
       "column": 101,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -392,6 +1166,26 @@
       "registry_expression": "Registries.CAT_SOUND_VARIANT",
       "resource_id": "minecraft:cat_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/animal/feline/CatVariant.java:35:58:RegistryFixedCodec.create",
+      "column": 58,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 35,
+      "owner": "net.minecraft.world.entity.animal.feline.CatVariant",
+      "registry_expression": "Registries.CAT_VARIANT",
+      "resource_id": "minecraft:cat_variant",
+      "source_path": "net/minecraft/world/entity/animal/feline/CatVariant.java",
       "status": "partial"
     },
     {
@@ -417,6 +1211,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/entity/animal/frog/FrogVariant.java:30:59:RegistryFixedCodec.create",
+      "column": 59,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 30,
+      "owner": "net.minecraft.world.entity.animal.frog.FrogVariant",
+      "registry_expression": "Registries.FROG_VARIANT",
+      "resource_id": "minecraft:frog_variant",
+      "source_path": "net/minecraft/world/entity/animal/frog/FrogVariant.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/entity/animal/frog/FrogVariant.java:31:97:ByteBufCodecs.holderRegistry",
       "column": 97,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -436,6 +1250,26 @@
       "registry_expression": "Registries.FROG_VARIANT",
       "resource_id": "minecraft:frog_variant",
       "source_path": "net/minecraft/world/entity/animal/frog/FrogVariant.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java:36:69:RegistryFixedCodec.create",
+      "column": 69,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 36,
+      "owner": "net.minecraft.world.entity.animal.nautilus.ZombieNautilusVariant",
+      "registry_expression": "Registries.ZOMBIE_NAUTILUS_VARIANT",
+      "resource_id": "minecraft:zombie_nautilus_variant",
+      "source_path": "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java",
       "status": "partial"
     },
     {
@@ -461,6 +1295,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/entity/animal/pig/PigSoundVariant.java:16:63:RegistryFixedCodec.create",
+      "column": 63,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 16,
+      "owner": "net.minecraft.world.entity.animal.pig.PigSoundVariant",
+      "registry_expression": "Registries.PIG_SOUND_VARIANT",
+      "resource_id": "minecraft:pig_sound_variant",
+      "source_path": "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/entity/animal/pig/PigSoundVariant.java:17:101:ByteBufCodecs.holderRegistry",
       "column": 101,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -480,6 +1334,26 @@
       "registry_expression": "Registries.PIG_SOUND_VARIANT",
       "resource_id": "minecraft:pig_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/animal/pig/PigVariant.java:37:58:RegistryFixedCodec.create",
+      "column": 58,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 37,
+      "owner": "net.minecraft.world.entity.animal.pig.PigVariant",
+      "registry_expression": "Registries.PIG_VARIANT",
+      "resource_id": "minecraft:pig_variant",
+      "source_path": "net/minecraft/world/entity/animal/pig/PigVariant.java",
       "status": "partial"
     },
     {
@@ -505,6 +1379,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java:16:64:RegistryFixedCodec.create",
+      "column": 64,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 16,
+      "owner": "net.minecraft.world.entity.animal.wolf.WolfSoundVariant",
+      "registry_expression": "Registries.WOLF_SOUND_VARIANT",
+      "resource_id": "minecraft:wolf_sound_variant",
+      "source_path": "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java:17:102:ByteBufCodecs.holderRegistry",
       "column": 102,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -524,6 +1418,26 @@
       "registry_expression": "Registries.WOLF_SOUND_VARIANT",
       "resource_id": "minecraft:wolf_sound_variant",
       "source_path": "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/animal/wolf/WolfVariant.java:35:59:RegistryFixedCodec.create",
+      "column": 59,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 35,
+      "owner": "net.minecraft.world.entity.animal.wolf.WolfVariant",
+      "registry_expression": "Registries.WOLF_VARIANT",
+      "resource_id": "minecraft:wolf_variant",
+      "source_path": "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
       "status": "partial"
     },
     {
@@ -549,6 +1463,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java:41:63:RegistryFixedCodec.create",
+      "column": 63,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 41,
+      "owner": "net.minecraft.world.entity.decoration.painting.PaintingVariant",
+      "registry_expression": "Registries.PAINTING_VARIANT",
+      "resource_id": "minecraft:painting_variant",
+      "source_path": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java:42:101:ByteBufCodecs.holder",
       "column": 101,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -568,6 +1502,46 @@
       "registry_expression": "Registries.PAINTING_VARIANT",
       "resource_id": "minecraft:painting_variant",
       "source_path": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/npc/villager/VillagerData.java:20:13:Registry.holderByNameCodec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 20,
+      "owner": "net.minecraft.world.entity.npc.villager.VillagerData",
+      "registry_expression": "BuiltInRegistries.VILLAGER_TYPE",
+      "resource_id": "minecraft:villager_type",
+      "source_path": "net/minecraft/world/entity/npc/villager/VillagerData.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/npc/villager/VillagerData.java:25:13:Registry.holderByNameCodec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 25,
+      "owner": "net.minecraft.world.entity.npc.villager.VillagerData",
+      "registry_expression": "BuiltInRegistries.VILLAGER_PROFESSION",
+      "resource_id": "minecraft:villager_profession",
+      "source_path": "net/minecraft/world/entity/npc/villager/VillagerData.java",
       "status": "partial"
     },
     {
@@ -615,6 +1589,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/entity/npc/villager/VillagerType.java:27:60:RegistryFixedCodec.create",
+      "column": 60,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 27,
+      "owner": "net.minecraft.world.entity.npc.villager.VillagerType",
+      "registry_expression": "Registries.VILLAGER_TYPE",
+      "resource_id": "minecraft:villager_type",
+      "source_path": "net/minecraft/world/entity/npc/villager/VillagerType.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/entity/npc/villager/VillagerType.java:28:98:ByteBufCodecs.holderRegistry",
       "column": 98,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -634,6 +1628,65 @@
       "registry_expression": "Registries.VILLAGER_TYPE",
       "resource_id": "minecraft:villager_type",
       "source_path": "net/minecraft/world/entity/npc/villager/VillagerType.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/variant/BiomeCheck.java:12:20:RegistryCodecs.homogeneousList",
+      "column": 20,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 12,
+      "owner": "net.minecraft.world.entity.variant.BiomeCheck",
+      "registry_expression": "Registries.BIOME",
+      "resource_id": "minecraft:worldgen/biome",
+      "source_path": "net/minecraft/world/entity/variant/BiomeCheck.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/entity/variant/StructureCheck.java:12:20:RegistryCodecs.homogeneousList",
+      "column": 20,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 12,
+      "owner": "net.minecraft.world.entity.variant.StructureCheck",
+      "registry_expression": "Registries.STRUCTURE",
+      "resource_id": "minecraft:worldgen/structure",
+      "source_path": "net/minecraft/world/entity/variant/StructureCheck.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/Instrument.java:37:58:RegistryFileCodec.create",
+      "column": 58,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 37,
+      "owner": "net.minecraft.world.item.Instrument",
+      "registry_expression": "Registries.INSTRUMENT",
+      "resource_id": "minecraft:instrument",
+      "source_path": "net/minecraft/world/item/Instrument.java",
       "status": "partial"
     },
     {
@@ -659,6 +1712,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/Item.java:99:52:Registry.holderByNameCodec",
+      "column": 52,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 99,
+      "owner": "net.minecraft.world.item.Item",
+      "registry_expression": "BuiltInRegistries.ITEM",
+      "resource_id": "minecraft:item",
+      "source_path": "net/minecraft/world/item/Item.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/Item.java:102:90:ByteBufCodecs.holderRegistry",
       "column": 90,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -678,6 +1751,26 @@
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/Item.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/JukeboxSong.java:40:59:RegistryFixedCodec.create",
+      "column": 59,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 40,
+      "owner": "net.minecraft.world.item.JukeboxSong",
+      "registry_expression": "Registries.JUKEBOX_SONG",
+      "resource_id": "minecraft:jukebox_song",
+      "source_path": "net/minecraft/world/item/JukeboxSong.java",
       "status": "partial"
     },
     {
@@ -703,6 +1796,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/alchemy/Potion.java:18:54:Registry.holderByNameCodec",
+      "column": 54,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 18,
+      "owner": "net.minecraft.world.item.alchemy.Potion",
+      "registry_expression": "BuiltInRegistries.POTION",
+      "resource_id": "minecraft:potion",
+      "source_path": "net/minecraft/world/item/alchemy/Potion.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/alchemy/Potion.java:19:92:ByteBufCodecs.holderRegistry",
       "column": 92,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -725,6 +1838,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:48:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 48,
+      "owner": "net.minecraft.world.item.component.BlocksAttacks",
+      "registry_expression": "Registries.DAMAGE_TYPE",
+      "resource_id": "minecraft:damage_type",
+      "source_path": "net/minecraft/world/item/component/BlocksAttacks.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:63:7:ByteBufCodecs.holderSet",
       "column": 7,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -740,6 +1873,26 @@
       "kind": "network_holder_set_or_tag",
       "line": 63,
       "owner": "net.minecraft.world.item.component.BlocksAttacks",
+      "registry_expression": "Registries.DAMAGE_TYPE",
+      "resource_id": "minecraft:damage_type",
+      "source_path": "net/minecraft/world/item/component/BlocksAttacks.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/component/BlocksAttacks.java:141:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 141,
+      "owner": "net.minecraft.world.item.component.BlocksAttacks.DamageReduction",
       "registry_expression": "Registries.DAMAGE_TYPE",
       "resource_id": "minecraft:damage_type",
       "source_path": "net/minecraft/world/item/component/BlocksAttacks.java",
@@ -767,6 +1920,26 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/component/DamageResistant.java:16:20:RegistryCodecs.homogeneousList",
+      "column": 20,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 16,
+      "owner": "net.minecraft.world.item.component.DamageResistant",
+      "registry_expression": "Registries.DAMAGE_TYPE",
+      "resource_id": "minecraft:damage_type",
+      "source_path": "net/minecraft/world/item/component/DamageResistant.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/component/DamageResistant.java:19:7:ByteBufCodecs.holderSet",
       "column": 7,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -788,6 +1961,46 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/component/DebugStickState.java:15:10:Registry.holderByNameCodec",
+      "column": 10,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 15,
+      "owner": "net.minecraft.world.item.component.DebugStickState",
+      "registry_expression": "BuiltInRegistries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/item/component/DebugStickState.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/component/Tool.java:62:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 62,
+      "owner": "net.minecraft.world.item.component.Tool.Rule",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/item/component/Tool.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/component/Tool.java:69:10:ByteBufCodecs.holderSet",
       "column": 10,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -806,6 +2019,26 @@
       "registry_expression": "Registries.BLOCK",
       "resource_id": "minecraft:block",
       "source_path": "net/minecraft/world/item/component/Tool.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java:19:20:RegistryCodecs.homogeneousList",
+      "column": 20,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 19,
+      "owner": "net.minecraft.world.item.consume_effects.RemoveStatusEffectsConsumeEffect",
+      "registry_expression": "Registries.MOB_EFFECT",
+      "resource_id": "minecraft:mob_effect",
+      "source_path": "net/minecraft/world/item/consume_effects/RemoveStatusEffectsConsumeEffect.java",
       "status": "partial"
     },
     {
@@ -872,6 +2105,45 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/crafting/Ingredient.java:33:74:HolderSetCodec.create",
+      "column": 74,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public static <E> Codec<HolderSet<E>> create(",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "HolderSetCodec.create",
+      "family": "persistent-holder-set-custom",
+      "kind": "persistent_holder_set_custom",
+      "line": 33,
+      "owner": "net.minecraft.world.item.crafting.Ingredient",
+      "registry_expression": "Registries.ITEM",
+      "resource_id": "minecraft:item",
+      "source_path": "net/minecraft/world/item/crafting/Ingredient.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/crafting/display/SlotDisplay.java:352:23:TagKey.codec",
+      "column": 23,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 352,
+      "owner": "net.minecraft.world.item.crafting.display.SlotDisplay.TagSlotDisplay",
+      "registry_expression": "Registries.ITEM",
+      "resource_id": "minecraft:item",
+      "source_path": "net/minecraft/world/item/crafting/display/SlotDisplay.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/crafting/display/SlotDisplay.java:355:10:TagKey.streamCodec",
       "column": 10,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -889,6 +2161,46 @@
       "registry_expression": "Registries.ITEM",
       "resource_id": "minecraft:item",
       "source_path": "net/minecraft/world/item/crafting/display/SlotDisplay.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:66:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 66,
+      "owner": "net.minecraft.world.item.enchantment.Enchantment",
+      "registry_expression": "Registries.ENCHANTMENT",
+      "resource_id": "minecraft:enchantment",
+      "source_path": "net/minecraft/world/item/enchantment/Enchantment.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:71:59:RegistryFixedCodec.create",
+      "column": 59,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 71,
+      "owner": "net.minecraft.world.item.enchantment.Enchantment",
+      "registry_expression": "Registries.ENCHANTMENT",
+      "resource_id": "minecraft:enchantment",
+      "source_path": "net/minecraft/world/item/enchantment/Enchantment.java",
       "status": "partial"
     },
     {
@@ -914,6 +2226,66 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:683:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 683,
+      "owner": "net.minecraft.world.item.enchantment.Enchantment.EnchantmentDefinition",
+      "registry_expression": "Registries.ITEM",
+      "resource_id": "minecraft:item",
+      "source_path": "net/minecraft/world/item/enchantment/Enchantment.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/enchantment/Enchantment.java:684:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 684,
+      "owner": "net.minecraft.world.item.enchantment.Enchantment.EnchantmentDefinition",
+      "registry_expression": "Registries.ITEM",
+      "resource_id": "minecraft:item",
+      "source_path": "net/minecraft/world/item/enchantment/Enchantment.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/enchantment/Repairable.java:16:20:RegistryCodecs.homogeneousList",
+      "column": 20,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 16,
+      "owner": "net.minecraft.world.item.enchantment.Repairable",
+      "registry_expression": "Registries.ITEM",
+      "resource_id": "minecraft:item",
+      "source_path": "net/minecraft/world/item/enchantment/Repairable.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/enchantment/Repairable.java:19:7:ByteBufCodecs.holderSet",
       "column": 7,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -935,6 +2307,126 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/enchantment/effects/ApplyMobEffect.java:26:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 26,
+      "owner": "net.minecraft.world.item.enchantment.effects.ApplyMobEffect",
+      "registry_expression": "Registries.MOB_EFFECT",
+      "resource_id": "minecraft:mob_effect",
+      "source_path": "net/minecraft/world/item/enchantment/effects/ApplyMobEffect.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/enchantment/effects/ExplodeEffect.java:47:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 47,
+      "owner": "net.minecraft.world.item.enchantment.effects.ExplodeEffect",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/item/enchantment/effects/ExplodeEffect.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/enchantment/effects/SummonEntityEffect.java:25:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 25,
+      "owner": "net.minecraft.world.item.enchantment.effects.SummonEntityEffect",
+      "registry_expression": "Registries.ENTITY_TYPE",
+      "resource_id": "minecraft:entity_type",
+      "source_path": "net/minecraft/world/item/enchantment/effects/SummonEntityEffect.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/enchantment/providers/EnchantmentsByCost.java:21:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 21,
+      "owner": "net.minecraft.world.item.enchantment.providers.EnchantmentsByCost",
+      "registry_expression": "Registries.ENCHANTMENT",
+      "resource_id": "minecraft:enchantment",
+      "source_path": "net/minecraft/world/item/enchantment/providers/EnchantmentsByCost.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/enchantment/providers/EnchantmentsByCostWithDifficulty.java:22:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 22,
+      "owner": "net.minecraft.world.item.enchantment.providers.EnchantmentsByCostWithDifficulty",
+      "registry_expression": "Registries.ENCHANTMENT",
+      "resource_id": "minecraft:enchantment",
+      "source_path": "net/minecraft/world/item/enchantment/providers/EnchantmentsByCostWithDifficulty.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/equipment/Equippable.java:51:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 51,
+      "owner": "net.minecraft.world.item.equipment.Equippable",
+      "registry_expression": "Registries.ENTITY_TYPE",
+      "resource_id": "minecraft:entity_type",
+      "source_path": "net/minecraft/world/item/equipment/Equippable.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/equipment/Equippable.java:72:7:ByteBufCodecs.holderSet",
       "column": 7,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -953,6 +2445,25 @@
       "registry_expression": "Registries.ENTITY_TYPE",
       "resource_id": "minecraft:entity_type",
       "source_path": "net/minecraft/world/item/equipment/Equippable.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/equipment/trim/TrimMaterial.java:25:60:RegistryFileCodec.create",
+      "column": 60,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 25,
+      "owner": "net.minecraft.world.item.equipment.trim.TrimMaterial",
+      "registry_expression": "Registries.TRIM_MATERIAL",
+      "resource_id": "minecraft:trim_material",
+      "source_path": "net/minecraft/world/item/equipment/trim/TrimMaterial.java",
       "status": "partial"
     },
     {
@@ -978,6 +2489,25 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/item/equipment/trim/TrimPattern.java:33:59:RegistryFileCodec.create",
+      "column": 59,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 33,
+      "owner": "net.minecraft.world.item.equipment.trim.TrimPattern",
+      "registry_expression": "Registries.TRIM_PATTERN",
+      "resource_id": "minecraft:trim_pattern",
+      "source_path": "net/minecraft/world/item/equipment/trim/TrimPattern.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/item/equipment/trim/TrimPattern.java:34:97:ByteBufCodecs.holder",
       "column": 97,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -997,6 +2527,217 @@
       "registry_expression": "Registries.TRIM_PATTERN",
       "resource_id": "minecraft:trim_pattern",
       "source_path": "net/minecraft/world/item/equipment/trim/TrimPattern.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/trading/TradeSet.java:17:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 17,
+      "owner": "net.minecraft.world.item.trading.TradeSet",
+      "registry_expression": "Registries.VILLAGER_TRADE",
+      "resource_id": "minecraft:villager_trade",
+      "source_path": "net/minecraft/world/item/trading/TradeSet.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/item/trading/VillagerTrade.java:43:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 43,
+      "owner": "net.minecraft.world.item.trading.VillagerTrade",
+      "registry_expression": "Registries.ENCHANTMENT",
+      "resource_id": "minecraft:enchantment",
+      "source_path": "net/minecraft/world/item/trading/VillagerTrade.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/biome/Biome.java:59:53:RegistryFileCodec.create",
+      "column": 53,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 59,
+      "owner": "net.minecraft.world.level.biome.Biome",
+      "registry_expression": "Registries.BIOME",
+      "resource_id": "minecraft:worldgen/biome",
+      "source_path": "net/minecraft/world/level/biome/Biome.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/biome/Biome.java:60:61:RegistryCodecs.homogeneousList",
+      "column": 61,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-inline",
+      "kind": "persistent_holder_set_or_inline",
+      "line": 60,
+      "owner": "net.minecraft.world.level.biome.Biome",
+      "registry_expression": "Registries.BIOME",
+      "resource_id": "minecraft:worldgen/biome",
+      "source_path": "net/minecraft/world/level/biome/Biome.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/biome/MultiNoiseBiomeSourceParameterList.java:28:82:RegistryFileCodec.create",
+      "column": 82,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 28,
+      "owner": "net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterList",
+      "registry_expression": "Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST",
+      "resource_id": "minecraft:worldgen/multi_noise_biome_source_parameter_list",
+      "source_path": "net/minecraft/world/level/biome/MultiNoiseBiomeSourceParameterList.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/block/AttachedStemBlock.java:33:13:TagKey.codec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 33,
+      "owner": "net.minecraft.world.level.block.AttachedStemBlock",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/block/AttachedStemBlock.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/block/NetherFungusBlock.java:28:13:TagKey.codec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 28,
+      "owner": "net.minecraft.world.level.block.NetherFungusBlock",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/block/NetherFungusBlock.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/block/NetherRootsBlock.java:16:20:TagKey.codec",
+      "column": 20,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 16,
+      "owner": "net.minecraft.world.level.block.NetherRootsBlock",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/block/NetherRootsBlock.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/block/StemBlock.java:35:13:TagKey.codec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 35,
+      "owner": "net.minecraft.world.level.block.StemBlock",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/block/StemBlock.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/block/StemBlock.java:36:13:TagKey.codec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 36,
+      "owner": "net.minecraft.world.level.block.StemBlock",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/block/StemBlock.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/block/entity/BannerPattern.java:24:61:RegistryFileCodec.create",
+      "column": 61,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 24,
+      "owner": "net.minecraft.world.level.block.entity.BannerPattern",
+      "registry_expression": "Registries.BANNER_PATTERN",
+      "resource_id": "minecraft:banner_pattern",
+      "source_path": "net/minecraft/world/level/block/entity/BannerPattern.java",
       "status": "partial"
     },
     {
@@ -1022,6 +2763,65 @@
       "status": "partial"
     },
     {
+      "call_site": "net/minecraft/world/level/block/entity/BeaconBlockEntity.java:286:32:Registry.holderByNameCodec",
+      "column": 32,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 286,
+      "owner": "net.minecraft.world.level.block.entity.BeaconBlockEntity",
+      "registry_expression": "BuiltInRegistries.MOB_EFFECT",
+      "resource_id": "minecraft:mob_effect",
+      "source_path": "net/minecraft/world/level/block/entity/BeaconBlockEntity.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig.java:56:66:RegistryFileCodec.create",
+      "column": 66,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 56,
+      "owner": "net.minecraft.world.level.block.entity.trialspawner.TrialSpawnerConfig",
+      "registry_expression": "Registries.TRIAL_SPAWNER_CONFIG",
+      "resource_id": "minecraft:trial_spawner",
+      "source_path": "net/minecraft/world/level/block/entity/trialspawner/TrialSpawnerConfig.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/chunk/PalettedContainerFactory.java:34:36:Registry.holderByNameCodec",
+      "column": 36,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 34,
+      "owner": "net.minecraft.world.level.chunk.PalettedContainerFactory",
+      "registry_expression": "biomes",
+      "resource_id": null,
+      "source_path": "net/minecraft/world/level/chunk/PalettedContainerFactory.java",
+      "status": "partial"
+    },
+    {
       "call_site": "net/minecraft/world/level/dimension/DimensionType.java:57:99:ByteBufCodecs.holderRegistry",
       "column": 99,
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
@@ -1041,6 +2841,807 @@
       "registry_expression": "Registries.DIMENSION_TYPE",
       "resource_id": "minecraft:dimension_type",
       "source_path": "net/minecraft/world/level/dimension/DimensionType.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/dimension/DimensionType.java:59:61:RegistryFileCodec.create",
+      "column": 61,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 59,
+      "owner": "net.minecraft.world.level.dimension.DimensionType",
+      "registry_expression": "Registries.DIMENSION_TYPE",
+      "resource_id": "minecraft:dimension_type",
+      "source_path": "net/minecraft/world/level/dimension/DimensionType.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/dimension/DimensionType.java:95:19:TagKey.hashedCodec",
+      "column": 19,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.hashedCodec",
+      "family": "persistent-hashed-tag",
+      "kind": "persistent_hashed_tag",
+      "line": 95,
+      "owner": "net.minecraft.world.level.dimension.DimensionType",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/dimension/DimensionType.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/dimension/DimensionType.java:101:19:RegistryCodecs.homogeneousList",
+      "column": 19,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 101,
+      "owner": "net.minecraft.world.level.dimension.DimensionType",
+      "registry_expression": "Registries.TIMELINE",
+      "resource_id": "minecraft:timeline",
+      "source_path": "net/minecraft/world/level/dimension/DimensionType.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/gameevent/GameEvent.java:77:57:RegistryFixedCodec.create",
+      "column": 57,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 77,
+      "owner": "net.minecraft.world.level.gameevent.GameEvent",
+      "registry_expression": "Registries.GAME_EVENT",
+      "resource_id": "minecraft:game_event",
+      "source_path": "net/minecraft/world/level/gameevent/GameEvent.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/DensityFunction.java:14:43:RegistryFileCodec.create",
+      "column": 43,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 14,
+      "owner": "net.minecraft.world.level.levelgen.DensityFunction",
+      "registry_expression": "Registries.DENSITY_FUNCTION",
+      "resource_id": "minecraft:worldgen/density_function",
+      "source_path": "net/minecraft/world/level/levelgen/DensityFunction.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/GeodeBlockSettings.java:30:13:TagKey.hashedCodec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.hashedCodec",
+      "family": "persistent-hashed-tag",
+      "kind": "persistent_hashed_tag",
+      "line": 30,
+      "owner": "net.minecraft.world.level.levelgen.GeodeBlockSettings",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/GeodeBlockSettings.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/GeodeBlockSettings.java:31:13:TagKey.hashedCodec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.hashedCodec",
+      "family": "persistent-hashed-tag",
+      "kind": "persistent_hashed_tag",
+      "line": 31,
+      "owner": "net.minecraft.world.level.levelgen.GeodeBlockSettings",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/GeodeBlockSettings.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/NoiseGeneratorSettings.java:48:70:RegistryFileCodec.create",
+      "column": 70,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 48,
+      "owner": "net.minecraft.world.level.levelgen.NoiseGeneratorSettings",
+      "registry_expression": "Registries.NOISE_SETTINGS",
+      "resource_id": "minecraft:worldgen/noise_settings",
+      "source_path": "net/minecraft/world/level/levelgen/NoiseGeneratorSettings.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/blockpredicates/MatchingBlockTagPredicate.java:14:37:TagKey.codec",
+      "column": 37,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 14,
+      "owner": "net.minecraft.world.level.levelgen.blockpredicates.MatchingBlockTagPredicate",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/blockpredicates/MatchingBlockTagPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/blockpredicates/MatchingBlocksPredicate.java:16:15:RegistryCodecs.homogeneousList",
+      "column": 15,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 16,
+      "owner": "net.minecraft.world.level.levelgen.blockpredicates.MatchingBlocksPredicate",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/blockpredicates/MatchingBlocksPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/blockpredicates/MatchingFluidsPredicate.java:16:15:RegistryCodecs.homogeneousList",
+      "column": 15,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 16,
+      "owner": "net.minecraft.world.level.levelgen.blockpredicates.MatchingFluidsPredicate",
+      "registry_expression": "Registries.FLUID",
+      "resource_id": "minecraft:fluid",
+      "source_path": "net/minecraft/world/level/levelgen/blockpredicates/MatchingFluidsPredicate.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/carver/CarverConfiguration.java:24:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 24,
+      "owner": "net.minecraft.world.level.levelgen.carver.CarverConfiguration",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/carver/CarverConfiguration.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java:24:72:RegistryFileCodec.create",
+      "column": 72,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 24,
+      "owner": "net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver",
+      "registry_expression": "Registries.CONFIGURED_CARVER",
+      "resource_id": "minecraft:worldgen/configured_carver",
+      "source_path": "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java:25:80:RegistryCodecs.homogeneousList",
+      "column": 80,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-inline",
+      "kind": "persistent_holder_set_or_inline",
+      "line": 25,
+      "owner": "net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver",
+      "registry_expression": "Registries.CONFIGURED_CARVER",
+      "resource_id": "minecraft:worldgen/configured_carver",
+      "source_path": "net/minecraft/world/level/levelgen/carver/ConfiguredWorldCarver.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java:19:71:RegistryFileCodec.create",
+      "column": 71,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 19,
+      "owner": "net.minecraft.world.level.levelgen.feature.ConfiguredFeature",
+      "registry_expression": "Registries.CONFIGURED_FEATURE",
+      "resource_id": "minecraft:worldgen/configured_feature",
+      "source_path": "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java:20:79:RegistryCodecs.homogeneousList",
+      "column": 79,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-inline",
+      "kind": "persistent_holder_set_or_inline",
+      "line": 20,
+      "owner": "net.minecraft.world.level.levelgen.feature.ConfiguredFeature",
+      "registry_expression": "Registries.CONFIGURED_FEATURE",
+      "resource_id": "minecraft:worldgen/configured_feature",
+      "source_path": "net/minecraft/world/level/levelgen/feature/ConfiguredFeature.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/configurations/MultifaceGrowthConfiguration.java:33:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 33,
+      "owner": "net.minecraft.world.level.levelgen.feature.configurations.MultifaceGrowthConfiguration",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/feature/configurations/MultifaceGrowthConfiguration.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/configurations/RootSystemConfiguration.java:19:13:TagKey.hashedCodec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.hashedCodec",
+      "family": "persistent-hashed-tag",
+      "kind": "persistent_hashed_tag",
+      "line": 19,
+      "owner": "net.minecraft.world.level.levelgen.feature.configurations.RootSystemConfiguration",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/feature/configurations/RootSystemConfiguration.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/configurations/SpringConfiguration.java:18:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 18,
+      "owner": "net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/feature/configurations/SpringConfiguration.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/configurations/VegetationPatchConfiguration.java:18:13:TagKey.hashedCodec",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.hashedCodec",
+      "family": "persistent-hashed-tag",
+      "kind": "persistent_hashed_tag",
+      "line": 18,
+      "owner": "net.minecraft.world.level.levelgen.feature.configurations.VegetationPatchConfiguration",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/feature/configurations/VegetationPatchConfiguration.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java:21:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 21,
+      "owner": "net.minecraft.world.level.levelgen.feature.rootplacers.MangroveRootPlacement",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java:22:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 22,
+      "owner": "net.minecraft.world.level.levelgen.feature.rootplacers.MangroveRootPlacement",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/feature/rootplacers/MangroveRootPlacement.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/feature/trunkplacers/UpwardsBranchingTrunkPlacer.java:31:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 31,
+      "owner": "net.minecraft.world.level.levelgen.feature.trunkplacers.UpwardsBranchingTrunkPlacer",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/feature/trunkplacers/UpwardsBranchingTrunkPlacer.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorPreset.java:15:72:RegistryFileCodec.create",
+      "column": 72,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 15,
+      "owner": "net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorPreset",
+      "registry_expression": "Registries.FLAT_LEVEL_GENERATOR_PRESET",
+      "resource_id": "minecraft:worldgen/flat_level_generator_preset",
+      "source_path": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorPreset.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorSettings.java:38:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 38,
+      "owner": "net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings",
+      "registry_expression": "Registries.STRUCTURE_SET",
+      "resource_id": "minecraft:worldgen/structure_set",
+      "source_path": "net/minecraft/world/level/levelgen/flat/FlatLevelGeneratorSettings.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java:30:61:RegistryFileCodec.create",
+      "column": 61,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 30,
+      "owner": "net.minecraft.world.level.levelgen.placement.PlacedFeature",
+      "registry_expression": "Registries.PLACED_FEATURE",
+      "resource_id": "minecraft:worldgen/placed_feature",
+      "source_path": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java:31:69:RegistryCodecs.homogeneousList",
+      "column": 69,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-inline",
+      "kind": "persistent_holder_set_or_inline",
+      "line": 31,
+      "owner": "net.minecraft.world.level.levelgen.placement.PlacedFeature",
+      "registry_expression": "Registries.PLACED_FEATURE",
+      "resource_id": "minecraft:worldgen/placed_feature",
+      "source_path": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java:32:84:RegistryCodecs.homogeneousList",
+      "column": 84,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-inline",
+      "kind": "persistent_holder_set_or_inline",
+      "line": 32,
+      "owner": "net.minecraft.world.level.levelgen.placement.PlacedFeature",
+      "registry_expression": "Registries.PLACED_FEATURE",
+      "resource_id": "minecraft:worldgen/placed_feature",
+      "source_path": "net/minecraft/world/level/levelgen/placement/PlacedFeature.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/presets/WorldPreset.java:24:59:RegistryFileCodec.create",
+      "column": 59,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 24,
+      "owner": "net.minecraft.world.level.levelgen.presets.WorldPreset",
+      "registry_expression": "Registries.WORLD_PRESET",
+      "resource_id": "minecraft:worldgen/world_preset",
+      "source_path": "net/minecraft/world/level/levelgen/presets/WorldPreset.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/Structure.java:48:57:RegistryFileCodec.create",
+      "column": 57,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 48,
+      "owner": "net.minecraft.world.level.levelgen.structure.Structure",
+      "registry_expression": "Registries.STRUCTURE",
+      "resource_id": "minecraft:worldgen/structure",
+      "source_path": "net/minecraft/world/level/levelgen/structure/Structure.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/Structure.java:276:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 276,
+      "owner": "net.minecraft.world.level.levelgen.structure.Structure.StructureSettings",
+      "registry_expression": "Registries.BIOME",
+      "resource_id": "minecraft:worldgen/biome",
+      "source_path": "net/minecraft/world/level/levelgen/structure/Structure.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/StructureSet.java:20:60:RegistryFileCodec.create",
+      "column": 60,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 20,
+      "owner": "net.minecraft.world.level.levelgen.structure.StructureSet",
+      "registry_expression": "Registries.STRUCTURE_SET",
+      "resource_id": "minecraft:worldgen/structure_set",
+      "source_path": "net/minecraft/world/level/levelgen/structure/StructureSet.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/placement/ConcentricRingsStructurePlacement.java:40:10:RegistryCodecs.homogeneousList",
+      "column": 10,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 40,
+      "owner": "net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement",
+      "registry_expression": "Registries.BIOME",
+      "resource_id": "minecraft:worldgen/biome",
+      "source_path": "net/minecraft/world/level/levelgen/structure/placement/ConcentricRingsStructurePlacement.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java:135:16:RegistryFileCodec.create",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 135,
+      "owner": "net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.ExclusionZone",
+      "registry_expression": "Registries.STRUCTURE_SET",
+      "resource_id": "minecraft:worldgen/structure_set",
+      "source_path": "net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool.java:41:7:RegistryFileCodec.create",
+      "column": 7,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 41,
+      "owner": "net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool",
+      "registry_expression": "Registries.TEMPLATE_POOL",
+      "resource_id": "minecraft:worldgen/template_pool",
+      "source_path": "net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/BlockRotProcessor.java:19:13:RegistryCodecs.homogeneousList",
+      "column": 13,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 19,
+      "owner": "net.minecraft.world.level.levelgen.structure.templatesystem.BlockRotProcessor",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/structure/templatesystem/BlockRotProcessor.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/ProtectedBlockProcessor.java:14:66:TagKey.hashedCodec",
+      "column": 66,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.hashedCodec",
+      "family": "persistent-hashed-tag",
+      "kind": "persistent_hashed_tag",
+      "line": 14,
+      "owner": "net.minecraft.world.level.levelgen.structure.templatesystem.ProtectedBlockProcessor",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/structure/templatesystem/ProtectedBlockProcessor.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/StructureProcessorType.java:17:55:RegistryFileCodec.create",
+      "column": 55,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 17,
+      "owner": "net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType",
+      "registry_expression": "Registries.PROCESSOR_LIST",
+      "resource_id": "minecraft:worldgen/processor_list",
+      "source_path": "net/minecraft/world/level/levelgen/structure/templatesystem/StructureProcessorType.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/structure/templatesystem/TagMatchTest.java:11:55:TagKey.codec",
+      "column": 55,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 11,
+      "owner": "net.minecraft.world.level.levelgen.structure.templatesystem.TagMatchTest",
+      "registry_expression": "Registries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/levelgen/structure/templatesystem/TagMatchTest.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/levelgen/synth/NormalNoise.java:104:78:RegistryFileCodec.create",
+      "column": 78,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 104,
+      "owner": "net.minecraft.world.level.levelgen.synth.NormalNoise.NoiseParameters",
+      "registry_expression": "Registries.NOISE",
+      "resource_id": "minecraft:worldgen/noise",
+      "source_path": "net/minecraft/world/level/levelgen/synth/NormalNoise.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/saveddata/maps/MapDecorationType.java:14:65:Registry.holderByNameCodec",
+      "column": 65,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 14,
+      "owner": "net.minecraft.world.level.saveddata.maps.MapDecorationType",
+      "registry_expression": "BuiltInRegistries.MAP_DECORATION_TYPE",
+      "resource_id": "minecraft:map_decoration_type",
+      "source_path": "net/minecraft/world/level/saveddata/maps/MapDecorationType.java",
       "status": "partial"
     },
     {
@@ -1064,11 +3665,266 @@
       "resource_id": "minecraft:map_decoration_type",
       "source_path": "net/minecraft/world/level/saveddata/maps/MapDecorationType.java",
       "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/LootTable.java:48:57:RegistryFileCodec.create",
+      "column": 57,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 48,
+      "owner": "net.minecraft.world.level.storage.loot.LootTable",
+      "registry_expression": "Registries.LOOT_TABLE",
+      "resource_id": "minecraft:loot_table",
+      "source_path": "net/minecraft/world/level/storage/loot/LootTable.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/entries/TagEntry.java:20:20:TagKey.codec",
+      "column": 20,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 20,
+      "owner": "net.minecraft.world.level.storage.loot.entries.TagEntry",
+      "registry_expression": "Registries.ITEM",
+      "resource_id": "minecraft:item",
+      "source_path": "net/minecraft/world/level/storage/loot/entries/TagEntry.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/functions/CopyBlockState.java:29:16:Registry.holderByNameCodec",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 29,
+      "owner": "net.minecraft.world.level.storage.loot.functions.CopyBlockState",
+      "registry_expression": "BuiltInRegistries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/storage/loot/functions/CopyBlockState.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java:37:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 37,
+      "owner": "net.minecraft.world.level.storage.loot.functions.EnchantRandomlyFunction",
+      "registry_expression": "Registries.ENCHANTMENT",
+      "resource_id": "minecraft:enchantment",
+      "source_path": "net/minecraft/world/level/storage/loot/functions/EnchantRandomlyFunction.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/functions/EnchantWithLevelsFunction.java:35:16:RegistryCodecs.homogeneousList",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 35,
+      "owner": "net.minecraft.world.level.storage.loot.functions.EnchantWithLevelsFunction",
+      "registry_expression": "Registries.ENCHANTMENT",
+      "resource_id": "minecraft:enchantment",
+      "source_path": "net/minecraft/world/level/storage/loot/functions/EnchantWithLevelsFunction.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/functions/ExplorationMapFunction.java:37:16:TagKey.codec",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "TagKey.codec",
+      "family": "persistent-tag",
+      "kind": "persistent_tag",
+      "line": 37,
+      "owner": "net.minecraft.world.level.storage.loot.functions.ExplorationMapFunction",
+      "registry_expression": "Registries.STRUCTURE",
+      "resource_id": "minecraft:worldgen/structure",
+      "source_path": "net/minecraft/world/level/storage/loot/functions/ExplorationMapFunction.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/functions/LootItemFunctions.java:21:64:RegistryFileCodec.create",
+      "column": 64,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 21,
+      "owner": "net.minecraft.world.level.storage.loot.functions.LootItemFunctions",
+      "registry_expression": "Registries.ITEM_MODIFIER",
+      "resource_id": "minecraft:item_modifier",
+      "source_path": "net/minecraft/world/level/storage/loot/functions/LootItemFunctions.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/functions/SetContainerLootTable.java:26:16:Registry.holderByNameCodec",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 26,
+      "owner": "net.minecraft.world.level.storage.loot.functions.SetContainerLootTable",
+      "registry_expression": "BuiltInRegistries.BLOCK_ENTITY_TYPE",
+      "resource_id": "minecraft:block_entity_type",
+      "source_path": "net/minecraft/world/level/storage/loot/functions/SetContainerLootTable.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/functions/SetInstrumentFunction.java:20:15:RegistryCodecs.homogeneousList",
+      "column": 15,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 20,
+      "owner": "net.minecraft.world.level.storage.loot.functions.SetInstrumentFunction",
+      "registry_expression": "Registries.INSTRUMENT",
+      "resource_id": "minecraft:instrument",
+      "source_path": "net/minecraft/world/level/storage/loot/functions/SetInstrumentFunction.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/functions/SetRandomPotionFunction.java:21:15:RegistryCodecs.homogeneousList",
+      "column": 15,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "factory": "RegistryCodecs.homogeneousList",
+      "family": "persistent-holder-set-or-tag",
+      "kind": "persistent_holder_set_or_tag",
+      "line": 21,
+      "owner": "net.minecraft.world.level.storage.loot.functions.SetRandomPotionFunction",
+      "registry_expression": "Registries.POTION",
+      "resource_id": "minecraft:potion",
+      "source_path": "net/minecraft/world/level/storage/loot/functions/SetRandomPotionFunction.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java:20:16:Registry.holderByNameCodec",
+      "column": 16,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "Registry.holderByNameCodec",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 20,
+      "owner": "net.minecraft.world.level.storage.loot.predicates.LootItemBlockStatePropertyCondition",
+      "registry_expression": "BuiltInRegistries.BLOCK",
+      "resource_id": "minecraft:block",
+      "source_path": "net/minecraft/world/level/storage/loot/predicates/LootItemBlockStatePropertyCondition.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java:16:45:RegistryFileCodec.create",
+      "column": 45,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFileCodec.create",
+      "family": "persistent-holder-or-inline",
+      "kind": "persistent_holder_or_inline",
+      "line": 16,
+      "owner": "net.minecraft.world.level.storage.loot.predicates.LootItemCondition",
+      "registry_expression": "Registries.PREDICATE",
+      "resource_id": "minecraft:predicate",
+      "source_path": "net/minecraft/world/level/storage/loot/predicates/LootItemCondition.java",
+      "status": "partial"
+    },
+    {
+      "call_site": "net/minecraft/world/timeline/Timeline.java:33:56:RegistryFixedCodec.create",
+      "column": 56,
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "factory": "RegistryFixedCodec.create",
+      "family": "persistent-holder-reference",
+      "kind": "persistent_holder_reference",
+      "line": 33,
+      "owner": "net.minecraft.world.timeline.Timeline",
+      "registry_expression": "Registries.TIMELINE",
+      "resource_id": "minecraft:timeline",
+      "source_path": "net/minecraft/world/timeline/Timeline.java",
+      "status": "partial"
     }
   ],
   "generated_by": "scripts/generate-bootstrap-catalog.py",
   "schema_version": 1,
-  "scope": "All vanilla network Holder, HolderSet, and TagKey factory call sites. Persistent Codec call sites remain in the source inventory for the next coverage stage.",
+  "scope": "All vanilla Holder, HolderSet, and TagKey network stream-codec and persistent Codec factory call sites.",
   "update_command": "scripts/vanilla-source-tools.sh scripts/generate-bootstrap-catalog.py",
   "vanilla_version": "26.1"
 }

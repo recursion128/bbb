@@ -57,11 +57,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn coverage_ledger_maps_every_network_holder_consumer_once() {
+    fn coverage_ledger_maps_every_holder_consumer_once() {
         let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
         assert_eq!(ledger.schema_version, 1);
         assert_eq!(ledger.vanilla_version, crate::MC_VERSION);
-        assert_eq!(ledger.entries.len(), 49);
+        assert_eq!(ledger.entries.len(), 194);
         assert_eq!(
             ledger
                 .allowed_statuses
@@ -73,7 +73,6 @@ mod tests {
 
         let expected: BTreeSet<_> = VANILLA_REGISTRY_HOLDER_CONSUMERS
             .iter()
-            .filter(|entry| entry.kind.starts_with("network_"))
             .map(|entry| {
                 format!(
                     "{}:{}:{}:{}",
@@ -131,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn network_coverage_uses_narrow_families_without_premature_completion() {
+    fn coverage_uses_narrow_families_without_premature_completion() {
         let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
         let counts = ledger
             .entries
@@ -146,6 +145,37 @@ mod tests {
         assert_eq!(counts["network-holder-reference-helper"], 1);
         assert_eq!(counts["network-holder-set-or-tag"], 11);
         assert_eq!(counts["network-tag"], 1);
+        assert_eq!(counts["persistent-hashed-tag"], 7);
+        assert_eq!(counts["persistent-holder-or-inline"], 27);
+        assert_eq!(counts["persistent-holder-reference"], 41);
+        assert_eq!(counts["persistent-holder-set-custom"], 3);
+        assert_eq!(counts["persistent-holder-set-or-inline"], 6);
+        assert_eq!(counts["persistent-holder-set-or-tag"], 50);
+        assert_eq!(counts["persistent-tag"], 11);
+        assert_eq!(
+            ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
+                .count(),
+            191
+        );
+        assert_eq!(
+            ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.status == RegistryHolderCoverageStatus::Deferred)
+                .count(),
+            2
+        );
+        assert_eq!(
+            ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.status == RegistryHolderCoverageStatus::NotApplicable)
+                .count(),
+            1
+        );
         assert!(ledger
             .entries
             .iter()

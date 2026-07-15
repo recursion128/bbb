@@ -99,6 +99,101 @@
         "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
       ],
       "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    },
+    {
+      "id": "persistent-hashed-tag",
+      "selector": {
+        "kind": "persistent_hashed_tag"
+      },
+      "status": "partial",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> hashedCodec",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#TagKey.hashedCodec(registryKey)",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    },
+    {
+      "id": "persistent-holder-or-inline",
+      "selector": {
+        "kind": "persistent_holder_or_inline"
+      },
+      "status": "partial",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    },
+    {
+      "id": "persistent-holder-reference",
+      "selector": {
+        "kind": "persistent_holder_reference"
+      },
+      "status": "partial",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    },
+    {
+      "id": "persistent-holder-set-custom",
+      "selector": {
+        "kind": "persistent_holder_set_custom"
+      },
+      "status": "partial",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public static <E> Codec<HolderSet<E>> create(",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    },
+    {
+      "id": "persistent-holder-set-or-inline",
+      "selector": {
+        "kind": "persistent_holder_set_or_inline"
+      },
+      "status": "partial",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
+      "evidence": [
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+      ],
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    },
+    {
+      "id": "persistent-holder-set-or-tag",
+      "selector": {
+        "kind": "persistent_holder_set_or_tag"
+      },
+      "status": "partial",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "evidence": [
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+    },
+    {
+      "id": "persistent-tag",
+      "selector": {
+        "kind": "persistent_tag"
+      },
+      "status": "partial",
+      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
+      "evidence": [
+        "vanilla:net/minecraft/tags/TagKey.java#public static <T> Codec<TagKey<T>> codec",
+        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+      ],
+      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
     }
   ]
 }
