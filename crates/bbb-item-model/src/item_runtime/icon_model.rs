@@ -1195,6 +1195,9 @@ pub(super) struct IconResolveContext<'a> {
     /// `minecraft:trim_material` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub trim_material_keys: Option<&'a [String]>,
+    /// `minecraft:trim_pattern` registry keys by holder id (the dynamic
+    /// registry, projected from `bbb-world` at the call site).
+    pub trim_pattern_keys: Option<&'a [String]>,
     /// `minecraft:enchantment` registry keys by holder id (the dynamic
     /// registry, projected from `bbb-world` at the call site).
     pub enchantment_keys: Option<&'a [String]>,
@@ -3121,6 +3124,7 @@ fn item_stack_matches_bundle_contents_predicate(
         ctx.enchantment_keys,
         ctx.enchantment_tags,
         ctx.trim_material_keys,
+        ctx.trim_pattern_keys,
         ctx.trim_material_tags,
         ctx.trim_pattern_tags,
         ctx.jukebox_song_tags,
@@ -3186,6 +3190,7 @@ fn item_stack_matches_container_predicate(
         ctx.enchantment_keys,
         ctx.enchantment_tags,
         ctx.trim_material_keys,
+        ctx.trim_pattern_keys,
         ctx.trim_material_tags,
         ctx.trim_pattern_tags,
         ctx.jukebox_song_tags,
@@ -4473,6 +4478,7 @@ fn item_collection_predicate_matches(
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
@@ -4501,6 +4507,7 @@ fn item_collection_predicate_matches(
                     enchantment_keys,
                     enchantment_tags,
                     trim_material_keys,
+                    trim_pattern_keys,
                     trim_material_tags,
                     trim_pattern_tags,
                     jukebox_song_tags,
@@ -4530,6 +4537,7 @@ fn item_collection_predicate_matches(
                 enchantment_keys,
                 enchantment_tags,
                 trim_material_keys,
+                trim_pattern_keys,
                 trim_material_tags,
                 trim_pattern_tags,
                 jukebox_song_tags,
@@ -4567,6 +4575,7 @@ fn item_predicate_count_entry_matches(
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
@@ -4595,6 +4604,7 @@ fn item_predicate_count_entry_matches(
                 enchantment_keys,
                 enchantment_tags,
                 trim_material_keys,
+                trim_pattern_keys,
                 trim_material_tags,
                 trim_pattern_tags,
                 jukebox_song_tags,
@@ -4622,6 +4632,7 @@ fn item_predicate_matches(
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
@@ -4666,6 +4677,7 @@ fn item_predicate_matches(
             enchantment_keys,
             enchantment_tags,
             trim_material_keys,
+            trim_pattern_keys,
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
@@ -4690,6 +4702,7 @@ fn item_data_component_matchers_match(
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
@@ -4711,6 +4724,7 @@ fn item_data_component_matchers_match(
             resource_id,
             enchantment_keys,
             trim_material_keys,
+            trim_pattern_keys,
             attribute_keys,
             default_max_stack_size_for_item,
             default_max_damage_for_item,
@@ -4727,6 +4741,7 @@ fn item_data_component_matchers_match(
             enchantment_keys,
             enchantment_tags,
             trim_material_keys,
+            trim_pattern_keys,
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
@@ -4749,6 +4764,7 @@ fn item_exact_components_match(
     resource_id: &str,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
     default_max_stack_size_for_item: Option<&dyn Fn(i32) -> i32>,
     default_max_damage_for_item: Option<&dyn Fn(i32) -> Option<i32>>,
@@ -4772,6 +4788,7 @@ fn item_exact_components_match(
             resource_id,
             enchantment_keys,
             trim_material_keys,
+            trim_pattern_keys,
             attribute_keys,
             default_max_stack_size,
             default_max_damage,
@@ -4787,6 +4804,7 @@ fn item_exact_component_matches(
     resource_id: &str,
     enchantment_keys: Option<&[String]>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
     default_max_stack_size: Option<i32>,
     default_max_damage: Option<i32>,
@@ -4952,7 +4970,12 @@ fn item_exact_component_matches(
         let Some(expected) = trim_exact_value(expected) else {
             return false;
         };
-        return trim_exact_match(&expected, &item.component_patch, trim_material_keys);
+        return trim_exact_match(
+            &expected,
+            &item.component_patch,
+            trim_material_keys,
+            trim_pattern_keys,
+        );
     }
 
     if component == "minecraft:villager/variant" {
@@ -4972,6 +4995,7 @@ fn item_partial_component_predicates_match(
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
@@ -5000,6 +5024,7 @@ fn item_partial_component_predicates_match(
             enchantment_keys,
             enchantment_tags,
             trim_material_keys,
+            trim_pattern_keys,
             trim_material_tags,
             trim_pattern_tags,
             jukebox_song_tags,
@@ -5021,6 +5046,7 @@ fn item_partial_component_predicate_match(
     enchantment_keys: Option<&[String]>,
     enchantment_tags: Option<&TagCatalog>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
     jukebox_song_tags: Option<&TagCatalog>,
@@ -5039,6 +5065,7 @@ fn item_partial_component_predicate_match(
             value,
             component_patch,
             trim_material_keys,
+            trim_pattern_keys,
             trim_material_tags,
             trim_pattern_tags,
         ),
@@ -5230,6 +5257,7 @@ fn item_stack_matches_trim_predicate(
         value,
         ctx.component_patch,
         ctx.trim_material_keys,
+        ctx.trim_pattern_keys,
         ctx.trim_material_tags,
         ctx.trim_pattern_tags,
     )
@@ -5239,6 +5267,7 @@ fn item_stack_matches_trim_value(
     value: &Value,
     component_patch: Option<&DataComponentPatchSummary>,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     trim_material_tags: Option<&TagCatalog>,
     trim_pattern_tags: Option<&TagCatalog>,
 ) -> bool {
@@ -5275,8 +5304,7 @@ fn item_stack_matches_trim_value(
     if let Some(pattern) = value.get("pattern") {
         let Some(pattern_key) = component_patch
             .armor_trim_pattern_id
-            .and_then(VanillaTrimPatternIdentity::for_vanilla_registry_id)
-            .map(VanillaTrimPatternIdentity::resource_id)
+            .and_then(|id| trim_pattern_resource_id(id, trim_pattern_keys))
         else {
             return false;
         };
@@ -5285,6 +5313,16 @@ fn item_stack_matches_trim_value(
         }
     }
     true
+}
+
+fn trim_pattern_resource_id(holder_id: i32, trim_pattern_keys: Option<&[String]>) -> Option<&str> {
+    match trim_pattern_keys {
+        Some(keys) => keys
+            .get(usize::try_from(holder_id).ok()?)
+            .map(String::as_str),
+        None => VanillaTrimPatternIdentity::for_vanilla_registry_id(holder_id)
+            .map(VanillaTrimPatternIdentity::resource_id),
+    }
 }
 
 struct ExactTrim<'a> {
@@ -5407,6 +5445,7 @@ fn trim_exact_match(
     expected: &ExactTrim<'_>,
     component_patch: &DataComponentPatchSummary,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
 ) -> bool {
     if component_patch
         .removed_type_ids
@@ -5418,7 +5457,7 @@ fn trim_exact_match(
         return false;
     }
     trim_material_exact_match(&expected.material, component_patch, trim_material_keys)
-        && trim_pattern_exact_match(&expected.pattern, component_patch)
+        && trim_pattern_exact_match(&expected.pattern, component_patch, trim_pattern_keys)
 }
 
 fn trim_material_exact_match(
@@ -5456,13 +5495,13 @@ fn direct_trim_material_exact_match(
 fn trim_pattern_exact_match(
     expected: &ExactTrimPattern<'_>,
     component_patch: &DataComponentPatchSummary,
+    trim_pattern_keys: Option<&[String]>,
 ) -> bool {
     match expected {
         ExactTrimPattern::RegistryKey(expected) => {
             let Some(pattern_key) = component_patch
                 .armor_trim_pattern_id
-                .and_then(VanillaTrimPatternIdentity::for_vanilla_registry_id)
-                .map(VanillaTrimPatternIdentity::resource_id)
+                .and_then(|id| trim_pattern_resource_id(id, trim_pattern_keys))
             else {
                 return false;
             };

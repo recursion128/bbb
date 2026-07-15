@@ -159,6 +159,8 @@ pub struct NativeItemTooltipOptions<'a> {
     pub creative: bool,
     pub peaceful: bool,
     pub map_data: Option<NativeItemMapTooltipData>,
+    pub trim_material_keys: Option<&'a [String]>,
+    pub trim_pattern_keys: Option<&'a [String]>,
     pub enchantment_keys: Option<&'a [String]>,
     pub enchantment_definitions: Option<&'a [Option<EnchantmentTooltipDefinition>]>,
     pub enchantment_attribute_modifiers: Option<&'a [EnchantmentAttributeModifier]>,
@@ -2222,13 +2224,17 @@ fn push_armor_trim_tooltip_lines(
     material: Option<&TrimMaterialSummary>,
     pattern_id: Option<i32>,
     pattern: Option<&TrimPatternSummary>,
+    material_keys: Option<&[String]>,
+    pattern_keys: Option<&[String]>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let Some(material_tooltip) = armor_trim_material_tooltip(language, material_id, material)
+    let Some(material_tooltip) =
+        armor_trim_material_tooltip(language, material_id, material, material_keys)
     else {
         return;
     };
-    let Some(pattern_description) = armor_trim_pattern_description(language, pattern_id, pattern)
+    let Some(pattern_description) =
+        armor_trim_pattern_description(language, pattern_id, pattern, pattern_keys)
     else {
         return;
     };
@@ -2262,6 +2268,7 @@ fn armor_trim_material_tooltip(
     language: &LanguageCatalog,
     material_id: Option<i32>,
     material: Option<&TrimMaterialSummary>,
+    material_keys: Option<&[String]>,
 ) -> Option<ArmorTrimMaterialTooltip> {
     if let Some(material) = material {
         let description = armor_trim_direct_description(
@@ -2271,8 +2278,12 @@ fn armor_trim_material_tooltip(
         let style = armor_trim_material_style(&description.runs);
         return Some(ArmorTrimMaterialTooltip { description, style });
     }
-    let material = VanillaTrimMaterialIdentity::for_vanilla_registry_id(material_id?)?;
-    let key = material.resource_id();
+    let material_id = material_id?;
+    let key = match material_keys {
+        Some(keys) => keys.get(usize::try_from(material_id).ok()?)?.as_str(),
+        None => VanillaTrimMaterialIdentity::for_vanilla_registry_id(material_id)?.resource_id(),
+    };
+    let material = VanillaTrimMaterialIdentity::for_resource_id(key)?;
     let text = language
         .get_or_key(&description_key("trim_material", key))
         .to_string();
@@ -2296,6 +2307,7 @@ fn armor_trim_pattern_description(
     language: &LanguageCatalog,
     pattern_id: Option<i32>,
     pattern: Option<&TrimPatternSummary>,
+    pattern_keys: Option<&[String]>,
 ) -> Option<ArmorTrimDescription> {
     if let Some(pattern) = pattern {
         return Some(armor_trim_direct_description(
@@ -2303,7 +2315,11 @@ fn armor_trim_pattern_description(
             pattern.description_styled.as_deref(),
         ));
     }
-    let key = VanillaTrimPatternIdentity::for_vanilla_registry_id(pattern_id?)?.resource_id();
+    let pattern_id = pattern_id?;
+    let key = match pattern_keys {
+        Some(keys) => keys.get(usize::try_from(pattern_id).ok()?)?.as_str(),
+        None => VanillaTrimPatternIdentity::for_vanilla_registry_id(pattern_id)?.resource_id(),
+    };
     let text = language
         .get_or_key(&description_key("trim_pattern", key))
         .to_string();
@@ -2974,6 +2990,8 @@ impl NativeItemRuntime {
                 component_patch.armor_trim_material_direct.as_deref(),
                 component_patch.armor_trim_pattern_id,
                 component_patch.armor_trim_pattern_direct.as_deref(),
+                options.trim_material_keys,
+                options.trim_pattern_keys,
                 lines,
             );
         }

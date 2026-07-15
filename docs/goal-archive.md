@@ -15162,3 +15162,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 新的 protocol semantic module 提供按 registry 计数的窄 lookup，`RegistryPacket` 将具体 vanilla
   consumer 数量暴露为诊断；生成测试覆盖 reference、inline、set、tag、generic 形状，world 测试锁定
   biome/item/custom/sound-event 的非零或零分类。bbb consumer coverage 映射保持后续 foundation 工作。
+
+## 2026-07-15：Fix synchronized trim holder identity
+
+- [x] 对照 vanilla 26.1 `TrimMaterial.STREAM_CODEC`、`TrimPattern.STREAM_CODEC`、
+  `ArmorTrim.STREAM_CODEC` 与 `TrimMaterialProperty`，把 active world 的 trim-material 与
+  trim-pattern holder 顺序同时贯穿 GUI/HUD、第一/第三人称、掉落物、拾取粒子、物品框、tooltip
+  以及 item-model exact/partial component predicates；服务器重排后不再以 vanilla numeric id
+  误选另一个 material/pattern resource。
+- [x] F3 本地持久化编码使用同一 session registry context，并递归传入 use-remainder、charged
+  projectiles、bundle、container 与 adventure exact-component ItemStack；无 session registry 的
+  offline/test 路径保留显式 vanilla 26.1 fallback。回归覆盖 tooltip 双 registry 重排、pattern
+  predicate 的 sentry/spire 反序，以及自定义 material/pattern 的 persistent SNBT resource id。

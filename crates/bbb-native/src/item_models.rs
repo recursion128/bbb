@@ -81,6 +81,10 @@ pub(crate) fn world_trim_material_keys(world: &WorldStore) -> Option<Vec<String>
     world_registry_keys(world, "minecraft:trim_material")
 }
 
+pub(crate) fn world_trim_pattern_keys(world: &WorldStore) -> Option<Vec<String>> {
+    world_registry_keys(world, "minecraft:trim_pattern")
+}
+
 pub(crate) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
     world_registry_keys(world, "minecraft:attribute")
 }

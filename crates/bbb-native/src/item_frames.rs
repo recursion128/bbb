@@ -67,6 +67,7 @@ pub(crate) fn item_frame_models(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> ItemFrameModels {
@@ -215,6 +216,7 @@ pub(crate) fn item_frame_models(
             stack,
             BlockModelDisplayContext::Fixed,
             trim_material_keys,
+            trim_pattern_keys,
             enchantment_keys,
             attribute_keys,
         ) {
@@ -430,6 +432,7 @@ mod tests {
             None,
             None,
             None,
+            None,
         );
         assert!(visible.block_meshes.is_empty());
         assert_eq!(visible.block_z_offset_forward_meshes.len(), 1);
@@ -449,6 +452,7 @@ mod tests {
             &world,
             None,
             &TerrainTextureState::default(),
+            None,
             None,
             None,
             None,
@@ -478,6 +482,7 @@ mod tests {
             &world,
             None,
             &TerrainTextureState::default(),
+            None,
             None,
             None,
             None,
@@ -522,6 +527,7 @@ mod tests {
             &world,
             None,
             &TerrainTextureState::default(),
+            None,
             None,
             None,
             None,
@@ -622,6 +628,7 @@ mod tests {
             &world,
             Some(&item_runtime),
             &TerrainTextureState::default(),
+            None,
             None,
             None,
             None,

@@ -426,7 +426,9 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "item.minecraft.crossbow.projectile.single": "Projectile: %s",
                 "item.minecraft.crossbow.projectile.multiple": "Projectile: %s x %s",
                 "trim_material.minecraft.iron": "Iron Material",
+                "trim_material.minecraft.diamond": "Diamond Material",
                 "trim_pattern.minecraft.sentry": "Sentry Armor Trim",
+                "trim_pattern.minecraft.spire": "Spire Armor Trim",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
                 "item.minecraft.firework_rocket.single_star": "%s",
                 "item.minecraft.firework_rocket.multiple_stars": "%s x %s",
@@ -610,6 +612,32 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
             tooltip_line("minecraft:test_combo", TOOLTIP_TEXT_DARK_GRAY),
             tooltip_line("13 component(s)", TOOLTIP_TEXT_DARK_GRAY),
+        ])
+    );
+    let remapped_trim_material_keys = ["minecraft:diamond".to_string()];
+    let remapped_trim_pattern_keys = ["minecraft:spire".to_string()];
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    armor_trim_material_id: Some(0),
+                    armor_trim_pattern_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                trim_material_keys: Some(&remapped_trim_material_keys),
+                trim_pattern_keys: Some(&remapped_trim_pattern_keys),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
+            colored_trim_tooltip_line("Spire Armor Trim", 0x6E_EC_D2),
+            colored_trim_tooltip_line("Diamond Material", 0x6E_EC_D2),
         ])
     );
     assert_eq!(
@@ -4741,6 +4769,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         "minecraft:quartz".to_string(),
         "minecraft:diamond".to_string(),
     ];
+    let trim_pattern_keys = ["minecraft:sentry".to_string(), "minecraft:dune".to_string()];
     let enchantment_keys = [
         "minecraft:sharpness".to_string(),
         "minecraft:mending".to_string(),
@@ -4752,25 +4781,42 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         "minecraft:attack_speed".to_string(),
     ];
     let healing_potion_id = 24;
+    let selected_with_registry_trim_keys =
+        |item_id, component_patch, material_keys: &[String], pattern_keys: &[String]| {
+            runtime
+                .icon_for_stack_with_model_registry_context(
+                    &ItemStackSummary {
+                        item_id: Some(item_id),
+                        count: 1,
+                        component_patch,
+                    },
+                    None,
+                    false,
+                    ItemModelUseContext::inactive(),
+                    BlockModelDisplayContext::Gui,
+                    0.0,
+                    Some(material_keys),
+                    Some(pattern_keys),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    false,
+                    false,
+                    false,
+                    false,
+                    ItemModelKeybindContext::default(),
+                    false,
+                )
+                .unwrap()
+                .layers[0]
+                .uv
+        };
     let selected_with_trim_keys = |item_id, component_patch| {
-        runtime
-            .icon_for_stack_with_context(
-                &ItemStackSummary {
-                    item_id: Some(item_id),
-                    count: 1,
-                    component_patch,
-                },
-                None,
-                false,
-                0.0,
-                Some(&trim_keys),
-                None,
-                None,
-                None,
-            )
-            .unwrap()
-            .layers[0]
-            .uv
+        selected_with_registry_trim_keys(item_id, component_patch, &trim_keys, &trim_pattern_keys)
     };
     let selected_with_enchantment_keys = |item_id, component_patch| {
         runtime
@@ -4785,6 +4831,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 ItemModelUseContext::inactive(),
                 BlockModelDisplayContext::Gui,
                 0.0,
+                None,
                 None,
                 Some(&enchantment_keys),
                 None,
@@ -4817,6 +4864,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 ItemModelUseContext::inactive(),
                 BlockModelDisplayContext::Gui,
                 0.0,
+                None,
                 None,
                 None,
                 Some(&attribute_keys),
@@ -5610,6 +5658,38 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             }
         ),
         uv("component_condition_trim_pattern_absent")
+    );
+    let reordered_trim_pattern_keys = [
+        "minecraft:spire".to_string(),
+        "minecraft:sentry".to_string(),
+    ];
+    assert_eq!(
+        selected_with_registry_trim_keys(
+            14,
+            DataComponentPatchSummary {
+                added_type_ids: vec![56],
+                armor_trim_material_id: Some(1),
+                armor_trim_pattern_id: Some(0),
+                ..DataComponentPatchSummary::default()
+            },
+            &trim_keys,
+            &reordered_trim_pattern_keys,
+        ),
+        uv("component_condition_trim_pattern_absent")
+    );
+    assert_eq!(
+        selected_with_registry_trim_keys(
+            14,
+            DataComponentPatchSummary {
+                added_type_ids: vec![56],
+                armor_trim_material_id: Some(1),
+                armor_trim_pattern_id: Some(1),
+                ..DataComponentPatchSummary::default()
+            },
+            &trim_keys,
+            &reordered_trim_pattern_keys,
+        ),
+        uv("component_condition_trim_pattern_present")
     );
     assert_eq!(
         selected_with_trim_keys(

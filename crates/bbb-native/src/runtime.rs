@@ -140,7 +140,7 @@ use crate::{
         dropped_item_models, entity_block_models, first_person_item_models,
         first_person_player_arms, held_item_models, item_pickup_particle_item_models,
         ominous_item_spawner_models, world_attribute_keys, world_enchantment_keys,
-        world_trim_material_keys,
+        world_trim_material_keys, world_trim_pattern_keys,
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
@@ -2457,6 +2457,7 @@ pub(crate) fn pump_network_and_terrain(
         .unwrap_or(0.0)
         + f64::from(entity_partial_tick);
     let trim_material_keys = world_trim_material_keys(world);
+    let trim_pattern_keys = world_trim_pattern_keys(world);
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let camera_pose = camera_pose_from_world(world);
@@ -2503,6 +2504,7 @@ pub(crate) fn pump_network_and_terrain(
         terrain_textures,
         item_model_age_ticks,
         trim_material_keys.as_deref(),
+        trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
@@ -2512,6 +2514,7 @@ pub(crate) fn pump_network_and_terrain(
         terrain_textures,
         entity_partial_tick,
         trim_material_keys.as_deref(),
+        trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
@@ -2521,6 +2524,7 @@ pub(crate) fn pump_network_and_terrain(
         item_runtime,
         terrain_textures,
         trim_material_keys.as_deref(),
+        trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
@@ -2630,6 +2634,7 @@ pub(crate) fn pump_network_and_terrain(
         item_runtime,
         terrain_textures,
         trim_material_keys.as_deref(),
+        trim_pattern_keys.as_deref(),
         enchantment_keys.as_deref(),
         attribute_keys.as_deref(),
     );
@@ -9772,6 +9777,8 @@ fn hud_item_tooltip_lines(
             locked: map.locked,
         });
     let enchantment_keys = world_enchantment_keys(world);
+    let trim_material_keys = world_trim_material_keys(world);
+    let trim_pattern_keys = world_trim_pattern_keys(world);
     let enchantment_definitions = world.enchantment_tooltip_definitions_in_holder_order();
     let enchantment_attribute_modifiers =
         world.enchantment_attribute_modifiers(&item.component_patch.enchantments);
@@ -9795,6 +9802,8 @@ fn hud_item_tooltip_lines(
                 creative,
                 peaceful,
                 map_data,
+                trim_material_keys: trim_material_keys.as_deref(),
+                trim_pattern_keys: trim_pattern_keys.as_deref(),
                 enchantment_keys: enchantment_keys.as_deref(),
                 enchantment_definitions: enchantment_definitions.as_deref(),
                 enchantment_attribute_modifiers: Some(&enchantment_attribute_modifiers),
@@ -11825,6 +11834,7 @@ fn hud_item_icon_for_stack(
 ) -> Option<HudItemIcon> {
     let item_runtime = item_runtime?;
     let trim_material_keys = world_trim_material_keys(world);
+    let trim_pattern_keys = world_trim_pattern_keys(world);
     let enchantment_keys = world_enchantment_keys(world);
     let attribute_keys = world_attribute_keys(world);
     let owner_main_hand_left = world.local_player_main_arm_left();
@@ -11886,6 +11896,7 @@ fn hud_item_icon_for_stack(
             bbb_pack::BlockModelDisplayContext::Gui,
             item_model_cooldown_progress,
             trim_material_keys.as_deref(),
+            trim_pattern_keys.as_deref(),
             enchantment_keys.as_deref(),
             attribute_keys.as_deref(),
             owner_main_hand_left,

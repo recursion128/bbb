@@ -14,11 +14,18 @@ use bbb_protocol::equipment_slots::{
 use bbb_protocol::tropical_fish_patterns::vanilla_tropical_fish_pattern;
 use bbb_world::BlockStateRegistry;
 
-type PersistentSnbtEncoder = fn(
+type PersistentSnbtEncoder = for<'a> fn(
     i32,
     &bbb_protocol::packets::DataComponentPatchSummary,
-    Option<&NativeItemRuntime>,
+    PersistentSnbtContext<'a>,
 ) -> Option<String>;
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct PersistentSnbtContext<'a> {
+    pub item_runtime: Option<&'a NativeItemRuntime>,
+    pub trim_material_keys: Option<&'a [String]>,
+    pub trim_pattern_keys: Option<&'a [String]>,
+}
 
 #[derive(Clone, Copy)]
 struct PersistentSnbtEncoderDescriptor {
@@ -465,19 +472,35 @@ fn persistent_snbt_encoder(type_id: i32) -> Option<&'static PersistentSnbtEncode
         .map(|index| &PERSISTENT_SNBT_ENCODERS[index])
 }
 
+#[cfg(test)]
 pub(super) fn encode_added_component_value_snbt(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
+    encode_added_component_value_snbt_with_context(
+        type_id,
+        patch,
+        PersistentSnbtContext {
+            item_runtime,
+            ..PersistentSnbtContext::default()
+        },
+    )
+}
+
+pub(super) fn encode_added_component_value_snbt_with_context(
+    type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
     let descriptor = persistent_snbt_encoder(type_id)?;
-    (descriptor.encode)(type_id, patch, item_runtime)
+    (descriptor.encode)(type_id, patch, context)
 }
 
 fn encode_custom_data(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_nbt_summary_snbt(patch.custom_data.as_ref()?))
 }
@@ -485,7 +508,7 @@ fn encode_custom_data(
 fn encode_max_stack_size(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(
         patch
@@ -498,7 +521,7 @@ fn encode_max_stack_size(
 fn encode_max_damage(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(patch.max_damage.filter(|value| *value > 0)?.to_string())
 }
@@ -506,7 +529,7 @@ fn encode_max_damage(
 fn encode_damage(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(patch.damage.filter(|value| *value >= 0)?.to_string())
 }
@@ -514,7 +537,7 @@ fn encode_damage(
 fn encode_unit(
     _type_id: i32,
     _patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some("{}".to_string())
 }
@@ -522,7 +545,7 @@ fn encode_unit(
 fn encode_use_effects(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_use_effects_component_snbt(patch.use_effects?)
 }
@@ -530,7 +553,7 @@ fn encode_use_effects(
 fn encode_component_tree(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let component = match type_id {
         component_id::VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID => {
@@ -545,7 +568,7 @@ fn encode_component_tree(
 fn encode_lore(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if patch.lore_nbt.len() != patch.lore.len() {
         return None;
@@ -564,7 +587,7 @@ fn encode_lore(
 fn encode_minimum_attack_charge(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_range_checked_float_component_snbt(patch.minimum_attack_charge_bits?, 0.0, Some(1.0))
 }
@@ -572,7 +595,7 @@ fn encode_minimum_attack_charge(
 fn encode_damage_type(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(damage_type_resource_id(
         patch.damage_type_id?,
@@ -582,7 +605,7 @@ fn encode_damage_type(
 fn encode_item_model(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(patch.item_model.as_deref()?))
 }
@@ -590,7 +613,7 @@ fn encode_item_model(
 fn encode_rarity(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(patch.rarity?.as_str()))
 }
@@ -598,7 +621,7 @@ fn encode_rarity(
 fn encode_enchantments(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let enchantments = match type_id {
         component_id::VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => &patch.enchantments,
@@ -625,7 +648,7 @@ fn encode_enchantments(
 fn encode_adventure_mode_predicate(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let predicate = match type_id {
         component_id::VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID => {
@@ -639,7 +662,7 @@ fn encode_adventure_mode_predicate(
     let predicates = predicate
         .predicates
         .iter()
-        .map(|predicate| block_predicate_snbt(predicate, item_runtime))
+        .map(|predicate| block_predicate_snbt(predicate, context))
         .collect::<Option<Vec<_>>>()?;
     match predicates.as_slice() {
         [] => None,
@@ -650,7 +673,7 @@ fn encode_adventure_mode_predicate(
 
 fn block_predicate_snbt(
     predicate: &bbb_protocol::packets::BlockPredicateSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let blocks = BlockStateRegistry::vanilla_26_1();
     let mut fields = Vec::new();
@@ -696,7 +719,7 @@ fn block_predicate_snbt(
         ));
     }
     if let Some(exact) = &predicate.exact_components {
-        let exact = exact_component_predicate_snbt(exact, item_runtime)?;
+        let exact = exact_component_predicate_snbt(exact, context)?;
         if !exact.is_empty() {
             fields.push(format!("components: {{{}}}", exact.join(", ")));
         }
@@ -731,7 +754,7 @@ fn block_predicate_snbt(
 
 fn exact_component_predicate_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<Vec<String>> {
     if !patch.removed_type_ids.is_empty() {
         return None;
@@ -747,7 +770,7 @@ fn exact_component_predicate_snbt(
         resource_ids
             .insert(descriptor.resource_id())
             .then_some(())?;
-        let value = encode_added_component_value_snbt(*type_id, patch, item_runtime)?;
+        let value = encode_added_component_value_snbt_with_context(*type_id, patch, context)?;
         fields.push(format!(
             "{}: {value}",
             debug_snbt_string(descriptor.resource_id())
@@ -765,7 +788,7 @@ fn partial_data_component_predicate_snbt(
 fn encode_attribute_modifiers(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let entries = patch
         .attribute_modifiers
@@ -803,7 +826,7 @@ fn encode_attribute_modifiers(
 fn encode_custom_model_data(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_custom_model_data_component_snbt(patch))
 }
@@ -811,7 +834,7 @@ fn encode_custom_model_data(
 fn encode_tooltip_display(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_tooltip_display_component_snbt(patch)
 }
@@ -819,7 +842,7 @@ fn encode_tooltip_display(
 fn encode_repair_cost(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(patch.repair_cost.filter(|value| *value >= 0)?.to_string())
 }
@@ -827,7 +850,7 @@ fn encode_repair_cost(
 fn encode_enchantment_glint_override(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_bool(patch.enchantment_glint_override?).to_string())
 }
@@ -835,7 +858,7 @@ fn encode_enchantment_glint_override(
 fn encode_food(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_food_component_snbt(patch)
 }
@@ -843,7 +866,7 @@ fn encode_food(
 fn encode_consumable(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_consumable_component_snbt(patch)
 }
@@ -851,15 +874,15 @@ fn encode_consumable(
 fn encode_use_remainder(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_item_stack_template_snbt(patch.use_remainder.as_deref()?, item_runtime)
+    debug_item_stack_template_snbt(patch.use_remainder.as_deref()?, context)
 }
 
 fn encode_use_cooldown(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_use_cooldown_component_snbt(patch)
 }
@@ -867,7 +890,7 @@ fn encode_use_cooldown(
 fn encode_damage_resistant(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_damage_resistant_component_snbt(patch)
 }
@@ -875,7 +898,7 @@ fn encode_damage_resistant(
 fn encode_tool(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let tool = patch.tool.as_ref()?;
     if tool.damage_per_block < 0 {
@@ -958,7 +981,7 @@ fn block_holder_set_snbt(
 fn encode_equippable(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let equippable = patch.equippable.as_ref()?;
     let slot = vanilla_equipment_slot_by_id(equippable.slot_id)?.serialized_name;
@@ -1053,7 +1076,7 @@ fn entity_type_holder_set_snbt(registry_ids: &[i32], tag: Option<&str>) -> Optio
 fn encode_weapon(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_weapon_component_snbt(patch)
 }
@@ -1061,7 +1084,7 @@ fn encode_weapon(
 fn encode_attack_range(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_attack_range_component_snbt(patch.attack_range?)
 }
@@ -1069,7 +1092,7 @@ fn encode_attack_range(
 fn encode_enchantable(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let value = patch.enchantable_value.filter(|value| *value > 0)?;
     Some(format!("{{value: {value}}}"))
@@ -1078,15 +1101,15 @@ fn encode_enchantable(
 fn encode_repairable(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_repairable_component_snbt(patch, item_runtime)
+    debug_repairable_component_snbt(patch, context.item_runtime)
 }
 
 fn encode_tooltip_style(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(patch.tooltip_style.as_deref()?))
 }
@@ -1094,7 +1117,7 @@ fn encode_tooltip_style(
 fn encode_death_protection(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_death_protection_component_snbt(patch)
 }
@@ -1102,7 +1125,7 @@ fn encode_death_protection(
 fn encode_blocks_attacks(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let blocks_attacks = patch.blocks_attacks.as_ref()?;
     let block_delay = f32::from_bits(blocks_attacks.block_delay_seconds_bits);
@@ -1239,7 +1262,7 @@ fn damage_type_holder_set_snbt(registry_ids: &[i32], tag: Option<&str>) -> Optio
 fn encode_piercing_weapon(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_piercing_weapon_component_snbt(patch.piercing_weapon.as_ref()?)
 }
@@ -1247,7 +1270,7 @@ fn encode_piercing_weapon(
 fn encode_kinetic_weapon(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_kinetic_weapon_component_snbt(patch.kinetic_weapon.as_ref()?)
 }
@@ -1255,7 +1278,7 @@ fn encode_kinetic_weapon(
 fn encode_swing_animation(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_swing_animation_component_snbt(patch.swing_animation?)
 }
@@ -1263,7 +1286,7 @@ fn encode_swing_animation(
 fn encode_dye(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(vanilla_dye_color_name(
         patch.dye_color_id?,
@@ -1273,7 +1296,7 @@ fn encode_dye(
 fn encode_dyed_color(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(patch.dyed_color?.to_string())
 }
@@ -1281,7 +1304,7 @@ fn encode_dyed_color(
 fn encode_map_color(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(patch.map_color?.to_string())
 }
@@ -1289,7 +1312,7 @@ fn encode_map_color(
 fn encode_map_id(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(patch.map_id?.to_string())
 }
@@ -1297,7 +1320,7 @@ fn encode_map_id(
 fn encode_codec_backed_nbt(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_nbt_summary_snbt(
         patch.codec_backed_nbt.get(&type_id)?,
@@ -1307,7 +1330,7 @@ fn encode_codec_backed_nbt(
 fn encode_entity_data(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_entity_data_component_snbt(patch)
 }
@@ -1315,7 +1338,7 @@ fn encode_entity_data(
 fn encode_block_entity_data(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_block_entity_data_component_snbt(patch)
 }
@@ -1323,7 +1346,7 @@ fn encode_block_entity_data(
 fn encode_instrument(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
         return Some(debug_nbt_summary_snbt(persistent));
@@ -1336,7 +1359,7 @@ fn encode_instrument(
 fn encode_provides_trim_material(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
         return Some(debug_nbt_summary_snbt(persistent));
@@ -1344,32 +1367,34 @@ fn encode_provides_trim_material(
     if patch.provides_trim_material_direct.is_some() {
         return None;
     }
-    Some(debug_snbt_string(
-        VanillaTrimMaterialIdentity::for_vanilla_registry_id(patch.provides_trim_material_id?)?
-            .resource_id(),
-    ))
+    let holder_id = patch.provides_trim_material_id?;
+    let resource_id = match context.trim_material_keys {
+        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
+        None => VanillaTrimMaterialIdentity::for_vanilla_registry_id(holder_id)?.resource_id(),
+    };
+    Some(debug_snbt_string(resource_id))
 }
 
 fn encode_charged_projectiles(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_item_stack_template_list_snbt(&patch.charged_projectiles_items, item_runtime)
+    debug_item_stack_template_list_snbt(&patch.charged_projectiles_items, context)
 }
 
 fn encode_bundle_contents(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_item_stack_template_list_snbt(&patch.bundle_contents_items, item_runtime)
+    debug_item_stack_template_list_snbt(&patch.bundle_contents_items, context)
 }
 
 fn encode_potion_contents(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_potion_contents_component_snbt(patch)
 }
@@ -1377,7 +1402,7 @@ fn encode_potion_contents(
 fn encode_potion_duration_scale(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_range_checked_float_component_snbt(patch.potion_duration_scale_bits?, 0.0, None)
 }
@@ -1385,7 +1410,7 @@ fn encode_potion_duration_scale(
 fn encode_suspicious_stew_effects(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let effects = patch
         .suspicious_stew_effects
@@ -1407,7 +1432,7 @@ fn encode_suspicious_stew_effects(
 fn encode_writable_book_content(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_writable_book_content_component_snbt(patch))
 }
@@ -1415,7 +1440,7 @@ fn encode_writable_book_content(
 fn encode_written_book_content(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let book = patch.written_book.as_ref()?;
     if book.title.chars().count() > 32 || !(0..=3).contains(&book.generation) {
@@ -1483,7 +1508,7 @@ fn filterable_component_snbt(
 fn encode_armor_trim(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
         return Some(debug_nbt_summary_snbt(persistent));
@@ -1491,12 +1516,16 @@ fn encode_armor_trim(
     if patch.armor_trim_material_direct.is_some() || patch.armor_trim_pattern_direct.is_some() {
         return None;
     }
-    let material =
-        VanillaTrimMaterialIdentity::for_vanilla_registry_id(patch.armor_trim_material_id?)?
-            .resource_id();
-    let pattern =
-        VanillaTrimPatternIdentity::for_vanilla_registry_id(patch.armor_trim_pattern_id?)?
-            .resource_id();
+    let material_id = patch.armor_trim_material_id?;
+    let material = match context.trim_material_keys {
+        Some(keys) => keys.get(usize::try_from(material_id).ok()?)?.as_str(),
+        None => VanillaTrimMaterialIdentity::for_vanilla_registry_id(material_id)?.resource_id(),
+    };
+    let pattern_id = patch.armor_trim_pattern_id?;
+    let pattern = match context.trim_pattern_keys {
+        Some(keys) => keys.get(usize::try_from(pattern_id).ok()?)?.as_str(),
+        None => VanillaTrimPatternIdentity::for_vanilla_registry_id(pattern_id)?.resource_id(),
+    };
     Some(format!(
         "{{material: {}, pattern: {}}}",
         debug_snbt_string(material),
@@ -1507,7 +1536,7 @@ fn encode_armor_trim(
 fn encode_ominous_bottle_amplifier(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(
         patch
@@ -1520,17 +1549,19 @@ fn encode_ominous_bottle_amplifier(
 fn encode_jukebox_playable(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(
-        item_runtime?.jukebox_song_resource_id(patch.jukebox_song_id?)?,
+        context
+            .item_runtime?
+            .jukebox_song_resource_id(patch.jukebox_song_id?)?,
     ))
 }
 
 fn encode_provides_banner_patterns(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_provides_banner_patterns_component_snbt(patch)
 }
@@ -1538,7 +1569,7 @@ fn encode_provides_banner_patterns(
 fn encode_lodestone_tracker(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_lodestone_tracker_component_snbt(patch))
 }
@@ -1546,7 +1577,7 @@ fn encode_lodestone_tracker(
 fn encode_firework_explosion(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_firework_explosion_snbt(&FireworkExplosionSummary {
         shape: patch.firework_explosion_shape?,
@@ -1560,7 +1591,7 @@ fn encode_firework_explosion(
 fn encode_fireworks(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_fireworks_component_snbt(patch))
 }
@@ -1568,7 +1599,7 @@ fn encode_fireworks(
 fn encode_profile(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_profile_component_snbt(patch.profile.as_ref()?)
 }
@@ -1576,7 +1607,7 @@ fn encode_profile(
 fn encode_note_block_sound(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(patch.note_block_sound.as_deref()?))
 }
@@ -1584,7 +1615,7 @@ fn encode_note_block_sound(
 fn encode_banner_patterns(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let layers = patch
         .banner_pattern_layers
@@ -1613,7 +1644,7 @@ fn encode_banner_patterns(
 fn encode_base_color(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(vanilla_dye_color_name(
         patch.base_color_id?,
@@ -1623,23 +1654,23 @@ fn encode_base_color(
 fn encode_pot_decorations(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_pot_decorations_component_snbt(patch, item_runtime)
+    debug_pot_decorations_component_snbt(patch, context.item_runtime)
 }
 
 fn encode_container(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_item_container_contents_component_snbt(patch, item_runtime)
+    debug_item_container_contents_component_snbt(patch, context)
 }
 
 fn encode_block_state(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(format!(
         "{{{}}}",
@@ -1659,7 +1690,7 @@ fn encode_block_state(
 fn encode_bees(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_bees_component_snbt(&patch.bees)
 }
@@ -1667,7 +1698,7 @@ fn encode_bees(
 fn encode_break_sound(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     debug_sound_event_component_snbt(patch.break_sound.as_ref()?)
 }
@@ -1675,7 +1706,7 @@ fn encode_break_sound(
 fn encode_named_variant(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let resource_id = match type_id {
         component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => {
@@ -1731,7 +1762,7 @@ fn encode_named_variant(
 fn encode_tropical_fish_pattern(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(
         vanilla_tropical_fish_pattern(patch.tropical_fish_pattern_id?).serialized_name,
@@ -1741,7 +1772,7 @@ fn encode_tropical_fish_pattern(
 fn encode_tropical_fish_base_color(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(vanilla_dye_color_name(
         patch.tropical_fish_base_color_id?,
@@ -1751,7 +1782,7 @@ fn encode_tropical_fish_base_color(
 fn encode_tropical_fish_pattern_color(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     Some(debug_snbt_string(vanilla_dye_color_name(
         patch.tropical_fish_pattern_color_id?,
@@ -1761,7 +1792,7 @@ fn encode_tropical_fish_pattern_color(
 fn encode_painting_variant(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if patch.painting_variant_direct.is_some() {
         return None;
@@ -1774,7 +1805,7 @@ fn encode_painting_variant(
 fn encode_builtin_enum(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _item_runtime: Option<&NativeItemRuntime>,
+    _context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let id = *patch.builtin_enum_component_ids.get(&type_id)?;
     Some(debug_snbt_string(builtin_enum_component_value_name(
@@ -2599,6 +2630,35 @@ mod tests {
                 decal: false,
             }));
         assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
+    }
+
+    #[test]
+    fn trim_encoders_use_synchronized_holder_order_when_available() {
+        let material_keys = ["example:custom_material".to_string()];
+        let pattern_keys = ["example:custom_pattern".to_string()];
+        let context = PersistentSnbtContext {
+            item_runtime: None,
+            trim_material_keys: Some(&material_keys),
+            trim_pattern_keys: Some(&pattern_keys),
+        };
+        let patch = bbb_protocol::packets::DataComponentPatchSummary {
+            provides_trim_material_id: Some(0),
+            armor_trim_material_id: Some(0),
+            armor_trim_pattern_id: Some(0),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(62, &patch, context),
+            Some("\"example:custom_material\"".to_string())
+        );
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(56, &patch, context),
+            Some(
+                "{material: \"example:custom_material\", pattern: \"example:custom_pattern\"}"
+                    .to_string()
+            )
+        );
     }
 
     #[test]

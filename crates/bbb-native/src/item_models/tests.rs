@@ -3751,6 +3751,7 @@ fn ominous_item_spawner_models_emit_item_cluster_meshes() {
         None,
         None,
         None,
+        None,
     );
 
     assert!(models.block_meshes.is_empty());
@@ -3786,6 +3787,7 @@ fn item_pickup_particle_item_models_emit_ordinary_stack_meshes() {
         &[state],
         Some(&item_runtime),
         &TerrainTextureState::default(),
+        None,
         None,
         None,
         None,
@@ -3852,6 +3854,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         None,
         None,
         None,
+        None,
     );
 
     // Pickup carried bake: the same stack rebuilt from the opaque patch bytes
@@ -3874,6 +3877,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         &[component_rich_state.clone()],
         Some(&item_runtime),
         &TerrainTextureState::default(),
+        None,
         None,
         None,
         None,
@@ -3904,6 +3908,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         &[plain_state],
         Some(&item_runtime),
         &TerrainTextureState::default(),
+        None,
         None,
         None,
         None,

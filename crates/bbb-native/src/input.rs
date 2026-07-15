@@ -367,7 +367,7 @@ pub(crate) use commands::{
     queue_set_creative_mode_slot_command, queue_sign_update_command, queue_spectate_entity_command,
     queue_teleport_to_entity_command, queue_vehicle_move_command, select_hotbar_slot,
 };
-use component_patch::encode_added_component_value_snbt;
+use component_patch::{encode_added_component_value_snbt_with_context, PersistentSnbtContext};
 #[cfg(test)]
 pub(crate) use inventory::handle_inventory_mouse_input;
 pub(crate) use inventory::{
@@ -4914,7 +4914,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_fireball_additional_save_data(fields);
         }
         VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => {
-            debug_push_firework_rocket_additional_save_data(entity, item_runtime, fields);
+            debug_push_firework_rocket_additional_save_data(world, entity, item_runtime, fields);
         }
         VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => {
             debug_push_falling_block_additional_save_data(world, entity, fields);
@@ -4935,7 +4935,7 @@ fn debug_push_entity_additional_save_data(
             debug_push_tnt_minecart_additional_save_data(entity, fields);
         }
         _ if bbb_world::vanilla_entity_type_is_item_frame(entity.entity_type_id) => {
-            debug_push_item_frame_additional_save_data(entity, item_runtime, fields);
+            debug_push_item_frame_additional_save_data(world, entity, item_runtime, fields);
         }
         VANILLA_ENTITY_TYPE_TNT_ID => {
             debug_push_primed_tnt_additional_save_data(world, entity, fields);
@@ -5246,6 +5246,7 @@ fn debug_push_fireball_additional_save_data(fields: &mut Vec<String>) {
 }
 
 fn debug_push_firework_rocket_additional_save_data(
+    world: &WorldStore,
     entity: &EntityState,
     item_runtime: Option<&NativeItemRuntime>,
     fields: &mut Vec<String>,
@@ -5256,9 +5257,18 @@ fn debug_push_firework_rocket_additional_save_data(
         entity.client_animations.age_ticks.min(i32::MAX as u32)
     ));
     if debug_entity_data_item_stack_present(entity, FIREWORK_ROCKET_ITEM_DATA_ID).is_some() {
+        let trim_material_keys = crate::item_models::world_trim_material_keys(world);
+        let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
         fields.push(format!(
             "FireworksItem: {}",
-            debug_firework_rocket_item_stack(entity, item_runtime)
+            debug_firework_rocket_item_stack(
+                entity,
+                PersistentSnbtContext {
+                    item_runtime,
+                    trim_material_keys: trim_material_keys.as_deref(),
+                    trim_pattern_keys: trim_pattern_keys.as_deref(),
+                },
+            )
         ));
     }
     if let Some(shot_at_angle) =
@@ -5270,33 +5280,55 @@ fn debug_push_firework_rocket_additional_save_data(
 
 fn debug_firework_rocket_item_stack(
     entity: &EntityState,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> String {
     let stack = debug_entity_data_item_stack_present(entity, FIREWORK_ROCKET_ITEM_DATA_ID);
     let resource_id = stack
         .and_then(|stack| stack.item_id)
-        .and_then(|item_id| item_runtime.and_then(|runtime| runtime.item_resource_id(item_id)))
+        .and_then(|item_id| {
+            context
+                .item_runtime
+                .and_then(|runtime| runtime.item_resource_id(item_id))
+        })
         .unwrap_or(FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID);
     stack
         .and_then(|stack| {
-            debug_item_stack_snbt(resource_id, stack.count, Some(stack), item_runtime)
+            debug_item_stack_snbt_with_context(resource_id, stack.count, Some(stack), context)
         })
         .unwrap_or_else(|| {
-            debug_item_stack_snbt(
+            debug_item_stack_snbt_with_context(
                 FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
                 1,
                 None,
-                item_runtime,
+                context,
             )
             .expect("default firework item stack is valid")
         })
 }
 
+#[cfg(test)]
 fn debug_item_stack_snbt(
     resource_id: &str,
     count: i32,
     stack: Option<&ItemStackSummary>,
     item_runtime: Option<&NativeItemRuntime>,
+) -> Option<String> {
+    debug_item_stack_snbt_with_context(
+        resource_id,
+        count,
+        stack,
+        PersistentSnbtContext {
+            item_runtime,
+            ..PersistentSnbtContext::default()
+        },
+    )
+}
+
+fn debug_item_stack_snbt_with_context(
+    resource_id: &str,
+    count: i32,
+    stack: Option<&ItemStackSummary>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if resource_id == "minecraft:air" || !(1..=99).contains(&count) {
         return None;
@@ -5307,21 +5339,35 @@ fn debug_item_stack_snbt(
     }
     if let Some(components) = stack
         .map(|stack| &stack.component_patch)
-        .and_then(|patch| debug_supported_component_patch_snbt(patch, item_runtime))
+        .and_then(|patch| debug_supported_component_patch_snbt_with_context(patch, context))
     {
         fields.push(format!("components: {components}"));
     }
     Some(format!("{{{}}}", fields.join(", ")))
 }
 
+#[cfg(test)]
 fn debug_supported_component_patch_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
     item_runtime: Option<&NativeItemRuntime>,
 ) -> Option<String> {
+    debug_supported_component_patch_snbt_with_context(
+        patch,
+        PersistentSnbtContext {
+            item_runtime,
+            ..PersistentSnbtContext::default()
+        },
+    )
+}
+
+fn debug_supported_component_patch_snbt_with_context(
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+    context: PersistentSnbtContext<'_>,
+) -> Option<String> {
     let mut fields = patch
         .added_type_ids
         .iter()
-        .filter_map(|type_id| debug_supported_added_component_snbt(*type_id, patch, item_runtime))
+        .filter_map(|type_id| debug_supported_added_component_snbt(*type_id, patch, context))
         .collect::<Vec<_>>();
     fields.extend(patch.removed_type_ids.iter().filter_map(|type_id| {
         let descriptor =
@@ -5339,11 +5385,11 @@ fn debug_supported_component_patch_snbt(
 fn debug_supported_added_component_snbt(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let descriptor =
         bbb_protocol::data_component_types::vanilla_data_component_descriptor(type_id)?;
-    let value = encode_added_component_value_snbt(type_id, patch, item_runtime)?;
+    let value = encode_added_component_value_snbt_with_context(type_id, patch, context)?;
     Some(format!(
         "{}: {value}",
         debug_snbt_string(descriptor.resource_id())
@@ -5977,11 +6023,11 @@ fn debug_tooltip_display_component_snbt(
 
 fn debug_item_stack_template_list_snbt(
     templates: &[bbb_protocol::packets::ItemStackTemplateSummary],
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let items = templates
         .iter()
-        .map(|template| debug_item_stack_template_snbt(template, item_runtime))
+        .map(|template| debug_item_stack_template_snbt(template, context))
         .collect::<Option<Vec<_>>>()?
         .join(", ");
     Some(format!("[{items}]"))
@@ -6042,12 +6088,12 @@ fn debug_provides_banner_patterns_component_snbt(
 
 fn debug_item_stack_template_snbt(
     template: &bbb_protocol::packets::ItemStackTemplateSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if !(1..=99).contains(&template.count) {
         return None;
     }
-    let resource_id = item_runtime?.item_resource_id(template.item_id)?;
+    let resource_id = context.item_runtime?.item_resource_id(template.item_id)?;
     if resource_id == "minecraft:air" {
         return None;
     }
@@ -6056,7 +6102,7 @@ fn debug_item_stack_template_snbt(
         fields.push(format!("count: {}", template.count));
     }
     if let Some(components) =
-        debug_supported_component_patch_snbt(&template.component_patch, item_runtime)
+        debug_supported_component_patch_snbt_with_context(&template.component_patch, context)
     {
         fields.push(format!("components: {components}"));
     }
@@ -6187,7 +6233,7 @@ fn debug_pot_decorations_component_snbt(
 
 fn debug_item_container_contents_component_snbt(
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    item_runtime: Option<&NativeItemRuntime>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     if patch.container_slots.is_empty() && !patch.container_items.is_empty() {
         return None;
@@ -6196,7 +6242,7 @@ fn debug_item_container_contents_component_snbt(
         .container_slots
         .iter()
         .map(|slot| {
-            let item = debug_item_stack_template_snbt(&slot.item, item_runtime)?;
+            let item = debug_item_stack_template_snbt(&slot.item, context)?;
             Some(format!("{{slot: {}, item: {item}}}", slot.slot))
         })
         .collect::<Option<Vec<_>>>()?
@@ -6488,6 +6534,7 @@ fn debug_push_tnt_minecart_additional_save_data(entity: &EntityState, fields: &m
 }
 
 fn debug_push_item_frame_additional_save_data(
+    world: &WorldStore,
     entity: &EntityState,
     item_runtime: Option<&NativeItemRuntime>,
     fields: &mut Vec<String>,
@@ -6503,9 +6550,18 @@ fn debug_push_item_frame_additional_save_data(
             Some((stack, resource_id))
         })
     {
-        if let Some(item) =
-            debug_item_stack_snbt(resource_id, stack.count, Some(stack), item_runtime)
-        {
+        let trim_material_keys = crate::item_models::world_trim_material_keys(world);
+        let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
+        if let Some(item) = debug_item_stack_snbt_with_context(
+            resource_id,
+            stack.count,
+            Some(stack),
+            PersistentSnbtContext {
+                item_runtime,
+                trim_material_keys: trim_material_keys.as_deref(),
+                trim_pattern_keys: trim_pattern_keys.as_deref(),
+            },
+        ) {
             fields.push(format!("Item: {item}"));
         }
     }

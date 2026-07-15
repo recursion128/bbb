@@ -305,6 +305,7 @@ pub(crate) fn dropped_item_models(
     terrain_textures: &TerrainTextureState,
     age_ticks: f32,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> DroppedItemModels {
@@ -388,6 +389,7 @@ pub(crate) fn dropped_item_models(
             &state.stack,
             BlockModelDisplayContext::Ground,
             trim_material_keys,
+            trim_pattern_keys,
             enchantment_keys,
             attribute_keys,
         ) {
@@ -444,6 +446,7 @@ pub(crate) fn ominous_item_spawner_models(
     terrain_textures: &TerrainTextureState,
     entity_partial_tick: f32,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> DroppedItemModels {
@@ -504,6 +507,7 @@ pub(crate) fn ominous_item_spawner_models(
             &state.stack,
             BlockModelDisplayContext::Ground,
             trim_material_keys,
+            trim_pattern_keys,
             enchantment_keys,
             attribute_keys,
         ) {
@@ -547,6 +551,7 @@ pub(crate) fn item_pickup_particle_item_models(
     item_runtime: Option<&NativeItemRuntime>,
     terrain_textures: &TerrainTextureState,
     trim_material_keys: Option<&[String]>,
+    trim_pattern_keys: Option<&[String]>,
     enchantment_keys: Option<&[String]>,
     attribute_keys: Option<&[String]>,
 ) -> DroppedItemModels {
@@ -614,6 +619,7 @@ pub(crate) fn item_pickup_particle_item_models(
             &stack,
             BlockModelDisplayContext::Ground,
             trim_material_keys,
+            trim_pattern_keys,
             enchantment_keys,
             attribute_keys,
         ) {
@@ -1671,6 +1677,7 @@ pub(super) fn bake_item_stack_at_transform(
         ItemModelUseContext::inactive()
     };
     let mut quads: Vec<ItemModelQuad> = Vec::new();
+    let trim_pattern_keys = world_trim_pattern_keys(world);
     for layer in item_runtime.generated_item_layers_for_stack_with_owner_registry_context(
         stack,
         context,
@@ -1678,6 +1685,7 @@ pub(super) fn bake_item_stack_at_transform(
         context_entity_type,
         context_dimension,
         trim_material_keys,
+        trim_pattern_keys.as_deref(),
         enchantment_keys,
         attribute_keys,
         using_item,
