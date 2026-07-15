@@ -23180,6 +23180,32 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_creaking_animation_does_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        let store = include_str!("../store.rs");
+        assert!(animations
+            .contains("vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type"));
+        assert!(animations
+            .contains("vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type"));
+        assert!(store.contains("creaking_can_move(identity.entity_type_id, &metadata.data_values)"));
+        assert!(store
+            .contains("creaking_is_tearing_down(identity.entity_type_id, &metadata.data_values)"));
+        assert!(!store.contains("identity.entity_type_id != VANILLA_ENTITY_TYPE_CREAKING_ID"));
+        for removed in [
+            "CREAKING_CAN_MOVE_DATA_ID",
+            "CREAKING_DEFAULT_CAN_MOVE",
+            "CREAKING_IS_TEARING_DOWN_DATA_ID",
+            "CREAKING_DEFAULT_TEARING_DOWN",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(!store.contains(removed), "store restored {removed}");
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

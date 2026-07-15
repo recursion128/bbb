@@ -2216,10 +2216,9 @@ impl EntityStore {
             // Vanilla `Creaking`: the directly-synced `canMove()` walk gate plus the three triggered
             // keyframe one-shots (attack/invulnerable event-driven, death on the synced
             // `isTearingDown()`), each the elapsed seconds since it started or `-1.0` when stopped. The
-            // `canMove` read is gated on the creaking type (its synced slot `16` is the `CAN_MOVE`
-            // boolean; other entities' slot `16` is an unrelated field), defaulting to `true`.
-            creaking_can_move: identity.entity_type_id != VANILLA_ENTITY_TYPE_CREAKING_ID
-                || creaking_can_move(&metadata.data_values),
+            // The generated accessor gates the `canMove` read on Creaking membership and defaults
+            // every other entity to `true`, because this field only controls the Creaking model.
+            creaking_can_move: creaking_can_move(identity.entity_type_id, &metadata.data_values),
             creaking_attack_seconds: client_animations
                 .animations
                 .creaking_attack_seconds(partial_ticks),
@@ -3553,7 +3552,8 @@ impl EntityStore {
                 });
                 let axolotl_is_playing_dead =
                     axolotl_is_playing_dead(identity.entity_type_id, &metadata.data_values);
-                let creaking_is_tearing_down = creaking_is_tearing_down(&metadata.data_values);
+                let creaking_is_tearing_down =
+                    creaking_is_tearing_down(identity.entity_type_id, &metadata.data_values);
                 let pillager_is_charging_crossbow =
                     pillager_is_charging_crossbow(&metadata.data_values);
                 let piglin_is_charging_crossbow =

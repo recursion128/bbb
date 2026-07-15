@@ -16489,3 +16489,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   tail/relax ease 与 sleeping-player projection 显式携带 entity type。
 - 生产消费者删除四个固定 accessor/default 别名，sleeping-player projection 同时删除平行
   Cat type predicate；生成器 reverse guard 禁止恢复这些事实源或丢失 entity-type 传递。
+
+## 2026-07-15：统一推导 Creaking animation metadata accessors
+
+- `bbb-world` 现在公开从生成 schema 的 `Creaking.CAN_MOVE` 与
+  `Creaking.IS_TEARING_DOWN` 解析 membership、wire id 16/18 与 boolean typed default
+  true/false；world 模型与 tick 显式携带 entity type。
+- 生产消费者删除四个固定 accessor/default 别名和模型投影的平行 Creaking type predicate；
+  生成器 reverse guard 禁止恢复这些事实源或丢失 entity-type 传递。

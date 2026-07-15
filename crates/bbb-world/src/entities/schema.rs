@@ -978,6 +978,45 @@ pub fn vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Creaking can-move accessor and its typed default.
+pub fn vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "CAN_MOVE")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.creaking.Creaking",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves the generated Creaking tearing-down accessor and its typed default.
+pub fn vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IS_TEARING_DOWN")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.creaking.Creaking",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated PolarBear standing accessor and its typed default.
 pub fn vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3373,6 +3412,34 @@ mod tests {
             );
             assert_eq!(
                 vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_creaking_animation_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID
+            ),
+            Some((16, true))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID
+            ),
+            Some((18, false))
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_WARDEN_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(entity_type_id),
+                None
+            );
+            assert_eq!(
+                vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
                     entity_type_id
                 ),
                 None

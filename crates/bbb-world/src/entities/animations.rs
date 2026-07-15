@@ -24,6 +24,8 @@ use super::schema::{
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
+    vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
+    vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
@@ -46,10 +48,6 @@ use super::schema::{
     VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
-    VANILLA_CREAKING_CAN_MOVE_DATA_ID as CREAKING_CAN_MOVE_DATA_ID,
-    VANILLA_CREAKING_DEFAULT_CAN_MOVE as CREAKING_DEFAULT_CAN_MOVE,
-    VANILLA_CREAKING_DEFAULT_TEARING_DOWN as CREAKING_DEFAULT_TEARING_DOWN,
-    VANILLA_CREAKING_TEARING_DOWN_DATA_ID as CREAKING_IS_TEARING_DOWN_DATA_ID,
     VANILLA_ENDER_DRAGON_DEFAULT_PHASE as ENDER_DRAGON_DEFAULT_PHASE,
     VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
@@ -6054,26 +6052,24 @@ pub(crate) fn axolotl_is_playing_dead(
 }
 
 /// Vanilla `Creaking.canMove()` (`entityData.get(CAN_MOVE)`): the synced boolean (default `true`)
-/// that gates the looping walk. Read straight from the entity metadata; a creaking frozen while a
-/// player observes it turns to a statue. Non-creakings fall back to `true` (the field only feeds the
-/// creaking model).
-pub(crate) fn creaking_can_move(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(
-        data_values,
-        CREAKING_CAN_MOVE_DATA_ID,
-        CREAKING_DEFAULT_CAN_MOVE,
-    )
+/// that gates the looping walk. The generated accessor supplies membership, wire index and default;
+/// non-creakings fall back to `true` because the field only feeds the Creaking model.
+pub(crate) fn creaking_can_move(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or(true)
 }
 
 /// Vanilla `Creaking.isTearingDown()` (`entityData.get(IS_TEARING_DOWN)`): the synced boolean
-/// (default `false`) that drives the death collapse. Read straight from the entity metadata in the
-/// tick loop; non-creakings fall back to `false`.
-pub(crate) fn creaking_is_tearing_down(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(
-        data_values,
-        CREAKING_IS_TEARING_DOWN_DATA_ID,
-        CREAKING_DEFAULT_TEARING_DOWN,
-    )
+/// (default `false`) that drives the death collapse. The generated accessor supplies membership,
+/// wire index and default; non-creakings fall back to `false`.
+pub(crate) fn creaking_is_tearing_down(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `LivingEntity.isFallFlying()` = `Entity.getSharedFlag(7)`, where
