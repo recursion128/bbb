@@ -15100,3 +15100,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   首次 session tag 生效前保持可用，shared play apply、offline probe 和 native dispatcher 共用同一路径；pack/world
   focused regressions 覆盖生成规则完整性、tag add/remove、立即更新与事务可见性。creative search-tree tag refresh
   仍为独立 runtime 缺口。
+
+## 2026-07-15：Reconnect transferred sessions with the Transfer intent
+
+- [x] 对照 `ClientCommonPacketListenerImpl.handleTransfer` 与 `ConnectScreen.startConnecting`，configuration/play
+  Transfer 在 canonical target event 之后停止使用旧 transport；新 TCP connection 重置 compression、movement/
+  chunk-batch 与 configuration-local state，保留 session cookies、username/profile identity 和 client information，
+  并以目标 host/port、wire intent `3` 发送 handshake 后重新发送 Login Hello。
+- [x] play bundle 在 Transfer 后不再应用同 bundle 的旧连接 packet，重连时重新建立 bundle owner；configuration/play
+  handler 都显式返回 reconnect directive。focused regressions 锁定两状态 directive、Connected→Login event、cookie
+  carry、identity、compression reset 与目标收到的 exact handshake/Login Hello。显式 closing late-packet window 以及
+  尚未建模的 seen-player/insecure-chat-warning TransferState 仍保持 runtime partial。

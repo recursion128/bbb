@@ -1,5 +1,5 @@
 use anyhow::{bail, Context, Result};
-use bbb_protocol::packets::{self, PlayClientbound};
+use bbb_protocol::packets::{self, PlayClientbound, Transfer};
 use tokio::sync::oneshot;
 
 use crate::{
@@ -10,7 +10,11 @@ use crate::{
 };
 
 impl EventStreamContext {
-    pub(super) async fn handle_play_packet(&mut self, packet: PlayClientbound) -> Result<()> {
+    pub(super) async fn handle_play_packet(
+        &mut self,
+        packet: PlayClientbound,
+    ) -> Result<Option<Transfer>> {
+        let mut transfer = None;
         match packet {
             PlayClientbound::BundleDelimiter => {}
             PlayClientbound::KeepAlive { id } => {
@@ -96,6 +100,14 @@ impl EventStreamContext {
                 )
                 .await?;
             }
+            PlayClientbound::Transfer(update) => {
+                transfer = Some(update.clone());
+                emit(
+                    &self.events,
+                    NetEvent::Play(PlayClientbound::Transfer(update)),
+                )
+                .await?;
+            }
             PlayClientbound::PlayerPosition(update) => {
                 let (ack_tx, ack_rx) = oneshot::channel();
                 emit(
@@ -153,7 +165,7 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::Play(packet)).await?;
             }
         }
-        Ok(())
+        Ok(transfer)
     }
 
     async fn acknowledge_start_configuration(&mut self) -> Result<()> {

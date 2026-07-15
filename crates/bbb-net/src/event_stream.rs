@@ -1,12 +1,13 @@
 use std::{
     collections::BTreeMap,
+    net::Ipv6Addr,
     time::{Duration, Instant},
 };
 
 use anyhow::{anyhow, Context, Result};
 use bbb_protocol::{
     frame::encode_packet,
-    packets::{self, ClientIntent, PlayerPositionState},
+    packets::{self, ClientIntent, PlayerPositionState, Transfer},
 };
 use tokio::{sync::mpsc, time::timeout};
 
@@ -110,27 +111,86 @@ pub async fn run_offline_event_stream(
             },
         )?;
 
-        match stream.state {
+        let transfer = match stream.state {
             ConnectionState::Login => {
                 let packet = packets::decode_login_clientbound(packet_id, &payload)?;
                 stream.handle_login_packet(packet).await?;
+                None
             }
             ConnectionState::Configuration => {
                 let packet = packets::decode_configuration_clientbound(packet_id, &payload)?;
-                stream.handle_configuration_packet(packet).await?;
+                stream.handle_configuration_packet(packet).await?
             }
             ConnectionState::Play => {
                 let packet = packets::decode_play_clientbound(packet_id, &payload)?;
+                let mut transfer = None;
                 if let Some(batch) = play_bundle.push(packet)? {
                     for packet in batch {
-                        stream.handle_play_packet(packet).await?;
+                        transfer = stream.handle_play_packet(packet).await?;
+                        if transfer.is_some() {
+                            break;
+                        }
                     }
                 }
+                transfer
             }
             ConnectionState::Handshake | ConnectionState::Status => {
                 unreachable!("event stream starts at login")
             }
+        };
+
+        if let Some(transfer) = transfer {
+            reconnect_for_transfer(&mut stream, &options, transfer).await?;
+            play_bundle = PlayPacketBundleAssembler::default();
         }
+    }
+}
+
+async fn reconnect_for_transfer(
+    stream: &mut EventStreamContext,
+    options: &ConnectionOptions,
+    transfer: Transfer,
+) -> Result<()> {
+    let port = u16::try_from(transfer.port)
+        .with_context(|| format!("invalid transfer port {}", transfer.port))?;
+    let (handshake_id, handshake_payload) =
+        packets::encode_handshake(&transfer.host, port, ClientIntent::Transfer)?;
+    let address = transfer_socket_address(&transfer.host, port);
+    let conn = timeout(options.timeout, RawConnection::connect(&address, None))
+        .await
+        .with_context(|| format!("transfer connect to {address} timed out"))??;
+
+    // Replacing the transport drops the old connection before any new login
+    // traffic is sent. Session cookies intentionally remain on the context,
+    // matching the vanilla TransferState carry behavior.
+    stream.conn = conn;
+    stream.state = ConnectionState::Login;
+    stream.player_position_state = PlayerPositionState::default();
+    stream.chunk_batch_size = ChunkBatchSizeCalculator::new();
+    stream.seen_code_of_conduct = false;
+    stream.accepted_code_of_conduct_hash = None;
+
+    emit(&stream.events, NetEvent::Connected).await?;
+    emit(
+        &stream.events,
+        NetEvent::StateChanged {
+            state: stream.state,
+        },
+    )
+    .await?;
+    stream
+        .conn
+        .send_packet(handshake_id, &handshake_payload)
+        .await?;
+    let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id)?;
+    stream.conn.send_packet(id, &payload).await
+}
+
+fn transfer_socket_address(host: &str, port: u16) -> String {
+    if host.parse::<Ipv6Addr>().is_ok() {
+        format!("[{host}]:{port}")
+    } else {
+        format!("{host}:{port}")
     }
 }
 
@@ -716,6 +776,42 @@ mod tests {
             }
             other => panic!("expected select-known-packs event, got {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn configuration_transfer_emits_target_and_requests_reconnect() {
+        let (client, _server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_position_state: PlayerPositionState::default(),
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+        let transfer = Transfer {
+            host: "next.example.invalid".to_string(),
+            port: 25566,
+        };
+
+        let reconnect = stream
+            .handle_configuration_packet(packets::ConfigurationClientbound::Transfer(
+                transfer.clone(),
+            ))
+            .await
+            .unwrap();
+
+        assert_eq!(reconnect, Some(transfer.clone()));
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::Transfer(update)) if update == transfer
+        ));
     }
 
     #[tokio::test]
@@ -1826,10 +1922,11 @@ mod tests {
             host: "next.example.invalid".to_string(),
             port: 25566,
         };
-        stream
+        let reconnect = stream
             .handle_play_packet(PlayClientbound::Transfer(transfer.clone()))
             .await
             .unwrap();
+        assert_eq!(reconnect, Some(transfer.clone()));
         let event = timeout(Duration::from_secs(1), events_rx.recv())
             .await
             .expect("transfer event should be emitted")
@@ -4185,6 +4282,98 @@ mod tests {
                 state: ConnectionState::Configuration
             }
         ));
+    }
+
+    #[tokio::test]
+    async fn transfer_reconnect_uses_transfer_intent_and_carries_session_cookies() {
+        let transfer_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let transfer_address = transfer_listener.local_addr().unwrap();
+        let transfer_server = tokio::spawn(async move {
+            let (server_stream, _) = transfer_listener.accept().await.unwrap();
+            let mut server = RawConnection {
+                stream: server_stream,
+                read_buf: BytesMut::with_capacity(8192),
+                compression_threshold: None,
+            };
+            let handshake = server.read_packet().await.unwrap();
+            let hello = server.read_packet().await.unwrap();
+            (handshake, hello)
+        });
+
+        let (mut old_client, _old_server) = raw_connection_pair().await;
+        old_client.set_compression_threshold(32);
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: old_client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_position_state: PlayerPositionState {
+                y_rot: 90.0,
+                ..PlayerPositionState::default()
+            },
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::from([("minecraft:transfer".to_string(), vec![1, 2, 3])]),
+            seen_code_of_conduct: true,
+            accepted_code_of_conduct_hash: Some(123),
+            client_information: packets::ClientInformation::default(),
+        };
+        let options =
+            ConnectionOptions::offline("old.example.invalid:25565", "bbb-client").unwrap();
+
+        reconnect_for_transfer(
+            &mut stream,
+            &options,
+            Transfer {
+                host: transfer_address.ip().to_string(),
+                port: i32::from(transfer_address.port()),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(stream.state, ConnectionState::Login);
+        assert_eq!(stream.conn.compression_threshold, None);
+        assert_eq!(stream.player_position_state, PlayerPositionState::default());
+        assert_eq!(
+            stream.server_cookies.get("minecraft:transfer"),
+            Some(&vec![1, 2, 3])
+        );
+        assert!(!stream.seen_code_of_conduct);
+        assert_eq!(stream.accepted_code_of_conduct_hash, None);
+        assert!(matches!(events_rx.recv().await, Some(NetEvent::Connected)));
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::StateChanged {
+                state: ConnectionState::Login
+            })
+        ));
+
+        let ((handshake_id, handshake_payload), (hello_id, hello_payload)) =
+            transfer_server.await.unwrap();
+        assert_eq!(handshake_id, ids::handshake::SERVERBOUND_CLIENT_INTENTION);
+        let mut decoder = Decoder::new(&handshake_payload);
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            bbb_protocol::PROTOCOL_VERSION
+        );
+        assert_eq!(
+            decoder.read_string(255).unwrap(),
+            transfer_address.ip().to_string()
+        );
+        assert_eq!(decoder.read_u16().unwrap(), transfer_address.port());
+        assert_eq!(
+            decoder.read_var_i32().unwrap(),
+            ClientIntent::Transfer as i32
+        );
+        assert!(decoder.is_empty());
+
+        assert_eq!(hello_id, ids::login::SERVERBOUND_HELLO);
+        let mut decoder = Decoder::new(&hello_payload);
+        assert_eq!(decoder.read_string(16).unwrap(), options.username);
+        assert_eq!(decoder.read_uuid().unwrap(), options.profile_id);
+        assert!(decoder.is_empty());
     }
 
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {

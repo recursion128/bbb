@@ -44,8 +44,6 @@ Owner: `bbb-protocol`
   remaining `partial` cell must carry implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
-- Route a transferred target into production reconnect, send its Transfer-intent
-  handshake, and lock the closing-to-handshake state transition.
 - Complete authenticated login: perform session authentication/encryption from the
   typed `ClientboundHelloPacket`, generate the encrypted inputs for the existing
   `ServerboundKeyPacket` encoder, install the negotiated ciphers, lock the
@@ -58,11 +56,12 @@ Owner: `bbb-protocol`
   offered packs whose registry data bbb can actually provide, and pass that
   intersection to the existing 64-entry response encoder instead of always
   returning an empty configuration response.
-- Complete configuration/play transfer runtime behavior: enter a closing state,
-  continue accepting late StoreCookie/Transfer packets, disconnect and make the
-  current connection read-only, carry cookies/seen-player/insecure-chat transfer
-  state, and reconnect with the Transfer intent instead of only recording the
-  requested host and port.
+- Complete the remaining configuration/play transfer runtime behavior. Production
+  now stops using the old transport, carries cookies and the login identity, opens
+  the requested target with a Transfer-intent handshake, resets connection-local
+  compression/configuration state, and re-enters login. Remaining work is an
+  explicit closing window for late StoreCookie/Transfer packets plus the currently
+  unmodeled seen-player and insecure-chat-warning TransferState members.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while
   preserving an explicit unknown result in context-free callers.

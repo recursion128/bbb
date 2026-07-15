@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use bbb_protocol::packets::{self, ConfigurationClientbound};
+use bbb_protocol::packets::{self, ConfigurationClientbound, Transfer};
 use bbb_world::code_of_conduct_text_hash;
 
 use crate::{
@@ -12,7 +12,8 @@ impl EventStreamContext {
     pub(super) async fn handle_configuration_packet(
         &mut self,
         packet: ConfigurationClientbound,
-    ) -> Result<()> {
+    ) -> Result<Option<Transfer>> {
+        let mut transfer = None;
         match packet {
             ConfigurationClientbound::Finish => {
                 let (id, payload) = packets::encode_configuration_finish();
@@ -112,8 +113,9 @@ impl EventStreamContext {
             ConfigurationClientbound::ServerLinks(links) => {
                 emit(&self.events, NetEvent::ServerLinks(links)).await?;
             }
-            ConfigurationClientbound::Transfer(transfer) => {
-                emit(&self.events, NetEvent::Transfer(transfer)).await?;
+            ConfigurationClientbound::Transfer(update) => {
+                transfer = Some(update.clone());
+                emit(&self.events, NetEvent::Transfer(update)).await?;
             }
             ConfigurationClientbound::ClearDialog => {
                 emit(&self.events, NetEvent::ClearDialog).await?;
@@ -144,6 +146,6 @@ impl EventStreamContext {
                 .await?;
             }
         }
-        Ok(())
+        Ok(transfer)
     }
 }
