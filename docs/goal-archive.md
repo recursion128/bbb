@@ -15211,3 +15211,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 无同步 contents 时使用生成的 43 项 26.1 catalog；回归覆盖 custom/reordered holder、unknown
   holder、single/list/tag holder-set 形状、direct layer 以及 item-frame 递归 ItemStack SNBT。
   banner tooltip/render 的 typed registry entry 投影仍作为后续消费者切片开放。
+
+## 2026-07-15：Fix persistent synchronized variant holder identity
+
+- [x] 对照 vanilla 26.1 animal/sound variant 的 `RegistryFixedCodec` 与
+  `ByteBufCodecs.holderRegistry`，wolf/pig/cow/chicken/cat 的 visual + sound variant、frog variant
+  与 zombie-nautilus variant 共 12 个 component 的 persistent key 统一从当前 session registry
+  order 解引用；villager type 属客户端 built-in registry，继续使用固定 catalog。
+- [x] 一个 registry-name→ordered keys context 覆盖全部共用 `encode_named_variant` 分支，并保留
+  “未下发 registry 才用 26.1 fallback、已下发但 holder 越界则省略”的来源语义。回归覆盖全部
+  12 个 custom key、fixed fallback、unknown holder 与 item-frame 递归 ItemStack SNBT。

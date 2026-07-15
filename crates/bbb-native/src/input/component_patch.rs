@@ -28,6 +28,7 @@ pub(super) struct PersistentSnbtContext<'a> {
     pub damage_type_keys: Option<&'a [String]>,
     pub instrument_keys: Option<&'a [String]>,
     pub banner_pattern_keys: Option<&'a [String]>,
+    pub synchronized_variant_keys: Option<&'a BTreeMap<&'static str, Vec<String>>>,
 }
 
 #[derive(Clone, Copy)]
@@ -1699,57 +1700,128 @@ fn encode_break_sound(
 fn encode_named_variant(
     type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    let resource_id = match type_id {
-        component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => {
-            VillagerModelType::for_vanilla_registry_id(patch.villager_variant_id?)?.resource_id()
-        }
-        component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => {
-            WolfModelVariant::for_vanilla_registry_id(patch.wolf_variant_id?)?.resource_id()
-        }
+    let holder_id = named_variant_holder_id(type_id, patch)?;
+    let resource_id = match synchronized_named_variant_registry(type_id)
+        .and_then(|registry| context.synchronized_variant_keys?.get(registry))
+    {
+        Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
+        None => vanilla_named_variant_resource_id(type_id, holder_id)?,
+    };
+    Some(debug_snbt_string(resource_id))
+}
+
+fn named_variant_holder_id(
+    type_id: i32,
+    patch: &bbb_protocol::packets::DataComponentPatchSummary,
+) -> Option<i32> {
+    match type_id {
+        component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => patch.villager_variant_id,
+        component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => patch.wolf_variant_id,
         component_id::VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
-            WolfSoundVariantIdentity::for_vanilla_registry_id(patch.wolf_sound_variant_id?)?
-                .resource_id()
+            patch.wolf_sound_variant_id
         }
-        component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => {
-            PigModelVariant::for_vanilla_registry_id(patch.pig_variant_id?)?.resource_id()
-        }
+        component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => patch.pig_variant_id,
         component_id::VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => {
-            PigSoundVariantIdentity::for_vanilla_registry_id(patch.pig_sound_variant_id?)?
-                .resource_id()
+            patch.pig_sound_variant_id
         }
-        component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => {
-            CowModelVariant::for_vanilla_registry_id(patch.cow_variant_id?)?.resource_id()
-        }
+        component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => patch.cow_variant_id,
         component_id::VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => {
-            CowSoundVariantIdentity::for_vanilla_registry_id(patch.cow_sound_variant_id?)?
-                .resource_id()
+            patch.cow_sound_variant_id
         }
-        component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => {
-            ChickenModelVariant::for_vanilla_registry_id(patch.chicken_variant_id?)?.resource_id()
-        }
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => patch.chicken_variant_id,
         component_id::VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
-            ChickenSoundVariantIdentity::for_vanilla_registry_id(patch.chicken_sound_variant_id?)?
-                .resource_id()
+            patch.chicken_sound_variant_id
         }
         component_id::VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
-            ZombieNautilusModelVariant::for_vanilla_registry_id(patch.zombie_nautilus_variant_id?)?
-                .resource_id()
+            patch.zombie_nautilus_variant_id
+        }
+        component_id::VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => patch.frog_variant_id,
+        component_id::VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => patch.cat_variant_id,
+        component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
+            patch.cat_sound_variant_id
+        }
+        _ => None,
+    }
+}
+
+fn synchronized_named_variant_registry(type_id: i32) -> Option<&'static str> {
+    match type_id {
+        component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => Some("minecraft:wolf_variant"),
+        component_id::VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
+            Some("minecraft:wolf_sound_variant")
+        }
+        component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => Some("minecraft:pig_variant"),
+        component_id::VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => {
+            Some("minecraft:pig_sound_variant")
+        }
+        component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => Some("minecraft:cow_variant"),
+        component_id::VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => {
+            Some("minecraft:cow_sound_variant")
+        }
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => {
+            Some("minecraft:chicken_variant")
+        }
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
+            Some("minecraft:chicken_sound_variant")
+        }
+        component_id::VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
+            Some("minecraft:zombie_nautilus_variant")
+        }
+        component_id::VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => Some("minecraft:frog_variant"),
+        component_id::VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => Some("minecraft:cat_variant"),
+        component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
+            Some("minecraft:cat_sound_variant")
+        }
+        _ => None,
+    }
+}
+
+fn vanilla_named_variant_resource_id(type_id: i32, holder_id: i32) -> Option<&'static str> {
+    let resource_id = match type_id {
+        component_id::VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => {
+            VillagerModelType::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => {
+            WolfModelVariant::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
+            WolfSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => {
+            PigModelVariant::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => {
+            PigSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => {
+            CowModelVariant::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => {
+            CowSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => {
+            ChickenModelVariant::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
+            ChickenSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id()
+        }
+        component_id::VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
+            ZombieNautilusModelVariant::for_vanilla_registry_id(holder_id)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => {
-            FrogModelVariant::for_vanilla_registry_id(patch.frog_variant_id?)?.resource_id()
+            FrogModelVariant::for_vanilla_registry_id(holder_id)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => {
-            CatModelVariant::for_vanilla_registry_id(patch.cat_variant_id?)?.resource_id()
+            CatModelVariant::for_vanilla_registry_id(holder_id)?.resource_id()
         }
         component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
-            CatSoundVariantIdentity::for_vanilla_registry_id(patch.cat_sound_variant_id?)?
-                .resource_id()
+            CatSoundVariantIdentity::for_vanilla_registry_id(holder_id)?.resource_id()
         }
         _ => return None,
     };
-    Some(debug_snbt_string(resource_id))
+    Some(resource_id)
 }
 
 fn encode_tropical_fish_pattern(
@@ -2815,6 +2887,7 @@ mod tests {
             damage_type_keys: None,
             instrument_keys: None,
             banner_pattern_keys: None,
+            synchronized_variant_keys: None,
         };
         let patch = bbb_protocol::packets::DataComponentPatchSummary {
             provides_trim_material_id: Some(0),
@@ -2984,7 +3057,7 @@ mod tests {
     }
 
     #[test]
-    fn named_variant_encoders_use_distinct_holder_fields() {
+    fn named_variant_encoders_use_session_order_or_fixed_catalog() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             villager_variant_id: Some(2),
             wolf_variant_id: Some(8),
@@ -3091,5 +3164,101 @@ mod tests {
         patch.cat_variant_id = Some(10);
         patch.cat_sound_variant_id = Some(2);
         assert_eq!(encode_added_component_value_snbt(106, &patch, None), None);
+
+        patch.wolf_variant_id = Some(0);
+        patch.wolf_sound_variant_id = Some(0);
+        patch.pig_variant_id = Some(0);
+        patch.pig_sound_variant_id = Some(0);
+        patch.cow_variant_id = Some(0);
+        patch.cow_sound_variant_id = Some(0);
+        patch.chicken_variant_id = Some(0);
+        patch.chicken_sound_variant_id = Some(0);
+        patch.zombie_nautilus_variant_id = Some(0);
+        patch.frog_variant_id = Some(0);
+        patch.cat_variant_id = Some(0);
+        patch.cat_sound_variant_id = Some(0);
+        let synchronized_variant_keys = BTreeMap::from([
+            ("minecraft:wolf_variant", vec!["example:wolf".to_string()]),
+            (
+                "minecraft:wolf_sound_variant",
+                vec!["example:wolf_sound".to_string()],
+            ),
+            ("minecraft:pig_variant", vec!["example:pig".to_string()]),
+            (
+                "minecraft:pig_sound_variant",
+                vec!["example:pig_sound".to_string()],
+            ),
+            ("minecraft:cow_variant", vec!["example:cow".to_string()]),
+            (
+                "minecraft:cow_sound_variant",
+                vec!["example:cow_sound".to_string()],
+            ),
+            (
+                "minecraft:chicken_variant",
+                vec!["example:chicken".to_string()],
+            ),
+            (
+                "minecraft:chicken_sound_variant",
+                vec!["example:chicken_sound".to_string()],
+            ),
+            (
+                "minecraft:zombie_nautilus_variant",
+                vec!["example:zombie_nautilus".to_string()],
+            ),
+            ("minecraft:frog_variant", vec!["example:frog".to_string()]),
+            ("minecraft:cat_variant", vec!["example:cat".to_string()]),
+            (
+                "minecraft:cat_sound_variant",
+                vec!["example:cat_sound".to_string()],
+            ),
+        ]);
+        let context = PersistentSnbtContext {
+            synchronized_variant_keys: Some(&synchronized_variant_keys),
+            ..Default::default()
+        };
+        for (type_id, expected) in [
+            (82, "\"example:wolf\""),
+            (83, "\"example:wolf_sound\""),
+            (93, "\"example:pig\""),
+            (94, "\"example:pig_sound\""),
+            (95, "\"example:cow\""),
+            (96, "\"example:cow_sound\""),
+            (97, "\"example:chicken\""),
+            (98, "\"example:chicken_sound\""),
+            (99, "\"example:zombie_nautilus\""),
+            (100, "\"example:frog\""),
+            (105, "\"example:cat\""),
+            (106, "\"example:cat_sound\""),
+        ] {
+            assert_eq!(
+                encode_added_component_value_snbt_with_context(type_id, &patch, context),
+                Some(expected.to_string())
+            );
+        }
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(81, &patch, context),
+            Some("\"minecraft:plains\"".to_string())
+        );
+
+        patch.wolf_variant_id = Some(1);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(82, &patch, context),
+            None
+        );
+
+        let only_wolf_variant =
+            BTreeMap::from([("minecraft:wolf_variant", vec!["example:wolf".to_string()])]);
+        patch.pig_variant_id = Some(2);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                93,
+                &patch,
+                PersistentSnbtContext {
+                    synchronized_variant_keys: Some(&only_wolf_variant),
+                    ..Default::default()
+                },
+            ),
+            Some("\"minecraft:cold\"".to_string())
+        );
     }
 }

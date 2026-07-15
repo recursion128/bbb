@@ -101,6 +101,30 @@ pub(crate) fn world_banner_pattern_keys(world: &WorldStore) -> Option<Vec<String
     world_registry_keys(world, "minecraft:banner_pattern")
 }
 
+const SYNCHRONIZED_VARIANT_REGISTRIES: [&str; 12] = [
+    "minecraft:wolf_variant",
+    "minecraft:wolf_sound_variant",
+    "minecraft:pig_variant",
+    "minecraft:pig_sound_variant",
+    "minecraft:cow_variant",
+    "minecraft:cow_sound_variant",
+    "minecraft:chicken_variant",
+    "minecraft:chicken_sound_variant",
+    "minecraft:zombie_nautilus_variant",
+    "minecraft:frog_variant",
+    "minecraft:cat_variant",
+    "minecraft:cat_sound_variant",
+];
+
+pub(crate) fn world_synchronized_variant_keys(
+    world: &WorldStore,
+) -> BTreeMap<&'static str, Vec<String>> {
+    SYNCHRONIZED_VARIANT_REGISTRIES
+        .into_iter()
+        .filter_map(|registry| world_registry_keys(world, registry).map(|keys| (registry, keys)))
+        .collect()
+}
+
 pub(crate) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
     world_registry_keys(world, "minecraft:attribute")
 }

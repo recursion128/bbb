@@ -5267,6 +5267,7 @@ fn debug_push_firework_rocket_additional_save_data(
         let damage_type_keys = crate::item_models::world_damage_type_keys(world);
         let instrument_keys = crate::item_models::world_instrument_keys(world);
         let banner_pattern_keys = crate::item_models::world_banner_pattern_keys(world);
+        let synchronized_variant_keys = crate::item_models::world_synchronized_variant_keys(world);
         fields.push(format!(
             "FireworksItem: {}",
             debug_firework_rocket_item_stack(
@@ -5279,6 +5280,7 @@ fn debug_push_firework_rocket_additional_save_data(
                     damage_type_keys: damage_type_keys.as_deref(),
                     instrument_keys: instrument_keys.as_deref(),
                     banner_pattern_keys: banner_pattern_keys.as_deref(),
+                    synchronized_variant_keys: Some(&synchronized_variant_keys),
                 },
             )
         ));
@@ -6661,6 +6663,7 @@ fn debug_push_item_frame_additional_save_data(
         let damage_type_keys = crate::item_models::world_damage_type_keys(world);
         let instrument_keys = crate::item_models::world_instrument_keys(world);
         let banner_pattern_keys = crate::item_models::world_banner_pattern_keys(world);
+        let synchronized_variant_keys = crate::item_models::world_synchronized_variant_keys(world);
         if let Some(item) = debug_item_stack_snbt_with_context(
             resource_id,
             stack.count,
@@ -6673,6 +6676,7 @@ fn debug_push_item_frame_additional_save_data(
                 damage_type_keys: damage_type_keys.as_deref(),
                 instrument_keys: instrument_keys.as_deref(),
                 banner_pattern_keys: banner_pattern_keys.as_deref(),
+                synchronized_variant_keys: Some(&synchronized_variant_keys),
             },
         ) {
             fields.push(format!("Item: {item}"));

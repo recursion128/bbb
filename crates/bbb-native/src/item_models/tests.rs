@@ -25,6 +25,20 @@ const AIR_BLOCK_STATE_ID: i32 = 0;
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 
 #[test]
+fn synchronized_variant_registry_context_inventory_is_complete() {
+    let registries = SYNCHRONIZED_VARIANT_REGISTRIES
+        .into_iter()
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(registries.len(), 12);
+    assert!(!registries.contains("minecraft:villager_type"));
+    for registry in registries {
+        assert!(
+            bbb_protocol::registry_data_types::synchronized_registry_data_type(registry).is_some()
+        );
+    }
+}
+
+#[test]
 fn first_person_projection_does_not_restore_component_id_aliases() {
     let source = include_str!("first_person.rs");
     for old_alias in [
