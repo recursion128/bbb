@@ -759,7 +759,9 @@ network holder 中 cat/chicken/cow/pig/wolf 五个 synchronized sound variant �
 typed codec shape、server order、named/direct SoundEvent、adult/baby death audio 闭合。其余
 四种 network shape 与七种 persistent Codec shape 共 178 行映射到
 当前 resource-id/tag resolver 并保持 `partial`，2 个 typed debug 调用带重启判据
-`deferred`，vanilla `holderSet` 内部 helper 自调用带证据 `not-applicable`。validator 执行以及
+`deferred`，vanilla `holderSet` 内部 helper 自调用带证据 `not-applicable`。生成 inventory 中
+13 个 `RegistryValidator.nonEmpty` 已在 atomic collection commit 前执行；失败会丢弃 pending、
+保留旧 registries/tags、记录诊断，并阻止 probe 发送 FinishConfiguration ACK/进入 Play。
 各 owning decoder/encoder 的 resolver context/custom-reorder 闭合仍是 foundation 剩余工作。
 
 完成标准：由 vanilla 26.1 network-synced registry 清单和全部 Holder/HolderSet codec

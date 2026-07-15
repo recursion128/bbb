@@ -497,7 +497,7 @@ fn configuration_registry_collection_commits_atomically_and_replaces_holder_orde
         vec!["minecraft:old"]
     );
 
-    store.finish_registry_configuration();
+    store.finish_registry_configuration().unwrap();
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:test", 0),
         Some("minecraft:new")
@@ -510,6 +510,110 @@ fn configuration_registry_collection_commits_atomically_and_replaces_holder_orde
         vec!["minecraft:new"]
     );
     assert!(store.registry_tags("minecraft:test").is_none());
+}
+
+#[test]
+fn configuration_registry_validation_rejects_empty_non_empty_registry_atomically() {
+    let registry = "minecraft:wolf_variant";
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        registry,
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:pale")],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: registry.to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:old".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
+
+    store.begin_registry_configuration();
+    store.record_registry_data(RegistryData {
+        registry: registry.to_string(),
+        entries: Vec::new(),
+        raw_payload_len: 0,
+    });
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: registry.to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:new".to_string(),
+                entries: Vec::new(),
+            }],
+        }],
+    });
+
+    let err = store.finish_registry_configuration().unwrap_err();
+    assert_eq!(err.registry, registry);
+    assert_eq!(err.validator, "RegistryValidator.nonEmpty ()");
+    assert_eq!(
+        err.message,
+        "Registry must be non-empty: minecraft:wolf_variant"
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id(registry, 0),
+        Some("minecraft:pale")
+    );
+    assert!(store
+        .registry_tags(registry)
+        .unwrap()
+        .tags
+        .contains_key("minecraft:old"));
+    assert!(!store
+        .registry_tags(registry)
+        .unwrap()
+        .tags
+        .contains_key("minecraft:new"));
+    assert_eq!(
+        store
+            .apply_diagnostics()
+            .last_apply_error
+            .as_ref()
+            .map(|error| (error.source.as_str(), error.message.as_str())),
+        Some((
+            "registry_configuration_validation",
+            "Registry must be non-empty: minecraft:wolf_variant",
+        ))
+    );
+
+    store.begin_registry_configuration();
+    store.record_registry_data(RegistryData {
+        registry: registry.to_string(),
+        entries: vec![RegistryDataEntry {
+            id: "example:custom".to_string(),
+            raw_data: None,
+        }],
+        raw_payload_len: 0,
+    });
+    store.finish_registry_configuration().unwrap();
+    assert_eq!(
+        store.registry_resource_id_by_holder_id(registry, 0),
+        Some("example:custom")
+    );
+}
+
+#[test]
+fn configuration_registry_validation_allows_empty_registry_without_validator() {
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    store.record_registry_data(RegistryData {
+        registry: "minecraft:world_clock".to_string(),
+        entries: Vec::new(),
+        raw_payload_len: 0,
+    });
+
+    store.finish_registry_configuration().unwrap();
+    assert_eq!(
+        store
+            .registry_resource_ids_in_holder_order("minecraft:world_clock")
+            .unwrap()
+            .count(),
+        0
+    );
 }
 
 #[test]
@@ -530,7 +634,7 @@ fn tag_only_configuration_preserves_registry_contents_and_replaces_named_tags() 
             }],
         }],
     });
-    store.finish_registry_configuration();
+    store.finish_registry_configuration().unwrap();
 
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:test", 0),
@@ -677,7 +781,7 @@ fn update_tags_recomputes_furnace_fuels_after_immediate_and_transactional_tag_ap
         &BTreeSet::from([stick, oak_log])
     );
 
-    store.finish_registry_configuration();
+    store.finish_registry_configuration().unwrap();
     assert_eq!(
         store.furnace_fuel_item_ids(),
         &BTreeSet::from([stick, birch_log])

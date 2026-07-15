@@ -1130,7 +1130,7 @@ fn biome_colors_follow_active_registry_resource_order_after_finish() {
     );
     assert!(!textures.synchronize_biome_registry(&world));
 
-    world.finish_registry_configuration();
+    world.finish_registry_configuration().unwrap();
     assert!(textures.synchronize_biome_registry(&world));
     assert_eq!(textures.biome_sky_color(Some(0)), None);
     assert_eq!(textures.biome_sky_color(Some(1)), Some([40, 50, 60]));

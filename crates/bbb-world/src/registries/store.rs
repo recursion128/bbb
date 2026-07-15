@@ -10,15 +10,27 @@ use super::{
     ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("{message}")]
+pub struct RegistryValidationError {
+    pub registry: String,
+    pub validator: String,
+    pub message: String,
+}
+
 impl WorldStore {
     pub fn begin_registry_configuration(&mut self) {
         self.registries.pending = Some(PendingRegistryCollection::default());
     }
 
-    pub fn finish_registry_configuration(&mut self) {
+    pub fn finish_registry_configuration(&mut self) -> Result<(), RegistryValidationError> {
         let Some(mut pending) = self.registries.pending.take() else {
-            return;
+            return Ok(());
         };
+        if let Err(err) = validate_pending_registry_collection(&pending) {
+            self.record_apply_error("registry_configuration_validation", &err);
+            return Err(err);
+        }
         if !pending.registries.is_empty() {
             for registry in pending.contents.keys() {
                 self.registries.tags.remove(registry);
@@ -30,6 +42,7 @@ impl WorldStore {
         self.sync_registry_counters();
         self.sync_registry_tag_counters();
         self.items.refresh_furnace_fuel_item_ids(&self.registries);
+        Ok(())
     }
 
     pub fn record_registry(&mut self, name: impl Into<String>, raw_payload_len: usize) {
@@ -305,4 +318,36 @@ impl WorldStore {
     pub fn registry_tags(&self, registry: &str) -> Option<&RegistryTagState> {
         self.registries.tags.get(registry)
     }
+}
+
+fn validate_pending_registry_collection(
+    pending: &PendingRegistryCollection,
+) -> Result<(), RegistryValidationError> {
+    for (registry, contents) in &pending.contents {
+        let Some(validator) =
+            synchronized_registry_data_type(registry).and_then(|data| data.validator)
+        else {
+            continue;
+        };
+        match validator {
+            "RegistryValidator.nonEmpty ()" if contents.entries.is_empty() => {
+                return Err(RegistryValidationError {
+                    registry: registry.clone(),
+                    validator: validator.to_string(),
+                    message: format!("Registry must be non-empty: {registry}"),
+                });
+            }
+            "RegistryValidator.nonEmpty ()" => {}
+            _ => {
+                return Err(RegistryValidationError {
+                    registry: registry.clone(),
+                    validator: validator.to_string(),
+                    message: format!(
+                        "unknown synchronized registry validator {validator}: {registry}"
+                    ),
+                });
+            }
+        }
+    }
+    Ok(())
 }

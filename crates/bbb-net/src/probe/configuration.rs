@@ -14,10 +14,10 @@ impl ProbeContext {
     ) -> Result<()> {
         match packet {
             ConfigurationClientbound::Finish => {
+                self.world.finish_registry_configuration()?;
                 let (id, payload) = packets::encode_configuration_finish();
                 self.conn.send_packet(id, &payload).await?;
                 self.state = ConnectionState::Play;
-                self.world.finish_registry_configuration();
                 self.play_tick = Some(play_tick_interval());
             }
             ConfigurationClientbound::Disconnect { reason, .. } => {
@@ -185,6 +185,47 @@ mod tests {
             .is_err());
         assert_eq!(probe.state, ConnectionState::Play);
         assert!(probe.play_tick.is_some());
+    }
+
+    #[tokio::test]
+    async fn probe_rejects_invalid_registry_collection_before_finish_ack() {
+        let (client, mut server) = raw_connection_pair().await;
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Configuration;
+        probe.world.record_registry_entries(
+            "minecraft:wolf_variant",
+            0,
+            vec![RegistryPacketEntry::stub("minecraft:pale")],
+        );
+        probe.world.begin_registry_configuration();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::RegistryData(RegistryData {
+                registry: "minecraft:wolf_variant".to_string(),
+                raw_payload_len: 0,
+                entries: Vec::new(),
+            }))
+            .await
+            .unwrap();
+
+        let err = probe
+            .handle_configuration_packet(ConfigurationClientbound::Finish)
+            .await
+            .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Registry must be non-empty: minecraft:wolf_variant"
+        );
+        assert_eq!(probe.state, ConnectionState::Configuration);
+        assert!(probe.play_tick.is_none());
+        assert_eq!(
+            probe
+                .world
+                .registry_resource_id_by_holder_id("minecraft:wolf_variant", 0),
+            Some("minecraft:pale")
+        );
+        assert!(timeout(Duration::from_millis(50), server.read_packet())
+            .await
+            .is_err());
     }
 
     #[tokio::test]

@@ -37,6 +37,7 @@ pub use state::{
     RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
     RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
+pub use store::RegistryValidationError;
 pub use trim_materials::VanillaTrimMaterialIdentity;
 pub use trim_patterns::VanillaTrimPatternIdentity;
 

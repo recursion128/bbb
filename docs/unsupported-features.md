@@ -56,9 +56,8 @@ Owner: `bbb-protocol`
   offered packs whose registry data bbb can actually provide, and pass that
   intersection to the existing 64-entry response encoder instead of always
   returning an empty configuration response.
-- Apply the validators declared by the generated
-  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory, and close the owning
-  decoder/encoder registry context plus custom-reorder tests behind the 178
+- Close the owning decoder/encoder registry context plus custom-reorder tests
+  behind the 178
   `partial` network and persistent rows in
   `docs/registry-holder-consumer-coverage-26.1.json` before marking those
   families complete.

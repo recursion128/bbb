@@ -197,9 +197,10 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             NetEvent::StateChanged {
                 state: ConnectionState::Play,
             } => {
-                world.finish_registry_configuration();
-                if let Some(audio_events) = audio_events.as_deref_mut() {
-                    synchronize_audio_registries_from_world(world, audio_events);
+                if world.finish_registry_configuration().is_ok() {
+                    if let Some(audio_events) = audio_events.as_deref_mut() {
+                        synchronize_audio_registries_from_world(world, audio_events);
+                    }
                 }
             }
             NetEvent::CookieRequest {
