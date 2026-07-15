@@ -471,6 +471,10 @@ pub fn vanilla_entity_type_is_spellcaster_illager(entity_type_id: i32) -> bool {
     schema::vanilla_entity_metadata_type_is_spellcaster_illager(entity_type_id)
 }
 
+pub fn vanilla_entity_type_illager_arm_pose_uses_celebrating(entity_type_id: i32) -> bool {
+    schema::vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(entity_type_id)
+}
+
 pub fn vanilla_entity_type_is_spider(entity_type_id: i32) -> bool {
     schema::vanilla_entity_metadata_type_is_spider(entity_type_id)
 }

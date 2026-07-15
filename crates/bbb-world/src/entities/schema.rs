@@ -251,6 +251,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_slime: bool,
     pub is_abstract_piglin: bool,
     pub is_spider: bool,
+    pub illager_arm_pose_uses_celebrating: bool,
     pub is_player_rideable_jumping: bool,
     pub has_custom_inventory_screen: bool,
     pub diagnostic: Option<&'static str>,
@@ -609,6 +610,15 @@ pub fn vanilla_entity_metadata_type_is_spider(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.is_spider)
+        .unwrap_or(false)
+}
+
+/// Returns whether the nearest generated vanilla illager `getArmPose` implementation can return
+/// `IllagerArmPose.CELEBRATING`.
+pub fn vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.illager_arm_pose_uses_celebrating)
         .unwrap_or(false)
 }
 
@@ -1094,6 +1104,28 @@ mod tests {
                 .count(),
             2
         );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.illager_arm_pose_uses_celebrating)
+                .map(|entry| entry.entity_type_id)
+                .collect::<Vec<_>>(),
+            vec![
+                VANILLA_ENTITY_TYPE_EVOKER_ID,
+                VANILLA_ENTITY_TYPE_VINDICATOR_ID
+            ]
+        );
+        assert!(
+            !vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(
+                VANILLA_ENTITY_TYPE_ILLUSIONER_ID
+            )
+        );
+        assert!(
+            !vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(
+                VANILLA_ENTITY_TYPE_PILLAGER_ID
+            )
+        );
+        assert!(!vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(-1));
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()

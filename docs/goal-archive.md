@@ -15492,3 +15492,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   共同界定该能力。
 - [x] generated graph exact-set 测试锁定 Hoglin/Zoglin 两项，既有 world 回归覆盖事件启动、
   递减和 Chicken 排除，metadata-generator 反向门禁防止两项常量表回流。
+
+## 2026-07-15：Generate illager celebrating arm-pose membership
+
+- [x] entity metadata generator 沿 `AbstractIllager` 子类的最近零参 `getArmPose`
+  实现解析 `IllagerArmPose.CELEBRATING` 返回分支；Evoker 继承
+  SpellcasterIllager 的实现，Vindicator 直接实现，Illusioner/Pillager 的更近 override
+  保持排除。
+- [x] native celebrating projection 删除 Evoker/Vindicator 手写 type gate，直接消费 world
+  generated query；`Raider.IS_CELEBRATING` metadata 解码与 casting/aggressive 优先级仍归原
+  语义 owner。catalog exact-set、既有 native 四类行为回归与 generator-emitted 反向门禁覆盖该边界。

@@ -934,16 +934,15 @@ pub(super) fn parrot_sitting(
 }
 
 /// Vanilla `Raider.isCelebrating()` (the synced `IS_CELEBRATING` boolean, id 16): drives the evoker and
-/// vindicator `CELEBRATING` victory-dance arm pose. Only those two render it — the illusioner overrides
-/// `getArmPose` (bow, no celebrate) and the pillager never returns `CELEBRATING` — so the projection is
-/// gated to the evoker / vindicator types. The renderer additionally suppresses it while casting /
-/// aggressive (which take priority in vanilla `getArmPose`).
+/// vindicator `CELEBRATING` victory-dance arm pose. The generated class-behavior catalog resolves
+/// the nearest `getArmPose`: the illusioner override omits celebrating and the pillager never returns
+/// it. The renderer additionally suppresses the projection while casting / aggressive (which take
+/// priority in vanilla `getArmPose`).
 pub(super) fn illager_celebrating(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
-        || entity_type_id == VANILLA_ENTITY_TYPE_VINDICATOR_ID)
+    vanilla_entity_type_illager_arm_pose_uses_celebrating(entity_type_id)
         && entity_data_bool(
             values,
             RAIDER_IS_CELEBRATING_DATA_ID,

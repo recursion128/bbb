@@ -2589,6 +2589,63 @@ def class_can_use_every_equipment_slot(
     return value
 
 
+def class_illager_arm_pose_uses_celebrating(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    cache: dict[str, bool],
+) -> bool:
+    """Resolve whether the nearest illager ``getArmPose`` can return ``CELEBRATING``."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(f"unknown entity class in getArmPose hierarchy: {owner}")
+
+    abstract_illager = "net.minecraft.world.entity.monster.illager.AbstractIllager"
+    current: str | None = owner
+    while current is not None and current != abstract_illager:
+        current_item = class_map.get(current)
+        current = current_item.superclass if current_item is not None else None
+    if current != abstract_illager:
+        cache[owner] = False
+        return False
+
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == "getArmPose" and len(method.parameters) == 0
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.getArmPose/0: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(f"{owner}: no getArmPose override or superclass")
+        value = class_illager_arm_pose_uses_celebrating(
+            result, class_map, item.superclass, cache
+        )
+        cache[owner] = value
+        return value
+
+    body = methods[0].node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{owner}.getArmPose: method lacks a body")
+    returns = [
+        source.expression(node.named_children[0]).canonical.replace(" ", "")
+        for node in descendants(body)
+        if node.type == "return_statement" and len(node.named_children) == 1
+    ]
+    if not returns:
+        raise ExtractionError(f"{owner}.getArmPose: expected at least one return expression")
+    value = any(
+        "AbstractIllager.IllagerArmPose.CELEBRATING" in expression
+        for expression in returns
+    )
+    cache[owner] = value
+    return value
+
+
 def method_mask(result: ExtractionResult, owner: str, name: str, mode: str) -> tuple[int, str]:
     source, method = method_for(result, owner, name)
     body = method.node.child_by_field_name("body")
@@ -2785,6 +2842,7 @@ def render(result: ExtractionResult) -> str:
     sound_source_cache: dict[str, str] = {}
     boat_ride_height_cache: dict[str, str] = {}
     can_use_every_slot_cache: dict[str, bool] = {}
+    illager_celebrating_cache: dict[str, bool] = {}
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -3101,6 +3159,7 @@ def render(result: ExtractionResult) -> str:
                 f"        is_slime: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.monster.Slime')).lower()},",
                 f"        is_abstract_piglin: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.monster.piglin.AbstractPiglin')).lower()},",
                 f"        is_spider: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.monster.spider.Spider')).lower()},",
+                f"        illager_arm_pose_uses_celebrating: {str(class_illager_arm_pose_uses_celebrating(result, class_map, item.runtime_class, illager_celebrating_cache)).lower() if item.runtime_class is not None else 'false'},",
                 f"        is_player_rideable_jumping: {str(implements_interface(item.runtime_class, 'net.minecraft.world.entity.PlayerRideableJumping')).lower()},",
                 f"        has_custom_inventory_screen: {str(implements_interface(item.runtime_class, 'net.minecraft.world.entity.HasCustomInventoryScreen')).lower()},",
                 f"        diagnostic: {option_string(item.diagnostic)},",
@@ -3218,6 +3277,18 @@ def render(result: ExtractionResult) -> str:
             "    fn production_hoglin_animation_does_not_restore_entity_type_membership() {",
             '        let source = include_str!("../animations.rs");',
             '        assert!(!source.contains("VANILLA_ENTITY_TYPE_HOGLIN_ID | VANILLA_ENTITY_TYPE_ZOGLIN_ID"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_illager_celebrating_does_not_restore_entity_type_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");',
+            '        let body = source',
+            '            .split("fn illager_celebrating")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n}"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("illager celebrating projection source");',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
             "    }",
             "}",
             "",
