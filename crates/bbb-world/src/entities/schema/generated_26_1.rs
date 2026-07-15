@@ -22341,6 +22341,19 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_iron_golem_flags_do_not_restore_accessor_constants() {
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        assert!(native_input
+            .contains("vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type"));
+        for removed in ["IRON_GOLEM_FLAGS_DATA_ID", "IRON_GOLEM_DEFAULT_FLAGS"] {
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

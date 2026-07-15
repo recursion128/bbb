@@ -76,6 +76,7 @@ use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -113,8 +114,6 @@ use bbb_world::{
     VANILLA_GOAT_SCREAMING_DATA_ID as GOAT_SCREAMING_DATA_ID,
     VANILLA_HORSE_DEFAULT_VARIANT as HORSE_DEFAULT_VARIANT,
     VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID,
-    VANILLA_IRON_GOLEM_DEFAULT_FLAGS as IRON_GOLEM_DEFAULT_FLAGS,
-    VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
     VANILLA_LLAMA_DEFAULT_STRENGTH as LLAMA_DEFAULT_STRENGTH,
     VANILLA_LLAMA_DEFAULT_VARIANT as LLAMA_DEFAULT_VARIANT,
@@ -7531,8 +7530,12 @@ fn debug_push_interaction_additional_save_data(entity: &EntityState, fields: &mu
 }
 
 fn debug_push_iron_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = debug_entity_data_byte_present(entity, IRON_GOLEM_FLAGS_DATA_ID)
-        .unwrap_or(IRON_GOLEM_DEFAULT_FLAGS);
+    let flags =
+        vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(entity.entity_type_id)
+            .map(|(data_id, default)| {
+                debug_entity_data_byte_present(entity, data_id).unwrap_or(default)
+            })
+            .unwrap_or(0);
     fields.push(format!(
         "PlayerCreated: {}",
         debug_snbt_bool(flags & IRON_GOLEM_PLAYER_CREATED_FLAG != 0)
