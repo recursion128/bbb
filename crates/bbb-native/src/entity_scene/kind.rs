@@ -167,7 +167,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_WOLF_ID => {
             wolf_model_kind(entity_type_id, data_values, game_time, variant_registries)
         }
-        VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_FOX_ID => fox_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_CAT_ID => {
             feline_model_kind(entity_type_id, data_values, true, variant_registries)
         }

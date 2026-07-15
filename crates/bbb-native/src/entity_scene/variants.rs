@@ -188,14 +188,16 @@ pub(super) fn cat_variant_from_registry_id(
 
 /// Vanilla `FoxRenderer` (an `AgeableMobRenderer`) picks `AdultFoxModel` for an adult and `BabyFoxModel`
 /// for a baby; both render through the dedicated [`EntityModelKind::Fox`] (`baby` selecting the layout).
-pub(super) fn fox_model_kind(values: &[bbb_protocol::packets::EntityDataValue]) -> EntityModelKind {
+pub(super) fn fox_model_kind(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> EntityModelKind {
+    let variant = vanilla_entity_metadata_fox_variant_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_int(values, data_id, default))
+        .unwrap_or_default();
     EntityModelKind::Fox {
         baby: ageable_baby(values),
-        variant: FoxModelVariant::from_id(entity_data_int(
-            values,
-            FOX_TYPE_DATA_ID,
-            FOX_DEFAULT_VARIANT,
-        )),
+        variant: FoxModelVariant::from_id(variant),
     }
 }
 

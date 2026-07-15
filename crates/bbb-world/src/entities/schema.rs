@@ -821,6 +821,26 @@ pub fn vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Fox variant accessor and its typed default.
+pub fn vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_TYPE_ID")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.fox.Fox",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited TamableAnimal flags accessor and its typed default.
 pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3027,6 +3047,26 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_fox_variant_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_FOX_ID
+            ),
+            Some((18, 0))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_RABBIT_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_fox_variant_accessor_for_entity_type(-1),
             None
         );
     }

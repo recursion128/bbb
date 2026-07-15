@@ -441,7 +441,8 @@ fn fox_exposes_stable_model_keys() {
 #[test]
 fn fox_textured_render_matches_vanilla_renderer() {
     // `FoxRenderer.getTextureLocation`: the {red, snow} × {adult, baby} × {idle, sleeping} matrix.
-    for variant in [FoxModelVariant::Red, FoxModelVariant::Snow] {
+    let variants = [FoxModelVariant::Red, FoxModelVariant::Snow];
+    for variant in variants {
         for baby in [false, true] {
             for sleeping in [false, true] {
                 let texture = fox_texture_ref(variant, baby, sleeping);
@@ -474,6 +475,12 @@ fn fox_textured_render_matches_vanilla_renderer() {
             );
         }
     }
+    assert_eq!(FoxModelVariant::from_id(-1), FoxModelVariant::Red);
+    assert_eq!(FoxModelVariant::from_id(2), FoxModelVariant::Red);
+    assert_eq!(
+        variants.map(FoxModelVariant::serialized_name),
+        ["red", "snow"]
+    );
     assert_eq!(
         fox_entity_texture_refs(),
         &[

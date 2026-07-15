@@ -270,6 +270,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Axolotl variant membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_VARIANT`; native model/debug consumers must not restore fixed accessor/default
   aliases or a parallel save-id normalizer, and invalid ids must follow vanilla ZERO fallback.
+  Fox variant membership, wire index and typed default must remain derived from generated
+  `Fox.DATA_TYPE_ID`; native model/debug consumers must not restore fixed accessor/default aliases
+  or a parallel serialized-name mapper, and invalid ids must follow vanilla ZERO fallback.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

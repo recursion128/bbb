@@ -22,6 +22,7 @@ use bbb_world::{
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID, VANILLA_BAT_FLAGS_DATA_ID,
     VANILLA_BAT_FLAG_RESTING, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
     VANILLA_CAT_IS_LYING_DATA_ID, VANILLA_CAT_RELAX_STATE_ONE_DATA_ID,
+    VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
@@ -9712,6 +9713,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     );
     // The fox `DATA_TYPE_ID` (18, int) selects the RED/SNOW variant via `Fox.Variant.byId`.
     for (id, variant) in [
+        (-1, FoxModelVariant::Red),
         (0, FoxModelVariant::Red),
         (1, FoxModelVariant::Snow),
         (2, FoxModelVariant::Red),

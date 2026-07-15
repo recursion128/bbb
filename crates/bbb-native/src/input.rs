@@ -80,6 +80,7 @@ use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
@@ -217,12 +218,10 @@ use bbb_world::{
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MOOSHROOM_TYPE_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
     VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
     VANILLA_FOX_TRUSTED_DATA_ID_0 as FOX_TRUSTED_DATA_ID_0,
     VANILLA_FOX_TRUSTED_DATA_ID_1 as FOX_TRUSTED_DATA_ID_1,
-    VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
 };
 use bbb_world::{
     VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
@@ -283,8 +282,8 @@ use bbb_protocol::potion_types::vanilla_potion;
 use bbb_protocol::sound_event_types::vanilla_sound_event_resource_id;
 use bbb_renderer::{
     AxolotlModelVariant, BannerPatternKind, CatModelVariant, ChickenModelVariant, CowModelVariant,
-    FrogModelVariant, ParrotModelVariant, PigModelVariant, VillagerModelType, WolfModelVariant,
-    ZombieNautilusModelVariant,
+    FoxModelVariant, FrogModelVariant, ParrotModelVariant, PigModelVariant, VillagerModelType,
+    WolfModelVariant, ZombieNautilusModelVariant,
 };
 use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
 use bbb_world::{
@@ -7007,7 +7006,11 @@ fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         .collect::<Vec<_>>()
         .join(", ");
     let variant =
-        debug_entity_data_int_present(entity, FOX_TYPE_DATA_ID).unwrap_or(FOX_DEFAULT_VARIANT_ID);
+        vanilla_entity_metadata_fox_variant_accessor_for_entity_type(entity.entity_type_id)
+            .map(|(data_id, default)| {
+                debug_entity_data_int_present(entity, data_id).unwrap_or(default)
+            })
+            .unwrap_or_default();
     fields.push(format!("Trusted: [{trusted}]"));
     fields.push(format!(
         "Sleeping: {}",
@@ -7015,7 +7018,7 @@ fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     ));
     fields.push(format!(
         "Type: {}",
-        debug_snbt_string(debug_fox_variant_name(variant))
+        debug_snbt_string(FoxModelVariant::from_id(variant).serialized_name())
     ));
     fields.push(format!(
         "Sitting: {}",
@@ -7025,13 +7028,6 @@ fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<St
         "Crouching: {}",
         debug_snbt_bool(flags & FOX_FLAG_CROUCHING != 0)
     ));
-}
-
-fn debug_fox_variant_name(variant: i32) -> &'static str {
-    match variant {
-        1 => "snow",
-        _ => "red",
-    }
 }
 
 fn debug_push_wolf_additional_save_data(

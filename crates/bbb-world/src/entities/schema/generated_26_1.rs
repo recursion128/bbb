@@ -22955,6 +22955,40 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_fox_variant_does_not_restore_accessor_constants() {
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        for source in [native_scene, native_variants, native_input] {
+            assert!(source.contains("vanilla_entity_metadata_fox_variant_accessor_for_entity_type"));
+        }
+        assert!(native_kind.contains("fox_model_kind(entity_type_id, data_values)"));
+        for removed in [
+            "FOX_TYPE_DATA_ID",
+            "FOX_DEFAULT_VARIANT",
+            "debug_fox_variant_name",
+        ] {
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_kind.contains(removed),
+                "native kind restored {removed}"
+            );
+            assert!(
+                !native_variants.contains(removed),
+                "native variants restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

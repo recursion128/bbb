@@ -1401,6 +1401,14 @@ impl FoxModelVariant {
             _ => Self::Red,
         }
     }
+
+    /// Vanilla `StringRepresentable` name used by the save-data codec.
+    pub const fn serialized_name(self) -> &'static str {
+        match self {
+            Self::Red => "red",
+            Self::Snow => "snow",
+        }
+    }
 }
 
 /// Vanilla `Axolotl.Variant` (the synced `DATA_VARIANT` int): the five axolotl colours, sharing one

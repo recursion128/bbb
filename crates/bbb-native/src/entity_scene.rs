@@ -35,6 +35,7 @@ use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
@@ -154,9 +155,6 @@ pub(crate) use bbb_world::{
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM as END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
     VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID as END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_FOX_DEFAULT_TYPE as FOX_DEFAULT_VARIANT, VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
 };
 use bbb_world::{
     VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
