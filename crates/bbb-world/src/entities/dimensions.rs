@@ -22,6 +22,7 @@ use super::schema::{
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
+    vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
@@ -38,8 +39,6 @@ use super::schema::{
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
-    VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
-    VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID as SHULKER_DEFAULT_ATTACH_FACE_ID,
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
@@ -213,7 +212,7 @@ fn vanilla_bounds_for_entity_data(
     } else if entity_type_id == VANILLA_ENTITY_TYPE_POLAR_BEAR_ID {
         polar_bear_pick_bounds(data_values, client_animations)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
-        shulker_pick_bounds(data_values, client_animations)
+        shulker_pick_bounds(entity_type_id, data_values, client_animations)?
     } else if let Some(bounds) = baby_pick_bounds(entity_type_id, data_values) {
         bounds
     } else if entity_type_id == VANILLA_ENTITY_TYPE_INTERACTION_ID {
@@ -663,18 +662,20 @@ fn polar_bear_pick_bounds(
 }
 
 fn shulker_pick_bounds(
+    entity_type_id: i32,
     data_values: &[EntityDataValue],
     client_animations: Option<EntityClientAnimationState>,
-) -> EntityPickBoundsState {
-    let direction = entity_data_direction(data_values, SHULKER_ATTACH_FACE_DATA_ID)
-        .unwrap_or_else(|| vanilla_direction_from_3d_data(SHULKER_DEFAULT_ATTACH_FACE_ID))
+) -> Option<EntityPickBoundsState> {
+    let accessors = vanilla_entity_metadata_shulker_accessors_for_entity_type(entity_type_id)?;
+    let direction = entity_data_direction(data_values, accessors.attach_face_data_id)
+        .unwrap_or_else(|| vanilla_direction_from_3d_data(accessors.attach_face_default))
         .opposite();
     let peek_amount = client_animations
         .and_then(|animations| animations.shulker_peek)
         .map(|peek| peek.current_peek_amount)
         .unwrap_or(0.0);
     let physical_peek = 0.5 - ((0.5 + peek_amount) * std::f32::consts::PI).sin() * 0.5;
-    shulker_progress_pick_bounds(direction, physical_peek)
+    Some(shulker_progress_pick_bounds(direction, physical_peek))
 }
 
 fn shulker_progress_pick_bounds(

@@ -277,6 +277,16 @@ pub(crate) struct VanillaGuardianMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaShulkerMetadataAccessors {
+    pub attach_face_data_id: u8,
+    pub attach_face_default: i32,
+    pub peek_data_id: u8,
+    pub peek_default: i8,
+    pub color_data_id: u8,
+    pub color_default: i8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaAbstractArrowMetadataAccessors {
     pub flags_data_id: u8,
     pub flags_default: i8,
@@ -773,6 +783,51 @@ pub(crate) fn vanilla_entity_metadata_guardian_accessors_for_entity_type(
             moving_default,
             attack_target_data_id: attack_target.data_id,
             attack_target_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the generated Shulker attachment, peek, and color accessors with typed defaults.
+pub fn vanilla_entity_metadata_shulker_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaShulkerMetadataAccessors> {
+    let attach_face =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ATTACH_FACE_ID")?;
+    let peek = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_PEEK_ID")?;
+    let color = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_COLOR_ID")?;
+    match (
+        (
+            attach_face.owner,
+            attach_face.serializer_name,
+            attach_face.typed_default,
+        ),
+        (peek.owner, peek.serializer_name, peek.typed_default),
+        (color.owner, color.serializer_name, color.typed_default),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.monster.Shulker",
+                "DIRECTION",
+                Some(VanillaEntityMetadataDefault::Direction(attach_face_default)),
+            ),
+            (
+                "net.minecraft.world.entity.monster.Shulker",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(peek_default)),
+            ),
+            (
+                "net.minecraft.world.entity.monster.Shulker",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(color_default)),
+            ),
+        ) => Some(VanillaShulkerMetadataAccessors {
+            attach_face_data_id: attach_face.data_id,
+            attach_face_default,
+            peek_data_id: peek.data_id,
+            peek_default,
+            color_data_id: color.data_id,
+            color_default,
         }),
         _ => None,
     }
@@ -2725,6 +2780,33 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_guardian_accessors_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_shulker_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_shulker_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_SHULKER_ID
+            ),
+            Some(VanillaShulkerMetadataAccessors {
+                attach_face_data_id: 16,
+                attach_face_default: 0,
+                peek_data_id: 17,
+                peek_default: 0,
+                color_data_id: 18,
+                color_default: 16,
+            })
+        );
+        assert_eq!(
+            vanilla_entity_metadata_shulker_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_shulker_accessors_for_entity_type(-1),
             None
         );
     }

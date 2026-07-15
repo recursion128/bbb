@@ -57,6 +57,7 @@ pub use renderer_catalog::{
 };
 pub use schema::VanillaCreeperMetadataAccessors;
 pub use schema::VanillaInteractionMetadataAccessors;
+pub use schema::VanillaShulkerMetadataAccessors;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_camera_post_effect_id,
@@ -71,6 +72,7 @@ pub use schema::{
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type, vanilla_entity_metadata_schema,
+    vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,

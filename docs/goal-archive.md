@@ -16331,3 +16331,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   movement/spike/tail 动画、attack counter 与 beam target 共享该 bundle。
 - world 消费者删除固定 accessor/default 别名，并显式携带 entity type 避免误读其他 family
   的同号槽位；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Shulker metadata accessors
+
+- `bbb-world` 现在公开从生成 schema 的 `Shulker.DATA_ATTACH_FACE_ID`、`DATA_PEEK_ID` 与
+  `DATA_COLOR_ID` 解析 membership、wire ids 16/17/18 及 typed defaults 0/0/16 的 accessor
+  bundle；world bounds/peek animation/attachment state 与 native color model/debug 共同消费它。
+- 生产消费者删除 Shulker 固定 accessor/default 别名，并显式携带 entity type 避免误读其他
+  family 的同号槽位；生成器 reverse guard 禁止恢复这些平行事实源。

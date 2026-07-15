@@ -23,6 +23,7 @@ use super::schema::{
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type, VanillaVehicleMetadataAccessors,
@@ -64,8 +65,6 @@ use super::schema::{
     VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW as PILLAGER_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_POLAR_BEAR_DEFAULT_STANDING as POLAR_BEAR_DEFAULT_STANDING,
     VANILLA_POLAR_BEAR_STANDING_DATA_ID as POLAR_BEAR_STANDING_DATA_ID,
-    VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
-    VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
     VANILLA_SNIFFER_DEFAULT_STATE as SNIFFER_DEFAULT_STATE,
     VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
@@ -3943,7 +3942,7 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_SHULKER_ID => {
-                let target_peek_amount = shulker_target_peek_amount(data_values);
+                let target_peek_amount = shulker_target_peek_amount(entity_type_id, data_values);
                 if let Some(peek) = self.shulker_peek.as_mut() {
                     peek.set_target(target_peek_amount);
                 } else if target_peek_amount > 0.0 {
@@ -6201,9 +6200,13 @@ fn entity_data_bool(data_values: &[EntityDataValue], data_id: u8, default: bool)
         .unwrap_or(default)
 }
 
-fn shulker_target_peek_amount(data_values: &[EntityDataValue]) -> f32 {
+fn shulker_target_peek_amount(entity_type_id: i32, data_values: &[EntityDataValue]) -> f32 {
+    let Some(accessors) = vanilla_entity_metadata_shulker_accessors_for_entity_type(entity_type_id)
+    else {
+        return 0.0;
+    };
     f32::from(
-        entity_data_byte(data_values, SHULKER_PEEK_DATA_ID, SHULKER_DEFAULT_PEEK).clamp(0, 100),
+        entity_data_byte(data_values, accessors.peek_data_id, accessors.peek_default).clamp(0, 100),
     ) * 0.01
 }
 

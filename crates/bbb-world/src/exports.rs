@@ -3,6 +3,7 @@ pub use crate::client::state::*;
 pub use crate::entities::state::*;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
+pub use crate::entities::VanillaShulkerMetadataAccessors;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
@@ -17,6 +18,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type, vanilla_entity_metadata_schema,
+    vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,

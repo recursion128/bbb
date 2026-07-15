@@ -236,6 +236,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   remain derived together from generated `DATA_ID_MOVING` and `DATA_ID_ATTACK_TARGET`; world
   animation/beam consumers must not restore fixed metadata aliases or read those slots without
   generated Guardian membership.
+  Shulker attach-face, peek and color membership, wire indices and typed defaults must remain
+  derived together from generated `DATA_ATTACH_FACE_ID`, `DATA_PEEK_ID` and `DATA_COLOR_ID`;
+  world bounds/animation/state and native model/debug consumers must not restore fixed metadata
+  aliases or read those slots without generated Shulker membership.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

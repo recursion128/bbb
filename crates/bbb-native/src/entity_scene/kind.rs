@@ -316,7 +316,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SALMON_ID => EntityModelKind::Salmon {
             size: salmon_model_size(data_values),
         },
-        VANILLA_ENTITY_TYPE_SHULKER_ID => shulker_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_SHULKER_ID => shulker_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID => EntityModelKind::ShulkerBullet,
         VANILLA_ENTITY_TYPE_SILVERFISH_ID => EntityModelKind::Silverfish,
         VANILLA_ENTITY_TYPE_SLIME_ID => EntityModelKind::Slime {

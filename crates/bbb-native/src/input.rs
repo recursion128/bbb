@@ -81,6 +81,7 @@ use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
@@ -241,14 +242,6 @@ use bbb_world::{
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_TROPICAL_FISH_DEFAULT_VARIANT as TROPICAL_FISH_DEFAULT_VARIANT,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
-    VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
-    VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID as SHULKER_DEFAULT_ATTACH_FACE,
-    VANILLA_SHULKER_DEFAULT_COLOR as SHULKER_DEFAULT_COLOR,
-    VANILLA_SHULKER_DEFAULT_PEEK as SHULKER_DEFAULT_PEEK,
-    VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
 };
 use bbb_world::{
     VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
@@ -7384,12 +7377,17 @@ fn debug_push_creaking_additional_save_data(entity: &EntityState, fields: &mut V
 }
 
 fn debug_push_shulker_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let attach_face = debug_entity_data_direction_present(entity, SHULKER_ATTACH_FACE_DATA_ID)
-        .unwrap_or(SHULKER_DEFAULT_ATTACH_FACE as i8);
-    let peek = debug_entity_data_byte_present(entity, SHULKER_PEEK_DATA_ID)
-        .unwrap_or(SHULKER_DEFAULT_PEEK);
-    let color = debug_entity_data_byte_present(entity, SHULKER_COLOR_DATA_ID)
-        .unwrap_or(SHULKER_DEFAULT_COLOR);
+    let Some(accessors) =
+        vanilla_entity_metadata_shulker_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let attach_face = debug_entity_data_direction_present(entity, accessors.attach_face_data_id)
+        .unwrap_or(accessors.attach_face_default as i8);
+    let peek = debug_entity_data_byte_present(entity, accessors.peek_data_id)
+        .unwrap_or(accessors.peek_default);
+    let color = debug_entity_data_byte_present(entity, accessors.color_data_id)
+        .unwrap_or(accessors.color_default);
     fields.push(format!("AttachFace: {attach_face}b"));
     fields.push(format!("Peek: {peek}b"));
     fields.push(format!("Color: {color}b"));

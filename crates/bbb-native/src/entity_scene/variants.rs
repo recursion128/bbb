@@ -70,9 +70,14 @@ pub(super) fn rabbit_model_kind(
 /// everything else (the default byte 16) is `null`, which `ShulkerRenderer.getTextureLocation`
 /// renders with the uncolored `shulker.png`.
 pub(super) fn shulker_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    let color_id = entity_data_byte(values, SHULKER_COLOR_DATA_ID, SHULKER_DEFAULT_COLOR);
+    let Some(accessors) = vanilla_entity_metadata_shulker_accessors_for_entity_type(entity_type_id)
+    else {
+        return EntityModelKind::Shulker { color: None };
+    };
+    let color_id = entity_data_byte(values, accessors.color_data_id, accessors.color_default);
     let color = (0..=15)
         .contains(&color_id)
         .then(|| EntityDyeColor::from_vanilla_id(color_id as i32));
