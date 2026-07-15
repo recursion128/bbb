@@ -82,6 +82,7 @@ use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
@@ -177,8 +178,6 @@ use bbb_world::{
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
     VANILLA_SLIME_DEFAULT_SIZE as SLIME_DEFAULT_SIZE,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
-    VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS as SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
-    VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
@@ -7412,8 +7411,12 @@ fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<
 }
 
 fn debug_push_snow_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = debug_entity_data_byte_present(entity, SNOW_GOLEM_PUMPKIN_DATA_ID)
-        .unwrap_or(SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let flags = debug_entity_data_byte_present(entity, data_id).unwrap_or(default);
     fields.push(format!(
         "Pumpkin: {}",
         debug_snbt_bool(flags & SNOW_GOLEM_PUMPKIN_FLAG != 0)

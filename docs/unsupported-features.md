@@ -240,6 +240,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   derived together from generated `DATA_ATTACH_FACE_ID`, `DATA_PEEK_ID` and `DATA_COLOR_ID`;
   world bounds/animation/state and native model/debug consumers must not restore fixed metadata
   aliases or read those slots without generated Shulker membership.
+  SnowGolem pumpkin membership, wire index and typed default must remain derived from generated
+  `DATA_PUMPKIN_ID`; world model projection must not restore a SnowGolem type predicate alongside
+  accessor membership, and native debug must not restore fixed accessor/default aliases.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

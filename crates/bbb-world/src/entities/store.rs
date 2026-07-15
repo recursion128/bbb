@@ -27,6 +27,7 @@ use super::schema::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
+    vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
@@ -40,8 +41,6 @@ use super::schema::{
     VANILLA_FOX_FLAG_FACEPLANTED as FOX_FLAG_FACEPLANTED,
     VANILLA_FOX_FLAG_POUNCING as FOX_FLAG_POUNCING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
     VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
-    VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS as SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
-    VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
@@ -68,7 +67,7 @@ use super::{
     VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
     VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
     VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
     VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
     VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
     VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
@@ -1741,16 +1740,15 @@ impl EntityStore {
         // renderer resolves `Blocks.CARVED_PUMPKIN.defaultBlockState()` into `state.headBlock`. The
         // snow golem's synced byte defaults to 16, so a newly spawned golem shows the pumpkin until the
         // server clears that bit.
-        let snow_golem_pumpkin = identity.entity_type_id == VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID
-            && self
-                .metadata_byte(
-                    id,
-                    SNOW_GOLEM_PUMPKIN_DATA_ID,
-                    SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
-                )
-                .unwrap_or(SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS)
-                & SNOW_GOLEM_PUMPKIN_FLAG
-                != 0;
+        let snow_golem_pumpkin =
+            vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
+                identity.entity_type_id,
+            )
+            .is_some_and(|(data_id, default)| {
+                self.metadata_byte(id, data_id, default).unwrap_or(default)
+                    & SNOW_GOLEM_PUMPKIN_FLAG
+                    != 0
+            });
         // Vanilla `WitherBossRenderer.extractRenderState`: `state.invulnerableTicks =
         // invulnerableTicks > 0 ? invulnerableTicks - partialTicks : 0.0` (the synced `DATA_ID_INV`
         // spawn countdown, lerped against the partial tick). It drives both the `scale()` spawn-charge

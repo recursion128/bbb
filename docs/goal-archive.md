@@ -16339,3 +16339,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   bundle；world bounds/peek animation/attachment state 与 native color model/debug 共同消费它。
 - 生产消费者删除 Shulker 固定 accessor/default 别名，并显式携带 entity type 避免误读其他
   family 的同号槽位；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 SnowGolem pumpkin metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `SnowGolem.DATA_PUMPKIN_ID` 解析 membership、
+  wire id 16 与 byte typed default 16；world pumpkin model projection 与 native debug 共同
+  消费它，并继续使用生成的 pumpkin flag mask。
+- 生产消费者删除固定 accessor/default 别名，world model projection 删除平行 SnowGolem
+  type predicate；生成器 reverse guard 禁止恢复这些平行事实源。
