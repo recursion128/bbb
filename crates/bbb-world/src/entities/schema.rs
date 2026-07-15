@@ -249,6 +249,16 @@ pub(crate) struct VanillaEndermanRenderMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct VanillaAbstractBoatMetadataAccessors {
+    pub(crate) paddle_left_data_id: u8,
+    pub(crate) paddle_left_default: bool,
+    pub(crate) paddle_right_data_id: u8,
+    pub(crate) paddle_right_default: bool,
+    pub(crate) bubble_time_data_id: u8,
+    pub(crate) bubble_time_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaAbstractArrowMetadataAccessors {
     pub flags_data_id: u8,
     pub flags_default: i8,
@@ -593,6 +603,61 @@ pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
             "BYTE",
             Some(VanillaEntityMetadataDefault::Byte(default)),
         ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves the inherited AbstractBoat paddle and bubble-time accessors with typed defaults.
+pub(crate) fn vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaAbstractBoatMetadataAccessors> {
+    let paddle_left =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_PADDLE_LEFT")?;
+    let paddle_right =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_PADDLE_RIGHT")?;
+    let bubble_time =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_BUBBLE_TIME")?;
+    match (
+        (
+            paddle_left.owner,
+            paddle_left.serializer_name,
+            paddle_left.typed_default,
+        ),
+        (
+            paddle_right.owner,
+            paddle_right.serializer_name,
+            paddle_right.typed_default,
+        ),
+        (
+            bubble_time.owner,
+            bubble_time.serializer_name,
+            bubble_time.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.vehicle.boat.AbstractBoat",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(paddle_left_default)),
+            ),
+            (
+                "net.minecraft.world.entity.vehicle.boat.AbstractBoat",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(paddle_right_default)),
+            ),
+            (
+                "net.minecraft.world.entity.vehicle.boat.AbstractBoat",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(bubble_time_default)),
+            ),
+        ) => Some(VanillaAbstractBoatMetadataAccessors {
+            paddle_left_data_id: paddle_left.data_id,
+            paddle_left_default,
+            paddle_right_data_id: paddle_right.data_id,
+            paddle_right_default,
+            bubble_time_data_id: bubble_time.data_id,
+            bubble_time_default,
+        }),
         _ => None,
     }
 }
@@ -2393,6 +2458,38 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_abstract_boat_accessors_own_inherited_membership_indices_and_defaults() {
+        let expected = VanillaAbstractBoatMetadataAccessors {
+            paddle_left_data_id: 11,
+            paddle_left_default: false,
+            paddle_right_data_id: 12,
+            paddle_right_default: false,
+            bubble_time_data_id: 13,
+            bubble_time_default: 0,
+        };
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(entity_type_id),
+                Some(expected),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_MINECART_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(-1),
             None
         );
     }

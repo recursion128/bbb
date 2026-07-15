@@ -16,18 +16,13 @@ use super::dragon::EnderDragonAnimationState;
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
+    vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
-    VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID as ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
-    VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME as ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME,
-    VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT as ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT,
-    VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT as ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT,
-    VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID as ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
-    VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID as ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
     VANILLA_ALLAY_DANCING_DATA_ID as ALLAY_DANCING_DATA_ID,
     VANILLA_ALLAY_DEFAULT_DANCING as ALLAY_DEFAULT_DANCING,
     VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
@@ -6148,30 +6143,41 @@ pub(super) fn entity_chunk_coordinate(position: f64) -> i32 {
 }
 
 pub(crate) fn boat_paddle_states(
+    entity_type_id: i32,
     data_values: &[EntityDataValue],
     has_controlling_passenger: bool,
 ) -> [bool; 2] {
+    let Some(accessors) =
+        vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(entity_type_id)
+    else {
+        return [false; 2];
+    };
     [
         has_controlling_passenger
             && entity_data_bool(
                 data_values,
-                ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
-                ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT,
+                accessors.paddle_left_data_id,
+                accessors.paddle_left_default,
             ),
         has_controlling_passenger
             && entity_data_bool(
                 data_values,
-                ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
-                ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT,
+                accessors.paddle_right_data_id,
+                accessors.paddle_right_default,
             ),
     ]
 }
 
-pub(crate) fn boat_bubble_time(data_values: &[EntityDataValue]) -> i32 {
+pub(crate) fn boat_bubble_time(entity_type_id: i32, data_values: &[EntityDataValue]) -> i32 {
+    let Some(accessors) =
+        vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(entity_type_id)
+    else {
+        return 0;
+    };
     entity_data_int(
         data_values,
-        ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
-        ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME,
+        accessors.bubble_time_data_id,
+        accessors.bubble_time_default,
     )
 }
 

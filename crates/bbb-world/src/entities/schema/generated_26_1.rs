@@ -22417,6 +22417,27 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_abstract_boat_accessors_do_not_restore_fixed_metadata_facts() {
+        let animations = include_str!("../animations.rs");
+        assert!(
+            animations.contains("vanilla_entity_metadata_abstract_boat_accessors_for_entity_type")
+        );
+        for removed in [
+            "ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID",
+            "ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT",
+            "ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID",
+            "ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT",
+            "ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID",
+            "ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_armor_stand_accessors_do_not_restore_fixed_metadata_facts() {
         let dimensions = include_str!("../dimensions.rs");
         let projectiles = include_str!("../projectiles.rs");

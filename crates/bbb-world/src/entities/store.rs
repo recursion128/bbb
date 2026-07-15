@@ -1876,7 +1876,11 @@ impl EntityStore {
             .as_ref()
             .is_some_and(|mount| mount.vehicle_id.is_some());
         let boat_paddles = mount.as_ref().map_or([false; 2], |mount| {
-            boat_paddle_states(&metadata.data_values, !mount.passengers.is_empty())
+            boat_paddle_states(
+                identity.entity_type_id,
+                &metadata.data_values,
+                !mount.passengers.is_empty(),
+            )
         });
         let boat_rowing_times = client_animations.animations.boat_rowing_times(
             partial_ticks,
@@ -3556,9 +3560,13 @@ impl EntityStore {
                 let wolf_is_interested = wolf_is_interested(&metadata.data_values);
                 let cat_is_lying = cat_is_lying(&metadata.data_values);
                 let cat_relax_state_one = cat_relax_state_one(&metadata.data_values);
-                let boat_paddles =
-                    boat_paddle_states(&metadata.data_values, !mount.passengers.is_empty());
-                let boat_bubble_time_value = boat_bubble_time(&metadata.data_values);
+                let boat_paddles = boat_paddle_states(
+                    identity.entity_type_id,
+                    &metadata.data_values,
+                    !mount.passengers.is_empty(),
+                );
+                let boat_bubble_time_value =
+                    boat_bubble_time(identity.entity_type_id, &metadata.data_values);
                 let client_animations_before_tick = animations.animations;
                 let particle_triggers = animations.animations.advance_client_tick(
                     identity.entity_type_id,

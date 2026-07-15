@@ -220,6 +220,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Interaction width, height and response membership, wire indices and typed defaults must remain
   derived from generated `DATA_WIDTH_ID`, `DATA_HEIGHT_ID` and `DATA_RESPONSE_ID`; world bounds and
   native debug consumers must not restore fixed metadata aliases.
+  AbstractBoat paddle and bubble-time membership, inherited wire indices and typed defaults must
+  remain derived from generated `DATA_ID_PADDLE_LEFT`, `DATA_ID_PADDLE_RIGHT` and
+  `DATA_ID_BUBBLE_TIME`; world animation consumers must not restore fixed metadata aliases.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
