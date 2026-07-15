@@ -549,10 +549,13 @@ pub(super) fn mooshroom_model_kind(
 }
 
 pub(super) fn sheep_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     age_ticks: f32,
 ) -> EntityModelKind {
-    let wool = entity_data_byte(values, SHEEP_WOOL_DATA_ID, SHEEP_DEFAULT_WOOL) as u8;
+    let wool = vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_byte(values, data_id, default) as u8)
+        .unwrap_or_default();
     EntityModelKind::Sheep {
         baby: ageable_baby(values),
         sheared: wool & SHEEP_WOOL_SHEARED_FLAG as u8 != 0,

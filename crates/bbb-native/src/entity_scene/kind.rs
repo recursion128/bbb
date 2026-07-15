@@ -131,7 +131,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => EntityModelKind::PolarBear {
             baby: ageable_baby(data_values),
         },
-        VANILLA_ENTITY_TYPE_SHEEP_ID => sheep_model_kind(data_values, entity_age_ticks),
+        VANILLA_ENTITY_TYPE_SHEEP_ID => {
+            sheep_model_kind(entity_type_id, data_values, entity_age_ticks)
+        }
         VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
             baby: ageable_baby(data_values),
             variant: horse_color_variant(data_values),

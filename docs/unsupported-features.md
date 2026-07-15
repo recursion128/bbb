@@ -243,6 +243,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   SnowGolem pumpkin membership, wire index and typed default must remain derived from generated
   `DATA_PUMPKIN_ID`; world model projection must not restore a SnowGolem type predicate alongside
   accessor membership, and native debug must not restore fixed accessor/default aliases.
+  Sheep wool membership, wire index and typed default must remain derived from generated
+  `DATA_WOOL_ID`; native model/debug consumers must not restore fixed accessor/default aliases and
+  must continue using the generated color/sheared masks.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

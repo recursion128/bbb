@@ -35,6 +35,7 @@ use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
@@ -232,10 +233,8 @@ use bbb_world::{
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_SHEEP_DEFAULT_WOOL as SHEEP_DEFAULT_WOOL,
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_COLOR_MASK as SHEEP_WOOL_COLOR_MASK,
-    VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
 };
 use bbb_world::{
     VANILLA_STRIDER_DEFAULT_SUFFOCATING as STRIDER_DEFAULT_SUFFOCATING,

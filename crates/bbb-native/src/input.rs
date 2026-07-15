@@ -81,6 +81,7 @@ use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
@@ -134,10 +135,8 @@ use bbb_world::{
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PRIMED_TNT_DEFAULT_FUSE as PRIMED_TNT_DEFAULT_FUSE,
     VANILLA_PRIMED_TNT_FUSE_DATA_ID as PRIMED_TNT_FUSE_DATA_ID,
-    VANILLA_SHEEP_DEFAULT_WOOL as SHEEP_DEFAULT_WOOL,
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_COLOR_MASK as SHEEP_WOOL_COLOR_MASK,
-    VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
     VANILLA_TADPOLE_AGE_LOCKED_DATA_ID as TADPOLE_AGE_LOCKED_DATA_ID,
     VANILLA_TURTLE_DEFAULT_HAS_EGG as TURTLE_DEFAULT_HAS_EGG,
     VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
@@ -7393,9 +7392,12 @@ fn debug_push_shulker_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_sheep_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let wool = debug_entity_data_byte_present(entity, SHEEP_WOOL_DATA_ID)
-        .map(|value| value as u8)
-        .unwrap_or(SHEEP_DEFAULT_WOOL as u8);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let wool = debug_entity_data_byte_present(entity, data_id).unwrap_or(default) as u8;
     fields.push(format!(
         "Sheared: {}",
         debug_snbt_bool(wool & SHEEP_WOOL_SHEARED_FLAG as u8 != 0)
