@@ -35,6 +35,7 @@ use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
@@ -128,10 +129,6 @@ use bbb_world::{
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
     VANILLA_BEE_DEFAULT_ANGER_END_TIME as BEE_DEFAULT_ANGER_END_TIME,
     VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
-};
-pub(crate) use bbb_world::{
-    VANILLA_BOGGED_DEFAULT_SHEARED as BOGGED_DEFAULT_SHEARED,
-    VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
 };
 use bbb_world::{
     VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,

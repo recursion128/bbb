@@ -16433,3 +16433,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - renderer 的 `MooshroomVariant` 保持 vanilla `ByIdMap.continuous(..., CLAMP)` 端点钳制，
   并公开 `StringRepresentable` 名称供 debug 共用。生产消费者删除固定 accessor/default
   别名与平行名称映射；生成器 reverse guard 禁止恢复这些事实源。
+
+## 2026-07-15：统一推导 Bogged sheared metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Bogged.DATA_SHEARED` 解析 membership、wire id
+  16 与 boolean typed default false；native 模型的蘑菇可见性与 debug `sheared` 字段共同
+  消费它。
+- 生产消费者删除固定 accessor/default 别名并显式传递 entity type；生成器 reverse
+  guard 禁止恢复这些平行事实源。

@@ -1577,6 +1577,11 @@ pub(super) fn piglin_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> 
     entity_data_bool(values, PIGLIN_BABY_DATA_ID, PIGLIN_DEFAULT_BABY)
 }
 
-pub(super) fn bogged_sheared(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, BOGGED_SHEARED_DATA_ID, BOGGED_DEFAULT_SHEARED)
+pub(super) fn bogged_sheared(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(values, data_id, default))
+        .unwrap_or_default()
 }

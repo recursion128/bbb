@@ -79,7 +79,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_BOGGED_ID => EntityModelKind::SkeletonVariant {
             family: SkeletonModelFamily::Bogged {
-                sheared: bogged_sheared(data_values),
+                sheared: bogged_sheared(entity_type_id, data_values),
             },
         },
         VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityModelKind::Villager {

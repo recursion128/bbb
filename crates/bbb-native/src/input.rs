@@ -78,6 +78,7 @@ use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
@@ -269,7 +270,6 @@ use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
 use crate::entity_scene::PIGLIN_BABY_DATA_ID;
-use crate::entity_scene::{BOGGED_DEFAULT_SHEARED, BOGGED_SHEARED_DATA_ID};
 use crate::entity_scene::{
     END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
     END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
@@ -7442,8 +7442,12 @@ fn debug_push_bee_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 }
 
 fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let sheared = debug_entity_data_bool_present(entity, BOGGED_SHEARED_DATA_ID)
-        .unwrap_or(BOGGED_DEFAULT_SHEARED);
+    let sheared =
+        vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(entity.entity_type_id)
+            .map(|(data_id, default)| {
+                debug_entity_data_bool_present(entity, data_id).unwrap_or(default)
+            })
+            .unwrap_or_default();
     fields.push(format!("sheared: {}", debug_snbt_bool(sheared)));
 }
 

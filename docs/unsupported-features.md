@@ -276,6 +276,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   MushroomCow variant membership, wire index and typed default must remain derived from generated
   `MushroomCow.DATA_TYPE`; native model/debug consumers must not restore fixed accessor/default
   aliases or a parallel serialized-name mapper, and invalid ids must follow vanilla CLAMP behavior.
+  Bogged sheared membership, wire index and typed default must remain derived from generated
+  `Bogged.DATA_SHEARED`; native model/debug consumers must not restore fixed accessor/default
+  aliases or read the boolean slot without generated Bogged membership.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

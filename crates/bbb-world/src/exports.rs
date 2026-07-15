@@ -14,6 +14,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type, vanilla_entity_metadata_field,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_variant_accessor_for_entity_type,
