@@ -1637,6 +1637,8 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/registries/store.rs#record_registry_data",
+            "crates/bbb-protocol/src/registry_data_types.rs#VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES",
+            "crates/bbb-world/src/registries/state.rs#configuration_synchronized",
             "crates/bbb-world/src/registries/store.rs#registry_entry_by_holder_id",
             "crates/bbb-world/src/registries/store.rs#resolved_registry_entry_by_holder_id",
             "crates/bbb-world/src/registries/store.rs#registry_resource_ids_in_holder_order",
@@ -1692,6 +1694,9 @@
         "tests": {
           "evidence": [
             "crates/bbb-world/src/registries/tests.rs#registry_data_entries_decode_nbt_payload_summary",
+            "crates/bbb-protocol/src/registry_data_types.rs#registry_data_catalogs_preserve_vanilla_lists",
+            "crates/bbb-protocol/src/registry_data_types.rs#registry_data_codecs_and_validators_match_distinct_loader_lists",
+            "crates/bbb-world/src/registries/tests.rs#registry_packets_classify_configuration_element_sources_from_generated_inventory",
             "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
             "crates/bbb-world/src/registries/tests.rs#configuration_registry_collection_commits_atomically_and_replaces_holder_order",
             "crates/bbb-world/src/registries/tests.rs#tag_only_configuration_preserves_registry_contents_and_replaces_named_tags",

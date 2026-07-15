@@ -1,4 +1,5 @@
 use bbb_protocol::packets::{RegistryData, UpdateTags};
+use bbb_protocol::registry_data_types::synchronized_registry_data_type;
 
 use crate::WorldStore;
 
@@ -53,6 +54,7 @@ impl WorldStore {
         self.counters.last_registry_data_registry = Some(name.clone());
         self.counters.last_registry_data_entry_count = entries.len();
         let packet = RegistryPacket {
+            configuration_synchronized: synchronized_registry_data_type(&name).is_some(),
             name,
             raw_payload_len,
             entries,

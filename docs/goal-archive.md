@@ -15128,3 +15128,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   ping 路径继续分别拥有 intent `2`/`1` 的状态顺序。
 - [x] handshake command-surface/state-guard 提升为 complete，结构回归改为要求 handshake 与 status family 只含
   complete/not-applicable cell；该 256-entry 覆盖行不再保留已过时的 Transfer intent partial。
+
+## 2026-07-15：Generate the RegistryData loader inventory
+
+- [x] 从 vanilla 26.1 `RegistryDataLoader.WORLDGEN_REGISTRIES`、`DIMENSION_REGISTRIES`、
+  `SYNCHRONIZED_REGISTRIES` 及 `Registries.createRegistryKey` CST 事实生成 45/1/28 项 catalog；顺序、
+  resource id、DIRECT/NETWORK Codec 和 non-empty/Timeline validator 均为 checked-in 单一来源。
+- [x] `WorldStore` 的每个 `RegistryPacket` 由生成 lookup 标注 configuration-synchronized membership，
+  focused regressions 锁定同步 biome、静态 item 和 custom registry 的分类。production filter、validator
+  执行及完整 holder consumer inventory 保持后续 foundation 工作。

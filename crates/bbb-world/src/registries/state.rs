@@ -43,6 +43,10 @@ pub(super) struct PendingRegistryCollection {
 pub struct RegistryPacket {
     pub name: String,
     pub raw_payload_len: usize,
+    /// Whether vanilla 26.1 accepts element data for this registry during
+    /// configuration RegistryData collection.
+    #[serde(default)]
+    pub configuration_synchronized: bool,
     #[serde(default)]
     pub entries: Vec<RegistryPacketEntry>,
 }

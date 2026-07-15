@@ -86,6 +86,7 @@ fn registry_data_entries_are_ordered_and_counted() {
     let registries = &store.registries().registries;
     assert_eq!(registries.len(), 3);
     assert_eq!(registries[0].name, "minecraft:chat_type");
+    assert!(registries[0].configuration_synchronized);
     assert_eq!(
         registries[0].entries,
         vec![
@@ -95,6 +96,7 @@ fn registry_data_entries_are_ordered_and_counted() {
     );
     assert_eq!(registries[1].entries[0].id, "minecraft:chat");
     assert_eq!(registries[2].entries[0].id, "minecraft:in_fire");
+    assert!(registries[2].configuration_synchronized);
     assert_eq!(registries[2].entries[0].raw_data(), Some(&[8; 17][..]));
 
     let chat_content = store
@@ -128,6 +130,18 @@ fn registry_data_entries_are_ordered_and_counted() {
         Some("minecraft:damage_type")
     );
     assert_eq!(counters.last_registry_data_entry_count, 1);
+}
+
+#[test]
+fn registry_packets_classify_configuration_element_sources_from_generated_inventory() {
+    let mut store = WorldStore::new();
+    store.record_registry("minecraft:worldgen/biome", 0);
+    store.record_registry("minecraft:item", 0);
+    store.record_registry("example:custom", 0);
+
+    assert!(store.registries().registries[0].configuration_synchronized);
+    assert!(!store.registries().registries[1].configuration_synchronized);
+    assert!(!store.registries().registries[2].configuration_synchronized);
 }
 
 #[test]
