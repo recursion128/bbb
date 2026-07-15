@@ -21399,6 +21399,27 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_owner_collision_does_not_restore_pickable_type_membership() {
+        let source = include_str!("../projectiles.rs");
+        let body = source
+            .split("fn entity_is_pickable_for_owner_collision")
+            .nth(1)
+            .and_then(|source| source.split_once("\n    }"))
+            .map(|(body, _)| body)
+            .expect("owner collision pickability source");
+        assert!(body.contains("vanilla_entity_metadata_type_is_pickable"));
+        for removed in [
+            "vanilla_living_entity_type",
+            "is_vanilla_boat_type",
+            "is_vanilla_minecart_type",
+            "vanilla_entity_type_is_wind_charge",
+            "matches!",
+        ] {
+            assert!(!body.contains(removed), "restored {removed}");
+        }
+    }
+
+    #[test]
     fn production_hoglin_animation_does_not_restore_entity_type_membership() {
         let source = include_str!("../animations.rs");
         assert!(!source.contains("VANILLA_ENTITY_TYPE_HOGLIN_ID | VANILLA_ENTITY_TYPE_ZOGLIN_ID"));

@@ -15511,3 +15511,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 聚焦测试遍历全部 18 项 saveable projectile，将 lifecycle bounds 与 generated
   width/height 逐项比较，并锁定 FishingHook/非 projectile 排除；core-registry generator
   输出反向门禁防止尺寸表回流。
+
+## 2026-07-15：Consume generated owner-collision pickability
+
+- [x] projectile `LeftOwner` 碰撞路径删除 living/boat/minecart/wind-charge 组合与
+  10 项非生物 type match，改为直接消费 generated 最近 `isPickable` 类行为与
+  redirectable-projectile tag；Player spectator 和 ArmorStand marker 仍保持为实例状态门。
+- [x] world 聚焦测试锁定 living/vehicle/redirectable/non-pickable 类型及两项实例状态门；
+  metadata generator 输出反向门禁，防止平行 type membership 回流。

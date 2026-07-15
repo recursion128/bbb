@@ -164,6 +164,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
+  Projectile owner-collision pickability must consume the generated nearest-`isPickable` class
+  behavior plus redirectable-projectile tag, with spectator/marker kept as per-instance gates.
   Hoglin/Zoglin shared attack-animation event and tick membership must remain derived from the
   generated `HoglinBase` interface graph rather than parallel entity-type tables.
   Illager celebrating-arm-pose membership must remain derived from the nearest generated
