@@ -343,6 +343,25 @@ pub fn vanilla_entity_metadata_villager_data_accessor_for_entity_type(
     (accessor.serializer_name == "VILLAGER_DATA").then_some(accessor.data_id)
 }
 
+/// Resolves the generated Skeleton freeze-conversion accessor and its typed default.
+///
+/// Only Skeleton declares `DATA_STRAY_CONVERSION_ID`; other renderers using
+/// `AbstractSkeletonRenderer` inherit the base fully-frozen shake but not this metadata field.
+pub fn vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_STRAY_CONVERSION_ID",
+    )?;
+    match (accessor.serializer_name, accessor.typed_default) {
+        ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
+            Some((accessor.data_id, default))
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the nearest generated boolean `DATA_BABY_ID` accessor and its typed default.
 ///
 /// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
@@ -735,6 +754,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
         VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
         VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
@@ -3042,6 +3062,22 @@ mod tests {
         assert_eq!(skeleton.inherited_field_count, 16);
         assert_eq!(VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID, 16);
         assert!(!VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION);
+        assert_eq!(
+            vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SKELETON_ID
+            ),
+            Some((16, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_STRAY_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type(-1),
+            None
+        );
         assert_eq!(
             skeleton.own_fields,
             &[VanillaEntityMetadataFieldSchema {

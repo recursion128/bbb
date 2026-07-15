@@ -16135,3 +16135,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   三项，并排除使用独立 `ZombieVillagerRenderer` 的 ZombieVillager。
 - native shake projection 已移除三类型分支并消费 renderer catalog；回归测试同时修正了
   ZombieVillager 误读继承 metadata id 18 的偏差，其 renderer 仅用自身 converting id 19。
+
+## 2026-07-15：从 metadata hierarchy 推导 skeleton freeze-conversion shake
+
+- `bbb-world` 现在从生成的 accessor hierarchy 解析 Skeleton 独有的
+  `DATA_STRAY_CONVERSION_ID`（wire id 16、默认 false）；Stray 与未知实体不会误入该投影。
+- native shake projection 已移除 Skeleton 类型分支和生产索引别名；生成器 reverse guard、
+  world 查询测试及 Skeleton/Stray native 对照测试会阻止旧 membership 回流。

@@ -4,9 +4,11 @@ pub use crate::entities::state::*;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_field,
-    vanilla_entity_metadata_schema, vanilla_entity_metadata_type_is_abstract_chested_horse,
-    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
-    vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_slime,
+    vanilla_entity_metadata_schema,
+    vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type,
+    vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,
+    vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
+    vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     vanilla_entity_metadata_villager_data_accessor_for_entity_type,
     vanilla_entity_renderer_extracts_zombie_underwater_converting,

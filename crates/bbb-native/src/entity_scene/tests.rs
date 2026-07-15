@@ -1258,6 +1258,11 @@ fn entity_model_instances_shake_skeletons_while_freeze_converting() {
         VANILLA_ENTITY_TYPE_SKELETON_ID,
         [1.0, 64.0, -2.0],
     ));
+    world.apply_add_entity(protocol_add_entity(
+        88,
+        VANILLA_ENTITY_TYPE_STRAY_ID,
+        [3.0, 64.0, -2.0],
+    ));
     world.advance_entity_client_animations(2);
 
     let body_rot = |world: &WorldStore| {
@@ -1276,6 +1281,21 @@ fn entity_model_instances_shake_skeletons_while_freeze_converting() {
     }));
     let expected_shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
     assert!((body_rot(&world) - expected_shake).abs() < 1e-6);
+
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 88,
+        values: vec![protocol_bool_data(SKELETON_STRAY_CONVERSION_DATA_ID, true)],
+    }));
+    let stray_body_rot = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 88)
+        .unwrap()
+        .render_state
+        .body_rot;
+    assert_eq!(
+        stray_body_rot, 0.0,
+        "Stray does not own Skeleton.DATA_STRAY_CONVERSION_ID"
+    );
 }
 
 #[test]
