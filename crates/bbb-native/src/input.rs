@@ -840,6 +840,11 @@ struct ChatEntryState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum NativeDialogPreviousScreenState {
     Chat(ChatEntryState),
+    DebugOptions(DebugOptionsScreenState),
+    DebugPause {
+        screen: DebugPauseScreenState,
+        disconnect_requested: bool,
+    },
     Sign(SignEditorInputState),
 }
 
@@ -1513,10 +1518,12 @@ impl ClientInputState {
         match (self.dialog_screen_was_open, dialog_screen_is_open) {
             (false, true) => {
                 self.dialog_native_previous_screen = self
-                    .take_sign_editor_for_dialog(world)
-                    .map(|editor| {
-                        queue_sign_editor_removed(counters, net_commands, &editor);
-                        NativeDialogPreviousScreenState::Sign(editor)
+                    .take_debug_screen_for_dialog()
+                    .or_else(|| {
+                        self.take_sign_editor_for_dialog(world).map(|editor| {
+                            queue_sign_editor_removed(counters, net_commands, &editor);
+                            NativeDialogPreviousScreenState::Sign(editor)
+                        })
                     })
                     .or_else(|| {
                         self.chat_entry
@@ -1538,6 +1545,21 @@ impl ClientInputState {
                         {
                             self.chat_entry = Some(entry);
                         }
+                        Some(NativeDialogPreviousScreenState::DebugOptions(screen))
+                            if self.debug_options_screen.is_none()
+                                && self.debug_pause_screen.is_none() =>
+                        {
+                            self.debug_options_screen = Some(screen);
+                        }
+                        Some(NativeDialogPreviousScreenState::DebugPause {
+                            screen,
+                            disconnect_requested,
+                        }) if self.debug_options_screen.is_none()
+                            && self.debug_pause_screen.is_none() =>
+                        {
+                            self.debug_pause_screen = Some(screen);
+                            self.pause_screen_disconnect_requested = disconnect_requested;
+                        }
                         Some(NativeDialogPreviousScreenState::Sign(editor))
                             if self.sign_editor.is_none() =>
                         {
@@ -1551,6 +1573,18 @@ impl ClientInputState {
             _ => {}
         }
         self.dialog_screen_was_open = dialog_screen_is_open;
+    }
+
+    fn take_debug_screen_for_dialog(&mut self) -> Option<NativeDialogPreviousScreenState> {
+        if let Some(screen) = self.debug_options_screen.take() {
+            return Some(NativeDialogPreviousScreenState::DebugOptions(screen));
+        }
+        self.debug_pause_screen
+            .take()
+            .map(|screen| NativeDialogPreviousScreenState::DebugPause {
+                screen,
+                disconnect_requested: std::mem::take(&mut self.pause_screen_disconnect_requested),
+            })
     }
 
     fn take_sign_editor_for_dialog(&mut self, world: &WorldStore) -> Option<SignEditorInputState> {

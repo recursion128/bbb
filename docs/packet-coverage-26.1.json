@@ -2189,10 +2189,15 @@
             "crates/bbb-world/src/client/ui.rs#apply_clear_dialog",
             "crates/bbb-world/src/client/ui.rs#dialog_clear_restores_world_owned_previous_screen",
             "crates/bbb-world/src/client/ui.rs#clear_dialog_only_restores_while_dialog_is_active",
+            "crates/bbb-world/src/client/ui.rs#dialog_warning_keeps_replaced_or_cleared_return_screen_hidden_until_back",
+            "crates/bbb-native/src/input/tests.rs#dialog_stack_suspends_and_restores_the_native_chat_screen",
+            "crates/bbb-native/src/input/tests.rs#dialog_stack_submits_suspends_and_restores_the_native_sign_editor",
+            "crates/bbb-native/src/input/tests.rs#dialog_warning_restores_the_native_debug_options_screen_after_back",
+            "crates/bbb-native/src/input/tests.rs#dialog_clear_restores_the_native_pause_screen_state",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#clearDialog"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -2261,10 +2266,14 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/runtime/tests.rs#server_dialog_open_releases_held_movement",
+            "crates/bbb-native/src/input/tests.rs#dialog_stack_suspends_and_restores_the_native_chat_screen",
+            "crates/bbb-native/src/input/tests.rs#dialog_stack_submits_suspends_and_restores_the_native_sign_editor",
+            "crates/bbb-native/src/input/tests.rs#dialog_warning_restores_the_native_debug_options_screen_after_back",
+            "crates/bbb-native/src/input/tests.rs#dialog_clear_restores_the_native_pause_screen_state",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleShowDialog"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -13962,10 +13971,15 @@
             "crates/bbb-world/src/client/ui.rs#apply_clear_dialog",
             "crates/bbb-world/src/client/ui.rs#dialog_clear_restores_world_owned_previous_screen",
             "crates/bbb-world/src/client/ui.rs#clear_dialog_only_restores_while_dialog_is_active",
+            "crates/bbb-world/src/client/ui.rs#dialog_warning_keeps_replaced_or_cleared_return_screen_hidden_until_back",
+            "crates/bbb-native/src/input/tests.rs#dialog_stack_suspends_and_restores_the_native_chat_screen",
+            "crates/bbb-native/src/input/tests.rs#dialog_stack_submits_suspends_and_restores_the_native_sign_editor",
+            "crates/bbb-native/src/input/tests.rs#dialog_warning_restores_the_native_debug_options_screen_after_back",
+            "crates/bbb-native/src/input/tests.rs#dialog_clear_restores_the_native_pause_screen_state",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#clearDialog"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -14034,10 +14048,14 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/runtime/tests.rs#server_dialog_open_releases_held_movement",
+            "crates/bbb-native/src/input/tests.rs#dialog_stack_suspends_and_restores_the_native_chat_screen",
+            "crates/bbb-native/src/input/tests.rs#dialog_stack_submits_suspends_and_restores_the_native_sign_editor",
+            "crates/bbb-native/src/input/tests.rs#dialog_warning_restores_the_native_debug_options_screen_after_back",
+            "crates/bbb-native/src/input/tests.rs#dialog_clear_restores_the_native_pause_screen_state",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleShowDialog"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [

@@ -410,11 +410,12 @@ UTF-16 max length、allowed-chat-character filter、codepoint/word/Home/End/Shif
 template substitution 使用 `StringTag.escapeWithoutQuotes`，dynamic custom 使用原始 StringTag。静态
 change-page 与 suggest-command 在
 DialogScreen 的 default handler 中无页面 side effect，仅按 vanilla 执行 `after_action`；静态 show-dialog action 已同步
-替换当前 dialog、保留最初 previous screen，且不误增 clientbound packet counter。clear-dialog 还须接入 native-owned
-debug screen 和 warning return-screen stack；native ChatScreen 已由 input owner 在 Dialog 栈顶期间完整暂存
-草稿、光标、选择与 suggestions，并在最终 clear/close 后恢复；SignEditScreen 同样暂存四行、当前行、光标与选择，
-ShowDialog 替换时先按 `removed()` 发送 SignUpdate，新 OpenSignEditor replacement 不会复活旧 editor；上述 runtime 完成前两个 `ShowDialog`
-的 `runtime_side_effect` cell 保持 `partial`。generic packet Component 的 world/session higher
+替换当前 dialog、保留最初 previous screen，且不误增 clientbound packet counter。clear-dialog 的 native previous-screen
+owner 已覆盖 ChatScreen 的草稿/光标/选择/suggestions、SignEditScreen 的四行/当前行/光标/选择，以及
+DebugOptionsScreen/PauseScreen 的完整本地状态；ShowDialog 替换 SignEditScreen 时先按 `removed()` 发送 SignUpdate，
+new-screen replacement 不会复活旧状态。WarningScreen 隐藏期间的 ShowDialog/ClearDialog 继续只更新 return screen，
+Back 后才恢复 world/native previous screen；configuration/play 的 ClearDialog/ShowDialog `runtime_side_effect` cell 已闭合。
+generic packet Component 的 world/session higher
 owner 也仍须接入；context-free 路径必须继续显式返回 unknown，不得回退 raw NBT 估算。
 configuration custom-payload 的 Brand/Discarded wire、bounded 自动 brand send、canonical server brand 与
 diagnostics 已闭合；Mojang telemetry callback 按无 external sender 的架构边界为 not-applicable。
@@ -627,12 +628,12 @@ play UpdateMobEffect 的 entity/effect/amplifier/duration/flags wire、strict de
 play UpdateRecipes 的 property-set/stonecutter framing、strict trailing、replace ownership 与 tests 已闭合；剩余 SlotDisplay/component/menu presentation 保持 decode/canonical/runtime partial。
 play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry replace ownership 与 tests 已闭合；剩余 fuel values/creative search-tree 派生刷新保持 runtime partial。
 play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailing、manager apply ownership 与 tests 已闭合；剩余 locator contextual-bar presentation 保持 runtime partial。
-play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；native ChatScreen previous
-screen 与 SignEditScreen previous screen 已恢复，剩余 native-owned debug 与 warning return-screen stack 集成保持 runtime partial。
+play ClearDialog 的 unit payload、strict trailing、canonical clear ownership、world/native previous-screen restore、warning
+return-screen lifecycle 与 tests 已闭合，五维 complete。
 configuration/play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session
 registry holder resolution、五种 top-level Dialog 的完整 Codec projection 与 canonical apply、ownership
-及 tests 已闭合；两行只保留 native screen stack 的 runtime cell 为 partial。Component generic packet
-owner 与 canonical screen data/runtime screen stack 仍待闭合。
+及 tests、完整 screen runtime/previous-screen stack 均已闭合，两行五维 complete。Component generic packet
+owner 仍待接入 registry-context higher owner。
 play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。
 play BlockDestruction 的 id/position/progress framing、strict trailing、progress replace/remove/expiry ownership 与 tests 已闭合；剩余 full model-shaped crack decal parity 保持 runtime partial。

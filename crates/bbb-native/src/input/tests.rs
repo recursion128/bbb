@@ -16248,6 +16248,74 @@ fn native_chat_screen_is_not_restored_after_another_screen_replaces_dialog() {
 }
 
 #[test]
+fn dialog_warning_restores_the_native_debug_options_screen_after_back() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let commands = None;
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(420, 161);
+    input.open_debug_options_screen();
+    assert!(input.handle_debug_options_screen_text_input("chunk"));
+    assert!(input
+        .handle_debug_options_screen_mouse_wheel(MouseScrollDelta::LineDelta(0.0, -2.0), surface,));
+    assert!(input.handle_debug_options_screen_cursor_moved(
+        Some(PhysicalPosition::new(210.0, 80.0)),
+        surface,
+    ));
+    let expected = input.debug_options_screen.clone().unwrap();
+
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    assert!(!input.debug_options_screen_is_open());
+
+    assert!(world.open_dialog_warning());
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 12 },
+    });
+    world.apply_clear_dialog();
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    assert!(world.dialog_warning_is_open());
+    assert!(!input.debug_options_screen_is_open());
+
+    assert!(world.close_dialog_warning());
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    assert_eq!(input.debug_options_screen.as_ref(), Some(&expected));
+    assert_eq!(
+        input
+            .debug_options_screen_hud_state(surface, false)
+            .unwrap()
+            .search_text,
+        "chunk"
+    );
+}
+
+#[test]
+fn dialog_clear_restores_the_native_pause_screen_state() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let commands = None;
+    let mut world = WorldStore::new();
+    input.open_debug_pause_screen_with_menu();
+    assert!(input.handle_debug_pause_screen_cursor_moved(Some(PhysicalPosition::new(68.0, 198.0,))));
+    input.pause_screen_disconnect_requested = true;
+    let expected = input.debug_pause_screen.unwrap();
+
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    assert!(!input.debug_pause_screen_is_open());
+    assert!(!input.pause_screen_disconnect_requested());
+
+    world.apply_clear_dialog();
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    assert_eq!(input.debug_pause_screen(), Some(expected));
+    assert!(input.pause_screen_disconnect_requested());
+}
+
+#[test]
 fn chat_entry_limits_message_text_to_vanilla_length() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

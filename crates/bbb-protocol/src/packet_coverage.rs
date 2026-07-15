@@ -519,7 +519,7 @@ mod tests {
     }
 
     #[test]
-    fn configuration_dialog_coverage_keeps_only_screen_runtime_open() {
+    fn configuration_dialog_runtime_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_CUSTOM_CLICK_ACTION",
@@ -550,10 +550,18 @@ mod tests {
                 ("SERVERBOUND_CUSTOM_CLICK_ACTION", "command_surface"),
                 ("SERVERBOUND_CUSTOM_CLICK_ACTION", "state_guard"),
                 ("SERVERBOUND_CUSTOM_CLICK_ACTION", "tests"),
-                ("CLIENTBOUND_CLEAR_DIALOG", "runtime_side_effect"),
-                ("CLIENTBOUND_SHOW_DIALOG", "runtime_side_effect"),
             ])
         );
+        for packet in ["CLIENTBOUND_CLEAR_DIALOG", "CLIENTBOUND_SHOW_DIALOG"] {
+            let entry = entries
+                .iter()
+                .find(|entry| entry.constant_name == packet)
+                .unwrap();
+            assert!(entry
+                .coverage
+                .values()
+                .all(|cell| cell.status == PacketCoverageStatus::Complete));
+        }
         assert_eq!(
             entries
                 .iter()
@@ -2227,7 +2235,7 @@ mod tests {
     }
 
     #[test]
-    fn play_clear_dialog_keeps_native_and_warning_screen_restoration_open() {
+    fn play_clear_dialog_runtime_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2236,32 +2244,24 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_CLEAR_DIALOG"
             })
             .expect("play clear dialog coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
-    fn play_show_dialog_keeps_only_screen_runtime_open() {
+    fn play_show_dialog_runtime_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_SHOW_DIALOG")
             .expect("play show dialog coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

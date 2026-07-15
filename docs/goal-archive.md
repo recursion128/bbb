@@ -15068,3 +15068,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   若 Dialog 期间收到不同 signature 的新 OpenSignEditor，则新 screen 替换 Dialog 并使旧 editor 永久失效。
   focused regressions 覆盖编辑中 state 的两次 SignUpdate、suspended HUD/input gate、pending editor capture 与
   new-sign replacement；完整 16 项 sign-editor test 集通过。
+
+## 2026-07-15：Close Dialog native debug and warning return stacks
+
+- [x] 对照 `ClientCommonPacketListenerImpl.showDialog/clearDialog`、`DebugOptionsScreen` 与 `PauseScreen`，把 native
+  DebugOptions 的 search/cursor/selection/scroll/hover state，以及 PauseScreen 的 menu/cursor/disconnect-button state
+  纳入同一个 Dialog previous-screen owner；Dialog 栈顶期间移出 live input owner，最终 clear/close 后精确恢复，
+  新 screen replacement 继续丢弃 stale previous state。
+- [x] WarningScreen 打开时连续 ShowDialog 只替换隐藏 return dialog，ClearDialog 不提前露出 native previous screen，
+  Back 后才恢复原 DebugOptions；focused regressions 覆盖该完整序列与 PauseScreen direct clear restore。同步将
+  configuration/play ShowDialog 与 ClearDialog 的四个 `runtime_side_effect` coverage cell 提升为 complete，并移除
+  已闭合的 Dialog unsupported ledger 项。
