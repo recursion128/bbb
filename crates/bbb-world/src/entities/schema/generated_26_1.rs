@@ -22230,10 +22230,22 @@ mod generated_catalog_guards {
 
     #[test]
     fn production_vex_charging_does_not_restore_type_or_accessor_constants() {
-        let source = include_str!("../store.rs");
-        assert!(source.contains("vanilla_entity_metadata_vex_flags_accessor_for_entity_type"));
+        let store = include_str!("../store.rs");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        for source in [store, native_scene, native_kind] {
+            assert!(source.contains("vanilla_entity_metadata_vex_flags_accessor_for_entity_type"));
+        }
         for removed in ["vanilla_is_vex", "VEX_FLAGS_DATA_ID", "VEX_DEFAULT_FLAGS"] {
-            assert!(!source.contains(removed), "restored {removed}");
+            assert!(!store.contains(removed), "store restored {removed}");
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_kind.contains(removed),
+                "native kind restored {removed}"
+            );
         }
         let dimensions = include_str!("../dimensions.rs");
         assert!(!dimensions.contains("fn vanilla_is_vex"));

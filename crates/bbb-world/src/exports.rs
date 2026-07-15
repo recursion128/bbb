@@ -13,6 +13,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
+    vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_villager_data_accessor_for_entity_type,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type,

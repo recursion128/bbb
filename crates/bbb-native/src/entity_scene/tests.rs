@@ -14,6 +14,7 @@ use bbb_world::{
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
     VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING, VANILLA_CAT_IS_LYING_DATA_ID,
     VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+    VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
 

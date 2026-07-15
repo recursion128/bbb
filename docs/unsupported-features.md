@@ -200,8 +200,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generated `Fox.DATA_FLAGS_ID`; store must not restore a Fox type predicate, and neither flags
   consumer may restore fixed accessor aliases.
   Vex charging membership, wire index and default must remain derived from generated
-  `Vex.DATA_FLAGS_ID`; world projection must not restore a Vex type predicate or fixed accessor
-  aliases.
+  `Vex.DATA_FLAGS_ID`; world and native render projection must not restore a Vex type predicate or
+  fixed accessor aliases.
   Panda pose/sneeze membership, wire index and default must remain derived from generated
   `Panda.DATA_ID_FLAGS`; world animation and native render projection must not restore fixed
   accessor aliases.

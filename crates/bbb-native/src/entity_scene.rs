@@ -33,6 +33,7 @@ use bbb_renderer::{
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
 #[cfg(test)]
 use bbb_world::WolfVariantAssetPresentation;
 #[cfg(test)]
@@ -45,6 +46,7 @@ use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
 use bbb_world::VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID as SKELETON_STRAY_CONVERSION_DATA_ID;
+use bbb_world::VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING;
 #[cfg(test)]
 use bbb_world::VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID as ZOMBIE_VILLAGER_CONVERTING_DATA_ID;
 use bbb_world::{
@@ -260,10 +262,6 @@ use bbb_world::{
     VANILLA_TURTLE_DEFAULT_LAYING_EGG as TURTLE_DEFAULT_LAYING_EGG,
     VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
     VANILLA_TURTLE_LAYING_EGG_DATA_ID as TURTLE_LAYING_EGG_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
-    VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
 #[cfg(test)]
 use bbb_world::{
