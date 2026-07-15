@@ -15,6 +15,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     uses_mob_item_in_hand_layer: bool,
     extracts_mob_aggressive: bool,
     extracts_unhappy_counter: bool,
+    extracts_casting_spell: bool,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -61,6 +62,11 @@ pub(super) fn vanilla_entity_renderer_extracts_mob_aggressive(entity_type_id: i3
 pub(super) fn vanilla_entity_renderer_extracts_unhappy_counter(entity_type_id: i32) -> bool {
     vanilla_entity_renderer_registration(entity_type_id)
         .is_some_and(|entry| entry.extracts_unhappy_counter)
+}
+
+pub(super) fn vanilla_entity_renderer_extracts_casting_spell(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.extracts_casting_spell)
 }
 
 #[cfg(test)]
@@ -314,6 +320,30 @@ mod tests {
         }
         assert!(!vanilla_entity_renderer_extracts_unhappy_counter(
             VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+        ));
+    }
+
+    #[test]
+    fn generated_casting_spell_projection_matches_renderer_extractors() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.extracts_casting_spell)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual,
+            vec![
+                VANILLA_ENTITY_TYPE_EVOKER_ID,
+                VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+            ]
+        );
+        for entity_type_id in actual {
+            assert!(vanilla_entity_renderer_extracts_casting_spell(
+                entity_type_id
+            ));
+        }
+        assert!(!vanilla_entity_renderer_extracts_casting_spell(
+            VANILLA_ENTITY_TYPE_VINDICATOR_ID
         ));
     }
 }

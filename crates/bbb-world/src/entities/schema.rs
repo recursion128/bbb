@@ -564,6 +564,13 @@ pub fn vanilla_entity_metadata_type_is_abstract_piglin(entity_type_id: i32) -> b
         .unwrap_or(false)
 }
 
+/// Returns whether the generated metadata accessor hierarchy inherits
+/// `SpellcasterIllager` and therefore owns `DATA_SPELL_CASTING_ID`.
+pub fn vanilla_entity_metadata_type_is_spellcaster_illager(entity_type_id: i32) -> bool {
+    vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SPELL_CASTING_ID")
+        .is_some()
+}
+
 pub fn vanilla_entity_metadata_type_is_spider(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
@@ -606,16 +613,18 @@ mod tests {
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
         VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
         VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
         VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
+        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
 
@@ -1087,6 +1096,23 @@ mod tests {
             VANILLA_ENTITY_TYPE_HORSE_ID
         ));
         assert!(!vanilla_entity_metadata_type_is_tamable_animal(-1));
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_EVOKER_ID,
+            VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+        ] {
+            assert!(vanilla_entity_metadata_type_is_spellcaster_illager(
+                entity_type_id
+            ));
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            -1,
+        ] {
+            assert!(!vanilla_entity_metadata_type_is_spellcaster_illager(
+                entity_type_id
+            ));
+        }
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
             VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,

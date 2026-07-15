@@ -37,6 +37,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.VEX, VexRenderer::new);
                     register(EntityType.VILLAGER, VillagerRenderer::new);
                     register(EntityType.WANDERING_TRADER, WanderingTraderRenderer::new);
+                    register(EntityType.EVOKER, EvokerRenderer::new);
+                    register(EntityType.ILLUSIONER, IllusionerRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -113,6 +115,28 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 public class WanderingTraderRenderer extends MobRenderer {
                     public void extractRenderState(Object entity, Object state, float partialTicks) {
                         state.isUnhappy = entity.getUnhappyCounter() > 0;
+                    }
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/EvokerRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class EvokerRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isCastingSpell = entity.isCastingSpell();
+                    }
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/IllusionerRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class IllusionerRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isCastingSpell = entity.isCastingSpell();
                     }
                 }
                 """,
@@ -202,6 +226,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "VEX",
                 "VILLAGER",
                 "WANDERING_TRADER",
+                "EVOKER",
+                "ILLUSIONER",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -219,19 +245,22 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     entry.uses_mob_item_in_hand_layer,
                     entry.extracts_mob_aggressive,
                     entry.extracts_unhappy_counter,
+                    entry.extracts_casting_spell,
                 )
                 for entry in entries
             ],
             [
-                (0, "BLAZE", "BlazeRenderer", True, False, False, False, False, False),
-                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False, False, False, False),
-                (2, "CAT", "CatRenderer", False, True, False, False, False, False),
-                (3, "HORSE", "HorseRenderer", False, False, True, False, False, False),
-                (4, "ALLAY", "AllayRenderer", False, False, False, True, True, False),
-                (5, "ARMOR_STAND", "ArmorStandRenderer", False, False, False, False, False, False),
-                (6, "VEX", "VexRenderer", False, False, False, True, True, False),
-                (7, "VILLAGER", "VillagerRenderer", False, False, False, False, False, True),
-                (8, "WANDERING_TRADER", "WanderingTraderRenderer", False, False, False, False, False, True),
+                (0, "BLAZE", "BlazeRenderer", True, False, False, False, False, False, False),
+                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False, False, False, False, False),
+                (2, "CAT", "CatRenderer", False, True, False, False, False, False, False),
+                (3, "HORSE", "HorseRenderer", False, False, True, False, False, False, False),
+                (4, "ALLAY", "AllayRenderer", False, False, False, True, True, False, False),
+                (5, "ARMOR_STAND", "ArmorStandRenderer", False, False, False, False, False, False, False),
+                (6, "VEX", "VexRenderer", False, False, False, True, True, False, False),
+                (7, "VILLAGER", "VillagerRenderer", False, False, False, False, False, True, False),
+                (8, "WANDERING_TRADER", "WanderingTraderRenderer", False, False, False, False, False, True, False),
+                (9, "EVOKER", "EvokerRenderer", False, False, False, False, False, False, True),
+                (10, "ILLUSIONER", "IllusionerRenderer", False, False, False, False, False, False, True),
             ],
         )
 

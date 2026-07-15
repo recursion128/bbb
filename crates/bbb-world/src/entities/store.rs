@@ -107,6 +107,7 @@ use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
 use crate::entities::renderer_catalog::{
+    vanilla_entity_renderer_extracts_casting_spell,
     vanilla_entity_renderer_extracts_mob_aggressive,
     vanilla_entity_renderer_extracts_unhappy_counter,
     vanilla_entity_renderer_uses_abstract_feline_model,
@@ -116,7 +117,7 @@ use crate::entities::renderer_catalog::{
 use crate::entities::schema::{
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_item_frame,
-    vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_spellcaster_illager,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
     VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
@@ -142,6 +143,7 @@ use crate::entities::schema::{
     VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
     VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID, VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE,
     VANILLA_PRIMED_TNT_DEFAULT_FUSE, VANILLA_PRIMED_TNT_FUSE_DATA_ID,
+    VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID, VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -1615,6 +1617,21 @@ impl EntityStore {
                     .unwrap_or(0)
                     & MOB_FLAG_AGGRESSIVE
                     != 0;
+        // Vanilla EvokerRenderer / IllusionerRenderer copy
+        // `state.isCastingSpell = entity.isCastingSpell()`. Intersect that renderer assignment
+        // with the generated SpellcasterIllager accessor owner before reading the shared byte id;
+        // Pillager uses the same id for its BOOLEAN crossbow flag.
+        let illager_spellcasting =
+            vanilla_entity_renderer_extracts_casting_spell(identity.entity_type_id)
+                && vanilla_entity_metadata_type_is_spellcaster_illager(identity.entity_type_id)
+                && self
+                    .metadata_byte(
+                        id,
+                        VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID,
+                        VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING,
+                    )
+                    .unwrap_or(VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING)
+                    > 0;
         // Vanilla `VillagerRenderer` / `WanderingTraderRenderer.extractRenderState`:
         // `state.isUnhappy = entity.getUnhappyCounter() > 0`. PandaRenderer has the same assignment
         // for Panda.UNHAPPY_COUNTER, so intersect the renderer fact with the generated
@@ -1965,6 +1982,7 @@ impl EntityStore {
             appears_glowing,
             outline_color: 0,
             is_aggressive,
+            illager_spellcasting,
             villager_unhappy,
             enderman_carrying,
             enderman_carried_block,

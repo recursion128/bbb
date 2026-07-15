@@ -640,10 +640,6 @@ pub(super) fn entity_model_instance(
         ))
         .with_wolf_sitting(wolf_sitting(source.entity_type_id, &source.data_values))
         .with_parrot_sitting(parrot_sitting(source.entity_type_id, &source.data_values))
-        .with_illager_spellcasting(illager_spellcasting(
-            source.entity_type_id,
-            &source.data_values,
-        ))
         .with_illager_celebrating(illager_celebrating(
             source.entity_type_id,
             &source.data_values,
@@ -719,6 +715,7 @@ pub(super) fn entity_model_instance(
         with_boat_bubble_angle boat_bubble_angle,
         with_boat_underwater boat_underwater,
         with_is_aggressive is_aggressive,
+        with_illager_spellcasting illager_spellcasting,
         with_ticks_since_kinetic_hit_feedback ticks_since_kinetic_hit_feedback,
         with_show_extra_ears show_extra_ears,
         with_player_cape_flap player_cape_flap,

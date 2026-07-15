@@ -588,6 +588,48 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
 }
 
 #[test]
+fn entity_model_sources_project_spellcaster_illager_casting() {
+    // Vanilla SpellcasterIllager.DATA_SPELL_CASTING_ID (BYTE id 17) stores the spell ordinal;
+    // EvokerRenderer and IllusionerRenderer copy `isCastingSpell()` into their render states.
+    const SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
+
+    let casting = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .illager_spellcasting
+    };
+
+    let mut store = WorldStore::new();
+    for (id, entity_type_id) in [
+        (96, VANILLA_ENTITY_TYPE_EVOKER_ID),
+        (97, VANILLA_ENTITY_TYPE_ILLUSIONER_ID),
+        (98, VANILLA_ENTITY_TYPE_VINDICATOR_ID),
+        (99, VANILLA_ENTITY_TYPE_PILLAGER_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+        assert!(!casting(&store, id));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![protocol_byte_data(SPELLCASTER_ILLAGER_CASTING_DATA_ID, 2,)],
+        }));
+    }
+
+    assert!(casting(&store, 96));
+    assert!(casting(&store, 97));
+    assert!(
+        !casting(&store, 98),
+        "vindicator has no SpellcasterIllager accessor or casting-state renderer assignment"
+    );
+    assert!(
+        !casting(&store, 99),
+        "pillager data id 17 is the BOOLEAN crossbow flag, not the spell byte"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_villager_unhappy() {
     // Vanilla AbstractVillager.DATA_UNHAPPY_COUNTER (INT id 18): read by
     // VillagerRenderer and WanderingTraderRenderer as `getUnhappyCounter() > 0`.

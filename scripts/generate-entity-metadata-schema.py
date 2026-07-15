@@ -3195,6 +3195,12 @@ def render(result: ExtractionResult) -> str:
             '        let removed_lookup = ["is_vanilla_horse_slot_", "always_active_type"].concat();',
             "        assert!(!source.contains(&removed_lookup));",
             "    }",
+            "",
+            "    #[test]",
+            "    fn production_debug_save_data_does_not_restore_spellcaster_type_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/input.rs");',
+            '        assert!(!source.contains("VANILLA_ENTITY_TYPE_EVOKER_ID | VANILLA_ENTITY_TYPE_ILLUSIONER_ID"));',
+            "    }",
             "}",
             "",
         ]

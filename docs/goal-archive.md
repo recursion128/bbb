@@ -15461,3 +15461,15 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   的 Panda 保持在独立 panda projection，ZombieVillager 也不混入。catalog exact-set、Python
   fixture、world Panda/Villager/Trader/ZombieVillager semantic test 与 generator-emitted 反向门禁
   覆盖该边界。
+
+## 2026-07-15：Generate renderer spell-casting projection
+
+- [x] entity renderer extractor 生成 `state.isCastingSpell = entity.isCastingSpell()` 的精确
+  Evoker/Illusioner 两项 registered-renderer membership；Vindicator/Pillager 的共享 illager
+  renderer 不会因继承关系被误归为 spellcaster。
+- [x] world 将 renderer assignment 与 metadata owner 的 `DATA_SPELL_CASTING_ID` accessor 相交，
+  从 byte spell ordinal 派生 `EntityModelSourceState.illager_spellcasting`；native 删除手写二项
+  type gate 与重复 metadata 解码，改为纯透传；F3+I 保存链也改用同一 generated metadata
+  class query。catalog exact-set、Python fixture、world
+  Evoker/Illusioner/Vindicator/Pillager semantic test、既有 native 集成回归与 generator-emitted
+  renderer/metadata 双反向门禁覆盖该边界。

@@ -42,6 +42,7 @@ class EntityRendererRegistration:
     uses_mob_item_in_hand_layer: bool
     extracts_mob_aggressive: bool
     extracts_unhappy_counter: bool
+    extracts_casting_spell: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -423,6 +424,12 @@ def extract_entity_renderer_registrations(
                 _renderer_hierarchy_contains_extract_assignment(
                     renderer_class,
                     "state.isUnhappy = entity.getUnhappyCounter ()> 0",
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isCastingSpell = entity.isCastingSpell ()",
                     source_by_type,
                     type_by_name,
                 ),

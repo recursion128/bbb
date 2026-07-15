@@ -933,24 +933,6 @@ pub(super) fn parrot_sitting(
             != 0
 }
 
-/// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()` =
-/// the synced `DATA_SPELL_CASTING_ID` byte > 0, id 17 — the byte holds the spell id, so any
-/// non-zero value means casting). Only the spellcaster illagers (evoker, illusioner) define that
-/// byte and render the raised-arm spell pose, so the projection is gated to them; the
-/// vindicator/pillager are `AbstractIllager` but not spellcasters.
-pub(super) fn illager_spellcasting(
-    entity_type_id: i32,
-    values: &[bbb_protocol::packets::EntityDataValue],
-) -> bool {
-    (entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_ID
-        || entity_type_id == VANILLA_ENTITY_TYPE_ILLUSIONER_ID)
-        && entity_data_byte(
-            values,
-            SPELLCASTER_ILLAGER_CASTING_DATA_ID,
-            SPELLCASTER_ILLAGER_DEFAULT_CASTING,
-        ) > 0
-}
-
 /// Vanilla `Raider.isCelebrating()` (the synced `IS_CELEBRATING` boolean, id 16): drives the evoker and
 /// vindicator `CELEBRATING` victory-dance arm pose. Only those two render it — the illusioner overrides
 /// `getArmPose` (bow, no celebrate) and the pillager never returns `CELEBRATING` — so the projection is

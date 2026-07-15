@@ -90,6 +90,9 @@ def render(source_root: Path) -> str:
                 "        extracts_unhappy_counter: "
                 + str(entry.extracts_unhappy_counter).lower()
                 + ",",
+                "        extracts_casting_spell: "
+                + str(entry.extracts_casting_spell).lower()
+                + ",",
                 "    },",
             ]
         )
@@ -145,6 +148,12 @@ def render(source_root: Path) -> str:
             "    fn world_projection_does_not_restore_villager_unhappy_membership() {",
             '        let source = include_str!("../store.rs");',
             '        assert!(!source.contains("let villager_unhappy = matches!"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_projection_does_not_restore_spellcaster_illager_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");',
+            '        assert!(!source.contains("fn illager_spellcasting"));',
             "    }",
             "}",
             "",

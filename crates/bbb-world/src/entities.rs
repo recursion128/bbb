@@ -467,6 +467,10 @@ pub fn vanilla_entity_type_is_abstract_piglin(entity_type_id: i32) -> bool {
     schema::vanilla_entity_metadata_type_is_abstract_piglin(entity_type_id)
 }
 
+pub fn vanilla_entity_type_is_spellcaster_illager(entity_type_id: i32) -> bool {
+    schema::vanilla_entity_metadata_type_is_spellcaster_illager(entity_type_id)
+}
+
 pub fn vanilla_entity_type_is_spider(entity_type_id: i32) -> bool {
     schema::vanilla_entity_metadata_type_is_spider(entity_type_id)
 }
@@ -1209,6 +1213,11 @@ entity_model_source_state! {
     /// `false` for entity render paths that do not consume the synced Mob bit.
     #[serde(default)]
     pub is_aggressive: bool,
+    /// Vanilla `EvokerRenderState` / `IllusionerRenderState.isCastingSpell` from
+    /// `SpellcasterIllager.isCastingSpell()` (synced `DATA_SPELL_CASTING_ID` byte > 0). `false` for
+    /// idle spellcasters and every renderer that does not extract this field.
+    #[serde(default)]
+    pub illager_spellcasting: bool,
     /// Vanilla `VillagerRenderState.isUnhappy` (`AbstractVillager.getUnhappyCounter() > 0`, synced INT id
     /// 18), consumed by `VillagerModel.setupAnim` to shake the villager-family head. `false` for happy
     /// villagers/traders and every non-villager entity.
