@@ -3,9 +3,13 @@ use std::collections::{HashMap, HashSet};
 use anyhow::{anyhow, Result};
 use bbb_pack::PackRoots;
 use bbb_renderer::{DynamicEntityTextureImage, EntityDynamicTexture, Renderer};
-use bbb_world::{WorldStore, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY};
+use bbb_world::{
+    WorldStore, CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY,
+    PIG_VARIANT_REGISTRY,
+};
 
-const FARM_ANIMAL_VARIANT_REGISTRIES: [&str; 3] = [
+const ANIMAL_VARIANT_REGISTRIES: [&str; 4] = [
+    CAT_VARIANT_REGISTRY,
     CHICKEN_VARIANT_REGISTRY,
     COW_VARIANT_REGISTRY,
     PIG_VARIANT_REGISTRY,
@@ -34,7 +38,7 @@ impl DynamicEntityTextureUploader for Renderer {
     }
 }
 
-/// Owns the startup-pack-backed texture state used by synchronized farm-animal presentations.
+/// Owns the startup-pack-backed texture state used by synchronized animal presentations.
 /// Entries never become visible to entity extraction until their image upload succeeds.
 pub(crate) struct NativeEntityVariantTextureRuntime {
     pack_roots: Option<PackRoots>,
@@ -70,7 +74,7 @@ impl NativeEntityVariantTextureRuntime {
         world: &WorldStore,
         uploader: &mut impl DynamicEntityTextureUploader,
     ) {
-        for registry in FARM_ANIMAL_VARIANT_REGISTRIES {
+        for registry in ANIMAL_VARIANT_REGISTRIES {
             let Some(entry_count) = world
                 .registry_resource_ids_in_holder_order(registry)
                 .map(|entries| entries.len())
@@ -80,28 +84,57 @@ impl NativeEntityVariantTextureRuntime {
             for holder_id in 0..entry_count {
                 let holder_id = i32::try_from(holder_id)
                     .expect("registry entry count must fit the protocol holder id");
-                match world.synchronized_farm_animal_variant_presentation(registry, holder_id) {
-                    Ok(Some(presentation)) => {
-                        self.ensure_asset_with_uploader(&presentation.adult_asset_id, uploader);
-                        self.ensure_asset_with_uploader(&presentation.baby_asset_id, uploader);
+                let presentation = if registry == CAT_VARIANT_REGISTRY {
+                    world
+                        .synchronized_cat_variant_presentation(holder_id)
+                        .map(|presentation| {
+                            presentation.map(|presentation| {
+                                (presentation.adult_asset_id, presentation.baby_asset_id)
+                            })
+                        })
+                        .map_err(|error| (error.field, error.reason))
+                } else {
+                    world
+                        .synchronized_farm_animal_variant_presentation(registry, holder_id)
+                        .map(|presentation| {
+                            presentation.map(|presentation| {
+                                (presentation.adult_asset_id, presentation.baby_asset_id)
+                            })
+                        })
+                        .map_err(|error| (error.field, error.reason))
+                };
+                match presentation {
+                    Ok(Some((adult_asset_id, baby_asset_id))) => {
+                        self.ensure_asset_with_uploader(&adult_asset_id, uploader);
+                        self.ensure_asset_with_uploader(&baby_asset_id, uploader);
                     }
                     Ok(None) => {}
-                    Err(error) => {
-                        if self
-                            .rejected_presentations
-                            .insert((registry.to_string(), holder_id))
-                        {
-                            tracing::warn!(
-                                registry,
-                                holder_id,
-                                field = %error.field,
-                                reason = error.reason,
-                                "ignoring malformed farm-animal variant presentation"
-                            );
-                        }
+                    Err((field, reason)) => {
+                        self.record_rejected_presentation(registry, holder_id, &field, reason)
                     }
                 }
             }
+        }
+    }
+
+    fn record_rejected_presentation(
+        &mut self,
+        registry: &str,
+        holder_id: i32,
+        field: &str,
+        reason: &'static str,
+    ) {
+        if self
+            .rejected_presentations
+            .insert((registry.to_string(), holder_id))
+        {
+            tracing::warn!(
+                registry,
+                holder_id,
+                field,
+                reason,
+                "ignoring malformed animal variant presentation"
+            );
         }
     }
 
@@ -150,7 +183,7 @@ impl NativeEntityVariantTextureRuntime {
                     asset_id,
                     handle = texture.handle,
                     ?error,
-                    "using built-in farm-animal presentation after dynamic texture failure"
+                    "using built-in animal presentation after dynamic texture failure"
                 );
             }
         }
@@ -191,6 +224,15 @@ mod tests {
     };
 
     use super::*;
+    use bbb_protocol::{
+        entity_types::VANILLA_ENTITY_TYPE_CAT_ID,
+        packets::{
+            AddEntity, EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind,
+            SetEntityData, Vec3d,
+        },
+    };
+    use bbb_world::VANILLA_CAT_VARIANT_DATA_ID;
+    use uuid::Uuid;
 
     #[derive(Default)]
     struct TestUploader {
@@ -281,6 +323,87 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn synchronized_cat_assets_are_discovered_in_server_holder_order() {
+        let root = unique_temp_dir("cat-variant-texture-runtime");
+        let sources = root.join("sources/26.1");
+        write_png(
+            &sources.join("assets/example/textures/entity/cat/lynx.png"),
+            64,
+            32,
+        );
+        write_png(
+            &sources.join("assets/example/textures/entity/cat/lynx_baby.png"),
+            32,
+            32,
+        );
+        let roots = PackRoots {
+            mc_code_root: root.clone(),
+            sources_dir: sources.clone(),
+            assets_dir: sources.join("assets/minecraft"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            CAT_VARIANT_REGISTRY,
+            0,
+            vec![bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:lynx",
+                cat_variant_nbt("example:entity/cat/lynx", "example:entity/cat/lynx_baby"),
+            )],
+        );
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+
+        assert_eq!(uploader.images.len(), 2);
+        assert_eq!(uploader.images[0].size, [64, 32]);
+        assert_eq!(uploader.images[1].size, [32, 32]);
+        assert!(runtime.ready_texture("example:entity/cat/lynx").is_some());
+        assert!(runtime
+            .ready_texture("example:entity/cat/lynx_baby")
+            .is_some());
+
+        world.apply_add_entity(AddEntity {
+            id: 73,
+            uuid: Uuid::from_u128(73),
+            entity_type_id: VANILLA_ENTITY_TYPE_CAT_ID,
+            position: Vec3d::default(),
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 73,
+            values: vec![EntityDataValue {
+                data_id: VANILLA_CAT_VARIANT_DATA_ID,
+                serializer_id: 21,
+                value: EntityDataValueKind::RegistryId {
+                    serializer: EntityDataRegistryHolder::CatVariant,
+                    id: 0,
+                },
+            }],
+        }));
+        let instances =
+            crate::entity_scene::entity_model_instances_from_world_with_variant_textures_at_partial_tick(
+                &world,
+                None,
+                &runtime,
+                1.0,
+            );
+        assert_eq!(instances.len(), 1);
+        assert_eq!(
+            instances[0].dynamic_texture,
+            runtime.ready_texture("example:entity/cat/lynx")
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     fn write_png(path: &Path, width: u32, height: u32) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         image::RgbaImage::from_pixel(width, height, image::Rgba([7, 11, 13, 255]))
@@ -291,6 +414,14 @@ mod tests {
     fn farm_animal_variant_nbt(model: &str, adult_asset_id: &str, baby_asset_id: &str) -> Vec<u8> {
         let mut payload = vec![10];
         write_nbt_string_tag(&mut payload, "model", model);
+        write_nbt_string_tag(&mut payload, "asset_id", adult_asset_id);
+        write_nbt_string_tag(&mut payload, "baby_asset_id", baby_asset_id);
+        payload.push(0);
+        payload
+    }
+
+    fn cat_variant_nbt(adult_asset_id: &str, baby_asset_id: &str) -> Vec<u8> {
+        let mut payload = vec![10];
         write_nbt_string_tag(&mut payload, "asset_id", adult_asset_id);
         write_nbt_string_tag(&mut payload, "baby_asset_id", baby_asset_id);
         payload.push(0);

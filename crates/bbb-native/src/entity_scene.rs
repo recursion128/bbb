@@ -38,7 +38,7 @@ use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
 use bbb_world::{
     vanilla_entity_type_is_living, ArmorMaterialKind as WorldArmorMaterialKind,
-    EndCrystalBeamSource as WorldEndCrystalBeamSource,
+    CatVariantPresentation, EndCrystalBeamSource as WorldEndCrystalBeamSource,
     EnderDragonBeamSource as WorldEnderDragonBeamSource,
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
@@ -312,6 +312,10 @@ trait EntityVariantRegistryLookup {
         None
     }
 
+    fn cat_variant_presentation(&self, _holder_id: i32) -> Option<CatVariantPresentation> {
+        None
+    }
+
     fn ready_texture(&self, _asset_id: &str) -> Option<EntityDynamicTexture> {
         None
     }
@@ -341,6 +345,13 @@ impl EntityVariantRegistryLookup for EntityVariantRenderContext<'_> {
     ) -> Option<FarmAnimalVariantPresentation> {
         self.world
             .synchronized_farm_animal_variant_presentation(registry, holder_id)
+            .ok()
+            .flatten()
+    }
+
+    fn cat_variant_presentation(&self, holder_id: i32) -> Option<CatVariantPresentation> {
+        self.world
+            .synchronized_cat_variant_presentation(holder_id)
             .ok()
             .flatten()
     }

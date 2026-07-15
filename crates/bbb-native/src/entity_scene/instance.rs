@@ -20,7 +20,15 @@ pub(super) fn entity_model_instance(
         source.entity_type_id,
         &source.data_values,
         variant_registries,
-    );
+    )
+    .or_else(|| {
+        ready_cat_variant_texture(
+            &kind,
+            source.entity_type_id,
+            &source.data_values,
+            variant_registries,
+        )
+    });
     // Vanilla `Armadillo.shouldHideInShell()` = `getState().shouldHideInShell(inStateTicks)`: the
     // shell-ball swap is gated on the client `inStateTicks`, which `entity_model_kind` (data-only)
     // cannot see, so it falls back to the steady SCARED hide. Override it with the world-projected

@@ -180,6 +180,29 @@
       "decision": "Entity metadata holder ids resolve through each synchronized server registry; all five codec shapes project their required SoundEvent holders, and adult/baby death sounds reach positioned audio with custom order, direct range, stub, and malformed-payload coverage."
     },
     {
+      "id": "network-holder-reference-cat-variant",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/entity/animal/feline/CatVariant.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn ready_cat_variant_texture",
+      "evidence": [
+        "vanilla:net/minecraft/world/entity/animal/feline/CatVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<CatVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/world/entity/animal/feline/CatVariant.java#public static final Codec<CatVariant> NETWORK_CODEC",
+        "vanilla:net/minecraft/client/renderer/entity/CatRenderer.java#state.texture = entity.getVariant().value().assetInfo(state.isBaby).texturePath()",
+        "crates/bbb-protocol/src/packets/entities.rs#pub enum EntityDataRegistryHolder",
+        "crates/bbb-world/src/registries/animal_variants.rs#pub fn synchronized_cat_variant_presentation",
+        "crates/bbb-world/src/registries/animal_variants.rs#fn cat_world_query_uses_server_holder_order_and_omits_stubs",
+        "crates/bbb-native/src/entity_variant_textures.rs#fn synchronized_cat_assets_are_discovered_in_server_holder_order",
+        "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn ready_cat_variant_texture",
+        "crates/bbb-native/src/entity_scene/tests.rs#fn ready_cat_presentation_selects_the_age_specific_network_texture"
+      ],
+      "decision": "The metadata holder id resolves through the synchronized server order; CatVariant.NETWORK_CODEC projects both age-specific ResourceTexture assets, and entity rendering switches to the selected custom texture only after upload while stubs and failures preserve the checked built-in fallback."
+    },
+    {
       "id": "network-holder-reference",
       "selector": {
         "kind": "network_holder_reference",
@@ -192,6 +215,7 @@
           "net/minecraft/world/entity/animal/cow/CowSoundVariant.java",
           "net/minecraft/world/entity/animal/cow/CowVariant.java",
           "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
+          "net/minecraft/world/entity/animal/feline/CatVariant.java",
           "net/minecraft/world/entity/animal/pig/PigVariant.java",
           "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
           "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",

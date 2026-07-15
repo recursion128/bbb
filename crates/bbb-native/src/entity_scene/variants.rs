@@ -317,7 +317,7 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
         {
             (
                 CHICKEN_VARIANT_REGISTRY,
-                farm_animal_variant_holder_id(
+                entity_data_registry_holder_id(
                     values,
                     CHICKEN_VARIANT_DATA_ID,
                     EntityDataRegistryHolder::ChickenVariant,
@@ -327,7 +327,7 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
         }
         EntityModelKind::Cow { baby, .. } if entity_type_id == VANILLA_ENTITY_TYPE_COW_ID => (
             COW_VARIANT_REGISTRY,
-            farm_animal_variant_holder_id(
+            entity_data_registry_holder_id(
                 values,
                 COW_VARIANT_DATA_ID,
                 EntityDataRegistryHolder::CowVariant,
@@ -336,7 +336,7 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
         ),
         EntityModelKind::Pig { baby, .. } if entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID => (
             PIG_VARIANT_REGISTRY,
-            farm_animal_variant_holder_id(
+            entity_data_registry_holder_id(
                 values,
                 PIG_VARIANT_DATA_ID,
                 EntityDataRegistryHolder::PigVariant,
@@ -382,7 +382,39 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
     Some(texture)
 }
 
-fn farm_animal_variant_holder_id(
+/// Selects the synchronized cat `NETWORK_CODEC` texture only after that exact age-specific asset is
+/// resident. Until then the entity keeps the holder-identity built-in texture chosen by `kind`.
+pub(super) fn ready_cat_variant_texture(
+    kind: &EntityModelKind,
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    registries: Option<&dyn EntityVariantRegistryLookup>,
+) -> Option<EntityDynamicTexture> {
+    let EntityModelKind::Feline {
+        cat: true, baby, ..
+    } = kind
+    else {
+        return None;
+    };
+    if entity_type_id != VANILLA_ENTITY_TYPE_CAT_ID {
+        return None;
+    }
+    let holder_id = entity_data_registry_holder_id(
+        values,
+        CAT_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::CatVariant,
+    )?;
+    let registries = registries?;
+    let presentation = registries.cat_variant_presentation(holder_id)?;
+    let asset_id = if *baby {
+        &presentation.baby_asset_id
+    } else {
+        &presentation.adult_asset_id
+    };
+    registries.ready_texture(asset_id)
+}
+
+fn entity_data_registry_holder_id(
     values: &[bbb_protocol::packets::EntityDataValue],
     data_id: u8,
     expected_serializer: EntityDataRegistryHolder,

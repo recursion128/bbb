@@ -141,8 +141,9 @@ mod tests {
             });
         assert_eq!(counts["network-holder-or-inline"], 8);
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
-        assert_eq!(counts["network-holder-reference"], 13);
+        assert_eq!(counts["network-holder-reference"], 12);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
+        assert_eq!(counts["network-holder-reference-cat-variant"], 1);
         assert_eq!(counts["network-holder-reference-farm-animal-variants"], 3);
         assert_eq!(counts["network-holder-reference-villager-built-ins"], 3);
         assert_eq!(counts["network-holder-reference-world-clock"], 1);
@@ -163,7 +164,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            178
+            177
         );
         assert_eq!(
             ledger
@@ -186,7 +187,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 13);
+        assert_eq!(complete.len(), 14);
         assert_eq!(
             complete
                 .iter()
@@ -196,6 +197,7 @@ mod tests {
                 "minecraft:chicken_variant",
                 "minecraft:chicken_sound_variant",
                 "minecraft:cat_sound_variant",
+                "minecraft:cat_variant",
                 "minecraft:cow_sound_variant",
                 "minecraft:cow_variant",
                 "minecraft:pig_variant",

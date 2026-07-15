@@ -5748,6 +5748,94 @@ fn ready_farm_animal_presentation_switches_model_and_age_texture_atomically() {
     );
 }
 
+struct ReadyCatPresentationLookup {
+    presentation: CatVariantPresentation,
+    ready_asset_id: &'static str,
+    texture: EntityDynamicTexture,
+}
+
+impl EntityVariantRegistryLookup for ReadyCatPresentationLookup {
+    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
+        Some("example:lynx")
+    }
+
+    fn cat_variant_presentation(&self, _holder_id: i32) -> Option<CatVariantPresentation> {
+        Some(self.presentation.clone())
+    }
+
+    fn ready_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
+        (asset_id == self.ready_asset_id).then_some(self.texture)
+    }
+}
+
+#[test]
+fn ready_cat_presentation_selects_the_age_specific_network_texture() {
+    let texture = EntityDynamicTexture { handle: 73_001 };
+    let mut lookup = ReadyCatPresentationLookup {
+        presentation: CatVariantPresentation {
+            adult_asset_id: "example:entity/cat/lynx".to_string(),
+            adult_texture_path: "example:textures/entity/cat/lynx.png".to_string(),
+            baby_asset_id: "example:entity/cat/lynx_baby".to_string(),
+            baby_texture_path: "example:textures/entity/cat/lynx_baby.png".to_string(),
+        },
+        ready_asset_id: "example:entity/cat/lynx",
+        texture,
+    };
+    let values = [protocol_cat_variant_data(0)];
+    let adult_kind = EntityModelKind::Feline {
+        cat: true,
+        baby: false,
+        cat_variant: CatModelVariant::Black,
+        collar: None,
+    };
+    assert_eq!(
+        ready_cat_variant_texture(
+            &adult_kind,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            &values,
+            Some(&lookup),
+        ),
+        Some(texture)
+    );
+
+    let baby_kind = EntityModelKind::Feline {
+        cat: true,
+        baby: true,
+        cat_variant: CatModelVariant::Black,
+        collar: None,
+    };
+    assert_eq!(
+        ready_cat_variant_texture(
+            &baby_kind,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            &values,
+            Some(&lookup),
+        ),
+        None,
+        "an adult upload must not expose the baby presentation"
+    );
+    lookup.ready_asset_id = "example:entity/cat/lynx_baby";
+    assert_eq!(
+        ready_cat_variant_texture(
+            &baby_kind,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            &values,
+            Some(&lookup),
+        ),
+        Some(texture)
+    );
+    assert_eq!(
+        ready_cat_variant_texture(
+            &baby_kind,
+            VANILLA_ENTITY_TYPE_OCELOT_ID,
+            &values,
+            Some(&lookup),
+        ),
+        None,
+        "the cat holder never changes the ocelot texture"
+    );
+}
+
 #[test]
 fn entity_model_instances_project_pig_saddle_render_state() {
     const SADDLE_ITEM_ID: i32 = 740;

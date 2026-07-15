@@ -8,6 +8,7 @@ use super::normalize_codec_identifier;
 pub const CHICKEN_VARIANT_REGISTRY: &str = "minecraft:chicken_variant";
 pub const COW_VARIANT_REGISTRY: &str = "minecraft:cow_variant";
 pub const PIG_VARIANT_REGISTRY: &str = "minecraft:pig_variant";
+pub const CAT_VARIANT_REGISTRY: &str = "minecraft:cat_variant";
 
 /// The serialized model selector shared by the chicken, cow, and pig variant codecs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +35,22 @@ pub struct FarmAnimalVariantProjectionError {
     pub reason: &'static str,
 }
 
+/// The client presentation fields carried by one synchronized cat variant element.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatVariantPresentation {
+    pub adult_asset_id: String,
+    pub adult_texture_path: String,
+    pub baby_asset_id: String,
+    pub baby_texture_path: String,
+}
+
+/// Identifies the exact cat `NETWORK_CODEC` field that could not be projected.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatVariantProjectionError {
+    pub field: String,
+    pub reason: &'static str,
+}
+
 impl WorldStore {
     /// Decodes a synchronized chicken/cow/pig variant element in current server holder order.
     /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
@@ -50,6 +67,21 @@ impl WorldStore {
             return Ok(None);
         };
         decode_farm_animal_variant(registry, raw_data).map(Some)
+    }
+
+    /// Decodes a synchronized cat variant element in current server holder order.
+    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    pub fn synchronized_cat_variant_presentation(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<CatVariantPresentation>, CatVariantProjectionError> {
+        let Some(entry) = self.registry_entry_by_holder_id(CAT_VARIANT_REGISTRY, holder_id) else {
+            return Ok(None);
+        };
+        let Some(raw_data) = entry.raw_data() else {
+            return Ok(None);
+        };
+        decode_cat_variant(raw_data).map(Some)
     }
 }
 
@@ -82,6 +114,28 @@ fn decode_farm_animal_variant(
     })
 }
 
+fn decode_cat_variant(
+    raw_data: &[u8],
+) -> Result<CatVariantPresentation, CatVariantProjectionError> {
+    let root = decode_nbt_root(raw_data)
+        .map_err(|_| cat_error("<root>", "invalid NBT"))?
+        .ok_or_else(|| cat_error("<root>", "missing root compound"))?;
+    let NbtValue::Compound(fields) = root else {
+        return Err(cat_error("<root>", "expected compound"));
+    };
+
+    let (adult_asset_id, adult_texture_path) =
+        decode_resource_texture(&fields, "asset_id").map_err(CatVariantProjectionError::from)?;
+    let (baby_asset_id, baby_texture_path) = decode_resource_texture(&fields, "baby_asset_id")
+        .map_err(CatVariantProjectionError::from)?;
+    Ok(CatVariantPresentation {
+        adult_asset_id,
+        adult_texture_path,
+        baby_asset_id,
+        baby_texture_path,
+    })
+}
+
 fn ensure_supported_registry(registry: &str) -> Result<(), FarmAnimalVariantProjectionError> {
     match registry {
         CHICKEN_VARIANT_REGISTRY | COW_VARIANT_REGISTRY | PIG_VARIANT_REGISTRY => Ok(()),
@@ -104,14 +158,14 @@ fn decode_model(
 fn decode_resource_texture(
     fields: &[(String, NbtValue)],
     field: &str,
-) -> Result<(String, String), FarmAnimalVariantProjectionError> {
+) -> Result<(String, String), ResourceTextureProjectionError> {
     let raw_asset_id = match find_nbt_entry(fields, field) {
         Some(NbtValue::String(asset_id)) => asset_id,
-        Some(_) => return Err(error(field, "expected string")),
-        None => return Err(error(field, "missing required field")),
+        Some(_) => return Err(resource_texture_error(field, "expected string")),
+        None => return Err(resource_texture_error(field, "missing required field")),
     };
     let asset_id = normalize_codec_identifier(raw_asset_id)
-        .ok_or_else(|| error(field, "invalid texture identifier"))?;
+        .ok_or_else(|| resource_texture_error(field, "invalid texture identifier"))?;
     let (namespace, path) = asset_id
         .split_once(':')
         .expect("normalized identifier always has a namespace");
@@ -119,8 +173,49 @@ fn decode_resource_texture(
     Ok((asset_id, texture_path))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ResourceTextureProjectionError {
+    field: String,
+    reason: &'static str,
+}
+
+impl From<ResourceTextureProjectionError> for FarmAnimalVariantProjectionError {
+    fn from(error: ResourceTextureProjectionError) -> Self {
+        Self {
+            field: error.field,
+            reason: error.reason,
+        }
+    }
+}
+
+impl From<ResourceTextureProjectionError> for CatVariantProjectionError {
+    fn from(error: ResourceTextureProjectionError) -> Self {
+        Self {
+            field: error.field,
+            reason: error.reason,
+        }
+    }
+}
+
+fn resource_texture_error(
+    field: impl Into<String>,
+    reason: &'static str,
+) -> ResourceTextureProjectionError {
+    ResourceTextureProjectionError {
+        field: field.into(),
+        reason,
+    }
+}
+
 fn error(field: impl Into<String>, reason: &'static str) -> FarmAnimalVariantProjectionError {
     FarmAnimalVariantProjectionError {
+        field: field.into(),
+        reason,
+    }
+}
+
+fn cat_error(field: impl Into<String>, reason: &'static str) -> CatVariantProjectionError {
+    CatVariantProjectionError {
         field: field.into(),
         reason,
     }
@@ -213,6 +308,36 @@ mod tests {
     }
 
     #[test]
+    fn decodes_cat_network_codec_shape_and_rejects_invalid_assets() {
+        assert_eq!(
+            decode_cat_variant(&variant_nbt(
+                None,
+                Some("example:entity/cat/lynx"),
+                Some("entity/cat/lynx_baby"),
+            ))
+            .unwrap(),
+            CatVariantPresentation {
+                adult_asset_id: "example:entity/cat/lynx".to_string(),
+                adult_texture_path: "example:textures/entity/cat/lynx.png".to_string(),
+                baby_asset_id: "minecraft:entity/cat/lynx_baby".to_string(),
+                baby_texture_path: "minecraft:textures/entity/cat/lynx_baby.png".to_string(),
+            }
+        );
+        assert_eq!(
+            decode_cat_variant(&variant_nbt(
+                None,
+                Some("example:entity/cat/lynx"),
+                Some("Example:entity/cat/lynx_baby"),
+            ))
+            .unwrap_err(),
+            CatVariantProjectionError {
+                field: "baby_asset_id".to_string(),
+                reason: "invalid texture identifier",
+            }
+        );
+    }
+
+    #[test]
     fn world_query_uses_server_holder_order_and_omits_stubs() {
         let mut store = WorldStore::new();
         store.record_registry_entries(
@@ -253,6 +378,44 @@ mod tests {
             store
                 .synchronized_farm_animal_variant_presentation(COW_VARIANT_REGISTRY, 2)
                 .unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn cat_world_query_uses_server_holder_order_and_omits_stubs() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            CAT_VARIANT_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_raw_data(
+                    "example:lynx",
+                    variant_nbt(
+                        None,
+                        Some("example:entity/cat/lynx"),
+                        Some("example:entity/cat/lynx_baby"),
+                    ),
+                ),
+                RegistryPacketEntry::stub("minecraft:tabby"),
+            ],
+        );
+
+        assert_eq!(
+            store.synchronized_cat_variant_presentation(0).unwrap(),
+            Some(CatVariantPresentation {
+                adult_asset_id: "example:entity/cat/lynx".to_string(),
+                adult_texture_path: "example:textures/entity/cat/lynx.png".to_string(),
+                baby_asset_id: "example:entity/cat/lynx_baby".to_string(),
+                baby_texture_path: "example:textures/entity/cat/lynx_baby.png".to_string(),
+            })
+        );
+        assert_eq!(
+            store.synchronized_cat_variant_presentation(1).unwrap(),
+            None
+        );
+        assert_eq!(
+            store.synchronized_cat_variant_presentation(2).unwrap(),
             None
         );
     }

@@ -44,10 +44,11 @@ pub use crate::position::{BlockPos, ChunkPos};
 pub use crate::registries::{
     vanilla_air_block_state_id, vanilla_block_state_id, BiomeClientProjection,
     BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier, BlockStateInfo,
-    BlockStateRegistry, EnchantmentAttributeModifier, FarmAnimalVariantModel,
-    FarmAnimalVariantPresentation, FarmAnimalVariantProjectionError, RegistryContentState,
-    RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet, RegistryTagState,
-    RegistryValidationError, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
+    BlockStateRegistry, CatVariantPresentation, CatVariantProjectionError,
+    EnchantmentAttributeModifier, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
+    FarmAnimalVariantProjectionError, RegistryContentState, RegistryEntrySource, RegistryPacket,
+    RegistryPacketEntry, RegistrySet, RegistryTagState, RegistryValidationError,
+    ResolvedRegistryEntry, UnresolvedRegistryTagHolder, CAT_VARIANT_REGISTRY,
     CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
 };
 pub use crate::shulker_box_blocks::{
