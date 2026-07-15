@@ -15057,3 +15057,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 若 book/container/advancements/stats/sign/debug 等新 screen 在 Dialog 期间取得所有权，关闭 Dialog 时丢弃
   stale ChatScreen，不在新 screen 关闭后错误复活草稿。runtime pump 在每轮 network drain 后同步 native/world
   screen 边界；focused regressions 覆盖连续两次 ShowDialog + ClearDialog 的精确状态恢复与 book replacement。
+
+## 2026-07-15：Restore native SignEditScreen after Dialog clear
+
+- [x] 对照 `Minecraft.setScreen` 与 `AbstractSignEditScreen.removed`，Dialog 替换 native sign editor 时先通过
+  现有 net owner 发送当前四行 SignUpdate，再把 signature、四行、当前行、cursor/selection 作为同一个 native
+  previous-screen variant 暂存；world 中仍保留的 OpenSignEditor signal 在 Dialog/warning/ConfirmLink/waiting
+  栈顶期间不会重新投影 sign HUD 或抢占输入。
+- [x] 最终 ClearDialog/local close 恢复精确 editor state，随后正常关闭会像 vanilla 再次触发 removed/SignUpdate；
+  若 Dialog 期间收到不同 signature 的新 OpenSignEditor，则新 screen 替换 Dialog 并使旧 editor 永久失效。
+  focused regressions 覆盖编辑中 state 的两次 SignUpdate、suspended HUD/input gate、pending editor capture 与
+  new-sign replacement；完整 16 项 sign-editor test 集通过。

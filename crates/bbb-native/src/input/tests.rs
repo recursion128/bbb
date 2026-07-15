@@ -16200,17 +16200,17 @@ fn dialog_stack_suspends_and_restores_the_native_chat_screen() {
     world.apply_show_dialog(ProtocolShowDialog {
         dialog: DialogHolder::Reference { registry_id: 11 },
     });
-    input.sync_dialog_native_previous_screen(&world);
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
     assert!(!input.chat_entry_is_active());
 
     world.apply_show_dialog(ProtocolShowDialog {
         dialog: DialogHolder::Reference { registry_id: 12 },
     });
-    input.sync_dialog_native_previous_screen(&world);
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
     assert!(!input.chat_entry_is_active());
 
     world.apply_clear_dialog();
-    input.sync_dialog_native_previous_screen(&world);
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
     assert_eq!(input.chat_entry.as_ref(), Some(&expected));
     assert_eq!(world.counters().show_dialog_packets, 2);
     assert_eq!(world.counters().clear_dialog_packets, 1);
@@ -16234,16 +16234,16 @@ fn native_chat_screen_is_not_restored_after_another_screen_replaces_dialog() {
     world.apply_show_dialog(ProtocolShowDialog {
         dialog: DialogHolder::Reference { registry_id: 11 },
     });
-    input.sync_dialog_native_previous_screen(&world);
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
     assert!(!input.chat_entry_is_active());
 
     open_test_book_screen(&mut world, vec!["Replacement"]);
-    input.sync_dialog_native_previous_screen(&world);
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
     assert!(!input.chat_entry_is_active());
     assert!(world.current_book().is_some());
 
     assert!(world.close_current_book());
-    input.sync_dialog_native_previous_screen(&world);
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
     assert!(!input.chat_entry_is_active());
 }
 
@@ -19099,6 +19099,134 @@ fn book_screen_mouse_clicks_turn_pages_and_close() {
         surface_size,
     ));
     assert_eq!(world.current_book(), None);
+}
+
+#[test]
+fn dialog_stack_submits_suspends_and_restores_the_native_sign_editor() {
+    let (tx, mut rx) = mpsc::channel(3);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let sign_pos = BlockPos {
+        x: -5,
+        y: 70,
+        z: 12,
+    };
+    let mut world = WorldStore::new();
+    insert_sign_text(&mut world, sign_pos, ["", "", "", ""], ["", "", "", ""]);
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: sign_pos.x,
+            y: sign_pos.y,
+            z: sign_pos.z,
+        },
+        is_front_text: true,
+    });
+    assert!(sync_sign_editor_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+    ));
+    assert!(handle_sign_editor_text(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "draft",
+    ));
+    let editor = input.sign_editor.as_mut().unwrap();
+    editor.cursor = 2;
+    editor.selection = 5;
+    let expected = editor.clone();
+
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+
+    assert!(!input.sign_editor_is_active_or_pending(&world));
+    assert_eq!(input.sign_editor_hud_state(&world), None);
+    assert_eq!(counters.sign_update_commands_queued, 1);
+    assert_eq!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate {
+            pos: expected.signature.pos,
+            is_front_text: true,
+            lines: expected.lines.clone(),
+        })
+    );
+
+    world.apply_clear_dialog();
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    assert_eq!(input.sign_editor.as_ref(), Some(&expected));
+    assert_eq!(
+        input.sign_editor_hud_state(&world),
+        Some(sign_editor_hud_state_from_editor(&expected))
+    );
+
+    submit_sign_editor(&mut input, &mut counters, &commands);
+    assert_eq!(counters.sign_update_commands_queued, 2);
+    assert!(matches!(
+        rx.try_recv().unwrap(),
+        NetCommand::SignUpdate(SignUpdate { lines, .. }) if lines == expected.lines
+    ));
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn new_sign_editor_replaces_the_one_suspended_below_dialog() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let commands = Some(tx);
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let old_pos = BlockPos { x: 1, y: 2, z: 3 };
+    let new_pos = BlockPos { x: 20, y: 5, z: 6 };
+    let mut world = WorldStore::new();
+    insert_sign_text(&mut world, old_pos, ["Old", "", "", ""], ["", "", "", ""]);
+    insert_sign_text(&mut world, new_pos, ["New", "", "", ""], ["", "", "", ""]);
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: old_pos.x,
+            y: old_pos.y,
+            z: old_pos.z,
+        },
+        is_front_text: true,
+    });
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+    assert_eq!(counters.sign_update_commands_queued, 1);
+
+    world.apply_open_sign_editor(OpenSignEditor {
+        pos: ProtocolBlockPos {
+            x: new_pos.x,
+            y: new_pos.y,
+            z: new_pos.z,
+        },
+        is_front_text: true,
+    });
+    input.sync_dialog_native_previous_screen(&world, &mut counters, &commands);
+
+    assert!(!world.dialog_screen_is_open());
+    assert!(input.sign_editor_is_active_or_pending(&world));
+    assert_eq!(
+        input.sign_editor_hud_state(&world).map(|state| state.pos),
+        Some(new_pos)
+    );
+    assert!(sync_sign_editor_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+    ));
+    assert_eq!(
+        input.sign_editor.as_ref().unwrap().signature.pos.x,
+        new_pos.x
+    );
+    assert!(matches!(rx.try_recv().unwrap(), NetCommand::SignUpdate(_)));
+    assert!(rx.try_recv().is_err());
 }
 
 #[test]

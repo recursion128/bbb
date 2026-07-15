@@ -840,6 +840,7 @@ struct ChatEntryState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum NativeDialogPreviousScreenState {
     Chat(ChatEntryState),
+    Sign(SignEditorInputState),
 }
 
 const COMMAND_SUGGESTION_LINE_HEIGHT: i32 = 12;
@@ -1456,13 +1457,23 @@ impl ClientInputState {
     }
 
     pub(crate) fn sign_editor_is_active_or_pending(&self, world: &WorldStore) -> bool {
-        self.sign_editor.is_some()
-            || sign_editor_signature_from_world(world)
-                .is_some_and(|signature| Some(&signature) != self.dismissed_sign_editor.as_ref())
+        if self.sign_editor.is_some() {
+            return true;
+        }
+        sign_editor_signature_from_world(world).is_some_and(|signature| {
+            !self.dialog_suspends_sign_editor(&signature)
+                && Some(&signature) != self.dismissed_sign_editor.as_ref()
+        })
     }
 
     pub(crate) fn sign_editor_hud_state(&self, world: &WorldStore) -> Option<SignEditorHudState> {
         let current_signature = sign_editor_signature_from_world(world);
+        if current_signature
+            .as_ref()
+            .is_some_and(|signature| self.dialog_suspends_sign_editor(signature))
+        {
+            return None;
+        }
         if let Some(editor) = &self.sign_editor {
             if current_signature.as_ref() == Some(&editor.signature) {
                 return Some(sign_editor_hud_state_from_editor(editor));
@@ -1492,26 +1503,74 @@ impl ClientInputState {
     /// Moves native-owned screen state below the world-owned Dialog stack and
     /// restores it only when that stack returns without another screen taking
     /// ownership in the meantime.
-    pub(crate) fn sync_dialog_native_previous_screen(&mut self, world: &WorldStore) {
+    pub(crate) fn sync_dialog_native_previous_screen(
+        &mut self,
+        world: &WorldStore,
+        counters: &mut NetCounters,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+    ) {
         let dialog_screen_is_open = world.dialog_screen_is_open();
         match (self.dialog_screen_was_open, dialog_screen_is_open) {
             (false, true) => {
                 self.dialog_native_previous_screen = self
-                    .chat_entry
-                    .take()
-                    .map(NativeDialogPreviousScreenState::Chat);
+                    .take_sign_editor_for_dialog(world)
+                    .map(|editor| {
+                        queue_sign_editor_removed(counters, net_commands, &editor);
+                        NativeDialogPreviousScreenState::Sign(editor)
+                    })
+                    .or_else(|| {
+                        self.chat_entry
+                            .take()
+                            .map(NativeDialogPreviousScreenState::Chat)
+                    });
             }
             (true, false) => {
+                let screen_replaced = self.native_screen_replaced_dialog(world);
                 let previous = self.dialog_native_previous_screen.take();
-                if !self.native_screen_replaced_dialog(world) && self.chat_entry.is_none() {
-                    if let Some(NativeDialogPreviousScreenState::Chat(entry)) = previous {
-                        self.chat_entry = Some(entry);
+                if screen_replaced {
+                    if let Some(NativeDialogPreviousScreenState::Sign(editor)) = previous {
+                        self.dismissed_sign_editor = Some(editor.signature);
+                    }
+                } else {
+                    match previous {
+                        Some(NativeDialogPreviousScreenState::Chat(entry))
+                            if self.chat_entry.is_none() =>
+                        {
+                            self.chat_entry = Some(entry);
+                        }
+                        Some(NativeDialogPreviousScreenState::Sign(editor))
+                            if self.sign_editor.is_none() =>
+                        {
+                            self.dismissed_sign_editor = None;
+                            self.sign_editor = Some(editor);
+                        }
+                        _ => {}
                     }
                 }
             }
             _ => {}
         }
         self.dialog_screen_was_open = dialog_screen_is_open;
+    }
+
+    fn take_sign_editor_for_dialog(&mut self, world: &WorldStore) -> Option<SignEditorInputState> {
+        let signature = sign_editor_signature_from_world(world)?;
+        if self.dismissed_sign_editor.as_ref() == Some(&signature) {
+            return None;
+        }
+        self.chat_entry = None;
+        self.sign_editor
+            .take()
+            .filter(|editor| editor.signature == signature)
+            .or_else(|| Some(sign_editor_input_state_from_world(world, signature)))
+    }
+
+    fn dialog_suspends_sign_editor(&self, signature: &SignEditorInputSignature) -> bool {
+        matches!(
+            self.dialog_native_previous_screen.as_ref(),
+            Some(NativeDialogPreviousScreenState::Sign(editor))
+                if editor.signature == *signature
+        )
     }
 
     fn native_screen_replaced_dialog(&self, world: &WorldStore) -> bool {
@@ -9816,6 +9875,10 @@ fn sync_sign_editor_input(
         input.sign_editor = None;
         return false;
     };
+    if input.dialog_suspends_sign_editor(&signature) {
+        input.sign_editor = None;
+        return false;
+    }
     if input
         .sign_editor
         .as_ref()
@@ -9828,17 +9891,24 @@ fn sync_sign_editor_input(
         return false;
     }
 
+    input.sign_editor = Some(sign_editor_input_state_from_world(world, signature));
+    release_active_input(input, world, counters, net_commands);
+    true
+}
+
+fn sign_editor_input_state_from_world(
+    world: &WorldStore,
+    signature: SignEditorInputSignature,
+) -> SignEditorInputState {
     let lines = sign_editor_initial_lines(world);
     let cursor = sign_line_char_len(&lines[0]);
-    input.sign_editor = Some(SignEditorInputState {
+    SignEditorInputState {
         signature,
         lines,
         line: 0,
         cursor,
         selection: cursor,
-    });
-    release_active_input(input, world, counters, net_commands);
-    true
+    }
 }
 
 fn sign_editor_signature_from_world(world: &WorldStore) -> Option<SignEditorInputSignature> {
@@ -9889,13 +9959,21 @@ fn submit_sign_editor(
         return;
     };
     input.dismissed_sign_editor = Some(editor.signature.clone());
+    queue_sign_editor_removed(counters, net_commands, &editor);
+}
+
+fn queue_sign_editor_removed(
+    counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    editor: &SignEditorInputState,
+) {
     queue_sign_update_command(
         counters,
         net_commands,
         SignUpdate {
             pos: editor.signature.pos,
             is_front_text: editor.signature.is_front_text,
-            lines: editor.lines,
+            lines: editor.lines.clone(),
         },
     );
 }
