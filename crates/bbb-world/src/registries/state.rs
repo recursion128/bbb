@@ -53,6 +53,10 @@ pub struct RegistryPacket {
     /// Whether this registry belongs to vanilla's immutable client static layer.
     #[serde(default)]
     pub client_built_in: bool,
+    /// Number of concrete vanilla 26.1 Holder/HolderSet/TagKey codec factory
+    /// call sites tied to this registry.
+    #[serde(default)]
+    pub holder_consumer_count: usize,
     #[serde(default)]
     pub entries: Vec<RegistryPacketEntry>,
 }

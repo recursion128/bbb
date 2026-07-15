@@ -57,8 +57,10 @@ Owner: `bbb-protocol`
   intersection to the existing 64-entry response encoder instead of always
   returning an empty configuration response.
 - Apply the validators declared by the generated
-  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory and finish the
-  holder-consumer inventory. Production RegistryData collection now
+  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory and map every row or
+  shared family in the generated 194-call-site Holder/HolderSet/TagKey inventory
+  to a bbb resolver consumer, a vanilla-backed not-applicable decision, or a
+  narrow deferred condition. Production RegistryData collection now
   admits only the source-derived 28-entry catalog into canonical holder contents
   while retaining other packets solely as diagnostics; the separate generated
   95-entry `BuiltInRegistries` inventory classifies the complete client static layer.

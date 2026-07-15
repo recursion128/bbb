@@ -28,4 +28,4 @@ generator. The authoritative pre-commit gate remains the one in `goal.md`.
 
 Remaining lifecycle work is tracked in `docs/unsupported-features.md`: apply the
 declared validators when typed contents are available and finish the
-consumer/holder inventory.
+mapping from the generated holder-consumer call sites to bbb resolver consumers.

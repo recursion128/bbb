@@ -25,6 +25,18 @@ class BuiltInRegistryCatalogEntry:
     default_id: str | None
 
 
+@dataclass(frozen=True)
+class RegistryHolderConsumerEntry:
+    source_path: str
+    line: int
+    column: int
+    owner: str
+    factory: str
+    kind: str
+    registry_expression: str
+    resource_id: str | None
+
+
 def registry_data_catalog(
     loader_source: JavaSource,
     registries_source: JavaSource,
@@ -164,6 +176,118 @@ def built_in_registry_catalog(
             f"{built_in_source.relative_path}: duplicate built-in registry resource id"
         )
     return entries
+
+
+def registry_holder_consumer_catalog(
+    sources: list[JavaSource],
+    registries_source: JavaSource,
+    built_in: list[BuiltInRegistryCatalogEntry],
+) -> list[RegistryHolderConsumerEntry]:
+    registry_ids = _registry_resource_ids(registries_source)
+    built_in_constants = {entry.constant_name: entry.resource_id for entry in built_in}
+    factory_kinds = {
+        ("RegistryFixedCodec", "create"): "persistent_holder_reference",
+        ("RegistryFileCodec", "create"): "persistent_holder_or_inline",
+        ("RegistryCodecs", "homogeneousList"): "persistent_holder_set",
+        ("HolderSetCodec", "create"): "persistent_holder_set_custom",
+        ("ByteBufCodecs", "holderRegistry"): "network_holder_reference",
+        ("ByteBufCodecs", "holder"): "network_holder_or_inline",
+        ("ByteBufCodecs", "holderSet"): "network_holder_set_or_tag",
+        ("TagKey", "codec"): "persistent_tag",
+        ("TagKey", "hashedCodec"): "persistent_hashed_tag",
+        ("TagKey", "streamCodec"): "network_tag",
+    }
+    entries = []
+    for source in sources:
+        for call in source.calls:
+            qualifier = call.qualifier.canonical if call.qualifier is not None else ""
+            factory_key = (qualifier, call.name)
+            kind = factory_kinds.get(factory_key)
+            registry_expression = ""
+            resource_id = None
+            if kind is not None:
+                if not call.arguments:
+                    raise JavaSourceError(
+                        f"{source.relative_path}: {qualifier}.{call.name} lacks registry argument"
+                    )
+                registry_expression = call.arguments[0].canonical
+                resource_id = _resolve_registry_expression(
+                    registry_expression, registry_ids, built_in_constants
+                )
+                if _is_concrete_registry_expression(registry_expression) and resource_id is None:
+                    raise JavaSourceError(
+                        f"{source.relative_path}: unknown registry expression {registry_expression}"
+                    )
+                if factory_key == ("RegistryFileCodec", "create"):
+                    if len(call.arguments) == 3 and call.arguments[2].canonical == "false":
+                        kind = "persistent_holder_reference"
+                elif factory_key == ("RegistryCodecs", "homogeneousList"):
+                    uses_inline_values = len(call.arguments) >= 2 and call.arguments[
+                        1
+                    ].canonical not in {"true", "false"}
+                    kind = (
+                        "persistent_holder_set_or_inline"
+                        if uses_inline_values
+                        else "persistent_holder_set_or_tag"
+                    )
+            elif call.name == "holderByNameCodec" and call.qualifier is not None:
+                kind = "persistent_holder_reference"
+                factory_key = ("Registry", call.name)
+                registry_expression = qualifier
+                resource_id = _resolve_registry_expression(
+                    registry_expression, registry_ids, built_in_constants
+                )
+                if _is_concrete_registry_expression(registry_expression) and resource_id is None:
+                    raise JavaSourceError(
+                        f"{source.relative_path}: unknown registry expression {registry_expression}"
+                    )
+            else:
+                continue
+            entries.append(
+                RegistryHolderConsumerEntry(
+                    source_path=source.relative_path,
+                    line=call.span.start_point[0] + 1,
+                    column=call.span.start_point[1] + 1,
+                    owner=call.owner or "",
+                    factory=f"{factory_key[0]}.{factory_key[1]}",
+                    kind=kind,
+                    registry_expression=registry_expression,
+                    resource_id=resource_id,
+                )
+            )
+    entries.sort(
+        key=lambda entry: (
+            entry.source_path,
+            entry.line,
+            entry.column,
+            entry.factory,
+        )
+    )
+    identities = {
+        (entry.source_path, entry.line, entry.column, entry.factory) for entry in entries
+    }
+    if len(identities) != len(entries):
+        raise JavaSourceError("duplicate registry holder consumer call site")
+    return entries
+
+
+def _resolve_registry_expression(
+    expression: str,
+    registry_ids: dict[str, str],
+    built_in_constants: dict[str, str],
+) -> str | None:
+    if expression.startswith("Registries.") and expression.count(".") == 1:
+        return registry_ids.get(expression.removeprefix("Registries."))
+    if expression.startswith("BuiltInRegistries.") and expression.count(".") == 1:
+        return built_in_constants.get(expression.removeprefix("BuiltInRegistries."))
+    return None
+
+
+def _is_concrete_registry_expression(expression: str) -> bool:
+    return (
+        expression.startswith("Registries.")
+        or expression.startswith("BuiltInRegistries.")
+    ) and expression.count(".") == 1
 
 
 def _registry_resource_ids(source: JavaSource) -> dict[str, str]:

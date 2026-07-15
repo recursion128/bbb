@@ -746,7 +746,9 @@ cell 在其 family custom-reorder test 通过前不得标为 complete。
 canonical holder contents，其他 packet 只保留诊断，静态 sound-event 查询继续使用生成的
 26.1 顺序。另由 `BuiltInRegistries` 生成 95 项客户端 static registry、注册 helper 与 default key，
 packet 诊断可区分 synchronized、built-in 和 unknown。validator 执行以及 holder-consumer
-inventory 仍是 foundation 剩余工作。
+inventory 仍是 foundation 剩余工作。当前另从 11 种 Holder/HolderSet/TagKey Codec factory
+生成 194 个具体或泛型 CST 调用点，保留 source/owner/shape/registry expression；逐行映射到
+bbb resolver consumer、`not-applicable` 或窄 `deferred` 仍待完成。
 
 完成标准：由 vanilla 26.1 network-synced registry 清单和全部 Holder/HolderSet codec
 消费点派生覆盖 inventory，每项都映射到 resolver consumer、带证据的 `not-applicable`

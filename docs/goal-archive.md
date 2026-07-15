@@ -15153,3 +15153,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   与 default resource id；生成测试锁定唯一性并证明与 28 项 synchronized catalog 不相交。
 - [x] `RegistryPacket.client_built_in` 使用生成 lookup，让 production 诊断明确区分同步 registry、已知客户端
   static registry 与未知名字；biome/item/custom/sound-event focused tests 锁定三类行为。
+
+## 2026-07-15：Generate the registry holder consumer call-site inventory
+
+- [x] 机械扫描 vanilla 26.1 11 种 Holder/HolderSet/TagKey Codec factory，经共享 Tree-sitter frontend
+  生成 194 个唯一调用点；每项保留 source line/column、owner、factory、reference/inline/set/tag shape、
+  原始 registry expression，并保留无法静态绑定 resource id 的 generic helper，而非静默丢弃。
+- [x] 新的 protocol semantic module 提供按 registry 计数的窄 lookup，`RegistryPacket` 将具体 vanilla
+  consumer 数量暴露为诊断；生成测试覆盖 reference、inline、set、tag、generic 形状，world 测试锁定
+  biome/item/custom/sound-event 的非零或零分类。bbb consumer coverage 映射保持后续 foundation 工作。

@@ -141,10 +141,13 @@ fn registry_packets_classify_configuration_element_sources_from_generated_invent
 
     assert!(store.registries().registries[0].configuration_synchronized);
     assert!(!store.registries().registries[0].client_built_in);
+    assert!(store.registries().registries[0].holder_consumer_count > 0);
     assert!(!store.registries().registries[1].configuration_synchronized);
     assert!(store.registries().registries[1].client_built_in);
+    assert!(store.registries().registries[1].holder_consumer_count > 0);
     assert!(!store.registries().registries[2].configuration_synchronized);
     assert!(!store.registries().registries[2].client_built_in);
+    assert_eq!(store.registries().registries[2].holder_consumer_count, 0);
 }
 
 #[test]
@@ -195,6 +198,7 @@ fn production_registry_data_keeps_non_synchronized_elements_out_of_holder_state(
     let packet = &store.registries().registries[0];
     assert!(!packet.configuration_synchronized);
     assert!(packet.client_built_in);
+    assert!(packet.holder_consumer_count > 0);
     assert_eq!(packet.entries[0].id, "example:injected");
     assert!(store.registry_content("minecraft:sound_event").is_none());
     assert_eq!(

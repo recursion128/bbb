@@ -57,6 +57,7 @@ pub mod player_info_actions;
 pub mod potion_types;
 pub mod recipe_wire_types;
 pub mod registry_data_types;
+pub mod registry_holder_consumers;
 pub mod remote_debug_sample_types;
 pub mod resource_pack_response_actions;
 pub mod scoreboard_display_slots;
