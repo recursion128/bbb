@@ -390,6 +390,25 @@ pub fn vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_ty
     }
 }
 
+/// Resolves the nearest generated zombification-immunity accessor and its typed default.
+///
+/// AbstractPiglin owns the field inherited by Piglin and PiglinBrute, while Hoglin declares an
+/// independent accessor at a different wire index. Zoglin and ZombifiedPiglin own neither.
+pub fn vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_IMMUNE_TO_ZOMBIFICATION",
+    )?;
+    match (accessor.serializer_name, accessor.typed_default) {
+        ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
+            Some((accessor.data_id, default))
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the nearest generated boolean `DATA_BABY_ID` accessor and its typed default.
 ///
 /// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
@@ -778,15 +797,15 @@ mod tests {
         VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
         VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
         VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
@@ -3288,6 +3307,34 @@ mod tests {
         assert!(!VANILLA_PIGLIN_DEFAULT_BABY);
         assert!(!VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW);
         assert!(!VANILLA_PIGLIN_DEFAULT_DANCING);
+        assert_eq!(
+            vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_ID
+            ),
+            Some((16, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
+            ),
+            Some((16, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_HOGLIN_ID
+            ),
+            Some((18, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOGLIN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(-1),
+            None
+        );
         let raider = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Raider);
         assert_eq!(raider.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(raider.inherited_field_count, 16);

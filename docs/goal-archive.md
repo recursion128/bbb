@@ -16156,3 +16156,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   （wire id 19、默认 false），普通 Zombie 与未知实体不会因相同数值索引误入。
 - native shake projection 已移除 ZombieVillager 类型分支和生产索引别名；生成器 reverse
   guard、world 查询测试与 Zombie/ZombieVillager 对照测试锁定 curing 与 underwater 两条边界。
+
+## 2026-07-15：统一推导 piglin/hoglin zombification shake
+
+- `bbb-world` 现在沿生成 schema 解析最近的 `DATA_IMMUNE_TO_ZOMBIFICATION`：Piglin 与
+  PiglinBrute 继承 AbstractPiglin 的 id 16，Hoglin 使用自身 id 18，默认均为 false；Zoglin、
+  ZombifiedPiglin 与未知实体不匹配。
+- native shake projection 以该查询结合 `PIGLINS_ZOMBIFY` 环境值，移除了最后的 class query、
+  Hoglin 类型 arm 和生产索引别名；debug save-data 消费也改为直接导入 `bbb-world` owner，
+  生成器守卫禁止整个函数恢复 entity-type dispatch。

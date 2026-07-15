@@ -11788,8 +11788,9 @@ fn piglin_and_spider_dispatch_use_the_world_generated_catalog() {
         );
     }
 
-    assert!(include_str!("../entity_scene/instance.rs")
-        .contains("bbb_world::vanilla_entity_type_is_abstract_piglin(entity_type_id)"));
+    assert!(include_str!("../entity_scene/instance.rs").contains(
+        "bbb_world::vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type"
+    ));
     assert!(include_str!("../input.rs")
         .contains("bbb_world::vanilla_entity_type_is_spider(entity.entity_type_id)"));
     assert!(include_str!("../runtime.rs")

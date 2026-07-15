@@ -1346,6 +1346,11 @@ fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
             (88, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, [3.0, 64.0, -2.0]),
             (89, VANILLA_ENTITY_TYPE_HOGLIN_ID, [5.0, 64.0, -2.0]),
             (90, VANILLA_ENTITY_TYPE_ZOGLIN_ID, [7.0, 64.0, -2.0]),
+            (
+                91,
+                VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+                [9.0, 64.0, -2.0],
+            ),
         ] {
             world.apply_add_entity(protocol_add_entity(id, entity_type_id, position));
         }
@@ -1372,8 +1377,10 @@ fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
     for id in [87, 88, 89] {
         assert!((body_rot(&overworld, id) - shake).abs() < 1e-6);
     }
-    // ZoglinRenderer does not expose a conversion override.
-    assert_eq!(body_rot(&overworld, 90), 0.0);
+    // ZoglinRenderer and ZombifiedPiglinRenderer do not expose a conversion override.
+    for id in [90, 91] {
+        assert_eq!(body_rot(&overworld, id), 0.0);
+    }
 
     // Synced immune-to-zombification metadata suppresses the conversion shake.
     assert!(overworld.apply_set_entity_data(SetEntityData {
@@ -1404,7 +1411,7 @@ fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
     let mut nether = dimension_world(1, "minecraft:the_nether");
     add_piglin_family(&mut nether);
     // Vanilla built-in Nether sets `PIGLINS_ZOMBIFY` to false.
-    for id in [87, 88, 89, 90] {
+    for id in [87, 88, 89, 90, 91] {
         assert_eq!(body_rot(&nether, id), 0.0);
     }
 }

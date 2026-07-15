@@ -171,7 +171,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   in particular, villager model projection must resolve `DATA_VILLAGER_DATA` there rather than
   restoring a Villager/ZombieVillager type-to-index switch, and Skeleton freeze-conversion shake
   plus Strider suffocating and ZombieVillager curing-conversion shake must resolve their generated
-  boolean accessors there rather than entity-type branches.
+  boolean accessors there rather than entity-type branches. Piglin/PiglinBrute/Hoglin conversion
+  shake must likewise resolve the nearest generated `DATA_IMMUNE_TO_ZOMBIFICATION` accessor rather
+  than split class membership and Hoglin into parallel dispatch arms.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

@@ -913,25 +913,14 @@ pub(super) fn entity_shaking(
             return true;
         }
     }
-    match entity_type_id {
-        _ if bbb_world::vanilla_entity_type_is_abstract_piglin(entity_type_id) => {
-            piglins_zombify
-                && !entity_data_bool(
-                    data_values,
-                    PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
-                    PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
-                )
-        }
-        VANILLA_ENTITY_TYPE_HOGLIN_ID => {
-            piglins_zombify
-                && !entity_data_bool(
-                    data_values,
-                    HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
-                    HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
-                )
-        }
-        _ => false,
-    }
+    let Some((data_id, default)) =
+        bbb_world::vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+            entity_type_id,
+        )
+    else {
+        return false;
+    };
+    piglins_zombify && !entity_data_bool(data_values, data_id, default)
 }
 
 /// Vanilla `EnvironmentAttributes.PIGLINS_ZOMBIFY` defaults to `true`; the built-in Nether

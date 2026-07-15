@@ -67,6 +67,7 @@ pub use schema::{
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     vanilla_entity_metadata_villager_data_accessor_for_entity_type,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
+    vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type,
     VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataClassCatalogEntry,
     VanillaEntityMetadataDefault, VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
     VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagCatalogEntry,
