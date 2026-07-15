@@ -15565,3 +15565,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world 同时删除 Slime/Guardian 私有 forwarding helper，动画、尺寸、乘坐与光束消费者
   改从 schema semantic owner 导入；既有三组 base/subclass F3+I 回归与 generator-emitted 反向门禁
   锁定该边界。
+
+## 2026-07-15：Generate AbstractChestedHorse debug-save membership
+
+- [x] metadata generator 新增 `AbstractChestedHorse` 类层次 membership，exact set 为
+  Donkey/Llama/Mule/TraderLlama，未知 id fail closed。
+- [x] native F3+I 将 Mob/AgeableMob/Animal/AbstractHorse/AbstractChestedHorse 五层共享保存链
+  提到 type match 之前，删除 Donkey/Mule 二项表与 Llama/TraderLlama 重复基类调用；两个
+  Llama 分支仍按原顺序追加子类字段，四类既有 F3+I 回归与 generator-emitted 反向门禁
+  锁定该边界。

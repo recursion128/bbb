@@ -261,6 +261,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_abstract_chest_boat: bool,
     pub is_minecart: bool,
     pub is_abstract_horse: bool,
+    pub is_abstract_chested_horse: bool,
     pub is_abstract_nautilus: bool,
     pub is_llama: bool,
     pub is_item_frame: bool,
@@ -579,6 +580,13 @@ pub fn vanilla_entity_metadata_type_is_abstract_horse(entity_type_id: i32) -> bo
         .unwrap_or(false)
 }
 
+pub fn vanilla_entity_metadata_type_is_abstract_chested_horse(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_abstract_chested_horse)
+        .unwrap_or(false)
+}
+
 pub fn vanilla_entity_metadata_type_is_abstract_nautilus(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
@@ -707,15 +715,16 @@ mod tests {
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
         VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
         VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
         VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
         VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
         VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID,
         VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
         VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
@@ -1080,6 +1089,21 @@ mod tests {
                 .count(),
             9
         );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| entry.is_abstract_chested_horse)
+                .map(|entry| entry.entity_type_id)
+                .collect::<Vec<_>>(),
+            vec![
+                VANILLA_ENTITY_TYPE_DONKEY_ID,
+                VANILLA_ENTITY_TYPE_LLAMA_ID,
+                VANILLA_ENTITY_TYPE_MULE_ID,
+                VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+            ]
+        );
+        assert!(!vanilla_entity_metadata_type_is_abstract_chested_horse(-1));
+        assert!(!vanilla_entity_metadata_type_is_abstract_chested_horse(157));
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()

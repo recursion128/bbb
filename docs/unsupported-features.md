@@ -181,6 +181,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   compatibility query.
   Debug entity save-data dispatch for Camel, Guardian, and Slime families must consume their
   generated class memberships rather than parallel base/subclass type pairs.
+  The shared AbstractChestedHorse debug save chain must consume its generated four-type class
+  membership before Llama and TraderLlama append subclass fields; Donkey/Mule must not be a
+  separate pair table.
   Keep static data-component-map membership such as
   `DataComponents.COMMON_ITEM_COMPONENTS` in the generated component catalog;
   pack/item consumers must not reconstruct those type-id sets by hand.

@@ -17,8 +17,7 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_COD_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_COW_ID,
         VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_CREEPER_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-        VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
         VANILLA_ENTITY_TYPE_ENDER_PEARL_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
@@ -33,12 +32,11 @@ use bbb_protocol::{
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_LINGERING_POTION_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
         VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
@@ -4668,6 +4666,13 @@ fn debug_push_entity_additional_save_data(
     if bbb_world::vanilla_entity_type_is_hurting_projectile(entity.entity_type_id) {
         debug_push_abstract_hurting_projectile_additional_save_data(entity, fields);
     }
+    if bbb_world::vanilla_entity_metadata_type_is_abstract_chested_horse(entity.entity_type_id) {
+        debug_push_mob_additional_save_data(world, entity, fields);
+        debug_push_ageable_mob_additional_save_data(entity, fields);
+        debug_push_animal_additional_save_data(fields);
+        debug_push_abstract_horse_additional_save_data(entity, fields);
+        debug_push_abstract_chested_horse_additional_save_data(entity, fields);
+    }
 
     match entity.entity_type_id {
         VANILLA_ENTITY_TYPE_CREEPER_ID => {
@@ -4755,13 +4760,6 @@ fn debug_push_entity_additional_save_data(
             debug_push_ageable_mob_additional_save_data(entity, fields);
             debug_push_dolphin_additional_save_data(entity, fields);
         }
-        VANILLA_ENTITY_TYPE_DONKEY_ID | VANILLA_ENTITY_TYPE_MULE_ID => {
-            debug_push_mob_additional_save_data(world, entity, fields);
-            debug_push_ageable_mob_additional_save_data(entity, fields);
-            debug_push_animal_additional_save_data(fields);
-            debug_push_abstract_horse_additional_save_data(entity, fields);
-            debug_push_abstract_chested_horse_additional_save_data(entity, fields);
-        }
         VANILLA_ENTITY_TYPE_DROWNED_ID => {
             debug_push_mob_additional_save_data(world, entity, fields);
             debug_push_zombie_additional_save_data(entity, fields);
@@ -4840,19 +4838,9 @@ fn debug_push_entity_additional_save_data(
             debug_push_zombie_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_LLAMA_ID => {
-            debug_push_mob_additional_save_data(world, entity, fields);
-            debug_push_ageable_mob_additional_save_data(entity, fields);
-            debug_push_animal_additional_save_data(fields);
-            debug_push_abstract_horse_additional_save_data(entity, fields);
-            debug_push_abstract_chested_horse_additional_save_data(entity, fields);
             debug_push_llama_additional_save_data(entity, fields);
         }
         VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
-            debug_push_mob_additional_save_data(world, entity, fields);
-            debug_push_ageable_mob_additional_save_data(entity, fields);
-            debug_push_animal_additional_save_data(fields);
-            debug_push_abstract_horse_additional_save_data(entity, fields);
-            debug_push_abstract_chested_horse_additional_save_data(entity, fields);
             debug_push_llama_additional_save_data(entity, fields);
             debug_push_trader_llama_additional_save_data(fields);
         }
