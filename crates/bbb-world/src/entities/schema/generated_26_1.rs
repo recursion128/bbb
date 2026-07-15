@@ -19416,6 +19416,12 @@ pub const VANILLA_ENTITY_MINECART_DEFAULT_DISPLAY_OFFSETS_26_1: &[(i32, i32)] = 
     (133, 6),
 ];
 
+pub const VANILLA_ENTITY_SCALE_SANITIZERS_26_1: &[(i32, VanillaEntityScaleSanitizer)] = &[
+    (43, VanillaEntityScaleSanitizer::Fixed(1.0)),
+    (58, VanillaEntityScaleSanitizer::ClampMax(1.0)),
+    (112, VanillaEntityScaleSanitizer::ClampMax(3.0)),
+];
+
 const ENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_SHARED_FLAGS_ID",
@@ -21888,6 +21894,31 @@ mod generated_catalog_guards {
         assert!(store.contains("vanilla_minecart_default_display_offset(identity.entity_type_id)?"));
         let input = include_str!("../../../../bbb-native/src/input.rs");
         assert!(input.contains("vanilla_minecart_default_display_offset(entity.entity_type_id)"));
+    }
+
+    #[test]
+    fn production_entity_scale_does_not_restore_type_dispatch() {
+        let source = include_str!("../dimensions.rs");
+        let body = source
+            .split("fn entity_scale")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("entity scale projection source");
+        assert!(body.contains("vanilla_entity_scale_sanitizer"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        assert!(!body.contains("HAPPY_GHAST_MAX_SCALE"));
+        assert!(!body.contains("SHULKER_MAX_SCALE"));
+        assert!(!body.contains("match entity_type_id"));
+        let metadata = include_str!("../metadata.rs");
+        let attribute_body = metadata
+            .split("pub fn apply_update_attributes")
+            .nth(1)
+            .and_then(|source| source.split_once("\n    }"))
+            .map(|(body, _)| body)
+            .expect("attribute apply source");
+        assert!(attribute_body.contains("vanilla_entity_metadata_type_is_living"));
+        assert!(!attribute_body.contains("vanilla_living_entity_type"));
     }
 
     #[test]

@@ -123,6 +123,7 @@ pub use schema::{
     vanilla_entity_metadata_type_sound_source_kind, VanillaEntityCollidabilityKind,
     VanillaEntityPushabilityKind, VanillaEntitySoundSourceKind,
 };
+pub use schema::{vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer};
 pub use schema::{
     vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,

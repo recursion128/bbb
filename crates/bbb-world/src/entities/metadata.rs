@@ -9,7 +9,7 @@ use crate::WorldStore;
 
 use super::dimensions::vanilla_living_entity_type;
 use super::schema::{
-    VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+    vanilla_entity_metadata_type_is_living, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
     VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
     VANILLA_PAINTING_VARIANT_DATA_ID,
@@ -169,7 +169,7 @@ impl WorldStore {
             self.counters.entity_attribute_updates_ignored += 1;
             return false;
         };
-        if !vanilla_living_entity_type(entity_type_id) {
+        if !vanilla_entity_metadata_type_is_living(entity_type_id) {
             self.counters.entity_attribute_updates_ignored += 1;
             return false;
         }

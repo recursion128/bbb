@@ -23,8 +23,8 @@ use super::schema::{
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
-    vanilla_entity_metadata_type_is_slime,
-    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
+    vanilla_entity_metadata_type_is_slime, vanilla_entity_scale_sanitizer,
+    VanillaEntityScaleSanitizer, VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
@@ -75,9 +75,7 @@ const FOX_BABY_SCALE: f32 = 0.6;
 const GOAT_LONG_JUMPING_SCALE: f32 = 0.7;
 const GOAT_BABY_SCALE: f32 = 0.55;
 const HAPPY_GHAST_BABY_SCALE: f32 = 0.2375;
-const HAPPY_GHAST_MAX_SCALE: f32 = 1.0;
 const HORSE_BABY_SCALE: f32 = 0.7;
-const SHULKER_MAX_SCALE: f32 = 3.0;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
 const VANILLA_SCALE_MAX: f64 = 16.0;
@@ -1053,9 +1051,9 @@ fn vanilla_scale_attribute(attributes: &[AttributeSnapshot]) -> Option<f32> {
 
 /// Vanilla `LivingEntity.getScale` used as `LivingEntityRenderState.scale`: the
 /// `SCALE` attribute value (clamped to `[0.0625, 16.0]`) passed through the
-/// per-entity `sanitizeScale` overrides (`HappyGhast` ≤ 1.0, `Shulker` ≤ 3.0,
-/// captured by [`entity_scale`]). Defaults to `1.0` when no `SCALE` attribute is
-/// synced. `LivingEntityRenderer.submit` applies it as a uniform `poseStack.scale`.
+/// generated per-entity `sanitizeScale` override behavior. Defaults to `1.0` when no
+/// `SCALE` attribute is synced. `LivingEntityRenderer.submit` applies it as a
+/// uniform `poseStack.scale`.
 pub(crate) fn vanilla_render_scale(entity_type_id: i32, attributes: &[AttributeSnapshot]) -> f32 {
     let scale = vanilla_scale_attribute(attributes).unwrap_or(1.0);
     entity_scale(entity_type_id, scale)
@@ -1087,10 +1085,10 @@ fn vanilla_attribute_value(attribute: &AttributeSnapshot) -> f32 {
 }
 
 fn entity_scale(entity_type_id: i32, scale: f32) -> f32 {
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => scale.min(HAPPY_GHAST_MAX_SCALE),
-        VANILLA_ENTITY_TYPE_SHULKER_ID => scale.min(SHULKER_MAX_SCALE),
-        _ => scale,
+    match vanilla_entity_scale_sanitizer(entity_type_id) {
+        Some(VanillaEntityScaleSanitizer::ClampMax(maximum)) => scale.min(maximum),
+        Some(VanillaEntityScaleSanitizer::Fixed(value)) => value,
+        None => scale,
     }
 }
 

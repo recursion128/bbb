@@ -1830,7 +1830,7 @@ impl EntityStore {
         // Vanilla `LivingEntityRenderState.scale` (`LivingEntity.getScale`, the SCALE
         // attribute): only living entities carry a render scale; everything else
         // renders at its default size.
-        let scale = if vanilla_living_entity_type(identity.entity_type_id) {
+        let scale = if vanilla_entity_metadata_type_is_living(identity.entity_type_id) {
             vanilla_render_scale(identity.entity_type_id, &attributes.attributes)
         } else {
             1.0

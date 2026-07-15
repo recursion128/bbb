@@ -77,6 +77,7 @@ pub use crate::entities::{
     VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
     VANILLA_SLIME_DEFAULT_SIZE, VANILLA_SLIME_SIZE_DATA_ID,
 };
+pub use crate::entities::{vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer};
 pub use crate::entities::{
     vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,

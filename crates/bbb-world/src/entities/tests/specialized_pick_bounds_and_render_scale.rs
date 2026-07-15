@@ -794,6 +794,59 @@ fn shulker_pick_bounds_apply_vanilla_scale_cap() {
 }
 
 #[test]
+fn generated_sanitize_scale_overrides_apply_to_render_state() {
+    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
+
+    let mut store = WorldStore::new();
+    for (entity_id, entity_type_id, expected) in [
+        (189, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, 1.0),
+        (190, VANILLA_ENTITY_TYPE_SHULKER_ID, 3.0),
+        (192, VANILLA_ENTITY_TYPE_ZOMBIE_ID, 4.0),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(entity_id, entity_type_id));
+        assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+            entity_id,
+            attributes: vec![ProtocolAttributeSnapshot {
+                attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+                base: 4.0,
+                modifiers: Vec::new(),
+            }],
+        }));
+        assert_eq!(
+            store
+                .entity_model_source_at_partial_tick(entity_id, 0.0)
+                .map(|source| source.scale),
+            Some(expected),
+            "sanitizeScale projection for type {entity_type_id}"
+        );
+    }
+
+    // EnderDragonRenderer owns a dedicated non-LivingEntityRenderState path and therefore has no
+    // generic model source `scale` field. Its LivingEntity attribute state must still accept the
+    // packet; the generated schema test locks the fixed-1.0 sanitizer used by entity dimensions.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        191,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    ));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 191,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 4.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity(191).unwrap().attributes,
+        vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 4.0,
+            modifiers: Vec::new(),
+        }]
+    );
+}
+
+#[test]
 fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const AGEABLE_BABY_DATA_ID: u8 = 16;

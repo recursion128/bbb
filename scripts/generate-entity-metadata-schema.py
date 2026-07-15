@@ -2694,6 +2694,83 @@ def class_zero_argument_integer_method(
     return value
 
 
+def class_sanitize_scale_behavior(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    cache: dict[str, str | None],
+) -> str | None:
+    """Resolve the nearest non-identity `LivingEntity.sanitizeScale` behavior."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(f"unknown class in sanitizeScale hierarchy: {owner}")
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == "sanitizeScale" and len(method.parameters) == 1
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.sanitizeScale/1: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(f"{owner}: no sanitizeScale/1 override or superclass")
+        value = class_sanitize_scale_behavior(
+            result, class_map, item.superclass, cache
+        )
+        cache[owner] = value
+        return value
+
+    body = methods[0].node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{owner}.sanitizeScale: method lacks body")
+    returns = [item for item in descendants(body) if item.type == "return_statement"]
+    if len(returns) != 1 or len(returns[0].named_children) != 1:
+        raise ExtractionError(f"{owner}.sanitizeScale: expected one return expression")
+    expression = returns[0].named_children[0]
+    canonical = source.expression(expression).canonical
+    if canonical == "scale":
+        value = None
+    elif expression.type in {
+        "decimal_floating_point_literal",
+        "decimal_integer_literal",
+    }:
+        literal = source.text(expression).rstrip("fFdD")
+        fixed = float(literal)
+        if not 0.0 < fixed < float("inf"):
+            raise ExtractionError(f"{owner}.sanitizeScale: invalid fixed value {literal!r}")
+        value = f"VanillaEntityScaleSanitizer::Fixed({fixed!r})"
+    else:
+        name = expression.child_by_field_name("name")
+        object_node = expression.child_by_field_name("object")
+        arguments = expression.child_by_field_name("arguments")
+        if (
+            expression.type != "method_invocation"
+            or name is None
+            or source.text(name) != "min"
+            or object_node is None
+            or source.text(object_node) != "Math"
+            or arguments is None
+            or len(arguments.named_children) != 2
+            or source.expression(arguments.named_children[0]).canonical != "scale"
+            or arguments.named_children[1].type
+            not in {"decimal_floating_point_literal", "decimal_integer_literal"}
+        ):
+            raise ExtractionError(
+                f"{owner}.sanitizeScale: unsupported expression "
+                f"{source.expression(expression).canonical!r}"
+            )
+        literal = source.text(arguments.named_children[1]).rstrip("fFdD")
+        cap = float(literal)
+        if not 0.0 < cap < float("inf"):
+            raise ExtractionError(f"{owner}.sanitizeScale: invalid cap {literal!r}")
+        value = f"VanillaEntityScaleSanitizer::ClampMax({cap!r})"
+    cache[owner] = value
+    return value
+
+
 def class_is_pickable_without_type_tag(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -3301,6 +3378,7 @@ def render(result: ExtractionResult) -> str:
     sound_source_cache: dict[str, str] = {}
     boat_ride_height_cache: dict[str, str] = {}
     minecart_display_offset_cache: dict[str, int] = {}
+    sanitize_scale_behavior_cache: dict[str, str | None] = {}
     can_use_every_slot_cache: dict[str, bool] = {}
     illager_celebrating_cache: dict[str, bool] = {}
     for java_class in class_map:
@@ -3700,6 +3778,27 @@ def render(result: ExtractionResult) -> str:
         "",
     ])
 
+    lines.append(
+        "pub const VANILLA_ENTITY_SCALE_SANITIZERS_26_1: &[(i32, VanillaEntityScaleSanitizer)] = &["
+    )
+    for item in result.entity_types:
+        if extends_class(
+            item.runtime_class,
+            "net.minecraft.world.entity.LivingEntity",
+        ):
+            behavior = class_sanitize_scale_behavior(
+                result,
+                class_map,
+                item.runtime_class,
+                sanitize_scale_behavior_cache,
+            )
+            if behavior is not None:
+                lines.append(f"    ({item.entity_type_id}, {behavior}),")
+    lines.extend([
+        "];",
+        "",
+    ])
+
     for family in FAMILIES:
         own = [item for item in result.accessors if item.owner == family.java_class]
         lines.append(f"const {family.rust_name.upper()}_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[")
@@ -3815,6 +3914,31 @@ def render(result: ExtractionResult) -> str:
             '        assert!(store.contains("vanilla_minecart_default_display_offset(identity.entity_type_id)?"));',
             '        let input = include_str!("../../../../bbb-native/src/input.rs");',
             '        assert!(input.contains("vanilla_minecart_default_display_offset(entity.entity_type_id)"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_entity_scale_does_not_restore_type_dispatch() {",
+            '        let source = include_str!("../dimensions.rs");',
+            '        let body = source',
+            '            .split("fn entity_scale")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n}"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("entity scale projection source");',
+            '        assert!(body.contains("vanilla_entity_scale_sanitizer"));',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
+            '        assert!(!body.contains("HAPPY_GHAST_MAX_SCALE"));',
+            '        assert!(!body.contains("SHULKER_MAX_SCALE"));',
+            '        assert!(!body.contains("match entity_type_id"));',
+            '        let metadata = include_str!("../metadata.rs");',
+            '        let attribute_body = metadata',
+            '            .split("pub fn apply_update_attributes")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n    }"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("attribute apply source");',
+            '        assert!(attribute_body.contains("vanilla_entity_metadata_type_is_living"));',
+            '        assert!(!attribute_body.contains("vanilla_living_entity_type"));',
             "    }",
             "",
             "    #[test]",

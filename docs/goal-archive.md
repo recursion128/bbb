@@ -16183,3 +16183,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - `bbb-world` 查询对非 minecart 返回 `None`；world display projection 与 native F3+I save
   projection 统一消费该表，移除了 Chest/Hopper 类型 match 及三个独立 offset 常量。生成器
   reverse guard 锁定两个生产消费者不恢复分派。
+
+## 2026-07-15：生成 LivingEntity sanitizeScale 行为
+
+- entity metadata generator 沿实体继承图解析最近的 `sanitizeScale` override：HappyGhast
+  clamp-max 1.0、Shulker clamp-max 3.0、EnderDragon 固定 1.0，其余 LivingEntity 保持 identity。
+- world attribute 先做全局 `[0.0625,16]` clamp，再应用生成的 typed sanitizer；dimensions
+  删除 HappyGhast/Shulker 类型 match 与本地 cap 常量，并补齐此前遗漏的 EnderDragon 固定
+  scale。生成器 reverse guard、schema 表测试、三类 generic render-state 对照及 Dragon
+  canonical attribute 测试锁定顺序和边界。

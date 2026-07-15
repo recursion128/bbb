@@ -234,6 +234,12 @@ pub enum VanillaEntityCollidabilityKind {
     HappyGhast,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum VanillaEntityScaleSanitizer {
+    ClampMax(f32),
+    Fixed(f32),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
@@ -526,6 +532,14 @@ pub fn vanilla_entity_camera_post_effect_id(entity_type_id: i32) -> Option<&'sta
         .binary_search_by_key(&entity_type_id, |(candidate, _)| *candidate)
         .ok()
         .map(|index| VANILLA_ENTITY_CAMERA_POST_EFFECTS_26_1[index].1)
+}
+
+/// Returns the nearest non-identity vanilla `LivingEntity.sanitizeScale` override.
+pub fn vanilla_entity_scale_sanitizer(entity_type_id: i32) -> Option<VanillaEntityScaleSanitizer> {
+    VANILLA_ENTITY_SCALE_SANITIZERS_26_1
+        .binary_search_by_key(&entity_type_id, |(candidate, _)| *candidate)
+        .ok()
+        .map(|index| VANILLA_ENTITY_SCALE_SANITIZERS_26_1[index].1)
 }
 
 /// Returns whether the generated vanilla runtime class implements `Leashable`,
@@ -1553,6 +1567,28 @@ mod tests {
             None
         );
         assert_eq!(vanilla_entity_camera_post_effect_id(-1), None);
+    }
+
+    #[test]
+    fn generated_scale_sanitizers_follow_nearest_override() {
+        assert_eq!(VANILLA_ENTITY_SCALE_SANITIZERS_26_1.len(), 3);
+        assert_eq!(
+            vanilla_entity_scale_sanitizer(VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID),
+            Some(VanillaEntityScaleSanitizer::ClampMax(1.0))
+        );
+        assert_eq!(
+            vanilla_entity_scale_sanitizer(VANILLA_ENTITY_TYPE_SHULKER_ID),
+            Some(VanillaEntityScaleSanitizer::ClampMax(3.0))
+        );
+        assert_eq!(
+            vanilla_entity_scale_sanitizer(VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID),
+            Some(VanillaEntityScaleSanitizer::Fixed(1.0))
+        );
+        assert_eq!(
+            vanilla_entity_scale_sanitizer(VANILLA_ENTITY_TYPE_PLAYER_ID),
+            None
+        );
+        assert_eq!(vanilla_entity_scale_sanitizer(-1), None);
     }
 
     #[test]
