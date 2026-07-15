@@ -413,6 +413,35 @@ fn decodes_remove_mob_effect_packet_wire_order() {
 }
 
 #[test]
+fn mob_effect_packets_reject_holders_outside_the_builtin_registry() {
+    let invalid_effect_id = crate::mob_effect_types::VANILLA_MOB_EFFECT_TYPES.len() as i32;
+
+    let mut update = Encoder::new();
+    update.write_var_i32(123);
+    update.write_var_i32(invalid_effect_id);
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_MOB_EFFECT,
+        &update.into_inner(),
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains(&format!(
+        "invalid vanilla mob effect holder id {invalid_effect_id}"
+    )));
+
+    let mut remove = Encoder::new();
+    remove.write_var_i32(123);
+    remove.write_var_i32(invalid_effect_id);
+    let error = decode_play_clientbound(
+        ids::play::CLIENTBOUND_REMOVE_MOB_EFFECT,
+        &remove.into_inner(),
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains(&format!(
+        "invalid vanilla mob effect holder id {invalid_effect_id}"
+    )));
+}
+
+#[test]
 fn decodes_player_health() {
     let mut payload = Encoder::new();
     payload.write_f32(0.0);

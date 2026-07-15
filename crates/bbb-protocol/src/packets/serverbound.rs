@@ -715,11 +715,11 @@ pub fn encode_play_select_trade(command: SelectTradeCommand) -> (i32, Vec<u8>) {
     (ids::play::SERVERBOUND_SELECT_TRADE, out.into_inner())
 }
 
-pub fn encode_play_set_beacon(packet: SetBeacon) -> (i32, Vec<u8>) {
+pub fn encode_play_set_beacon(packet: SetBeacon) -> Result<(i32, Vec<u8>)> {
     let mut out = Encoder::new();
-    encode_optional_mob_effect(&mut out, packet.primary_effect);
-    encode_optional_mob_effect(&mut out, packet.secondary_effect);
-    (ids::play::SERVERBOUND_SET_BEACON, out.into_inner())
+    encode_optional_mob_effect(&mut out, packet.primary_effect)?;
+    encode_optional_mob_effect(&mut out, packet.secondary_effect)?;
+    Ok((ids::play::SERVERBOUND_SET_BEACON, out.into_inner()))
 }
 
 pub fn encode_play_select_bundle_item(packet: SelectBundleItem) -> (i32, Vec<u8>) {
@@ -732,14 +732,16 @@ pub fn encode_play_select_bundle_item(packet: SelectBundleItem) -> (i32, Vec<u8>
     )
 }
 
-fn encode_optional_mob_effect(out: &mut Encoder, effect_id: Option<i32>) {
+fn encode_optional_mob_effect(out: &mut Encoder, effect_id: Option<i32>) -> Result<()> {
     match effect_id {
         Some(effect_id) => {
+            super::client_state::validate_mob_effect_holder_id(effect_id)?;
             out.write_bool(true);
             out.write_var_i32(effect_id);
         }
         None => out.write_bool(false),
     }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

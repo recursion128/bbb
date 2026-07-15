@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::{chunks, inventory, normalize_resource_location, read_resource_location};
+use super::{chunks, client_state, inventory, normalize_resource_location, read_resource_location};
 use crate::{
     attribute_modifier_types::{
         normalize_attribute_modifier_operation_id, AttributeModifierDisplayType,
@@ -2309,7 +2309,7 @@ fn decode_suspicious_stew_effects(
     let mut summaries = Vec::with_capacity(effects);
     for _ in 0..effects {
         summaries.push(SuspiciousStewEffectSummary {
-            effect_id: decode_holder_registry_id(decoder)?,
+            effect_id: client_state::decode_mob_effect_holder_id(decoder)?,
             duration: decoder.read_var_i32()?,
         });
     }
@@ -2317,7 +2317,7 @@ fn decode_suspicious_stew_effects(
 }
 
 fn decode_mob_effect_instance(decoder: &mut Decoder<'_>) -> Result<MobEffectInstanceSummary> {
-    let effect_id = decode_holder_registry_id(decoder)?;
+    let effect_id = client_state::decode_mob_effect_holder_id(decoder)?;
     let details = decode_mob_effect_details(decoder, 0)?;
     Ok(MobEffectInstanceSummary {
         effect_id,
@@ -5743,6 +5743,28 @@ mod tests {
         assert!(error
             .to_string()
             .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
+    }
+
+    #[test]
+    fn mob_effect_component_values_reject_out_of_range_builtin_holders() {
+        let invalid_effect_id = crate::mob_effect_types::VANILLA_MOB_EFFECT_TYPES.len() as i32;
+
+        let mut instance = Encoder::new();
+        instance.write_var_i32(invalid_effect_id);
+        let error =
+            decode_mob_effect_instance(&mut Decoder::new(&instance.into_inner())).unwrap_err();
+        assert!(error.to_string().contains(&format!(
+            "invalid vanilla mob effect holder id {invalid_effect_id}"
+        )));
+
+        let mut stew = Encoder::new();
+        stew.write_var_i32(1);
+        stew.write_var_i32(invalid_effect_id);
+        let error =
+            decode_suspicious_stew_effects(&mut Decoder::new(&stew.into_inner())).unwrap_err();
+        assert!(error.to_string().contains(&format!(
+            "invalid vanilla mob effect holder id {invalid_effect_id}"
+        )));
     }
 
     fn write_item_stack_template_with_patch(

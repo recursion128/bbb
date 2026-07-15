@@ -8,6 +8,7 @@ use crate::{
     boss_event_operation_types::BossEventOperationType,
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
+    mob_effect_types::vanilla_mob_effect_type,
 };
 
 use super::{chunks, decode_optional_vec3d, read_resource_location, BlockPos, Vec3d};
@@ -372,7 +373,7 @@ pub(super) fn decode_player_abilities(decoder: &mut Decoder<'_>) -> Result<Playe
 pub(super) fn decode_remove_mob_effect(decoder: &mut Decoder<'_>) -> Result<RemoveMobEffect> {
     let packet = RemoveMobEffect {
         entity_id: decoder.read_var_i32()?,
-        effect_id: decoder.read_var_i32()?,
+        effect_id: decode_mob_effect_holder_id(decoder)?,
     };
     ensure_client_state_packet_consumed(decoder, "remove mob effect")?;
     Ok(packet)
@@ -570,13 +571,26 @@ pub(super) fn decode_ticking_step(decoder: &mut Decoder<'_>) -> Result<TickingSt
 pub(super) fn decode_update_mob_effect(decoder: &mut Decoder<'_>) -> Result<UpdateMobEffect> {
     let update = UpdateMobEffect {
         entity_id: decoder.read_var_i32()?,
-        effect_id: decoder.read_var_i32()?,
+        effect_id: decode_mob_effect_holder_id(decoder)?,
         amplifier: decoder.read_var_i32()?,
         duration_ticks: decoder.read_var_i32()?,
         flags: MobEffectFlags::from_bits(decoder.read_u8()?),
     };
     ensure_client_state_packet_consumed(decoder, "update mob effect")?;
     Ok(update)
+}
+
+pub(super) fn decode_mob_effect_holder_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    validate_mob_effect_holder_id(decoder.read_var_i32()?)
+}
+
+pub(super) fn validate_mob_effect_holder_id(effect_id: i32) -> Result<i32> {
+    if vanilla_mob_effect_type(effect_id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid vanilla mob effect holder id {effect_id}"
+        )));
+    }
+    Ok(effect_id)
 }
 
 fn ensure_client_state_packet_consumed(decoder: &Decoder<'_>, packet: &str) -> Result<()> {

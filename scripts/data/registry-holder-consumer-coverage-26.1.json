@@ -367,6 +367,34 @@
       "decision": "Vanilla 26.1 owns items in the immutable client built-in registry. Every direct Item.STREAM_CODEC network owner implemented by bbb validates the holder against the generated 1506-entry order; ItemStackTemplate additionally rejects air, while the serverbound HashedStack encoder rejects identities outside that same order. World lookup and all numeric consumers share the checked static identity, and a reversed configuration injection proves that RegistryData cannot remap it."
     },
     {
+      "id": "network-holder-reference-mob-effect-built-in",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/effect/MobEffect.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/entities/status.rs#pub fn apply_update_mob_effect",
+      "evidence": [
+        "vanilla:net/minecraft/core/registries/BuiltInRegistries.java#Registry<MobEffect> MOB_EFFECT = registerSimple",
+        "vanilla:net/minecraft/world/effect/MobEffect.java#ByteBufCodecs.holderRegistry(Registries.MOB_EFFECT)",
+        "vanilla:net/minecraft/network/protocol/game/ClientboundUpdateMobEffectPacket.java#MobEffect.STREAM_CODEC.decode(input)",
+        "vanilla:net/minecraft/network/protocol/game/ClientboundRemoveMobEffectPacket.java#MobEffect.STREAM_CODEC",
+        "vanilla:net/minecraft/network/protocol/game/ServerboundSetBeaconPacket.java#MobEffect.STREAM_CODEC.apply(ByteBufCodecs::optional)",
+        "vanilla:net/minecraft/world/effect/MobEffectInstance.java#MobEffect.STREAM_CODEC",
+        "vanilla:net/minecraft/world/item/component/SuspiciousStewEffects.java#MobEffect.STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/client_state.rs#fn decode_mob_effect_holder_id",
+        "crates/bbb-protocol/src/packets/client_state/tests.rs#fn mob_effect_packets_reject_holders_outside_the_builtin_registry",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn mob_effect_component_values_reject_out_of_range_builtin_holders",
+        "crates/bbb-protocol/src/packets/tests.rs#fn set_beacon_rejects_holders_outside_the_builtin_mob_effect_registry",
+        "crates/bbb-world/src/registries/tests.rs#fn mob_effect_registry_data_cannot_remap_the_builtin_holder_order",
+        "crates/bbb-world/src/entities/status.rs#fn mob_effects_upsert_remove_and_ignore_unknown_entities",
+        "crates/bbb-native/src/runtime/tests.rs#fn lightmap_environment_projects_local_player_night_vision"
+      ],
+      "decision": "Vanilla 26.1 owns mob effects in the immutable 40-entry client built-in registry. Update/Remove, optional beacon encoding, MobEffectInstance, and suspicious-stew entries all validate their holder at the protocol boundary against the generated order. World state preserves the id for entity replacement/removal and downstream movement, lightmap, HUD, tooltip, and item-component consumers; a reversed configuration injection proves RegistryData cannot remap the identity."
+    },
+    {
       "id": "network-holder-reference",
       "selector": {
         "kind": "network_holder_reference",
@@ -389,6 +417,7 @@
           "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
           "net/minecraft/world/entity/npc/villager/VillagerData.java",
           "net/minecraft/world/entity/npc/villager/VillagerType.java",
+          "net/minecraft/world/effect/MobEffect.java",
           "net/minecraft/world/item/Item.java",
           "net/minecraft/world/clock/WorldClock.java",
           "net/minecraft/world/damagesource/DamageType.java",

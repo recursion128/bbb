@@ -308,7 +308,7 @@ pub(crate) async fn send_select_trade(
 }
 
 pub(crate) async fn send_set_beacon(conn: &mut RawConnection, packet: SetBeacon) -> Result<()> {
-    let (id, payload) = packets::encode_play_set_beacon(packet);
+    let (id, payload) = packets::encode_play_set_beacon(packet)?;
     conn.send_packet(id, &payload).await
 }
 

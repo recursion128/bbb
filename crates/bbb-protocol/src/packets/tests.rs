@@ -1786,7 +1786,8 @@ fn encodes_set_beacon_packet_with_effects() {
     let (id, payload) = encode_play_set_beacon(SetBeacon {
         primary_effect: Some(1),
         secondary_effect: Some(10),
-    });
+    })
+    .unwrap();
 
     assert_eq!(id, ids::play::SERVERBOUND_SET_BEACON);
     let mut decoder = Decoder::new(&payload);
@@ -1802,7 +1803,8 @@ fn encodes_set_beacon_packet_without_secondary_effect() {
     let (id, payload) = encode_play_set_beacon(SetBeacon {
         primary_effect: Some(3),
         secondary_effect: None,
-    });
+    })
+    .unwrap();
 
     assert_eq!(id, ids::play::SERVERBOUND_SET_BEACON);
     let mut decoder = Decoder::new(&payload);
@@ -1810,6 +1812,20 @@ fn encodes_set_beacon_packet_without_secondary_effect() {
     assert_eq!(decoder.read_var_i32().unwrap(), 3);
     assert!(!decoder.read_bool().unwrap());
     assert!(decoder.is_empty());
+}
+
+#[test]
+fn set_beacon_rejects_holders_outside_the_builtin_mob_effect_registry() {
+    let invalid_effect_id = crate::mob_effect_types::VANILLA_MOB_EFFECT_TYPES.len() as i32;
+    let error = encode_play_set_beacon(SetBeacon {
+        primary_effect: Some(1),
+        secondary_effect: Some(invalid_effect_id),
+    })
+    .unwrap_err();
+
+    assert!(error.to_string().contains(&format!(
+        "invalid vanilla mob effect holder id {invalid_effect_id}"
+    )));
 }
 
 #[test]
