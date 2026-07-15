@@ -19,7 +19,14 @@ from entity_metadata_extractor import (
     evaluate_integer_expression,
     extract,
 )
-from vanilla_java_source import JavaField, JavaMethod, JavaSource, JavaType, descendants
+from vanilla_java_source import (
+    JavaField,
+    JavaMethod,
+    JavaSource,
+    JavaType,
+    descendants,
+    resolve_type_reference,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -1653,6 +1660,55 @@ def static_factory_registration_ordinals(
     return registrations
 
 
+def static_factory_registration_classes(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+) -> dict[str, tuple[int, str]]:
+    """Resolve the implementation class passed to each ordered factory registration."""
+    ordinals = static_factory_registration_ordinals(result, owner)
+    source = source_for_owner(result, owner)
+    owner_type = class_map.get(owner)
+    if owner_type is None:
+        raise ExtractionError(f"{owner}: missing factory owner class")
+    factory_name = STATIC_FACTORY_ORDINAL_SOURCES[owner][0]
+
+    registrations: dict[str, tuple[int, str]] = {}
+    for field in source.fields_for(owner):
+        if field.name not in ordinals or field.initializer is None:
+            continue
+        arguments = field.initializer.node.child_by_field_name("arguments")
+        if arguments is None or len(arguments.named_children) != 2:
+            raise ExtractionError(
+                f"{owner}.{field.name}: {factory_name} registration requires class and name arguments"
+            )
+        class_argument, name_argument = arguments.named_children
+        if class_argument.type != "class_literal" or name_argument.type != "string_literal":
+            raise ExtractionError(
+                f"{owner}.{field.name}: unsupported {factory_name} registration arguments"
+            )
+        class_literal = source.text(class_argument)
+        if not class_literal.endswith(".class"):
+            raise ExtractionError(
+                f"{owner}.{field.name}: expected implementation class literal"
+            )
+        implementation_class = resolve_type_reference(
+            class_literal.removesuffix(".class"), owner_type, class_map
+        )
+        if implementation_class is None:
+            raise ExtractionError(
+                f"{owner}.{field.name}: unresolved implementation class {class_literal}"
+            )
+        registrations[field.name] = (ordinals[field.name], implementation_class)
+
+    if registrations.keys() != ordinals.keys():
+        missing = sorted(ordinals.keys() - registrations.keys())
+        raise ExtractionError(
+            f"{owner}.{factory_name}: registrations missing implementation classes: {missing}"
+        )
+    return registrations
+
+
 def resolve_semantic_defaults(
     result: ExtractionResult,
 ) -> tuple[dict[tuple[str, str], NormalizedDefault], list[ResolvedDefaultEvidence]]:
@@ -2367,13 +2423,67 @@ def method_for(
     return source, matches[0]
 
 
-def method_single_return_expression(result: ExtractionResult, owner: str, name: str) -> str:
-    source, method = method_for(result, owner, name)
+def method_single_return_expression(
+    result: ExtractionResult,
+    owner: str,
+    name: str,
+    parameter_count: int | None = None,
+) -> str:
+    source, method = method_for(result, owner, name, parameter_count)
     body = method.node.child_by_field_name("body")
     returns = [item for item in descendants(body) if item.type == "return_statement"]
     if len(returns) != 1 or len(returns[0].named_children) != 1:
         raise ExtractionError(f"{owner}.{name}: expected one return expression")
     return source.expression(returns[0].named_children[0]).canonical
+
+
+def class_zero_argument_boolean_method(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    method_name: str,
+    cache: dict[str, bool],
+) -> bool:
+    """Interpret the nearest literal boolean override along one class hierarchy."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(
+            f"unknown class in {method_name} boolean hierarchy: {owner}"
+        )
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == method_name and len(method.parameters) == 0
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.{method_name}/0: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(
+                f"{owner}: no {method_name}/0 override or superclass"
+            )
+        value = class_zero_argument_boolean_method(
+            result, class_map, item.superclass, method_name, cache
+        )
+        cache[owner] = value
+        return value
+
+    expression = method_single_return_expression(
+        result, owner, method_name, parameter_count=0
+    )
+    if expression == "true":
+        value = True
+    elif expression == "false":
+        value = False
+    else:
+        raise ExtractionError(
+            f"{owner}.{method_name}: expected literal boolean return, found {expression!r}"
+        )
+    cache[owner] = value
+    return value
 
 
 def class_is_pickable_without_type_tag(
@@ -2955,6 +3065,27 @@ def render(result: ExtractionResult) -> str:
         flag_by_owner.setdefault(flag.owner, []).append(flag)
 
     class_map = {item.fqcn: item for item in result.classes}
+    ender_dragon_phase_registrations = static_factory_registration_classes(
+        result,
+        class_map,
+        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
+    )
+    ender_dragon_sitting_cache: dict[str, bool] = {}
+    ender_dragon_sitting_phase_ids = sorted(
+        ordinal
+        for ordinal, implementation_class in ender_dragon_phase_registrations.values()
+        if class_zero_argument_boolean_method(
+            result,
+            class_map,
+            implementation_class,
+            "isSitting",
+            ender_dragon_sitting_cache,
+        )
+    )
+    if not ender_dragon_sitting_phase_ids:
+        raise ExtractionError("EnderDragonPhase: no sitting phase implementations")
+    if len(ender_dragon_sitting_phase_ids) == len(ender_dragon_phase_registrations):
+        raise ExtractionError("EnderDragonPhase: every phase implementation is sitting")
     pickable_cache: dict[str, bool] = {}
     pushability_cache: dict[str, str] = {}
     collidability_cache: dict[str, str] = {}
@@ -3130,6 +3261,18 @@ def render(result: ExtractionResult) -> str:
         lines.append(f"const GENERATED_{public_name}: i32 = {value};")
         lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
     lines.append("")
+
+    sitting_phase_patterns = " | ".join(
+        str(phase_id) for phase_id in ender_dragon_sitting_phase_ids
+    )
+    lines.extend(
+        [
+            "pub const fn vanilla_ender_dragon_phase_is_sitting(phase_id: i32) -> bool {",
+            f"    matches!(phase_id, {sitting_phase_patterns})",
+            "}",
+            "",
+        ]
+    )
 
     for public_name, key in DEFAULT_ALIASES.items():
         value = normalized[key]
@@ -3358,6 +3501,27 @@ def render(result: ExtractionResult) -> str:
         [
             "#[cfg(test)]",
             "mod generated_catalog_guards {",
+            "    #[test]",
+            "    fn ender_dragon_sitting_phase_membership_matches_registered_classes() {",
+            "        let actual = (0..",
+            f"            {len(ender_dragon_phase_registrations)}",
+            "        )",
+            "            .filter(|phase_id| super::vanilla_ender_dragon_phase_is_sitting(*phase_id))",
+            "            .collect::<Vec<_>>();",
+            f"        assert_eq!(actual, vec!{ender_dragon_sitting_phase_ids!r});",
+            "        assert!(!super::vanilla_ender_dragon_phase_is_sitting(-1));",
+            f"        assert!(!super::vanilla_ender_dragon_phase_is_sitting({len(ender_dragon_phase_registrations)}));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_dragon_animation_does_not_restore_sitting_phase_membership() {",
+            '        let source = include_str!("../dragon.rs");',
+            '        assert!(source.contains("vanilla_ender_dragon_phase_is_sitting(self.phase_id)"));',
+            '        assert!(!source.contains("ENDER_DRAGON_SITTING_PHASE_IDS"));',
+            '        assert!(!source.contains("VANILLA_ENDER_DRAGON_PHASE_SITTING_"));',
+            '        assert!(!source.contains("VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID"));',
+            "    }",
+            "",
             "    #[test]",
             "    fn production_audio_does_not_restore_hostile_entity_membership() {",
             '        let source = include_str!("../../client/audio.rs");',

@@ -15620,3 +15620,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native 粒子 runtime 删除约 80 项 resource-to-id 宏声明、重复 registry 长度和配对测试，
   resolver/runtime/event 消费端直接使用 protocol 常量；native-only item-pickup `-1` 哨兵保持
   独立命名。protocol catalog/反向门禁、native child-template 回归与完整 gate 锁定该边界。
+
+## 2026-07-15：Generate ender-dragon sitting phase membership
+
+- [x] metadata generator 从 `EnderDragonPhase.create(Class, name)` 的有序注册字段解析阶段实现类，
+  沿类层次读取最近的零参 `isSitting()` literal boolean override；三个 sitting 子类通过
+  `AbstractDragonSittingPhase` 继承 true，`DragonHoverPhase` 直接覆盖 true，其余阶段继承 false。
+- [x] world 末影龙部件坐姿删除四项 phase-id 表，直接消费 generated query；11 项注册范围、
+  未知 id fail-closed 测试与 generator-emitted 反向门禁防止并行阶段表回流。

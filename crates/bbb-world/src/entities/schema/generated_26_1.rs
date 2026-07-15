@@ -671,6 +671,10 @@ const GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID: i32 = 10;
 pub const VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID: i32 =
     GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID;
 
+pub const fn vanilla_ender_dragon_phase_is_sitting(phase_id: i32) -> bool {
+    matches!(phase_id, 5 | 6 | 7 | 10)
+}
+
 const GENERATED_VANILLA_ALLAY_DEFAULT_DANCING: bool = false;
 pub const VANILLA_ALLAY_DEFAULT_DANCING: bool = GENERATED_VANILLA_ALLAY_DEFAULT_DANCING;
 const GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = true;
@@ -21816,6 +21820,25 @@ pub(super) const fn generated_entity_metadata_schema(
 
 #[cfg(test)]
 mod generated_catalog_guards {
+    #[test]
+    fn ender_dragon_sitting_phase_membership_matches_registered_classes() {
+        let actual = (0..11)
+            .filter(|phase_id| super::vanilla_ender_dragon_phase_is_sitting(*phase_id))
+            .collect::<Vec<_>>();
+        assert_eq!(actual, vec![5, 6, 7, 10]);
+        assert!(!super::vanilla_ender_dragon_phase_is_sitting(-1));
+        assert!(!super::vanilla_ender_dragon_phase_is_sitting(11));
+    }
+
+    #[test]
+    fn production_dragon_animation_does_not_restore_sitting_phase_membership() {
+        let source = include_str!("../dragon.rs");
+        assert!(source.contains("vanilla_ender_dragon_phase_is_sitting(self.phase_id)"));
+        assert!(!source.contains("ENDER_DRAGON_SITTING_PHASE_IDS"));
+        assert!(!source.contains("VANILLA_ENDER_DRAGON_PHASE_SITTING_"));
+        assert!(!source.contains("VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID"));
+    }
+
     #[test]
     fn production_audio_does_not_restore_hostile_entity_membership() {
         let source = include_str!("../../client/audio.rs");

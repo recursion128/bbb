@@ -1,21 +1,14 @@
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use super::schema::vanilla_ender_dragon_phase_is_sitting;
 use super::{
     EntityPickBoundsState, EntityPickTargetState, EntityTransform, EntityVec3,
-    VANILLA_ENDER_DRAGON_DEFAULT_PHASE, VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID,
-    VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID, VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID,
-    VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID,
+    VANILLA_ENDER_DRAGON_DEFAULT_PHASE,
 };
 
 const DRAGON_FLIGHT_HISTORY_LEN: usize = 64;
 const DRAGON_FLIGHT_HISTORY_MASK: i32 = 63;
-const ENDER_DRAGON_SITTING_PHASE_IDS: &[i32] = &[
-    VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID,
-    VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID,
-    VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID,
-    VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID,
-];
 
 const ENDER_DRAGON_PARTS: &[EnderDragonPartSpec] = &[
     EnderDragonPartSpec {
@@ -213,7 +206,7 @@ impl EnderDragonAnimationState {
     }
 
     fn is_sitting(self) -> bool {
-        ENDER_DRAGON_SITTING_PHASE_IDS.contains(&self.phase_id)
+        vanilla_ender_dragon_phase_is_sitting(self.phase_id)
     }
 }
 
