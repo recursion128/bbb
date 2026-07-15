@@ -103,7 +103,7 @@ fn decode_optional_item_cost_summary(decoder: &mut Decoder<'_>) -> Result<Option
 }
 
 fn decode_item_cost_summary(decoder: &mut Decoder<'_>) -> Result<ItemCostSummary> {
-    let item_id = decoder.read_var_i32()?;
+    let item_id = inventory::decode_item_holder_id(decoder)?;
     let count = decoder.read_var_i32()?;
     let component_predicate = decode_item_cost_component_predicate_summary(decoder)?;
     Ok(ItemCostSummary {
@@ -244,6 +244,17 @@ mod tests {
                 component_type_ids: vec![10],
             }
         );
+    }
+
+    #[test]
+    fn merchant_item_cost_rejects_an_out_of_range_builtin_item_holder() {
+        let mut payload = Encoder::new();
+        let invalid_item_id = crate::item_types::VANILLA_ITEM_TYPES.len() as i32;
+        payload.write_var_i32(invalid_item_id);
+        let error = decode_item_cost_summary(&mut Decoder::new(&payload.into_inner())).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
     }
 
     fn write_item_cost(out: &mut Encoder, item_id: i32, count: i32) {

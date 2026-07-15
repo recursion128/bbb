@@ -337,10 +337,41 @@
       "decision": "The metadata holder resolves through synchronized server order; both AssetInfo compounds project all wild/tame/angry adult and baby ResourceTextures, all six resources are uploaded, and entity rendering selects the ready age/state texture with vanilla tame-over-angry priority while stubs, malformed values, and failed uploads preserve the checked built-in presentation."
     },
     {
+      "id": "network-holder-reference-item-built-in",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/network/HashedStack.java",
+          "net/minecraft/world/item/Item.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/state.rs#fn vanilla_fallback_resource_id",
+      "evidence": [
+        "vanilla:net/minecraft/core/registries/BuiltInRegistries.java#DefaultedRegistry<Item> ITEM = registerDefaultedWithIntrusiveHolders",
+        "vanilla:net/minecraft/world/item/Item.java#ByteBufCodecs.holderRegistry(Registries.ITEM)",
+        "vanilla:net/minecraft/network/HashedStack.java#ByteBufCodecs.holderRegistry(Registries.ITEM)",
+        "vanilla:net/minecraft/world/item/ItemStack.java#Item.STREAM_CODEC.decode(input)",
+        "vanilla:net/minecraft/world/item/ItemStackTemplate.java#Item.STREAM_CODEC",
+        "vanilla:net/minecraft/world/item/trading/ItemCost.java#Item.STREAM_CODEC",
+        "vanilla:net/minecraft/world/item/crafting/RecipePropertySet.java#Item.STREAM_CODEC",
+        "vanilla:net/minecraft/world/item/crafting/display/SlotDisplay.java#Item.STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/inventory.rs#fn decode_item_holder_id",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn item_stack_template_requires_a_non_empty_builtin_item_holder",
+        "crates/bbb-protocol/src/packets/merchant.rs#fn merchant_item_cost_rejects_an_out_of_range_builtin_item_holder",
+        "crates/bbb-protocol/src/packets/client_features/tests.rs#fn update_recipes_rejects_out_of_range_builtin_item_holders",
+        "crates/bbb-protocol/src/packets/tests.rs#fn set_creative_mode_slot_rejects_an_out_of_range_builtin_item_holder",
+        "crates/bbb-protocol/src/packets/tests.rs#fn container_click_rejects_vanilla_bounded_collections_before_encoding",
+        "crates/bbb-world/src/registries/tests.rs#fn item_registry_data_cannot_remap_the_builtin_holder_order"
+      ],
+      "decision": "Vanilla 26.1 owns items in the immutable client built-in registry. Every direct Item.STREAM_CODEC network owner implemented by bbb validates the holder against the generated 1506-entry order; ItemStackTemplate additionally rejects air, while the serverbound HashedStack encoder rejects identities outside that same order. World lookup and all numeric consumers share the checked static identity, and a reversed configuration injection proves that RegistryData cannot remap it."
+    },
+    {
       "id": "network-holder-reference",
       "selector": {
         "kind": "network_holder_reference",
         "exclude_source_paths": [
+          "net/minecraft/network/HashedStack.java",
           "net/minecraft/network/codec/ByteBufCodecs.java",
           "net/minecraft/util/debug/DebugGameEventInfo.java",
           "net/minecraft/util/debug/DebugPoiInfo.java",
@@ -358,6 +389,7 @@
           "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
           "net/minecraft/world/entity/npc/villager/VillagerData.java",
           "net/minecraft/world/entity/npc/villager/VillagerType.java",
+          "net/minecraft/world/item/Item.java",
           "net/minecraft/world/clock/WorldClock.java",
           "net/minecraft/world/damagesource/DamageType.java",
           "net/minecraft/world/level/dimension/DimensionType.java",

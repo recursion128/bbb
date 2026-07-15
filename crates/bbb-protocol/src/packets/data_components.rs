@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::{chunks, normalize_resource_location, read_resource_location};
+use super::{chunks, inventory, normalize_resource_location, read_resource_location};
 use crate::{
     attribute_modifier_types::{
         normalize_attribute_modifier_operation_id, AttributeModifierDisplayType,
@@ -1538,12 +1538,7 @@ fn decode_consume_effect_list_summary(
 }
 
 fn decode_item_stack_template(decoder: &mut Decoder<'_>) -> Result<ItemStackTemplateSummary> {
-    let item_id = decoder.read_var_i32()?;
-    if item_id < 0 {
-        return Err(ProtocolError::InvalidData(format!(
-            "invalid item stack template item id {item_id}"
-        )));
-    }
+    let item_id = inventory::decode_non_empty_item_holder_id(decoder)?;
     let count = decoder.read_var_i32()?;
     if count <= 0 {
         return Err(ProtocolError::InvalidData(format!(
@@ -5729,6 +5724,25 @@ mod tests {
             payload.write_var_i32(0);
             payload.write_var_i32(0);
         });
+    }
+
+    #[test]
+    fn item_stack_template_requires_a_non_empty_builtin_item_holder() {
+        let mut air = Encoder::new();
+        write_item_stack_template(&mut air, crate::item_types::VANILLA_ITEM_AIR_ID, 1);
+        let error = decode_item_stack_template(&mut Decoder::new(&air.into_inner())).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("item stack template holder must not be minecraft:air"));
+
+        let mut out_of_range = Encoder::new();
+        let invalid_item_id = crate::item_types::VANILLA_ITEM_TYPES.len() as i32;
+        write_item_stack_template(&mut out_of_range, invalid_item_id, 1);
+        let error =
+            decode_item_stack_template(&mut Decoder::new(&out_of_range.into_inner())).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
     }
 
     fn write_item_stack_template_with_patch(

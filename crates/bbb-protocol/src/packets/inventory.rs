@@ -5,6 +5,7 @@ use crate::{
     component::{
         decode_styled_component_summary_from_decoder, styled_runs_summary_text, StyledTextRun,
     },
+    item_types::{vanilla_item_type, VANILLA_ITEM_AIR_ID},
     menu_types::vanilla_menu_type,
     packets::data_components,
 };
@@ -238,13 +239,36 @@ pub(super) fn decode_item_stack_summary(decoder: &mut Decoder<'_>) -> Result<Ite
         return Ok(ItemStackSummary::empty());
     }
 
-    let item_id = decoder.read_var_i32()?;
+    let item_id = decode_item_holder_id(decoder)?;
     let component_patch = decode_data_component_patch_summary(decoder)?;
     Ok(ItemStackSummary {
         item_id: Some(item_id),
         count,
         component_patch,
     })
+}
+
+pub(super) fn decode_item_holder_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    validate_item_holder_id(decoder.read_var_i32()?)
+}
+
+pub(super) fn decode_non_empty_item_holder_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let item_id = decode_item_holder_id(decoder)?;
+    if item_id == VANILLA_ITEM_AIR_ID {
+        return Err(ProtocolError::InvalidData(
+            "item stack template holder must not be minecraft:air".to_string(),
+        ));
+    }
+    Ok(item_id)
+}
+
+pub(super) fn validate_item_holder_id(item_id: i32) -> Result<i32> {
+    if vanilla_item_type(item_id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid vanilla item holder id {item_id}"
+        )));
+    }
+    Ok(item_id)
 }
 
 pub fn decode_data_component_patch_summary(
@@ -286,6 +310,19 @@ mod tests {
         stack.component_patch.enchantments.clear();
         stack.component_patch.enchantment_glint_override = Some(true);
         assert!(stack.has_foil());
+    }
+
+    #[test]
+    fn item_stack_holder_rejects_ids_outside_the_builtin_registry() {
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        let invalid_item_id = crate::item_types::VANILLA_ITEM_TYPES.len() as i32;
+        payload.write_var_i32(invalid_item_id);
+        let error =
+            decode_item_stack_summary(&mut Decoder::new(&payload.into_inner())).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
     }
 
     #[test]

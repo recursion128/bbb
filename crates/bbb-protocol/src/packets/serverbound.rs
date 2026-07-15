@@ -1022,6 +1022,7 @@ fn validate_hashed_stack(stack: &HashedStack) -> Result<()> {
     let HashedStack::Item(stack) = stack else {
         return Ok(());
     };
+    super::inventory::validate_item_holder_id(stack.item_id)?;
     if stack.components.added_components.len() > MAX_HASHED_COMPONENT_PATCH_ENTRIES {
         return Err(ProtocolError::InvalidData(format!(
             "hashed component added count {} exceeds vanilla maximum {MAX_HASHED_COMPONENT_PATCH_ENTRIES}",
@@ -1059,6 +1060,7 @@ fn encode_item_stack_summary(out: &mut Encoder, item: &ItemStackSummary) -> Resu
         out.write_var_i32(0);
         return Ok(());
     }
+    super::inventory::validate_item_holder_id(item_id)?;
     if item.component_patch != DataComponentPatchSummary::default() {
         return Err(ProtocolError::InvalidData(
             "cannot encode summarized item component patch for creative mode slot".to_string(),

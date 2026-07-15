@@ -354,6 +354,9 @@ entity/block-entity data 保留 builtin type id 与去除 persistent `id` 后的
 进入 codec-backed NBT；block-entity 同步按 wire summary 派生 spawner `SpawnData.entity.id`；
 use-remainder、charged-projectiles、bundle-contents 与 sparse container 复用同一递归 ItemStackTemplate
 summary，保留 nested patch、ordered items、last-duplicate slot 与 nonempty count；
+`Item.STREAM_CODEC` 的 item-stack/template、merchant cost、recipe property-set 与 slot-display
+均按 1506 项 client built-in static order 校验 holder；serverbound `HashedStack.ActualItem` 复用同一
+顺序，configuration registry 注入不会重排 item identity；
 bees 保留 ordered occupant、builtin entity type id、去除 persistent `id` 后的 CompoundTag 与两个 tick；
 map-decorations 按 persistent CODEC 形状保留 ordered key、builtin type resource 与 double/float bits；
 MapItemData 的 `MapDecorationType.STREAM_CODEC` holder 另按 35 项 client built-in static order 保留，

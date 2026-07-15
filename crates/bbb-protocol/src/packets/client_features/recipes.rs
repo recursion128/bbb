@@ -4,7 +4,7 @@ use crate::codec::{Decoder, ProtocolError, Result};
 pub use crate::recipe_wire_types::{RecipeBookType, RecipeDisplayType};
 
 use super::super::read_resource_location;
-use super::super::{DataComponentPatchSummary, ItemStackSummary};
+use super::super::{inventory, DataComponentPatchSummary, ItemStackSummary};
 
 const MAX_RECIPE_PROPERTY_SET_ITEMS: usize = 65_536;
 const MAX_RECIPE_PROPERTY_SETS: usize = 4096;
@@ -253,7 +253,7 @@ pub(crate) fn decode_update_recipes(decoder: &mut Decoder<'_>) -> Result<UpdateR
         )?;
         let mut item_ids = Vec::with_capacity(item_count);
         for _ in 0..item_count {
-            item_ids.push(decoder.read_var_i32()?);
+            item_ids.push(inventory::decode_item_holder_id(decoder)?);
         }
         property_sets.push(RecipePropertySetSummary { key, item_ids });
     }
@@ -505,14 +505,14 @@ fn decode_slot_display_body(
         }
         4 => Ok(SlotDisplayBodySummary {
             item_stack: Some(ItemStackSummary {
-                item_id: Some(decoder.read_var_i32()?),
+                item_id: Some(inventory::decode_item_holder_id(decoder)?),
                 count: 1,
                 component_patch: DataComponentPatchSummary::default(),
             }),
             tag: None,
         }),
         5 => {
-            let item_id = decoder.read_var_i32()?;
+            let item_id = inventory::decode_non_empty_item_holder_id(decoder)?;
             let count = decoder.read_var_i32()?;
             if count <= 0 {
                 return Err(ProtocolError::InvalidData(format!(

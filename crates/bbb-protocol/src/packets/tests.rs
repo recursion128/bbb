@@ -1374,6 +1374,24 @@ fn set_creative_mode_slot_rejects_summarized_component_patch() {
 }
 
 #[test]
+fn set_creative_mode_slot_rejects_an_out_of_range_builtin_item_holder() {
+    let invalid_item_id = crate::item_types::VANILLA_ITEM_TYPES.len() as i32;
+    let error = encode_play_set_creative_mode_slot(&SetCreativeModeSlot {
+        slot_num: 36,
+        item: ItemStackSummary {
+            item_id: Some(invalid_item_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary::default(),
+        },
+    })
+    .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
+}
+
+#[test]
 fn play_serverbound_inventory_packet_ids_match_vanilla_26_1_registration_order() {
     assert_eq!(ids::play::SERVERBOUND_BUNDLE_ITEM_SELECTED, 3);
     assert_eq!(ids::play::SERVERBOUND_CONTAINER_BUTTON_CLICK, 17);
@@ -1535,6 +1553,17 @@ fn container_click_rejects_vanilla_bounded_collections_before_encoding() {
         },
     });
     assert!(encode_play_container_click(click(BTreeMap::new(), oversized_removed)).is_err());
+
+    let invalid_item_id = crate::item_types::VANILLA_ITEM_TYPES.len() as i32;
+    let invalid_item = HashedStack::Item(HashedItemStack {
+        item_id: invalid_item_id,
+        count: 1,
+        components: HashedComponentPatch::default(),
+    });
+    let error = encode_play_container_click(click(BTreeMap::new(), invalid_item)).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
 }
 
 #[test]

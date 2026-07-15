@@ -507,6 +507,39 @@ fn decodes_update_recipes_packet_wire_order() {
 }
 
 #[test]
+fn update_recipes_rejects_out_of_range_builtin_item_holders() {
+    let invalid_item_id = crate::item_types::VANILLA_ITEM_TYPES.len() as i32;
+
+    let mut property_set = Encoder::new();
+    property_set.write_var_i32(1);
+    property_set.write_string("minecraft:furnace_input");
+    property_set.write_var_i32(1);
+    property_set.write_var_i32(invalid_item_id);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &property_set.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
+
+    let mut item_display = Encoder::new();
+    item_display.write_var_i32(0);
+    item_display.write_var_i32(1);
+    item_display.write_var_i32(0);
+    item_display.write_string("minecraft:planks");
+    item_display.write_var_i32(4);
+    item_display.write_var_i32(invalid_item_id);
+    assert!(decode_play_clientbound(
+        ids::play::CLIENTBOUND_UPDATE_RECIPES,
+        &item_display.into_inner(),
+    )
+    .unwrap_err()
+    .to_string()
+    .contains(&format!("invalid vanilla item holder id {invalid_item_id}")));
+}
+
+#[test]
 fn decodes_update_recipes_with_direct_trim_pattern_slot_display() {
     let mut option_display = Encoder::new();
     option_display.write_var_i32(8);
