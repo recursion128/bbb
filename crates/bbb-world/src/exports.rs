@@ -5,7 +5,8 @@ pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
-    vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_field,
+    vanilla_entity_metadata_accessor_for_entity_type,
+    vanilla_entity_metadata_bat_flags_accessor_for_entity_type, vanilla_entity_metadata_field,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type, vanilla_entity_metadata_schema,
     vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,

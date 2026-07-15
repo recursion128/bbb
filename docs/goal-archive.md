@@ -16215,6 +16215,8 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   与 byte 默认值 0，再结合生成的 `FLAG_RESTING` 投影 `BatRenderState.isResting`。
 - dimensions 删除单类型 `vanilla_is_bat`，store 删除固定 accessor/default 别名；生成器
   reverse guard 禁止生产路径恢复这些平行事实源。
+- 后续 audit 将同一 accessor 公开给 native debug save projection，删除 `BatFlags` 路径的固定
+  accessor/default 别名，并把 reverse guard 扩到 world 与 native 两侧。
 
 ## 2026-07-15：统一推导 Bee render metadata accessor
 

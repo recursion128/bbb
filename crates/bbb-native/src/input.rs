@@ -73,6 +73,7 @@ use bbb_protocol::{
     PROTOCOL_VERSION,
 };
 use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -167,7 +168,6 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID as ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
     VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
     VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID as ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID,
-    VANILLA_BAT_DEFAULT_FLAGS as BAT_DEFAULT_FLAGS, VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
@@ -7430,8 +7430,11 @@ fn debug_push_snow_golem_additional_save_data(entity: &EntityState, fields: &mut
 }
 
 fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags =
-        debug_entity_data_byte_present(entity, BAT_FLAGS_DATA_ID).unwrap_or(BAT_DEFAULT_FLAGS);
+    let flags = vanilla_entity_metadata_bat_flags_accessor_for_entity_type(entity.entity_type_id)
+        .map(|(data_id, default)| {
+            debug_entity_data_byte_present(entity, data_id).unwrap_or(default)
+        })
+        .unwrap_or(0);
     fields.push(format!("BatFlags: {flags}b"));
 }
 
