@@ -11,6 +11,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 1,
@@ -18,6 +19,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 2,
@@ -25,6 +27,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "AllayRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 3,
@@ -32,6 +35,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "NoopRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 4,
@@ -39,6 +43,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ArmadilloRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 5,
@@ -46,6 +51,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ArmorStandRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 6,
@@ -53,6 +59,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "TippableArrowRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 7,
@@ -60,6 +67,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "AxolotlRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 8,
@@ -67,6 +75,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "RaftRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 9,
@@ -74,6 +83,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "RaftRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 10,
@@ -81,6 +91,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 11,
@@ -88,6 +99,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BeeRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 12,
@@ -95,6 +107,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 13,
@@ -102,6 +115,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 14,
@@ -109,6 +123,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BlazeRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 15,
@@ -116,6 +131,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "DisplayRenderer.BlockDisplayRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 16,
@@ -123,6 +139,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoggedRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 17,
@@ -130,6 +147,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BreezeRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 18,
@@ -137,6 +155,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WindChargeRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 19,
@@ -144,6 +163,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CamelRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 20,
@@ -151,6 +171,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CamelHuskRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 21,
@@ -158,6 +179,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: true,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 22,
@@ -165,6 +187,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CaveSpiderRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 23,
@@ -172,6 +195,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 24,
@@ -179,6 +203,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 25,
@@ -186,6 +211,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "MinecartRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 26,
@@ -193,6 +219,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ChickenRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 27,
@@ -200,6 +227,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CodRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 28,
@@ -207,6 +235,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CopperGolemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 29,
@@ -214,6 +243,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "MinecartRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 30,
@@ -221,6 +251,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CowRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 31,
@@ -228,6 +259,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CreakingRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 32,
@@ -235,6 +267,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "CreeperRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 33,
@@ -242,6 +275,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 34,
@@ -249,6 +283,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 35,
@@ -256,6 +291,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "DolphinRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 36,
@@ -263,6 +299,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "DonkeyRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: true,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 37,
@@ -270,6 +307,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "DragonFireballRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 38,
@@ -277,6 +315,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "DrownedRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 39,
@@ -284,6 +323,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 40,
@@ -291,6 +331,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ElderGuardianRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 41,
@@ -298,6 +339,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "EndermanRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 42,
@@ -305,6 +347,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "EndermiteRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 43,
@@ -312,6 +355,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "EnderDragonRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 44,
@@ -319,6 +363,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 45,
@@ -326,6 +371,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "EndCrystalRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 46,
@@ -333,6 +379,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "EvokerRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 47,
@@ -340,6 +387,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "EvokerFangsRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 48,
@@ -347,6 +395,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 49,
@@ -354,6 +403,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ExperienceOrbRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 50,
@@ -361,6 +411,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 51,
@@ -368,6 +419,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "FallingBlockRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 52,
@@ -375,6 +427,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 53,
@@ -382,6 +435,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "FireworkEntityRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 54,
@@ -389,6 +443,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "FoxRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 55,
@@ -396,6 +451,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "FrogRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 56,
@@ -403,6 +459,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "MinecartRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 57,
@@ -410,6 +467,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "GhastRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 58,
@@ -417,6 +475,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "HappyGhastRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 59,
@@ -424,6 +483,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "GiantMobRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 60,
@@ -431,6 +491,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ItemFrameRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 61,
@@ -438,6 +499,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "GlowSquidRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 62,
@@ -445,6 +507,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "GoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 63,
@@ -452,6 +515,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "GuardianRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 64,
@@ -459,6 +523,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "HoglinRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 65,
@@ -466,6 +531,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "MinecartRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 66,
@@ -473,6 +539,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "HorseRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: true,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 67,
@@ -480,6 +547,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "HuskRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 68,
@@ -487,6 +555,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "IllusionerRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 69,
@@ -494,6 +563,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "NoopRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 70,
@@ -501,6 +571,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "IronGolemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 71,
@@ -508,6 +579,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ItemEntityRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 72,
@@ -515,6 +587,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "DisplayRenderer.ItemDisplayRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 73,
@@ -522,6 +595,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ItemFrameRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 74,
@@ -529,6 +603,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 75,
@@ -536,6 +611,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 76,
@@ -543,6 +619,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "LeashKnotRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 77,
@@ -550,6 +627,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "LightningBoltRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 78,
@@ -557,6 +635,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "LlamaRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 79,
@@ -564,6 +643,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "LlamaSpitRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 80,
@@ -571,6 +651,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "MagmaCubeRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 81,
@@ -578,6 +659,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 82,
@@ -585,6 +667,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 84,
@@ -592,6 +675,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "NoopRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 85,
@@ -599,6 +683,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "MinecartRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 86,
@@ -606,6 +691,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "MushroomCowRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 87,
@@ -613,6 +699,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "DonkeyRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: true,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 88,
@@ -620,6 +707,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "NautilusRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 89,
@@ -627,6 +715,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 90,
@@ -634,6 +723,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 91,
@@ -641,6 +731,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "OcelotRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: true,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 92,
@@ -648,6 +739,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "OminousItemSpawnerRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 93,
@@ -655,6 +747,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PaintingRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 94,
@@ -662,6 +755,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 95,
@@ -669,6 +763,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 96,
@@ -676,6 +771,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PandaRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 97,
@@ -683,6 +779,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ParchedRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 98,
@@ -690,6 +787,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ParrotRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 99,
@@ -697,6 +795,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PhantomRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 100,
@@ -704,6 +803,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PigRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 101,
@@ -711,6 +811,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PiglinRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 102,
@@ -718,6 +819,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PiglinRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 103,
@@ -725,6 +827,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PillagerRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 104,
@@ -732,6 +835,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PolarBearRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 105,
@@ -739,6 +843,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 106,
@@ -746,6 +851,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 107,
@@ -753,6 +859,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "PufferfishRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 108,
@@ -760,6 +867,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "RabbitRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 109,
@@ -767,6 +875,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "RavagerRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 110,
@@ -774,6 +883,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SalmonRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 111,
@@ -781,6 +891,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SheepRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 112,
@@ -788,6 +899,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ShulkerRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 113,
@@ -795,6 +907,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ShulkerBulletRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 114,
@@ -802,6 +915,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SilverfishRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 115,
@@ -809,6 +923,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SkeletonRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 116,
@@ -816,6 +931,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "UndeadHorseRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: true,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 117,
@@ -823,6 +939,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SlimeRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 118,
@@ -830,6 +947,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 119,
@@ -837,6 +955,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SnifferRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 120,
@@ -844,6 +963,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownItemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 121,
@@ -851,6 +971,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SnowGolemRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 122,
@@ -858,6 +979,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "MinecartRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 123,
@@ -865,6 +987,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SpectralArrowRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 124,
@@ -872,6 +995,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SpiderRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 125,
@@ -879,6 +1003,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 126,
@@ -886,6 +1011,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "BoatRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 127,
@@ -893,6 +1019,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "SquidRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 128,
@@ -900,6 +1027,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "StrayRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 129,
@@ -907,6 +1035,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "StriderRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 130,
@@ -914,6 +1043,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "TadpoleRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 131,
@@ -921,6 +1051,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "DisplayRenderer.TextDisplayRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 132,
@@ -928,6 +1059,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "TntRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 133,
@@ -935,6 +1067,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "TntMinecartRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 134,
@@ -942,6 +1075,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "LlamaRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 135,
@@ -949,6 +1083,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ThrownTridentRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 136,
@@ -956,6 +1091,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "TropicalFishRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 137,
@@ -963,6 +1099,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "TurtleRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 138,
@@ -970,6 +1107,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "VexRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 139,
@@ -977,6 +1115,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "VillagerRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 140,
@@ -984,6 +1123,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "VindicatorRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 141,
@@ -991,6 +1131,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WanderingTraderRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 142,
@@ -998,6 +1139,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WardenRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 143,
@@ -1005,6 +1147,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WindChargeRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 144,
@@ -1012,6 +1155,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WitchRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 145,
@@ -1019,6 +1163,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WitherBossRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 146,
@@ -1026,6 +1171,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WitherSkeletonRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 147,
@@ -1033,6 +1179,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WitherSkullRenderer",
         static_full_block_light: true,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 148,
@@ -1040,6 +1187,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "WolfRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 149,
@@ -1047,6 +1195,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ZoglinRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 150,
@@ -1054,6 +1203,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ZombieRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 151,
@@ -1061,6 +1211,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "UndeadHorseRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: true,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 152,
@@ -1068,6 +1219,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ZombieNautilusRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 153,
@@ -1075,6 +1227,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ZombieVillagerRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 154,
@@ -1082,6 +1235,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "ZombifiedPiglinRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 156,
@@ -1089,6 +1243,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         renderer_class: "FishingHookRenderer",
         static_full_block_light: false,
         uses_abstract_feline_model: false,
+        uses_abstract_horse_renderer: false,
     },
 ];
 
@@ -1110,5 +1265,15 @@ mod generated_catalog_guards {
     fn world_projection_does_not_restore_feline_type_membership() {
         let source = include_str!("../dimensions.rs");
         assert!(!source.contains("fn vanilla_feline_family"));
+    }
+
+    #[test]
+    fn world_projection_does_not_restore_equine_renderer_memberships() {
+        let animations = include_str!("../animations.rs");
+        let dimensions = include_str!("../dimensions.rs");
+        let store = include_str!("../store.rs");
+        assert!(!animations.contains("fn vanilla_equine_type"));
+        assert!(!dimensions.contains("fn is_vanilla_rearing_horse_passenger_attachment_type"));
+        assert!(!store.contains("fn vanilla_equine_saddle_type"));
     }
 }

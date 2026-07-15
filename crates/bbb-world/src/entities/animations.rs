@@ -13,6 +13,7 @@ use crate::WorldStore;
 
 use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::EnderDragonAnimationState;
+use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
@@ -4006,7 +4007,9 @@ impl EntityClientAnimationState {
                     });
                 }
             }
-            entity_type_id if vanilla_equine_type(entity_type_id) => {
+            entity_type_id
+                if vanilla_entity_renderer_uses_abstract_horse_renderer(entity_type_id) =>
+            {
                 let (eating, standing, open_mouth) = equine_pose_flags(data_values);
                 if let Some(pose) = self.equine_pose.as_mut() {
                     pose.set_flags(eating, standing, open_mouth);
@@ -5693,11 +5696,7 @@ impl EntityClientAnimationState {
                     SquidAnimationState::new_with_y_body_rot(entity_id, transform.y_head_rot)
                 })
                 .advance_client_tick(transform.delta_movement, in_water),
-            VANILLA_ENTITY_TYPE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_DONKEY_ID
-            | VANILLA_ENTITY_TYPE_MULE_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
+            _ if vanilla_entity_renderer_uses_abstract_horse_renderer(entity_type_id) => {
                 self.equine_tail
                     .get_or_insert_with(|| EquineTailAnimationState::new(entity_id))
                     .advance_client_tick();
@@ -6212,17 +6211,6 @@ fn panda_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
         flags & PANDA_FLAG_SITTING != 0,
         flags & PANDA_FLAG_ON_BACK != 0,
         flags & PANDA_FLAG_ROLLING != 0,
-    )
-}
-
-fn vanilla_equine_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_DONKEY_ID
-            | VANILLA_ENTITY_TYPE_MULE_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
     )
 }
 

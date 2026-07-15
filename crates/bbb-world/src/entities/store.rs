@@ -68,17 +68,15 @@ use super::{
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
     VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+    VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
     VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-    VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+    VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
     VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
@@ -111,7 +109,10 @@ use crate::entities::dragon::{
 use crate::entities::projectiles::{
     entity_hurting_projectile_from_state, entity_projectile_lifecycle_from_state,
 };
-use crate::entities::renderer_catalog::vanilla_entity_renderer_uses_abstract_feline_model;
+use crate::entities::renderer_catalog::{
+    vanilla_entity_renderer_uses_abstract_feline_model,
+    vanilla_entity_renderer_uses_abstract_horse_renderer,
+};
 use crate::entities::schema::{
     vanilla_entity_metadata_type_is_item_frame, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
@@ -251,17 +252,6 @@ fn end_crystal_intersects_ender_dragon_search_box(
         && crystal_min[1] <= dragon_max[1]
         && crystal_max[2] >= dragon_min[2]
         && crystal_min[2] <= dragon_max[2]
-}
-
-fn vanilla_equine_saddle_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_DONKEY_ID
-            | VANILLA_ENTITY_TYPE_MULE_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
-    )
 }
 
 fn vanilla_camel_saddle_type(entity_type_id: i32) -> bool {
@@ -1532,7 +1522,7 @@ impl EntityStore {
                 && saddle_slot_contains_saddle_item()
         };
         let equine_saddle = || -> bool {
-            vanilla_equine_saddle_type(identity.entity_type_id)
+            vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id)
                 && saddle_slot_contains_saddle_item()
         };
         let equine_saddle = equine_saddle();

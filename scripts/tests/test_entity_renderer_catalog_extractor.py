@@ -31,12 +31,27 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.EYE_OF_ENDER,
                         context -> new ThrownItemRenderer<>(context, 1.0F, true));
                     register(EntityType.CAT, CatRenderer::new);
+                    register(EntityType.HORSE, HorseRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
             """,
         )
         renderer_sources = [
+            java(
+                "net/minecraft/client/renderer/entity/AbstractHorseRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public abstract class AbstractHorseRenderer extends AgeableMobRenderer {}
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/HorseRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class HorseRenderer extends AbstractHorseRenderer {}
+                """,
+            ),
             java(
                 "net/minecraft/client/renderer/entity/CatRenderer.java",
                 """
@@ -98,7 +113,14 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
         entries = extract_entity_renderer_registrations(
             entity_renderers,
             renderer_sources,
-            ["BLAZE", "EYE_OF_ENDER", "CAT", "MANNEQUIN", "PLAYER"],
+            [
+                "BLAZE",
+                "EYE_OF_ENDER",
+                "CAT",
+                "HORSE",
+                "MANNEQUIN",
+                "PLAYER",
+            ],
         )
 
         self.assertEqual(
@@ -109,13 +131,15 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     entry.renderer_class,
                     entry.static_full_block_light,
                     entry.uses_abstract_feline_model,
+                    entry.uses_abstract_horse_renderer,
                 )
                 for entry in entries
             ],
             [
-                (0, "BLAZE", "BlazeRenderer", True, False),
-                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False),
-                (2, "CAT", "CatRenderer", False, True),
+                (0, "BLAZE", "BlazeRenderer", True, False, False),
+                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False),
+                (2, "CAT", "CatRenderer", False, True, False),
+                (3, "HORSE", "HorseRenderer", False, False, True),
             ],
         )
 

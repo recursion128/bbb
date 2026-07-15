@@ -78,6 +78,9 @@ def render(source_root: Path) -> str:
                 "        uses_abstract_feline_model: "
                 + str(entry.uses_abstract_feline_model).lower()
                 + ",",
+                "        uses_abstract_horse_renderer: "
+                + str(entry.uses_abstract_horse_renderer).lower()
+                + ",",
                 "    },",
             ]
         )
@@ -103,6 +106,16 @@ def render(source_root: Path) -> str:
             "    fn world_projection_does_not_restore_feline_type_membership() {",
             '        let source = include_str!("../dimensions.rs");',
             '        assert!(!source.contains("fn vanilla_feline_family"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn world_projection_does_not_restore_equine_renderer_memberships() {",
+            '        let animations = include_str!("../animations.rs");',
+            '        let dimensions = include_str!("../dimensions.rs");',
+            '        let store = include_str!("../store.rs");',
+            '        assert!(!animations.contains("fn vanilla_equine_type"));',
+            '        assert!(!dimensions.contains("fn is_vanilla_rearing_horse_passenger_attachment_type"));',
+            '        assert!(!store.contains("fn vanilla_equine_saddle_type"));',
             "    }",
             "}",
             "",

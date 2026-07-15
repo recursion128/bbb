@@ -18,6 +18,7 @@ from vanilla_java_source import (
 RENDERER_PACKAGE = "net.minecraft.client.renderer.entity"
 ENTITY_RENDERERS_CLASS = RENDERER_PACKAGE + ".EntityRenderers"
 THROWN_ITEM_RENDERER_CLASS = RENDERER_PACKAGE + ".ThrownItemRenderer"
+ABSTRACT_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".AbstractHorseRenderer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
@@ -35,6 +36,7 @@ class EntityRendererRegistration:
     renderer_class: str
     static_full_block_light: bool
     uses_abstract_feline_model: bool
+    uses_abstract_horse_renderer: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -201,6 +203,20 @@ def _renderer_hierarchy_references_superclass_type(
         current = type_by_name[current.superclass]
 
 
+def _renderer_inherits(
+    renderer_class: str,
+    target_class: str,
+    type_by_name: dict[str, JavaType],
+) -> bool:
+    current = type_by_name[renderer_class]
+    while True:
+        if current.fqcn == target_class:
+            return True
+        if current.superclass is None or current.superclass not in type_by_name:
+            return False
+        current = type_by_name[current.superclass]
+
+
 def extract_entity_renderer_registrations(
     entity_renderers_source: JavaSource,
     renderer_sources: list[JavaSource],
@@ -326,6 +342,11 @@ def extract_entity_renderer_registrations(
                     renderer_class,
                     ABSTRACT_FELINE_MODEL_CLASS,
                     source_by_type,
+                    type_by_name,
+                ),
+                _renderer_inherits(
+                    renderer_class,
+                    ABSTRACT_HORSE_RENDERER_CLASS,
                     type_by_name,
                 ),
             )

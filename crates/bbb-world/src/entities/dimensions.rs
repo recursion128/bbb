@@ -16,6 +16,7 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
+use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::schema::{
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
@@ -494,7 +495,7 @@ fn vanilla_passenger_attachment_point(
                     * vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32,
             0.0,
         ];
-    } else if is_vanilla_rearing_horse_passenger_attachment_type(vehicle_entity_type_id) {
+    } else if vanilla_entity_renderer_uses_abstract_horse_renderer(vehicle_entity_type_id) {
         let stand_animation = vehicle_client_animations
             .map(|animations| animations.equine_stand_animation(0.0))
             .unwrap_or(0.0);
@@ -626,17 +627,6 @@ fn rotated_y(point: [f32; 3], y_rot: f32) -> [f64; 3] {
 
 fn is_vanilla_chest_boat_or_raft_type(entity_type_id: i32) -> bool {
     super::vanilla_entity_type_is_chest_boat(entity_type_id)
-}
-
-fn is_vanilla_rearing_horse_passenger_attachment_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_DONKEY_ID
-            | VANILLA_ENTITY_TYPE_HORSE_ID
-            | VANILLA_ENTITY_TYPE_MULE_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID
-    )
 }
 
 fn lerp(delta: f32, start: f32, end: f32) -> f32 {

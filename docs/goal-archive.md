@@ -15419,3 +15419,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world store 直接消费 renderer catalog query，删除 `dimensions.rs` 的 Cat/Ocelot type helper；
   crouching/sprinting pose gate 保持不变，catalog exact-set、Python fixture 与 generator-emitted
   反向门禁覆盖 owner 和消费者边界。
+
+## 2026-07-15：Generate AbstractHorseRenderer membership
+
+- [x] entity renderer extractor 从 resolved renderer class hierarchy 生成
+  `AbstractHorseRenderer` membership；HorseRenderer、DonkeyRenderer、UndeadHorseRenderer 的注册
+  精确展开为 Horse/Donkey/Mule/SkeletonHorse/ZombieHorse，Camel/Llama 的独立 renderer 不混入。
+- [x] world 的 saddle/ridden projection、eat/stand/mouth/tail client animation tick 与 rearing
+  passenger attachment 删除三份平行五项 type 表，直接消费 renderer owner query；catalog exact-set、
+  Python inheritance fixture、既有 equine projection/passenger 回归及 generator-emitted 三消费者反向门禁
+  覆盖该边界。
