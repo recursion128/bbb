@@ -23206,6 +23206,35 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_crossbow_charging_does_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        let store = include_str!("../store.rs");
+        assert!(animations.contains(
+            "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
+        ));
+        assert!(animations
+            .contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));
+        assert!(store.contains(
+            "pillager_is_charging_crossbow(identity.entity_type_id, &metadata.data_values)"
+        ));
+        assert!(store.contains(
+            "piglin_is_charging_crossbow(identity.entity_type_id, &metadata.data_values)"
+        ));
+        for removed in [
+            "PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID",
+            "PILLAGER_DEFAULT_CHARGING_CROSSBOW",
+            "PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID",
+            "PIGLIN_DEFAULT_CHARGING_CROSSBOW",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(!store.contains(removed), "store restored {removed}");
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

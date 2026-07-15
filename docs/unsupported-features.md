@@ -300,6 +300,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Creaking can-move and tearing-down membership, wire indices and typed defaults must remain derived
   from generated `Creaking.CAN_MOVE` and `Creaking.IS_TEARING_DOWN`; world animation/model
   consumers must not restore fixed accessor/default aliases or a parallel Creaking type gate.
+  Pillager and Piglin charging-crossbow membership, wire indices and typed defaults must remain
+  derived from generated `Pillager.IS_CHARGING_CROSSBOW` and
+  `Piglin.DATA_IS_CHARGING_CROSSBOW`; world animation consumers must not restore fixed
+  accessor/default aliases or treat PiglinBrute as owning the regular Piglin accessor.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

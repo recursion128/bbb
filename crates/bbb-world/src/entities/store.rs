@@ -3555,9 +3555,9 @@ impl EntityStore {
                 let creaking_is_tearing_down =
                     creaking_is_tearing_down(identity.entity_type_id, &metadata.data_values);
                 let pillager_is_charging_crossbow =
-                    pillager_is_charging_crossbow(&metadata.data_values);
+                    pillager_is_charging_crossbow(identity.entity_type_id, &metadata.data_values);
                 let piglin_is_charging_crossbow =
-                    piglin_is_charging_crossbow(&metadata.data_values);
+                    piglin_is_charging_crossbow(identity.entity_type_id, &metadata.data_values);
                 let player_is_using_item = player_is_using_item(&metadata.data_values);
                 let wolf_is_interested =
                     wolf_is_interested(identity.entity_type_id, &metadata.data_values);

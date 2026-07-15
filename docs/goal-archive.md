@@ -16497,3 +16497,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   true/false；world 模型与 tick 显式携带 entity type。
 - 生产消费者删除四个固定 accessor/default 别名和模型投影的平行 Creaking type predicate；
   生成器 reverse guard 禁止恢复这些事实源或丢失 entity-type 传递。
+
+## 2026-07-15：统一推导 crossbow charging metadata accessors
+
+- `bbb-world` 现在分别从生成 schema 的 `Pillager.IS_CHARGING_CROSSBOW` 与
+  `Piglin.DATA_IS_CHARGING_CROSSBOW` 解析 membership、wire id 17/18 与 boolean typed
+  default false；owner 校验排除其他 illager 与 PiglinBrute。
+- world tick 显式传递 entity type，animation 生产消费者删除四个固定 accessor/default
+  别名；生成器 reverse guard 禁止恢复这些事实源或丢失 entity-type 传递。

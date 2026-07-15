@@ -1017,6 +1017,48 @@ pub fn vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Pillager charging-crossbow accessor and its typed default.
+pub fn vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IS_CHARGING_CROSSBOW")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.illager.Pillager",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves the generated Piglin charging-crossbow accessor and its typed default.
+pub fn vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_IS_CHARGING_CROSSBOW",
+    )?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.piglin.Piglin",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated PolarBear standing accessor and its typed default.
 pub fn vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3440,6 +3482,40 @@ mod tests {
             );
             assert_eq!(
                 vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_crossbow_charging_accessors_separate_pillager_and_piglin_membership() {
+        assert_eq!(
+            vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PILLAGER_ID
+            ),
+            Some((17, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_ID
+            ),
+            Some((18, false))
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+            VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                None
+            );
+            assert_eq!(
+                vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
                     entity_type_id
                 ),
                 None

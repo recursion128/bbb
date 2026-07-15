@@ -30,6 +30,8 @@ use super::schema::{
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type,
+    vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type,
     vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
@@ -55,10 +57,6 @@ use super::schema::{
     VANILLA_PANDA_FLAG_ON_BACK as PANDA_FLAG_ON_BACK,
     VANILLA_PANDA_FLAG_ROLLING as PANDA_FLAG_ROLLING,
     VANILLA_PANDA_FLAG_SITTING as PANDA_FLAG_SITTING,
-    VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID as PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
-    VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW as PIGLIN_DEFAULT_CHARGING_CROSSBOW,
-    VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID as PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
-    VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW as PILLAGER_DEFAULT_CHARGING_CROSSBOW,
     VANILLA_SNIFFER_DEFAULT_STATE as SNIFFER_DEFAULT_STATE,
     VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
@@ -5997,26 +5995,28 @@ fn copper_golem_state_id(data_values: &[EntityDataValue]) -> i32 {
 
 /// Vanilla `Pillager.isChargingCrossbow()` (`entityData.get(IS_CHARGING_CROSSBOW)`): the synced boolean
 /// that drives the `CROSSBOW_CHARGE` draw — the client counts ticks since it rose for `getTicksUsingItem`.
-/// Read straight from the entity metadata in the tick loop; non-pillagers (whose synced slot `17` is not
-/// this boolean — e.g. the spellcaster illagers' `DATA_SPELL_CASTING_ID` byte) fall back to `false`.
-pub(crate) fn pillager_is_charging_crossbow(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(
-        data_values,
-        PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
-        PILLAGER_DEFAULT_CHARGING_CROSSBOW,
-    )
+/// The generated accessor supplies Pillager membership, wire index and default while excluding other
+/// illagers with unrelated metadata at the same slot.
+pub(crate) fn pillager_is_charging_crossbow(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `Piglin.isChargingCrossbow()` (`entityData.get(DATA_IS_CHARGING_CROSSBOW)`): the synced boolean
-/// (id 18) that drives the regular piglin's `CROSSBOW_CHARGE` draw — the client counts ticks since it rose
-/// for `getTicksUsingItem`. Read straight from the entity metadata in the tick loop; the type gate in
-/// `advance_client_tick` keeps non-piglins (whose slot 18 holds something else) off this counter.
-pub(crate) fn piglin_is_charging_crossbow(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(
-        data_values,
-        PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
-        PIGLIN_DEFAULT_CHARGING_CROSSBOW,
-    )
+/// that drives the regular piglin's `CROSSBOW_CHARGE` draw — the client counts ticks since it rose for
+/// `getTicksUsingItem`. The generated accessor supplies regular-Piglin membership, wire index and default,
+/// excluding PiglinBrute and unrelated slot-18 accessors.
+pub(crate) fn piglin_is_charging_crossbow(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `LivingEntity.isUsingItem()` (`DATA_LIVING_ENTITY_FLAGS & 1`, synced byte id `8`): true while the
