@@ -14,6 +14,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     uses_abstract_horse_renderer: bool,
     uses_mob_item_in_hand_layer: bool,
     extracts_mob_aggressive: bool,
+    extracts_unhappy_counter: bool,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -57,6 +58,11 @@ pub(super) fn vanilla_entity_renderer_extracts_mob_aggressive(entity_type_id: i3
         .is_some_and(|entry| entry.extracts_mob_aggressive)
 }
 
+pub(super) fn vanilla_entity_renderer_extracts_unhappy_counter(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.extracts_unhappy_counter)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -73,12 +79,13 @@ mod tests {
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
         VANILLA_ENTITY_TYPE_MARKER_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
@@ -282,6 +289,31 @@ mod tests {
         ));
         assert!(!vanilla_entity_renderer_extracts_mob_aggressive(
             VANILLA_ENTITY_TYPE_PIGLIN_ID
+        ));
+    }
+
+    #[test]
+    fn generated_unhappy_counter_projection_matches_renderer_extractors() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.extracts_unhappy_counter)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual,
+            vec![
+                VANILLA_ENTITY_TYPE_PANDA_ID,
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+            ]
+        );
+        for entity_type_id in actual {
+            assert!(vanilla_entity_renderer_extracts_unhappy_counter(
+                entity_type_id
+            ));
+        }
+        assert!(!vanilla_entity_renderer_extracts_unhappy_counter(
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
         ));
     }
 }

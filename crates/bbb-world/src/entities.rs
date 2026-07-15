@@ -1210,7 +1210,7 @@ entity_model_source_state! {
     #[serde(default)]
     pub is_aggressive: bool,
     /// Vanilla `VillagerRenderState.isUnhappy` (`AbstractVillager.getUnhappyCounter() > 0`, synced INT id
-    /// 18), consumed by `VillagerModel.setupAnim` to shake the villager-family head. `false` for content
+    /// 18), consumed by `VillagerModel.setupAnim` to shake the villager-family head. `false` for happy
     /// villagers/traders and every non-villager entity.
     #[serde(default)]
     pub villager_unhappy: bool,

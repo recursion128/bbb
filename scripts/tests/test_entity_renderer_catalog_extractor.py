@@ -35,6 +35,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.ALLAY, AllayRenderer::new);
                     register(EntityType.ARMOR_STAND, ArmorStandRenderer::new);
                     register(EntityType.VEX, VexRenderer::new);
+                    register(EntityType.VILLAGER, VillagerRenderer::new);
+                    register(EntityType.WANDERING_TRADER, WanderingTraderRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -91,6 +93,28 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 """
                 package net.minecraft.client.renderer.entity;
                 public class VexRenderer extends AllayRenderer {}
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/VillagerRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class VillagerRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isUnhappy = entity.getUnhappyCounter() > 0;
+                    }
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/WanderingTraderRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class WanderingTraderRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isUnhappy = entity.getUnhappyCounter() > 0;
+                    }
+                }
                 """,
             ),
             java(
@@ -176,6 +200,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "ALLAY",
                 "ARMOR_STAND",
                 "VEX",
+                "VILLAGER",
+                "WANDERING_TRADER",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -192,17 +218,20 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     entry.uses_abstract_horse_renderer,
                     entry.uses_mob_item_in_hand_layer,
                     entry.extracts_mob_aggressive,
+                    entry.extracts_unhappy_counter,
                 )
                 for entry in entries
             ],
             [
-                (0, "BLAZE", "BlazeRenderer", True, False, False, False, False),
-                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False, False, False),
-                (2, "CAT", "CatRenderer", False, True, False, False, False),
-                (3, "HORSE", "HorseRenderer", False, False, True, False, False),
-                (4, "ALLAY", "AllayRenderer", False, False, False, True, True),
-                (5, "ARMOR_STAND", "ArmorStandRenderer", False, False, False, False, False),
-                (6, "VEX", "VexRenderer", False, False, False, True, True),
+                (0, "BLAZE", "BlazeRenderer", True, False, False, False, False, False),
+                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False, False, False, False),
+                (2, "CAT", "CatRenderer", False, True, False, False, False, False),
+                (3, "HORSE", "HorseRenderer", False, False, True, False, False, False),
+                (4, "ALLAY", "AllayRenderer", False, False, False, True, True, False),
+                (5, "ARMOR_STAND", "ArmorStandRenderer", False, False, False, False, False, False),
+                (6, "VEX", "VexRenderer", False, False, False, True, True, False),
+                (7, "VILLAGER", "VillagerRenderer", False, False, False, False, False, True),
+                (8, "WANDERING_TRADER", "WanderingTraderRenderer", False, False, False, False, False, True),
             ],
         )
 

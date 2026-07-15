@@ -614,6 +614,10 @@ fn entity_model_sources_project_villager_unhappy() {
         88,
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        89,
+        VANILLA_ENTITY_TYPE_PANDA_ID,
+    ));
 
     assert!(!source(&store, 86).villager_unhappy);
     assert!(!source(&store, 87).villager_unhappy);
@@ -639,12 +643,23 @@ fn entity_model_sources_project_villager_unhappy() {
             12
         )],
     }));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 89,
+        values: vec![protocol_int_data(
+            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+            12
+        )],
+    }));
 
     assert!(source(&store, 86).villager_unhappy);
     assert!(source(&store, 87).villager_unhappy);
     assert!(
         !source(&store, 88).villager_unhappy,
         "zombie villagers do not use AbstractVillagerRenderState"
+    );
+    assert!(
+        !source(&store, 89).villager_unhappy,
+        "PandaRenderer uses the same assignment with Panda.UNHAPPY_COUNTER, not the AbstractVillager accessor"
     );
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {

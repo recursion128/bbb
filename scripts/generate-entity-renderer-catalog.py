@@ -87,6 +87,9 @@ def render(source_root: Path) -> str:
                 "        extracts_mob_aggressive: "
                 + str(entry.extracts_mob_aggressive).lower()
                 + ",",
+                "        extracts_unhappy_counter: "
+                + str(entry.extracts_unhappy_counter).lower()
+                + ",",
                 "    },",
             ]
         )
@@ -136,6 +139,12 @@ def render(source_root: Path) -> str:
             '        assert!(!source.contains("fn vanilla_zombie_model_family"));',
             '        assert!(!source.contains("fn vanilla_piglin_melee_attack_family"));',
             '        assert!(!source.contains("fn vanilla_illager_aggressive_arm_pose_family"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn world_projection_does_not_restore_villager_unhappy_membership() {",
+            '        let source = include_str!("../store.rs");',
+            '        assert!(!source.contains("let villager_unhappy = matches!"));',
             "    }",
             "}",
             "",

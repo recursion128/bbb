@@ -15450,3 +15450,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   状态，修正 Giant，并按 IllagerRenderer 真实提取保留 Evoker 字段（模型不消费其 arm pose）。
   catalog exact-set、Python inherited fixture、world semantic tests 与 generator-emitted 三 helper
   反向门禁覆盖该边界。
+
+## 2026-07-15：Generate renderer unhappy-counter projection
+
+- [x] entity renderer extractor 复用通用 `extractRenderState` assignment 扫描，生成
+  `state.isUnhappy = entity.getUnhappyCounter() > 0` 的精确 Panda/Villager/WanderingTrader
+  三项 renderer membership。
+- [x] world villager-unhappy projection 删除 Villager/Trader 手工二项表，组合 renderer query 与
+  metadata owner 的 `DATA_UNHAPPY_COUNTER` accessor；因此同赋值但使用 `Panda.UNHAPPY_COUNTER`
+  的 Panda 保持在独立 panda projection，ZombieVillager 也不混入。catalog exact-set、Python
+  fixture、world Panda/Villager/Trader/ZombieVillager semantic test 与 generator-emitted 反向门禁
+  覆盖该边界。

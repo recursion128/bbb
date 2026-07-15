@@ -75,8 +75,7 @@ use super::{
     VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
     VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-    VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
     VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS, VANILLA_UPSIDE_DOWN_NAMES,
 };
 use crate::entities::animations::{
@@ -109,11 +108,13 @@ use crate::entities::projectiles::{
 };
 use crate::entities::renderer_catalog::{
     vanilla_entity_renderer_extracts_mob_aggressive,
+    vanilla_entity_renderer_extracts_unhappy_counter,
     vanilla_entity_renderer_uses_abstract_feline_model,
     vanilla_entity_renderer_uses_abstract_horse_renderer,
     vanilla_entity_renderer_uses_mob_item_in_hand_layer,
 };
 use crate::entities::schema::{
+    vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_item_frame,
     vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
@@ -1615,19 +1616,24 @@ impl EntityStore {
                     & MOB_FLAG_AGGRESSIVE
                     != 0;
         // Vanilla `VillagerRenderer` / `WanderingTraderRenderer.extractRenderState`:
-        // `state.isUnhappy = entity.getUnhappyCounter() > 0`. The counter is defined on
-        // `AbstractVillager` at synced int id 18, so only villager-family renderers read it.
-        let villager_unhappy = matches!(
-            identity.entity_type_id,
-            VANILLA_ENTITY_TYPE_VILLAGER_ID | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID
-        ) && self
-            .metadata_int(
-                id,
-                VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-                VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
-            )
-            .unwrap_or(VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER)
-            > 0;
+        // `state.isUnhappy = entity.getUnhappyCounter() > 0`. PandaRenderer has the same assignment
+        // for Panda.UNHAPPY_COUNTER, so intersect the renderer fact with the generated
+        // AbstractVillager accessor owner rather than treating the shared field spelling as one type.
+        let villager_unhappy =
+            vanilla_entity_renderer_extracts_unhappy_counter(identity.entity_type_id)
+                && vanilla_entity_metadata_accessor_for_entity_type(
+                    identity.entity_type_id,
+                    "DATA_UNHAPPY_COUNTER",
+                )
+                .is_some()
+                && self
+                    .metadata_int(
+                        id,
+                        VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
+                        VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
+                    )
+                    .unwrap_or(VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER)
+                    > 0;
         // Vanilla `EndermanModel.setupAnim`: a carried block (`!carriedBlock.isEmpty()`,
         // the synced `DATA_CARRY_STATE`) poses both arms forward, and `isCreepy` (the
         // synced `DATA_CREEPY`) drops the head / raises the hat. Only the enderman defines

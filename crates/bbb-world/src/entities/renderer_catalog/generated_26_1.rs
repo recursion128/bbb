@@ -14,6 +14,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 1,
@@ -24,6 +25,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 2,
@@ -34,6 +36,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 3,
@@ -44,6 +47,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 4,
@@ -54,6 +58,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 5,
@@ -64,6 +69,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 6,
@@ -74,6 +80,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 7,
@@ -84,6 +91,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 8,
@@ -94,6 +102,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 9,
@@ -104,6 +113,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 10,
@@ -114,6 +124,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 11,
@@ -124,6 +135,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 12,
@@ -134,6 +146,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 13,
@@ -144,6 +157,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 14,
@@ -154,6 +168,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 15,
@@ -164,6 +179,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 16,
@@ -174,6 +190,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 17,
@@ -184,6 +201,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 18,
@@ -194,6 +212,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 19,
@@ -204,6 +223,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 20,
@@ -214,6 +234,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 21,
@@ -224,6 +245,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 22,
@@ -234,6 +256,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 23,
@@ -244,6 +267,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 24,
@@ -254,6 +278,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 25,
@@ -264,6 +289,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 26,
@@ -274,6 +300,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 27,
@@ -284,6 +311,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 28,
@@ -294,6 +322,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 29,
@@ -304,6 +333,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 30,
@@ -314,6 +344,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 31,
@@ -324,6 +355,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 32,
@@ -334,6 +366,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 33,
@@ -344,6 +377,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 34,
@@ -354,6 +388,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 35,
@@ -364,6 +399,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 36,
@@ -374,6 +410,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: true,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 37,
@@ -384,6 +421,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 38,
@@ -394,6 +432,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 39,
@@ -404,6 +443,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 40,
@@ -414,6 +454,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 41,
@@ -424,6 +465,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 42,
@@ -434,6 +476,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 43,
@@ -444,6 +487,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 44,
@@ -454,6 +498,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 45,
@@ -464,6 +509,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 46,
@@ -474,6 +520,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 47,
@@ -484,6 +531,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 48,
@@ -494,6 +542,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 49,
@@ -504,6 +553,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 50,
@@ -514,6 +564,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 51,
@@ -524,6 +575,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 52,
@@ -534,6 +586,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 53,
@@ -544,6 +597,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 54,
@@ -554,6 +608,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 55,
@@ -564,6 +619,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 56,
@@ -574,6 +630,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 57,
@@ -584,6 +641,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 58,
@@ -594,6 +652,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 59,
@@ -604,6 +663,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 60,
@@ -614,6 +674,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 61,
@@ -624,6 +685,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 62,
@@ -634,6 +696,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 63,
@@ -644,6 +707,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 64,
@@ -654,6 +718,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 65,
@@ -664,6 +729,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 66,
@@ -674,6 +740,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: true,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 67,
@@ -684,6 +751,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 68,
@@ -694,6 +762,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 69,
@@ -704,6 +773,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 70,
@@ -714,6 +784,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 71,
@@ -724,6 +795,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 72,
@@ -734,6 +806,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 73,
@@ -744,6 +817,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 74,
@@ -754,6 +828,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 75,
@@ -764,6 +839,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 76,
@@ -774,6 +850,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 77,
@@ -784,6 +861,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 78,
@@ -794,6 +872,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 79,
@@ -804,6 +883,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 80,
@@ -814,6 +894,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 81,
@@ -824,6 +905,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 82,
@@ -834,6 +916,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 84,
@@ -844,6 +927,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 85,
@@ -854,6 +938,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 86,
@@ -864,6 +949,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 87,
@@ -874,6 +960,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: true,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 88,
@@ -884,6 +971,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 89,
@@ -894,6 +982,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 90,
@@ -904,6 +993,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 91,
@@ -914,6 +1004,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 92,
@@ -924,6 +1015,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 93,
@@ -934,6 +1026,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 94,
@@ -944,6 +1037,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 95,
@@ -954,6 +1048,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 96,
@@ -964,6 +1059,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: true,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 97,
@@ -974,6 +1070,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 98,
@@ -984,6 +1081,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 99,
@@ -994,6 +1092,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 100,
@@ -1004,6 +1103,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 101,
@@ -1014,6 +1114,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 102,
@@ -1024,6 +1125,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 103,
@@ -1034,6 +1136,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 104,
@@ -1044,6 +1147,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 105,
@@ -1054,6 +1158,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 106,
@@ -1064,6 +1169,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 107,
@@ -1074,6 +1180,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 108,
@@ -1084,6 +1191,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 109,
@@ -1094,6 +1202,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 110,
@@ -1104,6 +1213,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 111,
@@ -1114,6 +1224,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 112,
@@ -1124,6 +1235,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 113,
@@ -1134,6 +1246,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 114,
@@ -1144,6 +1257,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 115,
@@ -1154,6 +1268,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 116,
@@ -1164,6 +1279,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: true,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 117,
@@ -1174,6 +1290,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 118,
@@ -1184,6 +1301,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 119,
@@ -1194,6 +1312,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 120,
@@ -1204,6 +1323,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 121,
@@ -1214,6 +1334,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 122,
@@ -1224,6 +1345,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 123,
@@ -1234,6 +1356,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 124,
@@ -1244,6 +1367,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 125,
@@ -1254,6 +1378,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 126,
@@ -1264,6 +1389,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 127,
@@ -1274,6 +1400,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 128,
@@ -1284,6 +1411,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 129,
@@ -1294,6 +1422,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 130,
@@ -1304,6 +1433,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 131,
@@ -1314,6 +1444,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 132,
@@ -1324,6 +1455,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 133,
@@ -1334,6 +1466,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 134,
@@ -1344,6 +1477,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 135,
@@ -1354,6 +1488,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 136,
@@ -1364,6 +1499,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 137,
@@ -1374,6 +1510,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 138,
@@ -1384,6 +1521,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 139,
@@ -1394,6 +1532,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: true,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 140,
@@ -1404,6 +1543,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 141,
@@ -1414,6 +1554,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: true,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 142,
@@ -1424,6 +1565,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 143,
@@ -1434,6 +1576,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 144,
@@ -1444,6 +1587,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 145,
@@ -1454,6 +1598,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 146,
@@ -1464,6 +1609,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 147,
@@ -1474,6 +1620,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 148,
@@ -1484,6 +1631,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 149,
@@ -1494,6 +1642,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 150,
@@ -1504,6 +1653,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 151,
@@ -1514,6 +1664,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: true,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 152,
@@ -1524,6 +1675,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 153,
@@ -1534,6 +1686,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 154,
@@ -1544,6 +1697,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: true,
         extracts_mob_aggressive: true,
+        extracts_unhappy_counter: false,
     },
     VanillaEntityRendererRegistration {
         entity_type_id: 156,
@@ -1554,6 +1708,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         uses_abstract_horse_renderer: false,
         uses_mob_item_in_hand_layer: false,
         extracts_mob_aggressive: false,
+        extracts_unhappy_counter: false,
     },
 ];
 
@@ -1599,5 +1754,11 @@ mod generated_catalog_guards {
         assert!(!source.contains("fn vanilla_zombie_model_family"));
         assert!(!source.contains("fn vanilla_piglin_melee_attack_family"));
         assert!(!source.contains("fn vanilla_illager_aggressive_arm_pose_family"));
+    }
+
+    #[test]
+    fn world_projection_does_not_restore_villager_unhappy_membership() {
+        let source = include_str!("../store.rs");
+        assert!(!source.contains("let villager_unhappy = matches!"));
     }
 }

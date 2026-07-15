@@ -41,6 +41,7 @@ class EntityRendererRegistration:
     uses_abstract_horse_renderer: bool
     uses_mob_item_in_hand_layer: bool
     extracts_mob_aggressive: bool
+    extracts_unhappy_counter: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -247,12 +248,12 @@ def _renderer_hierarchy_constructs_type(
         current = type_by_name[current.superclass]
 
 
-def _renderer_hierarchy_extracts_mob_aggressive(
+def _renderer_hierarchy_contains_extract_assignment(
     renderer_class: str,
+    expected: str,
     source_by_type: dict[str, JavaSource],
     type_by_name: dict[str, JavaType],
 ) -> bool:
-    expected = "state.isAggressive = entity.isAggressive ()"
     current = type_by_name[renderer_class]
     while True:
         source = source_by_type[current.fqcn]
@@ -413,8 +414,15 @@ def extract_entity_renderer_registrations(
                     source_by_type,
                     type_by_name,
                 ),
-                _renderer_hierarchy_extracts_mob_aggressive(
+                _renderer_hierarchy_contains_extract_assignment(
                     renderer_class,
+                    "state.isAggressive = entity.isAggressive ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isUnhappy = entity.getUnhappyCounter ()> 0",
                     source_by_type,
                     type_by_name,
                 ),
