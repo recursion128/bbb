@@ -16275,3 +16275,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   ZombieNautilus 的 world/native presentation、mount inventory 和 native debug 共同消费它，
   并继续使用生成的 sitting/tame flag masks。
 - 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 AbstractArrow metadata accessors
+
+- `bbb-world` 现在公开从生成 schema 的 `AbstractArrow.ID_FLAGS`、`PIERCE_LEVEL` 与
+  `IN_GROUND` 解析继承 membership、wire ids 8/9/10 与 typed defaults 0/0/false 的
+  accessor bundle；Arrow/SpectralArrow impact animation、ThrownTrident projectile lifecycle
+  与三者的 native debug 消费它，并继续使用生成的 arrow tag 和 crit/no-physics flag masks。
+- 生产消费者删除固定 accessor/default 别名与独立 arrow-tag membership helper；生成器
+  reverse guard 禁止恢复这些平行事实源。

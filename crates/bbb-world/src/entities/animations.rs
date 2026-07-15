@@ -15,14 +15,13 @@ use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::EnderDragonAnimationState;
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
+    vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
-    VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
-    VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
     VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID as ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
     VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME as ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME,
     VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT as ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT,
@@ -3837,21 +3836,26 @@ impl EntityClientAnimationState {
         // Vanilla `AbstractArrow.onSyncedDataUpdated(IN_GROUND)`: once the entity is past
         // its first client tick, setting `IN_GROUND` true starts the seven-tick impact
         // wobble if the previous shake has already settled.
-        if is_vanilla_arrow_type(entity_type_id)
-            && self.age_ticks > 0
-            && updated_values
-                .iter()
-                .any(|value| value.data_id == ABSTRACT_ARROW_IN_GROUND_DATA_ID)
-            && entity_data_bool(
-                data_values,
-                ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-                ABSTRACT_ARROW_DEFAULT_IN_GROUND,
-            )
-            && self
-                .arrow_shake
-                .map_or(true, ArrowShakeAnimationState::is_settled)
-        {
-            self.arrow_shake = Some(ArrowShakeAnimationState::started());
+        if bbb_protocol::entity_types::vanilla_entity_type_is_arrow_tagged(entity_type_id) {
+            if let Some(accessors) =
+                vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
+            {
+                if self.age_ticks > 0
+                    && updated_values
+                        .iter()
+                        .any(|value| value.data_id == accessors.in_ground_data_id)
+                    && entity_data_bool(
+                        data_values,
+                        accessors.in_ground_data_id,
+                        accessors.in_ground_default,
+                    )
+                    && self
+                        .arrow_shake
+                        .map_or(true, ArrowShakeAnimationState::is_settled)
+                {
+                    self.arrow_shake = Some(ArrowShakeAnimationState::started());
+                }
+            }
         }
         if is_vanilla_vehicle_entity_type(entity_type_id)
             && updated_values.iter().any(|value| {
@@ -5934,10 +5938,6 @@ pub(crate) fn entity_animation_uses_in_water(entity_type_id: i32) -> bool {
                 | VANILLA_ENTITY_TYPE_WOLF_ID
                 | VANILLA_ENTITY_TYPE_AXOLOTL_ID
         )
-}
-
-fn is_vanilla_arrow_type(entity_type_id: i32) -> bool {
-    bbb_protocol::entity_types::vanilla_entity_type_is_arrow_tagged(entity_type_id)
 }
 
 /// Vanilla `Guardian.isMoving()` = the synced `DATA_ID_MOVING` boolean (default

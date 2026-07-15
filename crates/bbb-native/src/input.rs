@@ -72,12 +72,14 @@ use bbb_protocol::{
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
     PROTOCOL_VERSION,
 };
+use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
+use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
@@ -191,12 +193,6 @@ use bbb_world::{
     VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS as SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS,
     VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
-};
-use bbb_world::{
-    VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
-    VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT,
-    VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-    VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID as ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
 };
 use bbb_world::{
     VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
@@ -5183,19 +5179,22 @@ fn debug_push_projectile_additional_save_data(entity: &EntityState, fields: &mut
 }
 
 fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    if let Some(in_ground) =
-        debug_entity_data_bool_present(entity, ABSTRACT_ARROW_IN_GROUND_DATA_ID)
-    {
+    let Some(accessors) =
+        vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    if let Some(in_ground) = debug_entity_data_bool_present(entity, accessors.in_ground_data_id) {
         fields.push(format!("inGround: {}", debug_snbt_bool(in_ground)));
     }
-    if let Some(flags) = debug_entity_data_byte_present(entity, ABSTRACT_ARROW_FLAGS_DATA_ID) {
+    if let Some(flags) = debug_entity_data_byte_present(entity, accessors.flags_data_id) {
         fields.push(format!(
             "crit: {}",
             debug_snbt_bool(flags & ABSTRACT_ARROW_FLAG_CRIT != 0)
         ));
     }
     if let Some(pierce_level) =
-        debug_entity_data_byte_present(entity, ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID)
+        debug_entity_data_byte_present(entity, accessors.pierce_level_data_id)
     {
         fields.push(format!("PierceLevel: {pierce_level}b"));
     }

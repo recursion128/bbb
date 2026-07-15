@@ -211,6 +211,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   TamableAnimal sitting/tame membership, inherited wire index and default must remain derived from
   generated `TamableAnimal.DATA_FLAGS_ID`; world/native presentation, mount inventory and native
   debug consumers must not restore fixed accessor aliases.
+  AbstractArrow flags, pierce-level and in-ground membership, inherited wire indices and defaults
+  must remain derived from generated `AbstractArrow.ID_FLAGS`, `PIERCE_LEVEL` and `IN_GROUND`;
+  animation, projectile lifecycle and native debug consumers must not restore fixed accessor aliases.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

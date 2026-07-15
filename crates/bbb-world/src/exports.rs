@@ -4,6 +4,7 @@ pub use crate::entities::state::*;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
+    vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
@@ -32,8 +33,9 @@ pub use crate::entities::{
     vanilla_entity_type_is_spellcaster_illager, vanilla_entity_type_is_spider,
     vanilla_entity_type_is_squid, vanilla_entity_type_is_wind_charge, EntityCameraHurtState,
     LocalPlayerVehicleHealth, RemovedPlayerVehicleTeleportRecovery,
-    VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataClassCatalogEntry,
-    VanillaEntityMetadataDefault, VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
+    VanillaAbstractArrowMetadataAccessors, VanillaEntityMetadataAccessorCatalogEntry,
+    VanillaEntityMetadataClassCatalogEntry, VanillaEntityMetadataDefault,
+    VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
     VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagCatalogEntry,
     VanillaEntityMetadataFlagSchema, VanillaEntityMetadataFlagStatus,
     VanillaEntityMetadataResolverEvidence, VanillaEntityTypeMetadataCatalogEntry,

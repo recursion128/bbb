@@ -249,6 +249,16 @@ pub(crate) struct VanillaEndermanRenderMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaAbstractArrowMetadataAccessors {
+    pub flags_data_id: u8,
+    pub flags_default: i8,
+    pub pierce_level_data_id: u8,
+    pub pierce_level_default: i8,
+    pub in_ground_data_id: u8,
+    pub in_ground_default: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -555,6 +565,55 @@ pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
             "BYTE",
             Some(VanillaEntityMetadataDefault::Byte(default)),
         ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves the inherited AbstractArrow accessors and their typed defaults.
+pub fn vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaAbstractArrowMetadataAccessors> {
+    let flags = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "ID_FLAGS")?;
+    let pierce_level =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "PIERCE_LEVEL")?;
+    let in_ground = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IN_GROUND")?;
+    match (
+        (flags.owner, flags.serializer_name, flags.typed_default),
+        (
+            pierce_level.owner,
+            pierce_level.serializer_name,
+            pierce_level.typed_default,
+        ),
+        (
+            in_ground.owner,
+            in_ground.serializer_name,
+            in_ground.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.projectile.arrow.AbstractArrow",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(flags_default)),
+            ),
+            (
+                "net.minecraft.world.entity.projectile.arrow.AbstractArrow",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(pierce_level_default)),
+            ),
+            (
+                "net.minecraft.world.entity.projectile.arrow.AbstractArrow",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(in_ground_default)),
+            ),
+        ) => Some(VanillaAbstractArrowMetadataAccessors {
+            flags_data_id: flags.data_id,
+            flags_default,
+            pierce_level_data_id: pierce_level.data_id,
+            pierce_level_default,
+            in_ground_data_id: in_ground.data_id,
+            in_ground_default,
+        }),
         _ => None,
     }
 }
@@ -1058,9 +1117,10 @@ mod tests {
         VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
         VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
         VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_VEX_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
         VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
@@ -1763,13 +1823,7 @@ mod tests {
             .map(|(body, _)| body)
             .expect("flying-animal membership query source");
         assert!(!flying_animal_query.contains("matches!"));
-        let arrow_query = animations_source
-            .split("fn is_vanilla_arrow_type")
-            .nth(1)
-            .and_then(|source| source.split_once("\n}"))
-            .map(|(body, _)| body)
-            .expect("arrow tag query source");
-        assert!(!arrow_query.contains("matches!"));
+        assert!(!animations_source.contains("fn is_vanilla_arrow_type"));
     }
 
     #[test]
@@ -2174,6 +2228,39 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_abstract_arrow_accessors_own_inherited_membership_indices_and_defaults() {
+        let expected = VanillaAbstractArrowMetadataAccessors {
+            flags_data_id: 8,
+            flags_default: 0,
+            pierce_level_data_id: 9,
+            pierce_level_default: 0,
+            in_ground_data_id: 10,
+            in_ground_default: false,
+        };
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id),
+                Some(expected),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(-1),
             None
         );
     }

@@ -10,13 +10,10 @@ use uuid::Uuid;
 use crate::{HurtingProjectileState, ProjectilePowerUpdateState, WorldStore};
 
 use super::schema::{
+    vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_hurting_projectile, vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_metadata_type_is_projectile, vanilla_entity_metadata_type_is_wind_charge,
-    VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS as ABSTRACT_ARROW_DEFAULT_FLAGS,
-    VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
-    VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS as ABSTRACT_ARROW_FLAG_NO_PHYSICS,
-    VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_MARKER_FLAG,
     VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS as ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
@@ -199,17 +196,18 @@ impl EntityStore {
                 if identity.entity_type_id != VANILLA_ENTITY_TYPE_TRIDENT_ID {
                     return None;
                 }
+                let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+                    identity.entity_type_id,
+                )?;
                 let in_ground = self.metadata_bool_for_entity(
                     *id,
-                    ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-                    ABSTRACT_ARROW_DEFAULT_IN_GROUND,
+                    accessors.in_ground_data_id,
+                    accessors.in_ground_default,
                 )?;
-                let physics_enabled = self.metadata_byte(
-                    *id,
-                    ABSTRACT_ARROW_FLAGS_DATA_ID,
-                    ABSTRACT_ARROW_DEFAULT_FLAGS,
-                )? & ABSTRACT_ARROW_FLAG_NO_PHYSICS
-                    == 0;
+                let physics_enabled =
+                    self.metadata_byte(*id, accessors.flags_data_id, accessors.flags_default)?
+                        & ABSTRACT_ARROW_FLAG_NO_PHYSICS
+                        == 0;
                 Some((*id, in_ground && physics_enabled))
             })
             .collect()
@@ -401,6 +399,10 @@ fn is_vanilla_wind_charge_type(entity_type_id: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::schema::{
+        VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
+        VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+    };
     use crate::WorldStore;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_EGG_ID,

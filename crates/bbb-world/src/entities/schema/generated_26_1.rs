@@ -22382,6 +22382,41 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_abstract_arrow_accessors_do_not_restore_fixed_metadata_facts() {
+        let animations = include_str!("../animations.rs");
+        let projectiles = include_str!("../projectiles.rs");
+        let projectiles = projectiles.split("#[cfg(test)]\nmod tests").next().unwrap();
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        for source in [animations, projectiles, native_input] {
+            assert!(
+                source.contains("vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type")
+            );
+        }
+        assert!(!animations.contains("fn is_vanilla_arrow_type"));
+        for removed in [
+            "ABSTRACT_ARROW_FLAGS_DATA_ID",
+            "ABSTRACT_ARROW_DEFAULT_FLAGS",
+            "ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID",
+            "ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL",
+            "ABSTRACT_ARROW_IN_GROUND_DATA_ID",
+            "ABSTRACT_ARROW_DEFAULT_IN_GROUND",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(
+                !projectiles.contains(removed),
+                "projectiles restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_iron_golem_flags_do_not_restore_accessor_constants() {
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         assert!(native_input

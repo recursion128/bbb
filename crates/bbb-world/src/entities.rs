@@ -58,6 +58,7 @@ pub use renderer_catalog::{
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_camera_post_effect_id,
+    vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
@@ -76,8 +77,9 @@ pub use schema::{
     vanilla_entity_metadata_villager_data_accessor_for_entity_type,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type,
-    VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataClassCatalogEntry,
-    VanillaEntityMetadataDefault, VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
+    VanillaAbstractArrowMetadataAccessors, VanillaEntityMetadataAccessorCatalogEntry,
+    VanillaEntityMetadataClassCatalogEntry, VanillaEntityMetadataDefault,
+    VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
     VanillaEntityMetadataFieldSchema, VanillaEntityMetadataFlagCatalogEntry,
     VanillaEntityMetadataFlagSchema, VanillaEntityMetadataFlagStatus,
     VanillaEntityMetadataResolverEvidence, VanillaEntityTypeMetadataCatalogEntry,
