@@ -52,15 +52,15 @@ pub(super) fn resolve_villager_profession(
 /// textured by the `Rabbit.Variant` colour (`DATA_TYPE_ID`, 18) with the `Toast` custom-name override
 /// (`RabbitRenderer.checkMagicName(entity, "Toast")`).
 pub(super) fn rabbit_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
+    let variant_id = vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_int(values, data_id, default))
+        .unwrap_or_default();
     EntityModelKind::Rabbit {
         baby: ageable_baby(values),
-        variant: RabbitModelVariant::from_id(entity_data_int(
-            values,
-            RABBIT_TYPE_DATA_ID,
-            RABBIT_DEFAULT_TYPE,
-        )),
+        variant: RabbitModelVariant::from_id(variant_id),
         toast: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
             .is_some_and(|name| name == "Toast"),
     }

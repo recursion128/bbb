@@ -246,6 +246,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Sheep wool membership, wire index and typed default must remain derived from generated
   `DATA_WOOL_ID`; native model/debug consumers must not restore fixed accessor/default aliases and
   must continue using the generated color/sheared masks.
+  Rabbit variant membership, wire index and typed default must remain derived from generated
+  `DATA_TYPE_ID`; native model/debug consumers must not restore fixed accessor/default aliases,
+  and invalid variant ids must continue falling back through the generated default.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

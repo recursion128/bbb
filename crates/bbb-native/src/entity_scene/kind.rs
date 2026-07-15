@@ -174,7 +174,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_OCELOT_ID => {
             feline_model_kind(entity_type_id, data_values, false, variant_registries)
         }
-        VANILLA_ENTITY_TYPE_RABBIT_ID => rabbit_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_RABBIT_ID => rabbit_model_kind(entity_type_id, data_values),
         _ if bbb_world::vanilla_entity_type_is_minecart(entity_type_id) => {
             EntityModelKind::Minecart
         }

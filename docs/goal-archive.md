@@ -16354,3 +16354,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   与 byte typed default 0；native model 与 debug 共同消费它，并继续使用生成的 color 15 /
   sheared 16 masks。
 - 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Rabbit variant metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Rabbit.DATA_TYPE_ID` 解析 membership、wire id 18
+  与 int typed default 0；native model 与 debug 共同消费它，非法 variant id 继续按 vanilla
+  `ByIdMap.sparse` 回退到生成默认值对应的 BROWN。
+- 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。

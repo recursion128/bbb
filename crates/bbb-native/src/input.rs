@@ -81,6 +81,7 @@ use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type;
@@ -234,8 +235,6 @@ use bbb_world::{
     VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_RABBIT_DEFAULT_TYPE as RABBIT_DEFAULT_TYPE,
-    VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_TROPICAL_FISH_DEFAULT_VARIANT as TROPICAL_FISH_DEFAULT_VARIANT,
@@ -7613,16 +7612,21 @@ fn debug_push_pufferfish_additional_save_data(entity: &EntityState, fields: &mut
 }
 
 fn debug_push_rabbit_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let rabbit_type = debug_entity_data_int_present(entity, RABBIT_TYPE_DATA_ID)
-        .map(debug_rabbit_type_save_id)
-        .unwrap_or(RABBIT_DEFAULT_TYPE);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let rabbit_type = debug_entity_data_int_present(entity, data_id)
+        .map(|rabbit_type| debug_rabbit_type_save_id(rabbit_type, default))
+        .unwrap_or(default);
     fields.push(format!("RabbitType: {rabbit_type}"));
 }
 
-fn debug_rabbit_type_save_id(rabbit_type: i32) -> i32 {
+fn debug_rabbit_type_save_id(rabbit_type: i32, default: i32) -> i32 {
     match rabbit_type {
         0..=5 | 99 => rabbit_type,
-        _ => RABBIT_DEFAULT_TYPE,
+        _ => default,
     }
 }
 
