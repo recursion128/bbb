@@ -18,6 +18,8 @@ pub use crate::entities::{
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
+    vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
+    vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type, vanilla_entity_metadata_field,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_variant_accessor_for_entity_type,

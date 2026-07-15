@@ -22,6 +22,8 @@ use super::schema::{
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
+    vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
+    vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
@@ -37,10 +39,7 @@ use super::schema::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
-    VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAT_DEFAULT_IS_LYING as CAT_DEFAULT_IS_LYING,
-    VANILLA_CAT_DEFAULT_RELAX_STATE_ONE as CAT_DEFAULT_RELAX_STATE_ONE,
-    VANILLA_CAT_IS_LYING_DATA_ID as CAT_IS_LYING_DATA_ID,
-    VANILLA_CAT_RELAX_STATE_ONE_DATA_ID as CAT_RELAX_STATE_ONE_DATA_ID,
+    VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL,
     VANILLA_COPPER_GOLEM_DEFAULT_STATE as COPPER_GOLEM_DEFAULT_STATE,
     VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID,
     VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
@@ -3987,8 +3986,8 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_CAT_ID => {
-                let is_lying = cat_is_lying(data_values);
-                let relax_state_one = cat_relax_state_one(data_values);
+                let is_lying = cat_is_lying(entity_type_id, data_values);
+                let relax_state_one = cat_relax_state_one(entity_type_id, data_values);
                 if let Some(cat) = self.cat_lie_down.as_mut() {
                     cat.set_flags(is_lying, relax_state_one);
                 } else if is_lying || relax_state_one {
@@ -6254,18 +6253,20 @@ pub(crate) fn wolf_is_interested(entity_type_id: i32, data_values: &[EntityDataV
         .unwrap_or_default()
 }
 
-/// Vanilla `Cat.isLying()` = `entityData.get(IS_LYING)`.
-pub(crate) fn cat_is_lying(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, CAT_IS_LYING_DATA_ID, CAT_DEFAULT_IS_LYING)
+/// Vanilla `Cat.isLying()` = `entityData.get(IS_LYING)`. The generated accessor supplies Cat
+/// membership, wire index and default for animation and sleeping-player projection consumers.
+pub(crate) fn cat_is_lying(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_cat_lying_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
-/// Vanilla `Cat.isRelaxStateOne()` = `entityData.get(RELAX_STATE_ONE)`.
-pub(crate) fn cat_relax_state_one(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(
-        data_values,
-        CAT_RELAX_STATE_ONE_DATA_ID,
-        CAT_DEFAULT_RELAX_STATE_ONE,
-    )
+/// Vanilla `Cat.isRelaxStateOne()` = `entityData.get(RELAX_STATE_ONE)`. The generated accessor
+/// supplies Cat membership, wire index and default for the relax amount ease.
+pub(crate) fn cat_relax_state_one(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `Creeper.tick`: the fuse advances by `getSwellDir()`, but an ignited

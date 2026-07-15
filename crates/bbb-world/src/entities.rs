@@ -43,11 +43,11 @@ pub(crate) use components::{
     EntityMobEffects, EntityMount, EntityProjectileLifecycle, EntitySupportingBlock,
     EntityTransform, EntityTransientEvents,
 };
+use dimensions::vanilla_client_position_for_entity_data;
 pub use dimensions::EntityPickBoundsState;
 pub(crate) use dimensions::{
     vanilla_animal_entity_type, vanilla_living_entity_type, vanilla_pick_bounds_for_type,
 };
-use dimensions::{vanilla_client_position_for_entity_data, vanilla_is_cat};
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
 pub use renderer_catalog::{
@@ -72,6 +72,8 @@ pub use schema::{
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
+    vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
+    vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type, vanilla_entity_metadata_field,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_variant_accessor_for_entity_type,
@@ -3196,7 +3198,7 @@ impl WorldStore {
         cat_target: EntityModelTargetState,
         targets: &[EntityModelTargetState],
     ) -> bool {
-        if !vanilla_is_cat(source.entity_type_id) || !cat_is_lying(&source.data_values) {
+        if !cat_is_lying(source.entity_type_id, &source.data_values) {
             return false;
         }
 

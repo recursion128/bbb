@@ -939,6 +939,45 @@ pub fn vanilla_entity_metadata_camel_dash_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Cat lying accessor and its typed default.
+pub fn vanilla_entity_metadata_cat_lying_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IS_LYING")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.feline.Cat",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves the generated Cat relax-state-one accessor and its typed default.
+pub fn vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "RELAX_STATE_ONE")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.feline.Cat",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated PolarBear standing accessor and its typed default.
 pub fn vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3313,6 +3352,32 @@ mod tests {
             vanilla_entity_metadata_camel_dash_accessor_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_cat_lie_down_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_cat_lying_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID),
+            Some((21, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CAT_ID
+            ),
+            Some((22, false))
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_WOLF_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_cat_lying_accessor_for_entity_type(entity_type_id),
+                None
+            );
+            assert_eq!(
+                vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                None
+            );
+        }
     }
 
     #[test]

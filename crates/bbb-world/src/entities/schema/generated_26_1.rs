@@ -23142,6 +23142,44 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_cat_lie_down_does_not_restore_accessor_constants() {
+        let entities = include_str!("../../entities.rs");
+        let animations = include_str!("../animations.rs");
+        let store = include_str!("../store.rs");
+        let sleeping_player_body = entities
+            .split("fn cat_is_lying_on_top_of_sleeping_player")
+            .nth(1)
+            .and_then(|source| source.split_once("\n    fn entity_outline_color"))
+            .map(|(body, _)| body)
+            .expect("cat sleeping-player projection source");
+        assert!(sleeping_player_body
+            .contains("cat_is_lying(source.entity_type_id, &source.data_values)"));
+        assert!(!sleeping_player_body.contains("vanilla_is_cat"));
+        assert!(animations.contains("cat_is_lying(entity_type_id, data_values)"));
+        assert!(animations.contains("cat_relax_state_one(entity_type_id, data_values)"));
+        assert!(store.contains("cat_is_lying(identity.entity_type_id, &metadata.data_values)"));
+        assert!(
+            store.contains("cat_relax_state_one(identity.entity_type_id, &metadata.data_values)")
+        );
+        for removed in [
+            "CAT_IS_LYING_DATA_ID",
+            "CAT_DEFAULT_IS_LYING",
+            "CAT_RELAX_STATE_ONE_DATA_ID",
+            "CAT_DEFAULT_RELAX_STATE_ONE",
+        ] {
+            assert!(
+                !sleeping_player_body.contains(removed),
+                "sleeping-player projection restored {removed}"
+            );
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(!store.contains(removed), "store restored {removed}");
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

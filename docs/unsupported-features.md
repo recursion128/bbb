@@ -294,6 +294,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Wolf interested membership, wire index and typed default must remain derived from generated
   `Wolf.DATA_INTERESTED_ID`; world animation consumers must not restore fixed accessor/default
   aliases or read another entity family's slot 20 as the interested flag.
+  Cat lie-down and relax-state-one membership, wire indices and typed defaults must remain derived
+  from generated `Cat.IS_LYING` and `Cat.RELAX_STATE_ONE`; world animation and sleeping-player
+  projection must not restore fixed accessor/default aliases or parallel Cat membership gates.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

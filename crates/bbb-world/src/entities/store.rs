@@ -3561,8 +3561,9 @@ impl EntityStore {
                 let player_is_using_item = player_is_using_item(&metadata.data_values);
                 let wolf_is_interested =
                     wolf_is_interested(identity.entity_type_id, &metadata.data_values);
-                let cat_is_lying = cat_is_lying(&metadata.data_values);
-                let cat_relax_state_one = cat_relax_state_one(&metadata.data_values);
+                let cat_is_lying = cat_is_lying(identity.entity_type_id, &metadata.data_values);
+                let cat_relax_state_one =
+                    cat_relax_state_one(identity.entity_type_id, &metadata.data_values);
                 let boat_paddles = boat_paddle_states(
                     identity.entity_type_id,
                     &metadata.data_values,
