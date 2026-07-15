@@ -16,6 +16,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     FarmAnimalVariantEntry,
     FrogVariantEntry,
     ModelAndTextureVariantEntry,
+    WoodTypeEntry,
     banner_pattern_entries,
     bootstrap_resource_key_entries,
     decorated_pot_pattern_entries,
@@ -31,6 +32,7 @@ from bootstrap_catalog_extractor import (  # noqa: E402
     sound_variant_entries,
     static_register_entries,
     trim_material_entries,
+    wood_type_entries,
     cat_variant_entries,
     wolf_variant_entries,
 )
@@ -38,6 +40,53 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class BootstrapCatalogExtractorTests(unittest.TestCase):
+    def test_wood_type_entries_follow_registered_constructor_names(self) -> None:
+        source = parse_source(
+            "fixture/WoodType.java",
+            b'''
+package fixture;
+class WoodType {
+  private static final Map<String, WoodType> TYPES = new Object2ObjectArrayMap<>();
+  public static final WoodType OAK = register(new WoodType("oak", BlockSetType.OAK));
+  public static final WoodType DARK_OAK = register(new WoodType(
+      "dark_oak", BlockSetType.DARK_OAK, SoundType.WOOD, SoundType.HANGING_SIGN,
+      SoundEvents.CLOSE, SoundEvents.OPEN));
+  private static WoodType register(final WoodType type) {
+    TYPES.put(type.name(), type);
+    return type;
+  }
+  public static Stream<WoodType> values() { return TYPES.values().stream(); }
+}
+''',
+        )
+
+        self.assertEqual(
+            wood_type_entries(source, expected_count=2),
+            [WoodTypeEntry("OAK", "oak"), WoodTypeEntry("DARK_OAK", "dark_oak")],
+        )
+
+    def test_wood_type_entries_reject_changed_constructor_shape(self) -> None:
+        source = parse_source(
+            "fixture/WoodType.java",
+            b'''
+package fixture;
+class WoodType {
+  private static final Map<String, WoodType> TYPES = new Object2ObjectArrayMap<>();
+  public static final WoodType OAK = register(new WoodType("oak"));
+  private static WoodType register(final WoodType type) {
+    TYPES.put(type.name(), type);
+    return type;
+  }
+  public static Stream<WoodType> values() { return TYPES.values().stream(); }
+}
+''',
+        )
+
+        with self.assertRaisesRegex(
+            BootstrapCatalogExtractionError, "unsupported constructor arity"
+        ):
+            wood_type_entries(source, expected_count=1)
+
     def test_sound_variant_entries_follow_bootstrap_sound_map_payload(self) -> None:
         source = parse_source(
             "fixture/CatSoundVariants.java",

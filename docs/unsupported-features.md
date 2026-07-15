@@ -208,6 +208,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   descriptors; native debug extraction must not rebuild ordinal-indexed color
   arrays. Keep fixed menu geometry shared by input hit testing and HUD extraction
   in one native layout owner instead of parallel coordinate declarations.
+  Keep sign wood kind/name/order derived from `WoodType` registrations; block-name parsing and
+  hanging-sign GUI background loading must consume that world catalog instead of restoring a
+  native wood/resource table.
   Generate a membership only when an exact tag, class, property, or registry
   source fact owns that semantic; do not substitute approximate tags.
   Terrain render layer is deliberately excluded from this catalog work because

@@ -17,6 +17,19 @@ SPEC.loader.exec_module(GENERATOR)
 
 
 class BootstrapCatalogGeneratorTests(unittest.TestCase):
+    def test_sign_wood_renderer_emits_catalog_queries_and_native_guard(self) -> None:
+        rendered = GENERATOR.render_sign_wood_types(
+            [
+                GENERATOR.WoodTypeEntry("OAK", "oak"),
+                GENERATOR.WoodTypeEntry("DARK_OAK", "dark_oak"),
+            ]
+        )
+
+        self.assertIn("pub enum SignWoodKind", rendered)
+        self.assertIn("SignWoodKind::DarkOak, \"dark_oak\"", rendered)
+        self.assertIn("pub fn vanilla_sign_wood_kinds", rendered)
+        self.assertIn("HANGING_SIGN_BACKGROUNDS", rendered)
+
     def test_registry_holder_coverage_requires_one_family_per_network_row(self) -> None:
         entry = GENERATOR.RegistryHolderConsumerEntry(
             "net/minecraft/example/Test.java",

@@ -27,6 +27,12 @@ class BootstrapEntry:
 
 
 @dataclass(frozen=True)
+class WoodTypeEntry:
+    constant_name: str
+    name: str
+
+
+@dataclass(frozen=True)
 class WolfVariantEntry:
     constant_name: str
     resource_id: str
@@ -1325,6 +1331,81 @@ def static_register_entries(
         raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate constant")
     if len({entry.resource_id for entry in entries}) != len(entries):
         raise BootstrapCatalogExtractionError(f"{source.relative_path}: duplicate resource id")
+    return entries
+
+
+def wood_type_entries(
+    source: JavaSource,
+    expected_count: int = 12,
+) -> list[WoodTypeEntry]:
+    type_maps = [field for field in source.fields if field.name == "TYPES"]
+    if (
+        len(type_maps) != 1
+        or type_maps[0].initializer is None
+        or type_maps[0].initializer.canonical != "new Object2ObjectArrayMap <> ()"
+    ):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: unsupported WoodType registration map"
+        )
+    register_methods = [method for method in source.methods if method.name == "register"]
+    if (
+        len(register_methods) != 1
+        or source.expression(register_methods[0].node).canonical
+        != "private static WoodType register (final WoodType type) {TYPES.put (type.name (), type); return type;}"
+    ):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: unsupported WoodType register helper"
+        )
+    values_methods = [method for method in source.methods if method.name == "values"]
+    if (
+        len(values_methods) != 1
+        or source.expression(values_methods[0].node).canonical
+        != "public static Stream <WoodType> values () {return TYPES.values ().stream ();}"
+    ):
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: unsupported WoodType values ordering"
+        )
+    fields = [
+        field
+        for field in source.fields
+        if field.type_spelling.replace(" ", "") == "WoodType"
+    ]
+    entries: list[WoodTypeEntry] = []
+    for field in fields:
+        if field.initializer is None:
+            _fail(
+                source,
+                JavaExpression("", field.span, field.node),
+                f"wood type {field.name} lacks an initializer",
+            )
+        _, register_arguments = _invocation(source, field.initializer, {"register"})
+        if len(register_arguments) != 1:
+            _fail(
+                source,
+                field.initializer,
+                f"wood type {field.name} register call must have one argument",
+            )
+        constructor_arguments = _object_creation_arguments(
+            source, register_arguments[0], "WoodType"
+        )
+        if len(constructor_arguments) not in {2, 6}:
+            _fail(
+                source,
+                register_arguments[0],
+                f"wood type {field.name} has unsupported constructor arity",
+            )
+        entries.append(WoodTypeEntry(field.name, _string(source, constructor_arguments[0])))
+    if len(entries) != expected_count:
+        raise BootstrapCatalogExtractionError(
+            f"{source.relative_path}: expected {expected_count} wood types, "
+            f"extracted {len(entries)}"
+        )
+    for attribute in ("constant_name", "name"):
+        values = [getattr(entry, attribute) for entry in entries]
+        if len(values) != len(set(values)):
+            raise BootstrapCatalogExtractionError(
+                f"{source.relative_path}: duplicate wood type {attribute}"
+            )
     return entries
 
 

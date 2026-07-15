@@ -20,43 +20,7 @@ use bbb_protocol::block_entity_types::{
 
 use crate::{BlockPos, ChunkColumn, PaletteKind, RegistrySet, SignTextSideState, WorldStore};
 
-/// Vanilla `WoodType` families that register sign blocks (`WoodType.values()`
-/// in 26.1 — the twelve `entity/signs/<wood>.png` sprite families).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SignWoodKind {
-    Oak,
-    Spruce,
-    Birch,
-    Acacia,
-    Cherry,
-    Jungle,
-    DarkOak,
-    PaleOak,
-    Crimson,
-    Warped,
-    Mangrove,
-    Bamboo,
-}
-
-impl SignWoodKind {
-    fn parse(name: &str) -> Option<Self> {
-        match name {
-            "oak" => Some(Self::Oak),
-            "spruce" => Some(Self::Spruce),
-            "birch" => Some(Self::Birch),
-            "acacia" => Some(Self::Acacia),
-            "cherry" => Some(Self::Cherry),
-            "jungle" => Some(Self::Jungle),
-            "dark_oak" => Some(Self::DarkOak),
-            "pale_oak" => Some(Self::PaleOak),
-            "crimson" => Some(Self::Crimson),
-            "warped" => Some(Self::Warped),
-            "mangrove" => Some(Self::Mangrove),
-            "bamboo" => Some(Self::Bamboo),
-            _ => None,
-        }
-    }
-}
+include!("sign_blocks/generated_26_1.rs");
 
 /// The sign block family a block name belongs to: vanilla
 /// `StandingSignBlock` / `WallSignBlock` / `CeilingHangingSignBlock` /

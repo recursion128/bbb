@@ -61,8 +61,8 @@ pub use crate::shulker_box_blocks::{
     ShulkerBoxFacing, ShulkerBoxLidState, ShulkerBoxModelSourceState,
 };
 pub use crate::sign_blocks::{
-    sign_rotation_segment_to_degrees, sign_wood_and_form_for_block_name, SignBlockForm,
-    SignModelAttachment, SignModelSourceState, SignWoodKind,
+    sign_rotation_segment_to_degrees, sign_wood_and_form_for_block_name, vanilla_sign_wood_kinds,
+    SignBlockForm, SignModelAttachment, SignModelSourceState, SignWoodKind,
 };
 pub use crate::skull_blocks::{
     is_skull_block_name, skull_kind_for_block_name, SkullBlockAttachment, SkullBlockKind,

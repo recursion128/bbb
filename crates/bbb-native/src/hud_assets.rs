@@ -5,12 +5,15 @@ use bbb_pack::{PackRoots, ResourceLocation, SpriteGuiScaling, SpriteImage};
 use bbb_renderer::{
     HudAdvancementBackgroundTexture, HudAdvancementHoverBoxSprite, HudAdvancementTabSprite,
     HudAdvancementWidgetFrameSprite, HudBossBarColor, HudBossBarOverlay, HudHeartKind,
-    HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite, SignModelWood,
+    HudNineSliceScaling, HudStatsScrollbarSprite, HudStatsSprite,
 };
+use bbb_world::vanilla_sign_wood_kinds;
 
 use bbb_item_model::font::{
     hud_ascii_digit_atlas_from_image, load_ascii_font_texture, load_hud_font_atlas,
 };
+
+use crate::sign_scene::sign_model_wood;
 
 pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Option<&PackRoots>) {
     let Some(roots) = roots else {
@@ -1333,12 +1336,13 @@ fn load_hanging_sign_backgrounds(
     renderer: &mut bbb_renderer::Renderer,
     roots: &PackRoots,
 ) -> Result<()> {
-    for (wood, name) in HANGING_SIGN_BACKGROUNDS {
+    for wood in vanilla_sign_wood_kinds() {
+        let name = wood.name();
         let path = format!("textures/gui/hanging_signs/{name}.png");
         let id = format!("minecraft:textures/gui/hanging_signs/{name}");
         let texture = gui_texture(roots, &path, &id)?;
         renderer.upload_hud_hanging_sign_background(
-            *wood,
+            sign_model_wood(wood),
             texture.width,
             texture.height,
             &texture.rgba,
@@ -1346,21 +1350,6 @@ fn load_hanging_sign_backgrounds(
     }
     Ok(())
 }
-
-const HANGING_SIGN_BACKGROUNDS: &[(SignModelWood, &str)] = &[
-    (SignModelWood::Oak, "oak"),
-    (SignModelWood::Spruce, "spruce"),
-    (SignModelWood::Birch, "birch"),
-    (SignModelWood::Acacia, "acacia"),
-    (SignModelWood::Cherry, "cherry"),
-    (SignModelWood::Jungle, "jungle"),
-    (SignModelWood::DarkOak, "dark_oak"),
-    (SignModelWood::PaleOak, "pale_oak"),
-    (SignModelWood::Crimson, "crimson"),
-    (SignModelWood::Warped, "warped"),
-    (SignModelWood::Mangrove, "mangrove"),
-    (SignModelWood::Bamboo, "bamboo"),
-];
 
 fn load_gui_sprites(roots: &PackRoots) -> Result<HashMap<String, SpriteImage>> {
     Ok(roots

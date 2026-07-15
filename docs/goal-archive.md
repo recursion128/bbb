@@ -15583,3 +15583,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native 删除 9 项 `THROWN_ITEM_PROJECTILE_BILLBOARDS` 表和 model-kind 中分散的
   `NoRender` type arms；billboard 枚举与 3D model 抑制直接消费 renderer owner 查询，exact-set/
   scale/full-bright/Python fixture/native 回归与 generator-emitted 反向门禁锁定该边界。
+
+## 2026-07-15：Generate sign wood catalog
+
+- [x] bootstrap extractor 通过统一 Tree-sitter frontend 从 `WoodType.java` 的有序
+  `register(new WoodType(name, ...))` 字段生成 12 项 `SignWoodKind`、name/parse 与迭代 API，
+  并锁定 `Object2ObjectArrayMap`、register helper 和 `values()` 顺序契约。
+- [x] world block-name parsing 与 native `HangingSignEditScreen` 背景资源加载共享生成 owner；
+  删除 12 项 `HANGING_SIGN_BACKGROUNDS` 表，extractor/generator fixture、sign/native 回归及
+  generator-emitted 反向门禁防止第二事实源回归。
