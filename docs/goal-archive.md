@@ -15323,3 +15323,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] enchantment owner 的 bootstrap-generated 反向门禁禁止历史
   `vanilla_enchantment_max_level` bridge 复生；43 项 identity/max-level catalog 与 synced/default
   tooltip 回归继续覆盖直接消费路径。
+
+## 2026-07-15：Generate vanilla entity pickability from class behavior
+
+- [x] 对照 vanilla 26.1 `Entity.isPickable` 的全部实体类覆盖与
+  `EntityTypeTags.REDIRECTABLE_PROJECTILE`，entity-metadata generator 解析最近覆盖的返回表达式并
+  生成 127 项 class-path 资格；与 3 项 generated tag 成员组合成 130 个可拾取类型，未知覆盖形态会
+  让生成失败。
+- [x] world 删除手写 raw registry-id membership 表，箭/光灵箭/三叉戟、龙火球、凋灵头、羊驼唾沫、
+  唤魔者尖牙和经验球不再错误进入拾取目标；实体尺寸与拾取资格分离，确保这些不可拾取实体仍保留
+  模型、眼高和粒子锚点，F3+I 也不再通过准星命中它们（direct save-NBT encoder 覆盖保留）。catalog
+  exact-count/正反例、旧表反向守卫及 world/native 回归覆盖该边界。

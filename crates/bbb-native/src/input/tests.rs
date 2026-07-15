@@ -257,6 +257,24 @@ impl DebugClipboard for MockDebugClipboard {
     }
 }
 
+fn assert_unpickable_debug_entity_copy(
+    input: &mut ClientInputState,
+    world: &WorldStore,
+    clipboard: &MockDebugClipboard,
+    entity_id: i32,
+    expected_direct_command: &str,
+) {
+    assert_eq!(clipboard.text, None);
+    assert_eq!(
+        debug_copy_recreate_entity_command(world, None, entity_id, true)
+            .expect("direct recreate command remains available")
+            .command,
+        expected_direct_command
+    );
+    assert!(input.take_debug_recreate_server_query_requests().is_empty());
+    assert!(world.client_chat().messages.is_empty());
+}
+
 struct VariableDebugOptionsSearchTextMeasurer;
 
 impl DebugOptionsSearchTextMeasurer for VariableDebugOptionsSearchTextMeasurer {
@@ -8538,7 +8556,7 @@ fn shift_f3_i_with_permission_copies_local_end_crystal_save_nbt_to_clipboard() {
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_evoker_fangs_save_nbt_to_clipboard() {
+fn shift_f3_i_skips_unpickable_evoker_fangs_but_direct_copy_encodes_save_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -8585,19 +8603,13 @@ fn shift_f3_i_with_permission_copies_local_evoker_fangs_save_nbt_to_clipboard() 
         Some(&mut clipboard)
     ));
 
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some(
-            "/summon minecraft:evoker_fangs 0.00 1.50 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f]}"
-        )
-    );
-    assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Copied client-side entity data to clipboard"
+    assert_unpickable_debug_entity_copy(
+        &mut input,
+        &world,
+        &clipboard,
+        51,
+        "/summon minecraft:evoker_fangs 0.00 1.50 2.00 \
+         {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f]}",
     );
 }
 
@@ -10302,7 +10314,7 @@ fn component_patch_dispatch_uses_encoder_registry_and_catalog_metadata() {
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_dragon_fireball_save_nbt_to_clipboard() {
+fn shift_f3_i_skips_unpickable_dragon_fireball_but_direct_copy_encodes_save_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10353,21 +10365,15 @@ fn shift_f3_i_with_permission_copies_local_dragon_fireball_save_nbt_to_clipboard
         Some(&mut clipboard)
     ));
 
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some(
-            "/summon minecraft:dragon_fireball 0.00 1.00 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             HasBeenShot: 0b, \
-             acceleration_power: 0.25d}"
-        )
-    );
-    assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Copied client-side entity data to clipboard"
+    assert_unpickable_debug_entity_copy(
+        &mut input,
+        &world,
+        &clipboard,
+        54,
+        "/summon minecraft:dragon_fireball 0.00 1.00 2.00 \
+         {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+         HasBeenShot: 0b, \
+         acceleration_power: 0.25d}",
     );
 }
 
@@ -10457,7 +10463,7 @@ fn shift_f3_i_with_permission_copies_local_breeze_wind_charge_save_nbt_to_clipbo
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_wither_skull_save_nbt_to_clipboard() {
+fn shift_f3_i_skips_unpickable_wither_skull_but_direct_copy_encodes_save_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10516,26 +10522,20 @@ fn shift_f3_i_with_permission_copies_local_wither_skull_save_nbt_to_clipboard() 
         Some(&mut clipboard)
     ));
 
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some(
-            "/summon minecraft:wither_skull 0.00 1.50 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             HasBeenShot: 0b, \
-             acceleration_power: 0.5d, dangerous: 1b}"
-        )
-    );
-    assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Copied client-side entity data to clipboard"
+    assert_unpickable_debug_entity_copy(
+        &mut input,
+        &world,
+        &clipboard,
+        53,
+        "/summon minecraft:wither_skull 0.00 1.50 2.00 \
+         {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+         HasBeenShot: 0b, \
+         acceleration_power: 0.5d, dangerous: 1b}",
     );
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_llama_spit_save_nbt_to_clipboard() {
+fn shift_f3_i_skips_unpickable_llama_spit_but_direct_copy_encodes_save_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10582,25 +10582,19 @@ fn shift_f3_i_with_permission_copies_local_llama_spit_save_nbt_to_clipboard() {
         Some(&mut clipboard)
     ));
 
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some(
-            "/summon minecraft:llama_spit 0.00 1.50 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             HasBeenShot: 0b}"
-        )
-    );
-    assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Copied client-side entity data to clipboard"
+    assert_unpickable_debug_entity_copy(
+        &mut input,
+        &world,
+        &clipboard,
+        57,
+        "/summon minecraft:llama_spit 0.00 1.50 2.00 \
+         {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+         HasBeenShot: 0b}",
     );
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_arrow_save_nbt_to_clipboard() {
+fn shift_f3_i_skips_unpickable_arrow_but_direct_copy_encodes_save_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10662,25 +10656,19 @@ fn shift_f3_i_with_permission_copies_local_arrow_save_nbt_to_clipboard() {
         Some(&mut clipboard)
     ));
 
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some(
-            "/summon minecraft:arrow 0.00 1.50 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             HasBeenShot: 0b, crit: 1b, PierceLevel: 3b}"
-        )
-    );
-    assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Copied client-side entity data to clipboard"
+    assert_unpickable_debug_entity_copy(
+        &mut input,
+        &world,
+        &clipboard,
+        58,
+        "/summon minecraft:arrow 0.00 1.50 2.00 \
+         {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+         HasBeenShot: 0b, crit: 1b, PierceLevel: 3b}",
     );
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_spectral_arrow_save_nbt_to_clipboard() {
+fn shift_f3_i_skips_unpickable_spectral_arrow_but_direct_copy_encodes_save_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10742,25 +10730,19 @@ fn shift_f3_i_with_permission_copies_local_spectral_arrow_save_nbt_to_clipboard(
         Some(&mut clipboard)
     ));
 
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some(
-            "/summon minecraft:spectral_arrow 0.00 1.50 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             HasBeenShot: 0b, crit: 1b, PierceLevel: 2b}"
-        )
-    );
-    assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Copied client-side entity data to clipboard"
+    assert_unpickable_debug_entity_copy(
+        &mut input,
+        &world,
+        &clipboard,
+        59,
+        "/summon minecraft:spectral_arrow 0.00 1.50 2.00 \
+         {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+         HasBeenShot: 0b, crit: 1b, PierceLevel: 2b}",
     );
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_trident_save_nbt_to_clipboard() {
+fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10822,20 +10804,14 @@ fn shift_f3_i_with_permission_copies_local_trident_save_nbt_to_clipboard() {
         Some(&mut clipboard)
     ));
 
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some(
-            "/summon minecraft:trident 0.00 1.50 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             HasBeenShot: 0b, crit: 1b, PierceLevel: 4b, DealtDamage: 0b}"
-        )
-    );
-    assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Copied client-side entity data to clipboard"
+    assert_unpickable_debug_entity_copy(
+        &mut input,
+        &world,
+        &clipboard,
+        60,
+        "/summon minecraft:trident 0.00 1.50 2.00 \
+         {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+         HasBeenShot: 0b, crit: 1b, PierceLevel: 4b, DealtDamage: 0b}",
     );
 
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
@@ -12245,7 +12221,7 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
 }
 
 #[test]
-fn shift_f3_i_with_permission_copies_local_experience_orb_save_nbt_to_clipboard() {
+fn shift_f3_i_skips_unpickable_experience_orb_but_direct_copy_encodes_save_nbt() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -12300,20 +12276,14 @@ fn shift_f3_i_with_permission_copies_local_experience_orb_save_nbt_to_clipboard(
         Some(&mut clipboard)
     ));
 
-    assert_eq!(
-        clipboard.text.as_deref(),
-        Some(
-            "/summon minecraft:experience_orb 0.00 1.50 2.00 \
-             {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
-             Value: 149s}"
-        )
-    );
-    assert!(input.take_debug_recreate_server_query_requests().is_empty());
-    let messages = &world.client_chat().messages;
-    assert_eq!(messages.len(), 1);
-    assert_eq!(
-        messages[0].content,
-        "[Debug]: Copied client-side entity data to clipboard"
+    assert_unpickable_debug_entity_copy(
+        &mut input,
+        &world,
+        &clipboard,
+        59,
+        "/summon minecraft:experience_orb 0.00 1.50 2.00 \
+         {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
+         Value: 149s}",
     );
 }
 

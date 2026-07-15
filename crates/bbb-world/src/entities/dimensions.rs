@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::schema::{
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_is_pickable,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
@@ -151,9 +152,11 @@ impl EntityPickBoundsState {
 }
 
 pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<EntityPickBoundsState> {
-    VANILLA_ENTITY_PICKABLE_TYPE_IDS
-        .binary_search(&entity_type_id)
-        .ok()?;
+    vanilla_entity_metadata_type_is_pickable(entity_type_id).then_some(())?;
+    vanilla_bounds_for_type(entity_type_id)
+}
+
+fn vanilla_bounds_for_type(entity_type_id: i32) -> Option<EntityPickBoundsState> {
     let [width, height] = vanilla_entity_type_dimensions(entity_type_id)?;
     let pick_radius = if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
         || vanilla_entity_type_is_redirectable_projectile(entity_type_id)
@@ -170,6 +173,25 @@ pub(crate) fn vanilla_pick_bounds_for_type(entity_type_id: i32) -> Option<Entity
 }
 
 pub(crate) fn vanilla_pick_bounds_for_entity_data(
+    entity_type_id: i32,
+    add_entity_data: i32,
+    data_values: &[EntityDataValue],
+    attributes: &[AttributeSnapshot],
+    client_animations: Option<EntityClientAnimationState>,
+    painting_variant: Option<&PaintingVariantClientProjection>,
+) -> Option<EntityPickBoundsState> {
+    vanilla_entity_metadata_type_is_pickable(entity_type_id).then_some(())?;
+    vanilla_bounds_for_entity_data(
+        entity_type_id,
+        add_entity_data,
+        data_values,
+        attributes,
+        client_animations,
+        painting_variant,
+    )
+}
+
+fn vanilla_bounds_for_entity_data(
     entity_type_id: i32,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
@@ -221,7 +243,7 @@ pub(crate) fn vanilla_pick_bounds_for_entity_data(
     } else if super::vanilla_entity_type_is_wind_charge(entity_type_id) {
         wind_charge_pick_bounds(entity_type_id)
     } else {
-        vanilla_pick_bounds_for_type(entity_type_id)?
+        vanilla_bounds_for_type(entity_type_id)?
     };
 
     Some(apply_living_scale(
@@ -251,7 +273,7 @@ pub(crate) fn vanilla_model_source_bounds_for_entity_data(
             scales_with_living_scale_attribute(entity_type_id, data_values),
         ));
     }
-    vanilla_pick_bounds_for_entity_data(
+    vanilla_bounds_for_entity_data(
         entity_type_id,
         add_entity_data,
         data_values,
@@ -273,7 +295,7 @@ pub(crate) fn vanilla_eye_height_for_entity_data(
         // Vanilla 26.1 `EntityDimensions.defaultEyeHeight`: `height * 0.85F`.
         return Some(8.0 * DEFAULT_ENTITY_EYE_HEIGHT_RATIO);
     }
-    let bounds = vanilla_pick_bounds_for_entity_data(
+    let bounds = vanilla_bounds_for_entity_data(
         entity_type_id,
         add_entity_data,
         data_values,
@@ -633,7 +655,7 @@ fn scaled_eye_height_for_bounds(
     base_eye_height: f32,
     actual_height: f32,
 ) -> Option<f32> {
-    let base_height = vanilla_pick_bounds_for_type(entity_type_id).map(bounds_height)?;
+    let base_height = vanilla_bounds_for_type(entity_type_id).map(bounds_height)?;
     (base_height > 0.0).then_some(base_eye_height * actual_height / base_height)
 }
 
@@ -1450,140 +1472,3 @@ fn vanilla_direction_from_3d_data(data: i32) -> VanillaDirection {
         _ => VanillaDirection::East,
     }
 }
-
-// IDs are the vanilla 26.1 EntityType registry order from EntityType.java.
-const VANILLA_ENTITY_PICKABLE_TYPE_IDS: &[i32] = &[
-    0,   // minecraft:acacia_boat
-    1,   // minecraft:acacia_chest_boat
-    2,   // minecraft:allay
-    4,   // minecraft:armadillo
-    5,   // minecraft:armor_stand
-    6,   // minecraft:arrow
-    7,   // minecraft:axolotl
-    8,   // minecraft:bamboo_chest_raft
-    9,   // minecraft:bamboo_raft
-    10,  // minecraft:bat
-    11,  // minecraft:bee
-    12,  // minecraft:birch_boat
-    13,  // minecraft:birch_chest_boat
-    14,  // minecraft:blaze
-    16,  // minecraft:bogged
-    17,  // minecraft:breeze
-    18,  // minecraft:breeze_wind_charge
-    19,  // minecraft:camel
-    20,  // minecraft:camel_husk
-    21,  // minecraft:cat
-    22,  // minecraft:cave_spider
-    23,  // minecraft:cherry_boat
-    24,  // minecraft:cherry_chest_boat
-    25,  // minecraft:chest_minecart
-    26,  // minecraft:chicken
-    27,  // minecraft:cod
-    28,  // minecraft:copper_golem
-    29,  // minecraft:command_block_minecart
-    30,  // minecraft:cow
-    31,  // minecraft:creaking
-    32,  // minecraft:creeper
-    33,  // minecraft:dark_oak_boat
-    34,  // minecraft:dark_oak_chest_boat
-    35,  // minecraft:dolphin
-    36,  // minecraft:donkey
-    37,  // minecraft:dragon_fireball
-    38,  // minecraft:drowned
-    40,  // minecraft:elder_guardian
-    41,  // minecraft:enderman
-    42,  // minecraft:endermite
-    45,  // minecraft:end_crystal
-    46,  // minecraft:evoker
-    47,  // minecraft:evoker_fangs
-    49,  // minecraft:experience_orb
-    51,  // minecraft:falling_block
-    52,  // minecraft:fireball
-    54,  // minecraft:fox
-    55,  // minecraft:frog
-    56,  // minecraft:furnace_minecart
-    57,  // minecraft:ghast
-    58,  // minecraft:happy_ghast
-    59,  // minecraft:giant
-    61,  // minecraft:glow_squid
-    62,  // minecraft:goat
-    63,  // minecraft:guardian
-    64,  // minecraft:hoglin
-    65,  // minecraft:hopper_minecart
-    66,  // minecraft:horse
-    67,  // minecraft:husk
-    68,  // minecraft:illusioner
-    70,  // minecraft:iron_golem
-    74,  // minecraft:jungle_boat
-    75,  // minecraft:jungle_chest_boat
-    78,  // minecraft:llama
-    79,  // minecraft:llama_spit
-    80,  // minecraft:magma_cube
-    81,  // minecraft:mangrove_boat
-    82,  // minecraft:mangrove_chest_boat
-    83,  // minecraft:mannequin
-    85,  // minecraft:minecart
-    86,  // minecraft:mooshroom
-    87,  // minecraft:mule
-    88,  // minecraft:nautilus
-    89,  // minecraft:oak_boat
-    90,  // minecraft:oak_chest_boat
-    91,  // minecraft:ocelot
-    94,  // minecraft:pale_oak_boat
-    95,  // minecraft:pale_oak_chest_boat
-    96,  // minecraft:panda
-    97,  // minecraft:parched
-    98,  // minecraft:parrot
-    99,  // minecraft:phantom
-    100, // minecraft:pig
-    101, // minecraft:piglin
-    102, // minecraft:piglin_brute
-    103, // minecraft:pillager
-    104, // minecraft:polar_bear
-    107, // minecraft:pufferfish
-    108, // minecraft:rabbit
-    109, // minecraft:ravager
-    110, // minecraft:salmon
-    111, // minecraft:sheep
-    112, // minecraft:shulker
-    113, // minecraft:shulker_bullet
-    114, // minecraft:silverfish
-    115, // minecraft:skeleton
-    116, // minecraft:skeleton_horse
-    117, // minecraft:slime
-    119, // minecraft:sniffer
-    121, // minecraft:snow_golem
-    122, // minecraft:spawner_minecart
-    123, // minecraft:spectral_arrow
-    124, // minecraft:spider
-    125, // minecraft:spruce_boat
-    126, // minecraft:spruce_chest_boat
-    127, // minecraft:squid
-    128, // minecraft:stray
-    129, // minecraft:strider
-    130, // minecraft:tadpole
-    132, // minecraft:tnt
-    133, // minecraft:tnt_minecart
-    134, // minecraft:trader_llama
-    135, // minecraft:trident
-    136, // minecraft:tropical_fish
-    137, // minecraft:turtle
-    138, // minecraft:vex
-    139, // minecraft:villager
-    140, // minecraft:vindicator
-    141, // minecraft:wandering_trader
-    142, // minecraft:warden
-    143, // minecraft:wind_charge
-    144, // minecraft:witch
-    145, // minecraft:wither
-    146, // minecraft:wither_skeleton
-    147, // minecraft:wither_skull
-    148, // minecraft:wolf
-    149, // minecraft:zoglin
-    150, // minecraft:zombie
-    151, // minecraft:zombie_horse
-    152, // minecraft:zombie_nautilus
-    153, // minecraft:zombie_villager
-    154, // minecraft:zombified_piglin
-    155, // minecraft:player
-];

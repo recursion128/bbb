@@ -217,6 +217,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub resource_id: &'static str,
     pub runtime_class: Option<&'static str>,
     pub schema_class: Option<&'static str>,
+    pub is_pickable_by_class: bool,
     pub is_living: bool,
     pub is_animal: bool,
     pub is_projectile: bool,
@@ -334,6 +335,22 @@ pub fn vanilla_entity_metadata_type_is_living(entity_type_id: i32) -> bool {
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
         .map(|entry| entry.is_living)
         .unwrap_or(false)
+}
+
+/// Returns whether vanilla's generated class hierarchy and entity-type tags make this type
+/// eligible for `Entity.isPickable` before per-instance state gates.
+///
+/// The generated class flag interprets the nearest `isPickable` override. Redirectable
+/// projectiles are composed from the generated registry tag catalog; the world query separately
+/// handles removed entities, spectator players, and marker armor stands.
+pub fn vanilla_entity_metadata_type_is_pickable(entity_type_id: i32) -> bool {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .map(|entry| entry.is_pickable_by_class)
+        .unwrap_or(false)
+        || bbb_protocol::entity_types::vanilla_entity_type_is_redirectable_projectile(
+            entity_type_id,
+        )
 }
 
 /// Returns whether the generated vanilla runtime class implements `Leashable`,
@@ -658,6 +675,75 @@ mod tests {
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
+                .filter(|entry| entry.is_pickable_by_class)
+                .count(),
+            127
+        );
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| vanilla_entity_metadata_type_is_pickable(entry.entity_type_id))
+                .count(),
+            130
+        );
+        for resource_id in [
+            "minecraft:allay",
+            "minecraft:end_crystal",
+            "minecraft:falling_block",
+            "minecraft:item_frame",
+            "minecraft:leash_knot",
+            "minecraft:painting",
+            "minecraft:shulker_bullet",
+            "minecraft:tnt",
+        ] {
+            let entry = VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .find(|entry| entry.resource_id == resource_id)
+                .unwrap();
+            assert!(entry.is_pickable_by_class, "{resource_id}");
+            assert!(vanilla_entity_metadata_type_is_pickable(
+                entry.entity_type_id
+            ));
+        }
+        for resource_id in [
+            "minecraft:breeze_wind_charge",
+            "minecraft:fireball",
+            "minecraft:wind_charge",
+        ] {
+            let entry = VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .find(|entry| entry.resource_id == resource_id)
+                .unwrap();
+            assert!(!entry.is_pickable_by_class, "{resource_id}");
+            assert!(vanilla_entity_metadata_type_is_pickable(
+                entry.entity_type_id
+            ));
+        }
+        for resource_id in [
+            "minecraft:arrow",
+            "minecraft:dragon_fireball",
+            "minecraft:ender_dragon",
+            "minecraft:evoker_fangs",
+            "minecraft:experience_orb",
+            "minecraft:llama_spit",
+            "minecraft:spectral_arrow",
+            "minecraft:trident",
+            "minecraft:wither_skull",
+        ] {
+            let entry = VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .find(|entry| entry.resource_id == resource_id)
+                .unwrap();
+            assert!(!entry.is_pickable_by_class, "{resource_id}");
+            assert!(!vanilla_entity_metadata_type_is_pickable(
+                entry.entity_type_id
+            ));
+        }
+        assert!(!vanilla_entity_metadata_type_is_pickable(-1));
+        assert!(!vanilla_entity_metadata_type_is_pickable(157));
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
                 .filter(|entry| entry.is_living)
                 .count(),
             92
@@ -839,6 +925,8 @@ mod tests {
         let old_table = ["VANILLA_LIVING_", "ENTITY_TYPE_IDS"].concat();
         let dimensions = include_str!("dimensions.rs");
         assert!(!dimensions.contains(&old_table));
+        let old_pickable_table = ["VANILLA_ENTITY_PICKABLE_", "TYPE_IDS"].concat();
+        assert!(!dimensions.contains(&old_pickable_table));
         let animal_query = dimensions
             .split("pub(crate) fn vanilla_animal_entity_type")
             .nth(1)

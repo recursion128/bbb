@@ -1216,7 +1216,7 @@ impl EntityStore {
         )
     }
 
-    fn model_source_bounds(
+    pub(crate) fn model_source_bounds(
         &self,
         id: i32,
         registries: &RegistrySet,
@@ -4082,7 +4082,7 @@ fn append_client_tick_particle_triggers(
     if triggers.ravager_stun.is_none() && triggers.evoker_fangs_crit.is_none() {
         return;
     }
-    let Some(bounds) = vanilla_pick_bounds_for_entity_data(
+    let Some(bounds) = vanilla_model_source_bounds_for_entity_data(
         identity.entity_type_id,
         identity.data,
         data_values,

@@ -962,7 +962,7 @@ fn entity_transform_queries_read_components_without_full_entity_snapshot() {
 }
 
 #[test]
-fn entity_pick_bounds_follow_vanilla_pickable_subset() {
+fn entity_pick_bounds_follow_vanilla_is_pickable() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(10, 14));
     store.apply_add_entity(protocol_add_entity_with_type(11, 0));
@@ -1003,6 +1003,22 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
         76,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
     ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        77,
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        78,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        79,
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID,
+    ));
 
     assert_eq!(
         store.probe_entity_pick_bounds(10),
@@ -1036,22 +1052,14 @@ fn entity_pick_bounds_follow_vanilla_pickable_subset() {
         store.probe_entity_pick_bounds(72),
         Some(wind_charge_pick_bounds())
     );
-    assert_eq!(
-        store.probe_entity_pick_bounds(73),
-        Some(EntityPickBoundsState::from_base_size(0.3125, 0.3125, 0.0))
-    );
-    assert_eq!(
-        store.probe_entity_pick_bounds(74),
-        Some(EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0))
-    );
-    assert_eq!(
-        store.probe_entity_pick_bounds(75),
-        Some(EntityPickBoundsState::from_base_size(0.25, 0.25, 0.0))
-    );
-    assert_eq!(
-        store.probe_entity_pick_bounds(76),
-        Some(EntityPickBoundsState::from_base_size(0.5, 0.5, 0.0))
-    );
+    for entity_id in [73, 74, 75, 76, 77, 78, 79, 80] {
+        assert_eq!(store.probe_entity_pick_bounds(entity_id), None);
+    }
+    for entity_id in [77, 78, 79, 80] {
+        assert!(store
+            .entity_model_source_at_partial_tick(entity_id, 1.0)
+            .is_some());
+    }
     assert_eq!(
         store.probe_entity_pick_bounds(19),
         Some(EntityPickBoundsState::from_base_size(1.0, 1.0, 0.0))

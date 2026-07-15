@@ -2658,7 +2658,9 @@ impl WorldStore {
         if color == -1 {
             return None;
         }
-        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        let bounds = self
+            .entities
+            .model_source_bounds(entity_id, &self.registries)?;
         Some(ArrowEffectParticleState {
             entity_id,
             position: transform.position,
