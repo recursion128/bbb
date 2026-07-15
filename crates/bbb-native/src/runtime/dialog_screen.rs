@@ -20,8 +20,8 @@ use bbb_world::{
     CommonDialogDataState, DialogActionState, DialogBodyFocusPartState, DialogBodyState,
     DialogButtonState, DialogCommandTemplateState, DialogDataState, DialogFocusState,
     DialogInputControlState, DialogInputValueState, DialogItemStackTemplateState,
-    DialogNumberRangeState, DialogPlainMessageState, DialogState, DialogTextMultilineState,
-    DialogTextState, ServerLinkState, WorldStore,
+    DialogLinkConfirmationState, DialogNumberRangeState, DialogPlainMessageState, DialogState,
+    DialogTextMultilineState, DialogTextState, ServerLinkState, WorldStore,
 };
 use tokio::sync::mpsc;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
@@ -45,6 +45,7 @@ const WARNING_BUTTON_SIZE: i32 = 20;
 const WARNING_BUTTON_SPACING: i32 = 10;
 const BODY_SCROLLBAR_RESERVE: i32 = 10;
 const CONFIRM_BUTTON_WIDTH: u32 = 150;
+const CONFIRM_LINK_BUTTON_WIDTH: u32 = 100;
 const CONFIRM_BUTTON_SPACING: i32 = 4;
 const CONFIRM_ELEMENT_SPACING: i32 = 8;
 const CONFIRM_BUTTON_PADDING_TOP: i32 = 16;
@@ -94,6 +95,12 @@ const DIALOG_WARNING_CONTENTS: &str = concat!(
 const DIALOG_WARNING_TOOLTIP: &str = "This is a custom screen. Click here to learn more.";
 const DIALOG_WARNING_DISCONNECT: &str = "Disconnect";
 const DIALOG_WARNING_BACK: &str = "Back";
+const CONFIRM_LINK_TITLE: &str = "Are you sure you want to open the following website?";
+const CONFIRM_LINK_WARNING: &str = "Never open links from people that you don't trust!";
+const CONFIRM_LINK_YES: &str = "Yes";
+const CONFIRM_LINK_COPY: &str = "Copy to Clipboard";
+const CONFIRM_LINK_NO: &str = "No";
+const CONFIRM_LINK_WARNING_COLOR: [f32; 4] = [1.0, 204.0 / 255.0, 204.0 / 255.0, 1.0];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DialogTextLine {
@@ -125,6 +132,16 @@ struct DialogWarningScreenLayout {
     message_y: i32,
     yes: DialogButtonLayout,
     no: DialogButtonLayout,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DialogConfirmLinkLayout {
+    screen_width: u32,
+    screen_height: u32,
+    title_y: i32,
+    message_y: i32,
+    warning_y: i32,
+    buttons: [DialogButtonLayout; 3],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -533,6 +550,89 @@ impl DialogWarningScreenLayout {
                 )
                 .then_some(result)
             })
+    }
+}
+
+impl DialogConfirmLinkLayout {
+    fn new(message_line_count: usize, surface_size: PhysicalSize<u32>) -> Self {
+        let screen_width = surface_size.width.clamp(1, 512);
+        let screen_height = surface_size.height.clamp(1, 512);
+        let screen_width_i32 = i32::try_from(screen_width).unwrap_or(i32::MAX);
+        let screen_height_i32 = i32::try_from(screen_height).unwrap_or(i32::MAX);
+        let message_height = i32::try_from(message_line_count)
+            .unwrap_or(i32::MAX)
+            .saturating_mul(TEXT_LINE_HEIGHT);
+        let layout_height = TEXT_LINE_HEIGHT
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(message_height)
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(TEXT_LINE_HEIGHT)
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(CONFIRM_BUTTON_PADDING_TOP)
+            .saturating_add(i32::try_from(BUTTON_HEIGHT).unwrap_or(i32::MAX));
+        let layout_y = (screen_height_i32 - layout_height) / 2;
+        let warning_y = layout_y
+            .saturating_add(TEXT_LINE_HEIGHT)
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(message_height)
+            .saturating_add(CONFIRM_ELEMENT_SPACING);
+        let button_y = warning_y
+            .saturating_add(TEXT_LINE_HEIGHT)
+            .saturating_add(CONFIRM_ELEMENT_SPACING)
+            .saturating_add(CONFIRM_BUTTON_PADDING_TOP);
+        let button_width = i32::try_from(CONFIRM_LINK_BUTTON_WIDTH).unwrap_or(i32::MAX);
+        let button_row_width = button_width
+            .saturating_mul(3)
+            .saturating_add(CONFIRM_BUTTON_SPACING.saturating_mul(2));
+        let button_x = (screen_width_i32 - button_row_width) / 2;
+        Self {
+            screen_width,
+            screen_height,
+            title_y: layout_y,
+            message_y: layout_y
+                .saturating_add(TEXT_LINE_HEIGHT)
+                .saturating_add(CONFIRM_ELEMENT_SPACING),
+            warning_y,
+            buttons: [
+                DialogButtonLayout {
+                    x: button_x,
+                    y: button_y,
+                    width: CONFIRM_LINK_BUTTON_WIDTH,
+                },
+                DialogButtonLayout {
+                    x: button_x
+                        .saturating_add(button_width)
+                        .saturating_add(CONFIRM_BUTTON_SPACING),
+                    y: button_y,
+                    width: CONFIRM_LINK_BUTTON_WIDTH,
+                },
+                DialogButtonLayout {
+                    x: button_x
+                        .saturating_add(button_width.saturating_mul(2))
+                        .saturating_add(CONFIRM_BUTTON_SPACING.saturating_mul(2)),
+                    y: button_y,
+                    width: CONFIRM_LINK_BUTTON_WIDTH,
+                },
+            ],
+        }
+    }
+
+    fn button_at(
+        self,
+        cursor_position: Option<PhysicalPosition<f64>>,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<usize> {
+        self.buttons.iter().position(|button| {
+            screen_button_contains(
+                self.screen_width,
+                self.screen_height,
+                button.x,
+                button.y,
+                button.width,
+                cursor_position,
+                surface_size,
+            )
+        })
     }
 }
 
@@ -3004,6 +3104,7 @@ fn dialog_preedit_projection(
     text_measurer: &dyn DialogTextMeasurer,
 ) -> Option<DialogPreeditProjection> {
     if preedit.screen_revision != world.dialog_screen_revision()
+        || world.dialog_link_confirmation().is_some()
         || world.dialog_warning_is_open()
         || preedit.text.is_empty()
     {
@@ -3162,6 +3263,112 @@ fn dialog_preedit_projection(
             u32::try_from(hot_bottom.saturating_sub(hot_top).max(1)).unwrap_or(u32::MAX),
         ),
     })
+}
+
+pub(super) fn hud_dialog_confirm_link_screen(
+    confirmation: &DialogLinkConfirmationState,
+    focused_button: Option<usize>,
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+) -> HudInventoryScreen {
+    let message_width = surface_size
+        .width
+        .clamp(1, 512)
+        .saturating_sub(CONFIRM_MESSAGE_HORIZONTAL_PADDING)
+        .max(1);
+    let message_lines = plain_dialog_text_lines(&confirmation.url, message_width)
+        .into_iter()
+        .take(CONFIRM_MESSAGE_MAX_ROWS)
+        .collect::<Vec<_>>();
+    let layout = DialogConfirmLinkLayout::new(message_lines.len(), surface_size);
+    let cursor = cursor_position.map(|(x, y)| PhysicalPosition::new(f64::from(x), f64::from(y)));
+    let highlighted = layout.button_at(cursor, surface_size);
+    let screen_center_x = i32::try_from(layout.screen_width).unwrap_or(i32::MAX) / 2;
+    let mut text_labels = Vec::new();
+    push_centered_plain_text_label(
+        &mut text_labels,
+        CONFIRM_LINK_TITLE,
+        screen_center_x,
+        layout.title_y,
+        TEXT_COLOR,
+    );
+    let mut message_y = layout.message_y;
+    for line in message_lines {
+        push_centered_runs_text_label(
+            &mut text_labels,
+            line.runs,
+            screen_center_x,
+            message_y,
+            None,
+        );
+        message_y = message_y.saturating_add(TEXT_LINE_HEIGHT);
+    }
+    push_centered_plain_text_label(
+        &mut text_labels,
+        CONFIRM_LINK_WARNING,
+        screen_center_x,
+        layout.warning_y,
+        CONFIRM_LINK_WARNING_COLOR,
+    );
+    for (button, label) in
+        layout
+            .buttons
+            .into_iter()
+            .zip([CONFIRM_LINK_YES, CONFIRM_LINK_COPY, CONFIRM_LINK_NO])
+    {
+        push_centered_plain_text_label(
+            &mut text_labels,
+            label,
+            button
+                .x
+                .saturating_add(i32::try_from(button.width).unwrap_or(i32::MAX) / 2),
+            button.y.saturating_add(BUTTON_TEXT_Y_OFFSET),
+            TEXT_COLOR,
+        );
+    }
+    let mut background_layers = vec![inworld_menu_background_layer(
+        surface_size,
+        layout.screen_width,
+        layout.screen_height,
+    )];
+    background_layers.extend(
+        layout
+            .buttons
+            .into_iter()
+            .enumerate()
+            .map(|(index, button)| HudInventoryBackgroundLayer {
+                texture: if highlighted == Some(index) || focused_button == Some(index) {
+                    HudInventoryBackgroundTexture::WidgetButtonHighlighted
+                } else {
+                    HudInventoryBackgroundTexture::WidgetButton
+                },
+                x: button.x,
+                y: button.y,
+                width: button.width,
+                height: BUTTON_HEIGHT,
+                uv: HudUvRect {
+                    min: [0.0, 0.0],
+                    max: [1.0, 1.0],
+                },
+            }),
+    );
+    HudInventoryScreen {
+        width: layout.screen_width,
+        height: layout.screen_height,
+        background_layers,
+        foreground_layers: Vec::new(),
+        fill_layers: Vec::new(),
+        slots: Vec::new(),
+        floating_items: Vec::new(),
+        foreground_items: Vec::new(),
+        ghost_items: Vec::new(),
+        entity_previews: Vec::new(),
+        text_labels,
+        scroll_area: None,
+        preedit_overlay: None,
+        hovered_slot_id: None,
+        tooltip: None,
+    }
 }
 
 pub(super) fn hud_dialog_warning_screen(
@@ -3415,6 +3622,52 @@ pub(crate) fn handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
     surface_size: PhysicalSize<u32>,
     text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
+    if world.dialog_link_confirmation().is_some() {
+        if state != ElementState::Pressed {
+            return true;
+        }
+        let PhysicalKey::Code(code) = physical_key else {
+            return true;
+        };
+        match code {
+            KeyCode::Escape => {
+                world.resolve_dialog_link_confirmation(false);
+            }
+            KeyCode::Tab => {
+                let current = world.dialog_link_focused_button();
+                let next = if shift_down {
+                    current.map_or(2, |index| index.checked_sub(1).unwrap_or(2))
+                } else {
+                    current.map_or(0, |index| index.saturating_add(1) % 3)
+                };
+                world.focus_dialog_link_button(next);
+            }
+            KeyCode::ArrowLeft => {
+                let next = world
+                    .dialog_link_focused_button()
+                    .map_or(2, |index| index.saturating_sub(1));
+                world.focus_dialog_link_button(next);
+            }
+            KeyCode::ArrowRight => {
+                let next = world
+                    .dialog_link_focused_button()
+                    .map_or(0, |index| index.saturating_add(1).min(2));
+                world.focus_dialog_link_button(next);
+            }
+            KeyCode::ArrowUp | KeyCode::ArrowDown => {
+                if world.dialog_link_focused_button().is_none() {
+                    world.focus_dialog_link_button(0);
+                }
+            }
+            KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space => {
+                if let Some(index) = world.dialog_link_focused_button() {
+                    run_dialog_confirm_link_button(world, &mut clipboard, index);
+                }
+            }
+            _ => {}
+        }
+        return true;
+    }
     if world.dialog_warning_is_open() {
         if state != ElementState::Pressed {
             return true;
@@ -4202,7 +4455,7 @@ pub(crate) fn handle_dialog_text_input_with_measurer(
     text: &str,
     text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
-    if world.dialog_warning_is_open() {
+    if world.dialog_link_confirmation().is_some() || world.dialog_warning_is_open() {
         return true;
     }
     if world.dialog_text_edit_state().is_none() {
@@ -4286,6 +4539,26 @@ pub(crate) fn handle_dialog_mouse_input_with_modifiers_and_measurer(
         world.end_dialog_multiline_scroll_drag();
         world.end_dialog_body_scroll_drag();
         return world.dialog_screen_is_open();
+    }
+    if let Some(confirmation) = world.dialog_link_confirmation() {
+        if button == MouseButton::Left && state == ElementState::Pressed {
+            let message_width = surface_size
+                .width
+                .clamp(1, 512)
+                .saturating_sub(CONFIRM_MESSAGE_HORIZONTAL_PADDING)
+                .max(1);
+            let message_line_count = plain_dialog_text_lines(&confirmation.url, message_width)
+                .len()
+                .min(CONFIRM_MESSAGE_MAX_ROWS);
+            if let Some(index) = DialogConfirmLinkLayout::new(message_line_count, surface_size)
+                .button_at(cursor_position, surface_size)
+            {
+                world.focus_dialog_link_button(index);
+                let mut clipboard = clipboard;
+                run_dialog_confirm_link_button(world, &mut clipboard, index);
+            }
+        }
+        return true;
     }
     if world.dialog_warning_is_open() {
         if button == MouseButton::Left && state == ElementState::Pressed {
@@ -4822,7 +5095,7 @@ pub(crate) fn handle_dialog_mouse_wheel(
     cursor_position: Option<PhysicalPosition<f64>>,
     surface_size: PhysicalSize<u32>,
 ) -> bool {
-    if world.dialog_warning_is_open() {
+    if world.dialog_link_confirmation().is_some() || world.dialog_warning_is_open() {
         return true;
     }
     if world.dialog_waiting_ticks().is_some() {
@@ -4885,7 +5158,7 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
     surface_size: PhysicalSize<u32>,
     text_measurer: &dyn DialogTextMeasurer,
 ) -> bool {
-    if world.dialog_warning_is_open() {
+    if world.dialog_link_confirmation().is_some() || world.dialog_warning_is_open() {
         world.end_dialog_number_range_drag();
         world.end_dialog_text_input_drag();
         world.end_dialog_multiline_scroll_drag();
@@ -5089,6 +5362,31 @@ pub(crate) fn handle_dialog_cursor_moved_with_measurer(
     true
 }
 
+fn run_dialog_confirm_link_button(
+    world: &mut WorldStore,
+    clipboard: &mut Option<&mut dyn DebugClipboard>,
+    index: usize,
+) -> bool {
+    match index {
+        0 => world.resolve_dialog_link_confirmation(true),
+        1 => {
+            let url = world
+                .dialog_link_confirmation()
+                .map(|confirmation| confirmation.url.clone());
+            if let Some(url) = url {
+                if !url.is_empty() {
+                    if let Some(clipboard) = clipboard.as_deref_mut() {
+                        clipboard.set_debug_clipboard_text(&url);
+                    }
+                }
+            }
+            world.resolve_dialog_link_confirmation(false)
+        }
+        2 => world.resolve_dialog_link_confirmation(false),
+        _ => false,
+    }
+}
+
 fn run_dialog_warning_button(
     world: &mut WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -5221,6 +5519,9 @@ fn run_dialog_action(
                 }
             }
         }
+        Some(DialogActionState::OpenUrl { url }) => {
+            return world.open_dialog_url(url.clone(), after_action.to_string());
+        }
         Some(DialogActionState::ChangePage { .. }) => {
             // DialogScreen delegates this event to Screen.defaultHandleClickEvent,
             // which has no ChangePage arm. The BookViewScreen override is not
@@ -5232,7 +5533,6 @@ fn run_dialog_action(
             // so the suggestion has no text side effect, but vanilla still
             // activates the screen computed from `after_action` below.
         }
-        Some(_) => return false,
     }
     match after_action {
         "close" => world.close_dialog(),
@@ -7442,6 +7742,170 @@ mod tests {
             Some(DialogFocusState::Action { index: 0 })
         );
         assert!(world.current_dialog().is_some());
+        assert_eq!(
+            world.dialog_link_confirmation(),
+            Some(&DialogLinkConfirmationState {
+                url: "https://example.invalid/support".to_string(),
+                after_action: "close".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn confirm_link_screen_projects_vanilla_text_layout_and_three_buttons() {
+        let mut world = world_with_notice(vec![entry(
+            "after_action",
+            NbtSummaryValue::String("none".to_string()),
+        )]);
+        assert!(world.open_dialog_url(
+            "https://example.invalid/docs".to_string(),
+            "none".to_string(),
+        ));
+        assert!(world.focus_dialog_link_button(1));
+        let surface_size = PhysicalSize::new(320, 240);
+
+        let screen = hud_dialog_confirm_link_screen(
+            world.dialog_link_confirmation().unwrap(),
+            world.dialog_link_focused_button(),
+            None,
+            surface_size,
+        );
+
+        assert_eq!((screen.width, screen.height), (320, 240));
+        assert!(screen.text_labels.iter().any(|label| {
+            label.text == CONFIRM_LINK_TITLE && label.y == 76 && label.tint == TEXT_COLOR
+        }));
+        assert!(screen
+            .text_labels
+            .iter()
+            .any(|label| { label.text == "https://example.invalid/docs" && label.y == 93 }));
+        assert!(screen.text_labels.iter().any(|label| {
+            label.text == CONFIRM_LINK_WARNING
+                && label.y == 110
+                && label.tint == CONFIRM_LINK_WARNING_COLOR
+        }));
+        assert_eq!(
+            screen
+                .text_labels
+                .iter()
+                .filter(|label| matches!(label.text.as_str(), "Yes" | "Copy to Clipboard" | "No"))
+                .map(|label| (label.text.as_str(), label.y))
+                .collect::<Vec<_>>(),
+            [("Yes", 149), ("Copy to Clipboard", 149), ("No", 149)]
+        );
+        assert_eq!(
+            screen.background_layers[1..]
+                .iter()
+                .map(|layer| (layer.x, layer.y, layer.width, layer.texture))
+                .collect::<Vec<_>>(),
+            [
+                (6, 143, 100, HudInventoryBackgroundTexture::WidgetButton),
+                (
+                    110,
+                    143,
+                    100,
+                    HudInventoryBackgroundTexture::WidgetButtonHighlighted,
+                ),
+                (214, 143, 100, HudInventoryBackgroundTexture::WidgetButton),
+            ]
+        );
+    }
+
+    #[test]
+    fn confirm_link_keyboard_copies_or_cancels_without_opening_uri() {
+        let mut world = world_with_notice(vec![entry(
+            "after_action",
+            NbtSummaryValue::String("none".to_string()),
+        )]);
+        let mut counters = NetCounters::default();
+        assert!(run_dialog_action(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            Some(&DialogActionState::OpenUrl {
+                url: "https://example.invalid/copy".to_string(),
+            }),
+            "none",
+        ));
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Tab),
+            ElementState::Pressed,
+        ));
+        assert_eq!(world.dialog_link_focused_button(), Some(0));
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Tab),
+            ElementState::Pressed,
+        ));
+        assert_eq!(world.dialog_link_focused_button(), Some(1));
+        let mut clipboard = MockDialogClipboard::default();
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            Some(&mut clipboard),
+            PhysicalKey::Code(KeyCode::Enter),
+            ElementState::Pressed,
+        ));
+        assert_eq!(
+            clipboard.text.as_deref(),
+            Some("https://example.invalid/copy")
+        );
+        assert_eq!(world.dialog_link_confirmation(), None);
+        assert!(world.current_dialog().is_some());
+        assert!(world.take_dialog_open_url_requests().is_empty());
+
+        assert!(world.open_dialog_url(
+            "https://example.invalid/cancel".to_string(),
+            "none".to_string(),
+        ));
+        assert!(handle_dialog_key_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            PhysicalKey::Code(KeyCode::Escape),
+            ElementState::Pressed,
+        ));
+        assert_eq!(world.dialog_link_confirmation(), None);
+        assert!(world.current_dialog().is_some());
+        assert!(world.take_dialog_open_url_requests().is_empty());
+    }
+
+    #[test]
+    fn confirm_link_mouse_yes_queues_uri_and_applies_close_action() {
+        let mut world = world_with_notice(Vec::new());
+        assert!(world.open_dialog_url(
+            "https://example.invalid/open".to_string(),
+            "close".to_string(),
+        ));
+        let mut counters = NetCounters::default();
+
+        assert!(handle_dialog_mouse_input(
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            MouseButton::Left,
+            ElementState::Pressed,
+            Some(PhysicalPosition::new(7.0, 144.0)),
+            PhysicalSize::new(320, 240),
+        ));
+
+        assert_eq!(world.dialog_link_confirmation(), None);
+        assert!(world.current_dialog().is_none());
+        assert_eq!(
+            world.take_dialog_open_url_requests(),
+            ["https://example.invalid/open"]
+        );
     }
 
     #[test]

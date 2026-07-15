@@ -68,9 +68,7 @@ Owner: `bbb-protocol`
   requested host and port.
 - Complete native `Dialog` screen/runtime behavior against
   `DialogScreen`, `SimpleDialogScreen`, `DialogControlSet`, and
-  `DialogBodyHandlers`: execute open-url through the vanilla chat-links/
-  `ConfirmLinkScreen`/platform-opener flow and execute Component-click paths; and
-  restore native-owned
+  `DialogBodyHandlers`: execute Component-click paths; and restore native-owned
   chat/sign/debug and warning return-screen stacks when dialogs clear. The current
   Notice/Confirmation projection already sends static custom id/payload, lays out
   Confirmation's two footer actions with its no-button Escape binding and styled hover tooltips,
@@ -123,7 +121,10 @@ Owner: `bbb-protocol`
   while its hidden return dialog is replaced or cleared. The main dialog now keeps one transient
   warning/body/input/footer focus owner, follows vanilla's nested Tab and directional geometry,
   renders body outlines plus focused warning/action sprites and tooltips, and lets single-line Text
-  traverse by Tab without losing its cursor or selection. It still needs the remaining controls and
+  traverse by Tab without losing its cursor or selection. OpenUrl now honors startup-owned vanilla
+  chat-links/chat-links-prompt defaults, projects the untrusted ConfirmLinkScreen with URL, warning,
+  Yes/Copy/No controls, defers after-action until confirmation, and dispatches accepted HTTP(S) URIs
+  to the exact platform command without a shell. It still needs the remaining controls and
   actions before either
   `ShowDialog` row's `runtime_side_effect` coverage cell can close.
 - Thread the world/session owner into generic packet Components whose nested

@@ -72,8 +72,8 @@ pub use crate::client::stats::{
 pub use crate::client::ui::{
     code_of_conduct_text_hash, java_string_hash_code, BookScreenState, ClientUiState,
     CodeOfConductState, DialogBodyFocusPartState, DialogFocusState, DialogInputValueState,
-    DialogPreviousScreenState, DialogTextEditState, GhostRecipeState, MountScreenState,
-    OpenBookState, OpenSignEditorState, PongResponseState,
+    DialogLinkConfirmationState, DialogPreviousScreenState, DialogTextEditState, GhostRecipeState,
+    MountScreenState, OpenBookState, OpenSignEditorState, PongResponseState,
 };
 pub use crate::client::waypoints::{
     ClientWaypointsState, WaypointDataState, WaypointEventState, WaypointState, WaypointVec3iState,

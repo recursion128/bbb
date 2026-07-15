@@ -46,6 +46,7 @@ mod level_load_runtime;
 mod map_textures;
 mod particle_registry;
 mod particle_runtime;
+mod platform;
 mod recipe_book_ui;
 mod runtime;
 mod shulker_box_scene;
@@ -196,6 +197,7 @@ fn main() -> Result<()> {
     let control_requests = control.requests.clone();
     let world_shared = control.world.clone();
     let mut world = WorldStore::new();
+    world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
     let mut net_counters = NetCounters::default();
     let code_of_conduct_store_path = args
         .code_of_conduct_store
@@ -786,6 +788,7 @@ fn main() -> Result<()> {
                             window.inner_size(),
                             &renderer,
                         );
+                        drain_dialog_open_url_requests(&mut world);
                         if !runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }
@@ -1005,6 +1008,7 @@ fn main() -> Result<()> {
                             double_click,
                             &renderer,
                         );
+                        drain_dialog_open_url_requests(&mut world);
                         if !runtime_wants_cursor(&input, &world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }
@@ -1550,6 +1554,14 @@ fn drain_pause_screen_link_requests(input: &mut ClientInputState) {
                     "pause screen report-bugs link requested; native confirm-link screen is not implemented"
                 );
             }
+        }
+    }
+}
+
+fn drain_dialog_open_url_requests(world: &mut WorldStore) {
+    for url in world.take_dialog_open_url_requests() {
+        if let Err(err) = platform::open_uri(&url) {
+            tracing::warn!(?err, %url, "failed to open dialog URI");
         }
     }
 }

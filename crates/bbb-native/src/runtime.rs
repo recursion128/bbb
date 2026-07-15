@@ -199,7 +199,8 @@ pub(crate) use dialog_screen::{
     handle_dialog_text_input_with_measurer,
 };
 use dialog_screen::{
-    hud_dialog_screen_with_measurer, hud_dialog_warning_screen, hud_waiting_response_screen,
+    hud_dialog_confirm_link_screen, hud_dialog_screen_with_measurer, hud_dialog_warning_screen,
+    hud_waiting_response_screen,
 };
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
@@ -6070,6 +6071,14 @@ fn hud_inventory_screen_with_local_state_for_surface_and_measurer(
     dialog_text_measurer: &dyn dialog_screen::DialogTextMeasurer,
     partial_tick: f32,
 ) -> Option<HudInventoryScreen> {
+    if let Some(confirmation) = world.dialog_link_confirmation() {
+        return Some(hud_dialog_confirm_link_screen(
+            confirmation,
+            world.dialog_link_focused_button(),
+            local_state.cursor_position,
+            surface_size,
+        ));
+    }
     if world.dialog_warning_is_open() {
         return Some(hud_dialog_warning_screen(
             world.dialog_warning_focused_button(),

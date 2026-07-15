@@ -15015,3 +15015,21 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native regressions 覆盖 known/custom label、URI trust 过滤、uniform two-column/partial-row geometry、generated
   OpenUrl payload、无 tooltip、mouse focus、optional exit 与 empty-list Escape close；完整 Dialog screen regressions
   保持通过。OpenUrl 的 chat-links/`ConfirmLinkScreen`/platform opener 仍由下一独立 platform slice 完成。
+
+## 2026-07-15：Execute Dialog OpenUrl through ConfirmLinkScreen
+
+- [x] 对照 `Screen.defaultHandleClickEvent/clickUrlAction` 与 `Options`，Dialog OpenUrl 现在使用启动时
+  `--client-chat-links` / `--client-chat-links-prompt` 配置，二者默认均为 true；links 关闭时 action 无作用，
+  prompt 关闭时立即排队 URI 且保留当前 Dialog，prompt 开启时保存 active-screen 对应的
+  close/none/wait-for-response，直到用户选择后才执行转换。服务端 ClearDialog 在确认页顶层时只计 packet、
+  不移除隐藏 Dialog；确认页上收到 ShowDialog 时，新 Dialog 把确认页作为 previous screen，支持再次嵌套
+  确认页，并在新 Dialog/Waiting 关闭后逐层恢复原 URL、按钮 focus 与隐藏 Dialog 交互状态。
+- [x] 对照 `ConfirmLinkScreen` 与 `ConfirmScreen`，native 投影 untrusted 文案、最多 15 行且宽度为
+  screen-50 的 URL、`0xFFFFCCCC` 警告、100px Yes / Copy to Clipboard / No 三按钮、4px 横向与 8px
+  纵向间距、16px button top padding；mouse、Tab/Shift-Tab、方向键、Space/Enter 与 Escape 共享 world-owned
+  focus/lifecycle，Copy 写入既有 clipboard owner 后按 false callback 返回。
+- [x] 对照 `Util.OS.getOpenUriArguments`，新增 native platform owner：Windows 使用
+  `rundll32 url.dll,FileProtocolHandler <URI>`，macOS 使用 `open <URI>`，其余平台使用
+  `xdg-open <URI>`；参数直接交给 `Command` 而不经过 shell，子进程 stdio 关闭并由后台线程回收。
+  world/native/startup/platform regressions 覆盖 prompt lifecycle、deferred after-action、disabled/direct 模式、
+  HUD geometry、键鼠 copy/cancel/accept、参数默认值、三平台 argv 与 HTTP(S) 校验。

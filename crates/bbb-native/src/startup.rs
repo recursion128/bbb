@@ -62,6 +62,18 @@ pub(crate) struct Args {
         action = ArgAction::Set
     )]
     pub(crate) client_chat_colors: bool,
+    #[arg(
+        long = "client-chat-links",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_chat_links: bool,
+    #[arg(
+        long = "client-chat-links-prompt",
+        default_value_t = true,
+        action = ArgAction::Set
+    )]
+    pub(crate) client_chat_links_prompt: bool,
     #[arg(long = "client-skin-parts", default_value_t = 0x7f)]
     pub(crate) client_skin_parts: u8,
     #[arg(long = "client-main-hand", value_enum, default_value = "right")]
@@ -492,6 +504,24 @@ mod tests {
 
         let disabled = Args::try_parse_from(["bbb-native", "--client-vsync", "false"]).unwrap();
         assert!(!disabled.client_vsync);
+    }
+
+    #[test]
+    fn args_accept_vanilla_chat_link_toggles() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(default_args.client_chat_links);
+        assert!(default_args.client_chat_links_prompt);
+
+        let disabled = Args::try_parse_from([
+            "bbb-native",
+            "--client-chat-links",
+            "false",
+            "--client-chat-links-prompt",
+            "false",
+        ])
+        .unwrap();
+        assert!(!disabled.client_chat_links);
+        assert!(!disabled.client_chat_links_prompt);
     }
 
     #[test]

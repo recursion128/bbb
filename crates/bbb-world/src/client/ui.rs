@@ -53,6 +53,18 @@ pub struct ClientUiState {
     dialog_warning_open: bool,
     #[serde(skip)]
     dialog_warning_focused_button: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dialog_link_confirmation: Option<DialogLinkConfirmationState>,
+    #[serde(skip)]
+    dialog_link_focused_button: Option<usize>,
+    #[serde(skip)]
+    dialog_link_return_stack: Vec<DialogLinkReturnState>,
+    #[serde(skip)]
+    dialog_open_url_requests: Vec<String>,
+    #[serde(skip)]
+    dialog_chat_links_disabled: bool,
+    #[serde(skip)]
+    dialog_chat_links_prompt_disabled: bool,
     #[serde(skip)]
     dialog_screen_revision: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -87,6 +99,29 @@ pub enum DialogPreviousScreenState {
     Book { screen: BookScreenState },
     Advancements,
     Stats,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DialogLinkConfirmationState {
+    pub url: String,
+    pub after_action: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DialogLinkReturnState {
+    confirmation: DialogLinkConfirmationState,
+    focused_button: Option<usize>,
+    dialog: Option<DialogState>,
+    input_values: Vec<Option<DialogInputValueState>>,
+    dragging_number_range_input: Option<usize>,
+    focus: Option<DialogFocusState>,
+    number_range_keyboard_input: Option<usize>,
+    text_edit: Option<DialogTextEditState>,
+    dragging_text_input: Option<usize>,
+    dragging_multiline_scroll_input: Option<usize>,
+    dragging_multiline_scroll_y: Option<i32>,
+    body_scroll_amount_bits: u64,
+    body_scroll_drag_y: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -133,6 +168,15 @@ impl ClientUiState {
     }
 
     fn show_dialog(&mut self, dialog: DialogState) {
+        if self.dialog_link_confirmation.is_some() {
+            self.suspend_dialog_link_confirmation();
+            self.show_dialog_above_link_confirmation(dialog);
+            return;
+        }
+        if !self.dialog_link_return_stack.is_empty() {
+            self.show_dialog_above_link_confirmation(dialog);
+            return;
+        }
         if self.current_dialog.is_none() && self.dialog_waiting_ticks.is_none() {
             self.dialog_previous_screen = if let Some(screen) = self.current_book.take() {
                 Some(DialogPreviousScreenState::Book { screen })
@@ -154,12 +198,16 @@ impl ClientUiState {
         self.dialog_dragging_multiline_scroll_y = None;
         self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
         self.dialog_body_scroll_drag_y = None;
+        self.dialog_link_focused_button = None;
         self.dialog_input_values = initial_dialog_input_values(&dialog);
         self.current_dialog = Some(dialog);
         self.advance_dialog_screen_revision();
     }
 
     fn clear_dialog(&mut self) -> bool {
+        if self.dialog_link_confirmation.is_some() {
+            return false;
+        }
         if self.current_dialog.take().is_none() {
             return false;
         }
@@ -172,13 +220,21 @@ impl ClientUiState {
         self.dialog_dragging_multiline_scroll_y = None;
         self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
         self.dialog_body_scroll_drag_y = None;
+        self.dialog_link_focused_button = None;
         self.dialog_input_values.clear();
+        if self.restore_suspended_dialog_link_confirmation() {
+            self.advance_dialog_screen_revision();
+            return true;
+        }
         self.restore_dialog_previous_screen();
         self.advance_dialog_screen_revision();
         true
     }
 
     fn wait_for_dialog_response(&mut self) -> bool {
+        if self.dialog_link_confirmation.is_some() {
+            return false;
+        }
         if self.current_dialog.take().is_none() {
             return false;
         }
@@ -193,6 +249,7 @@ impl ClientUiState {
         self.dialog_body_scroll_drag_y = None;
         self.dialog_warning_open = false;
         self.dialog_warning_focused_button = None;
+        self.dialog_link_focused_button = None;
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = Some(0);
         self.advance_dialog_screen_revision();
@@ -207,6 +264,10 @@ impl ClientUiState {
             return false;
         }
         self.dialog_waiting_ticks = None;
+        if self.restore_suspended_dialog_link_confirmation() {
+            self.advance_dialog_screen_revision();
+            return true;
+        }
         self.restore_dialog_previous_screen();
         self.advance_dialog_screen_revision();
         true
@@ -227,6 +288,67 @@ impl ClientUiState {
         }
     }
 
+    fn suspend_dialog_link_confirmation(&mut self) {
+        let Some(confirmation) = self.dialog_link_confirmation.take() else {
+            return;
+        };
+        self.dialog_link_return_stack.push(DialogLinkReturnState {
+            confirmation,
+            focused_button: self.dialog_link_focused_button.take(),
+            dialog: self.current_dialog.take(),
+            input_values: std::mem::take(&mut self.dialog_input_values),
+            dragging_number_range_input: self.dialog_dragging_number_range_input.take(),
+            focus: self.dialog_focus.take(),
+            number_range_keyboard_input: self.dialog_number_range_keyboard_input.take(),
+            text_edit: self.dialog_text_edit.take(),
+            dragging_text_input: self.dialog_dragging_text_input.take(),
+            dragging_multiline_scroll_input: self.dialog_dragging_multiline_scroll_input.take(),
+            dragging_multiline_scroll_y: self.dialog_dragging_multiline_scroll_y.take(),
+            body_scroll_amount_bits: std::mem::replace(
+                &mut self.dialog_body_scroll_amount_bits,
+                0.0f64.to_bits(),
+            ),
+            body_scroll_drag_y: self.dialog_body_scroll_drag_y.take(),
+        });
+    }
+
+    fn show_dialog_above_link_confirmation(&mut self, dialog: DialogState) {
+        self.dialog_waiting_ticks = None;
+        self.dialog_dragging_number_range_input = None;
+        self.dialog_focus = None;
+        self.dialog_number_range_keyboard_input = None;
+        self.dialog_text_edit = None;
+        self.dialog_dragging_text_input = None;
+        self.dialog_dragging_multiline_scroll_input = None;
+        self.dialog_dragging_multiline_scroll_y = None;
+        self.dialog_body_scroll_amount_bits = 0.0f64.to_bits();
+        self.dialog_body_scroll_drag_y = None;
+        self.dialog_link_focused_button = None;
+        self.dialog_input_values = initial_dialog_input_values(&dialog);
+        self.current_dialog = Some(dialog);
+        self.advance_dialog_screen_revision();
+    }
+
+    fn restore_suspended_dialog_link_confirmation(&mut self) -> bool {
+        let Some(state) = self.dialog_link_return_stack.pop() else {
+            return false;
+        };
+        self.dialog_link_confirmation = Some(state.confirmation);
+        self.dialog_link_focused_button = state.focused_button;
+        self.current_dialog = state.dialog;
+        self.dialog_input_values = state.input_values;
+        self.dialog_dragging_number_range_input = state.dragging_number_range_input;
+        self.dialog_focus = state.focus;
+        self.dialog_number_range_keyboard_input = state.number_range_keyboard_input;
+        self.dialog_text_edit = state.text_edit;
+        self.dialog_dragging_text_input = state.dragging_text_input;
+        self.dialog_dragging_multiline_scroll_input = state.dragging_multiline_scroll_input;
+        self.dialog_dragging_multiline_scroll_y = state.dragging_multiline_scroll_y;
+        self.dialog_body_scroll_amount_bits = state.body_scroll_amount_bits;
+        self.dialog_body_scroll_drag_y = state.body_scroll_drag_y;
+        true
+    }
+
     pub(crate) fn replace_dialog(&mut self) {
         self.current_dialog = None;
         self.dialog_dragging_number_range_input = None;
@@ -240,6 +362,9 @@ impl ClientUiState {
         self.dialog_body_scroll_drag_y = None;
         self.dialog_warning_open = false;
         self.dialog_warning_focused_button = None;
+        self.dialog_link_confirmation = None;
+        self.dialog_link_focused_button = None;
+        self.dialog_link_return_stack.clear();
         self.dialog_input_values.clear();
         self.dialog_waiting_ticks = None;
         self.dialog_previous_screen = None;
@@ -374,6 +499,76 @@ impl WorldStore {
     pub fn show_dialog_from_action(&mut self, dialog: DialogState) -> bool {
         self.client_ui.show_dialog(dialog);
         true
+    }
+
+    pub fn set_dialog_link_options(&mut self, enabled: bool, prompt: bool) {
+        self.client_ui.dialog_chat_links_disabled = !enabled;
+        self.client_ui.dialog_chat_links_prompt_disabled = !prompt;
+    }
+
+    pub fn open_dialog_url(&mut self, url: String, after_action: String) -> bool {
+        if self.client_ui.dialog_chat_links_disabled || self.current_dialog().is_none() {
+            return false;
+        }
+        if self.client_ui.dialog_chat_links_prompt_disabled {
+            self.client_ui.dialog_open_url_requests.push(url);
+            return true;
+        }
+        self.client_ui.dialog_warning_open = false;
+        self.client_ui.dialog_warning_focused_button = None;
+        self.client_ui.dialog_link_confirmation =
+            Some(DialogLinkConfirmationState { url, after_action });
+        self.client_ui.dialog_link_focused_button = None;
+        self.client_ui.advance_dialog_screen_revision();
+        true
+    }
+
+    pub fn dialog_link_confirmation(&self) -> Option<&DialogLinkConfirmationState> {
+        if self.client_ui.dialog_warning_open {
+            None
+        } else {
+            self.client_ui.dialog_link_confirmation.as_ref()
+        }
+    }
+
+    pub fn dialog_link_focused_button(&self) -> Option<usize> {
+        self.client_ui.dialog_link_focused_button
+    }
+
+    pub fn focus_dialog_link_button(&mut self, index: usize) -> bool {
+        if self.dialog_link_confirmation().is_none() || index >= 3 {
+            return false;
+        }
+        self.client_ui.dialog_link_focused_button = Some(index);
+        true
+    }
+
+    pub fn resolve_dialog_link_confirmation(&mut self, open: bool) -> bool {
+        if self.client_ui.dialog_warning_open {
+            return false;
+        }
+        let Some(confirmation) = self.client_ui.dialog_link_confirmation.take() else {
+            return false;
+        };
+        self.client_ui.dialog_link_focused_button = None;
+        if open {
+            self.client_ui
+                .dialog_open_url_requests
+                .push(confirmation.url);
+        }
+        match confirmation.after_action.as_str() {
+            "close" => self.client_ui.clear_dialog(),
+            "none" => {
+                self.client_ui.advance_dialog_screen_revision();
+                true
+            }
+            "wait_for_response" => self.client_ui.wait_for_dialog_response(),
+            _ => false,
+        }
+    }
+
+    pub fn take_dialog_open_url_requests(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.client_ui.dialog_open_url_requests)
     }
 
     /// Opens one generated DialogList button target while preserving whether
@@ -1126,7 +1321,8 @@ impl WorldStore {
     }
 
     pub fn dialog_screen_is_open(&self) -> bool {
-        self.dialog_warning_is_open()
+        self.dialog_link_confirmation().is_some()
+            || self.dialog_warning_is_open()
             || self.current_dialog().is_some()
             || self.dialog_waiting_ticks().is_some()
     }
@@ -1484,6 +1680,174 @@ mod tests {
         assert_eq!(store.dialog_screen_revision(), 5);
         assert!(!store.close_dialog_waiting_response());
         assert_eq!(store.dialog_screen_revision(), 5);
+    }
+
+    #[test]
+    fn dialog_open_url_prompt_owns_clear_and_cancel_lifecycle() {
+        let mut store = WorldStore::new();
+        show_notice(&mut store, "Links");
+        let revision = store.dialog_screen_revision();
+
+        assert!(store.open_dialog_url(
+            "https://example.invalid/docs".to_string(),
+            "none".to_string(),
+        ));
+        assert_eq!(store.dialog_screen_revision(), revision + 1);
+        assert_eq!(
+            store.dialog_link_confirmation(),
+            Some(&DialogLinkConfirmationState {
+                url: "https://example.invalid/docs".to_string(),
+                after_action: "none".to_string(),
+            })
+        );
+        assert!(store.focus_dialog_link_button(1));
+
+        store.apply_clear_dialog();
+        assert_eq!(store.counters().clear_dialog_packets, 1);
+        assert!(store.current_dialog().is_some());
+        assert!(store.dialog_link_confirmation().is_some());
+        assert_eq!(store.dialog_link_focused_button(), Some(1));
+        assert_eq!(store.dialog_screen_revision(), revision + 1);
+
+        assert!(store.resolve_dialog_link_confirmation(false));
+        assert_eq!(store.dialog_screen_revision(), revision + 2);
+        assert!(store.current_dialog().is_some());
+        assert_eq!(store.dialog_link_confirmation(), None);
+        assert!(store.take_dialog_open_url_requests().is_empty());
+    }
+
+    #[test]
+    fn dialog_open_url_resolution_applies_deferred_after_action() {
+        let mut close_store = WorldStore::new();
+        show_notice(&mut close_store, "Close");
+        assert!(close_store.open_dialog_url(
+            "https://example.invalid/close".to_string(),
+            "close".to_string(),
+        ));
+        assert!(close_store.resolve_dialog_link_confirmation(true));
+        assert!(close_store.current_dialog().is_none());
+        assert_eq!(
+            close_store.take_dialog_open_url_requests(),
+            ["https://example.invalid/close"]
+        );
+        assert_eq!(close_store.counters().show_dialog_packets, 1);
+        assert_eq!(close_store.counters().clear_dialog_packets, 0);
+
+        let mut wait_store = WorldStore::new();
+        show_notice(&mut wait_store, "Wait");
+        assert!(wait_store.open_dialog_url(
+            "https://example.invalid/wait".to_string(),
+            "wait_for_response".to_string(),
+        ));
+        assert!(wait_store.resolve_dialog_link_confirmation(false));
+        assert!(wait_store.current_dialog().is_none());
+        assert_eq!(wait_store.dialog_waiting_ticks(), Some(0));
+        assert!(wait_store.take_dialog_open_url_requests().is_empty());
+    }
+
+    #[test]
+    fn server_dialogs_preserve_nested_confirm_link_return_screens() {
+        let mut store = WorldStore::new();
+        show_notice(&mut store, "First");
+        assert!(store.open_dialog_url(
+            "https://example.invalid/first".to_string(),
+            "none".to_string(),
+        ));
+        assert!(store.focus_dialog_link_button(1));
+
+        show_notice(&mut store, "Second");
+        assert_eq!(store.dialog_link_confirmation(), None);
+        assert_eq!(dialog_title(&store), Some("Second"));
+        assert!(store.open_dialog_url(
+            "https://example.invalid/second".to_string(),
+            "none".to_string(),
+        ));
+        assert!(store.focus_dialog_link_button(2));
+
+        show_notice(&mut store, "Third");
+        assert_eq!(store.dialog_link_confirmation(), None);
+        assert_eq!(dialog_title(&store), Some("Third"));
+        store.apply_clear_dialog();
+        assert_eq!(dialog_title(&store), Some("Second"));
+        assert_eq!(
+            store.dialog_link_confirmation(),
+            Some(&DialogLinkConfirmationState {
+                url: "https://example.invalid/second".to_string(),
+                after_action: "none".to_string(),
+            })
+        );
+        assert_eq!(store.dialog_link_focused_button(), Some(2));
+        assert!(store.resolve_dialog_link_confirmation(false));
+
+        store.apply_clear_dialog();
+        assert_eq!(dialog_title(&store), Some("First"));
+        assert_eq!(
+            store.dialog_link_confirmation(),
+            Some(&DialogLinkConfirmationState {
+                url: "https://example.invalid/first".to_string(),
+                after_action: "none".to_string(),
+            })
+        );
+        assert_eq!(store.dialog_link_focused_button(), Some(1));
+        assert!(store.resolve_dialog_link_confirmation(false));
+        assert_eq!(dialog_title(&store), Some("First"));
+        assert_eq!(store.counters().show_dialog_packets, 3);
+        assert_eq!(store.counters().clear_dialog_packets, 2);
+    }
+
+    #[test]
+    fn waiting_screen_returns_to_suspended_confirm_link_screen() {
+        let mut store = WorldStore::new();
+        show_notice(&mut store, "First");
+        assert!(store.open_dialog_url(
+            "https://example.invalid/first".to_string(),
+            "none".to_string(),
+        ));
+        show_notice(&mut store, "Second");
+
+        assert!(store.wait_for_dialog_response());
+        assert_eq!(store.dialog_waiting_ticks(), Some(0));
+        assert_eq!(store.dialog_link_confirmation(), None);
+        store.advance_dialog_waiting_ticks(DIALOG_WAITING_CLOSE_ACTIVE_TICKS);
+        assert!(store.close_dialog_waiting_response());
+
+        assert_eq!(dialog_title(&store), Some("First"));
+        assert_eq!(
+            store.dialog_link_confirmation(),
+            Some(&DialogLinkConfirmationState {
+                url: "https://example.invalid/first".to_string(),
+                after_action: "none".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn dialog_link_options_match_vanilla_disabled_and_no_prompt_modes() {
+        let mut store = WorldStore::new();
+        show_notice(&mut store, "Options");
+        let revision = store.dialog_screen_revision();
+
+        store.set_dialog_link_options(false, true);
+        assert!(!store.open_dialog_url(
+            "https://example.invalid/disabled".to_string(),
+            "close".to_string(),
+        ));
+        assert_eq!(store.dialog_link_confirmation(), None);
+        assert!(store.take_dialog_open_url_requests().is_empty());
+
+        store.set_dialog_link_options(true, false);
+        assert!(store.open_dialog_url(
+            "https://example.invalid/direct".to_string(),
+            "close".to_string(),
+        ));
+        assert_eq!(store.dialog_screen_revision(), revision);
+        assert!(store.current_dialog().is_some());
+        assert_eq!(store.dialog_link_confirmation(), None);
+        assert_eq!(
+            store.take_dialog_open_url_requests(),
+            ["https://example.invalid/direct"]
+        );
+        assert!(store.take_dialog_open_url_requests().is_empty());
     }
 
     #[test]
@@ -2075,6 +2439,30 @@ mod tests {
         bytes.extend_from_slice(b"Title");
         bytes.push(0);
         bytes
+    }
+
+    fn show_notice(store: &mut WorldStore, title: &str) {
+        store.apply_show_dialog(ProtocolShowDialog {
+            dialog: DialogHolder::Direct {
+                dialog: NbtSummaryValue::Compound(vec![
+                    NbtSummaryEntry {
+                        name: "type".to_string(),
+                        value: NbtSummaryValue::String("minecraft:notice".to_string()),
+                    },
+                    NbtSummaryEntry {
+                        name: "title".to_string(),
+                        value: NbtSummaryValue::String(title.to_string()),
+                    },
+                ]),
+            },
+        });
+    }
+
+    fn dialog_title(store: &WorldStore) -> Option<&str> {
+        match store.current_dialog()?.data.as_ref()? {
+            DialogDataState::Notice { common, .. } => Some(&common.title.text),
+            _ => None,
+        }
     }
 
     #[test]
