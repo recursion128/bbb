@@ -521,6 +521,17 @@ pub fn vanilla_entity_metadata_type_collidability_kind(
         .map(|entry| entry.collidability_kind)
 }
 
+/// Returns the post-chain resource selected by vanilla `GameRenderer` for a camera entity type.
+///
+/// The checked-in table is extracted from `GameRenderer.checkEntityPostEffect` and expanded over
+/// the generated entity class hierarchy, so subclasses such as CaveSpider inherit Spider's chain.
+pub fn vanilla_entity_camera_post_effect_id(entity_type_id: i32) -> Option<&'static str> {
+    VANILLA_ENTITY_CAMERA_POST_EFFECTS_26_1
+        .binary_search_by_key(&entity_type_id, |(candidate, _)| *candidate)
+        .ok()
+        .map(|index| VANILLA_ENTITY_CAMERA_POST_EFFECTS_26_1[index].1)
+}
+
 /// Returns whether the generated vanilla runtime class implements `Leashable`,
 /// directly or through its superclass/interface graph.
 ///
@@ -786,9 +797,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID,
         VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID, VANILLA_ENTITY_TYPE_BAT_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-        VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
+        VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
-        VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+        VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
@@ -802,10 +815,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
@@ -1512,6 +1526,35 @@ mod tests {
             .map(|(body, _)| body)
             .expect("arrow tag query source");
         assert!(!arrow_query.contains("matches!"));
+    }
+
+    #[test]
+    fn generated_camera_post_effects_follow_game_renderer_class_patterns() {
+        assert_eq!(VANILLA_ENTITY_CAMERA_POST_EFFECTS_26_1.len(), 4);
+        assert!(VANILLA_ENTITY_CAMERA_POST_EFFECTS_26_1
+            .windows(2)
+            .all(|entries| entries[0].0 < entries[1].0));
+        assert_eq!(
+            vanilla_entity_camera_post_effect_id(VANILLA_ENTITY_TYPE_CREEPER_ID),
+            Some("minecraft:creeper")
+        );
+        assert_eq!(
+            vanilla_entity_camera_post_effect_id(VANILLA_ENTITY_TYPE_SPIDER_ID),
+            Some("minecraft:spider")
+        );
+        assert_eq!(
+            vanilla_entity_camera_post_effect_id(VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID),
+            Some("minecraft:spider")
+        );
+        assert_eq!(
+            vanilla_entity_camera_post_effect_id(VANILLA_ENTITY_TYPE_ENDERMAN_ID),
+            Some("minecraft:invert")
+        );
+        assert_eq!(
+            vanilla_entity_camera_post_effect_id(VANILLA_ENTITY_TYPE_PLAYER_ID),
+            None
+        );
+        assert_eq!(vanilla_entity_camera_post_effect_id(-1), None);
     }
 
     #[test]

@@ -11794,7 +11794,7 @@ fn piglin_and_spider_dispatch_use_the_world_generated_catalog() {
     assert!(include_str!("../input.rs")
         .contains("bbb_world::vanilla_entity_type_is_spider(entity.entity_type_id)"));
     assert!(include_str!("../runtime.rs")
-        .contains("bbb_world::vanilla_entity_type_is_spider(entity_type_id)"));
+        .contains("bbb_world::vanilla_entity_camera_post_effect_id(entity_type_id)"));
 }
 
 #[test]

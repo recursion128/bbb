@@ -174,6 +174,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   boolean accessors there rather than entity-type branches. Piglin/PiglinBrute/Hoglin conversion
   shake must likewise resolve the nearest generated `DATA_IMMUNE_TO_ZOMBIFICATION` accessor rather
   than split class membership and Hoglin into parallel dispatch arms.
+  Spectator camera post-effect selection must remain generated from
+  `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
+  projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This
+  only owns selection metadata; executing the post chains remains in the renderer queue below.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

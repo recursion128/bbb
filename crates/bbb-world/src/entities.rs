@@ -57,8 +57,8 @@ pub use renderer_catalog::{
 };
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
-    vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_field,
-    vanilla_entity_metadata_schema,
+    vanilla_entity_camera_post_effect_id, vanilla_entity_metadata_accessor_for_entity_type,
+    vanilla_entity_metadata_field, vanilla_entity_metadata_schema,
     vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,

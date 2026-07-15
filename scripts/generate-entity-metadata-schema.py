@@ -16,6 +16,7 @@ from entity_metadata_extractor import (
     Accessor,
     ExtractionError,
     ExtractionResult,
+    GAME_RENDERER_SOURCE,
     evaluate_integer_expression,
     extract,
 )
@@ -41,6 +42,12 @@ class FamilySpec:
     rust_name: str
     java_class: str
     parent: str | None
+
+
+@dataclass(frozen=True)
+class CameraPostEffectSpec:
+    runtime_class: str
+    resource_id: str
 
 
 FAMILIES = (
@@ -2423,6 +2430,168 @@ def method_for(
     return source, matches[0]
 
 
+def camera_post_effect_specs(result: ExtractionResult) -> tuple[CameraPostEffectSpec, ...]:
+    """Extract ``GameRenderer.checkEntityPostEffect`` pattern-switch mappings."""
+    source = result.sources[GAME_RENDERER_SOURCE.as_posix()]
+    owners = [
+        item
+        for item in source.types
+        if item.fqcn == "net.minecraft.client.renderer.GameRenderer"
+    ]
+    if len(owners) != 1:
+        raise ExtractionError(
+            f"GameRenderer: expected one source owner, found {len(owners)}"
+        )
+    owner = owners[0]
+    _, method = method_for(
+        result,
+        "net.minecraft.client.renderer.GameRenderer",
+        "checkEntityPostEffect",
+        parameter_count=1,
+    )
+    body = method.node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError("GameRenderer.checkEntityPostEffect: method lacks body")
+    switches = [item for item in descendants(body) if item.type == "switch_expression"]
+    if len(switches) != 1:
+        raise ExtractionError(
+            "GameRenderer.checkEntityPostEffect: expected one switch expression"
+        )
+    switch = switches[0]
+    if (
+        not switch.named_children
+        or source.expression(switch.named_children[0]).canonical != "(cameraEntity)"
+    ):
+        raise ExtractionError(
+            "GameRenderer.checkEntityPostEffect: expected cameraEntity selector"
+        )
+    blocks = [item for item in switch.named_children if item.type == "switch_block"]
+    if len(blocks) != 1:
+        raise ExtractionError(
+            "GameRenderer.checkEntityPostEffect: expected one switch block"
+        )
+
+    known_classes = {item.fqcn: item for item in result.classes}
+    specs: list[CameraPostEffectSpec] = []
+    saw_null = False
+    saw_default_clear = False
+    for group in blocks[0].named_children:
+        if group.type != "switch_block_statement_group" or not group.named_children:
+            raise ExtractionError(
+                "GameRenderer.checkEntityPostEffect: unsupported switch group"
+            )
+        label = group.named_children[0]
+        if label.type != "switch_label":
+            raise ExtractionError(
+                "GameRenderer.checkEntityPostEffect: switch group lacks label"
+            )
+        label_text = source.text(label)
+        patterns = [item for item in descendants(label) if item.type == "type_pattern"]
+        if patterns:
+            if len(patterns) != 1 or [item.type for item in group.named_children] != [
+                "switch_label",
+                "expression_statement",
+                "break_statement",
+            ]:
+                raise ExtractionError(
+                    "GameRenderer.checkEntityPostEffect: unsupported type-pattern arm"
+                )
+            pattern = patterns[0]
+            if len(pattern.named_children) != 2:
+                raise ExtractionError(
+                    "GameRenderer.checkEntityPostEffect: malformed type pattern"
+                )
+            runtime_class = resolve_type_reference(
+                source.text(pattern.named_children[0]), owner, known_classes
+            )
+            if runtime_class is None:
+                raise ExtractionError(
+                    "GameRenderer.checkEntityPostEffect: unresolved pattern class "
+                    + source.text(pattern.named_children[0])
+                )
+
+            expression = group.named_children[1]
+            calls = [
+                item
+                for item in descendants(expression)
+                if item.type == "method_invocation"
+            ]
+            if len(calls) != 2:
+                raise ExtractionError(
+                    "GameRenderer.checkEntityPostEffect: expected setPostEffect namespace call"
+                )
+            outer, identifier_call = calls
+            outer_name = outer.child_by_field_name("name")
+            outer_object = outer.child_by_field_name("object")
+            outer_arguments = outer.child_by_field_name("arguments")
+            identifier_name = identifier_call.child_by_field_name("name")
+            identifier_object = identifier_call.child_by_field_name("object")
+            identifier_arguments = identifier_call.child_by_field_name("arguments")
+            if (
+                outer_name is None
+                or source.text(outer_name) != "setPostEffect"
+                or outer_object is None
+                or source.text(outer_object) != "this"
+                or outer_arguments is None
+                or outer_arguments.named_children != [identifier_call]
+                or identifier_name is None
+                or source.text(identifier_name) != "withDefaultNamespace"
+                or identifier_object is None
+                or source.text(identifier_object) != "Identifier"
+                or identifier_arguments is None
+                or len(identifier_arguments.named_children) != 1
+                or identifier_arguments.named_children[0].type != "string_literal"
+            ):
+                raise ExtractionError(
+                    "GameRenderer.checkEntityPostEffect: unsupported post-effect call"
+                )
+            literal = source.text(identifier_arguments.named_children[0])
+            resource_path = (
+                literal[1:-1]
+                if literal.startswith('"') and literal.endswith('"')
+                else ""
+            )
+            if not resource_path or any(
+                character not in "abcdefghijklmnopqrstuvwxyz0123456789_/-"
+                for character in resource_path
+            ):
+                raise ExtractionError(
+                    f"GameRenderer.checkEntityPostEffect: unsupported resource literal {literal!r}"
+                )
+            specs.append(
+                CameraPostEffectSpec(runtime_class, f"minecraft:{resource_path}")
+            )
+        elif label_text == "case null":
+            if len(group.named_children) != 1 or saw_null:
+                raise ExtractionError(
+                    "GameRenderer.checkEntityPostEffect: malformed null arm"
+                )
+            saw_null = True
+        elif label_text == "default":
+            if (
+                len(group.named_children) != 2
+                or source.expression(group.named_children[1]).canonical
+                != "this.clearPostEffect ();"
+                or saw_default_clear
+            ):
+                raise ExtractionError(
+                    "GameRenderer.checkEntityPostEffect: malformed default clear arm"
+                )
+            saw_default_clear = True
+        else:
+            raise ExtractionError(
+                f"GameRenderer.checkEntityPostEffect: unsupported label {label_text!r}"
+            )
+
+    if not specs or not saw_null or not saw_default_clear:
+        raise ExtractionError(
+            "GameRenderer.checkEntityPostEffect: incomplete pattern/default coverage"
+        )
+    if len({item.runtime_class for item in specs}) != len(specs):
+        raise ExtractionError("GameRenderer.checkEntityPostEffect: duplicate pattern class")
+    return tuple(specs)
+
+
 def method_single_return_expression(
     result: ExtractionResult,
     owner: str,
@@ -3060,6 +3229,7 @@ def render(result: ExtractionResult) -> str:
     flags = resolve_flags(result)
     value_masks = resolve_value_masks(result)
     packed_values = resolve_packed_values(result)
+    camera_post_effects = camera_post_effect_specs(result)
     flag_by_owner: dict[str, list[ResolvedFlag]] = {}
     for flag in flags:
         flag_by_owner.setdefault(flag.owner, []).append(flag)
@@ -3185,6 +3355,18 @@ def render(result: ExtractionResult) -> str:
                 return True
             current = item.superclass
         return False
+
+    def camera_post_effect_id(runtime_class: str | None) -> str | None:
+        matches = [
+            item.resource_id
+            for item in camera_post_effects
+            if extends_class(runtime_class, item.runtime_class)
+        ]
+        if len(matches) > 1:
+            raise ExtractionError(
+                f"{runtime_class}: multiple GameRenderer camera post-effect arms {matches}"
+            )
+        return matches[0] if matches else None
 
     lines = [
         "// @generated by scripts/generate-entity-metadata-schema.py; do not edit manually.",
@@ -3448,6 +3630,18 @@ def render(result: ExtractionResult) -> str:
     lines.append("];")
     lines.append("")
 
+    lines.append(
+        "pub const VANILLA_ENTITY_CAMERA_POST_EFFECTS_26_1: &[(i32, &str)] = &["
+    )
+    for item in result.entity_types:
+        post_effect_id = camera_post_effect_id(item.runtime_class)
+        if post_effect_id is not None:
+            lines.append(f"    ({item.entity_type_id}, {rust_string(post_effect_id)}),")
+    lines.extend([
+        "];",
+        "",
+    ])
+
     for family in FAMILIES:
         own = [item for item in result.accessors if item.owner == family.java_class]
         lines.append(f"const {family.rust_name.upper()}_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[")
@@ -3527,6 +3721,24 @@ def render(result: ExtractionResult) -> str:
             '        let source = include_str!("../../client/audio.rs");',
             '        let removed_lookup = ["is_vanilla_hostile_sound_source_", "type"].concat();',
             '        assert!(!source.contains(&format!("fn {removed_lookup}(")));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_camera_post_effect_does_not_restore_entity_type_dispatch() {",
+            '        let source = include_str!("../../../../bbb-native/src/runtime.rs");',
+            '        let body = source',
+            '            .split("fn current_post_effect_id_from_world")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n}"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("camera post-effect projection source");',
+            '        assert!(body.contains("vanilla_entity_camera_post_effect_id"));',
+            '        assert!(!body.contains("vanilla_entity_type_is_spider"));',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
+            '        assert!(!body.contains("match entity_type_id"));',
+            '        assert!(!body.contains("minecraft:creeper"));',
+            '        assert!(!body.contains("minecraft:spider"));',
+            '        assert!(!body.contains("minecraft:invert"));',
             "    }",
             "",
             "    #[test]",

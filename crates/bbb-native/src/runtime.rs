@@ -16,7 +16,6 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_protocol::{
     codec::Decoder,
     data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
-    entity_types::{VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID},
     heightmap_types::{
         vanilla_heightmap_type, VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID,
         VANILLA_HEIGHTMAP_MOTION_BLOCKING_NO_LEAVES_ID, VANILLA_HEIGHTMAP_OCEAN_FLOOR_ID,
@@ -5755,12 +5754,7 @@ fn hud_debug_post_effect_line(current_post_effect_id: Option<&str>) -> Option<St
 fn current_post_effect_id_from_world(world: &WorldStore) -> Option<&'static str> {
     let camera_entity_id = world.local_player().camera.entity_id?;
     let entity_type_id = world.entity_type_id(camera_entity_id)?;
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_CREEPER_ID => Some("minecraft:creeper"),
-        _ if bbb_world::vanilla_entity_type_is_spider(entity_type_id) => Some("minecraft:spider"),
-        VANILLA_ENTITY_TYPE_ENDERMAN_ID => Some("minecraft:invert"),
-        _ => None,
-    }
+    bbb_world::vanilla_entity_camera_post_effect_id(entity_type_id)
 }
 
 fn hud_debug_sound_cache_bytes_to_mebibytes(bytes: u64) -> u64 {

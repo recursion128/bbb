@@ -16165,3 +16165,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native shake projection 以该查询结合 `PIGLINS_ZOMBIFY` 环境值，移除了最后的 class query、
   Hoglin 类型 arm 和生产索引别名；debug save-data 消费也改为直接导入 `bbb-world` owner，
   生成器守卫禁止整个函数恢复 entity-type dispatch。
+
+## 2026-07-15：生成 spectator camera post-effect 选择表
+
+- entity metadata generator 通过共享 Tree-sitter CST 读取
+  `GameRenderer.checkEntityPostEffect` 的 pattern switch，并结合生成的实体继承图展开为
+  Creeper、Spider/CaveSpider、EnderMan 对应的 post-chain resource 表。
+- `bbb-world` 提供唯一 typed lookup；native HUD debug projection 已移除三路 entity-type
+  dispatch、Spider class query 和资源字面量。该 slice 只收敛选择元数据，实际 post-chain
+  renderer 执行仍按 unsupported ledger 推进。

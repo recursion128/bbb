@@ -2,7 +2,7 @@
 // Vanilla version: 26.1.
 // Update: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py update
 // Check: scripts/vanilla-source-tools.sh scripts/generate-entity-metadata-schema.py check
-// Stable source manifest SHA-256: a79cb6c92b4c3b9d1f03dd888249f8a5d0ad69611acb0e18f53c1907512e7672
+// Stable source manifest SHA-256: df9949079dbf68d62a6753fb262906626d4d2ea812501f560037491d900d43d0
 
 use bbb_protocol::entity_data_serializers::*;
 
@@ -19408,6 +19408,13 @@ pub const VANILLA_ENTITY_TYPE_METADATA_26_1: &[VanillaEntityTypeMetadataCatalogE
     },
 ];
 
+pub const VANILLA_ENTITY_CAMERA_POST_EFFECTS_26_1: &[(i32, &str)] = &[
+    (22, "minecraft:spider"),
+    (32, "minecraft:creeper"),
+    (41, "minecraft:invert"),
+    (124, "minecraft:spider"),
+];
+
 const ENTITY_FIELDS: &[VanillaEntityMetadataFieldSchema] = &[
     VanillaEntityMetadataFieldSchema {
         name: "DATA_SHARED_FLAGS_ID",
@@ -21844,6 +21851,24 @@ mod generated_catalog_guards {
         let source = include_str!("../../client/audio.rs");
         let removed_lookup = ["is_vanilla_hostile_sound_source_", "type"].concat();
         assert!(!source.contains(&format!("fn {removed_lookup}(")));
+    }
+
+    #[test]
+    fn production_camera_post_effect_does_not_restore_entity_type_dispatch() {
+        let source = include_str!("../../../../bbb-native/src/runtime.rs");
+        let body = source
+            .split("fn current_post_effect_id_from_world")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("camera post-effect projection source");
+        assert!(body.contains("vanilla_entity_camera_post_effect_id"));
+        assert!(!body.contains("vanilla_entity_type_is_spider"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        assert!(!body.contains("match entity_type_id"));
+        assert!(!body.contains("minecraft:creeper"));
+        assert!(!body.contains("minecraft:spider"));
+        assert!(!body.contains("minecraft:invert"));
     }
 
     #[test]
