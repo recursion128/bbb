@@ -803,66 +803,89 @@ pub const VANILLA_DATA_COMPONENT_TYPES: &[DataComponentTypeCatalogEntry] = &[
     },
 ];
 
-const VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES: &[(i32, &str)] = &[
+const VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES: &[(i32, &str, bool)] = &[
     (
         VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
         "minecraft:wolf_variant",
+        true,
     ),
     (
         VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
         "minecraft:wolf_sound_variant",
+        false,
     ),
     (
         VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
         "minecraft:pig_variant",
+        true,
     ),
     (
         VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
         "minecraft:pig_sound_variant",
+        false,
     ),
     (
         VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
         "minecraft:cow_variant",
+        true,
     ),
     (
         VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
         "minecraft:cow_sound_variant",
+        false,
     ),
     (
         VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
         "minecraft:chicken_variant",
+        true,
     ),
     (
         VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
         "minecraft:chicken_sound_variant",
+        false,
     ),
     (
         VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
         "minecraft:zombie_nautilus_variant",
+        true,
     ),
     (
         VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
         "minecraft:frog_variant",
+        true,
     ),
     (
         VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
         "minecraft:cat_variant",
+        true,
     ),
     (
         VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
         "minecraft:cat_sound_variant",
+        false,
     ),
 ];
 
 pub fn vanilla_data_component_animal_variant_registry(type_id: i32) -> Option<&'static str> {
     VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES
         .iter()
-        .find_map(|&(candidate, registry)| (candidate == type_id).then_some(registry))
+        .find_map(|&(candidate, registry, _)| (candidate == type_id).then_some(registry))
 }
 
 pub fn vanilla_data_component_animal_variant_registries(
 ) -> impl Iterator<Item = (i32, &'static str)> {
-    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.iter().copied()
+    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES
+        .iter()
+        .map(|&(type_id, registry, _)| (type_id, registry))
+}
+
+pub fn vanilla_data_component_animal_texture_variant_registries(
+) -> impl Iterator<Item = (i32, &'static str)> {
+    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES
+        .iter()
+        .filter_map(|&(type_id, registry, has_texture_payload)| {
+            has_texture_payload.then_some((type_id, registry))
+        })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1042,8 +1065,12 @@ mod tests {
     fn animal_variant_component_registries_follow_holder_value_types() {
         assert_eq!(VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.len(), 12);
         let actual = vanilla_data_component_animal_variant_registries().collect::<Vec<_>>();
-        assert_eq!(actual, VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES);
-        for &(type_id, registry) in VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES {
+        let expected = VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES
+            .iter()
+            .map(|&(type_id, registry, _)| (type_id, registry))
+            .collect::<Vec<_>>();
+        assert_eq!(actual, expected);
+        for &(type_id, registry, _) in VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES {
             assert_eq!(
                 vanilla_data_component_animal_variant_registry(type_id),
                 Some(registry)
@@ -1065,6 +1092,20 @@ mod tests {
     }
 
     #[test]
+    fn animal_texture_variant_registries_follow_network_codec_dependencies() {
+        assert_eq!(
+            vanilla_data_component_animal_texture_variant_registries().count(),
+            7
+        );
+        for (type_id, registry) in vanilla_data_component_animal_texture_variant_registries() {
+            assert_eq!(
+                vanilla_data_component_animal_variant_registry(type_id),
+                Some(registry)
+            );
+        }
+    }
+
+    #[test]
     fn animal_variant_registry_consumers_do_not_restore_parallel_tables() {
         let item_models = include_str!("../../bbb-native/src/item_models.rs");
         assert!(!item_models.contains("SYNCHRONIZED_VARIANT_REGISTRIES"));
@@ -1076,6 +1117,11 @@ mod tests {
             include_str!("../../bbb-world/src/client/dialog/body/component_value/holder_set.rs");
         assert!(!holder_set.contains("fn synchronized_registry_variant_component"));
         assert!(holder_set.contains("vanilla_data_component_animal_variant_registry"));
+        let variant_textures = include_str!("../../bbb-native/src/entity_variant_textures.rs");
+        assert!(!variant_textures.contains("const ANIMAL_VARIANT_REGISTRIES"));
+        assert!(
+            variant_textures.contains("vanilla_data_component_animal_texture_variant_registries")
+        );
     }
 
     #[test]

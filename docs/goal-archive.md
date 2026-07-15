@@ -15602,3 +15602,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   native 持久化与 registry context、world holder 解码和 patch projection 删除三份 12 项
   平行表及一处 resource-paired match。extractor fixture、跨 owner 回归与 generator-emitted
   反向门禁锁定该边界。
+
+## 2026-07-15：Generate animal texture-variant registry subset
+
+- [x] core registry extractor 解析 12 个动物变体 value-type 源文件，从 `NETWORK_CODEC`
+  调用图追踪 `ClientAsset` / `ModelAndTexture` 依赖；Wolf 的嵌套 `AssetInfo.CODEC` 同样
+  可达，5 个纯 `SoundEvent` codec 保持排除，得到精确 7 项视觉载荷子集。
+- [x] native 动态变体纹理同步删除 `ANIMAL_VARIANT_REGISTRIES` 手写表并消费生成迭代 API；
+  protocol exact-count、全部 5 个 native 纹理回归、Python 嵌套-codec fixture 与
+  generator-emitted 反向门禁防止该集合回流。

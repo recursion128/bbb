@@ -12,6 +12,7 @@ from core_registry_catalog_extractor import (  # noqa: E402
     AnimalVariantComponentRegistryEntry,
     CoreRegistryExtractionError,
     animal_variant_component_registry_entries,
+    animal_variant_texture_registry_entries,
     block_entity_type_entries,
     common_item_component_constant_names,
     damage_type_entries,
@@ -60,20 +61,67 @@ public class Registries {
 """,
         )
 
+        entries = animal_variant_component_registry_entries(
+            component_source, registries_source, expected_count=2
+        )
         self.assertEqual(
-            animal_variant_component_registry_entries(
-                component_source, registries_source, expected_count=2
-            ),
+            entries,
             [
                 AnimalVariantComponentRegistryEntry(
-                    "WOLF_VARIANT", "WOLF_VARIANT", "minecraft:wolf_variant"
+                    "WOLF_VARIANT",
+                    "WOLF_VARIANT",
+                    "minecraft:wolf_variant",
+                    "net.minecraft.world.entity.animal.wolf.WolfVariant",
                 ),
                 AnimalVariantComponentRegistryEntry(
                     "WOLF_SOUND_VARIANT",
                     "WOLF_SOUND_VARIANT",
                     "minecraft:wolf_sound_variant",
+                    "net.minecraft.world.entity.animal.wolf.WolfSoundVariant",
                 ),
             ],
+        )
+
+        wolf_variant_source = parse_source(
+            "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
+            b"""
+package net.minecraft.world.entity.animal.wolf;
+import net.minecraft.core.ClientAsset;
+public record WolfVariant() {
+  public static final Codec<WolfVariant> NETWORK_CODEC = RecordCodecBuilder.create(
+      i -> i.group(WolfVariant.AssetInfo.CODEC.fieldOf("assets")));
+  public record AssetInfo() {
+    public static final Codec<WolfVariant.AssetInfo> CODEC = RecordCodecBuilder.create(
+        i -> i.group(ClientAsset.ResourceTexture.CODEC.fieldOf("wild")));
+  }
+}
+""",
+        )
+        wolf_sound_variant_source = parse_source(
+            "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
+            b"""
+package net.minecraft.world.entity.animal.wolf;
+import net.minecraft.sounds.SoundEvent;
+public record WolfSoundVariant() {
+  public static final Codec<WolfSoundVariant> NETWORK_CODEC = codec();
+  private static Codec<WolfSoundVariant> codec() {
+    return SoundEvent.CODEC.fieldOf("death_sound").codec();
+  }
+}
+""",
+        )
+        self.assertEqual(
+            animal_variant_texture_registry_entries(
+                entries,
+                {
+                    "net.minecraft.world.entity.animal.wolf.WolfVariant": wolf_variant_source,
+                    "net.minecraft.world.entity.animal.wolf.WolfSoundVariant": (
+                        wolf_sound_variant_source
+                    ),
+                },
+                expected_count=1,
+            ),
+            [entries[0]],
         )
 
     def test_damage_keys_follow_bootstrap_call_order(self) -> None:

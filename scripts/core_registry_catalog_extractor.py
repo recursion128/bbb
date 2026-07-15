@@ -52,6 +52,7 @@ class AnimalVariantComponentRegistryEntry:
     component_constant_name: str
     registry_constant_name: str
     registry_resource_id: str
+    value_type_fqcn: str
 
 
 @dataclass(frozen=True)
@@ -503,7 +504,9 @@ def animal_variant_component_registry_entries(
                 f"animal variant component {field.name} lacks a matching registry",
             )
         entries.append(
-            AnimalVariantComponentRegistryEntry(field.name, registry[0], registry[1])
+            AnimalVariantComponentRegistryEntry(
+                field.name, registry[0], registry[1], value_type
+            )
         )
     if len(entries) != expected_count:
         raise CoreRegistryExtractionError(
@@ -514,6 +517,7 @@ def animal_variant_component_registry_entries(
         "component_constant_name",
         "registry_constant_name",
         "registry_resource_id",
+        "value_type_fqcn",
     ):
         values = [getattr(entry, attribute) for entry in entries]
         if len(values) != len(set(values)):
@@ -521,6 +525,108 @@ def animal_variant_component_registry_entries(
                 f"duplicate animal variant component registry {attribute}"
             )
     return entries
+
+
+def animal_variant_texture_registry_entries(
+    entries: list[AnimalVariantComponentRegistryEntry],
+    value_type_sources: dict[str, JavaSource],
+    expected_count: int = 7,
+) -> list[AnimalVariantComponentRegistryEntry]:
+    texture_dependencies = {
+        "net.minecraft.core.ClientAsset",
+        "net.minecraft.world.entity.variant.ModelAndTexture",
+    }
+    result: list[AnimalVariantComponentRegistryEntry] = []
+    for entry in entries:
+        source = value_type_sources.get(entry.value_type_fqcn)
+        if source is None:
+            raise CoreRegistryExtractionError(
+                f"missing animal variant value source {entry.value_type_fqcn}"
+            )
+        if not any(value_type.fqcn == entry.value_type_fqcn for value_type in source.types):
+            raise CoreRegistryExtractionError(
+                f"{source.relative_path}: does not declare {entry.value_type_fqcn}"
+            )
+        network_codecs = [
+            field
+            for field in source.fields
+            if field.owner == entry.value_type_fqcn and field.name == "NETWORK_CODEC"
+        ]
+        if len(network_codecs) != 1 or network_codecs[0].initializer is None:
+            raise CoreRegistryExtractionError(
+                f"{source.relative_path}: {entry.value_type_fqcn} must declare one initialized NETWORK_CODEC"
+            )
+
+        texture_aliases = {
+            simple_name
+            for simple_name, fqcn in source.imports.items()
+            if fqcn in texture_dependencies
+        }
+        if not texture_aliases:
+            continue
+
+        local_fields: dict[str, JavaField] = {}
+        package_prefix = source.package + "." if source.package else ""
+        for field in source.fields:
+            if field.initializer is None:
+                continue
+            relative_owner = field.owner.removeprefix(package_prefix)
+            owner_parts = relative_owner.split(".")
+            for owner_spelling in (
+                relative_owner,
+                owner_parts[-1],
+                ".".join(owner_parts[1:]),
+            ):
+                if owner_spelling:
+                    local_fields[f"{owner_spelling}.{field.name}"] = field
+
+        def expression_uses_texture_codec(
+            expression: JavaExpression, seen_fields: set[tuple[str, str]]
+        ) -> bool:
+            calls = [
+                call
+                for call in source.calls
+                if expression.span.start_byte <= call.span.start_byte
+                and call.span.end_byte <= expression.span.end_byte
+            ]
+            for call in calls:
+                qualifier = call.qualifier
+                if qualifier is None:
+                    continue
+                if qualifier.canonical.split(".", 1)[0] in texture_aliases:
+                    return True
+            for call in calls:
+                qualifier = call.qualifier
+                if qualifier is None:
+                    continue
+                field = local_fields.get(qualifier.canonical)
+                if field is None or field.initializer is None:
+                    continue
+                key = (field.owner, field.name)
+                if key in seen_fields:
+                    continue
+                seen_fields.add(key)
+                if expression_uses_texture_codec(field.initializer, seen_fields):
+                    return True
+            return False
+
+        network_codec = network_codecs[0]
+        if not expression_uses_texture_codec(
+            network_codec.initializer, {(network_codec.owner, network_codec.name)}
+        ):
+            _fail(
+                source,
+                network_codec.initializer,
+                "NETWORK_CODEC imports client texture types without a reachable texture codec",
+            )
+        result.append(entry)
+
+    if len(result) != expected_count:
+        raise CoreRegistryExtractionError(
+            f"expected {expected_count} animal texture variant registries, "
+            f"extracted {len(result)}"
+        )
+    return result
 
 
 def common_item_component_constant_names(

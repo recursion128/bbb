@@ -23,6 +23,7 @@ from core_registry_catalog_extractor import (
     ParticleTypeEntry,
     RegistryEntry,
     animal_variant_component_registry_entries,
+    animal_variant_texture_registry_entries,
     block_entity_type_entries,
     common_item_component_constant_names,
     damage_type_entries,
@@ -641,6 +642,7 @@ def render_data_component_types(
     predicate_entries: list[RegistryEntry],
     common_item_components: list[str],
     animal_variant_registries: list[AnimalVariantComponentRegistryEntry],
+    animal_texture_variant_registries: list[AnimalVariantComponentRegistryEntry],
 ) -> str:
     common_item_component_ids = [
         f"VANILLA_DATA_COMPONENT_{constant_name}_TYPE_ID"
@@ -701,10 +703,21 @@ def render_data_component_types(
             "animal variant registries reference unknown components: "
             f"{sorted(unknown_variant_components)}"
         )
+    animal_texture_variant_components = {
+        entry.component_constant_name for entry in animal_texture_variant_registries
+    }
+    unknown_texture_variant_components = animal_texture_variant_components - {
+        entry.component_constant_name for entry in animal_variant_registries
+    }
+    if unknown_texture_variant_components:
+        raise ValueError(
+            "animal texture variant registries reference unknown animal components: "
+            f"{sorted(unknown_texture_variant_components)}"
+        )
     lines.extend((
         "];",
         "",
-        "const VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES: &[(i32, &str)] = &[",
+        "const VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES: &[(i32, &str, bool)] = &[",
     ))
     for entry in animal_variant_registries:
         lines.append(
@@ -712,6 +725,8 @@ def render_data_component_types(
             + entry.component_constant_name
             + "_TYPE_ID, "
             + rust_string(entry.registry_resource_id)
+            + ", "
+            + str(entry.component_constant_name in animal_texture_variant_components).lower()
             + "),"
         )
     lines.extend((
@@ -720,11 +735,21 @@ def render_data_component_types(
         "pub fn vanilla_data_component_animal_variant_registry(type_id: i32) -> Option<&'static str> {",
         "    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES",
         "        .iter()",
-        "        .find_map(|&(candidate, registry)| (candidate == type_id).then_some(registry))",
+        "        .find_map(|&(candidate, registry, _)| (candidate == type_id).then_some(registry))",
         "}",
         "",
         "pub fn vanilla_data_component_animal_variant_registries() -> impl Iterator<Item = (i32, &'static str)> {",
-        "    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.iter().copied()",
+        "    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES",
+        "        .iter()",
+        "        .map(|&(type_id, registry, _)| (type_id, registry))",
+        "}",
+        "",
+        "pub fn vanilla_data_component_animal_texture_variant_registries() -> impl Iterator<Item = (i32, &'static str)> {",
+        "    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES",
+        "        .iter()",
+        "        .filter_map(|&(type_id, registry, has_texture_payload)| {",
+        "            has_texture_payload.then_some((type_id, registry))",
+        "        })",
         "}",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
@@ -816,13 +841,22 @@ def render_data_component_types(
             "    fn animal_variant_component_registries_follow_holder_value_types() {",
             f"        assert_eq!(VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.len(), {len(animal_variant_registries)});",
             "        let actual = vanilla_data_component_animal_variant_registries().collect::<Vec<_>>();",
-            "        assert_eq!(actual, VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES);",
-            "        for &(type_id, registry) in VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES {",
+            "        let expected = VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.iter().map(|&(type_id, registry, _)| (type_id, registry)).collect::<Vec<_>>();",
+            "        assert_eq!(actual, expected);",
+            "        for &(type_id, registry, _) in VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES {",
             "            assert_eq!(vanilla_data_component_animal_variant_registry(type_id), Some(registry));",
             "        }",
             "        assert_eq!(vanilla_data_component_animal_variant_registry(VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID), None);",
             "        assert_eq!(vanilla_data_component_animal_variant_registry(VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID), None);",
             "        assert_eq!(vanilla_data_component_animal_variant_registry(-1), None);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn animal_texture_variant_registries_follow_network_codec_dependencies() {",
+            f"        assert_eq!(vanilla_data_component_animal_texture_variant_registries().count(), {len(animal_texture_variant_registries)});",
+            "        for (type_id, registry) in vanilla_data_component_animal_texture_variant_registries() {",
+            "            assert_eq!(vanilla_data_component_animal_variant_registry(type_id), Some(registry));",
+            "        }",
             "    }",
             "",
             "    #[test]",
@@ -836,6 +870,9 @@ def render_data_component_types(
             "        let holder_set = include_str!(\"../../bbb-world/src/client/dialog/body/component_value/holder_set.rs\");",
             "        assert!(!holder_set.contains(\"fn synchronized_registry_variant_component\"));",
             "        assert!(holder_set.contains(\"vanilla_data_component_animal_variant_registry\"));",
+            "        let variant_textures = include_str!(\"../../bbb-native/src/entity_variant_textures.rs\");",
+            "        assert!(!variant_textures.contains(\"const ANIMAL_VARIANT_REGISTRIES\"));",
+            "        assert!(variant_textures.contains(\"vanilla_data_component_animal_texture_variant_registries\"));",
             "    }",
             "",
             "    #[test]",
@@ -1138,6 +1175,16 @@ def generated_files(
     component_types_source = parse(DATA_COMPONENT_TYPES_SOURCE)
     registries_source = parse(REGISTRIES_SOURCE)
     component_types = data_component_type_entries(component_types_source)
+    animal_variant_registries = animal_variant_component_registry_entries(
+        component_types_source, registries_source
+    )
+    animal_variant_value_sources = {
+        entry.value_type_fqcn: parse(Path(entry.value_type_fqcn.replace(".", "/") + ".java"))
+        for entry in animal_variant_registries
+    }
+    animal_texture_variant_registries = animal_variant_texture_registry_entries(
+        animal_variant_registries, animal_variant_value_sources
+    )
     particle_types_source = parse(PARTICLE_TYPES_SOURCE)
     return {
         damage_types_output: format_rust(
@@ -1163,9 +1210,8 @@ def generated_files(
                 component_types,
                 data_component_predicate_type_entries(predicate_types_source),
                 common_item_component_constant_names(component_types_source),
-                animal_variant_component_registry_entries(
-                    component_types_source, registries_source
-                ),
+                animal_variant_registries,
+                animal_texture_variant_registries,
             )
         ),
         particle_types_output: format_rust(

@@ -2,22 +2,12 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{anyhow, Result};
 use bbb_pack::PackRoots;
+use bbb_protocol::data_component_types::vanilla_data_component_animal_texture_variant_registries;
 use bbb_renderer::{DynamicEntityTextureImage, EntityDynamicTexture, Renderer};
 use bbb_world::{
-    WorldStore, CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY,
-    FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
+    WorldStore, CAT_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
-
-const ANIMAL_VARIANT_REGISTRIES: [&str; 7] = [
-    CAT_VARIANT_REGISTRY,
-    CHICKEN_VARIANT_REGISTRY,
-    COW_VARIANT_REGISTRY,
-    FROG_VARIANT_REGISTRY,
-    PIG_VARIANT_REGISTRY,
-    WOLF_VARIANT_REGISTRY,
-    ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
-];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EntityVariantTextureStatus {
@@ -78,7 +68,7 @@ impl NativeEntityVariantTextureRuntime {
         world: &WorldStore,
         uploader: &mut impl DynamicEntityTextureUploader,
     ) {
-        for registry in ANIMAL_VARIANT_REGISTRIES {
+        for (_, registry) in vanilla_data_component_animal_texture_variant_registries() {
             let Some(entry_count) = world
                 .registry_resource_ids_in_holder_order(registry)
                 .map(|entries| entries.len())
@@ -267,8 +257,8 @@ mod tests {
     };
     use bbb_renderer::{EntityModelKind, ZombieNautilusModelVariant};
     use bbb_world::{
-        VANILLA_CAT_VARIANT_DATA_ID, VANILLA_FROG_VARIANT_DATA_ID, VANILLA_WOLF_VARIANT_DATA_ID,
-        VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+        COW_VARIANT_REGISTRY, VANILLA_CAT_VARIANT_DATA_ID, VANILLA_FROG_VARIANT_DATA_ID,
+        VANILLA_WOLF_VARIANT_DATA_ID, VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
     };
     use uuid::Uuid;
 

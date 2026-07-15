@@ -191,7 +191,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   pack/item consumers must not reconstruct those type-id sets by hand.
   Keep synchronized animal `Holder` component-to-registry mappings derived by joining
   `DataComponents` value types to `Registries` keys in the generated component catalog;
-  native/world consumers must not restore parallel 12-entry registry-resource tables.
+  native/world consumers must not restore parallel 12-entry registry-resource tables. The
+  client-texture subset must remain derived from `NETWORK_CODEC` dependencies on `ClientAsset`
+  or `ModelAndTexture`; native texture loading must not restore a parallel 7-entry table.
   Keep fixed presentation lookup domains such as `MapColor.MATERIAL_COLORS` and
   its packed-id brightness modifiers in deterministic owner-generated data;
   runtime texture code must only implement the scaling/application algorithm.
