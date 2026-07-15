@@ -4591,7 +4591,7 @@ fn entity_model_instances_project_bee_angry_from_anger_end_time() {
 }
 
 #[test]
-fn entity_model_instances_project_camel_sit_then_sit_pose_from_pose_change_tick() {
+fn entity_model_instances_project_camel_class_sit_then_sit_pose_from_pose_change_tick() {
     // Vanilla Camel.LAST_POSE_CHANGE_TICK (20, LONG): the SIGN encodes sitting (< 0) and the
     // magnitude is the change tick. getPoseTime = gameTime - |LAST_POSE_CHANGE_TICK|. A camel that
     // sat at game tick 100 (so LAST_POSE_CHANGE_TICK = -100) plays CAMEL_SIT for getPoseTime < 40,
@@ -4604,14 +4604,21 @@ fn entity_model_instances_project_camel_sit_then_sit_pose_from_pose_change_tick(
         VANILLA_ENTITY_TYPE_CAMEL_ID,
         [1.0, 64.0, -2.0],
     ));
+    world.apply_add_entity(protocol_add_entity(
+        152,
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+        [2.0, 64.0, -2.0],
+    ));
     // Sat down at game tick 100 (negative magnitude → sitting).
-    assert!(world.apply_set_entity_data(SetEntityData {
-        id: 150,
-        values: vec![protocol_long_data(
-            VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-            -100,
-        )],
-    }));
+    for id in [150, 152] {
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: vec![protocol_long_data(
+                VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+                -100,
+            )],
+        }));
+    }
 
     let sit_seconds = |world: &WorldStore, id: i32| {
         let state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
@@ -4633,6 +4640,7 @@ fn entity_model_instances_project_camel_sit_then_sit_pose_from_pose_change_tick(
         clock_updates: Vec::new(),
     });
     assert_eq!(sit_seconds(&world, 150), (1.0, -1.0, -1.0));
+    assert_eq!(sit_seconds(&world, 152), (1.0, -1.0, -1.0));
 
     // getPoseTime = 160 - 100 = 60 (>= 40): past the sit-down window, so CAMEL_SIT_POSE takes over
     // at (60 - 40)/20 = 1.0 s, and sit / standup are stopped.
@@ -4641,21 +4649,25 @@ fn entity_model_instances_project_camel_sit_then_sit_pose_from_pose_change_tick(
         clock_updates: Vec::new(),
     });
     assert_eq!(sit_seconds(&world, 150), (-1.0, 1.0, -1.0));
+    assert_eq!(sit_seconds(&world, 152), (-1.0, 1.0, -1.0));
 
     // Standing back up at game tick 200 (positive magnitude → not sitting): getPoseTime = 210 -
     // 200 = 10 (< 52 STANDUP window, >= 0), so CAMEL_STANDUP is active at 10/20 = 0.5 s.
-    assert!(world.apply_set_entity_data(SetEntityData {
-        id: 150,
-        values: vec![protocol_long_data(
-            VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-            200,
-        )],
-    }));
+    for id in [150, 152] {
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id,
+            values: vec![protocol_long_data(
+                VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
+                200,
+            )],
+        }));
+    }
     world.apply_world_time(PlayTime {
         game_time: 210,
         clock_updates: Vec::new(),
     });
     assert_eq!(sit_seconds(&world, 150), (-1.0, -1.0, 0.5));
+    assert_eq!(sit_seconds(&world, 152), (-1.0, -1.0, 0.5));
 
     // Long after standing up (getPoseTime = 300 - 200 = 100 >= 52): no transition, all stopped.
     world.apply_world_time(PlayTime {
@@ -4663,6 +4675,7 @@ fn entity_model_instances_project_camel_sit_then_sit_pose_from_pose_change_tick(
         clock_updates: Vec::new(),
     });
     assert_eq!(sit_seconds(&world, 150), (-1.0, -1.0, -1.0));
+    assert_eq!(sit_seconds(&world, 152), (-1.0, -1.0, -1.0));
 }
 
 #[test]

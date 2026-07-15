@@ -15,7 +15,7 @@ use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::EnderDragonAnimationState;
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
-    vanilla_entity_metadata_type_is_hoglin_base,
+    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_hoglin_base,
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
     VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID as ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
@@ -100,8 +100,8 @@ use super::schema::{
     VANILLA_WOLF_INTERESTED_DATA_ID as WOLF_INTERESTED_DATA_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_camel_type, is_vanilla_slime_type,
-    is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid, EntityTransform, EntityVec3,
+    is_vanilla_boat_type, is_vanilla_slime_type, is_vanilla_vehicle_entity_type,
+    vanilla_entity_type_is_squid, EntityTransform, EntityVec3,
     VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
     VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
@@ -5738,7 +5738,7 @@ impl EntityClientAnimationState {
                     .get_or_insert_with(|| KeyframeAnimationState { start_age: None })
                     .animate_when(in_water && !walk_is_moving, self.age_ticks);
             }
-            _ if is_vanilla_camel_type(entity_type_id) => {
+            _ if vanilla_entity_metadata_type_is_camel(entity_type_id) => {
                 self.camel_idle
                     .get_or_insert_with(|| CamelIdleAnimationState::new(entity_id))
                     .advance_client_tick(self.age_ticks);

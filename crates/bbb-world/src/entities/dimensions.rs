@@ -21,8 +21,8 @@ pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID
 use super::schema::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
-    vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_living,
-    vanilla_entity_metadata_type_is_pickable,
+    vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
+    vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
@@ -49,7 +49,7 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_camel_type, is_vanilla_minecart_type, is_vanilla_slime_type,
+    is_vanilla_boat_type, is_vanilla_minecart_type, is_vanilla_slime_type,
     vanilla_entity_type_is_squid, EntityClientAnimationState, EntityVec3,
 };
 use bbb_protocol::entity_types::*;
@@ -209,7 +209,7 @@ fn vanilla_bounds_for_entity_data(
         living_sleeping_pick_bounds()
     } else if is_warden_fixed_pose(entity_type_id, data_values) {
         EntityPickBoundsState::from_base_size(0.9, 1.0, 0.0)
-    } else if is_vanilla_camel_type(entity_type_id) {
+    } else if vanilla_entity_metadata_type_is_camel(entity_type_id) {
         camel_pick_bounds(entity_type_id, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID {
         goat_pick_bounds(data_values)
@@ -347,7 +347,7 @@ pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
     is_front: bool,
     partial_ticks: f32,
 ) -> Option<f32> {
-    if !is_vanilla_camel_type(entity_type_id) {
+    if !vanilla_entity_metadata_type_is_camel(entity_type_id) {
         return None;
     }
 
@@ -453,7 +453,7 @@ fn vanilla_passenger_attachment_point(
         );
     }
 
-    if is_vanilla_camel_type(vehicle_entity_type_id) {
+    if vanilla_entity_metadata_type_is_camel(vehicle_entity_type_id) {
         return rotated_y(
             camel_passenger_attachment_point(
                 vehicle_entity_type_id,

@@ -56,7 +56,8 @@ pub use renderer_catalog::{
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_field,
-    vanilla_entity_metadata_schema, vanilla_entity_metadata_type_is_leashable,
+    vanilla_entity_metadata_schema, vanilla_entity_metadata_type_is_camel,
+    vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VanillaEntityMetadataAccessorCatalogEntry, VanillaEntityMetadataClassCatalogEntry,
     VanillaEntityMetadataDefault, VanillaEntityMetadataFamily, VanillaEntityMetadataFamilySchema,
@@ -522,10 +523,6 @@ pub(crate) fn vanilla_entity_type_can_use_every_equipment_slot(entity_type_id: i
 
 pub(crate) fn is_vanilla_llama_type(entity_type_id: i32) -> bool {
     schema::vanilla_entity_metadata_type_is_llama(entity_type_id)
-}
-
-pub(crate) fn is_vanilla_camel_type(entity_type_id: i32) -> bool {
-    schema::vanilla_entity_metadata_type_is_camel(entity_type_id)
 }
 
 pub fn vanilla_entity_type_is_squid(entity_type_id: i32) -> bool {

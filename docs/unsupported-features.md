@@ -176,6 +176,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generated `HoglinBase` interface graph rather than parallel entity-type tables.
   Illager celebrating-arm-pose membership must remain derived from the nearest generated
   `getArmPose` class behavior rather than an Evoker/Vindicator entity-type table.
+  Camel sit/sit-pose/stand-up animation membership must consume the generated `Camel` class
+  hierarchy directly, including CamelHusk, rather than a parallel two-type table or forwarding
+  compatibility query.
   Keep static data-component-map membership such as
   `DataComponents.COMMON_ITEM_COMPONENTS` in the generated component catalog;
   pack/item consumers must not reconstruct those type-id sets by hand.

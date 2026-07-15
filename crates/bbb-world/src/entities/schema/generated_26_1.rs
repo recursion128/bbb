@@ -21790,4 +21790,21 @@ mod generated_catalog_guards {
             .expect("illager celebrating projection source");
         assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
     }
+
+    #[test]
+    fn production_camel_animation_does_not_restore_entity_type_membership() {
+        let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let body = source
+            .split("fn camel_sit_state")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("camel sit projection source");
+        assert!(body.contains("bbb_world::vanilla_entity_metadata_type_is_camel"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_CAMEL_ID"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID"));
+        let entity_source = include_str!("../../entities.rs");
+        let removed_lookup = ["fn is_vanilla_", "camel_type("].concat();
+        assert!(!entity_source.contains(&removed_lookup));
+    }
 }

@@ -811,9 +811,7 @@ pub(super) fn camel_sit_state(
     values: &[bbb_protocol::packets::EntityDataValue],
     game_time: i64,
 ) -> CamelSitState {
-    if entity_type_id != VANILLA_ENTITY_TYPE_CAMEL_ID
-        && entity_type_id != VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID
-    {
+    if !bbb_world::vanilla_entity_metadata_type_is_camel(entity_type_id) {
         return CamelSitState::STOPPED;
     }
     let last_pose_change_tick = entity_data_long(

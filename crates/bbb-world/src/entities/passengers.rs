@@ -6,10 +6,10 @@ use crate::{LocalPlayerInputState, WorldStore};
 
 use super::schema::{
     vanilla_entity_metadata_type_has_custom_inventory_screen,
-    vanilla_entity_metadata_type_is_player_rideable_jumping,
+    vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_player_rideable_jumping,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_camel_type,
+    is_vanilla_boat_type,
     movement::{entity_distance_squared, entity_vec3},
     VehicleMoveReport,
 };
@@ -402,7 +402,7 @@ fn is_vanilla_player_rideable_jumping_type(entity_type_id: i32) -> bool {
 }
 
 fn is_vanilla_sprintable_vehicle_type(entity_type_id: i32) -> bool {
-    is_vanilla_camel_type(entity_type_id)
+    vanilla_entity_metadata_type_is_camel(entity_type_id)
 }
 
 fn is_vanilla_custom_inventory_screen_type(entity_type_id: i32) -> bool {

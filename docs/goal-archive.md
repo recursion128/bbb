@@ -15548,3 +15548,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] collision-debug `canBeCollidedWith` 删除 boat/shulker/happy-ghast target type 分发，
   直接消费 generated kind；Shulker health 与 HappyGhast age/health/player-above/vehicle-pair/
   stays-still 实例门未改，exact-kind/unknown-id 和既有 collision 回归锁定行为。
+
+## 2026-07-15：Consume generated Camel animation membership
+
+- [x] native Camel sit/sit-pose/stand-up 动画入口删除 Camel/CamelHusk 两项常量判断，
+  直接消费 metadata generator 的 `Camel` 类层次 membership；world 同时删除只转发该
+  generated query 的私有兼容 helper，各消费者改从 schema semantic owner 导入。
+- [x] 既有 native 端到端坐下/坐姿/起立回归扩展到 CamelHusk，generated catalog 精确两项
+  membership 与 generator-emitted 反向门禁防止两项表或 forwarding helper 回流。

@@ -21,7 +21,7 @@ use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 
 use super::schema::{
-    vanilla_minecart_default_display_offset,
+    vanilla_entity_metadata_type_is_camel, vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_BAT_DEFAULT_FLAGS as BAT_DEFAULT_FLAGS, VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
@@ -52,17 +52,17 @@ use super::schema::{
 };
 
 use super::{
-    is_vanilla_abstract_nautilus_type, is_vanilla_camel_type, is_vanilla_can_wear_horse_armor_type,
-    is_vanilla_llama_type, is_vanilla_minecart_type, is_vanilla_vehicle_entity_type,
-    vanilla_entity_type_is_squid, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
-    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
-    EntityClientAnimationState, EntityClientAnimations, EntityDamage, EntityEquipment,
-    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
-    EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
-    EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
-    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
-    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
-    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
+    is_vanilla_minecart_type, is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid,
+    ArmorMaterialKind, EntityAttachmentFace, EntityAttributes, EntityBlockModelState,
+    EntityCameraHurtState, EntityCameraPoseState, EntityClientAnimationState,
+    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
+    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
+    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
+    EntityTransformState, EntityTransientEvents, EvokerFangsCritParticleState,
+    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
+    FireworkRocketTrailParticleState, FoxEatParticleState, ItemEntityStackState,
+    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
@@ -259,7 +259,7 @@ fn end_crystal_intersects_ender_dragon_search_box(
 }
 
 fn vanilla_camel_saddle_type(entity_type_id: i32) -> bool {
-    is_vanilla_camel_type(entity_type_id)
+    vanilla_entity_metadata_type_is_camel(entity_type_id)
 }
 
 fn equipment_contains_saddle_item(
@@ -506,7 +506,7 @@ impl EntityStore {
     ) -> Option<f32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
-        if !is_vanilla_camel_type(identity.entity_type_id) {
+        if !vanilla_entity_metadata_type_is_camel(identity.entity_type_id) {
             return Some(0.0);
         }
         let client_animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
