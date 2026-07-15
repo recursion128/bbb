@@ -947,6 +947,26 @@ pub fn vanilla_entity_metadata_camel_dash_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Camel last-pose-change accessor and its typed default.
+pub fn vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i64)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "LAST_POSE_CHANGE_TICK")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.camel.Camel",
+            "LONG",
+            Some(VanillaEntityMetadataDefault::Long(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Cat lying accessor and its typed default.
 pub fn vanilla_entity_metadata_cat_lying_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3605,6 +3625,32 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_camel_dash_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_camel_pose_tick_accessor_owns_inherited_membership_index_and_default() {
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_CAMEL_ID,
+            VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                Some((20, 0)),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_NAUTILUS_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(-1),
             None
         );
     }

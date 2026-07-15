@@ -16559,3 +16559,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `DIGGING` ordinal 决定 1.75→1.35 的高度变化；baby 缩放复用生成的 inherited baby accessor。
 - dimensions 生产消费者删除固定 Sniffer state id 与固定 AgeableMob baby read；Sniffer reverse
   guard 扩展到 animation/dimensions 两条消费路径。
+
+## 2026-07-15：统一推导 Camel dimensions metadata accessors
+
+- `bbb-world` 现在从生成 schema 的 `Camel.LAST_POSE_CHANGE_TICK` 解析 Camel/CamelHusk
+  membership、wire id 20 与 long typed default 0；body-anchor 与 passenger attachment 两条
+  曲线消费路径共用 accessor。
+- Camel-only 0.6 baby scale 改走生成 inherited baby accessor，并继续排除覆写 `isBaby() =
+  false` 的 CamelHusk；Camel reverse guard 扩展到 dash/pose/dimensions 三条路径。

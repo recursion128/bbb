@@ -21,6 +21,7 @@ pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID
 use super::schema::{
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
+    vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_phantom_size_accessor_for_entity_type,
     vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type,
@@ -36,8 +37,6 @@ use super::schema::{
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
-    VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
 use super::{
@@ -353,11 +352,11 @@ pub(crate) fn vanilla_body_anchor_y_offset_for_entity_data(
     )?;
     let scale = camel_age_scale(entity_type_id, data_values)
         * vanilla_render_scale(entity_type_id, attributes);
-    let last_pose_change_tick = entity_data_long(
-        data_values,
-        CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-        CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
-    );
+    let (data_id, default) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            entity_type_id,
+        )?;
+    let last_pose_change_tick = entity_data_long(data_values, data_id, default);
     Some(camel_body_anchor_animation_y_offset(
         dimensions,
         scale,
@@ -558,11 +557,12 @@ fn camel_passenger_attachment_point(
 
     let scale = camel_age_scale(vehicle_entity_type_id, vehicle_data_values)
         * vanilla_render_scale(vehicle_entity_type_id, vehicle_attributes) as f32;
-    let last_pose_change_tick = entity_data_long(
-        vehicle_data_values,
-        CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-        CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
-    );
+    let last_pose_change_tick =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            vehicle_entity_type_id,
+        )
+        .map(|(data_id, default)| entity_data_long(vehicle_data_values, data_id, default))
+        .unwrap_or_default();
     [
         0.0,
         camel_body_anchor_animation_y_offset(
@@ -743,11 +743,7 @@ fn camel_pick_bounds(
     let bounds = EntityPickBoundsState::from_base_size(1.7, height, 0.0);
 
     if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
-        && entity_data_bool(
-            data_values,
-            AGEABLE_MOB_BABY_DATA_ID,
-            AGEABLE_MOB_DEFAULT_BABY,
-        )
+        && vanilla_is_baby(entity_type_id, data_values)
     {
         bounds.scale_dimensions(CAMEL_BABY_SCALE)
     } else {
@@ -757,11 +753,7 @@ fn camel_pick_bounds(
 
 fn camel_age_scale(entity_type_id: i32, data_values: &[EntityDataValue]) -> f32 {
     if entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_ID
-        && entity_data_bool(
-            data_values,
-            AGEABLE_MOB_BABY_DATA_ID,
-            AGEABLE_MOB_DEFAULT_BABY,
-        )
+        && vanilla_is_baby(entity_type_id, data_values)
     {
         CAMEL_BABY_SCALE
     } else {

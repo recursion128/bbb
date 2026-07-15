@@ -23115,14 +23115,33 @@ mod generated_catalog_guards {
     fn production_camel_dash_does_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let dimensions = include_str!("../dimensions.rs");
         assert!(animations.contains("vanilla_entity_metadata_camel_dash_accessor_for_entity_type"));
         assert!(store.contains("camel_is_dashing(identity.entity_type_id, &metadata.data_values)"));
+        assert_eq!(
+            dimensions
+                .matches(
+                    "vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type"
+                )
+                .count(),
+            3
+        );
+        assert!(dimensions.contains("vanilla_is_baby(entity_type_id, data_values)"));
         for removed in ["CAMEL_DASH_DATA_ID", "CAMEL_DEFAULT_DASH"] {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
             );
             assert!(!store.contains(removed), "store restored {removed}");
+        }
+        for removed in [
+            "CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID",
+            "CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK",
+        ] {
+            assert!(
+                !dimensions.contains(removed),
+                "dimensions restored {removed}"
+            );
         }
     }
 

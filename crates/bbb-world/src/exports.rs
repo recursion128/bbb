@@ -19,6 +19,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
+    vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
     vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type,

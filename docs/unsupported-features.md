@@ -285,9 +285,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers must not restore fixed accessor/default
   aliases or read another entity family's slot 19 as the playing-dead flag.
-  Camel dash membership, wire index and typed default must remain derived from generated
-  `Camel.DASH`, including inherited CamelHusk membership; world animation consumers must not
-  restore fixed accessor/default aliases or confuse it with `AbstractNautilus.DASH`.
+  Camel dash and pose-tick membership, wire indices and typed defaults must remain derived from
+  generated `Camel.DASH` and `Camel.LAST_POSE_CHANGE_TICK`, including inherited CamelHusk
+  membership; world animation/dimensions consumers must not restore fixed accessor/default aliases
+  or confuse dash with `AbstractNautilus.DASH`. Camel-only baby scaling must read the generated
+  inherited baby accessor while preserving CamelHusk's `isBaby() = false` override.
   PolarBear standing membership, wire index and typed default must remain derived from generated
   `PolarBear.DATA_STANDING_ID`; world animation consumers must not restore fixed accessor/default
   aliases or read the standing flag without generated PolarBear membership.
