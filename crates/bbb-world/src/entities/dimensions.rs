@@ -1123,14 +1123,6 @@ pub(crate) fn vanilla_is_cat(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_CAT_ID
 }
 
-/// Whether the entity is rendered with the vanilla `VexModel`. Its `setupAnim` levels the
-/// body (`xRot = 0`) and raises both arms into the charging pose (`setArmsCharging`) while
-/// `Vex.isCharging` (the synced `DATA_FLAGS_ID & 1`), so the charging projection is gated to
-/// this one type — only the vex defines that flags byte.
-pub(crate) fn vanilla_is_vex(entity_type_id: i32) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_VEX_ID
-}
-
 fn scales_with_living_scale_attribute(
     entity_type_id: i32,
     data_values: &[EntityDataValue],

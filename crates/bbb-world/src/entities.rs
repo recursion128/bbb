@@ -1514,8 +1514,8 @@ entity_model_source_state! {
     pub wolf_body_armor_foil: bool,
     /// Vanilla `VexRenderState.isCharging` (`Vex.isCharging`, the synced `DATA_FLAGS_ID & 1`):
     /// the vex is charging an attack, which `VexModel.setupAnim` shows by leveling the body
-    /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the vex
-    /// ([`vanilla_is_vex`](crate::entities::dimensions)); `false` for every other entity.
+    /// (`xRot = 0`) and raising both arms (`setArmsCharging`). Projected only for the entity
+    /// carrying the generated Vex flags accessor; `false` for every other entity.
     #[serde(default)]
     pub vex_charging: bool,
     /// Vanilla `WitherRenderState.invulnerableTicks` (`WitherBoss.getInvulnerableTicks`, the synced

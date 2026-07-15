@@ -858,6 +858,48 @@ fn entity_model_sources_project_bat_resting_from_flags() {
 }
 
 #[test]
+fn entity_model_sources_project_vex_charging_from_flags() {
+    // Vanilla Vex.DATA_FLAGS_ID (16, BYTE); FLAG_IS_CHARGING (1).
+    let charging = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .vex_charging
+    };
+    let set_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+        store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![ProtocolEntityDataValue {
+                data_id: VANILLA_VEX_FLAGS_DATA_ID,
+                serializer_id: 0,
+                value: EntityDataValueKind::Byte(flags),
+            }],
+        })
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_VEX_ID,
+    ));
+    assert!(!charging(&store, 72));
+    assert!(set_flags(&mut store, 72, VANILLA_VEX_FLAG_CHARGING));
+    assert!(charging(&store, 72));
+    assert!(set_flags(&mut store, 72, 0));
+    assert!(!charging(&store, 72));
+
+    // A chicken carries no Vex flags accessor; a stray bit at the same data id remains idle.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        73,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    assert!(set_flags(&mut store, 73, VANILLA_VEX_FLAG_CHARGING));
+    assert!(!charging(&store, 73));
+}
+
+#[test]
 fn entity_model_sources_project_wither_invulnerable_ticks() {
     // Vanilla WitherBoss.DATA_ID_INV (19, INT): the spawn-invulnerability countdown.
     const VANILLA_WITHER_INV_DATA_ID: u8 = 19;

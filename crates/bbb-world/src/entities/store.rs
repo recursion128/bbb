@@ -27,6 +27,7 @@ use super::schema::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
+    vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
@@ -44,7 +45,6 @@ use super::schema::{
     VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS as TAMABLE_ANIMAL_DEFAULT_FLAGS,
     VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
-    VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
 
@@ -89,7 +89,7 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat, vanilla_is_vex,
+    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat,
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale, ENTITY_DATA_POSE_ID,
@@ -1729,14 +1729,16 @@ impl EntityStore {
                 & TAMABLE_ANIMAL_SITTING_FLAG
                 != 0;
         // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms
-        // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & 1`). Only the vex
-        // defines that flags byte, so the projection is gated to it and defaults to idle.
-        let vex_charging = vanilla_is_vex(identity.entity_type_id)
-            && self
-                .metadata_byte(id, VEX_FLAGS_DATA_ID, VEX_DEFAULT_FLAGS)
-                .unwrap_or(VEX_DEFAULT_FLAGS)
-                & VEX_FLAG_IS_CHARGING
-                != 0;
+        // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & 1`). The generated
+        // accessor owns the Vex membership, wire id and default, so every other type stays idle.
+        let vex_charging =
+            vanilla_entity_metadata_vex_flags_accessor_for_entity_type(identity.entity_type_id)
+                .map(|(data_id, default)| {
+                    self.metadata_byte(id, data_id, default).unwrap_or(default)
+                        & VEX_FLAG_IS_CHARGING
+                        != 0
+                })
+                .unwrap_or(false);
         // Vanilla `SnowGolemRenderer.extractRenderState`: when `SnowGolem.hasPumpkin()` is true, the
         // renderer resolves `Blocks.CARVED_PUMPKIN.defaultBlockState()` into `state.headBlock`. The
         // snow golem's synced byte defaults to 16, so a newly spawned golem shows the pumpkin until the

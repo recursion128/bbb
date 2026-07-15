@@ -519,6 +519,26 @@ pub(crate) fn vanilla_entity_metadata_fox_flags_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Vex flags accessor and its typed default.
+pub(crate) fn vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i8)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.Vex",
+            "BYTE",
+            Some(VanillaEntityMetadataDefault::Byte(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated WitherBoss invulnerability-ticks accessor and its typed default.
 ///
 /// The accessor owner supplies both the Wither presentation membership and its wire index, so
@@ -960,11 +980,12 @@ mod tests {
         VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
         VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
+        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
 
     use super::*;
@@ -2024,6 +2045,24 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_fox_flags_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_vex_flags_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_vex_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_VEX_ID),
+            Some((16, 0))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_vex_flags_accessor_for_entity_type(-1),
             None
         );
     }

@@ -199,6 +199,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Fox pose membership plus pose/animation wire index and default must remain derived from
   generated `Fox.DATA_FLAGS_ID`; store must not restore a Fox type predicate, and neither flags
   consumer may restore fixed accessor aliases.
+  Vex charging membership, wire index and default must remain derived from generated
+  `Vex.DATA_FLAGS_ID`; world projection must not restore a Vex type predicate or fixed accessor
+  aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class
