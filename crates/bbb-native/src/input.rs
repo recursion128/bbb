@@ -700,6 +700,8 @@ pub(crate) struct ClientInputState {
     dialog_last_click_at: Option<Instant>,
     dialog_last_click_screen_revision: Option<u64>,
     dialog_ime_preedit: Option<DialogImePreeditState>,
+    dialog_screen_was_open: bool,
+    dialog_native_previous_screen: Option<NativeDialogPreviousScreenState>,
     inventory_quick_craft_button_num: Option<i8>,
     inventory_quick_craft_slots: Vec<i16>,
     stonecutter_recipe_scroll_row: i32,
@@ -833,6 +835,11 @@ struct ChatEntryState {
     suggestion_narration: Option<CommandSuggestionNarrationState>,
     mouse_position: Option<(i32, i32)>,
     suppress_open_key_commit: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum NativeDialogPreviousScreenState {
+    Chat(ChatEntryState),
 }
 
 const COMMAND_SUGGESTION_LINE_HEIGHT: i32 = 12;
@@ -1480,6 +1487,41 @@ impl ClientInputState {
 
     pub(crate) fn chat_entry_is_active(&self) -> bool {
         self.chat_entry.is_some()
+    }
+
+    /// Moves native-owned screen state below the world-owned Dialog stack and
+    /// restores it only when that stack returns without another screen taking
+    /// ownership in the meantime.
+    pub(crate) fn sync_dialog_native_previous_screen(&mut self, world: &WorldStore) {
+        let dialog_screen_is_open = world.dialog_screen_is_open();
+        match (self.dialog_screen_was_open, dialog_screen_is_open) {
+            (false, true) => {
+                self.dialog_native_previous_screen = self
+                    .chat_entry
+                    .take()
+                    .map(NativeDialogPreviousScreenState::Chat);
+            }
+            (true, false) => {
+                let previous = self.dialog_native_previous_screen.take();
+                if !self.native_screen_replaced_dialog(world) && self.chat_entry.is_none() {
+                    if let Some(NativeDialogPreviousScreenState::Chat(entry)) = previous {
+                        self.chat_entry = Some(entry);
+                    }
+                }
+            }
+            _ => {}
+        }
+        self.dialog_screen_was_open = dialog_screen_is_open;
+    }
+
+    fn native_screen_replaced_dialog(&self, world: &WorldStore) -> bool {
+        world.open_container_id().is_some()
+            || world.current_book().is_some()
+            || world.advancements_screen_is_open()
+            || world.stats_screen_is_open()
+            || self.debug_options_screen_is_open()
+            || self.debug_pause_screen_is_open()
+            || self.sign_editor_is_active_or_pending(world)
     }
 
     pub(crate) fn inventory_hovered_slot(&self) -> Option<i16> {

@@ -2075,6 +2075,7 @@ pub(crate) fn pump_network_and_terrain(
             level_event_sound_random,
         );
     }
+    input.sync_dialog_native_previous_screen(world);
     entity_variant_textures.synchronize(world, renderer);
     if terrain_textures.synchronize_biome_registry(world) {
         terrain_upload.request_reload_all_chunks();

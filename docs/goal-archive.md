@@ -15047,3 +15047,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   解码与 `ClientCommonPacketListenerImpl.showDialog` 的 previous-screen 解包语义，不增加 clientbound packet 计数。
 - [x] native focused regressions 覆盖 glyph/padding 命中、Item description OpenUrl prompt、RunCommand +
   WAIT_FOR_RESPONSE、nested ShowDialog + canonical previous-screen restore；完整 41 项 Dialog screen test 集通过。
+
+## 2026-07-15：Restore native ChatScreen after Dialog clear
+
+- [x] 对照 `ClientCommonPacketListenerImpl.showDialog/clearDialog`，native input owner 在 Dialog 栈从关闭变为
+  打开时移出完整 ChatEntry state；连续 ShowDialog、warning、ConfirmLink 与 waiting 只替换栈顶，不覆盖最初
+  ChatScreen previous state，最终 ClearDialog 或本地 close 后恢复同一草稿、光标、选择、suggestion list 与
+  suppression 状态。
+- [x] 若 book/container/advancements/stats/sign/debug 等新 screen 在 Dialog 期间取得所有权，关闭 Dialog 时丢弃
+  stale ChatScreen，不在新 screen 关闭后错误复活草稿。runtime pump 在每轮 network drain 后同步 native/world
+  screen 边界；focused regressions 覆盖连续两次 ShowDialog + ClearDialog 的精确状态恢复与 book replacement。

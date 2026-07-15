@@ -16178,6 +16178,76 @@ fn chat_key_opens_chat_entry_and_submits_unsigned_message() {
 }
 
 #[test]
+fn dialog_stack_suspends_and_restores_the_native_chat_screen() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    open_chat_entry(&mut input, &mut world, &mut counters, &commands, false);
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "draft command",
+    );
+    let entry = input.chat_entry.as_mut().unwrap();
+    entry.cursor = 5;
+    entry.selection = 11;
+    let expected = entry.clone();
+
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+    input.sync_dialog_native_previous_screen(&world);
+    assert!(!input.chat_entry_is_active());
+
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 12 },
+    });
+    input.sync_dialog_native_previous_screen(&world);
+    assert!(!input.chat_entry_is_active());
+
+    world.apply_clear_dialog();
+    input.sync_dialog_native_previous_screen(&world);
+    assert_eq!(input.chat_entry.as_ref(), Some(&expected));
+    assert_eq!(world.counters().show_dialog_packets, 2);
+    assert_eq!(world.counters().clear_dialog_packets, 1);
+}
+
+#[test]
+fn native_chat_screen_is_not_restored_after_another_screen_replaces_dialog() {
+    let commands = None;
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+
+    open_chat_entry(&mut input, &mut world, &mut counters, &commands, false);
+    handle_text_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &commands,
+        "discarded draft",
+    );
+    world.apply_show_dialog(ProtocolShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 11 },
+    });
+    input.sync_dialog_native_previous_screen(&world);
+    assert!(!input.chat_entry_is_active());
+
+    open_test_book_screen(&mut world, vec!["Replacement"]);
+    input.sync_dialog_native_previous_screen(&world);
+    assert!(!input.chat_entry_is_active());
+    assert!(world.current_book().is_some());
+
+    assert!(world.close_current_book());
+    input.sync_dialog_native_previous_screen(&world);
+    assert!(!input.chat_entry_is_active());
+}
+
+#[test]
 fn chat_entry_limits_message_text_to_vanilla_length() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

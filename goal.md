@@ -411,7 +411,8 @@ template substitution 使用 `StringTag.escapeWithoutQuotes`，dynamic custom �
 change-page 与 suggest-command 在
 DialogScreen 的 default handler 中无页面 side effect，仅按 vanilla 执行 `after_action`；静态 show-dialog action 已同步
 替换当前 dialog、保留最初 previous screen，且不误增 clientbound packet counter。clear-dialog 还须接入 native-owned
-chat/sign/debug screen 和 warning return-screen stack；上述 runtime 完成前两个 `ShowDialog`
+sign/debug screen 和 warning return-screen stack；native ChatScreen 已由 input owner 在 Dialog 栈顶期间完整暂存
+草稿、光标、选择与 suggestions，并在最终 clear/close 后恢复；上述 runtime 完成前两个 `ShowDialog`
 的 `runtime_side_effect` cell 保持 `partial`。generic packet Component 的 world/session higher
 owner 也仍须接入；context-free 路径必须继续显式返回 unknown，不得回退 raw NBT 估算。
 configuration custom-payload 的 Brand/Discarded wire、bounded 自动 brand send、canonical server brand 与
@@ -625,7 +626,8 @@ play UpdateMobEffect 的 entity/effect/amplifier/duration/flags wire、strict de
 play UpdateRecipes 的 property-set/stonecutter framing、strict trailing、replace ownership 与 tests 已闭合；剩余 SlotDisplay/component/menu presentation 保持 decode/canonical/runtime partial。
 play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry replace ownership 与 tests 已闭合；剩余 fuel values/creative search-tree 派生刷新保持 runtime partial。
 play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailing、manager apply ownership 与 tests 已闭合；剩余 locator contextual-bar presentation 保持 runtime partial。
-play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；剩余 native-owned chat/sign/debug 与 warning return-screen stack 集成保持 runtime partial。
+play ClearDialog 的 unit payload、strict trailing、canonical clear ownership 与 tests 已闭合；native ChatScreen previous
+screen 已恢复，剩余 native-owned sign/debug 与 warning return-screen stack 集成保持 runtime partial。
 configuration/play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session
 registry holder resolution、五种 top-level Dialog 的完整 Codec projection 与 canonical apply、ownership
 及 tests 已闭合；两行只保留 native screen stack 的 runtime cell 为 partial。Component generic packet
