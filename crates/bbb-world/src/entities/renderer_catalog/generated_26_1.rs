@@ -944,4 +944,10 @@ mod generated_catalog_guards {
         let source = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
         assert!(!source.contains("VANILLA_ENTITY_TYPE_BLAZE_ID"));
     }
+
+    #[test]
+    fn native_model_selection_does_not_restore_noop_renderer_membership() {
+        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        assert!(!source.contains("VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID"));
+    }
 }

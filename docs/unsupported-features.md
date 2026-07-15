@@ -148,7 +148,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
 - Complete the remaining cross-crate registry/ordinal/serializer-id and entity
   renderer-class/event-dispatch membership discovery audit. The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
-  path) and their static-full-block-light behavior are now source-generated; continue
+  path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression
+  are now source-generated; continue
   migrating renderer-class-derived model/pose memberships through that owner. Emit every new
   generated-catalog consumer guard or migrated generated-catalog consumer guard
   from that catalog's generator rather than hand-editing its checked-in output.

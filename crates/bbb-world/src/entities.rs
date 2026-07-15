@@ -50,7 +50,9 @@ pub(crate) use dimensions::{
 use dimensions::{vanilla_client_position_for_entity_data, vanilla_is_cat};
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
 use movement::entity_vec3;
-pub use renderer_catalog::vanilla_entity_renderer_has_static_full_block_light;
+pub use renderer_catalog::{
+    vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_is_noop,
+};
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_metadata_accessor_for_entity_type, vanilla_entity_metadata_field,

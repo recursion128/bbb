@@ -30,6 +30,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
     game_time: i64,
     variant_registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
+    if bbb_world::vanilla_entity_renderer_is_noop(entity_type_id) {
+        return EntityModelKind::NoRender;
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, variant_registries),
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
@@ -162,7 +165,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         _ if bbb_world::vanilla_entity_type_is_minecart(entity_type_id) => {
             EntityModelKind::Minecart
         }
-        VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => EntityModelKind::Arrow {
             texture: ArrowModelTexture::Spectral,
         },
@@ -287,7 +289,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_GUARDIAN_ID => EntityModelKind::Guardian { elder: false },
-        VANILLA_ENTITY_TYPE_INTERACTION_ID => EntityModelKind::NoRender,
         // Dropped item entities render through the item-model / item-billboard passes, not the
         // entity-model scene (`ItemEntityRenderer` submits ItemStackRenderState clusters).
         VANILLA_ENTITY_TYPE_ITEM_ID => EntityModelKind::NoRender,
@@ -301,7 +302,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {
             size: slime_size(data_values),
         },
-        VANILLA_ENTITY_TYPE_MARKER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
         VANILLA_ENTITY_TYPE_PARROT_ID => parrot_model_kind(data_values),

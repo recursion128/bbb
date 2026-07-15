@@ -15402,3 +15402,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `ThrownItemRenderer` 的 `fullBright` 构造参数契约；native 删除 8 项手写集合，统一消费 generated
   query，补齐旧实现漏掉的 EyeOfEnder、Fireball 与 SmallFireball。catalog exact-count/完整 11 项集合、
   Python CST fixture、native light packing 与 generator-emitted 反向门禁覆盖该边界。
+
+## 2026-07-15：Consume generated NoopRenderer membership
+
+- [x] native entity model selection 删除 area-effect-cloud / interaction / marker 三项手写
+  `NoRender` 分派，改由 renderer catalog 的 registered class identity 查询；三者仍精确映射
+  `NoopRenderer`，其他因独立 item/weather/runtime pass 而不在 3D entity scene 绘制的类型保持原 owner。
+- [x] catalog exact-set 与 native 既有三实体回归覆盖正向行为，generator-emitted 反向门禁阻止
+  `kind.rs` 恢复旧实体常量 membership。
