@@ -15429,3 +15429,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   passenger attachment 删除三份平行五项 type 表，直接消费 renderer owner query；catalog exact-set、
   Python inheritance fixture、既有 equine projection/passenger 回归及 generator-emitted 三消费者反向门禁
   覆盖该边界。
+
+## 2026-07-15：Generate mob item-in-hand renderer membership
+
+- [x] entity renderer extractor 沿注册 renderer 的构造器与父类构造器解析
+  `ItemInHandLayer`，再与 `MobRenderer` 继承关系相交，生成读取 `Mob.getMainArm()` 的精确
+  20-type membership；同样具有手持层但不继承 Mob 的 ArmorStand 保持排除。
+- [x] world main-arm projection 删除 zombie/piglin/illager/skeleton 等手工拼接表，直接消费
+  renderer owner query，并补齐原表遗漏的 Allay/CopperGolem left-handed projection；Python
+  fixture、catalog exact-set、world projection 回归与 generator-emitted 反向门禁覆盖该边界。

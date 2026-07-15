@@ -112,6 +112,7 @@ use crate::entities::projectiles::{
 use crate::entities::renderer_catalog::{
     vanilla_entity_renderer_uses_abstract_feline_model,
     vanilla_entity_renderer_uses_abstract_horse_renderer,
+    vanilla_entity_renderer_uses_mob_item_in_hand_layer,
 };
 use crate::entities::schema::{
     vanilla_entity_metadata_type_is_item_frame, vanilla_entity_metadata_type_is_living,
@@ -279,23 +280,6 @@ fn equipment_contains_saddle_item(
     item.item_id
         .and_then(|item_id| equipment_slots.get(&item_id).copied())
         == Some(ItemEquipmentSlot::Saddle)
-}
-
-fn vanilla_mob_item_in_hand_layer_type(entity_type_id: i32) -> bool {
-    vanilla_zombie_model_family(entity_type_id)
-        || vanilla_piglin_melee_attack_family(entity_type_id)
-        || vanilla_illager_aggressive_arm_pose_family(entity_type_id)
-        || vanilla_is_vex(entity_type_id)
-        || matches!(
-            entity_type_id,
-            VANILLA_ENTITY_TYPE_BOGGED_ID
-                | VANILLA_ENTITY_TYPE_EVOKER_ID
-                | VANILLA_ENTITY_TYPE_PARCHED_ID
-                | VANILLA_ENTITY_TYPE_SKELETON_ID
-                | VANILLA_ENTITY_TYPE_STRAY_ID
-                | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID
-                | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
-        )
 }
 
 /// Vanilla `WitherBoss.DATA_ID_INV` data id (19): the int spawn-invulnerability countdown
@@ -769,7 +753,7 @@ impl EntityStore {
                 )
                 .is_some_and(|arm| arm == VANILLA_HUMANOID_ARM_LEFT_ID);
         }
-        if vanilla_mob_item_in_hand_layer_type(entity_type_id) {
+        if vanilla_entity_renderer_uses_mob_item_in_hand_layer(entity_type_id) {
             return self
                 .metadata_byte(id, VANILLA_MOB_FLAGS_DATA_ID, 0)
                 .is_some_and(|flags| flags & MOB_FLAG_LEFTHANDED != 0);

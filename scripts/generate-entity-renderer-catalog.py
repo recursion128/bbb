@@ -81,6 +81,9 @@ def render(source_root: Path) -> str:
                 "        uses_abstract_horse_renderer: "
                 + str(entry.uses_abstract_horse_renderer).lower()
                 + ",",
+                "        uses_mob_item_in_hand_layer: "
+                + str(entry.uses_mob_item_in_hand_layer).lower()
+                + ",",
                 "    },",
             ]
         )
@@ -116,6 +119,12 @@ def render(source_root: Path) -> str:
             '        assert!(!animations.contains("fn vanilla_equine_type"));',
             '        assert!(!dimensions.contains("fn is_vanilla_rearing_horse_passenger_attachment_type"));',
             '        assert!(!store.contains("fn vanilla_equine_saddle_type"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn world_projection_does_not_restore_mob_item_in_hand_membership() {",
+            '        let source = include_str!("../store.rs");',
+            '        assert!(!source.contains("fn vanilla_mob_item_in_hand_layer_type"));',
             "    }",
             "}",
             "",

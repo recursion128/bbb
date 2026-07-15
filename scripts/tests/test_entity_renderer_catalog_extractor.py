@@ -32,12 +32,64 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                         context -> new ThrownItemRenderer<>(context, 1.0F, true));
                     register(EntityType.CAT, CatRenderer::new);
                     register(EntityType.HORSE, HorseRenderer::new);
+                    register(EntityType.ALLAY, AllayRenderer::new);
+                    register(EntityType.ARMOR_STAND, ArmorStandRenderer::new);
+                    register(EntityType.VEX, VexRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
             """,
         )
         renderer_sources = [
+            java(
+                "net/minecraft/client/renderer/entity/layers/ItemInHandLayer.java",
+                """
+                package net.minecraft.client.renderer.entity.layers;
+                public class ItemInHandLayer {
+                    public ItemInHandLayer(Object renderer) {}
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/MobRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class MobRenderer extends EntityRenderer {}
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/AllayRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
+                public class AllayRenderer extends MobRenderer {
+                    public AllayRenderer() {
+                        this.addLayer(new ItemInHandLayer(this));
+                    }
+                    private void addLayer(Object layer) {}
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/ArmorStandRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
+                public class ArmorStandRenderer extends EntityRenderer {
+                    public ArmorStandRenderer() {
+                        this.addLayer(new ItemInHandLayer(this));
+                    }
+                    private void addLayer(Object layer) {}
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/VexRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class VexRenderer extends AllayRenderer {}
+                """,
+            ),
             java(
                 "net/minecraft/client/renderer/entity/AbstractHorseRenderer.java",
                 """
@@ -118,6 +170,9 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "EYE_OF_ENDER",
                 "CAT",
                 "HORSE",
+                "ALLAY",
+                "ARMOR_STAND",
+                "VEX",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -132,14 +187,18 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     entry.static_full_block_light,
                     entry.uses_abstract_feline_model,
                     entry.uses_abstract_horse_renderer,
+                    entry.uses_mob_item_in_hand_layer,
                 )
                 for entry in entries
             ],
             [
-                (0, "BLAZE", "BlazeRenderer", True, False, False),
-                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False),
-                (2, "CAT", "CatRenderer", False, True, False),
-                (3, "HORSE", "HorseRenderer", False, False, True),
+                (0, "BLAZE", "BlazeRenderer", True, False, False, False),
+                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, False, False, False),
+                (2, "CAT", "CatRenderer", False, True, False, False),
+                (3, "HORSE", "HorseRenderer", False, False, True, False),
+                (4, "ALLAY", "AllayRenderer", False, False, False, True),
+                (5, "ARMOR_STAND", "ArmorStandRenderer", False, False, False, False),
+                (6, "VEX", "VexRenderer", False, False, False, True),
             ],
         )
 

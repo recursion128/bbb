@@ -12,6 +12,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     static_full_block_light: bool,
     uses_abstract_feline_model: bool,
     uses_abstract_horse_renderer: bool,
+    uses_mob_item_in_hand_layer: bool,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -45,22 +46,37 @@ pub(super) fn vanilla_entity_renderer_uses_abstract_horse_renderer(entity_type_i
         .is_some_and(|entry| entry.uses_abstract_horse_renderer)
 }
 
+pub(super) fn vanilla_entity_renderer_uses_mob_item_in_hand_layer(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.uses_mob_item_in_hand_layer)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
 
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
-        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
-        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MARKER_ID,
-        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
+        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID,
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
+        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID,
+        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_GIANT_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
+        VANILLA_ENTITY_TYPE_MARKER_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
 
     use super::*;
@@ -177,5 +193,50 @@ mod tests {
         }
         assert!(!vanilla_entity_renderer_uses_abstract_horse_renderer(-1));
         assert!(!vanilla_entity_renderer_uses_abstract_horse_renderer(157));
+    }
+
+    #[test]
+    fn generated_mob_item_in_hand_membership_matches_renderer_layers() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.uses_mob_item_in_hand_layer)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual,
+            vec![
+                VANILLA_ENTITY_TYPE_ALLAY_ID,
+                VANILLA_ENTITY_TYPE_BOGGED_ID,
+                VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+                VANILLA_ENTITY_TYPE_DROWNED_ID,
+                VANILLA_ENTITY_TYPE_EVOKER_ID,
+                VANILLA_ENTITY_TYPE_GIANT_ID,
+                VANILLA_ENTITY_TYPE_HUSK_ID,
+                VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+                VANILLA_ENTITY_TYPE_PARCHED_ID,
+                VANILLA_ENTITY_TYPE_PIGLIN_ID,
+                VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+                VANILLA_ENTITY_TYPE_PILLAGER_ID,
+                VANILLA_ENTITY_TYPE_SKELETON_ID,
+                VANILLA_ENTITY_TYPE_STRAY_ID,
+                VANILLA_ENTITY_TYPE_VEX_ID,
+                VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+                VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+            ]
+        );
+        for entity_type_id in actual {
+            assert!(vanilla_entity_renderer_uses_mob_item_in_hand_layer(
+                entity_type_id
+            ));
+        }
+        assert!(!vanilla_entity_renderer_uses_mob_item_in_hand_layer(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+        ));
+        assert!(!vanilla_entity_renderer_uses_mob_item_in_hand_layer(
+            VANILLA_ENTITY_TYPE_PLAYER_ID
+        ));
     }
 }

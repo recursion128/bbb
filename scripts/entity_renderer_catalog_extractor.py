@@ -19,6 +19,8 @@ RENDERER_PACKAGE = "net.minecraft.client.renderer.entity"
 ENTITY_RENDERERS_CLASS = RENDERER_PACKAGE + ".EntityRenderers"
 THROWN_ITEM_RENDERER_CLASS = RENDERER_PACKAGE + ".ThrownItemRenderer"
 ABSTRACT_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".AbstractHorseRenderer"
+MOB_RENDERER_CLASS = RENDERER_PACKAGE + ".MobRenderer"
+ITEM_IN_HAND_LAYER_CLASS = RENDERER_PACKAGE + ".layers.ItemInHandLayer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
@@ -37,6 +39,7 @@ class EntityRendererRegistration:
     static_full_block_light: bool
     uses_abstract_feline_model: bool
     uses_abstract_horse_renderer: bool
+    uses_mob_item_in_hand_layer: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -217,6 +220,32 @@ def _renderer_inherits(
         current = type_by_name[current.superclass]
 
 
+def _renderer_hierarchy_constructs_type(
+    renderer_class: str,
+    target_class: str,
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> bool:
+    current = type_by_name[renderer_class]
+    while True:
+        source = source_by_type[current.fqcn]
+        for method in source.methods_for(current):
+            if not method.is_constructor:
+                continue
+            for node in descendants(method.node):
+                if node.type != "object_creation_expression":
+                    continue
+                type_node = node.child_by_field_name("type")
+                if type_node is None:
+                    continue
+                spelling = source.expression(type_node).canonical.split("<", 1)[0].strip()
+                if resolve_type_reference(spelling, current, type_by_name) == target_class:
+                    return True
+        if current.superclass is None or current.superclass not in type_by_name:
+            return False
+        current = type_by_name[current.superclass]
+
+
 def extract_entity_renderer_registrations(
     entity_renderers_source: JavaSource,
     renderer_sources: list[JavaSource],
@@ -347,6 +376,17 @@ def extract_entity_renderer_registrations(
                 _renderer_inherits(
                     renderer_class,
                     ABSTRACT_HORSE_RENDERER_CLASS,
+                    type_by_name,
+                ),
+                _renderer_inherits(
+                    renderer_class,
+                    MOB_RENDERER_CLASS,
+                    type_by_name,
+                )
+                and _renderer_hierarchy_constructs_type(
+                    renderer_class,
+                    ITEM_IN_HAND_LAYER_CLASS,
+                    source_by_type,
                     type_by_name,
                 ),
             )

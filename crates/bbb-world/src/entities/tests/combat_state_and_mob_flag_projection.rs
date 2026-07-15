@@ -424,6 +424,39 @@ fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
     }));
     assert!(main_arm_left(&store, 83));
 
+    // AllayRenderer and CopperGolemRenderer add ItemInHandLayer directly rather than through
+    // HumanoidMobRenderer. Both still extract ArmedEntityRenderState from a Mob, so the generated
+    // renderer membership must project their inherited left-handed flag as well.
+    for (id, entity_type_id) in [
+        (85, VANILLA_ENTITY_TYPE_ALLAY_ID),
+        (86, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![protocol_byte_data(
+                VANILLA_MOB_FLAGS_DATA_ID,
+                MOB_FLAG_LEFTHANDED,
+            )],
+        }));
+        assert!(main_arm_left(&store, id));
+    }
+
+    // ArmorStandRenderer also owns an ItemInHandLayer, but ArmorStand is a LivingEntity rather
+    // than a Mob and data id 15 is its own flags byte, not Mob.DATA_MOB_FLAGS_ID.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        87,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 87,
+        values: vec![protocol_byte_data(
+            VANILLA_MOB_FLAGS_DATA_ID,
+            MOB_FLAG_LEFTHANDED,
+        )],
+    }));
+    assert!(!main_arm_left(&store, 87));
+
     // Non-humanoid/non-living entities do not treat data id 15 as a main-arm source.
     store.apply_add_entity(protocol_add_entity_with_type(
         84,

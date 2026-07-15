@@ -149,8 +149,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   renderer-class/event-dispatch membership discovery audit. The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression
-  plus `AbstractFelineModel` / `AbstractHorseRenderer` hierarchy memberships are now
-  source-generated; continue
+  plus `AbstractFelineModel` / `AbstractHorseRenderer` hierarchy memberships and the
+  `MobRenderer` + inherited/direct `ItemInHandLayer` intersection are now source-generated;
+  continue
   migrating renderer-class-derived model/pose memberships through that owner. Emit every new
   generated-catalog consumer guard or migrated generated-catalog consumer guard
   from that catalog's generator rather than hand-editing its checked-in output.
