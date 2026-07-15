@@ -9,7 +9,9 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 from core_registry_catalog_extractor import (  # noqa: E402
+    AnimalVariantComponentRegistryEntry,
     CoreRegistryExtractionError,
+    animal_variant_component_registry_entries,
     block_entity_type_entries,
     common_item_component_constant_names,
     damage_type_entries,
@@ -22,6 +24,58 @@ from vanilla_java_source import parse_source  # noqa: E402
 
 
 class CoreRegistryCatalogExtractorTests(unittest.TestCase):
+    def test_animal_variant_components_join_holder_types_to_registry_keys(self) -> None:
+        component_source = parse_source(
+            "fixture/DataComponents.java",
+            b"""
+package fixture;
+import net.minecraft.world.entity.animal.wolf.WolfSoundVariant;
+import net.minecraft.world.entity.animal.wolf.WolfVariant;
+import net.minecraft.world.entity.decoration.painting.PaintingVariant;
+public class DataComponents {
+  public static final DataComponentType<Holder<WolfVariant>> WOLF_VARIANT = register(
+      "wolf/variant", b -> b.persistent(WolfVariant.CODEC));
+  public static final DataComponentType<Holder<WolfSoundVariant>> WOLF_SOUND_VARIANT = register(
+      "wolf/sound_variant", b -> b.persistent(WolfSoundVariant.CODEC));
+  public static final DataComponentType<Holder<PaintingVariant>> PAINTING_VARIANT = register(
+      "painting/variant", b -> b.persistent(PaintingVariant.CODEC));
+}
+""",
+        )
+        registries_source = parse_source(
+            "fixture/Registries.java",
+            b"""
+package fixture;
+import net.minecraft.world.entity.animal.wolf.WolfSoundVariant;
+import net.minecraft.world.entity.animal.wolf.WolfVariant;
+import net.minecraft.world.entity.decoration.painting.PaintingVariant;
+public class Registries {
+  public static final ResourceKey<Registry<WolfVariant>> WOLF_VARIANT =
+      createRegistryKey("wolf_variant");
+  public static final ResourceKey<Registry<WolfSoundVariant>> WOLF_SOUND_VARIANT =
+      createRegistryKey("wolf_sound_variant");
+  public static final ResourceKey<Registry<PaintingVariant>> PAINTING_VARIANT =
+      createRegistryKey("painting_variant");
+}
+""",
+        )
+
+        self.assertEqual(
+            animal_variant_component_registry_entries(
+                component_source, registries_source, expected_count=2
+            ),
+            [
+                AnimalVariantComponentRegistryEntry(
+                    "WOLF_VARIANT", "WOLF_VARIANT", "minecraft:wolf_variant"
+                ),
+                AnimalVariantComponentRegistryEntry(
+                    "WOLF_SOUND_VARIANT",
+                    "WOLF_SOUND_VARIANT",
+                    "minecraft:wolf_sound_variant",
+                ),
+            ],
+        )
+
     def test_damage_keys_follow_bootstrap_call_order(self) -> None:
         source = parse_source(
             "fixture/DamageTypes.java",

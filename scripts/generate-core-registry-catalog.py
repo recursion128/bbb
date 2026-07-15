@@ -16,11 +16,13 @@ import sys
 from pathlib import Path
 
 from core_registry_catalog_extractor import (
+    AnimalVariantComponentRegistryEntry,
     BlockEntityTypeEntry,
     DataComponentTypeEntry,
     EntityTypeEntry,
     ParticleTypeEntry,
     RegistryEntry,
+    animal_variant_component_registry_entries,
     block_entity_type_entries,
     common_item_component_constant_names,
     damage_type_entries,
@@ -54,6 +56,7 @@ DATA_COMPONENT_PREDICATE_TYPES_SOURCE = Path(
     "net/minecraft/core/component/predicates/DataComponentPredicates.java"
 )
 DATA_COMPONENT_TYPES_SOURCE = Path("net/minecraft/core/component/DataComponents.java")
+REGISTRIES_SOURCE = Path("net/minecraft/core/registries/Registries.java")
 PARTICLE_TYPES_SOURCE = Path("net/minecraft/core/particles/ParticleTypes.java")
 
 
@@ -637,6 +640,7 @@ def render_data_component_types(
     component_entries: list[DataComponentTypeEntry],
     predicate_entries: list[RegistryEntry],
     common_item_components: list[str],
+    animal_variant_registries: list[AnimalVariantComponentRegistryEntry],
 ) -> str:
     common_item_component_ids = [
         f"VANILLA_DATA_COMPONENT_{constant_name}_TYPE_ID"
@@ -688,9 +692,40 @@ def render_data_component_types(
                 "    },",
             )
         )
-    lines.extend(
-        (
+    known_component_constants = {entry.constant_name for entry in component_entries}
+    unknown_variant_components = {
+        entry.component_constant_name for entry in animal_variant_registries
+    } - known_component_constants
+    if unknown_variant_components:
+        raise ValueError(
+            "animal variant registries reference unknown components: "
+            f"{sorted(unknown_variant_components)}"
+        )
+    lines.extend((
         "];",
+        "",
+        "const VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES: &[(i32, &str)] = &[",
+    ))
+    for entry in animal_variant_registries:
+        lines.append(
+            "    (VANILLA_DATA_COMPONENT_"
+            + entry.component_constant_name
+            + "_TYPE_ID, "
+            + rust_string(entry.registry_resource_id)
+            + "),"
+        )
+    lines.extend((
+        "];",
+        "",
+        "pub fn vanilla_data_component_animal_variant_registry(type_id: i32) -> Option<&'static str> {",
+        "    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES",
+        "        .iter()",
+        "        .find_map(|&(candidate, registry)| (candidate == type_id).then_some(registry))",
+        "}",
+        "",
+        "pub fn vanilla_data_component_animal_variant_registries() -> impl Iterator<Item = (i32, &'static str)> {",
+        "    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.iter().copied()",
+        "}",
         "",
         "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
         "pub struct DataComponentPredicateTypeCatalogEntry {",
@@ -700,8 +735,7 @@ def render_data_component_types(
         "}",
         "",
         "pub const VANILLA_DATA_COMPONENT_PREDICATE_TYPES: &[DataComponentPredicateTypeCatalogEntry] = &[",
-        )
-    )
+    ))
     for type_id, entry in enumerate(predicate_entries):
         lines.extend(
             (
@@ -776,6 +810,32 @@ def render_data_component_types(
             "    fn common_item_components_follow_vanilla_builder_order() {",
             f"        assert_eq!(VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS.len(), {len(common_item_component_ids)});",
             f"        assert_eq!(VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS, &[{', '.join(common_item_component_ids)}]);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn animal_variant_component_registries_follow_holder_value_types() {",
+            f"        assert_eq!(VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.len(), {len(animal_variant_registries)});",
+            "        let actual = vanilla_data_component_animal_variant_registries().collect::<Vec<_>>();",
+            "        assert_eq!(actual, VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES);",
+            "        for &(type_id, registry) in VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES {",
+            "            assert_eq!(vanilla_data_component_animal_variant_registry(type_id), Some(registry));",
+            "        }",
+            "        assert_eq!(vanilla_data_component_animal_variant_registry(VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID), None);",
+            "        assert_eq!(vanilla_data_component_animal_variant_registry(VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID), None);",
+            "        assert_eq!(vanilla_data_component_animal_variant_registry(-1), None);",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn animal_variant_registry_consumers_do_not_restore_parallel_tables() {",
+            "        let item_models = include_str!(\"../../bbb-native/src/item_models.rs\");",
+            "        assert!(!item_models.contains(\"SYNCHRONIZED_VARIANT_REGISTRIES\"));",
+            "        assert!(item_models.contains(\"vanilla_data_component_animal_variant_registries\"));",
+            "        let native_patch = include_str!(\"../../bbb-native/src/input/component_patch.rs\");",
+            "        assert!(!native_patch.contains(\"fn synchronized_named_variant_registry\"));",
+            "        assert!(native_patch.contains(\"vanilla_data_component_animal_variant_registry\"));",
+            "        let holder_set = include_str!(\"../../bbb-world/src/client/dialog/body/component_value/holder_set.rs\");",
+            "        assert!(!holder_set.contains(\"fn synchronized_registry_variant_component\"));",
+            "        assert!(holder_set.contains(\"vanilla_data_component_animal_variant_registry\"));",
             "    }",
             "",
             "    #[test]",
@@ -1076,6 +1136,7 @@ def generated_files(
     block_entity_types_source = parse(BLOCK_ENTITY_TYPES_SOURCE)
     predicate_types_source = parse(DATA_COMPONENT_PREDICATE_TYPES_SOURCE)
     component_types_source = parse(DATA_COMPONENT_TYPES_SOURCE)
+    registries_source = parse(REGISTRIES_SOURCE)
     component_types = data_component_type_entries(component_types_source)
     particle_types_source = parse(PARTICLE_TYPES_SOURCE)
     return {
@@ -1102,6 +1163,9 @@ def generated_files(
                 component_types,
                 data_component_predicate_type_entries(predicate_types_source),
                 common_item_component_constant_names(component_types_source),
+                animal_variant_component_registry_entries(
+                    component_types_source, registries_source
+                ),
             )
         ),
         particle_types_output: format_rust(

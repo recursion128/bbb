@@ -31,6 +31,7 @@ use bbb_protocol::{
         builtin_enum_component_value_for_name, VANILLA_BUILTIN_ENUM_COMPONENTS,
     },
     data_component_types::{
+        vanilla_data_component_animal_variant_registry,
         vanilla_data_component_type_for_resource_id, VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID,
         VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BEES_TYPE_ID,
@@ -1651,48 +1652,30 @@ fn apply_registry_variant(
     holder: &DialogRegistryHolderReferenceState,
     patch: &mut DataComponentPatchSummary,
 ) -> bool {
-    let target = match (type_id, registry) {
-        (VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID, "minecraft:villager_type") => {
-            &mut patch.villager_variant_id
+    let expected_registry = if type_id == VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID {
+        Some("minecraft:villager_type")
+    } else {
+        vanilla_data_component_animal_variant_registry(type_id)
+    };
+    if expected_registry != Some(registry) {
+        return false;
+    }
+    let target = match type_id {
+        VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID => &mut patch.villager_variant_id,
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => &mut patch.wolf_variant_id,
+        VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => &mut patch.wolf_sound_variant_id,
+        VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => &mut patch.pig_variant_id,
+        VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => &mut patch.pig_sound_variant_id,
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => &mut patch.cow_variant_id,
+        VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => &mut patch.cow_sound_variant_id,
+        VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => &mut patch.chicken_variant_id,
+        VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => &mut patch.chicken_sound_variant_id,
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
+            &mut patch.zombie_nautilus_variant_id
         }
-        (VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID, "minecraft:wolf_variant") => {
-            &mut patch.wolf_variant_id
-        }
-        (VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID, "minecraft:wolf_sound_variant") => {
-            &mut patch.wolf_sound_variant_id
-        }
-        (VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID, "minecraft:pig_variant") => {
-            &mut patch.pig_variant_id
-        }
-        (VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID, "minecraft:pig_sound_variant") => {
-            &mut patch.pig_sound_variant_id
-        }
-        (VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID, "minecraft:cow_variant") => {
-            &mut patch.cow_variant_id
-        }
-        (VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID, "minecraft:cow_sound_variant") => {
-            &mut patch.cow_sound_variant_id
-        }
-        (VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID, "minecraft:chicken_variant") => {
-            &mut patch.chicken_variant_id
-        }
-        (
-            VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
-            "minecraft:chicken_sound_variant",
-        ) => &mut patch.chicken_sound_variant_id,
-        (
-            VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
-            "minecraft:zombie_nautilus_variant",
-        ) => &mut patch.zombie_nautilus_variant_id,
-        (VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, "minecraft:frog_variant") => {
-            &mut patch.frog_variant_id
-        }
-        (VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID, "minecraft:cat_variant") => {
-            &mut patch.cat_variant_id
-        }
-        (VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID, "minecraft:cat_sound_variant") => {
-            &mut patch.cat_sound_variant_id
-        }
+        VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => &mut patch.frog_variant_id,
+        VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => &mut patch.cat_variant_id,
+        VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => &mut patch.cat_sound_variant_id,
         _ => return false,
     };
     *target = Some(holder.holder_id);

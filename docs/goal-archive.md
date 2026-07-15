@@ -15592,3 +15592,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] world block-name parsing 与 native `HangingSignEditScreen` 背景资源加载共享生成 owner；
   删除 12 项 `HANGING_SIGN_BACKGROUNDS` 表，extractor/generator fixture、sign/native 回归及
   generator-emitted 反向门禁防止第二事实源回归。
+
+## 2026-07-15：Generate synchronized animal component registries
+
+- [x] core registry extractor 按完整 Java value type 连接 `DataComponents` 的 12 项
+  `DataComponentType<Holder<T>>` 与 `Registries` 的 `ResourceKey<Registry<T>>`，仅纳入
+  `net.minecraft.world.entity.animal` 类型；PaintingVariant 与 VillagerType 保持排除。
+- [x] protocol 生成 component type id 到 session registry resource 的唯一查询/迭代 API；
+  native 持久化与 registry context、world holder 解码和 patch projection 删除三份 12 项
+  平行表及一处 resource-paired match。extractor fixture、跨 owner 回归与 generator-emitted
+  反向门禁锁定该边界。

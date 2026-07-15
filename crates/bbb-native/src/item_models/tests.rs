@@ -26,9 +26,10 @@ const GRASS_BLOCK_STATE_ID: i32 = 9;
 
 #[test]
 fn synchronized_variant_registry_context_inventory_is_complete() {
-    let registries = SYNCHRONIZED_VARIANT_REGISTRIES
-        .into_iter()
-        .collect::<std::collections::HashSet<_>>();
+    let registries =
+        bbb_protocol::data_component_types::vanilla_data_component_animal_variant_registries()
+            .map(|(_, registry)| registry)
+            .collect::<std::collections::HashSet<_>>();
     assert_eq!(registries.len(), 12);
     assert!(!registries.contains("minecraft:villager_type"));
     for registry in registries {

@@ -14,6 +14,7 @@ use std::{
 
 use bbb_pack::{BlockModelDisplayContext, BlockModelDisplayTransform};
 use bbb_protocol::data_component_types::{
+    vanilla_data_component_animal_variant_registries,
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
 };
@@ -105,26 +106,11 @@ pub(crate) fn world_jukebox_song_keys(world: &WorldStore) -> Option<Vec<String>>
     world_registry_keys(world, "minecraft:jukebox_song")
 }
 
-const SYNCHRONIZED_VARIANT_REGISTRIES: [&str; 12] = [
-    "minecraft:wolf_variant",
-    "minecraft:wolf_sound_variant",
-    "minecraft:pig_variant",
-    "minecraft:pig_sound_variant",
-    "minecraft:cow_variant",
-    "minecraft:cow_sound_variant",
-    "minecraft:chicken_variant",
-    "minecraft:chicken_sound_variant",
-    "minecraft:zombie_nautilus_variant",
-    "minecraft:frog_variant",
-    "minecraft:cat_variant",
-    "minecraft:cat_sound_variant",
-];
-
 pub(crate) fn world_synchronized_variant_keys(
     world: &WorldStore,
 ) -> BTreeMap<&'static str, Vec<String>> {
-    SYNCHRONIZED_VARIANT_REGISTRIES
-        .into_iter()
+    vanilla_data_component_animal_variant_registries()
+        .map(|(_, registry)| registry)
         .filter_map(|registry| world_registry_keys(world, registry).map(|keys| (registry, keys)))
         .collect()
 }

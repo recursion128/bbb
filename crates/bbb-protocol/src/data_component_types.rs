@@ -803,6 +803,68 @@ pub const VANILLA_DATA_COMPONENT_TYPES: &[DataComponentTypeCatalogEntry] = &[
     },
 ];
 
+const VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES: &[(i32, &str)] = &[
+    (
+        VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
+        "minecraft:wolf_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
+        "minecraft:wolf_sound_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
+        "minecraft:pig_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
+        "minecraft:pig_sound_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
+        "minecraft:cow_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
+        "minecraft:cow_sound_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
+        "minecraft:chicken_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
+        "minecraft:chicken_sound_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
+        "minecraft:zombie_nautilus_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
+        "minecraft:frog_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
+        "minecraft:cat_variant",
+    ),
+    (
+        VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
+        "minecraft:cat_sound_variant",
+    ),
+];
+
+pub fn vanilla_data_component_animal_variant_registry(type_id: i32) -> Option<&'static str> {
+    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES
+        .iter()
+        .find_map(|&(candidate, registry)| (candidate == type_id).then_some(registry))
+}
+
+pub fn vanilla_data_component_animal_variant_registries(
+) -> impl Iterator<Item = (i32, &'static str)> {
+    VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.iter().copied()
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DataComponentPredicateTypeCatalogEntry {
     pub type_id: i32,
@@ -974,6 +1036,46 @@ mod tests {
                 VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID
             ]
         );
+    }
+
+    #[test]
+    fn animal_variant_component_registries_follow_holder_value_types() {
+        assert_eq!(VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.len(), 12);
+        let actual = vanilla_data_component_animal_variant_registries().collect::<Vec<_>>();
+        assert_eq!(actual, VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES);
+        for &(type_id, registry) in VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES {
+            assert_eq!(
+                vanilla_data_component_animal_variant_registry(type_id),
+                Some(registry)
+            );
+        }
+        assert_eq!(
+            vanilla_data_component_animal_variant_registry(
+                VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_data_component_animal_variant_registry(
+                VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID
+            ),
+            None
+        );
+        assert_eq!(vanilla_data_component_animal_variant_registry(-1), None);
+    }
+
+    #[test]
+    fn animal_variant_registry_consumers_do_not_restore_parallel_tables() {
+        let item_models = include_str!("../../bbb-native/src/item_models.rs");
+        assert!(!item_models.contains("SYNCHRONIZED_VARIANT_REGISTRIES"));
+        assert!(item_models.contains("vanilla_data_component_animal_variant_registries"));
+        let native_patch = include_str!("../../bbb-native/src/input/component_patch.rs");
+        assert!(!native_patch.contains("fn synchronized_named_variant_registry"));
+        assert!(native_patch.contains("vanilla_data_component_animal_variant_registry"));
+        let holder_set =
+            include_str!("../../bbb-world/src/client/dialog/body/component_value/holder_set.rs");
+        assert!(!holder_set.contains("fn synchronized_registry_variant_component"));
+        assert!(holder_set.contains("vanilla_data_component_animal_variant_registry"));
     }
 
     #[test]

@@ -1704,7 +1704,7 @@ fn encode_named_variant(
     context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let holder_id = named_variant_holder_id(type_id, patch)?;
-    let resource_id = match synchronized_named_variant_registry(type_id)
+    let resource_id = match component_id::vanilla_data_component_animal_variant_registry(type_id)
         .and_then(|registry| context.synchronized_variant_keys?.get(registry))
     {
         Some(keys) => keys.get(usize::try_from(holder_id).ok()?)?.as_str(),
@@ -1742,38 +1742,6 @@ fn named_variant_holder_id(
         component_id::VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => patch.cat_variant_id,
         component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
             patch.cat_sound_variant_id
-        }
-        _ => None,
-    }
-}
-
-fn synchronized_named_variant_registry(type_id: i32) -> Option<&'static str> {
-    match type_id {
-        component_id::VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID => Some("minecraft:wolf_variant"),
-        component_id::VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID => {
-            Some("minecraft:wolf_sound_variant")
-        }
-        component_id::VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID => Some("minecraft:pig_variant"),
-        component_id::VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID => {
-            Some("minecraft:pig_sound_variant")
-        }
-        component_id::VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID => Some("minecraft:cow_variant"),
-        component_id::VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID => {
-            Some("minecraft:cow_sound_variant")
-        }
-        component_id::VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID => {
-            Some("minecraft:chicken_variant")
-        }
-        component_id::VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID => {
-            Some("minecraft:chicken_sound_variant")
-        }
-        component_id::VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID => {
-            Some("minecraft:zombie_nautilus_variant")
-        }
-        component_id::VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID => Some("minecraft:frog_variant"),
-        component_id::VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID => Some("minecraft:cat_variant"),
-        component_id::VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID => {
-            Some("minecraft:cat_sound_variant")
         }
         _ => None,
     }

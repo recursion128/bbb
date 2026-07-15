@@ -48,6 +48,13 @@ class DataComponentTypeEntry:
 
 
 @dataclass(frozen=True)
+class AnimalVariantComponentRegistryEntry:
+    component_constant_name: str
+    registry_constant_name: str
+    registry_resource_id: str
+
+
+@dataclass(frozen=True)
 class ParticleTypeEntry:
     constant_name: str
     resource_id: str
@@ -434,6 +441,85 @@ def data_component_type_entries(
             f"expected {expected_count} data component types, extracted {len(entries)}"
         )
     _validate_unique(entries, "data component type")
+    return entries
+
+
+def animal_variant_component_registry_entries(
+    component_source: JavaSource,
+    registries_source: JavaSource,
+    expected_count: int = 12,
+) -> list[AnimalVariantComponentRegistryEntry]:
+    animal_package = "net.minecraft.world.entity.animal."
+    registry_by_value_type: dict[str, tuple[str, str]] = {}
+    for field in registries_source.fields:
+        spelling = field.type_spelling.replace(" ", "")
+        prefix = "ResourceKey<Registry<"
+        if not spelling.startswith(prefix) or not spelling.endswith(">>"):
+            continue
+        simple_type = spelling[len(prefix) : -2]
+        value_type = registries_source.imports.get(simple_type)
+        if value_type is None or not value_type.startswith(animal_package):
+            continue
+        initializer = field.initializer
+        if initializer is None:
+            _fail(
+                registries_source,
+                JavaExpression("", field.span, field.node),
+                f"animal variant registry {field.name} lacks an initializer",
+            )
+        calls = _calls_in_expression(registries_source, initializer, "createRegistryKey")
+        if len(calls) != 1 or calls[0].span != initializer.span or len(calls[0].arguments) != 1:
+            _fail(
+                registries_source,
+                initializer,
+                f"animal variant registry {field.name} is not one createRegistryKey call",
+            )
+        resource_id = _string_literal(registries_source, calls[0].arguments[0])
+        if value_type in registry_by_value_type:
+            _fail(
+                registries_source,
+                initializer,
+                f"duplicate animal variant registry value type {value_type}",
+            )
+        registry_by_value_type[value_type] = (field.name, resource_id)
+
+    entries: list[AnimalVariantComponentRegistryEntry] = []
+    for field in _fields_with_type(component_source, ("DataComponentType<Holder<",)):
+        spelling = field.type_spelling.replace(" ", "")
+        prefix = "DataComponentType<Holder<"
+        if not spelling.endswith(">>"):
+            expression = field.initializer or JavaExpression("", field.span, field.node)
+            _fail(component_source, expression, "malformed holder data component type")
+        simple_type = spelling[len(prefix) : -2]
+        value_type = component_source.imports.get(simple_type)
+        if value_type is None or not value_type.startswith(animal_package):
+            continue
+        registry = registry_by_value_type.get(value_type)
+        if registry is None:
+            expression = field.initializer or JavaExpression("", field.span, field.node)
+            _fail(
+                component_source,
+                expression,
+                f"animal variant component {field.name} lacks a matching registry",
+            )
+        entries.append(
+            AnimalVariantComponentRegistryEntry(field.name, registry[0], registry[1])
+        )
+    if len(entries) != expected_count:
+        raise CoreRegistryExtractionError(
+            f"expected {expected_count} animal variant component registries, "
+            f"extracted {len(entries)}"
+        )
+    for attribute in (
+        "component_constant_name",
+        "registry_constant_name",
+        "registry_resource_id",
+    ):
+        values = [getattr(entry, attribute) for entry in entries]
+        if len(values) != len(set(values)):
+            raise CoreRegistryExtractionError(
+                f"duplicate animal variant component registry {attribute}"
+            )
     return entries
 
 

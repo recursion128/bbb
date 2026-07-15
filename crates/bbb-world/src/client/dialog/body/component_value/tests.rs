@@ -1,24 +1,16 @@
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
     VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
     VANILLA_DATA_COMPONENT_DAMAGE_RESISTANT_TYPE_ID, VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
     VANILLA_DATA_COMPONENT_DYE_TYPE_ID, VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID, VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
-    VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
+    VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID, VANILLA_DATA_COMPONENT_JUKEBOX_PLAYABLE_TYPE_ID,
+    VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
     VANILLA_DATA_COMPONENT_PROVIDES_TRIM_MATERIAL_TYPE_ID,
     VANILLA_DATA_COMPONENT_REPAIRABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
-    VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
-    VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
 };
 
 use super::*;
@@ -1856,70 +1848,20 @@ fn decodes_trim_named_holder_pair_from_session_registries() {
 
 #[test]
 fn decodes_all_synchronized_registry_fixed_variant_components() {
-    let variants = [
-        (
-            VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
-            "minecraft:wolf/variant",
-            "minecraft:wolf_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID,
-            "minecraft:wolf/sound_variant",
-            "minecraft:wolf_sound_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID,
-            "minecraft:pig/variant",
-            "minecraft:pig_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID,
-            "minecraft:pig/sound_variant",
-            "minecraft:pig_sound_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID,
-            "minecraft:cow/variant",
-            "minecraft:cow_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID,
-            "minecraft:cow/sound_variant",
-            "minecraft:cow_sound_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID,
-            "minecraft:chicken/variant",
-            "minecraft:chicken_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID,
-            "minecraft:chicken/sound_variant",
-            "minecraft:chicken_sound_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID,
-            "minecraft:zombie_nautilus/variant",
-            "minecraft:zombie_nautilus_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID,
-            "minecraft:frog/variant",
-            "minecraft:frog_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID,
-            "minecraft:cat/variant",
-            "minecraft:cat_variant",
-        ),
-        (
-            VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID,
-            "minecraft:cat/sound_variant",
-            "minecraft:cat_sound_variant",
-        ),
-    ];
+    let variants =
+        bbb_protocol::data_component_types::vanilla_data_component_animal_variant_registries()
+            .map(|(type_id, registry)| {
+                (
+                    type_id,
+                    bbb_protocol::data_component_types::vanilla_data_component_type(type_id)
+                        .unwrap()
+                        .resource_id,
+                    registry,
+                )
+            })
+            .collect::<Vec<_>>();
     let mut registries = RegistrySet::default();
-    for (_, _, registry) in variants {
+    for &(_, _, registry) in &variants {
         let mut contents = crate::RegistryContentState::new(registry);
         contents.entries = vec![
             crate::RegistryPacketEntry::stub("example:first"),
