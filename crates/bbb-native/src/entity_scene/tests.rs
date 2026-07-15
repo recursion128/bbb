@@ -5836,6 +5836,79 @@ fn ready_cat_presentation_selects_the_age_specific_network_texture() {
     );
 }
 
+struct ReadyZombieNautilusPresentationLookup {
+    ready: bool,
+    texture: EntityDynamicTexture,
+}
+
+impl EntityVariantRegistryLookup for ReadyZombieNautilusPresentationLookup {
+    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
+        Some("example:coral")
+    }
+
+    fn zombie_nautilus_variant_presentation(
+        &self,
+        _holder_id: i32,
+    ) -> Option<ZombieNautilusVariantPresentation> {
+        Some(ZombieNautilusVariantPresentation {
+            model: ZombieNautilusVariantModelType::Warm,
+            asset_id: "example:entity/nautilus/coral".to_string(),
+            texture_path: "example:textures/entity/nautilus/coral.png".to_string(),
+        })
+    }
+
+    fn ready_texture(&self, _asset_id: &str) -> Option<EntityDynamicTexture> {
+        self.ready.then_some(self.texture)
+    }
+}
+
+#[test]
+fn zombie_nautilus_network_model_waits_for_its_matching_texture() {
+    let texture = EntityDynamicTexture { handle: 75_001 };
+    let mut lookup = ReadyZombieNautilusPresentationLookup {
+        ready: false,
+        texture,
+    };
+    let values = [protocol_zombie_nautilus_variant_data(0)];
+    let mut kind = EntityModelKind::ZombieNautilus {
+        variant: ZombieNautilusModelVariant::Temperate,
+    };
+
+    assert_eq!(
+        apply_ready_zombie_nautilus_variant_presentation(
+            &mut kind,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            &values,
+            Some(&lookup),
+        ),
+        None
+    );
+    assert_eq!(
+        kind,
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Temperate,
+        },
+        "unready custom texture must retain the complete built-in presentation"
+    );
+
+    lookup.ready = true;
+    assert_eq!(
+        apply_ready_zombie_nautilus_variant_presentation(
+            &mut kind,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            &values,
+            Some(&lookup),
+        ),
+        Some(texture)
+    );
+    assert_eq!(
+        kind,
+        EntityModelKind::ZombieNautilus {
+            variant: ZombieNautilusModelVariant::Warm,
+        }
+    );
+}
+
 #[test]
 fn entity_model_instances_project_pig_saddle_render_state() {
     const SADDLE_ITEM_ID: i32 = 740;

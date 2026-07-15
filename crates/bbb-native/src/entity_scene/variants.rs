@@ -437,6 +437,35 @@ pub(super) fn ready_frog_variant_texture(
     registries.ready_texture(&presentation.asset_id)
 }
 
+/// Applies the synchronized zombie-nautilus model selector and texture only after the texture is
+/// resident, keeping the geometry/texture transition atomic.
+pub(super) fn apply_ready_zombie_nautilus_variant_presentation(
+    kind: &mut EntityModelKind,
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    registries: Option<&dyn EntityVariantRegistryLookup>,
+) -> Option<EntityDynamicTexture> {
+    let EntityModelKind::ZombieNautilus { variant } = kind else {
+        return None;
+    };
+    if entity_type_id != VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID {
+        return None;
+    }
+    let holder_id = entity_data_registry_holder_id(
+        values,
+        ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::ZombieNautilusVariant,
+    )?;
+    let registries = registries?;
+    let presentation = registries.zombie_nautilus_variant_presentation(holder_id)?;
+    let texture = registries.ready_texture(&presentation.asset_id)?;
+    *variant = match presentation.model {
+        ZombieNautilusVariantModelType::Normal => ZombieNautilusModelVariant::Temperate,
+        ZombieNautilusVariantModelType::Warm => ZombieNautilusModelVariant::Warm,
+    };
+    Some(texture)
+}
+
 fn entity_data_registry_holder_id(
     values: &[bbb_protocol::packets::EntityDataValue],
     data_id: u8,

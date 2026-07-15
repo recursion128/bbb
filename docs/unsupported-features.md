@@ -57,7 +57,7 @@ Owner: `bbb-protocol`
   intersection to the existing 64-entry response encoder instead of always
   returning an empty configuration response.
 - Close the owning decoder/encoder registry context plus custom-reorder tests
-  behind the 176
+  behind the 175
   `partial` network and persistent rows in
   `docs/registry-holder-consumer-coverage-26.1.json` before marking those
   families complete.

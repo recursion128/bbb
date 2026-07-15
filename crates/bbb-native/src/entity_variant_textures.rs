@@ -5,15 +5,16 @@ use bbb_pack::PackRoots;
 use bbb_renderer::{DynamicEntityTextureImage, EntityDynamicTexture, Renderer};
 use bbb_world::{
     WorldStore, CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY,
-    FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
+    FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
 
-const ANIMAL_VARIANT_REGISTRIES: [&str; 5] = [
+const ANIMAL_VARIANT_REGISTRIES: [&str; 6] = [
     CAT_VARIANT_REGISTRY,
     CHICKEN_VARIANT_REGISTRY,
     COW_VARIANT_REGISTRY,
     FROG_VARIANT_REGISTRY,
     PIG_VARIANT_REGISTRY,
+    ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -99,6 +100,12 @@ impl NativeEntityVariantTextureRuntime {
                         .map_err(|error| (error.field, error.reason)),
                     FROG_VARIANT_REGISTRY => world
                         .synchronized_frog_variant_presentation(holder_id)
+                        .map(|presentation| {
+                            presentation.map(|presentation| (presentation.asset_id, None))
+                        })
+                        .map_err(|error| (error.field, error.reason)),
+                    ZOMBIE_NAUTILUS_VARIANT_REGISTRY => world
+                        .synchronized_zombie_nautilus_variant_presentation(holder_id)
                         .map(|presentation| {
                             presentation.map(|presentation| (presentation.asset_id, None))
                         })
@@ -239,13 +246,20 @@ mod tests {
 
     use super::*;
     use bbb_protocol::{
-        entity_types::{VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_FROG_ID},
+        entity_types::{
+            VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_FROG_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        },
         packets::{
             AddEntity, EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind,
             SetEntityData, Vec3d,
         },
     };
-    use bbb_world::{VANILLA_CAT_VARIANT_DATA_ID, VANILLA_FROG_VARIANT_DATA_ID};
+    use bbb_renderer::{EntityModelKind, ZombieNautilusModelVariant};
+    use bbb_world::{
+        VANILLA_CAT_VARIANT_DATA_ID, VANILLA_FROG_VARIANT_DATA_ID,
+        VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+    };
     use uuid::Uuid;
 
     #[derive(Default)]
@@ -488,6 +502,81 @@ mod tests {
         std::fs::remove_dir_all(root).unwrap();
     }
 
+    #[test]
+    fn synchronized_zombie_nautilus_model_and_texture_reach_the_entity_instance_atomically() {
+        let root = unique_temp_dir("zombie-nautilus-variant-texture-runtime");
+        let sources = root.join("sources/26.1");
+        write_png(
+            &sources.join("assets/example/textures/entity/nautilus/coral.png"),
+            128,
+            64,
+        );
+        let roots = PackRoots {
+            mc_code_root: root.clone(),
+            sources_dir: sources.clone(),
+            assets_dir: sources.join("assets/minecraft"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
+            0,
+            vec![bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:coral",
+                zombie_nautilus_variant_nbt("warm", "example:entity/nautilus/coral"),
+            )],
+        );
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+
+        assert_eq!(uploader.images.len(), 1);
+        let texture = runtime
+            .ready_texture("example:entity/nautilus/coral")
+            .expect("successful upload must publish the zombie-nautilus texture");
+        world.apply_add_entity(AddEntity {
+            id: 75,
+            uuid: Uuid::from_u128(75),
+            entity_type_id: VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            position: Vec3d::default(),
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 75,
+            values: vec![EntityDataValue {
+                data_id: VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+                serializer_id: 32,
+                value: EntityDataValueKind::RegistryId {
+                    serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
+                    id: 0,
+                },
+            }],
+        }));
+        let instances =
+            crate::entity_scene::entity_model_instances_from_world_with_variant_textures_at_partial_tick(
+                &world,
+                None,
+                &runtime,
+                1.0,
+            );
+        assert_eq!(instances.len(), 1);
+        assert_eq!(instances[0].dynamic_texture, Some(texture));
+        assert_eq!(
+            instances[0].kind,
+            EntityModelKind::ZombieNautilus {
+                variant: ZombieNautilusModelVariant::Warm,
+            }
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     fn write_png(path: &Path, width: u32, height: u32) {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         image::RgbaImage::from_pixel(width, height, image::Rgba([7, 11, 13, 255]))
@@ -514,6 +603,14 @@ mod tests {
 
     fn frog_variant_nbt(asset_id: &str) -> Vec<u8> {
         let mut payload = vec![10];
+        write_nbt_string_tag(&mut payload, "asset_id", asset_id);
+        payload.push(0);
+        payload
+    }
+
+    fn zombie_nautilus_variant_nbt(model: &str, asset_id: &str) -> Vec<u8> {
+        let mut payload = vec![10];
+        write_nbt_string_tag(&mut payload, "model", model);
         write_nbt_string_tag(&mut payload, "asset_id", asset_id);
         payload.push(0);
         payload

@@ -226,6 +226,29 @@
       "decision": "The metadata holder id resolves through the synchronized server order; FrogVariant.NETWORK_CODEC projects its ResourceTexture, and the custom texture reaches the entity instance only after upload while stubs and failures preserve the checked built-in identity fallback."
     },
     {
+      "id": "network-holder-reference-zombie-nautilus-variant",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn apply_ready_zombie_nautilus_variant_presentation",
+      "evidence": [
+        "vanilla:net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<ZombieNautilusVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java#public static final Codec<ZombieNautilusVariant> NETWORK_CODEC",
+        "vanilla:net/minecraft/world/entity/variant/ModelAndTexture.java#public static <T> MapCodec<ModelAndTexture<T>> codec",
+        "vanilla:net/minecraft/client/renderer/entity/ZombieNautilusRenderer.java#this.model = this.models.get(state.variant.modelAndTexture().model())",
+        "crates/bbb-world/src/registries/animal_variants.rs#pub fn synchronized_zombie_nautilus_variant_presentation",
+        "crates/bbb-world/src/registries/animal_variants.rs#fn zombie_nautilus_world_query_uses_server_holder_order_and_omits_stubs",
+        "crates/bbb-native/src/entity_variant_textures.rs#fn synchronized_zombie_nautilus_model_and_texture_reach_the_entity_instance_atomically",
+        "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn apply_ready_zombie_nautilus_variant_presentation",
+        "crates/bbb-native/src/entity_scene/tests.rs#fn zombie_nautilus_network_model_waits_for_its_matching_texture"
+      ],
+      "decision": "The metadata holder resolves through synchronized server order; ModelAndTexture projects the normal/warm model selector and ResourceTexture, and entity rendering switches both geometry and custom texture atomically after upload while stubs, malformed values, and failures preserve the checked built-in presentation."
+    },
+    {
       "id": "network-holder-reference",
       "selector": {
         "kind": "network_holder_reference",
@@ -240,6 +263,7 @@
           "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
           "net/minecraft/world/entity/animal/feline/CatVariant.java",
           "net/minecraft/world/entity/animal/frog/FrogVariant.java",
+          "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java",
           "net/minecraft/world/entity/animal/pig/PigVariant.java",
           "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
           "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",

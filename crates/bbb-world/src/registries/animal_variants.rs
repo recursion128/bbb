@@ -10,6 +10,7 @@ pub const COW_VARIANT_REGISTRY: &str = "minecraft:cow_variant";
 pub const PIG_VARIANT_REGISTRY: &str = "minecraft:pig_variant";
 pub const CAT_VARIANT_REGISTRY: &str = "minecraft:cat_variant";
 pub const FROG_VARIANT_REGISTRY: &str = "minecraft:frog_variant";
+pub const ZOMBIE_NAUTILUS_VARIANT_REGISTRY: &str = "minecraft:zombie_nautilus_variant";
 
 /// The serialized model selector shared by the chicken, cow, and pig variant codecs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,6 +67,28 @@ pub struct FrogVariantProjectionError {
     pub reason: &'static str,
 }
 
+/// The model selector serialized by `ZombieNautilusVariant.ModelType.CODEC`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZombieNautilusVariantModelType {
+    Normal,
+    Warm,
+}
+
+/// The client presentation fields carried by one synchronized zombie-nautilus variant element.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ZombieNautilusVariantPresentation {
+    pub model: ZombieNautilusVariantModelType,
+    pub asset_id: String,
+    pub texture_path: String,
+}
+
+/// Identifies the exact zombie-nautilus `NETWORK_CODEC` field that could not be projected.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ZombieNautilusVariantProjectionError {
+    pub field: String,
+    pub reason: &'static str,
+}
+
 impl WorldStore {
     /// Decodes a synchronized chicken/cow/pig variant element in current server holder order.
     /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
@@ -112,6 +135,24 @@ impl WorldStore {
             return Ok(None);
         };
         decode_frog_variant(raw_data).map(Some)
+    }
+
+    /// Decodes a synchronized zombie-nautilus variant in current server holder order.
+    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    pub fn synchronized_zombie_nautilus_variant_presentation(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<ZombieNautilusVariantPresentation>, ZombieNautilusVariantProjectionError>
+    {
+        let Some(entry) =
+            self.registry_entry_by_holder_id(ZOMBIE_NAUTILUS_VARIANT_REGISTRY, holder_id)
+        else {
+            return Ok(None);
+        };
+        let Some(raw_data) = entry.raw_data() else {
+            return Ok(None);
+        };
+        decode_zombie_nautilus_variant(raw_data).map(Some)
     }
 }
 
@@ -179,6 +220,36 @@ fn decode_frog_variant(
     let (asset_id, texture_path) =
         decode_resource_texture(&fields, "asset_id").map_err(FrogVariantProjectionError::from)?;
     Ok(FrogVariantPresentation {
+        asset_id,
+        texture_path,
+    })
+}
+
+fn decode_zombie_nautilus_variant(
+    raw_data: &[u8],
+) -> Result<ZombieNautilusVariantPresentation, ZombieNautilusVariantProjectionError> {
+    let root = decode_nbt_root(raw_data)
+        .map_err(|_| zombie_nautilus_error("<root>", "invalid NBT"))?
+        .ok_or_else(|| zombie_nautilus_error("<root>", "missing root compound"))?;
+    let NbtValue::Compound(fields) = root else {
+        return Err(zombie_nautilus_error("<root>", "expected compound"));
+    };
+
+    let model = match find_nbt_entry(&fields, "model") {
+        None => ZombieNautilusVariantModelType::Normal,
+        Some(NbtValue::String(model)) if model == "normal" => {
+            ZombieNautilusVariantModelType::Normal
+        }
+        Some(NbtValue::String(model)) if model == "warm" => ZombieNautilusVariantModelType::Warm,
+        Some(NbtValue::String(_)) => {
+            return Err(zombie_nautilus_error("model", "unknown model type"));
+        }
+        Some(_) => return Err(zombie_nautilus_error("model", "expected string")),
+    };
+    let (asset_id, texture_path) = decode_resource_texture(&fields, "asset_id")
+        .map_err(ZombieNautilusVariantProjectionError::from)?;
+    Ok(ZombieNautilusVariantPresentation {
+        model,
         asset_id,
         texture_path,
     })
@@ -254,6 +325,15 @@ impl From<ResourceTextureProjectionError> for FrogVariantProjectionError {
     }
 }
 
+impl From<ResourceTextureProjectionError> for ZombieNautilusVariantProjectionError {
+    fn from(error: ResourceTextureProjectionError) -> Self {
+        Self {
+            field: error.field,
+            reason: error.reason,
+        }
+    }
+}
+
 fn resource_texture_error(
     field: impl Into<String>,
     reason: &'static str,
@@ -280,6 +360,16 @@ fn cat_error(field: impl Into<String>, reason: &'static str) -> CatVariantProjec
 
 fn frog_error(field: impl Into<String>, reason: &'static str) -> FrogVariantProjectionError {
     FrogVariantProjectionError {
+        field: field.into(),
+        reason,
+    }
+}
+
+fn zombie_nautilus_error(
+    field: impl Into<String>,
+    reason: &'static str,
+) -> ZombieNautilusVariantProjectionError {
+    ZombieNautilusVariantProjectionError {
         field: field.into(),
         reason,
     }
@@ -422,6 +512,45 @@ mod tests {
     }
 
     #[test]
+    fn decodes_zombie_nautilus_network_codec_model_and_texture() {
+        assert_eq!(
+            decode_zombie_nautilus_variant(&variant_nbt(
+                Some("warm"),
+                Some("example:entity/nautilus/coral"),
+                None,
+            ))
+            .unwrap(),
+            ZombieNautilusVariantPresentation {
+                model: ZombieNautilusVariantModelType::Warm,
+                asset_id: "example:entity/nautilus/coral".to_string(),
+                texture_path: "example:textures/entity/nautilus/coral.png".to_string(),
+            }
+        );
+        assert_eq!(
+            decode_zombie_nautilus_variant(&variant_nbt(
+                None,
+                Some("example:entity/nautilus/plain"),
+                None,
+            ))
+            .unwrap()
+            .model,
+            ZombieNautilusVariantModelType::Normal
+        );
+        assert_eq!(
+            decode_zombie_nautilus_variant(&variant_nbt(
+                Some("cold"),
+                Some("example:entity/nautilus/plain"),
+                None,
+            ))
+            .unwrap_err(),
+            ZombieNautilusVariantProjectionError {
+                field: "model".to_string(),
+                reason: "unknown model type",
+            }
+        );
+    }
+
+    #[test]
     fn world_query_uses_server_holder_order_and_omits_stubs() {
         let mut store = WorldStore::new();
         store.record_registry_entries(
@@ -532,6 +661,45 @@ mod tests {
         );
         assert_eq!(
             store.synchronized_frog_variant_presentation(2).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn zombie_nautilus_world_query_uses_server_holder_order_and_omits_stubs() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_raw_data(
+                    "example:coral",
+                    variant_nbt(Some("warm"), Some("example:entity/nautilus/coral"), None),
+                ),
+                RegistryPacketEntry::stub("minecraft:temperate"),
+            ],
+        );
+
+        assert_eq!(
+            store
+                .synchronized_zombie_nautilus_variant_presentation(0)
+                .unwrap(),
+            Some(ZombieNautilusVariantPresentation {
+                model: ZombieNautilusVariantModelType::Warm,
+                asset_id: "example:entity/nautilus/coral".to_string(),
+                texture_path: "example:textures/entity/nautilus/coral.png".to_string(),
+            })
+        );
+        assert_eq!(
+            store
+                .synchronized_zombie_nautilus_variant_presentation(1)
+                .unwrap(),
+            None
+        );
+        assert_eq!(
+            store
+                .synchronized_zombie_nautilus_variant_presentation(2)
+                .unwrap(),
             None
         );
     }

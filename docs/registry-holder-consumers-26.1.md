@@ -23,10 +23,10 @@ the number of concrete vanilla call sites tied to its registry for diagnostics.
 
 The generated
 `docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 194 calls to
-20 checked families. The four network shapes and seven persistent Codec shapes
+21 checked families. The four network shapes and seven persistent Codec shapes
 name their current bbb resource-id or tag resolver surface. They remain
 `partial` until the owning decoder/encoder receives registry context and the
-registry family has custom-reorder tests; this accounts for 176 rows. The
+registry family has custom-reorder tests; this accounts for 175 rows. The
 `sound_event` reference/direct stream codec is `complete`: vanilla owns it in
 the client built-in layer, and bbb's generated static order, direct holder
 payload, world ownership, and audio runtime resolution have cross-layer tests.
@@ -40,6 +40,9 @@ retain the checked built-in identity fallback.
 The synchronized frog-variant reference holder is likewise `complete`: its
 single `ResourceTexture` is decoded in server holder order and reaches the
 entity instance only after the custom image upload succeeds.
+The synchronized zombie-nautilus reference holder is `complete`: its
+`ModelAndTexture` normal/warm selector and resource asset are projected in
+server order, and geometry plus texture switch together only after upload.
 The three villager type/profession reference calls are `complete` against their
 generated client built-in order across entity metadata, item components,
 item-model predicates, and rendering; configuration registry injection is

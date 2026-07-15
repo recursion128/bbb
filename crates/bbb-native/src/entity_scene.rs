@@ -44,7 +44,8 @@ use bbb_world::{
     EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
     FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
-    WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore,
+    WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore, ZombieNautilusVariantModelType,
+    ZombieNautilusVariantPresentation,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
@@ -321,6 +322,13 @@ trait EntityVariantRegistryLookup {
         None
     }
 
+    fn zombie_nautilus_variant_presentation(
+        &self,
+        _holder_id: i32,
+    ) -> Option<ZombieNautilusVariantPresentation> {
+        None
+    }
+
     fn ready_texture(&self, _asset_id: &str) -> Option<EntityDynamicTexture> {
         None
     }
@@ -364,6 +372,16 @@ impl EntityVariantRegistryLookup for EntityVariantRenderContext<'_> {
     fn frog_variant_presentation(&self, holder_id: i32) -> Option<FrogVariantPresentation> {
         self.world
             .synchronized_frog_variant_presentation(holder_id)
+            .ok()
+            .flatten()
+    }
+
+    fn zombie_nautilus_variant_presentation(
+        &self,
+        holder_id: i32,
+    ) -> Option<ZombieNautilusVariantPresentation> {
+        self.world
+            .synchronized_zombie_nautilus_variant_presentation(holder_id)
             .ok()
             .flatten()
     }
