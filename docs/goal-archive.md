@@ -15306,3 +15306,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `generate-bootstrap-catalog.py` 扩展 banner-pattern identity owner 的反向门禁，禁止
   production code 重声明历史 `vanilla_banner_pattern_translation_key` bridge；43 项 ordinal/
   resource/translation catalog 与 tooltip fixture 继续覆盖直接消费路径。
+
+## 2026-07-15：Remove item-model potion-effects lookup bridge
+
+- [x] potion contents tooltip 直接读取 generated `vanilla_potion(id).effects`，删除仅投影同一
+  owner entry 字段的 `vanilla_potion_effects` helper；base effects 后追加 custom effects、空效果
+  文本与 attribute modifier 收集顺序保持 vanilla `PotionContents.forEachEffect` 语义。
+- [x] potion owner 的 bootstrap-generated 反向门禁禁止历史 effects lookup bridge 复生；46 项
+  potion/effect 顺序回归与完整 item tooltip fixture 覆盖直接消费路径和 unknown holder 省略。

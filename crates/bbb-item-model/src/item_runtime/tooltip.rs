@@ -37,7 +37,9 @@ use bbb_world::{
 
 use super::icon_model::effective_attribute_modifiers;
 use super::*;
-use bbb_protocol::potion_types::{vanilla_potion, VanillaPotionEffect};
+use bbb_protocol::potion_types::vanilla_potion;
+#[cfg(test)]
+use bbb_protocol::potion_types::VanillaPotionEffect;
 
 /// Vanilla `ItemLore.LORE_STYLE`
 /// (`net.minecraft.world.item.component.ItemLore`):
@@ -1276,21 +1278,24 @@ mod tests {
 
     #[test]
     fn vanilla_potion_effects_follow_26_1_bootstrap_order() {
-        assert_eq!(vanilla_potion_effects(0), Some(&[][..]));
         assert_eq!(
-            vanilla_potion_effects(4),
+            vanilla_potion(0).map(|potion| potion.effects),
+            Some(&[][..])
+        );
+        assert_eq!(
+            vanilla_potion(4).map(|potion| potion.effects),
             Some(&[potion_effect(15, 3600, 0)][..])
         );
         assert_eq!(
-            vanilla_potion_effects(19),
+            vanilla_potion(19).map(|potion| potion.effects),
             Some(&[potion_effect(1, 400, 3), potion_effect(10, 400, 2)][..])
         );
         assert_eq!(
-            vanilla_potion_effects(24),
+            vanilla_potion(24).map(|potion| potion.effects),
             Some(&[potion_effect(5, 1, 0)][..])
         );
         assert_eq!(
-            vanilla_potion_effects(45),
+            vanilla_potion(45).map(|potion| potion.effects),
             Some(
                 &[potion_effect(
                     bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_INFESTED_ID,
@@ -1299,8 +1304,8 @@ mod tests {
                 )][..]
             )
         );
-        assert_eq!(vanilla_potion_effects(46), None);
-        assert_eq!(vanilla_potion_effects(-1), None);
+        assert_eq!(vanilla_potion(46).map(|potion| potion.effects), None);
+        assert_eq!(vanilla_potion(-1).map(|potion| potion.effects), None);
         assert_eq!(format_attribute_modifier_amount(40.0), "40");
         assert_eq!(format_attribute_modifier_amount(1.5), "1.5");
         assert_eq!(format_attribute_modifier_amount(1.234), "1.23");
@@ -1562,7 +1567,7 @@ fn push_potion_contents_tooltip_lines(
     let mut has_effect_entries = false;
     let mut attribute_modifiers = Vec::new();
     if let Some(potion_id) = component_patch.potion_id {
-        if let Some(effects) = vanilla_potion_effects(potion_id) {
+        if let Some(effects) = vanilla_potion(potion_id).map(|potion| potion.effects) {
             has_effect_entries |= !effects.is_empty();
             for effect in effects {
                 push_potion_effect_tooltip_line(
@@ -1604,10 +1609,6 @@ fn push_potion_contents_tooltip_lines(
         ));
     }
     push_potion_attribute_modifier_tooltip_lines(language, &attribute_modifiers, lines);
-}
-
-fn vanilla_potion_effects(potion_id: i32) -> Option<&'static [VanillaPotionEffect]> {
-    vanilla_potion(potion_id).map(|potion| potion.effects)
 }
 
 fn potion_contents_component_present(component_patch: &DataComponentPatchSummary) -> bool {
