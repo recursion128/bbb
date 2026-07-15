@@ -302,7 +302,7 @@ encoder 也已闭合；在线 session
 authentication、RSA/AES secret/challenge 生成、cipher install 与初始 hello 的完整响应状态仍为
 `partial`。
 下一步继续 configuration 的 state/framing 与 handoff，不能由 offline login 成功路径外推
-在线认证或 configuration family 的完成状态。dialog 等其余 configuration packet 仍须按各自
+在线认证或 configuration family 的完成状态。其余 configuration packet 仍须按各自
 语义 owner 逐格审计。resource-pack 的 wire/ownership/canonical projection 已审计，但下载、hash 校验、reload、
 required-pack 生命周期和运行时 pop 仍为具体 `partial`，不能把 Declined fallback 当作完成。
 known-packs offer 的 decode/ownership/canonical 路径与最多 64 项的通用 response encoder 已闭合，
@@ -319,7 +319,9 @@ configuration finish 无 play duplicate 与无 ack 语义已闭合；仓库禁�
 不再作为 play packet 的虚构 command surface。
 dialog runtime 的当前可见基线投影 Notice 与 Confirmation 的标题、PlainMessage 正文及单/双主
 按钮/悬停，Confirmation 保持 8px footer button spacing 且 Escape 绑定 no action；静态
-custom action 已发送完整 id/payload，并按 `after_action` 进入 close/none/waiting；waiting screen
+custom action 已发送完整 id/payload，并按 `after_action` 进入 close/none/waiting；configuration/play
+ServerboundCustomClickAction 的 command surface、state guard、bounded encoder、tests 与无 dedicated ack
+语义均已闭合。waiting screen
 按 vanilla 1 秒显示、5 秒启用 Back，且保持 previous-screen、ShowDialog replacement 与
 ClearDialog ignore 语义。Dialog 与 waiting screen 已按 `Screen.extractMenuBackgroundTexture` 以逻辑
 32x32 尺寸重复采样 `inworld_menu_background.png` 并覆盖完整 surface，超过 512px 的 centered dialog

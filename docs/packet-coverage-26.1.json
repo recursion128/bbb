@@ -1199,12 +1199,14 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-world/src/client/ui.rs#apply_show_dialog",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#run_dialog_action",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#static_custom_notice_action_queues_exact_payload_then_closes",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#boolean_input_renders_toggles_and_binds_dynamic_actions",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#sendCustomAction",
             "vanilla:net/minecraft/client/gui/screens/Screen.java#defaultHandleGameClickEvent"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -1222,23 +1224,26 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-world/src/client/ui.rs#current_dialog",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#run_dialog_action",
+            "crates/bbb-net/src/driver/commands.rs#send_custom_click_action",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_custom_click_action_in_configuration_and_play_only",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#sendCustomAction",
             "vanilla:net/minecraft/client/gui/screens/Screen.java#defaultHandleGameClickEvent"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
+            "crates/bbb-native/src/runtime/dialog_screen.rs#static_custom_notice_action_queues_exact_payload_then_closes",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#boolean_input_renders_toggles_and_binds_dynamic_actions",
             "crates/bbb-protocol/src/packets/tests.rs#encodes_custom_click_action_in_configuration_and_play",
             "crates/bbb-protocol/src/packets/tests.rs#rejects_invalid_oversized_and_excessively_deep_custom_click_actions",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_custom_click_action_in_configuration_and_play_only",
-            "crates/bbb-protocol/src/packet_coverage.rs#custom_click_action_keeps_dialog_codec_open_in_both_states"
+            "crates/bbb-protocol/src/packet_coverage.rs#custom_click_action_is_complete_in_both_states"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -6389,12 +6394,14 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-world/src/client/ui.rs#apply_show_dialog",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#run_dialog_action",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#static_custom_notice_action_queues_exact_payload_then_closes",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#boolean_input_renders_toggles_and_binds_dynamic_actions",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#sendCustomAction",
             "vanilla:net/minecraft/client/gui/screens/Screen.java#defaultHandleGameClickEvent"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -6412,23 +6419,26 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-world/src/client/ui.rs#current_dialog",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#run_dialog_action",
+            "crates/bbb-net/src/driver/commands.rs#send_custom_click_action",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_custom_click_action_in_configuration_and_play_only",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#sendCustomAction",
             "vanilla:net/minecraft/client/gui/screens/Screen.java#defaultHandleGameClickEvent"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
+            "crates/bbb-native/src/runtime/dialog_screen.rs#static_custom_notice_action_queues_exact_payload_then_closes",
+            "crates/bbb-native/src/runtime/dialog_screen.rs#boolean_input_renders_toggles_and_binds_dynamic_actions",
             "crates/bbb-protocol/src/packets/tests.rs#encodes_custom_click_action_in_configuration_and_play",
             "crates/bbb-protocol/src/packets/tests.rs#rejects_invalid_oversized_and_excessively_deep_custom_click_actions",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_custom_click_action_in_configuration_and_play_only",
-            "crates/bbb-protocol/src/packet_coverage.rs#custom_click_action_keeps_dialog_codec_open_in_both_states"
+            "crates/bbb-protocol/src/packet_coverage.rs#custom_click_action_is_complete_in_both_states"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",

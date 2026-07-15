@@ -15079,3 +15079,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   Back 后才恢复原 DebugOptions；focused regressions 覆盖该完整序列与 PauseScreen direct clear restore。同步将
   configuration/play ShowDialog 与 ClearDialog 的四个 `runtime_side_effect` coverage cell 提升为 complete，并移除
   已闭合的 Dialog unsupported ledger 项。
+
+## 2026-07-15：Close configuration/play CustomClickAction command coverage
+
+- [x] 复核 `ClientCommonPacketListenerImpl.CommonDialogAccess.sendCustomAction` 与
+  `Screen.defaultHandleGameClickEvent`：两条 vanilla client path 都直接发送同一个 Identifier + optional Tag packet，
+  不等待 dedicated acknowledgement。native Dialog 的 static/dynamic custom actions 已保留 exact payload 并进入
+  共用 `NetCommand::CustomClickAction` owner；driver 只在 configuration/play 选择对应 packet id，login 等状态不发送。
+- [x] 将 configuration/play 两行的 command-surface、state-guard 与 tests cell 提升为 complete；coverage regression
+  现在要求两行除有 vanilla server hook 依据的 not-applicable ack 外全部 complete，并引用 exact payload、dynamic
+  binding、bounded NBT encoder 与双状态 driver tests。

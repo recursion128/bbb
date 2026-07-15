@@ -40,8 +40,8 @@ Owner: `bbb-protocol`
   NBT-root/depth/count boundaries;
   keep handwritten handler coverage aligned with the generated packet catalog
   as unsupported families are implemented.
-- Use `docs/packet-coverage-26.1.json` as the complete 256-entry inventory. A
-  cell remains `partial` until it carries implementation and semantic-test
+- Use `docs/packet-coverage-26.1.json` as the complete 256-entry inventory. Every
+  remaining `partial` cell must carry implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
 - Route a transferred target into production reconnect, send its Transfer-intent

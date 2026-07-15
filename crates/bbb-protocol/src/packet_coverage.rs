@@ -519,7 +519,7 @@ mod tests {
     }
 
     #[test]
-    fn configuration_dialog_runtime_is_complete() {
+    fn configuration_dialog_and_custom_click_runtime_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_CUSTOM_CLICK_ACTION",
@@ -544,14 +544,7 @@ mod tests {
                 })
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([
-                ("SERVERBOUND_CUSTOM_CLICK_ACTION", "command_surface"),
-                ("SERVERBOUND_CUSTOM_CLICK_ACTION", "state_guard"),
-                ("SERVERBOUND_CUSTOM_CLICK_ACTION", "tests"),
-            ])
-        );
+        assert!(partial.is_empty(), "partial cells: {partial:?}");
         for packet in ["CLIENTBOUND_CLEAR_DIALOG", "CLIENTBOUND_SHOW_DIALOG"] {
             let entry = entries
                 .iter()
@@ -4358,7 +4351,7 @@ mod tests {
     }
 
     #[test]
-    fn custom_click_action_keeps_dialog_codec_open_in_both_states() {
+    fn custom_click_action_is_complete_in_both_states() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entries: Vec<_> = ledger
             .entries
@@ -4377,16 +4370,10 @@ mod tests {
                 "{}",
                 entry.state
             );
-            assert_eq!(
-                entry.coverage["encoder"].status,
-                PacketCoverageStatus::Complete,
-                "{} encoder",
-                entry.state
-            );
-            for dimension in ["command_surface", "state_guard", "tests"] {
+            for dimension in ["command_surface", "encoder", "state_guard", "tests"] {
                 assert_eq!(
                     entry.coverage[dimension].status,
-                    PacketCoverageStatus::Partial,
+                    PacketCoverageStatus::Complete,
                     "{} {dimension}",
                     entry.state
                 );
