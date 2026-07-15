@@ -6,7 +6,10 @@ use bbb_protocol::{
         VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
         VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
     },
-    attribute_types::vanilla_attribute_type,
+    attribute_types::{
+        vanilla_attribute_type, vanilla_attribute_type_for_resource_id, AttributeSentiment,
+        AttributeTypeCatalogEntry,
+    },
     block_entity_types::vanilla_block_entity_type_only_op_can_set_nbt,
     builtin_enum_component_values::{normalize_vanilla_dye_color_id, vanilla_dye_color_name},
     entity_types::{
@@ -32,9 +35,6 @@ use bbb_world::{
     VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 
-use super::attributes::{
-    vanilla_attribute, vanilla_attribute_for_key, VanillaAttribute, VanillaAttributeSentiment,
-};
 use super::icon_model::effective_attribute_modifiers;
 use super::mob_effects::{
     vanilla_mob_effect_attribute_modifiers, vanilla_mob_effect_category, vanilla_mob_effect_key,
@@ -1819,7 +1819,7 @@ fn enchantment_attribute_modifier_tooltip_line(
 ) -> Option<NativeItemTooltipLine> {
     numeric_attribute_modifier_tooltip_line(
         language,
-        vanilla_attribute_for_key(&modifier.attribute)?,
+        vanilla_attribute_type_for_resource_id(&modifier.attribute)?,
         &modifier.modifier_id,
         modifier.amount,
         modifier.operation_id,
@@ -1829,7 +1829,7 @@ fn enchantment_attribute_modifier_tooltip_line(
 
 fn numeric_attribute_modifier_tooltip_line(
     language: &LanguageCatalog,
-    attribute: VanillaAttribute,
+    attribute: &'static AttributeTypeCatalogEntry,
     modifier_id: &str,
     raw_amount: f64,
     operation_id: i32,
@@ -1854,7 +1854,7 @@ fn numeric_attribute_modifier_tooltip_line(
         || operation_id == VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID
     {
         amount * 100.0
-    } else if attribute.key == "minecraft:knockback_resistance" {
+    } else if attribute.resource_id == "minecraft:knockback_resistance" {
         amount * 10.0
     } else {
         amount
@@ -1900,30 +1900,27 @@ fn numeric_attribute_modifier_tooltip_line(
 fn tooltip_attribute(
     attribute_id: i32,
     attribute_keys: Option<&[String]>,
-) -> Option<VanillaAttribute> {
+) -> Option<&'static AttributeTypeCatalogEntry> {
     match attribute_keys {
         Some(keys) => usize::try_from(attribute_id)
             .ok()
             .and_then(|index| keys.get(index))
-            .and_then(|key| vanilla_attribute_for_key(key)),
-        None => vanilla_attribute(attribute_id),
+            .and_then(|key| vanilla_attribute_type_for_resource_id(key)),
+        None => vanilla_attribute_type(attribute_id),
     }
 }
 
-fn stack_attribute_modifier_tint(
-    sentiment: VanillaAttributeSentiment,
-    value_increase: bool,
-) -> [f32; 4] {
+fn stack_attribute_modifier_tint(sentiment: AttributeSentiment, value_increase: bool) -> [f32; 4] {
     match sentiment {
-        VanillaAttributeSentiment::Positive => {
+        AttributeSentiment::Positive => {
             if value_increase {
                 TOOLTIP_TEXT_BLUE
             } else {
                 TOOLTIP_TEXT_RED
             }
         }
-        VanillaAttributeSentiment::Neutral => TOOLTIP_TEXT_GRAY,
-        VanillaAttributeSentiment::Negative => {
+        AttributeSentiment::Neutral => TOOLTIP_TEXT_GRAY,
+        AttributeSentiment::Negative => {
             if value_increase {
                 TOOLTIP_TEXT_RED
             } else {

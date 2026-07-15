@@ -434,7 +434,12 @@ mod tests {
                 }
                 let source = fs::read_to_string(&path).unwrap();
                 let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
-                if production.contains("fn vanilla_attribute_resource_id(") {
+                if production.contains("struct VanillaAttribute")
+                    || production.contains("fn vanilla_attribute(")
+                    || production.contains("fn vanilla_attribute_for_key(")
+                    || production.contains("fn vanilla_attribute_id_for_key(")
+                    || production.contains("fn vanilla_attribute_resource_id(")
+                {
                     violations.push(display.to_string());
                 }
             }

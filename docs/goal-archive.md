@@ -15238,3 +15238,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   及其重复 registry 测试；行为所需 particle id 继续按 resource identity 在编译期从 catalog 派生。
 - [x] `generate-core-registry-catalog.py` 生成反向结构门禁，阻止生产代码重新声明 particle catalog
   lookup/type bridge；generator update/check 与 native constant/runtime 回归共同锁定唯一事实源。
+
+## 2026-07-15：Remove item-model attribute catalog projection bridge
+
+- [x] item tooltip 与 default-modifier projection 直接消费 `bbb-protocol::attribute_types` 的
+  `AttributeTypeCatalogEntry`、id/resource lookup、description 与 sentiment，删除复制相同字段的
+  `VanillaAttribute` 类型及三个本地 lookup；session holder order 与无 session fallback 语义不变。
+- [x] `generate-gameplay-id-catalog.py` 扩展 owner 生成的反向门禁，阻止历史 attribute
+  type/lookup 别名复生；owner catalog、tooltip、default component 与 custom-order 回归覆盖直接消费路径。

@@ -1,5 +1,6 @@
 use super::*;
 use bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID;
+use bbb_protocol::attribute_types::vanilla_attribute_type_for_resource_id;
 
 pub(super) fn default_attribute_modifier_summary(
     modifier: &PackItemDefaultAttributeModifier,
@@ -11,7 +12,9 @@ pub(super) fn default_attribute_modifier_summary(
                 .position(|key| key == &modifier.attribute_key)
                 .and_then(|index| i32::try_from(index).ok())
         })
-        .or_else(|| super::attributes::vanilla_attribute_id_for_key(&modifier.attribute_key))
+        .or_else(|| {
+            vanilla_attribute_type_for_resource_id(&modifier.attribute_key).map(|entry| entry.id)
+        })
         .unwrap_or(-1);
     AttributeModifierSummary {
         attribute_id,
