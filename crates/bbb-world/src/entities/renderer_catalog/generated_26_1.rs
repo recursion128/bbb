@@ -3,6 +3,9 @@
 // Update: scripts/vanilla-source-tools.sh scripts/generate-entity-renderer-catalog.py
 // Check: scripts/vanilla-source-tools.sh scripts/generate-entity-renderer-catalog.py --check
 
+pub(super) const VANILLA_LIVING_ENTITY_RENDERER_UPSIDE_DOWN_NAMES_26_1: &[&str] =
+    &["Dinnerbone", "Grumm"];
+
 pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
     &[VanillaEntityRendererRegistration] = &[
     VanillaEntityRendererRegistration {
@@ -2024,6 +2027,31 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
 
 #[cfg(test)]
 mod generated_catalog_guards {
+    #[test]
+    fn living_entity_upside_down_names_match_vanilla_renderer() {
+        assert_eq!(
+            super::VANILLA_LIVING_ENTITY_RENDERER_UPSIDE_DOWN_NAMES_26_1,
+            &["Dinnerbone", "Grumm"]
+        );
+        for name in super::VANILLA_LIVING_ENTITY_RENDERER_UPSIDE_DOWN_NAMES_26_1 {
+            assert!(super::vanilla_living_entity_renderer_name_is_upside_down(
+                name
+            ));
+        }
+        assert!(!super::vanilla_living_entity_renderer_name_is_upside_down(
+            "dinnerbone"
+        ));
+    }
+
+    #[test]
+    fn world_projection_does_not_restore_upside_down_name_table() {
+        let entities = include_str!("../../entities.rs");
+        let store = include_str!("../store.rs");
+        assert!(!entities.contains("const VANILLA_UPSIDE_DOWN_NAMES"));
+        assert!(entities.contains("vanilla_living_entity_renderer_name_is_upside_down"));
+        assert!(store.contains("vanilla_living_entity_renderer_name_is_upside_down"));
+    }
+
     #[test]
     fn native_light_projection_does_not_restore_static_full_bright_membership() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");

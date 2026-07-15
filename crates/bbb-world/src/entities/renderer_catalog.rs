@@ -21,6 +21,10 @@ pub(super) struct VanillaEntityRendererRegistration {
 
 include!("renderer_catalog/generated_26_1.rs");
 
+pub(super) fn vanilla_living_entity_renderer_name_is_upside_down(name: &str) -> bool {
+    VANILLA_LIVING_ENTITY_RENDERER_UPSIDE_DOWN_NAMES_26_1.contains(&name)
+}
+
 fn vanilla_entity_renderer_registration(
     entity_type_id: i32,
 ) -> Option<&'static VanillaEntityRendererRegistration> {

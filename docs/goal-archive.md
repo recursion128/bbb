@@ -15628,3 +15628,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   `AbstractDragonSittingPhase` 继承 true，`DragonHoverPhase` 直接覆盖 true，其余阶段继承 false。
 - [x] world 末影龙部件坐姿删除四项 phase-id 表，直接消费 generated query；11 项注册范围、
   未知 id fail-closed 测试与 generator-emitted 反向门禁防止并行阶段表回流。
+
+## 2026-07-15：Generate living-entity upside-down names
+
+- [x] entity renderer extractor 从 `LivingEntityRenderer.isUpsideDownName` 的 Tree-sitter CST 解析
+  `literal.equals(name)` 逻辑或成员，生成精确大小写的 `Dinnerbone` / `Grumm` 名称 catalog；
+  其他表达式形状 fail closed，Python fixture 覆盖正向与反向路径。
+- [x] world 删除两项名称表，玩家 GameProfile + cape 路径与非玩家 custom-name 路径共享
+  renderer owner query；小写名称仍 fail closed，generator-emitted 反向门禁防止平行表回流。

@@ -154,7 +154,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `extractRenderState` Mob-aggressive, unhappy-counter and spell-casting projections, are now
   source-generated. `ThrownItemRenderer` registration membership and constructor sprite scale
   must likewise remain renderer-generated; native billboard/model suppression must not restore a
-  parallel entity-type/scale table. Continue
+  parallel entity-type/scale table. `LivingEntityRenderer.isUpsideDownName` membership must remain
+  renderer-generated and shared by player-profile and non-player custom-name projection. Continue
   migrating renderer-class-derived model/pose memberships through that owner. Emit every new
   generated-catalog consumer guard or migrated generated-catalog consumer guard
   from that catalog's generator rather than hand-editing its checked-in output.

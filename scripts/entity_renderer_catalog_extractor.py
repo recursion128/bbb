@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import struct
 from dataclasses import dataclass
 
@@ -18,6 +19,7 @@ from vanilla_java_source import (
 
 RENDERER_PACKAGE = "net.minecraft.client.renderer.entity"
 ENTITY_RENDERERS_CLASS = RENDERER_PACKAGE + ".EntityRenderers"
+LIVING_ENTITY_RENDERER_CLASS = RENDERER_PACKAGE + ".LivingEntityRenderer"
 THROWN_ITEM_RENDERER_CLASS = RENDERER_PACKAGE + ".ThrownItemRenderer"
 ABSTRACT_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".AbstractHorseRenderer"
 MOB_RENDERER_CLASS = RENDERER_PACKAGE + ".MobRenderer"
@@ -117,6 +119,105 @@ def _returns_constant_full_block_light(source: JavaSource, method: JavaMethod) -
         and expression.node.type == "decimal_integer_literal"
         and expression.canonical == "15"
     )
+
+
+def extract_living_entity_upside_down_names(source: JavaSource) -> tuple[str, ...]:
+    """Extract the exact case-sensitive names accepted by ``isUpsideDownName``."""
+    owners = [
+        java_type
+        for java_type in source.types
+        if java_type.fqcn == LIVING_ENTITY_RENDERER_CLASS
+    ]
+    if len(owners) != 1:
+        raise EntityRendererCatalogExtractionError(
+            f"{source.relative_path}: expected one LivingEntityRenderer class"
+        )
+    methods = [
+        method
+        for method in source.methods_for(owners[0])
+        if method.name == "isUpsideDownName" and len(method.parameters) == 1
+    ]
+    if len(methods) != 1:
+        raise EntityRendererCatalogExtractionError(
+            f"{source.relative_path}: expected one isUpsideDownName/1 method"
+        )
+    method = methods[0]
+    if [parameter.canonical for parameter in method.parameters] != [
+        "final String name"
+    ]:
+        raise EntityRendererCatalogExtractionError(
+            f"{source.relative_path}: unsupported isUpsideDownName parameter"
+        )
+    expression = _method_return_expression(source, method)
+    if expression is None:
+        _fail(
+            source,
+            source.expression(method.node),
+            "isUpsideDownName is not one return expression",
+        )
+
+    def collect(node) -> list[str]:
+        if node.type == "binary_expression":
+            operator = node.child_by_field_name("operator")
+            left = node.child_by_field_name("left")
+            right = node.child_by_field_name("right")
+            if (
+                operator is None
+                or source.text(operator) != "||"
+                or left is None
+                or right is None
+            ):
+                _fail(
+                    source,
+                    source.expression(node),
+                    "isUpsideDownName only supports logical-or membership",
+                )
+            return [*collect(left), *collect(right)]
+
+        if node.type != "method_invocation":
+            _fail(
+                source,
+                source.expression(node),
+                "isUpsideDownName member is not literal.equals(name)",
+            )
+        object_node = node.child_by_field_name("object")
+        name_node = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        if (
+            object_node is None
+            or object_node.type != "string_literal"
+            or name_node is None
+            or source.text(name_node) != "equals"
+            or arguments is None
+            or len(arguments.named_children) != 1
+            or arguments.named_children[0].type != "identifier"
+            or source.text(arguments.named_children[0]) != "name"
+        ):
+            _fail(
+                source,
+                source.expression(node),
+                "isUpsideDownName member is not literal.equals(name)",
+            )
+        try:
+            value = json.loads(source.text(object_node))
+        except (json.JSONDecodeError, TypeError) as error:
+            _fail(
+                source,
+                source.expression(object_node),
+                f"invalid upside-down name literal: {error}",
+            )
+        if not isinstance(value, str) or not value:
+            _fail(
+                source,
+                source.expression(object_node),
+                "upside-down name is empty or non-string",
+            )
+        return [value]
+
+    names = tuple(collect(expression.node))
+    if len(names) != len(set(names)):
+        _fail(source, expression, "duplicate isUpsideDownName member")
+    return names
 
 
 def _float_literal_bits(source: JavaSource, expression: JavaExpression) -> int:

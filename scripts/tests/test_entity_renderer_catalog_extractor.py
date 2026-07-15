@@ -9,7 +9,9 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 from entity_renderer_catalog_extractor import (  # noqa: E402
+    EntityRendererCatalogExtractionError,
     extract_entity_renderer_registrations,
+    extract_living_entity_upside_down_names,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -19,6 +21,43 @@ def java(path: str, source: str):
 
 
 class EntityRendererCatalogExtractorTests(unittest.TestCase):
+    def test_extracts_living_entity_upside_down_name_membership(self) -> None:
+        source = java(
+            "net/minecraft/client/renderer/entity/LivingEntityRenderer.java",
+            """
+            package net.minecraft.client.renderer.entity;
+            public class LivingEntityRenderer {
+                protected static boolean isUpsideDownName(final String name) {
+                    return "Dinnerbone".equals(name) || "Grumm".equals(name);
+                }
+            }
+            """,
+        )
+
+        self.assertEqual(
+            extract_living_entity_upside_down_names(source),
+            ("Dinnerbone", "Grumm"),
+        )
+
+    def test_rejects_non_literal_upside_down_name_membership(self) -> None:
+        source = java(
+            "net/minecraft/client/renderer/entity/LivingEntityRenderer.java",
+            """
+            package net.minecraft.client.renderer.entity;
+            public class LivingEntityRenderer {
+                protected static boolean isUpsideDownName(final String name) {
+                    return name.equals("Dinnerbone") || "Grumm".equals(name);
+                }
+            }
+            """,
+        )
+
+        with self.assertRaisesRegex(
+            EntityRendererCatalogExtractionError,
+            r"literal\.equals\(name\)",
+        ):
+            extract_living_entity_upside_down_names(source)
+
     def test_extracts_literal_and_constructor_driven_full_brightness(self) -> None:
         entity_renderers = java(
             "net/minecraft/client/renderer/entity/EntityRenderers.java",

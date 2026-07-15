@@ -20,6 +20,7 @@ use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 
+use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_minecart_default_display_offset,
@@ -77,7 +78,7 @@ use super::{
     VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_ID,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS, VANILLA_UPSIDE_DOWN_NAMES,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -1806,7 +1807,9 @@ impl EntityStore {
             && identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
             && self
                 .metadata_optional_component(id, VANILLA_ENTITY_CUSTOM_NAME_DATA_ID)
-                .is_some_and(|name| VANILLA_UPSIDE_DOWN_NAMES.contains(&name.as_str()));
+                .is_some_and(|name| {
+                    vanilla_living_entity_renderer_name_is_upside_down(name.as_str())
+                });
         // Vanilla `EntityRenderState.boundingBoxHeight` (`Entity.getBbHeight`): the
         // pick-bounds AABB height, used to lift the upside-down model before flipping.
         let bounding_box_height = self
