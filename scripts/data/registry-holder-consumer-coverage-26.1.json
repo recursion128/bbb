@@ -249,6 +249,27 @@
       "decision": "The metadata holder resolves through synchronized server order; ModelAndTexture projects the normal/warm model selector and ResourceTexture, and entity rendering switches both geometry and custom texture atomically after upload while stubs, malformed values, and failures preserve the checked built-in presentation."
     },
     {
+      "id": "network-holder-reference-dimension-type",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/level/dimension/DimensionType.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/level.rs#fn apply_spawn_info",
+      "evidence": [
+        "vanilla:net/minecraft/world/level/dimension/DimensionType.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<DimensionType>> STREAM_CODEC",
+        "vanilla:net/minecraft/network/protocol/game/CommonPlayerSpawnInfo.java#DimensionType.STREAM_CODEC.decode(input)",
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#public void handleLogin",
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#public void handleRespawn",
+        "crates/bbb-protocol/src/packets/play_clientbound/codecs.rs#fn decode_common_spawn_info",
+        "crates/bbb-world/src/level.rs#fn apply_spawn_info",
+        "crates/bbb-world/src/level.rs#fn login_and_respawn_resolve_dimension_type_holders_in_server_order"
+      ],
+      "decision": "CommonPlayerSpawnInfo retains the DimensionType holder id for both Login and Respawn; level creation resolves that id through the current synchronized server order before applying identity and every implemented client projection, with a two-entry custom order proving both packet paths. Persistent DimensionType codec semantics remain tracked by their separate holder call."
+    },
+    {
       "id": "network-holder-reference-wolf-variant",
       "selector": {
         "kind": "network_holder_reference",
@@ -292,7 +313,8 @@
           "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
           "net/minecraft/world/entity/npc/villager/VillagerData.java",
           "net/minecraft/world/entity/npc/villager/VillagerType.java",
-          "net/minecraft/world/clock/WorldClock.java"
+          "net/minecraft/world/clock/WorldClock.java",
+          "net/minecraft/world/level/dimension/DimensionType.java"
         ]
       },
       "status": "partial",

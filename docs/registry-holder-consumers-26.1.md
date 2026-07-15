@@ -23,10 +23,10 @@ the number of concrete vanilla call sites tied to its registry for diagnostics.
 
 The generated
 `docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 194 calls to
-22 checked families. The four network shapes and seven persistent Codec shapes
+23 checked families. The four network shapes and seven persistent Codec shapes
 name their current bbb resource-id or tag resolver surface. They remain
 `partial` until the owning decoder/encoder receives registry context and the
-registry family has custom-reorder tests; this accounts for 174 rows. The
+registry family has custom-reorder tests; this accounts for 173 rows. The
 `sound_event` reference/direct stream codec is `complete`: vanilla owns it in
 the client built-in layer, and bbb's generated static order, direct holder
 payload, world ownership, and audio runtime resolution have cross-layer tests.
@@ -55,6 +55,11 @@ The synchronized unit-valued `world_clock` stream holder is `complete`: SetTime
 retains the server holder ids, while the active dimension's default clock
 resource id resolves through the session order before merge, tick, and day-time
 projection; a reversed custom order covers that identity boundary.
+The synchronized `dimension_type` reference holder is `complete`: Login and
+Respawn retain the `CommonPlayerSpawnInfo` numeric id, and level creation
+resolves it through the current server order before applying identity, shape,
+lighting, skybox, ambient light, clock, and environment projections. The
+persistent direct codec remains a separate partial call.
 The synchronized cat, chicken, cow, pig, and wolf sound-variant stream holders
 are `complete`: entity metadata ids resolve in each server registry order, all
 five codec shapes retain their required named/direct SoundEvent holders, and

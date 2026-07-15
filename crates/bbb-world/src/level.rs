@@ -2168,6 +2168,94 @@ mod tests {
     }
 
     #[test]
+    fn login_and_respawn_resolve_dimension_type_holders_in_server_order() {
+        let mut store = WorldStore::new();
+        store.record_registry_data(RegistryData {
+            registry: "minecraft:dimension_type".to_string(),
+            raw_payload_len: 0,
+            entries: vec![
+                RegistryDataEntry {
+                    id: "example:compact".to_string(),
+                    raw_data: Some(dimension_type_nbt(
+                        Some("nether"),
+                        Some(false),
+                        Some(true),
+                        Some((0, 128, 96)),
+                        Some("none"),
+                        Some(0.2),
+                    )),
+                },
+                RegistryDataEntry {
+                    id: "example:tall".to_string(),
+                    raw_data: Some(dimension_type_nbt(
+                        Some("default"),
+                        Some(true),
+                        Some(false),
+                        Some((-64, 384, 320)),
+                        Some("end"),
+                        Some(0.4),
+                    )),
+                },
+            ],
+        });
+
+        store.apply_login(&login_packet(1, "example:first_level"));
+        let login_level = store.level_info().unwrap();
+        assert_eq!(login_level.dimension_type_id, 1);
+        assert_eq!(
+            login_level.dimension_type_name.as_deref(),
+            Some("example:tall")
+        );
+        assert_eq!(
+            store.dimension(),
+            WorldDimension {
+                min_y: -64,
+                height: 384,
+            }
+        );
+        assert!(login_level.has_sky_light());
+        assert_eq!(login_level.skybox(), WorldSkybox::End);
+        assert_eq!(login_level.ambient_light(), 0.4);
+
+        store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "example:second_level".to_string(),
+                seed: 67890,
+                game_type: 0,
+                previous_game_type: 0,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            data_to_keep: 3,
+        });
+        let respawn_level = store.level_info().unwrap();
+        assert_eq!(respawn_level.dimension_type_id, 0);
+        assert_eq!(
+            respawn_level.dimension_type_name.as_deref(),
+            Some("example:compact")
+        );
+        assert_eq!(
+            store.dimension(),
+            WorldDimension {
+                min_y: 0,
+                height: 128,
+            }
+        );
+        assert!(!respawn_level.has_sky_light());
+        assert!(respawn_level.has_ceiling());
+        assert_eq!(
+            respawn_level.cardinal_lighting(),
+            WorldCardinalLighting::Nether
+        );
+        assert_eq!(respawn_level.skybox(), WorldSkybox::None);
+        assert_eq!(respawn_level.ambient_light(), 0.2);
+    }
+
+    #[test]
     fn dimension_type_registry_projects_direct_environment_attributes_and_diagnoses_modifiers() {
         let mut custom = WorldStore::new();
         record_custom_dimension_type_registry(
