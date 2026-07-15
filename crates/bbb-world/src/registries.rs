@@ -13,9 +13,10 @@ mod trim_patterns;
 pub use animal_variants::{
     CatVariantPresentation, CatVariantProjectionError, FarmAnimalVariantModel,
     FarmAnimalVariantPresentation, FarmAnimalVariantProjectionError, FrogVariantPresentation,
-    FrogVariantProjectionError, ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
+    FrogVariantProjectionError, WolfVariantAssetPresentation, WolfVariantPresentation,
+    WolfVariantProjectionError, ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
     ZombieNautilusVariantProjectionError, CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY,
-    COW_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
+    COW_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
 pub use biomes::{

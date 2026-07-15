@@ -5836,6 +5836,74 @@ fn ready_cat_presentation_selects_the_age_specific_network_texture() {
     );
 }
 
+struct ReadyWolfPresentationLookup {
+    presentation: WolfVariantPresentation,
+    ready_asset_id: &'static str,
+    texture: EntityDynamicTexture,
+}
+
+impl EntityVariantRegistryLookup for ReadyWolfPresentationLookup {
+    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
+        Some("example:dire")
+    }
+
+    fn wolf_variant_presentation(&self, _holder_id: i32) -> Option<WolfVariantPresentation> {
+        Some(self.presentation.clone())
+    }
+
+    fn ready_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
+        (asset_id == self.ready_asset_id).then_some(self.texture)
+    }
+}
+
+#[test]
+fn ready_wolf_presentation_selects_vanilla_age_and_state_texture() {
+    let texture = EntityDynamicTexture { handle: 74_001 };
+    let mut lookup = ReadyWolfPresentationLookup {
+        presentation: WolfVariantPresentation {
+            adult: wolf_test_asset_presentation("adult"),
+            baby: wolf_test_asset_presentation("baby"),
+        },
+        ready_asset_id: "example:adult/wild",
+        texture,
+    };
+    let values = [protocol_wolf_variant_data(0)];
+    for (baby, tame, angry, expected_asset_id) in [
+        (false, false, false, "example:adult/wild"),
+        (false, true, false, "example:adult/tame"),
+        (false, false, true, "example:adult/angry"),
+        (true, false, false, "example:baby/wild"),
+        (true, true, false, "example:baby/tame"),
+        (true, false, true, "example:baby/angry"),
+        (true, true, true, "example:baby/tame"),
+    ] {
+        lookup.ready_asset_id = expected_asset_id;
+        let kind = EntityModelKind::Wolf {
+            baby,
+            tame,
+            angry,
+            collar_color: None,
+            variant: WolfModelVariant::Pale,
+        };
+        assert_eq!(
+            ready_wolf_variant_texture(&kind, VANILLA_ENTITY_TYPE_WOLF_ID, &values, Some(&lookup),),
+            Some(texture),
+            "wrong selection for baby={baby}, tame={tame}, angry={angry}"
+        );
+    }
+}
+
+fn wolf_test_asset_presentation(age: &str) -> WolfVariantAssetPresentation {
+    WolfVariantAssetPresentation {
+        wild_asset_id: format!("example:{age}/wild"),
+        wild_texture_path: format!("example:textures/{age}/wild.png"),
+        tame_asset_id: format!("example:{age}/tame"),
+        tame_texture_path: format!("example:textures/{age}/tame.png"),
+        angry_asset_id: format!("example:{age}/angry"),
+        angry_texture_path: format!("example:textures/{age}/angry.png"),
+    }
+}
+
 struct ReadyZombieNautilusPresentationLookup {
     ready: bool,
     texture: EntityDynamicTexture,

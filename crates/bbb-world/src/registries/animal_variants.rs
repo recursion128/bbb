@@ -10,6 +10,7 @@ pub const COW_VARIANT_REGISTRY: &str = "minecraft:cow_variant";
 pub const PIG_VARIANT_REGISTRY: &str = "minecraft:pig_variant";
 pub const CAT_VARIANT_REGISTRY: &str = "minecraft:cat_variant";
 pub const FROG_VARIANT_REGISTRY: &str = "minecraft:frog_variant";
+pub const WOLF_VARIANT_REGISTRY: &str = "minecraft:wolf_variant";
 pub const ZOMBIE_NAUTILUS_VARIANT_REGISTRY: &str = "minecraft:zombie_nautilus_variant";
 
 /// The serialized model selector shared by the chicken, cow, and pig variant codecs.
@@ -63,6 +64,31 @@ pub struct FrogVariantPresentation {
 /// Identifies the exact frog `NETWORK_CODEC` field that could not be projected.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrogVariantProjectionError {
+    pub field: String,
+    pub reason: &'static str,
+}
+
+/// The wild/tame/angry resource textures carried by one wolf age group.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WolfVariantAssetPresentation {
+    pub wild_asset_id: String,
+    pub wild_texture_path: String,
+    pub tame_asset_id: String,
+    pub tame_texture_path: String,
+    pub angry_asset_id: String,
+    pub angry_texture_path: String,
+}
+
+/// The adult and baby client presentation fields carried by a synchronized wolf variant.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WolfVariantPresentation {
+    pub adult: WolfVariantAssetPresentation,
+    pub baby: WolfVariantAssetPresentation,
+}
+
+/// Identifies the exact wolf `NETWORK_CODEC` field that could not be projected.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WolfVariantProjectionError {
     pub field: String,
     pub reason: &'static str,
 }
@@ -135,6 +161,21 @@ impl WorldStore {
             return Ok(None);
         };
         decode_frog_variant(raw_data).map(Some)
+    }
+
+    /// Decodes a synchronized wolf variant in current server holder order.
+    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    pub fn synchronized_wolf_variant_presentation(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<WolfVariantPresentation>, WolfVariantProjectionError> {
+        let Some(entry) = self.registry_entry_by_holder_id(WOLF_VARIANT_REGISTRY, holder_id) else {
+            return Ok(None);
+        };
+        let Some(raw_data) = entry.raw_data() else {
+            return Ok(None);
+        };
+        decode_wolf_variant(raw_data).map(Some)
     }
 
     /// Decodes a synchronized zombie-nautilus variant in current server holder order.
@@ -222,6 +263,48 @@ fn decode_frog_variant(
     Ok(FrogVariantPresentation {
         asset_id,
         texture_path,
+    })
+}
+
+fn decode_wolf_variant(
+    raw_data: &[u8],
+) -> Result<WolfVariantPresentation, WolfVariantProjectionError> {
+    let root = decode_nbt_root(raw_data)
+        .map_err(|_| wolf_error("<root>", "invalid NBT"))?
+        .ok_or_else(|| wolf_error("<root>", "missing root compound"))?;
+    let NbtValue::Compound(fields) = root else {
+        return Err(wolf_error("<root>", "expected compound"));
+    };
+
+    Ok(WolfVariantPresentation {
+        adult: decode_wolf_asset_presentation(&fields, "assets")?,
+        baby: decode_wolf_asset_presentation(&fields, "baby_assets")?,
+    })
+}
+
+fn decode_wolf_asset_presentation(
+    fields: &[(String, NbtValue)],
+    field: &str,
+) -> Result<WolfVariantAssetPresentation, WolfVariantProjectionError> {
+    let asset_fields = match find_nbt_entry(fields, field) {
+        Some(NbtValue::Compound(asset_fields)) => asset_fields,
+        Some(_) => return Err(wolf_error(field, "expected compound")),
+        None => return Err(wolf_error(field, "missing required field")),
+    };
+    let decode = |asset_field| {
+        decode_resource_texture(asset_fields, asset_field)
+            .map_err(|error| wolf_error(format!("{field}.{}", error.field), error.reason))
+    };
+    let (wild_asset_id, wild_texture_path) = decode("wild")?;
+    let (tame_asset_id, tame_texture_path) = decode("tame")?;
+    let (angry_asset_id, angry_texture_path) = decode("angry")?;
+    Ok(WolfVariantAssetPresentation {
+        wild_asset_id,
+        wild_texture_path,
+        tame_asset_id,
+        tame_texture_path,
+        angry_asset_id,
+        angry_texture_path,
     })
 }
 
@@ -325,6 +408,15 @@ impl From<ResourceTextureProjectionError> for FrogVariantProjectionError {
     }
 }
 
+impl From<ResourceTextureProjectionError> for WolfVariantProjectionError {
+    fn from(error: ResourceTextureProjectionError) -> Self {
+        Self {
+            field: error.field,
+            reason: error.reason,
+        }
+    }
+}
+
 impl From<ResourceTextureProjectionError> for ZombieNautilusVariantProjectionError {
     fn from(error: ResourceTextureProjectionError) -> Self {
         Self {
@@ -360,6 +452,13 @@ fn cat_error(field: impl Into<String>, reason: &'static str) -> CatVariantProjec
 
 fn frog_error(field: impl Into<String>, reason: &'static str) -> FrogVariantProjectionError {
     FrogVariantProjectionError {
+        field: field.into(),
+        reason,
+    }
+}
+
+fn wolf_error(field: impl Into<String>, reason: &'static str) -> WolfVariantProjectionError {
+    WolfVariantProjectionError {
         field: field.into(),
         reason,
     }
@@ -507,6 +606,67 @@ mod tests {
             FrogVariantProjectionError {
                 field: "asset_id".to_string(),
                 reason: "invalid texture identifier",
+            }
+        );
+    }
+
+    #[test]
+    fn decodes_wolf_network_codec_six_texture_shape() {
+        let presentation = decode_wolf_variant(&wolf_variant_nbt(
+            [
+                "example:entity/wolf/adult_wild",
+                "example:entity/wolf/adult_tame",
+                "example:entity/wolf/adult_angry",
+            ],
+            [
+                "example:entity/wolf/baby_wild",
+                "example:entity/wolf/baby_tame",
+                "entity/wolf/baby_angry",
+            ],
+        ))
+        .unwrap();
+        assert_eq!(
+            presentation.adult,
+            WolfVariantAssetPresentation {
+                wild_asset_id: "example:entity/wolf/adult_wild".to_string(),
+                wild_texture_path: "example:textures/entity/wolf/adult_wild.png".to_string(),
+                tame_asset_id: "example:entity/wolf/adult_tame".to_string(),
+                tame_texture_path: "example:textures/entity/wolf/adult_tame.png".to_string(),
+                angry_asset_id: "example:entity/wolf/adult_angry".to_string(),
+                angry_texture_path: "example:textures/entity/wolf/adult_angry.png".to_string(),
+            }
+        );
+        assert_eq!(
+            presentation.baby.angry_texture_path,
+            "minecraft:textures/entity/wolf/baby_angry.png"
+        );
+
+        let error = decode_wolf_variant(&wolf_variant_nbt(
+            [
+                "example:entity/wolf/adult_wild",
+                "Example:entity/wolf/adult_tame",
+                "example:entity/wolf/adult_angry",
+            ],
+            [
+                "example:entity/wolf/baby_wild",
+                "example:entity/wolf/baby_tame",
+                "example:entity/wolf/baby_angry",
+            ],
+        ))
+        .unwrap_err();
+        assert_eq!(
+            error,
+            WolfVariantProjectionError {
+                field: "assets.tame".to_string(),
+                reason: "invalid texture identifier",
+            }
+        );
+
+        assert_eq!(
+            decode_wolf_variant(&[10, 0]).unwrap_err(),
+            WolfVariantProjectionError {
+                field: "assets".to_string(),
+                reason: "missing required field",
             }
         );
     }
@@ -666,6 +826,52 @@ mod tests {
     }
 
     #[test]
+    fn wolf_world_query_uses_server_holder_order_and_omits_stubs() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            WOLF_VARIANT_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_raw_data(
+                    "example:dire",
+                    wolf_variant_nbt(
+                        [
+                            "example:adult/wild",
+                            "example:adult/tame",
+                            "example:adult/angry",
+                        ],
+                        [
+                            "example:baby/wild",
+                            "example:baby/tame",
+                            "example:baby/angry",
+                        ],
+                    ),
+                ),
+                RegistryPacketEntry::stub("minecraft:pale"),
+            ],
+        );
+
+        let presentation = store
+            .synchronized_wolf_variant_presentation(0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(presentation.adult.wild_asset_id, "example:adult/wild");
+        assert_eq!(presentation.adult.tame_asset_id, "example:adult/tame");
+        assert_eq!(presentation.adult.angry_asset_id, "example:adult/angry");
+        assert_eq!(presentation.baby.wild_asset_id, "example:baby/wild");
+        assert_eq!(presentation.baby.tame_asset_id, "example:baby/tame");
+        assert_eq!(presentation.baby.angry_asset_id, "example:baby/angry");
+        assert_eq!(
+            store.synchronized_wolf_variant_presentation(1).unwrap(),
+            None
+        );
+        assert_eq!(
+            store.synchronized_wolf_variant_presentation(2).unwrap(),
+            None
+        );
+    }
+
+    #[test]
     fn zombie_nautilus_world_query_uses_server_holder_order_and_omits_stubs() {
         let mut store = WorldStore::new();
         store.record_registry_entries(
@@ -721,6 +927,23 @@ mod tests {
         }
         out.push(0);
         out
+    }
+
+    fn wolf_variant_nbt(adult: [&str; 3], baby: [&str; 3]) -> Vec<u8> {
+        let mut out = vec![10];
+        write_wolf_asset_compound(&mut out, "assets", adult);
+        write_wolf_asset_compound(&mut out, "baby_assets", baby);
+        out.push(0);
+        out
+    }
+
+    fn write_wolf_asset_compound(out: &mut Vec<u8>, name: &str, assets: [&str; 3]) {
+        out.push(10);
+        write_utf(out, name);
+        write_string(out, "wild", assets[0]);
+        write_string(out, "tame", assets[1]);
+        write_string(out, "angry", assets[2]);
+        out.push(0);
     }
 
     fn write_string(out: &mut Vec<u8>, name: &str, value: &str) {

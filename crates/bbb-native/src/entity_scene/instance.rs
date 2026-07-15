@@ -38,6 +38,14 @@ pub(super) fn entity_model_instance(
         )
     })
     .or_else(|| {
+        ready_wolf_variant_texture(
+            &kind,
+            source.entity_type_id,
+            &source.data_values,
+            variant_registries,
+        )
+    })
+    .or_else(|| {
         apply_ready_zombie_nautilus_variant_presentation(
             &mut kind,
             source.entity_type_id,

@@ -5,15 +5,17 @@ use bbb_pack::PackRoots;
 use bbb_renderer::{DynamicEntityTextureImage, EntityDynamicTexture, Renderer};
 use bbb_world::{
     WorldStore, CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY,
-    FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
+    FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
+    ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
 
-const ANIMAL_VARIANT_REGISTRIES: [&str; 6] = [
+const ANIMAL_VARIANT_REGISTRIES: [&str; 7] = [
     CAT_VARIANT_REGISTRY,
     CHICKEN_VARIANT_REGISTRY,
     COW_VARIANT_REGISTRY,
     FROG_VARIANT_REGISTRY,
     PIG_VARIANT_REGISTRY,
+    WOLF_VARIANT_REGISTRY,
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 ];
 
@@ -57,7 +59,7 @@ impl NativeEntityVariantTextureRuntime {
         }
     }
 
-    /// Discovers every synchronized adult/baby asset and uploads each unique resource once. This
+    /// Discovers every synchronized variant asset and uploads each unique resource once. This
     /// runs after network draining, before entity extraction, so a successful image becomes usable
     /// together with its registry model selector in the same render frame.
     pub(crate) fn synchronize(&mut self, world: &WorldStore, renderer: &mut Renderer) {
@@ -91,42 +93,50 @@ impl NativeEntityVariantTextureRuntime {
                         .synchronized_cat_variant_presentation(holder_id)
                         .map(|presentation| {
                             presentation.map(|presentation| {
-                                (
-                                    presentation.adult_asset_id,
-                                    Some(presentation.baby_asset_id),
-                                )
+                                vec![presentation.adult_asset_id, presentation.baby_asset_id]
                             })
                         })
                         .map_err(|error| (error.field, error.reason)),
                     FROG_VARIANT_REGISTRY => world
                         .synchronized_frog_variant_presentation(holder_id)
                         .map(|presentation| {
-                            presentation.map(|presentation| (presentation.asset_id, None))
+                            presentation.map(|presentation| vec![presentation.asset_id])
+                        })
+                        .map_err(|error| (error.field, error.reason)),
+                    WOLF_VARIANT_REGISTRY => world
+                        .synchronized_wolf_variant_presentation(holder_id)
+                        .map(|presentation| {
+                            presentation.map(|presentation| {
+                                vec![
+                                    presentation.adult.wild_asset_id,
+                                    presentation.adult.tame_asset_id,
+                                    presentation.adult.angry_asset_id,
+                                    presentation.baby.wild_asset_id,
+                                    presentation.baby.tame_asset_id,
+                                    presentation.baby.angry_asset_id,
+                                ]
+                            })
                         })
                         .map_err(|error| (error.field, error.reason)),
                     ZOMBIE_NAUTILUS_VARIANT_REGISTRY => world
                         .synchronized_zombie_nautilus_variant_presentation(holder_id)
                         .map(|presentation| {
-                            presentation.map(|presentation| (presentation.asset_id, None))
+                            presentation.map(|presentation| vec![presentation.asset_id])
                         })
                         .map_err(|error| (error.field, error.reason)),
                     _ => world
                         .synchronized_farm_animal_variant_presentation(registry, holder_id)
                         .map(|presentation| {
                             presentation.map(|presentation| {
-                                (
-                                    presentation.adult_asset_id,
-                                    Some(presentation.baby_asset_id),
-                                )
+                                vec![presentation.adult_asset_id, presentation.baby_asset_id]
                             })
                         })
                         .map_err(|error| (error.field, error.reason)),
                 };
                 match presentation {
-                    Ok(Some((asset_id, secondary_asset_id))) => {
-                        self.ensure_asset_with_uploader(&asset_id, uploader);
-                        if let Some(secondary_asset_id) = secondary_asset_id {
-                            self.ensure_asset_with_uploader(&secondary_asset_id, uploader);
+                    Ok(Some(asset_ids)) => {
+                        for asset_id in asset_ids {
+                            self.ensure_asset_with_uploader(&asset_id, uploader);
                         }
                     }
                     Ok(None) => {}
@@ -247,7 +257,7 @@ mod tests {
     use super::*;
     use bbb_protocol::{
         entity_types::{
-            VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_FROG_ID,
+            VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         },
         packets::{
@@ -257,7 +267,7 @@ mod tests {
     };
     use bbb_renderer::{EntityModelKind, ZombieNautilusModelVariant};
     use bbb_world::{
-        VANILLA_CAT_VARIANT_DATA_ID, VANILLA_FROG_VARIANT_DATA_ID,
+        VANILLA_CAT_VARIANT_DATA_ID, VANILLA_FROG_VARIANT_DATA_ID, VANILLA_WOLF_VARIANT_DATA_ID,
         VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
     };
     use uuid::Uuid;
@@ -503,6 +513,104 @@ mod tests {
     }
 
     #[test]
+    fn synchronized_wolf_assets_upload_and_wild_adult_reaches_the_entity_instance() {
+        let root = unique_temp_dir("wolf-variant-texture-runtime");
+        let sources = root.join("sources/26.1");
+        let assets = [
+            "entity/wolf/adult_wild",
+            "entity/wolf/adult_tame",
+            "entity/wolf/adult_angry",
+            "entity/wolf/baby_wild",
+            "entity/wolf/baby_tame",
+            "entity/wolf/baby_angry",
+        ];
+        for (index, asset) in assets.iter().enumerate() {
+            write_png(
+                &sources.join(format!("assets/example/textures/{asset}.png")),
+                32 + index as u32,
+                16,
+            );
+        }
+        let roots = PackRoots {
+            mc_code_root: root.clone(),
+            sources_dir: sources.clone(),
+            assets_dir: sources.join("assets/minecraft"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            WOLF_VARIANT_REGISTRY,
+            0,
+            vec![bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:dire",
+                wolf_variant_nbt(
+                    [
+                        "example:entity/wolf/adult_wild",
+                        "example:entity/wolf/adult_tame",
+                        "example:entity/wolf/adult_angry",
+                    ],
+                    [
+                        "example:entity/wolf/baby_wild",
+                        "example:entity/wolf/baby_tame",
+                        "example:entity/wolf/baby_angry",
+                    ],
+                ),
+            )],
+        );
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+
+        assert_eq!(uploader.images.len(), 6);
+        assert_eq!(uploader.images[0].size, [32, 16]);
+        assert_eq!(uploader.images[5].size, [37, 16]);
+        for asset in assets {
+            assert_eq!(
+                runtime.status(&format!("example:{asset}")),
+                Some(EntityVariantTextureStatus::Ready)
+            );
+        }
+        let texture = runtime
+            .ready_texture("example:entity/wolf/adult_wild")
+            .expect("successful upload must publish the adult wild wolf texture");
+        world.apply_add_entity(AddEntity {
+            id: 76,
+            uuid: Uuid::from_u128(76),
+            entity_type_id: VANILLA_ENTITY_TYPE_WOLF_ID,
+            position: Vec3d::default(),
+            delta_movement: Vec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(world.apply_set_entity_data(SetEntityData {
+            id: 76,
+            values: vec![EntityDataValue {
+                data_id: VANILLA_WOLF_VARIANT_DATA_ID,
+                serializer_id: 25,
+                value: EntityDataValueKind::RegistryId {
+                    serializer: EntityDataRegistryHolder::WolfVariant,
+                    id: 0,
+                },
+            }],
+        }));
+        let instances =
+            crate::entity_scene::entity_model_instances_from_world_with_variant_textures_at_partial_tick(
+                &world,
+                None,
+                &runtime,
+                1.0,
+            );
+        assert_eq!(instances.len(), 1);
+        assert_eq!(instances[0].dynamic_texture, Some(texture));
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn synchronized_zombie_nautilus_model_and_texture_reach_the_entity_instance_atomically() {
         let root = unique_temp_dir("zombie-nautilus-variant-texture-runtime");
         let sources = root.join("sources/26.1");
@@ -614,6 +722,23 @@ mod tests {
         write_nbt_string_tag(&mut payload, "asset_id", asset_id);
         payload.push(0);
         payload
+    }
+
+    fn wolf_variant_nbt(adult: [&str; 3], baby: [&str; 3]) -> Vec<u8> {
+        let mut payload = vec![10];
+        write_wolf_asset_compound(&mut payload, "assets", adult);
+        write_wolf_asset_compound(&mut payload, "baby_assets", baby);
+        payload.push(0);
+        payload
+    }
+
+    fn write_wolf_asset_compound(payload: &mut Vec<u8>, name: &str, assets: [&str; 3]) {
+        payload.push(10);
+        write_nbt_string(payload, name);
+        write_nbt_string_tag(payload, "wild", assets[0]);
+        write_nbt_string_tag(payload, "tame", assets[1]);
+        write_nbt_string_tag(payload, "angry", assets[2]);
+        payload.push(0);
     }
 
     fn write_nbt_string_tag(payload: &mut Vec<u8>, name: &str, value: &str) {

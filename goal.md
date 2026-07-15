@@ -755,13 +755,15 @@ server order、完整 NETWORK_CODEC presentation、dynamic adult/baby texture up
 ResourceTexture decode/upload 与 entity render 闭合；frog variant 的 reference holder
 也已按 server order、ResourceTexture decode/upload 与 entity render 闭合；zombie-nautilus
 variant 的 reference holder 已按 server order、ModelAndTexture decode、atomic geometry/texture
-upload/render 闭合；villager type/profession 三个 reference holder 也已按 built-in 固定顺序、
+upload/render 闭合；wolf variant 的 reference holder 也已按 server order、adult/baby
+wild/tame/angry 六资源 decode/upload 与 vanilla tame-over-angry entity 选图闭合；villager
+type/profession 三个 reference holder 也已按 built-in 固定顺序、
 entity metadata、item component/model 与 renderer 闭合，并测试 configuration RegistryData
 不得重排；world_clock 的 synchronized unit registry、SetTime holder id、dimension default
 resource/session identity 与 merge/tick/day-time 投影也已用反序 registry 闭合。其余四种
 network holder 中 cat/chicken/cow/pig/wolf 五个 synchronized sound variant 也已按五种
 typed codec shape、server order、named/direct SoundEvent、adult/baby death audio 闭合。其余
-四种 network shape 与七种 persistent Codec shape 共 175 行映射到
+四种 network shape 与七种 persistent Codec shape 共 174 行映射到
 当前 resource-id/tag resolver 并保持 `partial`，2 个 typed debug 调用带重启判据
 `deferred`，vanilla `holderSet` 内部 helper 自调用带证据 `not-applicable`。生成 inventory 中
 13 个 `RegistryValidator.nonEmpty` 已在 atomic collection commit 前执行；失败会丢弃 pending、

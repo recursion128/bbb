@@ -437,6 +437,45 @@ pub(super) fn ready_frog_variant_texture(
     registries.ready_texture(&presentation.asset_id)
 }
 
+/// Selects the synchronized wolf `NETWORK_CODEC` texture for the current age and state only after
+/// that exact resource is resident. Vanilla gives tame priority over angry for the same age group.
+pub(super) fn ready_wolf_variant_texture(
+    kind: &EntityModelKind,
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+    registries: Option<&dyn EntityVariantRegistryLookup>,
+) -> Option<EntityDynamicTexture> {
+    let EntityModelKind::Wolf {
+        baby, tame, angry, ..
+    } = kind
+    else {
+        return None;
+    };
+    if entity_type_id != VANILLA_ENTITY_TYPE_WOLF_ID {
+        return None;
+    }
+    let holder_id = entity_data_registry_holder_id(
+        values,
+        WOLF_VARIANT_DATA_ID,
+        EntityDataRegistryHolder::WolfVariant,
+    )?;
+    let registries = registries?;
+    let presentation = registries.wolf_variant_presentation(holder_id)?;
+    let assets = if *baby {
+        &presentation.baby
+    } else {
+        &presentation.adult
+    };
+    let asset_id = if *tame {
+        &assets.tame_asset_id
+    } else if *angry {
+        &assets.angry_asset_id
+    } else {
+        &assets.wild_asset_id
+    };
+    registries.ready_texture(asset_id)
+}
+
 /// Applies the synchronized zombie-nautilus model selector and texture only after the texture is
 /// resident, keeping the geometry/texture transition atomic.
 pub(super) fn apply_ready_zombie_nautilus_variant_presentation(

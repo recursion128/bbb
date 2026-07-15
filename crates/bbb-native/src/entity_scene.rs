@@ -33,6 +33,8 @@ use bbb_renderer::{
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 #[cfg(test)]
+use bbb_world::WolfVariantAssetPresentation;
+#[cfg(test)]
 use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
@@ -44,8 +46,8 @@ use bbb_world::{
     EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
     FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor,
-    WolfArmorCrackiness as WorldWolfArmorCrackiness, WorldStore, ZombieNautilusVariantModelType,
-    ZombieNautilusVariantPresentation,
+    WolfArmorCrackiness as WorldWolfArmorCrackiness, WolfVariantPresentation, WorldStore,
+    ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
@@ -322,6 +324,10 @@ trait EntityVariantRegistryLookup {
         None
     }
 
+    fn wolf_variant_presentation(&self, _holder_id: i32) -> Option<WolfVariantPresentation> {
+        None
+    }
+
     fn zombie_nautilus_variant_presentation(
         &self,
         _holder_id: i32,
@@ -372,6 +378,13 @@ impl EntityVariantRegistryLookup for EntityVariantRenderContext<'_> {
     fn frog_variant_presentation(&self, holder_id: i32) -> Option<FrogVariantPresentation> {
         self.world
             .synchronized_frog_variant_presentation(holder_id)
+            .ok()
+            .flatten()
+    }
+
+    fn wolf_variant_presentation(&self, holder_id: i32) -> Option<WolfVariantPresentation> {
+        self.world
+            .synchronized_wolf_variant_presentation(holder_id)
             .ok()
             .flatten()
     }

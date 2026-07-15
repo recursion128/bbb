@@ -249,6 +249,28 @@
       "decision": "The metadata holder resolves through synchronized server order; ModelAndTexture projects the normal/warm model selector and ResourceTexture, and entity rendering switches both geometry and custom texture atomically after upload while stubs, malformed values, and failures preserve the checked built-in presentation."
     },
     {
+      "id": "network-holder-reference-wolf-variant",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/entity/animal/wolf/WolfVariant.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn ready_wolf_variant_texture",
+      "evidence": [
+        "vanilla:net/minecraft/world/entity/animal/wolf/WolfVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<WolfVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/world/entity/animal/wolf/WolfVariant.java#public static final Codec<WolfVariant> NETWORK_CODEC",
+        "vanilla:net/minecraft/world/entity/animal/wolf/Wolf.java#public Identifier getTexture()",
+        "crates/bbb-world/src/registries/animal_variants.rs#pub fn synchronized_wolf_variant_presentation",
+        "crates/bbb-world/src/registries/animal_variants.rs#fn wolf_world_query_uses_server_holder_order_and_omits_stubs",
+        "crates/bbb-native/src/entity_variant_textures.rs#fn synchronized_wolf_assets_upload_and_wild_adult_reaches_the_entity_instance",
+        "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn ready_wolf_variant_texture",
+        "crates/bbb-native/src/entity_scene/tests.rs#fn ready_wolf_presentation_selects_vanilla_age_and_state_texture"
+      ],
+      "decision": "The metadata holder resolves through synchronized server order; both AssetInfo compounds project all wild/tame/angry adult and baby ResourceTextures, all six resources are uploaded, and entity rendering selects the ready age/state texture with vanilla tame-over-angry priority while stubs, malformed values, and failed uploads preserve the checked built-in presentation."
+    },
+    {
       "id": "network-holder-reference",
       "selector": {
         "kind": "network_holder_reference",
@@ -267,6 +289,7 @@
           "net/minecraft/world/entity/animal/pig/PigVariant.java",
           "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
           "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
+          "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
           "net/minecraft/world/entity/npc/villager/VillagerData.java",
           "net/minecraft/world/entity/npc/villager/VillagerType.java",
           "net/minecraft/world/clock/WorldClock.java"

@@ -49,9 +49,10 @@ pub use crate::registries::{
     FarmAnimalVariantProjectionError, FrogVariantPresentation, FrogVariantProjectionError,
     RegistryContentState, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
     RegistryTagState, RegistryValidationError, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
+    WolfVariantAssetPresentation, WolfVariantPresentation, WolfVariantProjectionError,
     ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
     ZombieNautilusVariantProjectionError, CAT_VARIANT_REGISTRY, CHICKEN_VARIANT_REGISTRY,
-    COW_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY,
+    COW_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
 pub use crate::shulker_box_blocks::{

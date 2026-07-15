@@ -141,13 +141,14 @@ mod tests {
             });
         assert_eq!(counts["network-holder-or-inline"], 8);
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
-        assert_eq!(counts["network-holder-reference"], 10);
+        assert_eq!(counts["network-holder-reference"], 9);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
         assert_eq!(counts["network-holder-reference-cat-variant"], 1);
         assert_eq!(counts["network-holder-reference-farm-animal-variants"], 3);
         assert_eq!(counts["network-holder-reference-frog-variant"], 1);
         assert_eq!(counts["network-holder-reference-villager-built-ins"], 3);
         assert_eq!(counts["network-holder-reference-world-clock"], 1);
+        assert_eq!(counts["network-holder-reference-wolf-variant"], 1);
         assert_eq!(
             counts["network-holder-reference-zombie-nautilus-variant"],
             1
@@ -169,7 +170,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            175
+            174
         );
         assert_eq!(
             ledger
@@ -192,7 +193,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 16);
+        assert_eq!(complete.len(), 17);
         assert_eq!(
             complete
                 .iter()
@@ -212,6 +213,7 @@ mod tests {
                 "minecraft:villager_profession",
                 "minecraft:villager_type",
                 "minecraft:wolf_sound_variant",
+                "minecraft:wolf_variant",
                 "minecraft:world_clock",
                 "minecraft:zombie_nautilus_variant",
             ])
