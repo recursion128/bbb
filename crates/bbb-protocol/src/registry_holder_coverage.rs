@@ -141,7 +141,8 @@ mod tests {
             });
         assert_eq!(counts["network-holder-or-inline"], 8);
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
-        assert_eq!(counts["network-holder-reference"], 25);
+        assert_eq!(counts["network-holder-reference"], 22);
+        assert_eq!(counts["network-holder-reference-farm-animal-variants"], 3);
         assert_eq!(counts["network-holder-reference-debug"], 2);
         assert_eq!(counts["network-holder-reference-helper"], 1);
         assert_eq!(counts["network-holder-set-or-tag"], 11);
@@ -159,7 +160,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            190
+            187
         );
         assert_eq!(
             ledger
@@ -182,11 +183,18 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 1);
+        assert_eq!(complete.len(), 4);
         assert_eq!(
-            complete[0].resource_id.as_deref(),
-            Some("minecraft:sound_event")
+            complete
+                .iter()
+                .map(|entry| entry.resource_id.as_deref().unwrap())
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from([
+                "minecraft:chicken_variant",
+                "minecraft:cow_variant",
+                "minecraft:pig_variant",
+                "minecraft:sound_event",
+            ])
         );
-        assert_eq!(complete[0].family, "network-holder-or-inline-sound-event");
     }
 }
