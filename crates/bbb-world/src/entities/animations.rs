@@ -19,6 +19,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
+    vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
@@ -33,8 +34,6 @@ use super::schema::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
-    VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD as AXOLOTL_DEFAULT_PLAYING_DEAD,
-    VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID as AXOLOTL_PLAYING_DEAD_DATA_ID,
     VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL, VANILLA_CAMEL_DASH_DATA_ID as CAMEL_DASH_DATA_ID,
     VANILLA_CAMEL_DEFAULT_DASH as CAMEL_DEFAULT_DASH,
     VANILLA_CAT_DEFAULT_IS_LYING as CAT_DEFAULT_IS_LYING,
@@ -6044,14 +6043,15 @@ pub(crate) fn allay_is_dancing(entity_type_id: i32, data_values: &[EntityDataVal
 }
 
 /// Vanilla `Axolotl.isPlayingDead()` (`entityData.get(DATA_PLAYING_DEAD)`): the synced boolean that
-/// selects the `PLAYING_DEAD` animation state. Read straight from the entity metadata in the tick
-/// loop; non-axolotls (whose synced slot `19` is not this boolean) fall back to `false`.
-pub(crate) fn axolotl_is_playing_dead(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(
-        data_values,
-        AXOLOTL_PLAYING_DEAD_DATA_ID,
-        AXOLOTL_DEFAULT_PLAYING_DEAD,
-    )
+/// selects the `PLAYING_DEAD` animation state. The generated accessor supplies membership, wire
+/// index and default.
+pub(crate) fn axolotl_is_playing_dead(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `Creaking.canMove()` (`entityData.get(CAN_MOVE)`): the synced boolean (default `true`)

@@ -16449,3 +16449,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   entity type，不再把其他 family 的同号槽位当成 dancing。
 - animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
   这些平行事实源或丢失 store 调用处的 entity-type 传递。
+
+## 2026-07-15：统一推导 Axolotl playing-dead metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Axolotl.DATA_PLAYING_DEAD` 解析 membership、
+  wire id 19 与 boolean typed default false；world tick 的 play-dead animation state 读取显式
+  携带 entity type，不再把其他 family 的同号槽位当成 playing-dead。
+- animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
+  这些平行事实源或丢失 store 调用处的 entity-type 传递。

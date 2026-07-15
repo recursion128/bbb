@@ -3550,7 +3550,8 @@ impl EntityStore {
                             && update.item.item_id.is_some()
                     })
                 });
-                let axolotl_is_playing_dead = axolotl_is_playing_dead(&metadata.data_values);
+                let axolotl_is_playing_dead =
+                    axolotl_is_playing_dead(identity.entity_type_id, &metadata.data_values);
                 let creaking_is_tearing_down = creaking_is_tearing_down(&metadata.data_values);
                 let pillager_is_charging_crossbow =
                     pillager_is_charging_crossbow(&metadata.data_values);

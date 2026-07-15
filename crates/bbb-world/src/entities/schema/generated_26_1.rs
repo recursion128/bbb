@@ -23075,6 +23075,26 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_axolotl_playing_dead_does_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        let store = include_str!("../store.rs");
+        assert!(animations
+            .contains("vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type"));
+        assert!(store
+            .contains("axolotl_is_playing_dead(identity.entity_type_id, &metadata.data_values)"));
+        for removed in [
+            "AXOLOTL_PLAYING_DEAD_DATA_ID",
+            "AXOLOTL_DEFAULT_PLAYING_DEAD",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(!store.contains(removed), "store restored {removed}");
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

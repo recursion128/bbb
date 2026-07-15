@@ -900,6 +900,26 @@ pub fn vanilla_entity_metadata_allay_dancing_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Axolotl playing-dead accessor and its typed default.
+pub fn vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_PLAYING_DEAD")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.axolotl.Axolotl",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited TamableAnimal flags accessor and its typed default.
 pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3187,6 +3207,26 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_allay_dancing_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_axolotl_playing_dead_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_AXOLOTL_ID
+            ),
+            Some((19, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ALLAY_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(-1),
             None
         );
     }
