@@ -30,10 +30,9 @@ use bbb_render_types::BannerPatternKind;
 #[cfg(test)]
 use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
-    vanilla_painting_variant as world_painting_variant, EnchantmentAttributeModifier,
-    EnchantmentTooltipDefinition, RegistrySet, VanillaEnchantmentIdentity,
-    VanillaInstrumentIdentity, VanillaPaintingVariant, VanillaTrimMaterialIdentity,
-    VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    vanilla_painting_variant, EnchantmentAttributeModifier, EnchantmentTooltipDefinition,
+    RegistrySet, VanillaEnchantmentIdentity, VanillaInstrumentIdentity, VanillaPaintingVariant,
+    VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 
 use super::icon_model::effective_attribute_modifiers;
@@ -716,7 +715,7 @@ fn push_painting_tooltip_lines(
 
 fn push_vanilla_painting_variant_tooltip_lines(
     language: &LanguageCatalog,
-    variant: VanillaPaintingVariant,
+    variant: &VanillaPaintingVariant,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     if let Some(title_key) = painting_variant_translation_key(variant.resource_id, "title") {
@@ -822,10 +821,6 @@ fn push_operator_nbt_warning_tooltip_lines(
             }],
         });
     }
-}
-
-fn vanilla_painting_variant(id: i32) -> Option<VanillaPaintingVariant> {
-    world_painting_variant(id).copied()
 }
 
 fn painting_variant_translation_key(key: &str, suffix: &str) -> Option<String> {
@@ -1148,19 +1143,19 @@ mod tests {
     fn vanilla_painting_variants_follow_26_1_bootstrap_order() {
         assert_eq!(VANILLA_PAINTING_VARIANTS.len(), 51);
         assert_eq!(
-            vanilla_painting_variant(0),
+            vanilla_painting_variant(0).copied(),
             Some(painting_variant(0, "minecraft:kebab", 1, 1, true))
         );
         assert_eq!(
-            vanilla_painting_variant(10),
+            vanilla_painting_variant(10).copied(),
             Some(painting_variant(10, "minecraft:sunset", 2, 1, true))
         );
         assert_eq!(
-            vanilla_painting_variant(19),
+            vanilla_painting_variant(19).copied(),
             Some(painting_variant(19, "minecraft:wither", 2, 2, false))
         );
         assert_eq!(
-            vanilla_painting_variant(50),
+            vanilla_painting_variant(50).copied(),
             Some(painting_variant(50, "minecraft:dennis", 3, 3, true))
         );
         assert_eq!(vanilla_painting_variant(51), None);

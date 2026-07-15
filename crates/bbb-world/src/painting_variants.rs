@@ -439,6 +439,7 @@ mod tests {
                     || source.contains("struct VanillaPaintingVariant")
                     || source.contains("const VANILLA_PAINTING_VARIANTS")
                     || source.contains("fn vanilla_painting_variant_resource_id(")
+                    || source.contains("fn vanilla_painting_variant(")
                 {
                     violations.push(display.to_string());
                 }

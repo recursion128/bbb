@@ -15279,3 +15279,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   比较语义保持不变。
 - [x] sound-event owner 的 generated 反向结构门禁纳入历史 `vanilla_sound_event_key` helper，
   阻止 item-model 或其他 production crate 恢复平行 id→resource catalog lookup。
+
+## 2026-07-15：Remove item-model painting-variant catalog lookup bridge
+
+- [x] painting item tooltip 直接借用 `bbb-world::vanilla_painting_variant` 的 generated entry，
+  删除仅对 owner lookup 做 `.copied()` 的同名本地转发；vanilla title/optional author/尺寸与
+  direct/custom variant tooltip 语义保持不变。
+- [x] `generate-bootstrap-catalog.py` 扩展 painting owner 的反向结构门禁，阻止 production
+  code 重新声明 `vanilla_painting_variant` lookup bridge；51 项顺序/尺寸/author catalog test
+  与 item tooltip 回归继续覆盖直接消费路径。
