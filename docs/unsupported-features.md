@@ -184,6 +184,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Living-entity scale sanitization must remain generated from the nearest `sanitizeScale`
   override, including HappyGhast/Shulker maximum clamps and EnderDragon's fixed 1.0 result;
   dimensions/render projection must not restore a type switch or local cap constants.
+  Wither invulnerability/render membership, wire index and default must remain derived from the
+  generated `WitherBoss.DATA_ID_INV` accessor; world projection must not restore a Wither type
+  predicate or fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

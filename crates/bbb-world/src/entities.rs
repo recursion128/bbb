@@ -1524,7 +1524,7 @@ entity_model_source_state! {
     /// spawn-charge progress. `WitherBossRenderer.scale` shrinks the model by
     /// `invulnerableTicks / 220 * 0.5` off the base `2.0` scale, and `getTextureLocation` swaps in
     /// `wither_invulnerable.png` (flickering every 5 ticks once `<= 80`). Projected only for the
-    /// wither ([`vanilla_is_wither`](crate::entities::dimensions)); `0.0` for every other entity.
+    /// entity carrying the generated WitherBoss accessor; `0.0` for every other entity.
     #[serde(default)]
     pub wither_invulnerable_ticks: f32,
     /// Vanilla `WitherRenderState.xHeadRots`, copied from `WitherBoss.xRotHeads`

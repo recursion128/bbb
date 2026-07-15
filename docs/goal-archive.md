@@ -16192,3 +16192,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   删除 HappyGhast/Shulker 类型 match 与本地 cap 常量，并补齐此前遗漏的 EnderDragon 固定
   scale。生成器 reverse guard、schema 表测试、三类 generic render-state 对照及 Dragon
   canonical attribute 测试锁定顺序和边界。
+
+## 2026-07-15：统一推导 Wither metadata render membership
+
+- `bbb-world` 现在从生成 schema 的 `WitherBoss.DATA_ID_INV` 同时解析 Wither membership、
+  wire index 19 与默认值 0；invulnerability countdown、侧头 render-state 与侧头目标 tick
+  共享这一事实源。
+- dimensions 删除单类型 `vanilla_is_wither`，store 删除固定 accessor/default 别名；生成器
+  reverse guard 禁止生产路径恢复这些平行事实源。

@@ -22146,6 +22146,23 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_wither_projection_does_not_restore_type_or_accessor_constants() {
+        let source = include_str!("../store.rs");
+        assert!(source.contains(
+            "vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type"
+        ));
+        for removed in [
+            "vanilla_is_wither",
+            "WITHER_INVULNERABLE_TICKS_DATA_ID",
+            "WITHER_DEFAULT_INVULNERABLE_TICKS",
+        ] {
+            assert!(!source.contains(removed), "restored {removed}");
+        }
+        let dimensions = include_str!("../dimensions.rs");
+        assert!(!dimensions.contains("fn vanilla_is_wither"));
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

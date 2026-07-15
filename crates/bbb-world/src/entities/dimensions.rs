@@ -1163,13 +1163,6 @@ pub(crate) fn vanilla_is_vex(entity_type_id: i32) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_VEX_ID
 }
 
-/// Whether the entity is the wither boss, rendered with the vanilla `WitherBossRenderer`. Only the
-/// wither carries the `DATA_ID_INV` invulnerable-ticks accessor (driving the spawn-charge shrink and
-/// the `wither_invulnerable.png` texture flicker), so that projection is gated to this one type.
-pub(crate) fn vanilla_is_wither(entity_type_id: i32) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_WITHER_ID
-}
-
 fn scales_with_living_scale_attribute(
     entity_type_id: i32,
     data_values: &[EntityDataValue],

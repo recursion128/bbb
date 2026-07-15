@@ -23,6 +23,7 @@ use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
+    vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_minecart_default_display_offset,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
@@ -49,8 +50,6 @@ use super::schema::{
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_VEX_DEFAULT_FLAGS as VEX_DEFAULT_FLAGS, VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
-    VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS as WITHER_DEFAULT_INVULNERABLE_TICKS,
-    VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_TICKS_DATA_ID,
 };
 
 use super::{
@@ -95,7 +94,7 @@ use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
     vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_bat, vanilla_is_bee,
-    vanilla_is_cat, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex, vanilla_is_wither,
+    vanilla_is_cat, vanilla_is_enderman, vanilla_is_fox, vanilla_is_vex,
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale, ENTITY_DATA_POSE_ID,
@@ -1761,22 +1760,21 @@ impl EntityStore {
         // spawn countdown, lerped against the partial tick). It drives both the `scale()` spawn-charge
         // shrink and the `getTextureLocation` `wither_invulnerable.png` flicker. Only the wither
         // defines that accessor, so every other entity holds `0.0`.
-        let wither_invulnerable_ticks = if vanilla_is_wither(identity.entity_type_id) {
-            let ticks = self
-                .metadata_int(
-                    id,
-                    WITHER_INVULNERABLE_TICKS_DATA_ID,
-                    WITHER_DEFAULT_INVULNERABLE_TICKS,
-                )
-                .unwrap_or(WITHER_DEFAULT_INVULNERABLE_TICKS);
-            if ticks > 0 {
-                ticks as f32 - partial_ticks
+        let wither_invulnerable_accessor =
+            vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
+                identity.entity_type_id,
+            );
+        let wither_invulnerable_ticks =
+            if let Some((data_id, default)) = wither_invulnerable_accessor {
+                let ticks = self.metadata_int(id, data_id, default).unwrap_or(default);
+                if ticks > 0 {
+                    ticks as f32 - partial_ticks
+                } else {
+                    0.0
+                }
             } else {
                 0.0
-            }
-        } else {
-            0.0
-        };
+            };
         // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
         // a living entity mid riptide-trident spin. Non-living entities have no
         // living-entity flags byte, so they never spin.
@@ -1925,12 +1923,9 @@ impl EntityStore {
         let boat_bubble_angle = client_animations
             .animations
             .boat_bubble_angle(partial_ticks);
-        let (wither_x_head_rots, wither_y_head_rots) = if vanilla_is_wither(identity.entity_type_id)
-        {
-            client_animations.animations.wither_head_rotations()
-        } else {
-            ([0.0; 2], [0.0; 2])
-        };
+        let (wither_x_head_rots, wither_y_head_rots) = wither_invulnerable_accessor
+            .map(|_| client_animations.animations.wither_head_rotations())
+            .unwrap_or(([0.0; 2], [0.0; 2]));
         // Vanilla `LivingEntityRenderer.extractRenderState`: worn skull animation normally mirrors
         // the entity walk position, but while riding a living entity it reads the vehicle's walk
         // animation position even though the passenger's own limb swing is stopped.
@@ -2653,7 +2648,11 @@ impl EntityStore {
                 eye_positions.insert(identity.id, (transform.position, eye_height));
             }
 
-            if vanilla_is_wither(identity.entity_type_id) {
+            if vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
+                identity.entity_type_id,
+            )
+            .is_some()
+            {
                 withers.push((
                     identity.id,
                     transform.position,

@@ -411,6 +411,28 @@ pub fn vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated WitherBoss invulnerability-ticks accessor and its typed default.
+///
+/// The accessor owner supplies both the Wither presentation membership and its wire index, so
+/// world consumers do not need a parallel single-type predicate or fixed data-id import.
+pub(crate) fn vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_INV")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.boss.wither.WitherBoss",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the nearest generated boolean `DATA_BABY_ID` accessor and its typed default.
 ///
 /// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
@@ -831,7 +853,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
@@ -1795,6 +1817,26 @@ mod tests {
                 "INT"
             )
             .is_none()
+        );
+    }
+
+    #[test]
+    fn generated_wither_invulnerability_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_WITHER_ID
+            ),
+            Some((19, 0))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(-1),
+            None
         );
     }
 
