@@ -356,6 +356,9 @@ use-remainder、charged-projectiles、bundle-contents 与 sparse container 复�
 summary，保留 nested patch、ordered items、last-duplicate slot 与 nonempty count；
 bees 保留 ordered occupant、builtin entity type id、去除 persistent `id` 后的 CompoundTag 与两个 tick；
 map-decorations 按 persistent CODEC 形状保留 ordered key、builtin type resource 与 double/float bits；
+MapItemData 的 `MapDecorationType.STREAM_CODEC` holder 另按 35 项 client built-in static order 保留，
+generated sprite/show-on-frame 字段已驱动 first-person 与 item-frame surfaces，configuration registry
+注入不会重排该 holder；
 debug-stick-state 按 dispatched map CODEC 保留 ordered builtin block resource 与 property name；
 recipes 按 `Recipe.KEY_CODEC.listOf()` 保留 normalized ordered resource ids 与 duplicates；
 container-loot 保留 normalized loot-table key，并按 optional-field CODEC 仅在非零时编码 long seed；

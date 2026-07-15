@@ -9289,7 +9289,7 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/item_frames.rs#item_frame_models",
-            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_filled_map_decorations_and_text",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_map_decorations_keep_builtin_order_after_registry_injection",
             "crates/bbb-renderer/src/item_models/map.rs#set_map_surfaces",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMapItemData"
           ],
@@ -9304,7 +9304,7 @@
             "crates/bbb-world/src/maps.rs#map_item_data_creates_and_updates_map_state",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#map_item_data_event_updates_world_state",
             "crates/bbb-native/src/item_frames.rs#filled_map_frame_renders_frame_visible_decoration_sprites",
-            "crates/bbb-native/src/item_models/tests.rs#first_person_item_models_render_filled_map_decorations_and_text",
+            "crates/bbb-native/src/item_models/tests.rs#first_person_map_decorations_keep_builtin_order_after_registry_injection",
             "crates/bbb-renderer/src/item_models/map.rs#map_decoration_type_mapping_matches_vanilla_registration_order"
           ],
           "gap": null,

@@ -292,6 +292,29 @@
       "decision": "The synchronized DamageType holder keeps current server order across DamageEvent and component values. DamageEvent stores the resolved resource identity, strictly projects all five DIRECT_CODEC fields when supplied, derives known-pack effects from the generated bootstrap catalog, and routes the six vanilla player hurt-sound choices through native audio; a two-entry custom order and a runtime command test cover the consumer boundary. Persistent DamageType codec and holder-set semantics remain tracked by their separate calls."
     },
     {
+      "id": "network-holder-reference-map-decoration-type",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/level/saveddata/maps/MapDecorationType.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/item_models/first_person.rs#pub(crate) fn first_person_item_models",
+      "evidence": [
+        "vanilla:net/minecraft/core/registries/BuiltInRegistries.java#Registry<MapDecorationType> MAP_DECORATION_TYPE = registerSimple",
+        "vanilla:net/minecraft/world/level/saveddata/maps/MapDecorationType.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<MapDecorationType>> STREAM_CODEC",
+        "vanilla:net/minecraft/world/level/saveddata/maps/MapDecoration.java#public Identifier getSpriteLocation",
+        "vanilla:net/minecraft/world/level/saveddata/maps/MapDecoration.java#public boolean renderOnFrame",
+        "crates/bbb-protocol/src/packets/maps.rs#pub struct MapDecoration",
+        "crates/bbb-render-types/src/map_decorations/generated_26_1.rs#VANILLA_MAP_DECORATION_TYPES",
+        "crates/bbb-world/src/maps.rs#pub struct MapDecorationState",
+        "crates/bbb-native/src/item_models/tests.rs#fn first_person_map_decorations_keep_builtin_order_after_registry_injection",
+        "crates/bbb-native/src/item_frames.rs#fn filled_map_frame_renders_frame_visible_decoration_sprites"
+      ],
+      "decision": "Vanilla owns map-decoration types in the immutable client built-in registry. MapItemData retains the holder id, the generated 35-entry order supplies the sprite and item-frame visibility fields consumed by MapDecoration, and both first-person and item-frame surfaces render those values. A focused configuration injection proves that registry data cannot remap the built-in order. The separate persistent holderByName codec remains tracked by its own call."
+    },
+    {
       "id": "network-holder-reference-wolf-variant",
       "selector": {
         "kind": "network_holder_reference",
@@ -337,7 +360,8 @@
           "net/minecraft/world/entity/npc/villager/VillagerType.java",
           "net/minecraft/world/clock/WorldClock.java",
           "net/minecraft/world/damagesource/DamageType.java",
-          "net/minecraft/world/level/dimension/DimensionType.java"
+          "net/minecraft/world/level/dimension/DimensionType.java",
+          "net/minecraft/world/level/saveddata/maps/MapDecorationType.java"
         ]
       },
       "status": "partial",

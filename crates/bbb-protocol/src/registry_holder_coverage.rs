@@ -141,13 +141,14 @@ mod tests {
             });
         assert_eq!(counts["network-holder-or-inline"], 8);
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
-        assert_eq!(counts["network-holder-reference"], 7);
+        assert_eq!(counts["network-holder-reference"], 6);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
         assert_eq!(counts["network-holder-reference-cat-variant"], 1);
         assert_eq!(counts["network-holder-reference-damage-type"], 1);
         assert_eq!(counts["network-holder-reference-dimension-type"], 1);
         assert_eq!(counts["network-holder-reference-farm-animal-variants"], 3);
         assert_eq!(counts["network-holder-reference-frog-variant"], 1);
+        assert_eq!(counts["network-holder-reference-map-decoration-type"], 1);
         assert_eq!(counts["network-holder-reference-villager-built-ins"], 3);
         assert_eq!(counts["network-holder-reference-world-clock"], 1);
         assert_eq!(counts["network-holder-reference-wolf-variant"], 1);
@@ -172,7 +173,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            172
+            171
         );
         assert_eq!(
             ledger
@@ -195,7 +196,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 19);
+        assert_eq!(complete.len(), 20);
         assert_eq!(
             complete
                 .iter()
@@ -211,6 +212,7 @@ mod tests {
                 "minecraft:damage_type",
                 "minecraft:dimension_type",
                 "minecraft:frog_variant",
+                "minecraft:map_decoration_type",
                 "minecraft:pig_variant",
                 "minecraft:pig_sound_variant",
                 "minecraft:sound_event",

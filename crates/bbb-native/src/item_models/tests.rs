@@ -3,8 +3,8 @@ use crate::map_textures::map_color_rgba8;
 use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
     DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityDataValueKind, EntityEvent,
-    EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, SetEntityData, SetEquipment,
-    SetPlayerInventory, SwingAnimationSummary, Vec3d,
+    EquipmentSlotUpdate, MapColorPatch, MapItemData, PlayLogin, RegistryData, RegistryDataEntry,
+    SetEntityData, SetEquipment, SetPlayerInventory, SwingAnimationSummary, Vec3d,
 };
 use bbb_renderer::{
     EntityDefaultPlayerSkin, EntityPlayerSkin, ParticleItemOptionState, PlayerModelPartVisibility,
@@ -1306,7 +1306,7 @@ fn first_person_player_arms_render_two_handed_and_one_handed_map_arms() {
 }
 
 #[test]
-fn first_person_item_models_render_filled_map_decorations_and_text() {
+fn first_person_map_decorations_keep_builtin_order_after_registry_injection() {
     let item_runtime = NativeItemRuntime::empty_for_test();
     let mut map = ItemStackSummary {
         item_id: Some(0),
@@ -1321,6 +1321,20 @@ fn first_person_item_models_render_filled_map_decorations_and_text() {
         eye_height: CameraPose::STANDING_EYE_HEIGHT,
     };
     let mut world = WorldStore::new();
+    world.record_registry_data(RegistryData {
+        registry: "minecraft:map_decoration_type".to_string(),
+        entries: vec![RegistryDataEntry {
+            id: "example:injected".to_string(),
+            raw_data: None,
+        }],
+        raw_payload_len: 24,
+    });
+    assert!(world
+        .registry_content("minecraft:map_decoration_type")
+        .is_none());
+    let registry_packet = world.registries().registries.last().unwrap();
+    assert!(registry_packet.client_built_in);
+    assert!(!registry_packet.configuration_synchronized);
     world.apply_set_player_inventory(SetPlayerInventory { slot: 0, item: map });
     assert!(world.apply_map_item_data(MapItemData {
         map_id: 9,
