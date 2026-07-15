@@ -26,6 +26,7 @@
 - `docs/unsupported-features.md` 的每个一级 TODO 域必须能映射到本文件一个开放
   queue、结转项或带 vanilla 依据的 `not-needed`；禁止出现没有优先级和关闭路径的
   orphan TODO。新增 ledger 域时在同一 slice 更新路由，结构测试锁定双向覆盖。
+- 本节规则由 `scripts/docs-lint.sh` 机械 enforce。
 
 ## 硬性约束
 
@@ -100,6 +101,7 @@
 
 ## 提交前门禁
 
+- `scripts/docs-lint.sh`
 - `cargo fmt --all --check`
 - `scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests`
 - `git diff --check`
