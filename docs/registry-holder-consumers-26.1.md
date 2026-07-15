@@ -23,11 +23,11 @@ the number of concrete vanilla call sites tied to its registry for diagnostics.
 
 The generated
 `docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 194 calls to
-29 checked families. The three remaining generic network shapes and seven
+30 checked families. The three remaining generic network shapes and seven
 persistent Codec shapes
 name their current bbb resource-id or tag resolver surface. They remain
 `partial` until the owning decoder/encoder receives registry context and the
-registry family has custom-reorder tests; this accounts for 165 rows. The
+registry family has custom-reorder tests; this accounts for 164 rows. The
 `sound_event` reference/direct stream codec is `complete`: vanilla owns it in
 the client built-in layer, and bbb's generated static order, direct holder
 payload, world ownership, and audio runtime resolution have cross-layer tests.
@@ -103,6 +103,12 @@ ids, and custom reordered definitions resolve through the session holder order
 for tooltip text, attribute effects, item-model predicates, and crossbow charge
 effects. The remaining effect-component semantics and persistent enchantment
 codecs/holder sets stay tracked separately.
+The synchronized dialog reference/direct holder is `complete`: ShowDialog
+strictly preserves a nonnegative server reference or bounded direct compound;
+world resolution distinguishes reordered definitions, stubs, malformed data,
+and unknown ids, and both direct and custom referenced dialogs reach the native
+screen and nested-action lifecycle. Persistent dialog codecs and holder sets
+remain separate rows.
 The synchronized cat, chicken, cow, pig, and wolf sound-variant stream holders
 are `complete`: entity metadata ids resolve in each server registry order, all
 five codec shapes retain their required named/direct SoundEvent holders, and

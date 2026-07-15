@@ -14712,6 +14712,57 @@ fn hud_inventory_screen_projects_dialog_item_body_structured_patches() {
 }
 
 #[test]
+fn hud_inventory_screen_resolves_referenced_dialog_in_session_holder_order() {
+    fn network_notice_dialog(title: &str) -> Vec<u8> {
+        fn write_string_tag(payload: &mut Vec<u8>, name: &str, value: &str) {
+            payload.push(8);
+            payload.extend_from_slice(&(name.len() as u16).to_be_bytes());
+            payload.extend_from_slice(name.as_bytes());
+            payload.extend_from_slice(&(value.len() as u16).to_be_bytes());
+            payload.extend_from_slice(value.as_bytes());
+        }
+
+        let mut payload = vec![10];
+        write_string_tag(&mut payload, "type", "minecraft:notice");
+        write_string_tag(&mut payload, "title", title);
+        payload.push(0);
+        payload
+    }
+
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:dialog",
+        0,
+        vec![
+            RegistryPacketEntry::stub("example:decoy"),
+            RegistryPacketEntry::with_raw_data(
+                "example:reordered_notice",
+                network_notice_dialog("Reordered Notice"),
+            ),
+        ],
+    );
+    world.apply_show_dialog(ShowDialog {
+        dialog: DialogHolder::Reference { registry_id: 1 },
+    });
+
+    assert_eq!(
+        world.current_dialog().unwrap().resource_id.as_deref(),
+        Some("example:reordered_notice")
+    );
+    let screen = hud_inventory_screen_with_local_state_for_surface(
+        &world,
+        None,
+        &TerrainTextureState::default(),
+        None,
+        InventoryHudLocalState::default(),
+        winit::dpi::PhysicalSize::new(320, 240),
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(screen.text_labels[0].text, "Reordered Notice");
+}
+
+#[test]
 fn hud_inventory_screen_hides_unresolved_dialog_instead_of_falling_through() {
     let mut world = WorldStore::new();
     world.apply_show_dialog(ShowDialog {

@@ -22,11 +22,35 @@
       "decision": "Vanilla 26.1 sound_event is a client built-in registry, so reference holders use the generated static order while direct holders retain their inline location and fixed range."
     },
     {
+      "id": "network-holder-or-inline-dialog-synchronized",
+      "selector": {
+        "kind": "network_holder_or_inline",
+        "source_paths": [
+          "net/minecraft/server/dialog/Dialog.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/client/ui.rs#fn dialog_state_from_reference",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.DIALOG, Dialog.DIRECT_CODEC)",
+        "vanilla:net/minecraft/server/dialog/Dialog.java#ByteBufCodecs.holder(",
+        "vanilla:net/minecraft/network/protocol/common/ClientboundShowDialogPacket.java#Dialog.STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
+        "crates/bbb-protocol/src/packets/client_common/tests.rs#fn decodes_show_dialog_reference_holder",
+        "crates/bbb-protocol/src/packets/client_common/tests.rs#fn decodes_show_dialog_direct_holder_as_bounded_nbt",
+        "crates/bbb-world/src/client/ui.rs#fn referenced_dialogs_use_session_holder_order_and_retain_resolution_errors",
+        "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_screen_resolves_referenced_dialog_in_session_holder_order",
+        "crates/bbb-native/src/runtime/dialog_screen.rs#fn plain_message_show_dialog_click_replaces_parent_without_packet_count"
+      ],
+      "decision": "Vanilla 26.1 synchronizes dialog definitions and uses Dialog.STREAM_CODEC only in ClientboundShowDialogPacket. The protocol preserves nonnegative session references or a bounded direct NBT compound and rejects invalid framing; world resolves server order and distinguishes valid, stub, malformed, and unknown entries, while direct and custom reordered referenced dialogs reach the complete native screen and nested-action lifecycle."
+    },
+    {
       "id": "network-holder-or-inline",
       "selector": {
         "kind": "network_holder_or_inline",
         "exclude_source_paths": [
-          "net/minecraft/sounds/SoundEvent.java"
+          "net/minecraft/sounds/SoundEvent.java",
+          "net/minecraft/server/dialog/Dialog.java"
         ]
       },
       "status": "partial",
@@ -35,7 +59,6 @@
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
       ],
       "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"

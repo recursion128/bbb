@@ -648,7 +648,8 @@ play ClearDialog 的 unit payload、strict trailing、canonical clear ownership�
 return-screen lifecycle 与 tests 已闭合，五维 complete。
 configuration/play ShowDialog 的 reference/direct holder framing、bounded NBT preservation、session
 registry holder resolution、五种 top-level Dialog 的完整 Codec projection 与 canonical apply、ownership
-及 tests、完整 screen runtime/previous-screen stack 均已闭合，两行五维 complete。Component generic packet
+及 custom reordered holder 的 native screen test、完整 screen runtime/previous-screen stack 均已闭合，
+两行五维 complete。Component generic packet
 owner 仍待接入 registry-context higher owner。
 play AddEntity 的 id/uuid/type/position/LP velocity/rotation/data framing、strict trailing、basic world ownership 与 tests 已闭合；剩余 session registry validation、entity factory/player-info gate 与全类型 runtime 初始化保持 decode/canonical/runtime partial。
 play BlockChangedAck 的 sequence framing、strict trailing、prediction reconciliation/player correction ownership 与 tests 已闭合，五维 complete。

@@ -139,7 +139,8 @@ mod tests {
                 *counts.entry(entry.family.as_str()).or_insert(0usize) += 1;
                 counts
             });
-        assert_eq!(counts["network-holder-or-inline"], 8);
+        assert_eq!(counts["network-holder-or-inline"], 7);
+        assert_eq!(counts["network-holder-or-inline-dialog-synchronized"], 1);
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
         assert_eq!(counts["network-holder-reference-attribute-built-in"], 1);
@@ -180,7 +181,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            165
+            164
         );
         assert_eq!(
             ledger
@@ -203,7 +204,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 26);
+        assert_eq!(complete.len(), 27);
         assert_eq!(
             complete
                 .iter()
@@ -219,6 +220,7 @@ mod tests {
                 "minecraft:cow_variant",
                 "minecraft:damage_type",
                 "minecraft:dimension_type",
+                "minecraft:dialog",
                 "minecraft:enchantment",
                 "minecraft:frog_variant",
                 "minecraft:item",

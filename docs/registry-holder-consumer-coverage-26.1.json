@@ -568,7 +568,6 @@
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
       ],
       "factory": "ByteBufCodecs.holder",
@@ -660,24 +659,28 @@
     {
       "call_site": "net/minecraft/server/dialog/Dialog.java:24:72:ByteBufCodecs.holder",
       "column": 72,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/ui.rs#fn dialog_state_from_reference",
+      "decision": "Vanilla 26.1 synchronizes dialog definitions and uses Dialog.STREAM_CODEC only in ClientboundShowDialogPacket. The protocol preserves nonnegative session references or a bounded direct NBT compound and rejects invalid framing; world resolves server order and distinguishes valid, stub, malformed, and unknown entries, while direct and custom reordered referenced dialogs reach the complete native screen and nested-action lifecycle.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
-        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
-        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.DIALOG, Dialog.DIRECT_CODEC)",
+        "vanilla:net/minecraft/server/dialog/Dialog.java#ByteBufCodecs.holder(",
+        "vanilla:net/minecraft/network/protocol/common/ClientboundShowDialogPacket.java#Dialog.STREAM_CODEC",
         "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "crates/bbb-protocol/src/packets/client_common/tests.rs#fn decodes_show_dialog_reference_holder",
+        "crates/bbb-protocol/src/packets/client_common/tests.rs#fn decodes_show_dialog_direct_holder_as_bounded_nbt",
+        "crates/bbb-world/src/client/ui.rs#fn referenced_dialogs_use_session_holder_order_and_retain_resolution_errors",
+        "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_screen_resolves_referenced_dialog_in_session_holder_order",
+        "crates/bbb-native/src/runtime/dialog_screen.rs#fn plain_message_show_dialog_click_replaces_parent_without_packet_count"
       ],
       "factory": "ByteBufCodecs.holder",
-      "family": "network-holder-or-inline",
+      "family": "network-holder-or-inline-dialog-synchronized",
       "kind": "network_holder_or_inline",
       "line": 24,
       "owner": "net.minecraft.server.dialog.Dialog",
       "registry_expression": "Registries.DIALOG",
       "resource_id": "minecraft:dialog",
       "source_path": "net/minecraft/server/dialog/Dialog.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/sounds/SoundEvent.java:22:58:RegistryFileCodec.create",
@@ -1601,7 +1604,6 @@
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
       ],
       "factory": "ByteBufCodecs.holder",
@@ -1823,7 +1825,6 @@
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
       ],
       "factory": "ByteBufCodecs.holder",
@@ -1917,7 +1918,6 @@
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
       ],
       "factory": "ByteBufCodecs.holder",
@@ -2621,7 +2621,6 @@
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
       ],
       "factory": "ByteBufCodecs.holder",
@@ -2662,7 +2661,6 @@
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
       ],
       "factory": "ByteBufCodecs.holder",
@@ -2895,7 +2893,6 @@
         "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
         "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/client_common.rs#fn decode_show_dialog",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
       ],
       "factory": "ByteBufCodecs.holder",
