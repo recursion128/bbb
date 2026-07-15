@@ -27,8 +27,9 @@ use crate::entities::{
     VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
 };
 use crate::registries::{
-    RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY, CHICKEN_SOUND_VARIANT_REGISTRY,
-    COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
+    DamageTypeEffects, RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY,
+    CHICKEN_SOUND_VARIANT_REGISTRY, COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY,
+    WOLF_SOUND_VARIANT_REGISTRY,
 };
 use crate::{block_name_is_air, WorldStore};
 
@@ -60,6 +61,12 @@ const WITCH_DEATH_SOUND_EVENT: &str = "minecraft:entity.witch.death";
 const SKELETON_DEATH_SOUND_EVENT: &str = "minecraft:entity.skeleton.death";
 const STRAY_DEATH_SOUND_EVENT: &str = "minecraft:entity.stray.death";
 const BOGGED_DEATH_SOUND_EVENT: &str = "minecraft:entity.bogged.death";
+const PLAYER_HURT_SOUND_EVENT: &str = "minecraft:entity.player.hurt";
+const PLAYER_HURT_DROWN_SOUND_EVENT: &str = "minecraft:entity.player.hurt_drown";
+const PLAYER_HURT_ON_FIRE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_on_fire";
+const PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT: &str =
+    "minecraft:entity.player.hurt_sweet_berry_bush";
+const PLAYER_HURT_FREEZE_SOUND_EVENT: &str = "minecraft:entity.player.hurt_freeze";
 const ITEM_PICKUP_SOUND_EVENT: &str = "minecraft:entity.item.pickup";
 const EXPERIENCE_ORB_PICKUP_SOUND_EVENT: &str = "minecraft:entity.experience_orb.pickup";
 const GLOBAL_LEVEL_EVENT_SOUND_DISTANCE: f64 = 2.0;
@@ -374,6 +381,41 @@ impl WorldStore {
             },
             volume: 1.0,
             pitch: 1.0,
+            seed: 0,
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(state))
+    }
+
+    pub fn player_damage_hurt_sound_for_entity(
+        &mut self,
+        entity_id: i32,
+        effects: DamageTypeEffects,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        let transform = self.entities.transform_state(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
+            || self.entities.is_silent(entity_id)?
+        {
+            return None;
+        }
+        let sound = match effects {
+            DamageTypeEffects::Hurt | DamageTypeEffects::Thorns => PLAYER_HURT_SOUND_EVENT,
+            DamageTypeEffects::Drowning => PLAYER_HURT_DROWN_SOUND_EVENT,
+            DamageTypeEffects::Burning => PLAYER_HURT_ON_FIRE_SOUND_EVENT,
+            DamageTypeEffects::Poking => PLAYER_HURT_SWEET_BERRY_BUSH_SOUND_EVENT,
+            DamageTypeEffects::Freezing => PLAYER_HURT_FREEZE_SOUND_EVENT,
+        };
+        let state = SoundEventState {
+            sound: direct_sound_holder(sound),
+            source: SoundSource::Players.as_str().to_string(),
+            position: ProtocolVec3d {
+                x: transform.position.x,
+                y: transform.position.y,
+                z: transform.position.z,
+            },
+            volume: 1.0,
+            pitch: (next_float().clamp(0.0, 1.0) - next_float().clamp(0.0, 1.0)) * 0.2 + 1.0,
             seed: 0,
             distance_delay: false,
         };
@@ -1704,6 +1746,44 @@ mod tests {
         let first = world_one.next_sound_seed();
         let second = world_one.next_sound_seed();
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn player_damage_effects_select_vanilla_hurt_sounds() {
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_of_type(
+            90,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        ));
+        let cases = [
+            (DamageTypeEffects::Hurt, "minecraft:entity.player.hurt"),
+            (DamageTypeEffects::Thorns, "minecraft:entity.player.hurt"),
+            (
+                DamageTypeEffects::Drowning,
+                "minecraft:entity.player.hurt_drown",
+            ),
+            (
+                DamageTypeEffects::Burning,
+                "minecraft:entity.player.hurt_on_fire",
+            ),
+            (
+                DamageTypeEffects::Poking,
+                "minecraft:entity.player.hurt_sweet_berry_bush",
+            ),
+            (
+                DamageTypeEffects::Freezing,
+                "minecraft:entity.player.hurt_freeze",
+            ),
+        ];
+        for (effects, expected_sound) in cases {
+            let sound = store
+                .player_damage_hurt_sound_for_entity(90, effects, || 0.5)
+                .unwrap();
+            assert_eq!(sound.sound.location.as_deref(), Some(expected_sound));
+            assert_eq!(sound.source, "player");
+            assert_eq!(sound.volume, 1.0);
+            assert_eq!(sound.pitch, 1.0);
+        }
     }
 
     #[test]

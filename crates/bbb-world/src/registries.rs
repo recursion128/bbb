@@ -1,6 +1,7 @@
 mod animal_variants;
 mod biomes;
 mod block_states;
+mod damage_types;
 mod enchantments;
 mod environment_attributes;
 mod instruments;
@@ -24,6 +25,10 @@ pub use biomes::{
 };
 pub use block_states::{
     vanilla_air_block_state_id, vanilla_block_state_id, BlockStateInfo, BlockStateRegistry,
+};
+pub use damage_types::{
+    DamageTypeDeathMessageType, DamageTypeEffects, DamageTypePresentation,
+    DamageTypeProjectionError, DamageTypeScaling, DAMAGE_TYPE_REGISTRY,
 };
 pub use enchantments::{
     EnchantmentAttributeModifier, EnchantmentTooltipDefinition, VanillaEnchantmentIdentity,

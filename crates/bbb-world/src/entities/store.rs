@@ -2776,7 +2776,7 @@ impl EntityStore {
         self.ecs
             .get::<&EntityDamage>(entity)
             .ok()
-            .map(|damage| *damage)
+            .map(|damage| (*damage).clone())
     }
 
     #[cfg(test)]
@@ -3848,7 +3848,7 @@ impl EntityStore {
         (*leash).write_to_state(&mut state);
         (*effects).clone().write_to_state(&mut state);
         (*client_animations).write_to_state(&mut state);
-        (*damage).write_to_state(&mut state);
+        (*damage).clone().write_to_state(&mut state);
         (*supporting_block).write_to_state(&mut state);
         if let Some(minecart_lerp) = minecart_lerp {
             (*minecart_lerp).clone().write_to_state(&mut state);
@@ -3927,7 +3927,7 @@ impl Clone for EntityStore {
                 *leash,
                 (*effects).clone(),
                 *animations,
-                *damage,
+                (*damage).clone(),
                 *supporting_block,
             ));
             if let Ok(lerp) = self.ecs.get::<&EntityMinecartLerp>(entity) {

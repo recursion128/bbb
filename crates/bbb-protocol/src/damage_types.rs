@@ -8,6 +8,7 @@ pub struct DamageTypeCatalogEntry {
     pub id: i32,
     pub constant_name: &'static str,
     pub resource_id: &'static str,
+    pub effect: &'static str,
 }
 
 pub const VANILLA_DAMAGE_TYPES: &[DamageTypeCatalogEntry] = &[
@@ -15,251 +16,301 @@ pub const VANILLA_DAMAGE_TYPES: &[DamageTypeCatalogEntry] = &[
         id: 0,
         constant_name: "IN_FIRE",
         resource_id: "minecraft:in_fire",
+        effect: "burning",
     },
     DamageTypeCatalogEntry {
         id: 1,
         constant_name: "CAMPFIRE",
         resource_id: "minecraft:campfire",
+        effect: "burning",
     },
     DamageTypeCatalogEntry {
         id: 2,
         constant_name: "LIGHTNING_BOLT",
         resource_id: "minecraft:lightning_bolt",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 3,
         constant_name: "ON_FIRE",
         resource_id: "minecraft:on_fire",
+        effect: "burning",
     },
     DamageTypeCatalogEntry {
         id: 4,
         constant_name: "LAVA",
         resource_id: "minecraft:lava",
+        effect: "burning",
     },
     DamageTypeCatalogEntry {
         id: 5,
         constant_name: "HOT_FLOOR",
         resource_id: "minecraft:hot_floor",
+        effect: "burning",
     },
     DamageTypeCatalogEntry {
         id: 6,
         constant_name: "IN_WALL",
         resource_id: "minecraft:in_wall",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 7,
         constant_name: "CRAMMING",
         resource_id: "minecraft:cramming",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 8,
         constant_name: "DROWN",
         resource_id: "minecraft:drown",
+        effect: "drowning",
     },
     DamageTypeCatalogEntry {
         id: 9,
         constant_name: "STARVE",
         resource_id: "minecraft:starve",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 10,
         constant_name: "CACTUS",
         resource_id: "minecraft:cactus",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 11,
         constant_name: "FALL",
         resource_id: "minecraft:fall",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 12,
         constant_name: "ENDER_PEARL",
         resource_id: "minecraft:ender_pearl",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 13,
         constant_name: "FLY_INTO_WALL",
         resource_id: "minecraft:fly_into_wall",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 14,
         constant_name: "FELL_OUT_OF_WORLD",
         resource_id: "minecraft:out_of_world",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 15,
         constant_name: "GENERIC",
         resource_id: "minecraft:generic",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 16,
         constant_name: "MAGIC",
         resource_id: "minecraft:magic",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 17,
         constant_name: "WITHER",
         resource_id: "minecraft:wither",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 18,
         constant_name: "DRAGON_BREATH",
         resource_id: "minecraft:dragon_breath",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 19,
         constant_name: "DRY_OUT",
         resource_id: "minecraft:dry_out",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 20,
         constant_name: "SWEET_BERRY_BUSH",
         resource_id: "minecraft:sweet_berry_bush",
+        effect: "poking",
     },
     DamageTypeCatalogEntry {
         id: 21,
         constant_name: "FREEZE",
         resource_id: "minecraft:freeze",
+        effect: "freezing",
     },
     DamageTypeCatalogEntry {
         id: 22,
         constant_name: "STALAGMITE",
         resource_id: "minecraft:stalagmite",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 23,
         constant_name: "FALLING_BLOCK",
         resource_id: "minecraft:falling_block",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 24,
         constant_name: "FALLING_ANVIL",
         resource_id: "minecraft:falling_anvil",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 25,
         constant_name: "FALLING_STALACTITE",
         resource_id: "minecraft:falling_stalactite",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 26,
         constant_name: "STING",
         resource_id: "minecraft:sting",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 27,
         constant_name: "MOB_ATTACK",
         resource_id: "minecraft:mob_attack",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 28,
         constant_name: "MOB_ATTACK_NO_AGGRO",
         resource_id: "minecraft:mob_attack_no_aggro",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 29,
         constant_name: "PLAYER_ATTACK",
         resource_id: "minecraft:player_attack",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 30,
         constant_name: "SPEAR",
         resource_id: "minecraft:spear",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 31,
         constant_name: "ARROW",
         resource_id: "minecraft:arrow",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 32,
         constant_name: "TRIDENT",
         resource_id: "minecraft:trident",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 33,
         constant_name: "MOB_PROJECTILE",
         resource_id: "minecraft:mob_projectile",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 34,
         constant_name: "SPIT",
         resource_id: "minecraft:spit",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 35,
         constant_name: "FIREWORKS",
         resource_id: "minecraft:fireworks",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 36,
         constant_name: "UNATTRIBUTED_FIREBALL",
         resource_id: "minecraft:unattributed_fireball",
+        effect: "burning",
     },
     DamageTypeCatalogEntry {
         id: 37,
         constant_name: "FIREBALL",
         resource_id: "minecraft:fireball",
+        effect: "burning",
     },
     DamageTypeCatalogEntry {
         id: 38,
         constant_name: "WITHER_SKULL",
         resource_id: "minecraft:wither_skull",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 39,
         constant_name: "THROWN",
         resource_id: "minecraft:thrown",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 40,
         constant_name: "INDIRECT_MAGIC",
         resource_id: "minecraft:indirect_magic",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 41,
         constant_name: "THORNS",
         resource_id: "minecraft:thorns",
+        effect: "thorns",
     },
     DamageTypeCatalogEntry {
         id: 42,
         constant_name: "EXPLOSION",
         resource_id: "minecraft:explosion",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 43,
         constant_name: "PLAYER_EXPLOSION",
         resource_id: "minecraft:player_explosion",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 44,
         constant_name: "SONIC_BOOM",
         resource_id: "minecraft:sonic_boom",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 45,
         constant_name: "BAD_RESPAWN_POINT",
         resource_id: "minecraft:bad_respawn_point",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 46,
         constant_name: "OUTSIDE_BORDER",
         resource_id: "minecraft:outside_border",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 47,
         constant_name: "GENERIC_KILL",
         resource_id: "minecraft:generic_kill",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 48,
         constant_name: "WIND_CHARGE",
         resource_id: "minecraft:wind_charge",
+        effect: "hurt",
     },
     DamageTypeCatalogEntry {
         id: 49,
         constant_name: "MACE_SMASH",
         resource_id: "minecraft:mace_smash",
+        effect: "hurt",
     },
 ];
 
@@ -269,6 +320,14 @@ pub fn vanilla_damage_type(id: i32) -> Option<&'static DamageTypeCatalogEntry> {
 
 pub fn vanilla_damage_type_resource_id(id: i32) -> Option<&'static str> {
     Some(vanilla_damage_type(id)?.resource_id)
+}
+
+pub fn vanilla_damage_type_for_resource_id(
+    resource_id: &str,
+) -> Option<&'static DamageTypeCatalogEntry> {
+    VANILLA_DAMAGE_TYPES
+        .iter()
+        .find(|entry| entry.resource_id == resource_id)
 }
 
 #[cfg(test)]
@@ -304,5 +363,22 @@ mod tests {
         );
         assert_eq!(vanilla_damage_type(-1), None);
         assert_eq!(vanilla_damage_type(50), None);
+    }
+
+    #[test]
+    fn damage_type_catalog_tracks_vanilla_effects() {
+        assert_eq!(vanilla_damage_type(0).unwrap().effect, "burning");
+        assert_eq!(vanilla_damage_type(2).unwrap().effect, "hurt");
+        assert_eq!(vanilla_damage_type(8).unwrap().effect, "drowning");
+        assert_eq!(vanilla_damage_type(20).unwrap().effect, "poking");
+        assert_eq!(vanilla_damage_type(21).unwrap().effect, "freezing");
+        assert_eq!(vanilla_damage_type(41).unwrap().effect, "thorns");
+        assert_eq!(
+            vanilla_damage_type_for_resource_id("minecraft:drown")
+                .unwrap()
+                .id,
+            8
+        );
+        assert_eq!(vanilla_damage_type_for_resource_id("example:drown"), None);
     }
 }

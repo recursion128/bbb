@@ -513,8 +513,10 @@ ProjectilePower 的 VarInt + double wire、AbstractHurtingProjectile type gate�
 world/net/native tests 已全行闭合；这只确认服务器同步的 accelerationPower，不代表 projectile
 motion、命中、伤害或权威移除完成。
 DamageEvent 的 holder/id/optional-position wire、ownership 与 tests 已闭合；DamageType session
-resolution、LivingEntity gate、walk/invulnerability/hurt-sound/last-source presentation 尚未完整，
-canonical/runtime 保持 partial，且 packet 不被用于客户端扣血或判死。
+identity、五字段 custom projection、generated known-pack effect 与 Player 六类 hurt sound 已贯通
+canonical→native audio，并以双条目 custom reorder 锁定 holder 顺序。LivingEntity walk speed、
+invulnerability、非 Player hurt-sound matrix 与 last-source timestamp 尚未完整，因此 canonical/runtime
+仍保持 partial，且 packet 不被用于客户端扣血或判死。
 Cooldown 的 resource id + duration wire、0 remove/非零 add、client tick expiry、partial-tick percent 与
 HUD/item-model consumers 已全行闭合；负 duration 也按 vanilla 先 add、下一 tick expire。
 ChangeDifficulty 的 wrapped enum VarInt + locked bool wire、client level-data assignment 与

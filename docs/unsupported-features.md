@@ -57,7 +57,7 @@ Owner: `bbb-protocol`
   intersection to the existing 64-entry response encoder instead of always
   returning an empty configuration response.
 - Close the owning decoder/encoder registry context plus custom-reorder tests
-  behind the 173
+  behind the 172
   `partial` network and persistent rows in
   `docs/registry-holder-consumer-coverage-26.1.json` before marking those
   families complete.
@@ -268,10 +268,11 @@ Movement:
   gate it on Player, clear the bed's local occupied state, resolve the safe
   stand-up position/yaw, move to that position, set standing pose, clear
   sleepingPos, and preserve `sleepCounter = 100` semantics.
-- Resolve DamageEvent's DamageType holder through session RegistryAccess and
-  complete only vanilla client presentation state: LivingEntity gate, walk
-  animation speed, invulnerability/hurt timers, hurt sound, and last-source
-  timestamp. Never infer health loss, death, or authoritative combat results.
+- Complete the remaining DamageEvent client presentation state: LivingEntity
+  walk-animation speed and invulnerability timing, the non-player hurt-sound
+  matrix, and last-source timestamp. Session DamageType identity, strict custom
+  projection, player effect-selected hurt audio, and the 10-tick overlay are
+  implemented. Never infer health loss, death, or authoritative combat results.
 - Implement full vanilla boat physics, water/buoyancy/collision parity, and
   non-boat vehicle movement only for the locally controlled instance; resolve
   entity-specific `getControllingPassenger` gates (saddle/held item/armor and

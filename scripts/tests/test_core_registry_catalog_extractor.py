@@ -44,6 +44,28 @@ public interface DamageTypes {
             [("SECOND", "minecraft:second"), ("FIRST", "minecraft:first")],
         )
 
+    def test_damage_effects_come_from_constructor_arguments(self) -> None:
+        source = parse_source(
+            "fixture/DamageTypes.java",
+            b"""
+package fixture;
+public interface DamageTypes {
+  ResourceKey<DamageType> FIRE = ResourceKey.create(
+      Registries.DAMAGE_TYPE, Identifier.withDefaultNamespace("fire"));
+  ResourceKey<DamageType> GENERIC = ResourceKey.create(
+      Registries.DAMAGE_TYPE, Identifier.withDefaultNamespace("generic"));
+  static void bootstrap(Context context) {
+    context.register(FIRE, new DamageType("fire", 0.1F, DamageEffects.BURNING));
+    context.register(GENERIC, new DamageType("generic", 0.0F));
+  }
+}
+""",
+        )
+        self.assertEqual(
+            [entry.damage_effect for entry in damage_type_entries(source)],
+            ["burning", "hurt"],
+        )
+
     def test_entity_builder_property_comes_from_initializer_calls(self) -> None:
         source = parse_source(
             "fixture/EntityType.java",

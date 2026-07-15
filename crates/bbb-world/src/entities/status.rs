@@ -7,7 +7,7 @@ use bbb_protocol::packets::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::WorldStore;
+use crate::{DamageTypeEffects, WorldStore, DAMAGE_TYPE_REGISTRY};
 
 use super::dimensions::vanilla_living_entity_type;
 
@@ -54,18 +54,28 @@ impl From<ProtocolUpdateMobEffect> for MobEffectState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityDamageEventState {
     pub source_type_id: i32,
+    #[serde(default)]
+    pub source_type_resource_id: Option<String>,
+    #[serde(default)]
+    pub source_effects: Option<DamageTypeEffects>,
     pub source_cause_id: i32,
     pub source_direct_id: i32,
     pub source_position: Option<ProtocolVec3d>,
 }
 
-impl From<ProtocolDamageEvent> for EntityDamageEventState {
-    fn from(packet: ProtocolDamageEvent) -> Self {
+impl EntityDamageEventState {
+    fn from_packet(
+        packet: ProtocolDamageEvent,
+        source_type_resource_id: Option<String>,
+        source_effects: Option<DamageTypeEffects>,
+    ) -> Self {
         Self {
             source_type_id: packet.source_type_id,
+            source_type_resource_id,
+            source_effects,
             source_cause_id: packet.source_cause_id,
             source_direct_id: packet.source_direct_id,
             source_position: packet.source_position,
@@ -161,7 +171,22 @@ impl WorldStore {
     pub fn apply_damage_event(&mut self, packet: ProtocolDamageEvent) -> bool {
         self.counters.damage_event_packets += 1;
         let entity_id = packet.entity_id;
-        let damage_event = EntityDamageEventState::from(packet);
+        if self.entities.damage(entity_id).is_none() {
+            self.counters.damage_events_ignored += 1;
+            return false;
+        }
+        let source_type_resource_id = self
+            .registry_resource_id_by_holder_id(DAMAGE_TYPE_REGISTRY, packet.source_type_id)
+            .map(str::to_string);
+        let source_effects = match self.damage_type_effects_by_holder_id(packet.source_type_id) {
+            Ok(effects) => effects,
+            Err(err) => {
+                self.record_apply_error("damage_type", err);
+                None
+            }
+        };
+        let damage_event =
+            EntityDamageEventState::from_packet(packet, source_type_resource_id, source_effects);
         let Some(()) = self.entities.with_damage_mut(entity_id, |damage| {
             damage.last_damage = Some(damage_event);
         }) else {
@@ -204,7 +229,7 @@ impl WorldStore {
     }
 
     pub fn entity_last_damage(&self, entity_id: i32) -> Option<EntityDamageEventState> {
-        self.entities.damage(entity_id)?.last_damage
+        self.entities.damage(entity_id)?.last_damage.clone()
     }
 
     fn update_cooldown_count(&mut self) {
@@ -219,6 +244,7 @@ impl WorldStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::RegistryPacketEntry;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, Cooldown as ProtocolCooldown,
         DamageEvent as ProtocolDamageEvent, MobEffectFlags, RemoveMobEffect, UpdateMobEffect,
@@ -402,6 +428,11 @@ mod tests {
 
         let damage = store.entity_last_damage(7).unwrap();
         assert_eq!(damage.source_type_id, 5);
+        assert_eq!(
+            damage.source_type_resource_id.as_deref(),
+            Some("minecraft:hot_floor")
+        );
+        assert_eq!(damage.source_effects, Some(DamageTypeEffects::Burning));
         assert_eq!(damage.source_cause_id, -1);
         assert_eq!(damage.source_direct_id, 42);
         assert_eq!(
@@ -412,7 +443,10 @@ mod tests {
                 z: 3.0,
             })
         );
-        assert_eq!(store.entities.damage(7).unwrap().last_damage, Some(damage));
+        assert_eq!(
+            store.entities.damage(7).unwrap().last_damage,
+            Some(damage.clone())
+        );
         assert_eq!(store.counters().damage_event_packets, 1);
         assert_eq!(store.counters().damage_events_applied, 1);
 
@@ -426,6 +460,38 @@ mod tests {
         assert_eq!(store.counters().damage_event_packets, 2);
         assert_eq!(store.counters().damage_events_applied, 1);
         assert_eq!(store.counters().damage_events_ignored, 1);
+    }
+
+    #[test]
+    fn damage_event_keeps_identity_when_custom_projection_is_invalid() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DAMAGE_TYPE_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                "example:opaque",
+                vec![10, 0],
+            )],
+        );
+        store.apply_add_entity(protocol_add_entity(17));
+
+        assert!(store.apply_damage_event(ProtocolDamageEvent {
+            entity_id: 17,
+            source_type_id: 0,
+            source_cause_id: -1,
+            source_direct_id: -1,
+            source_position: None,
+        }));
+        let damage = store.entity_last_damage(17).unwrap();
+        assert_eq!(
+            damage.source_type_resource_id.as_deref(),
+            Some("example:opaque")
+        );
+        assert_eq!(damage.source_effects, None);
+        assert_eq!(store.counters().world_apply_errors, 1);
+        let error = store.apply_diagnostics().last_apply_error.as_ref().unwrap();
+        assert_eq!(error.source, "damage_type");
+        assert_eq!(error.message, "message_id: missing required field");
     }
 
     fn protocol_add_entity(id: i32) -> ProtocolAddEntity {

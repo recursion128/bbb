@@ -88,7 +88,7 @@ pub(crate) struct EntityClientAnimations {
     pub(crate) animations: EntityClientAnimationState,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct EntityDamage {
     pub(crate) last_damage: Option<EntityDamageEventState>,
 }
@@ -219,7 +219,7 @@ impl From<&EntityState> for EntityClientAnimations {
 impl From<&EntityState> for EntityDamage {
     fn from(state: &EntityState) -> Self {
         Self {
-            last_damage: state.last_damage,
+            last_damage: state.last_damage.clone(),
         }
     }
 }

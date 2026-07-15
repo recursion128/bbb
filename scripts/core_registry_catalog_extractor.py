@@ -17,6 +17,7 @@ class CoreRegistryExtractionError(ValueError):
 class RegistryEntry:
     constant_name: str
     resource_id: str
+    damage_effect: str | None = None
 
 
 @dataclass(frozen=True)
@@ -212,23 +213,56 @@ def damage_type_entries(source: JavaSource) -> list[RegistryEntry]:
         )
     calls = _calls_in_method(source, bootstraps[0], "register")
     calls.sort(key=lambda call: (call.span.start_byte, call.span.end_byte))
-    registered: list[str] = []
+    registered: list[tuple[str, str | None]] = []
     for call in calls:
         if call.qualifier is None or call.qualifier.canonical != "context":
             continue
         if len(call.arguments) < 2 or call.arguments[0].node.type != "identifier":
             _fail(source, source.expression(call.node), "damage bootstrap register is unsupported")
-        registered.append(call.arguments[0].canonical)
-    if len(registered) != len(set(registered)):
+        registered.append(
+            (
+                call.arguments[0].canonical,
+                _damage_type_effect(source, call.arguments[1]),
+            )
+        )
+    registered_names = [name for name, _ in registered]
+    if len(registered_names) != len(set(registered_names)):
         raise CoreRegistryExtractionError("duplicate damage type bootstrap registration")
-    unknown = set(registered) - resources.keys()
-    missing = resources.keys() - set(registered)
+    unknown = set(registered_names) - resources.keys()
+    missing = resources.keys() - set(registered_names)
     if not registered or unknown or missing:
         raise CoreRegistryExtractionError(
             f"damage declaration/bootstrap mismatch: unknown={sorted(unknown)}, "
             f"missing={sorted(missing)}"
         )
-    return [RegistryEntry(name, resources[name]) for name in registered]
+    return [RegistryEntry(name, resources[name], effect) for name, effect in registered]
+
+
+def _damage_type_effect(
+    source: JavaSource, expression: JavaExpression
+) -> str | None:
+    if expression.node.type != "object_creation_expression":
+        return None
+    type_node = expression.node.child_by_field_name("type")
+    arguments = expression.node.child_by_field_name("arguments")
+    if type_node is None or source.text(type_node) != "DamageType" or arguments is None:
+        _fail(source, expression, "damage bootstrap value is not a DamageType constructor")
+    effect_names = {
+        "DamageEffects.HURT": "hurt",
+        "DamageEffects.THORNS": "thorns",
+        "DamageEffects.DROWNING": "drowning",
+        "DamageEffects.BURNING": "burning",
+        "DamageEffects.POKING": "poking",
+        "DamageEffects.FREEZING": "freezing",
+    }
+    effects = [
+        effect_names[argument.canonical]
+        for argument in (source.expression(node) for node in arguments.named_children)
+        if argument.canonical in effect_names
+    ]
+    if len(effects) > 1:
+        _fail(source, expression, "damage constructor has multiple effects")
+    return effects[0] if effects else "hurt"
 
 
 def entity_type_entries(

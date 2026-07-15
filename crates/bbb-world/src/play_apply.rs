@@ -294,7 +294,19 @@ impl WorldStore {
                 self.apply_server_links(links);
             }
             PlayClientbound::DamageEvent(update) => {
-                self.apply_damage_event(update);
+                let entity_id = update.entity_id;
+                if self.apply_damage_event(update) {
+                    let damage_effects = self
+                        .entity_last_damage(entity_id)
+                        .and_then(|damage| damage.source_effects);
+                    if let Some(state) = damage_effects.and_then(|damage_effects| {
+                        self.player_damage_hurt_sound_for_entity(entity_id, damage_effects, || {
+                            random.next_float()
+                        })
+                    }) {
+                        effects.positioned_sound(&state);
+                    }
+                }
             }
             PlayClientbound::DebugBlockValue(update) => {
                 self.apply_debug_block_value(update);
@@ -1522,7 +1534,9 @@ fn advance_particle_utils_spawn_particles_randoms(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::LocalPlayerPoseState;
+    use crate::{
+        DamageTypeEffects, LocalPlayerPoseState, RegistryPacketEntry, DAMAGE_TYPE_REGISTRY,
+    };
     use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
@@ -1541,11 +1555,12 @@ mod tests {
     };
 
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, EntityAnimation, EntityDataRegistryHolder,
-        EntityDataValue, EntityDataValueKind, EntityEvent, EntityPositionSync, EquipmentSlot,
-        EquipmentSlotUpdate, GameEvent, ItemStackSummary, LevelEvent, PlayTime, PlayerHealth,
-        RemoveEntities, SetEntityData, SetEquipment, SetPassengers, SoundEvent, SoundEventHolder,
-        SoundSource, TakeItemEntity, TeleportEntity, Vec3d,
+        AddEntity, BlockPos as ProtocolBlockPos, DamageEvent, EntityAnimation,
+        EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind, EntityEvent,
+        EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, GameEvent, ItemStackSummary,
+        LevelEvent, PlayTime, PlayerHealth, RemoveEntities, SetEntityData, SetEquipment,
+        SetPassengers, SoundEvent, SoundEventHolder, SoundSource, TakeItemEntity, TeleportEntity,
+        Vec3d,
     };
     use uuid::Uuid;
 
@@ -1723,6 +1738,29 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         }
+    }
+
+    fn damage_type_nbt(message_id: &str, effects: &str) -> Vec<u8> {
+        let mut out = vec![10];
+        write_nbt_string(&mut out, "message_id", message_id);
+        write_nbt_string(&mut out, "scaling", "never");
+        out.push(5);
+        write_nbt_text(&mut out, "exhaustion");
+        out.extend_from_slice(&0.0_f32.to_be_bytes());
+        write_nbt_string(&mut out, "effects", effects);
+        out.push(0);
+        out
+    }
+
+    fn write_nbt_string(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_nbt_text(out, name);
+        write_nbt_text(out, value);
+    }
+
+    fn write_nbt_text(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
     }
 
     fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
@@ -2000,6 +2038,87 @@ mod tests {
         assert!(leftover.is_none());
         assert_eq!(effects.positioned_sounds.len(), 1);
         assert_eq!(effects.positioned_sounds[0].seed, 42);
+    }
+
+    #[test]
+    fn damage_event_resolves_reordered_type_and_forwards_player_hurt_sound() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            DAMAGE_TYPE_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_raw_data(
+                    "example:frozen",
+                    damage_type_nbt("custom.freeze", "freezing"),
+                ),
+                RegistryPacketEntry::with_raw_data(
+                    "example:embers",
+                    damage_type_nbt("custom.fire", "burning"),
+                ),
+            ],
+        );
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut expected_random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let position = Vec3d {
+            x: 3.0,
+            y: 72.0,
+            z: -5.0,
+        };
+        store.apply_play_packet(
+            PlayClientbound::AddEntity(add_entity(71, VANILLA_ENTITY_TYPE_PLAYER_ID, position)),
+            &mut random,
+            &mut effects,
+        );
+
+        for (source_type_id, expected_effects, expected_sound) in [
+            (
+                0,
+                DamageTypeEffects::Freezing,
+                "minecraft:entity.player.hurt_freeze",
+            ),
+            (
+                1,
+                DamageTypeEffects::Burning,
+                "minecraft:entity.player.hurt_on_fire",
+            ),
+        ] {
+            let expected_pitch =
+                (expected_random.next_float() - expected_random.next_float()) * 0.2 + 1.0;
+            assert!(store
+                .apply_play_packet(
+                    PlayClientbound::DamageEvent(DamageEvent {
+                        entity_id: 71,
+                        source_type_id,
+                        source_cause_id: -1,
+                        source_direct_id: -1,
+                        source_position: None,
+                    }),
+                    &mut random,
+                    &mut effects,
+                )
+                .is_none());
+            let damage = store.entity_last_damage(71).unwrap();
+            assert_eq!(damage.source_effects, Some(expected_effects));
+            assert_eq!(
+                damage.source_type_resource_id.as_deref(),
+                Some(if source_type_id == 0 {
+                    "example:frozen"
+                } else {
+                    "example:embers"
+                })
+            );
+            let sound = effects.positioned_sounds.last().unwrap();
+            assert_eq!(sound.sound.location.as_deref(), Some(expected_sound));
+            assert_eq!(sound.source, "player");
+            assert_eq!(sound.position, position);
+            assert_eq!(sound.volume, 1.0);
+            assert_eq!(sound.pitch, expected_pitch);
+            assert_eq!(sound.seed, 0);
+            assert!(!sound.distance_delay);
+        }
+        assert_eq!(effects.positioned_sounds.len(), 2);
+        assert_eq!(store.last_sound(), effects.positioned_sounds.last());
     }
 
     #[test]
