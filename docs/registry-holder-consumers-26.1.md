@@ -23,10 +23,10 @@ the number of concrete vanilla call sites tied to its registry for diagnostics.
 
 The generated
 `docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 194 calls to
-27 checked families. The four network shapes and seven persistent Codec shapes
+28 checked families. The four network shapes and seven persistent Codec shapes
 name their current bbb resource-id or tag resolver surface. They remain
 `partial` until the owning decoder/encoder receives registry context and the
-registry family has custom-reorder tests; this accounts for 168 rows. The
+registry family has custom-reorder tests; this accounts for 167 rows. The
 `sound_event` reference/direct stream codec is `complete`: vanilla owns it in
 the client built-in layer, and bbb's generated static order, direct holder
 payload, world ownership, and audio runtime resolution have cross-layer tests.
@@ -84,6 +84,12 @@ and suspicious-stew entries validate the generated order at their wire boundary;
 entity state and its movement, lightmap, HUD, tooltip, and item-component consumers
 retain that identity, while reversed RegistryData cannot remap it. Persistent
 mob-effect codecs and holder sets remain separate rows.
+The attribute reference call is `complete` against its immutable 35-entry
+client built-in registry. UpdateAttributes and item attribute modifiers validate
+the generated order at their wire boundary, the world registry provides checked
+static forward/reverse lookup, and scale, movement, tooltip, and item-model
+consumers retain those ids. Reversed RegistryData cannot remap the identity;
+persistent attribute codecs and holder sets remain separate rows.
 The synchronized cat, chicken, cow, pig, and wolf sound-variant stream holders
 are `complete`: entity metadata ids resolve in each server registry order, all
 five codec shapes retain their required named/direct SoundEvent holders, and

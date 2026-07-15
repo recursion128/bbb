@@ -287,6 +287,44 @@ fn mob_effect_registry_data_cannot_remap_the_builtin_holder_order() {
 }
 
 #[test]
+fn attribute_registry_data_cannot_remap_the_builtin_holder_order() {
+    let mut store = WorldStore::new();
+    let scale_id = bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SCALE_ID;
+
+    store.record_registry_data(RegistryData {
+        registry: "minecraft:attribute".to_string(),
+        entries: vec![
+            RegistryDataEntry {
+                id: "minecraft:scale".to_string(),
+                raw_data: None,
+            },
+            RegistryDataEntry {
+                id: "minecraft:armor".to_string(),
+                raw_data: None,
+            },
+        ],
+        raw_payload_len: 32,
+    });
+
+    let packet = &store.registries().registries[0];
+    assert!(packet.client_built_in);
+    assert!(!packet.configuration_synchronized);
+    assert!(store.registry_content("minecraft:attribute").is_none());
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:attribute", 0),
+        Some("minecraft:armor")
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:attribute", scale_id),
+        Some("minecraft:scale")
+    );
+    assert_eq!(
+        store.registry_holder_id_by_resource_id("minecraft:attribute", "minecraft:scale"),
+        Some(scale_id)
+    );
+}
+
+#[test]
 fn registry_holder_lookup_uses_checked_wire_order_identity() {
     let mut store = WorldStore::new();
     store.record_registry_entries(

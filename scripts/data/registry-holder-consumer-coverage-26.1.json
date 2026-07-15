@@ -395,6 +395,31 @@
       "decision": "Vanilla 26.1 owns mob effects in the immutable 40-entry client built-in registry. Update/Remove, optional beacon encoding, MobEffectInstance, and suspicious-stew entries all validate their holder at the protocol boundary against the generated order. World state preserves the id for entity replacement/removal and downstream movement, lightmap, HUD, tooltip, and item-component consumers; a reversed configuration injection proves RegistryData cannot remap the identity."
     },
     {
+      "id": "network-holder-reference-attribute-built-in",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/entity/ai/attributes/Attribute.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/entities/metadata.rs#pub fn apply_update_attributes",
+      "evidence": [
+        "vanilla:net/minecraft/core/registries/BuiltInRegistries.java#Registry<Attribute> ATTRIBUTE = registerSimple",
+        "vanilla:net/minecraft/world/entity/ai/attributes/Attribute.java#ByteBufCodecs.holderRegistry(Registries.ATTRIBUTE)",
+        "vanilla:net/minecraft/network/protocol/game/ClientboundUpdateAttributesPacket.java#Attribute.STREAM_CODEC",
+        "vanilla:net/minecraft/world/item/component/ItemAttributeModifiers.java#Attribute.STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/entities.rs#fn decode_attribute_holder_id",
+        "crates/bbb-protocol/src/packets/entities/tests.rs#fn update_attributes_rejects_holders_outside_the_builtin_registry",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn item_attribute_modifiers_reject_out_of_range_builtin_holders",
+        "crates/bbb-world/src/registries/tests.rs#fn attribute_registry_data_cannot_remap_the_builtin_holder_order",
+        "crates/bbb-world/src/entities/tests/player_pose_and_sleeping_projection.rs#fn entity_model_sources_project_scale_attribute",
+        "crates/bbb-world/src/client/local_player_movement/tests.rs#fn local_player_movement_speed_attribute_scales_horizontal_movement",
+        "crates/bbb-item-model/src/item_runtime/tooltip.rs#fn push_stack_attribute_modifiers_tooltip_lines"
+      ],
+      "decision": "Vanilla 26.1 owns attributes in the immutable 35-entry client built-in registry. UpdateAttributes and ItemAttributeModifiers validate holders at their protocol boundary against the generated order, and the world registry surface now resolves both directions through that same catalog. Entity attribute state drives scale and movement while item modifiers drive tooltip/model predicates; reversed configuration RegistryData cannot remap any identity."
+    },
+    {
       "id": "network-holder-reference",
       "selector": {
         "kind": "network_holder_reference",
@@ -415,6 +440,7 @@
           "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
           "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
           "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
+          "net/minecraft/world/entity/ai/attributes/Attribute.java",
           "net/minecraft/world/entity/npc/villager/VillagerData.java",
           "net/minecraft/world/entity/npc/villager/VillagerType.java",
           "net/minecraft/world/effect/MobEffect.java",

@@ -5,6 +5,7 @@ use crate::entity_data_serializers::*;
 pub use crate::equipment_slots::EquipmentSlot;
 use crate::{
     attribute_modifier_types::normalize_attribute_modifier_operation_id,
+    attribute_types::vanilla_attribute_type,
     codec::{Decoder, ProtocolError, Result},
     component::decode_component_summary_from_decoder,
 };
@@ -959,7 +960,7 @@ pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<Upda
     }
     let mut attributes = Vec::with_capacity(attribute_count);
     for _ in 0..attribute_count {
-        let attribute_id = decoder.read_var_i32()?;
+        let attribute_id = decode_attribute_holder_id(decoder)?;
         let base = decoder.read_f64()?;
         let modifier_count = decoder.read_len()?;
         if modifier_count > MAX_ATTRIBUTE_MODIFIERS {
@@ -991,6 +992,16 @@ pub(super) fn decode_update_attributes(decoder: &mut Decoder<'_>) -> Result<Upda
         ));
     }
     Ok(update)
+}
+
+pub(super) fn decode_attribute_holder_id(decoder: &mut Decoder<'_>) -> Result<i32> {
+    let attribute_id = decoder.read_var_i32()?;
+    if vanilla_attribute_type(attribute_id).is_none() {
+        return Err(ProtocolError::InvalidData(format!(
+            "invalid vanilla attribute holder id {attribute_id}"
+        )));
+    }
+    Ok(attribute_id)
 }
 
 fn decode_lp_vec3d(decoder: &mut Decoder<'_>) -> Result<Vec3d> {

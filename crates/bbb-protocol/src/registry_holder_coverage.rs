@@ -141,8 +141,9 @@ mod tests {
             });
         assert_eq!(counts["network-holder-or-inline"], 8);
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
-        assert_eq!(counts["network-holder-reference"], 3);
+        assert_eq!(counts["network-holder-reference"], 2);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
+        assert_eq!(counts["network-holder-reference-attribute-built-in"], 1);
         assert_eq!(counts["network-holder-reference-cat-variant"], 1);
         assert_eq!(counts["network-holder-reference-damage-type"], 1);
         assert_eq!(counts["network-holder-reference-dimension-type"], 1);
@@ -175,7 +176,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            168
+            167
         );
         assert_eq!(
             ledger
@@ -198,13 +199,14 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 23);
+        assert_eq!(complete.len(), 24);
         assert_eq!(
             complete
                 .iter()
                 .map(|entry| entry.resource_id.as_deref().unwrap())
                 .collect::<BTreeSet<_>>(),
             BTreeSet::from([
+                "minecraft:attribute",
                 "minecraft:chicken_variant",
                 "minecraft:chicken_sound_variant",
                 "minecraft:cat_sound_variant",

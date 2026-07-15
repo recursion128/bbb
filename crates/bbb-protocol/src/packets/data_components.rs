@@ -2,7 +2,9 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::{chunks, client_state, inventory, normalize_resource_location, read_resource_location};
+use super::{
+    chunks, client_state, entities, inventory, normalize_resource_location, read_resource_location,
+};
 use crate::{
     attribute_modifier_types::{
         normalize_attribute_modifier_operation_id, AttributeModifierDisplayType,
@@ -1366,7 +1368,7 @@ fn decode_attribute_modifiers(decoder: &mut Decoder<'_>) -> Result<Vec<Attribute
     let count = read_bounded_len(decoder, MAX_DATA_COMPONENT_LIST_ITEMS)?;
     let mut modifiers = Vec::with_capacity(count);
     for _ in 0..count {
-        let attribute_id = decode_holder_registry_id(decoder)?;
+        let attribute_id = entities::decode_attribute_holder_id(decoder)?;
         let modifier_id = read_resource_location(decoder)?;
         let amount_bits = decoder.read_f64()?.to_bits();
         let operation_id = normalize_attribute_modifier_operation_id(decoder.read_var_i32()?);
@@ -5764,6 +5766,20 @@ mod tests {
             decode_suspicious_stew_effects(&mut Decoder::new(&stew.into_inner())).unwrap_err();
         assert!(error.to_string().contains(&format!(
             "invalid vanilla mob effect holder id {invalid_effect_id}"
+        )));
+    }
+
+    #[test]
+    fn item_attribute_modifiers_reject_out_of_range_builtin_holders() {
+        let invalid_attribute_id = crate::attribute_types::VANILLA_ATTRIBUTE_TYPES.len() as i32;
+        let mut payload = Encoder::new();
+        payload.write_var_i32(1);
+        payload.write_var_i32(invalid_attribute_id);
+
+        let error =
+            decode_attribute_modifiers(&mut Decoder::new(&payload.into_inner())).unwrap_err();
+        assert!(error.to_string().contains(&format!(
+            "invalid vanilla attribute holder id {invalid_attribute_id}"
         )));
     }
 

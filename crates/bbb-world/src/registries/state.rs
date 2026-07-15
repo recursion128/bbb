@@ -1,5 +1,8 @@
 use std::{collections::BTreeMap, sync::Arc};
 
+use bbb_protocol::attribute_types::{
+    vanilla_attribute_type, vanilla_attribute_type_for_resource_id,
+};
 use bbb_protocol::damage_types::{vanilla_damage_type, vanilla_damage_type_for_resource_id};
 use bbb_protocol::mob_effect_types::{
     vanilla_mob_effect_type, vanilla_mob_effect_type_for_resource_id,
@@ -277,6 +280,7 @@ impl RegistrySet {
 
     fn vanilla_fallback_resource_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
         match registry {
+            "minecraft:attribute" => Some(vanilla_attribute_type(holder_id)?.resource_id),
             "minecraft:item" => Some(vanilla_item_type(holder_id)?.resource_id),
             "minecraft:block" => self.block_states.block_name_by_registry_id(holder_id),
             "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
@@ -295,6 +299,7 @@ impl RegistrySet {
             return None;
         }
         match registry {
+            "minecraft:attribute" => Some(vanilla_attribute_type_for_resource_id(resource_id)?.id),
             "minecraft:item" => {
                 Some(bbb_protocol::item_types::vanilla_item_type_for_resource_id(resource_id)?.id)
             }

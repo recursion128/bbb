@@ -512,9 +512,9 @@ Player type gate 尚未完成，因此 canonical/runtime 保持 partial，且 cr
 SetEquipment 的 continuation-slot wire、LivingEntity ownership gate 与 protocol/world/native tests
 已闭合；剩余 ItemStack added-value component 语义尚未全部投影，因此 canonical/runtime 保持
 partial，不能用 type presence 冒充完整装备值。
-UpdateAttributes 的 holder/list/modifier wire、LivingEntity ownership gate 与 tests 已闭合；
-attribute holder 尚未按 session RegistryAccess 解析，且未按 entity AttributeMap instance set 过滤，
-因此 canonical/runtime 保持 partial。
+UpdateAttributes 的 35 项 client built-in holder、list/modifier wire、静态正反查、LivingEntity
+ownership gate 与 tests 已闭合，configuration registry 注入不会重排 identity；尚未按 entity
+AttributeMap instance set 过滤，因此 canonical/runtime 保持 partial。
 ProjectilePower 的 VarInt + double wire、AbstractHurtingProjectile type gate、canonical assignment 与
 world/net/native tests 已全行闭合；这只确认服务器同步的 accelerationPower，不代表 projectile
 motion、命中、伤害或权威移除完成。
