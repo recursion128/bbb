@@ -2,10 +2,11 @@ use anyhow::Result;
 use bbb_control::{AudioCounters, ControlState, NetCounters};
 use bbb_pack::{
     BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
-    BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog,
+    BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
+    FurnaceFuelSourceRule,
 };
 use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
-use bbb_world::{WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldStore};
+use bbb_world::{FurnaceFuelRule, WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldStore};
 use std::{collections::BTreeMap, time::Instant};
 use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
@@ -287,7 +288,38 @@ fn main() -> Result<()> {
         );
         world.set_default_damageable_item_ids(items.default_damageable_item_ids_by_protocol_id());
         world.set_default_item_use_effects(items.item_use_effects_by_protocol_id());
-        world.set_furnace_fuel_item_ids(items.furnace_fuel_item_ids_by_protocol_id());
+        let initial_furnace_fuel_item_ids = items.furnace_fuel_item_ids_by_protocol_id();
+        match FurnaceFuelCatalog::source_rules() {
+            Ok(rules) => {
+                let rules = rules
+                    .into_iter()
+                    .map(|rule| match rule {
+                        FurnaceFuelSourceRule::AddItem(resource_id) => items
+                            .item_protocol_id(&resource_id)
+                            .map(FurnaceFuelRule::AddItem),
+                        FurnaceFuelSourceRule::AddTag(tag) => Some(FurnaceFuelRule::AddTag(tag)),
+                        FurnaceFuelSourceRule::RemoveTag(tag) => {
+                            Some(FurnaceFuelRule::RemoveTag(tag))
+                        }
+                    })
+                    .collect::<Option<Vec<_>>>();
+                if let Some(rules) = rules {
+                    world.set_furnace_fuel_profile(initial_furnace_fuel_item_ids, rules);
+                } else {
+                    tracing::warn!(
+                        "continuing without session furnace-fuel refresh rules because a direct item is unresolved"
+                    );
+                    world.set_furnace_fuel_item_ids(initial_furnace_fuel_item_ids);
+                }
+            }
+            Err(err) => {
+                tracing::warn!(
+                    ?err,
+                    "continuing without session furnace-fuel refresh rules"
+                );
+                world.set_furnace_fuel_item_ids(initial_furnace_fuel_item_ids);
+            }
+        }
         world.set_brewing_potion_item_ids(items.brewing_potion_item_ids_by_protocol_id());
         world.set_brewing_ingredient_item_ids(items.brewing_ingredient_item_ids_by_protocol_id());
         world.set_enchantment_lapis_lazuli_item_ids(

@@ -15089,3 +15089,14 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] 将 configuration/play 两行的 command-surface、state-guard 与 tests cell 提升为 complete；coverage regression
   现在要求两行除有 vanilla server hook 依据的 not-applicable ack 外全部 complete，并引用 exact payload、dynamic
   binding、bounded NBT encoder 与双状态 driver tests。
+
+## 2026-07-15：Recompute furnace fuel membership after UpdateTags
+
+- [x] 对照 `ClientPacketListener.handleUpdateTags`、`FuelValues.vanillaBurnTimes` 与
+  `FuelValues.Builder`，复用 checked-in 65 项 Tree-sitter source rules，把 direct item/block add、item-tag add 和
+  `NON_FLAMMABLE_WOOD` remove 依源顺序映射成 world-owned protocol-id 规则；不复制手写燃料表。
+- [x] `WorldStore` 在 play `UpdateTags` 即时 apply 后重建 `AbstractFurnaceMenu.isFuel` 使用的 canonical membership；
+  configuration 阶段保留旧集合直到 pending registry/tag transaction 提交，再原子切换到新集合。资源包初始集合在
+  首次 session tag 生效前保持可用，shared play apply、offline probe 和 native dispatcher 共用同一路径；pack/world
+  focused regressions 覆盖生成规则完整性、tag add/remove、立即更新与事务可见性。creative search-tree tag refresh
+  仍为独立 runtime 缺口。

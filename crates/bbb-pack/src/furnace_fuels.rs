@@ -46,6 +46,13 @@ pub struct FurnaceFuelCatalog {
     item_ids: BTreeSet<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FurnaceFuelSourceRule {
+    AddItem(String),
+    AddTag(String),
+    RemoveTag(String),
+}
+
 impl FurnaceFuelCatalog {
     pub fn load(roots: &PackRoots, registry: &ItemRegistryCatalog) -> Result<Self> {
         let item_tags = roots.load_tag_catalog("item")?;
@@ -56,18 +63,7 @@ impl FurnaceFuelCatalog {
         registry: &ItemRegistryCatalog,
         item_tags: &TagCatalog,
     ) -> Result<Self> {
-        let source: FurnaceFuelSourceCatalog =
-            serde_json::from_str(GENERATED_FURNACE_FUEL_DECLARATIONS)
-                .context("parse generated furnace-fuel declaration catalog")?;
-        if source.vanilla_version != crate::MC_VERSION
-            || source.sources
-                != [
-                    "net/minecraft/tags/ItemTags.java",
-                    "net/minecraft/world/level/block/entity/FuelValues.java",
-                ]
-        {
-            bail!("unsupported generated furnace-fuel source catalog manifest");
-        }
+        let source = generated_source_catalog()?;
         let mut item_ids = BTreeSet::new();
         for operation in source.operations {
             let source_context = || {
@@ -111,6 +107,43 @@ impl FurnaceFuelCatalog {
         Ok(Self { item_ids })
     }
 
+    /// Returns the ordered `FuelValues.Builder` membership rules without
+    /// resolving item tags from a resource pack. Native startup maps direct
+    /// item ids once and gives the rules to `bbb-world`, which can then apply
+    /// the current session `UpdateTags` state.
+    pub fn source_rules() -> Result<Vec<FurnaceFuelSourceRule>> {
+        generated_source_catalog()?
+            .operations
+            .into_iter()
+            .map(|operation| {
+                validate_source_operation(&operation).with_context(|| {
+                    format!(
+                        "{}:{}..{}: resolve {}",
+                        operation.source_path,
+                        operation.start_byte,
+                        operation.end_byte,
+                        operation.constant
+                    )
+                })?;
+                match (operation.action, operation.entry_kind) {
+                    (FurnaceFuelSourceAction::Add, FurnaceFuelSourceEntryKind::Item)
+                    | (FurnaceFuelSourceAction::Add, FurnaceFuelSourceEntryKind::Block) => {
+                        Ok(FurnaceFuelSourceRule::AddItem(operation.resource_id))
+                    }
+                    (FurnaceFuelSourceAction::Add, FurnaceFuelSourceEntryKind::Tag) => {
+                        Ok(FurnaceFuelSourceRule::AddTag(operation.resource_id))
+                    }
+                    (FurnaceFuelSourceAction::Remove, FurnaceFuelSourceEntryKind::Tag) => {
+                        Ok(FurnaceFuelSourceRule::RemoveTag(operation.resource_id))
+                    }
+                    (FurnaceFuelSourceAction::Remove, _) => {
+                        bail!("generated furnace-fuel remove operation does not reference a tag")
+                    }
+                }
+            })
+            .collect()
+    }
+
     pub fn item_ids(&self) -> &BTreeSet<String> {
         &self.item_ids
     }
@@ -121,6 +154,22 @@ impl FurnaceFuelCatalog {
             .filter_map(|item_id| registry.protocol_id(item_id))
             .collect()
     }
+}
+
+fn generated_source_catalog() -> Result<FurnaceFuelSourceCatalog> {
+    let source: FurnaceFuelSourceCatalog =
+        serde_json::from_str(GENERATED_FURNACE_FUEL_DECLARATIONS)
+            .context("parse generated furnace-fuel declaration catalog")?;
+    if source.vanilla_version != crate::MC_VERSION
+        || source.sources
+            != [
+                "net/minecraft/tags/ItemTags.java",
+                "net/minecraft/world/level/block/entity/FuelValues.java",
+            ]
+    {
+        bail!("unsupported generated furnace-fuel source catalog manifest");
+    }
+    Ok(source)
 }
 
 fn validate_source_operation(operation: &FurnaceFuelSourceOperation) -> Result<()> {
@@ -197,6 +246,21 @@ mod tests {
         for operation in &source.operations {
             validate_source_operation(operation).unwrap();
         }
+
+        let rules = FurnaceFuelCatalog::source_rules().unwrap();
+        assert_eq!(rules.len(), 65);
+        assert_eq!(
+            rules.first(),
+            Some(&FurnaceFuelSourceRule::AddItem(
+                "minecraft:lava_bucket".to_string()
+            ))
+        );
+        assert_eq!(
+            rules.last(),
+            Some(&FurnaceFuelSourceRule::RemoveTag(
+                "minecraft:non_flammable_wood".to_string()
+            ))
+        );
     }
 
     #[test]

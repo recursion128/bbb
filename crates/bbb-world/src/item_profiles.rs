@@ -56,6 +56,8 @@ pub struct ItemProfiles {
     #[serde(default)]
     pub(crate) furnace_fuel_item_ids: BTreeSet<i32>,
     #[serde(default)]
+    pub(crate) furnace_fuel_rules: Vec<FurnaceFuelRule>,
+    #[serde(default)]
     pub(crate) brewing_potion_item_ids: BTreeSet<i32>,
     #[serde(default)]
     pub(crate) brewing_ingredient_item_ids: BTreeSet<i32>,
@@ -73,6 +75,13 @@ pub struct ItemProfiles {
     pub(crate) default_block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
     #[serde(default)]
     pub(crate) default_block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FurnaceFuelRule {
+    AddItem(i32),
+    AddTag(String),
+    RemoveTag(String),
 }
 
 pub(crate) const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
@@ -131,6 +140,50 @@ impl ItemProfiles {
 
     pub(crate) fn set_furnace_fuel_item_ids(&mut self, item_ids: BTreeSet<i32>) {
         self.furnace_fuel_item_ids = filter_item_ids(item_ids);
+        self.furnace_fuel_rules.clear();
+    }
+
+    pub(crate) fn set_furnace_fuel_profile(
+        &mut self,
+        item_ids: BTreeSet<i32>,
+        rules: Vec<FurnaceFuelRule>,
+    ) {
+        self.furnace_fuel_item_ids = filter_item_ids(item_ids);
+        self.furnace_fuel_rules = rules
+            .into_iter()
+            .filter(|rule| !matches!(rule, FurnaceFuelRule::AddItem(item_id) if *item_id < 0))
+            .collect();
+    }
+
+    pub(crate) fn refresh_furnace_fuel_item_ids(&mut self, registries: &crate::RegistrySet) {
+        if self.furnace_fuel_rules.is_empty() {
+            return;
+        }
+
+        let mut item_ids = BTreeSet::new();
+        for rule in &self.furnace_fuel_rules {
+            match rule {
+                FurnaceFuelRule::AddItem(item_id) => {
+                    item_ids.insert(*item_id);
+                }
+                FurnaceFuelRule::AddTag(tag) => {
+                    if let Some(tag_item_ids) = registries.holder_ids_for_tag("minecraft:item", tag)
+                    {
+                        item_ids
+                            .extend(tag_item_ids.iter().copied().filter(|item_id| *item_id >= 0));
+                    }
+                }
+                FurnaceFuelRule::RemoveTag(tag) => {
+                    if let Some(tag_item_ids) = registries.holder_ids_for_tag("minecraft:item", tag)
+                    {
+                        for item_id in tag_item_ids {
+                            item_ids.remove(item_id);
+                        }
+                    }
+                }
+            }
+        }
+        self.furnace_fuel_item_ids = item_ids;
     }
 
     pub(crate) fn set_brewing_potion_item_ids(&mut self, item_ids: BTreeSet<i32>) {

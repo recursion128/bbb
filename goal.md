@@ -628,7 +628,7 @@ play SystemChat 的 trusted Component + overlay wire、strict decode、non-overl
 play UpdateAdvancements 的 reset/add/remove/progress/show framing、strict trailing、tree/progress ownership 与 tests 已闭合；rich display/icon、toast/telemetry 保持 decode/canonical/runtime partial。
 play UpdateMobEffect 的 entity/effect/amplifier/duration/flags wire、strict decode、living-entity force-replace gate、ownership 与 tests 已闭合；剩余完整 client effect 行为保持 runtime partial。
 play UpdateRecipes 的 property-set/stonecutter framing、strict trailing、replace ownership 与 tests 已闭合；剩余 SlotDisplay/component/menu presentation 保持 decode/canonical/runtime partial。
-play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry replace ownership 与 tests 已闭合；剩余 fuel values/creative search-tree 派生刷新保持 runtime partial。
+play UpdateTags 的 registry/tag/value framing、strict trailing、per-registry replace ownership、generated FuelValues membership 派生刷新与 tests 已闭合；剩余 creative search-tree tag membership 刷新保持 runtime partial。
 play Waypoint 的 operation WRAP、identifier/icon/data framing、strict trailing、manager apply ownership 与 tests 已闭合；剩余 locator contextual-bar presentation 保持 runtime partial。
 play ClearDialog 的 unit payload、strict trailing、canonical clear ownership、world/native previous-screen restore、warning
 return-screen lifecycle 与 tests 已闭合，五维 complete。

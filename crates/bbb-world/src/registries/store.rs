@@ -27,6 +27,7 @@ impl WorldStore {
         self.registries.tags.append(&mut pending.tags);
         self.sync_registry_counters();
         self.sync_registry_tag_counters();
+        self.items.refresh_furnace_fuel_item_ids(&self.registries);
     }
 
     pub fn record_registry(&mut self, name: impl Into<String>, raw_payload_len: usize) {
@@ -255,6 +256,7 @@ impl WorldStore {
 
         if self.registries.pending.is_none() {
             self.sync_registry_tag_counters();
+            self.items.refresh_furnace_fuel_item_ids(&self.registries);
         }
     }
 

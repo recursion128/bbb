@@ -16,7 +16,7 @@ pub use crate::equipment_assets::{
     EquipmentAsset, EquipmentAssetCatalog, EquipmentDyeable, EquipmentLayer, EquipmentLayerType,
 };
 pub use crate::freeze_immune_wearables::FreezeImmuneWearableCatalog;
-pub use crate::furnace_fuels::FurnaceFuelCatalog;
+pub use crate::furnace_fuels::{FurnaceFuelCatalog, FurnaceFuelSourceRule};
 pub use crate::item_cuboid_models::{
     ItemCuboidModel, ItemCuboidModelCatalog, ItemCuboidModelSet, ItemCuboidTexture,
     ItemCuboidTextureImageCatalog, ItemCuboidTextureImageSet, ITEM_CUBOID_TEXTURE_ATLASES,

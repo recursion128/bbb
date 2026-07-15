@@ -102,8 +102,11 @@ Owner: `bbb-protocol`
   `ClientPacketListener.handleRespawn`: reconstruct the local player according
   to both keep bits and reset music/debug-subscriber state. The current world
   reset/keep-bit baseline is not the full client lifecycle.
-- Recompute vanilla fuel values and creative search-tree tag membership after
-  play UpdateTags reloads, following `ClientPacketListener.handleUpdateTags`.
+- Recompute creative search-tree tag membership after play UpdateTags reloads,
+  following `ClientPacketListener.handleUpdateTags`. Furnace fuel membership is
+  complete: the generated ordered `FuelValues.Builder` rules now rebuild the
+  canonical item-id set from session item tags after immediate play updates and
+  configuration registry transactions, including `NON_FLAMMABLE_WOOD` removal.
 - Complete StatsScreen presentation parity: add narration. General, Items and Mobs now leave
   loading only after the requested AwardStats response and use selected-pack language.
   Item/header/empty-tab tooltips and vanilla Ctrl+digit/Ctrl+Tab navigation are wired;

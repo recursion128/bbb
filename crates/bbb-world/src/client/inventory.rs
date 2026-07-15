@@ -2267,6 +2267,18 @@ impl WorldStore {
         self.items.set_furnace_fuel_item_ids(item_ids)
     }
 
+    pub fn set_furnace_fuel_profile(
+        &mut self,
+        item_ids: BTreeSet<i32>,
+        rules: Vec<crate::FurnaceFuelRule>,
+    ) {
+        self.items.set_furnace_fuel_profile(item_ids, rules)
+    }
+
+    pub fn furnace_fuel_item_ids(&self) -> &BTreeSet<i32> {
+        &self.items.furnace_fuel_item_ids
+    }
+
     pub fn set_brewing_potion_item_ids(&mut self, item_ids: BTreeSet<i32>) {
         self.items.set_brewing_potion_item_ids(item_ids)
     }

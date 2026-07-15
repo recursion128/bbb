@@ -1,9 +1,9 @@
 use bbb_protocol::packets::{
     RegistryData, RegistryDataEntry, RegistryTags, TagNetworkPayload, UpdateTags,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use crate::RegistryEntrySource;
+use crate::{FurnaceFuelRule, RegistryEntrySource};
 use crate::{RegistryPacketEntry, RegistrySet, UnresolvedRegistryTagHolder, WorldStore};
 
 #[test]
@@ -545,6 +545,76 @@ fn update_tags_replace_network_tag_state() {
     assert_eq!(store.counters().last_update_tags_registry_count, 1);
     assert_eq!(store.counters().last_update_tags_total_tag_count, 1);
     assert_eq!(store.counters().last_update_tags_total_value_count, 1);
+}
+
+#[test]
+fn update_tags_recomputes_furnace_fuels_after_immediate_and_transactional_tag_apply() {
+    let item_id = |resource_id| {
+        bbb_protocol::item_types::vanilla_item_type_for_resource_id(resource_id)
+            .unwrap()
+            .id
+    };
+    let stick = item_id("minecraft:stick");
+    let oak_log = item_id("minecraft:oak_log");
+    let birch_log = item_id("minecraft:birch_log");
+    let crimson_stem = item_id("minecraft:crimson_stem");
+    let mut store = WorldStore::new();
+    store.set_furnace_fuel_profile(
+        BTreeSet::from([999]),
+        vec![
+            FurnaceFuelRule::AddItem(stick),
+            FurnaceFuelRule::AddTag("minecraft:logs".to_string()),
+            FurnaceFuelRule::RemoveTag("minecraft:non_flammable_wood".to_string()),
+        ],
+    );
+
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![
+                TagNetworkPayload {
+                    tag: "minecraft:logs".to_string(),
+                    entries: vec![oak_log, crimson_stem],
+                },
+                TagNetworkPayload {
+                    tag: "minecraft:non_flammable_wood".to_string(),
+                    entries: vec![crimson_stem],
+                },
+            ],
+        }],
+    });
+
+    assert_eq!(
+        store.furnace_fuel_item_ids(),
+        &BTreeSet::from([stick, oak_log])
+    );
+
+    store.begin_registry_configuration();
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![
+                TagNetworkPayload {
+                    tag: "minecraft:logs".to_string(),
+                    entries: vec![birch_log, crimson_stem],
+                },
+                TagNetworkPayload {
+                    tag: "minecraft:non_flammable_wood".to_string(),
+                    entries: vec![crimson_stem],
+                },
+            ],
+        }],
+    });
+    assert_eq!(
+        store.furnace_fuel_item_ids(),
+        &BTreeSet::from([stick, oak_log])
+    );
+
+    store.finish_registry_configuration();
+    assert_eq!(
+        store.furnace_fuel_item_ids(),
+        &BTreeSet::from([stick, birch_log])
+    );
 }
 
 fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
