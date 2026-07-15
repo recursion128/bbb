@@ -35,6 +35,7 @@ use super::schema::{
     vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type,
     vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
+    vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
@@ -57,8 +58,6 @@ use super::schema::{
     VANILLA_PANDA_FLAG_ON_BACK as PANDA_FLAG_ON_BACK,
     VANILLA_PANDA_FLAG_ROLLING as PANDA_FLAG_ROLLING,
     VANILLA_PANDA_FLAG_SITTING as PANDA_FLAG_SITTING,
-    VANILLA_SNIFFER_DEFAULT_STATE as SNIFFER_DEFAULT_STATE,
-    VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
     VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID as SNIFFER_STATE_FEELING_HAPPY_ID,
     VANILLA_SNIFFER_STATE_RISING_ID as SNIFFER_STATE_RISING_ID,
@@ -4071,21 +4070,17 @@ impl EntityClientAnimationState {
                 // remote entities, so the synced state drives the pose directly. `DATA_STATE` is
                 // serialized as the `SnifferState` enum (serializer 35), so it arrives as an
                 // `EnumId`, not a plain `Int`.
-                let state_id = entity_data_enum_id(
-                    data_values,
-                    SNIFFER_STATE_DATA_ID,
-                    EntityDataEnumSerializer::SnifferState,
-                    SNIFFER_DEFAULT_STATE,
-                );
-                if let Some(sniffer) = self.sniffer.as_mut() {
-                    sniffer.set_state(state_id, self.age_ticks);
-                } else if sniffer_animated_state(state_id).is_some() {
-                    self.sniffer = Some(SnifferAnimationState {
-                        state_id,
-                        keyframe: KeyframeAnimationState {
-                            start_age: Some(self.age_ticks),
-                        },
-                    });
+                if let Some(state_id) = sniffer_state_id(entity_type_id, data_values) {
+                    if let Some(sniffer) = self.sniffer.as_mut() {
+                        sniffer.set_state(state_id, self.age_ticks);
+                    } else if sniffer_animated_state(state_id).is_some() {
+                        self.sniffer = Some(SnifferAnimationState {
+                            state_id,
+                            keyframe: KeyframeAnimationState {
+                                start_age: Some(self.age_ticks),
+                            },
+                        });
+                    }
                 }
             }
             VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
@@ -6066,6 +6061,21 @@ pub(crate) fn creaking_is_tearing_down(
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(entity_type_id)
         .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
         .unwrap_or_default()
+}
+
+/// Vanilla `Sniffer.getState()` (`entityData.get(DATA_STATE)`). The generated accessor supplies
+/// membership, wire index and the `IDLING` typed default; state ordinals remain generator-owned.
+fn sniffer_state_id(entity_type_id: i32, data_values: &[EntityDataValue]) -> Option<i32> {
+    vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(entity_type_id).map(
+        |(data_id, default)| {
+            entity_data_enum_id(
+                data_values,
+                data_id,
+                EntityDataEnumSerializer::SnifferState,
+                default,
+            )
+        },
+    )
 }
 
 /// Vanilla `LivingEntity.isFallFlying()` = `Entity.getSharedFlag(7)`, where

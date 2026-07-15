@@ -42,6 +42,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type,
     vanilla_entity_metadata_slime_size_accessor_for_entity_type,
+    vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,

@@ -307,6 +307,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   CopperGolem animation-state membership, wire index and typed default must remain derived from
   generated `CopperGolem.COPPER_GOLEM_STATE`; world animation consumers must resolve it once per
   tick, must not restore fixed accessor/default aliases, and must keep generated state ordinals.
+  Sniffer animation-state membership, wire index and typed default must remain derived from
+  generated `Sniffer.DATA_STATE`; world animation consumers must not restore fixed accessor/default
+  aliases or duplicate the generated `Sniffer.State` ordinals.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

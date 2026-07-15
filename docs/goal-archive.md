@@ -16513,3 +16513,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   互斥动画 gate。
 - animation 生产消费者删除固定 accessor/default 别名与五次重复 state read；生成器
   reverse guard 禁止恢复这些事实源或丢失 entity-type 传递。
+
+## 2026-07-15：统一推导 Sniffer animation-state metadata accessor
+
+- `bbb-world` 现在从生成 schema 的 `Sniffer.DATA_STATE` 解析 membership、wire id 18 与
+  enum typed default `IDLING(0)`；animation state transition 继续消费生成的七个 state id。
+- animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
+  平行事实源或绕过 entity-type-aware accessor。
