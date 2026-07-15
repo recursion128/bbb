@@ -16552,3 +16552,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   到两侧 head rotation，中央目标 A 不进入模型 surface。
 - animation 生产消费者删除四个固定 accessor/default 别名；现有 Wither projection reverse
   guard 同时锁定 invulnerability 与 side-head 两条 schema 路径。
+
+## 2026-07-15：统一推导 Sniffer dimensions metadata accessors
+
+- Sniffer digging pick bounds 现在从生成 `Sniffer.DATA_STATE` accessor 读取 state，并以生成
+  `DIGGING` ordinal 决定 1.75→1.35 的高度变化；baby 缩放复用生成的 inherited baby accessor。
+- dimensions 生产消费者删除固定 Sniffer state id 与固定 AgeableMob baby read；Sniffer reverse
+  guard 扩展到 animation/dimensions 两条消费路径。

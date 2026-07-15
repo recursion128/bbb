@@ -308,8 +308,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generated `CopperGolem.COPPER_GOLEM_STATE`; world animation consumers must resolve it once per
   tick, must not restore fixed accessor/default aliases, and must keep generated state ordinals.
   Sniffer animation-state membership, wire index and typed default must remain derived from
-  generated `Sniffer.DATA_STATE`; world animation consumers must not restore fixed accessor/default
-  aliases or duplicate the generated `Sniffer.State` ordinals.
+  generated `Sniffer.DATA_STATE`; world animation and dimensions consumers must not restore fixed
+  accessor/default aliases or duplicate the generated `Sniffer.State` ordinals. Sniffer baby
+  bounds must use the generated inherited baby accessor rather than a fixed AgeableMob slot.
   Armadillo animation-state membership, wire index and typed default must remain derived from
   generated `Armadillo.ARMADILLO_STATE`; metadata and event consumers must not restore fixed
   accessor/default aliases or duplicate the generated `ArmadilloState` ordinals.

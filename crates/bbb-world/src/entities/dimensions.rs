@@ -27,6 +27,7 @@ use super::schema::{
     vanilla_entity_metadata_salmon_variant_accessor_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_slime_size_accessor_for_entity_type,
+    vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
@@ -37,7 +38,6 @@ use super::schema::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
     VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-    VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
 use super::{
@@ -204,7 +204,7 @@ fn vanilla_bounds_for_entity_data(
     } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID {
         goat_pick_bounds(data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SNIFFER_ID {
-        sniffer_pick_bounds(data_values)
+        sniffer_pick_bounds(entity_type_id, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_POLAR_BEAR_ID {
         polar_bear_pick_bounds(data_values, client_animations)?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_SHULKER_ID {
@@ -855,25 +855,27 @@ fn goat_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
     }
 }
 
-fn sniffer_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState {
-    let height = if entity_data_enum_id(
-        data_values,
-        SNIFFER_STATE_DATA_ID,
-        EntityDataEnumSerializer::SnifferState,
-        0,
-    ) == SNIFFER_STATE_DIGGING_ID
-    {
+fn sniffer_pick_bounds(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> EntityPickBoundsState {
+    let digging = vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(entity_type_id)
+        .is_some_and(|(data_id, default)| {
+            entity_data_enum_id(
+                data_values,
+                data_id,
+                EntityDataEnumSerializer::SnifferState,
+                default,
+            ) == SNIFFER_STATE_DIGGING_ID
+        });
+    let height = if digging {
         1.75 - SNIFFER_DIGGING_HEIGHT_OFFSET
     } else {
         1.75
     };
     let bounds = EntityPickBoundsState::from_base_size(1.9, height, 0.0);
 
-    if entity_data_bool(
-        data_values,
-        AGEABLE_MOB_BABY_DATA_ID,
-        AGEABLE_MOB_DEFAULT_BABY,
-    ) {
+    if vanilla_is_baby(entity_type_id, data_values) {
         bounds.scale_dimensions(DEFAULT_AGEABLE_BABY_SCALE)
     } else {
         bounds
