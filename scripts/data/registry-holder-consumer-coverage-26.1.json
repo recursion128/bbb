@@ -101,6 +101,31 @@
       "decision": "The synchronized holder id selects the server entry order, the NETWORK_CODEC presentation is projected for all three families, and custom adult/baby textures become visible only after upload."
     },
     {
+      "id": "network-holder-reference-villager-built-ins",
+      "selector": {
+        "kind": "network_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/entity/npc/villager/VillagerData.java",
+          "net/minecraft/world/entity/npc/villager/VillagerType.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn villager_model_data",
+      "evidence": [
+        "vanilla:net/minecraft/world/entity/npc/villager/VillagerData.java#ByteBufCodecs.holderRegistry(Registries.VILLAGER_TYPE)",
+        "vanilla:net/minecraft/world/entity/npc/villager/VillagerData.java#ByteBufCodecs.holderRegistry(Registries.VILLAGER_PROFESSION)",
+        "vanilla:net/minecraft/core/registries/BuiltInRegistries.java#Registry<VillagerType> VILLAGER_TYPE",
+        "vanilla:net/minecraft/core/registries/BuiltInRegistries.java#Registry<VillagerProfession> VILLAGER_PROFESSION",
+        "crates/bbb-protocol/src/packets/entities.rs#EntityDataValueKind::VillagerData",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decodes_villager_variant_holder_registry_id",
+        "crates/bbb-native/src/entity_scene/variants.rs#pub(super) fn villager_model_data",
+        "crates/bbb-native/src/entity_scene/tests.rs#fn villager_model_data_uses_fixed_built_in_registry_order",
+        "crates/bbb-world/src/client/dialog/body/component_value/holder_set/tests.rs#fn decodes_builtin_villager_variant_without_session_remapping",
+        "crates/bbb-item-model/src/item_runtime/tests.rs#component_condition_villager_variant_present"
+      ],
+      "decision": "Vanilla 26.1 villager type and profession are client built-ins; both entity VillagerData and the villager-variant component use the generated fixed registry order and ignore configuration remapping."
+    },
+    {
       "id": "network-holder-reference",
       "selector": {
         "kind": "network_holder_reference",
@@ -110,7 +135,9 @@
           "net/minecraft/util/debug/DebugPoiInfo.java",
           "net/minecraft/world/entity/animal/chicken/ChickenVariant.java",
           "net/minecraft/world/entity/animal/cow/CowVariant.java",
-          "net/minecraft/world/entity/animal/pig/PigVariant.java"
+          "net/minecraft/world/entity/animal/pig/PigVariant.java",
+          "net/minecraft/world/entity/npc/villager/VillagerData.java",
+          "net/minecraft/world/entity/npc/villager/VillagerType.java"
         ]
       },
       "status": "partial",
