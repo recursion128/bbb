@@ -258,6 +258,16 @@ pub(crate) struct VanillaAbstractBoatMetadataAccessors {
     pub(crate) bubble_time_default: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct VanillaVehicleMetadataAccessors {
+    pub(crate) hurt_time_data_id: u8,
+    pub(crate) hurt_time_default: i32,
+    pub(crate) hurt_dir_data_id: u8,
+    pub(crate) hurt_dir_default: i32,
+    pub(crate) damage_data_id: u8,
+    pub(crate) damage_default: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaAbstractArrowMetadataAccessors {
     pub flags_data_id: u8,
@@ -657,6 +667,57 @@ pub(crate) fn vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
             paddle_right_default,
             bubble_time_data_id: bubble_time.data_id,
             bubble_time_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the inherited VehicleEntity hurt-roll accessors with typed defaults.
+pub(crate) fn vanilla_entity_metadata_vehicle_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaVehicleMetadataAccessors> {
+    let hurt_time =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_HURT")?;
+    let hurt_dir =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_HURTDIR")?;
+    let damage =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_DAMAGE")?;
+    match (
+        (
+            hurt_time.owner,
+            hurt_time.serializer_name,
+            hurt_time.typed_default,
+        ),
+        (
+            hurt_dir.owner,
+            hurt_dir.serializer_name,
+            hurt_dir.typed_default,
+        ),
+        (damage.owner, damage.serializer_name, damage.typed_default),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.vehicle.VehicleEntity",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(hurt_time_default)),
+            ),
+            (
+                "net.minecraft.world.entity.vehicle.VehicleEntity",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(hurt_dir_default)),
+            ),
+            (
+                "net.minecraft.world.entity.vehicle.VehicleEntity",
+                "FLOAT",
+                Some(VanillaEntityMetadataDefault::Float(damage_default)),
+            ),
+        ) => Some(VanillaVehicleMetadataAccessors {
+            hurt_time_data_id: hurt_time.data_id,
+            hurt_time_default,
+            hurt_dir_data_id: hurt_dir.data_id,
+            hurt_dir_default,
+            damage_data_id: damage.data_id,
+            damage_default,
         }),
         _ => None,
     }
@@ -2490,6 +2551,39 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_vehicle_accessors_own_inherited_membership_indices_and_defaults() {
+        let expected = VanillaVehicleMetadataAccessors {
+            hurt_time_data_id: 8,
+            hurt_time_default: 0,
+            hurt_dir_data_id: 9,
+            hurt_dir_default: 1,
+            damage_data_id: 10,
+            damage_default: 0.0,
+        };
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+            VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+            VANILLA_ENTITY_TYPE_MINECART_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_vehicle_accessors_for_entity_type(entity_type_id),
+                Some(expected),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_vehicle_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_vehicle_accessors_for_entity_type(-1),
             None
         );
     }

@@ -512,7 +512,7 @@ pub fn vanilla_entity_type_is_hurting_projectile(entity_type_id: i32) -> bool {
 }
 
 pub(crate) fn is_vanilla_vehicle_entity_type(entity_type_id: i32) -> bool {
-    is_vanilla_boat_type(entity_type_id) || is_vanilla_minecart_type(entity_type_id)
+    schema::vanilla_entity_metadata_vehicle_accessors_for_entity_type(entity_type_id).is_some()
 }
 
 pub(crate) fn is_vanilla_abstract_horse_type(entity_type_id: i32) -> bool {

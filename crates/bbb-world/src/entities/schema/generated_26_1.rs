@@ -22417,6 +22417,30 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_vehicle_accessors_do_not_restore_fixed_metadata_facts() {
+        let animations = include_str!("../animations.rs");
+        assert!(animations.contains("vanilla_entity_metadata_vehicle_accessors_for_entity_type"));
+        for removed in [
+            "VEHICLE_HURT_TIME_DATA_ID",
+            "VEHICLE_DEFAULT_HURT_TIME",
+            "VEHICLE_HURT_DIR_DATA_ID",
+            "VEHICLE_DEFAULT_HURT_DIR",
+            "VEHICLE_DAMAGE_DATA_ID",
+            "VEHICLE_DEFAULT_DAMAGE",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+        }
+        let entities = include_str!("../../entities.rs");
+        assert!(entities.contains("vanilla_entity_metadata_vehicle_accessors_for_entity_type"));
+        assert!(!entities.contains(
+            "is_vanilla_boat_type(entity_type_id) || is_vanilla_minecart_type(entity_type_id)"
+        ));
+    }
+
+    #[test]
     fn production_abstract_boat_accessors_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
         assert!(

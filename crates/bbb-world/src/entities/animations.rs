@@ -23,6 +23,7 @@ use super::schema::{
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
+    vanilla_entity_metadata_vehicle_accessors_for_entity_type, VanillaVehicleMetadataAccessors,
     VANILLA_ALLAY_DANCING_DATA_ID as ALLAY_DANCING_DATA_ID,
     VANILLA_ALLAY_DEFAULT_DANCING as ALLAY_DEFAULT_DANCING,
     VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
@@ -79,12 +80,6 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_SCENTING_ID as SNIFFER_STATE_SCENTING_ID,
     VANILLA_SNIFFER_STATE_SEARCHING_ID as SNIFFER_STATE_SEARCHING_ID,
     VANILLA_SNIFFER_STATE_SNIFFING_ID as SNIFFER_STATE_SNIFFING_ID,
-    VANILLA_VEHICLE_DAMAGE_DATA_ID as VEHICLE_DAMAGE_DATA_ID,
-    VANILLA_VEHICLE_DEFAULT_DAMAGE as VEHICLE_DEFAULT_DAMAGE,
-    VANILLA_VEHICLE_DEFAULT_HURT_DIR as VEHICLE_DEFAULT_HURT_DIR,
-    VANILLA_VEHICLE_DEFAULT_HURT_TIME as VEHICLE_DEFAULT_HURT_TIME,
-    VANILLA_VEHICLE_HURT_DIR_DATA_ID as VEHICLE_HURT_DIR_DATA_ID,
-    VANILLA_VEHICLE_HURT_TIME_DATA_ID as VEHICLE_HURT_TIME_DATA_ID,
     VANILLA_WARDEN_ANGER_LEVEL_DATA_ID as WARDEN_ANGER_LEVEL_DATA_ID,
     VANILLA_WARDEN_DEFAULT_ANGER_LEVEL as WARDEN_DEFAULT_ANGER_LEVEL,
     VANILLA_WITHER_DEFAULT_TARGET_B as WITHER_DEFAULT_TARGET_B,
@@ -511,20 +506,23 @@ pub struct BoatDamageAnimationState {
 }
 
 impl BoatDamageAnimationState {
-    fn from_metadata(data_values: &[EntityDataValue]) -> Self {
+    fn from_metadata(
+        accessors: VanillaVehicleMetadataAccessors,
+        data_values: &[EntityDataValue],
+    ) -> Self {
         Self {
             hurt_time: entity_data_int(
                 data_values,
-                VEHICLE_HURT_TIME_DATA_ID,
-                VEHICLE_DEFAULT_HURT_TIME,
+                accessors.hurt_time_data_id,
+                accessors.hurt_time_default,
             ),
             hurt_dir: entity_data_int(
                 data_values,
-                VEHICLE_HURT_DIR_DATA_ID,
-                VEHICLE_DEFAULT_HURT_DIR,
+                accessors.hurt_dir_data_id,
+                accessors.hurt_dir_default,
             ),
-            damage: entity_data_float(data_values, VEHICLE_DAMAGE_DATA_ID)
-                .unwrap_or(VEHICLE_DEFAULT_DAMAGE),
+            damage: entity_data_float(data_values, accessors.damage_data_id)
+                .unwrap_or(accessors.damage_default),
         }
     }
 
@@ -558,7 +556,11 @@ impl BoatDamageAnimationState {
 
 impl Default for BoatDamageAnimationState {
     fn default() -> Self {
-        Self::from_metadata(&[])
+        let accessors = vanilla_entity_metadata_vehicle_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        )
+        .expect("generated oak-boat VehicleEntity metadata accessors");
+        Self::from_metadata(accessors, &[])
     }
 }
 
@@ -3852,19 +3854,20 @@ impl EntityClientAnimationState {
                 }
             }
         }
-        if is_vanilla_vehicle_entity_type(entity_type_id)
-            && updated_values.iter().any(|value| {
-                matches!(
-                    value.data_id,
-                    VEHICLE_HURT_TIME_DATA_ID | VEHICLE_HURT_DIR_DATA_ID | VEHICLE_DAMAGE_DATA_ID
-                )
-            })
+        if let Some(accessors) =
+            vanilla_entity_metadata_vehicle_accessors_for_entity_type(entity_type_id)
         {
-            let damage = BoatDamageAnimationState::from_metadata(data_values);
-            if damage.is_settled() {
-                self.boat_damage = None;
-            } else {
-                self.boat_damage = Some(damage);
+            if updated_values.iter().any(|value| {
+                value.data_id == accessors.hurt_time_data_id
+                    || value.data_id == accessors.hurt_dir_data_id
+                    || value.data_id == accessors.damage_data_id
+            }) {
+                let damage = BoatDamageAnimationState::from_metadata(accessors, data_values);
+                if damage.is_settled() {
+                    self.boat_damage = None;
+                } else {
+                    self.boat_damage = Some(damage);
+                }
             }
         }
     }

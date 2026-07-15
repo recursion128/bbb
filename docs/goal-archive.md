@@ -16307,3 +16307,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `DATA_ID_PADDLE_RIGHT` 与 `DATA_ID_BUBBLE_TIME` 解析继承 membership、wire ids 11/12/13
   及 typed defaults false/false/0；rowing 与 bubble wobble 状态共同消费该 bundle。
 - 动画生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 VehicleEntity metadata accessors
+
+- `bbb-world` 现在从生成 schema 的 `VehicleEntity.DATA_ID_HURT`、`DATA_ID_HURTDIR` 与
+  `DATA_ID_DAMAGE` 解析继承 membership、wire ids 8/9/10 及 typed defaults 0/1/0.0；boat 与
+  minecart 伤害摇晃和 hurt event dispatch 共享该来源。
+- 动画生产消费者删除固定 accessor/default 别名，原先的 boat/minecart membership union
+  改为生成 accessor membership；生成器 reverse guard 禁止恢复这些平行事实源。
