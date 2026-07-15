@@ -211,6 +211,16 @@ pub struct VanillaEntityMetadataResolverEvidence {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntitySoundSourceKind {
+    Neutral,
+    Hostile,
+    Ambient,
+    Weather,
+    Players,
+    Dynamic,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -218,6 +228,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub runtime_class: Option<&'static str>,
     pub schema_class: Option<&'static str>,
     pub is_pickable_by_class: bool,
+    pub sound_source_kind: VanillaEntitySoundSourceKind,
     pub is_living: bool,
     pub is_animal: bool,
     pub is_projectile: bool,
@@ -351,6 +362,18 @@ pub fn vanilla_entity_metadata_type_is_pickable(entity_type_id: i32) -> bool {
         || bbb_protocol::entity_types::vanilla_entity_type_is_redirectable_projectile(
             entity_type_id,
         )
+}
+
+/// Returns the nearest generated `Entity.getSoundSource()` class behavior.
+///
+/// `Dynamic` currently identifies the evil-rabbit variant override; callers without entity
+/// metadata must preserve their explicit fallback rather than treating it as a fixed category.
+pub fn vanilla_entity_metadata_type_sound_source_kind(
+    entity_type_id: i32,
+) -> Option<VanillaEntitySoundSourceKind> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .map(|entry| entry.sound_source_kind)
 }
 
 /// Returns whether the generated vanilla runtime class implements `Leashable`,
@@ -550,11 +573,15 @@ mod tests {
     };
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+        VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CHICKEN_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
-        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
         VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
 
     use super::*;
@@ -741,6 +768,72 @@ mod tests {
         }
         assert!(!vanilla_entity_metadata_type_is_pickable(-1));
         assert!(!vanilla_entity_metadata_type_is_pickable(157));
+        for (kind, expected_count) in [
+            (VanillaEntitySoundSourceKind::Neutral, 110),
+            (VanillaEntitySoundSourceKind::Hostile, 42),
+            (VanillaEntitySoundSourceKind::Ambient, 2),
+            (VanillaEntitySoundSourceKind::Weather, 1),
+            (VanillaEntitySoundSourceKind::Players, 1),
+            (VanillaEntitySoundSourceKind::Dynamic, 1),
+        ] {
+            assert_eq!(
+                VANILLA_ENTITY_TYPE_METADATA_26_1
+                    .iter()
+                    .filter(|entry| entry.sound_source_kind == kind)
+                    .count(),
+                expected_count,
+                "{kind:?}"
+            );
+        }
+        for (entity_type_id, expected) in [
+            (
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                VanillaEntitySoundSourceKind::Players,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+                VanillaEntitySoundSourceKind::Ambient,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+                VanillaEntitySoundSourceKind::Ambient,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+                VanillaEntitySoundSourceKind::Weather,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_BLAZE_ID,
+                VanillaEntitySoundSourceKind::Hostile,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+                VanillaEntitySoundSourceKind::Hostile,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_HOGLIN_ID,
+                VanillaEntitySoundSourceKind::Hostile,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_PARCHED_ID,
+                VanillaEntitySoundSourceKind::Hostile,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_RABBIT_ID,
+                VanillaEntitySoundSourceKind::Dynamic,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+                VanillaEntitySoundSourceKind::Neutral,
+            ),
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_type_sound_source_kind(entity_type_id),
+                Some(expected)
+            );
+        }
+        assert_eq!(vanilla_entity_metadata_type_sound_source_kind(-1), None);
+        assert_eq!(vanilla_entity_metadata_type_sound_source_kind(157), None);
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()

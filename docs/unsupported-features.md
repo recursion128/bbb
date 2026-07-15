@@ -145,8 +145,8 @@ Owner: `bbb-protocol`
 
 Owner: `scripts/` + each generated catalog's semantic crate
 
-- Complete the remaining cross-crate registry/ordinal/serializer-id and
-  block/entity resource-membership discovery audit, and emit every new
+- Complete the remaining cross-crate registry/ordinal/serializer-id and entity
+  resource-membership/behavior-property discovery audit, and emit every new
   generated-catalog consumer guard or migrated generated-catalog consumer guard
   from that catalog's generator rather than hand-editing its checked-in output.
   Generated-catalog consumers must import the semantic owner directly; remove

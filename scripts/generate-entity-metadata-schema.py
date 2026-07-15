@@ -2438,6 +2438,62 @@ def class_is_pickable_without_type_tag(
     return value
 
 
+def class_sound_source_kind(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    cache: dict[str, str],
+) -> str:
+    """Resolve the nearest vanilla ``getSoundSource`` class behavior.
+
+    Literal enum returns are fixed per class. Rabbit is the sole 26.1 dynamic
+    override and is recorded explicitly rather than guessed from its entity type.
+    """
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(f"unknown entity class in getSoundSource hierarchy: {owner}")
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == "getSoundSource" and len(method.parameters) == 0
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.getSoundSource/0: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(f"{owner}: no getSoundSource override or superclass")
+        value = class_sound_source_kind(result, class_map, item.superclass, cache)
+        cache[owner] = value
+        return value
+
+    expression = method_single_return_expression(result, owner, "getSoundSource")
+    compact = expression.replace(" ", "")
+    literals = {
+        "SoundSource.NEUTRAL": "Neutral",
+        "SoundSource.HOSTILE": "Hostile",
+        "SoundSource.AMBIENT": "Ambient",
+        "SoundSource.WEATHER": "Weather",
+        "SoundSource.PLAYERS": "Players",
+    }
+    if compact in literals:
+        value = literals[compact]
+    elif (
+        owner == "net.minecraft.world.entity.animal.rabbit.Rabbit"
+        and compact
+        == "this.getVariant()==Rabbit.Variant.EVIL?SoundSource.HOSTILE:SoundSource.NEUTRAL"
+    ):
+        value = "Dynamic"
+    else:
+        raise ExtractionError(
+            f"{owner}.getSoundSource: unsupported return expression {expression!r}"
+        )
+    cache[owner] = value
+    return value
+
+
 def method_mask(result: ExtractionResult, owner: str, name: str, mode: str) -> tuple[int, str]:
     source, method = method_for(result, owner, name)
     body = method.node.child_by_field_name("body")
@@ -2631,6 +2687,7 @@ def render(result: ExtractionResult) -> str:
 
     class_map = {item.fqcn: item for item in result.classes}
     pickable_cache: dict[str, bool] = {}
+    sound_source_cache: dict[str, str] = {}
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -2639,6 +2696,13 @@ def render(result: ExtractionResult) -> str:
         ):
             class_is_pickable_without_type_tag(
                 result, class_map, java_class, pickable_cache
+            )
+        if any(
+            method.name == "getSoundSource" and len(method.parameters) == 0
+            for method in source.methods_for(java_class)
+        ):
+            class_sound_source_kind(
+                result, class_map, java_class, sound_source_cache
             )
     own_counts: dict[str, int] = {}
     for accessor in result.accessors:
@@ -2910,6 +2974,7 @@ def render(result: ExtractionResult) -> str:
                 f"        runtime_class: {option_string(item.runtime_class)},",
                 f"        schema_class: {option_string(schema_class(item.runtime_class))},",
                 f"        is_pickable_by_class: {str(class_is_pickable_without_type_tag(result, class_map, item.runtime_class, pickable_cache)).lower()},",
+                f"        sound_source_kind: VanillaEntitySoundSourceKind::{class_sound_source_kind(result, class_map, item.runtime_class, sound_source_cache)},",
                 f"        is_living: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity')).lower()},",
                 f"        is_animal: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.Animal')).lower()},",
                 f"        is_projectile: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.projectile.Projectile')).lower()},",
@@ -2987,6 +3052,20 @@ def render(result: ExtractionResult) -> str:
     for family in FAMILIES:
         lines.append(f"        VanillaEntityMetadataFamily::{family.rust_name} => &{family.rust_name.upper()}_SCHEMA,")
     lines.extend(["    }", "}", ""])
+    lines.extend(
+        [
+            "#[cfg(test)]",
+            "mod generated_catalog_guards {",
+            "    #[test]",
+            "    fn production_audio_does_not_restore_hostile_entity_membership() {",
+            '        let source = include_str!("../../client/audio.rs");',
+            '        let removed_lookup = ["is_vanilla_hostile_sound_source_", "type"].concat();',
+            '        assert!(!source.contains(&format!("fn {removed_lookup}(")));',
+            "    }",
+            "}",
+            "",
+        ]
+    )
     return format_rust("\n".join(lines))
 
 

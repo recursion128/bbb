@@ -18,8 +18,9 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::entities::{
-    CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
-    PigSoundVariantIdentity, WolfSoundVariantIdentity,
+    vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
+    ChickenSoundVariantIdentity, CowSoundVariantIdentity, PigSoundVariantIdentity,
+    VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
     VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_CAT_SOUND_VARIANT_DATA_ID,
     VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
     VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_COW_SOUND_VARIANT_DATA_ID,
@@ -1551,64 +1552,14 @@ fn block_sound_state_with_distance_delay(
 }
 
 fn vanilla_entity_sound_source(entity_type_id: i32) -> SoundSource {
-    if entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
-        return SoundSource::Players;
+    match vanilla_entity_metadata_type_sound_source_kind(entity_type_id) {
+        Some(VanillaEntitySoundSourceKind::Hostile) => SoundSource::Hostile,
+        Some(VanillaEntitySoundSourceKind::Ambient) => SoundSource::Ambient,
+        Some(VanillaEntitySoundSourceKind::Weather) => SoundSource::Weather,
+        Some(VanillaEntitySoundSourceKind::Players) => SoundSource::Players,
+        Some(VanillaEntitySoundSourceKind::Neutral | VanillaEntitySoundSourceKind::Dynamic)
+        | None => SoundSource::Neutral,
     }
-    if is_vanilla_hostile_sound_source_type(entity_type_id) {
-        return SoundSource::Hostile;
-    }
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID | VANILLA_ENTITY_TYPE_ITEM_ID => SoundSource::Ambient,
-        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => SoundSource::Weather,
-        _ => SoundSource::Neutral,
-    }
-}
-
-fn is_vanilla_hostile_sound_source_type(entity_type_id: i32) -> bool {
-    matches!(
-        entity_type_id,
-        VANILLA_ENTITY_TYPE_BLAZE_ID
-            | VANILLA_ENTITY_TYPE_BOGGED_ID
-            | VANILLA_ENTITY_TYPE_BREEZE_ID
-            | VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID
-            | VANILLA_ENTITY_TYPE_CREAKING_ID
-            | VANILLA_ENTITY_TYPE_CREEPER_ID
-            | VANILLA_ENTITY_TYPE_DROWNED_ID
-            | VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID
-            | VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
-            | VANILLA_ENTITY_TYPE_ENDERMAN_ID
-            | VANILLA_ENTITY_TYPE_ENDERMITE_ID
-            | VANILLA_ENTITY_TYPE_EVOKER_ID
-            | VANILLA_ENTITY_TYPE_GHAST_ID
-            | VANILLA_ENTITY_TYPE_GIANT_ID
-            | VANILLA_ENTITY_TYPE_GUARDIAN_ID
-            | VANILLA_ENTITY_TYPE_HOGLIN_ID
-            | VANILLA_ENTITY_TYPE_HUSK_ID
-            | VANILLA_ENTITY_TYPE_ILLUSIONER_ID
-            | VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID
-            | VANILLA_ENTITY_TYPE_PHANTOM_ID
-            | VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
-            | VANILLA_ENTITY_TYPE_PIGLIN_ID
-            | VANILLA_ENTITY_TYPE_PILLAGER_ID
-            | VANILLA_ENTITY_TYPE_RAVAGER_ID
-            | VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID
-            | VANILLA_ENTITY_TYPE_SHULKER_ID
-            | VANILLA_ENTITY_TYPE_SILVERFISH_ID
-            | VANILLA_ENTITY_TYPE_SKELETON_ID
-            | VANILLA_ENTITY_TYPE_SLIME_ID
-            | VANILLA_ENTITY_TYPE_SPIDER_ID
-            | VANILLA_ENTITY_TYPE_STRAY_ID
-            | VANILLA_ENTITY_TYPE_VEX_ID
-            | VANILLA_ENTITY_TYPE_VINDICATOR_ID
-            | VANILLA_ENTITY_TYPE_WARDEN_ID
-            | VANILLA_ENTITY_TYPE_WITCH_ID
-            | VANILLA_ENTITY_TYPE_WITHER_ID
-            | VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID
-            | VANILLA_ENTITY_TYPE_ZOGLIN_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
-            | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID
-    )
 }
 
 pub fn advance_cobweb_place_particle_randoms(random: &mut LevelEventSoundRandomState) {
@@ -1746,6 +1697,28 @@ mod tests {
         let first = world_one.next_sound_seed();
         let second = world_one.next_sound_seed();
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn entity_sound_source_uses_generated_class_behavior() {
+        for (entity_type_id, expected) in [
+            (VANILLA_ENTITY_TYPE_PLAYER_ID, SoundSource::Players),
+            (VANILLA_ENTITY_TYPE_ITEM_ID, SoundSource::Ambient),
+            (VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, SoundSource::Ambient),
+            (VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, SoundSource::Weather),
+            (VANILLA_ENTITY_TYPE_BLAZE_ID, SoundSource::Hostile),
+            (VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, SoundSource::Hostile),
+            (VANILLA_ENTITY_TYPE_HOGLIN_ID, SoundSource::Hostile),
+            (VANILLA_ENTITY_TYPE_PARCHED_ID, SoundSource::Hostile),
+            (VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, SoundSource::Neutral),
+            // Rabbit is the one per-instance override. This type-only call keeps
+            // the existing neutral fallback until a metadata-aware caller owns it.
+            (VANILLA_ENTITY_TYPE_RABBIT_ID, SoundSource::Neutral),
+        ] {
+            assert_eq!(vanilla_entity_sound_source(entity_type_id), expected);
+        }
+        assert_eq!(vanilla_entity_sound_source(-1), SoundSource::Neutral);
+        assert_eq!(vanilla_entity_sound_source(157), SoundSource::Neutral);
     }
 
     #[test]

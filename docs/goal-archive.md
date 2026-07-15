@@ -15355,3 +15355,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   custom-head 两个纯 boolean 副本已删除，直接消费 generated terrain owner API。
   既有 terrain/collision/outline 语义不变，开放 ledger 收窄为继续发现尚未 catalog 化的 block/entity
   membership 与其余跨 crate registry/ordinal 审计。
+
+## 2026-07-15：Generate entity sound-source class behavior
+
+- [x] entity metadata generator 复用 Tree-sitter class hierarchy，解析 26.1 最近的零参数
+  `getSoundSource()` 覆盖：五类 literal enum return 生成稳定 kind，Rabbit 唯一按 variant 的三元表达式
+  显式标为 `Dynamic`，新增或未知表达式会令 maintenance generation 失败。
+- [x] 157 项 entity catalog 统一拥有 sound-source kind；world audio 删除 41 项 hostile type 手写表，
+  player/item/experience-orb/lightning/monster 与显式 hostile override 全部消费 generated query。
+  Rabbit 在当前无 metadata 的调用边界保持原 neutral fallback；generator-emitted 反向门禁禁止旧 hostile
+  lookup 复生，并修复旧表遗漏 `Parched`、将其错误归入 neutral 的偏差。
