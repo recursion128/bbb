@@ -16223,3 +16223,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   该 accessor，并继续使用生成的 `FLAG_HAS_STUNG` / `FLAG_ROLL` masks。
 - dimensions 删除单类型 `vanilla_is_bee`，两个消费者删除固定 accessor/default 别名；生成器
   reverse guard 禁止生产路径恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Fox render metadata accessor
+
+- `bbb-world` 现在从生成 schema 的 `Fox.DATA_FLAGS_ID` 同时解析 Fox membership、wire id 19
+  与 byte 默认值 0；store 的五个 pose bits 和 animations 的 interested/crouching accumulators
+  共同消费该 accessor，并继续使用生成的 flag masks。
+- dimensions 删除单类型 `vanilla_is_fox`，两个消费者删除固定 accessor/default 别名；生成器
+  reverse guard 禁止生产路径恢复这些平行事实源。

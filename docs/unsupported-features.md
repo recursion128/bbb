@@ -196,6 +196,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Bee stinger membership plus stinger/roll wire index and default must remain derived from
   generated `Bee.DATA_FLAGS_ID`; store must not restore a Bee type predicate, and neither flags
   consumer may restore fixed accessor aliases.
+  Fox pose membership plus pose/animation wire index and default must remain derived from
+  generated `Fox.DATA_FLAGS_ID`; store must not restore a Fox type predicate, and neither flags
+  consumer may restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

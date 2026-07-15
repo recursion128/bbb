@@ -16,6 +16,7 @@ use super::dragon::EnderDragonAnimationState;
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND as ABSTRACT_ARROW_DEFAULT_IN_GROUND,
@@ -57,7 +58,6 @@ use super::schema::{
     VANILLA_CREEPER_SWELL_DIR_DATA_ID as CREEPER_SWELL_DIR_DATA_ID,
     VANILLA_ENDER_DRAGON_DEFAULT_PHASE as ENDER_DRAGON_DEFAULT_PHASE,
     VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
-    VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS, VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_INTERESTED as FOX_FLAG_INTERESTED,
     VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID as GUARDIAN_ATTACK_TARGET_DATA_ID,
@@ -3978,8 +3978,9 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_FOX_ID => {
-                let interested = fox_is_interested(data_values);
-                let crouching = fox_is_crouching(data_values);
+                let flags = fox_flags(entity_type_id, data_values);
+                let interested = flags & FOX_FLAG_INTERESTED != 0;
+                let crouching = flags & FOX_FLAG_CROUCHING != 0;
                 if let Some(fox) = self.fox.as_mut() {
                     fox.set_flags(interested, crouching);
                 } else if interested || crouching {
@@ -6223,9 +6224,10 @@ fn equine_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
     )
 }
 
-/// Vanilla `Fox.isInterested()` = `getFlag(FLAG_INTERESTED)` = `(flags & 8) != 0`.
-fn fox_is_interested(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, FOX_FLAGS_DATA_ID, FOX_DEFAULT_FLAGS) & FOX_FLAG_INTERESTED != 0
+fn fox_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> i8 {
+    vanilla_entity_metadata_fox_flags_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_byte(data_values, data_id, default))
+        .unwrap_or(0)
 }
 
 /// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`.
@@ -6249,11 +6251,6 @@ pub(crate) fn cat_relax_state_one(data_values: &[EntityDataValue]) -> bool {
         CAT_RELAX_STATE_ONE_DATA_ID,
         CAT_DEFAULT_RELAX_STATE_ONE,
     )
-}
-
-/// Vanilla `Fox.isCrouching()` = `getFlag(FLAG_CROUCHING)` = `(flags & 4) != 0`.
-fn fox_is_crouching(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, FOX_FLAGS_DATA_ID, FOX_DEFAULT_FLAGS) & FOX_FLAG_CROUCHING != 0
 }
 
 /// Vanilla `Creeper.tick`: the fuse advances by `getSwellDir()`, but an ignited

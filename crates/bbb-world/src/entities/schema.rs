@@ -499,6 +499,26 @@ pub(crate) fn vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Fox flags accessor and its typed default.
+pub(crate) fn vanilla_entity_metadata_fox_flags_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i8)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.fox.Fox",
+            "BYTE",
+            Some(VanillaEntityMetadataDefault::Byte(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated WitherBoss invulnerability-ticks accessor and its typed default.
 ///
 /// The accessor owner supplies both the Wither presentation membership and its wire index, so
@@ -924,11 +944,12 @@ mod tests {
         VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MULE_ID,
         VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
         VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
         VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
@@ -1985,6 +2006,24 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_bee_flags_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_fox_flags_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_fox_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_FOX_ID),
+            Some((19, 0))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_fox_flags_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_fox_flags_accessor_for_entity_type(-1),
             None
         );
     }

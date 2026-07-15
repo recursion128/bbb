@@ -1117,14 +1117,6 @@ pub(crate) fn vanilla_animal_entity_type(entity_type_id: i32) -> bool {
     vanilla_entity_metadata_type_is_animal(entity_type_id)
 }
 
-/// Whether the entity is rendered with the vanilla `FoxModel`. Its `setupAnim` reads the
-/// fox's own `DATA_FLAGS_ID` (19) crouch/sleep/sit/pounce/faceplant bits and the two eased
-/// `interestedAngle`/`crouchAmount` accumulators, so those projections are gated to this one
-/// type — only the fox defines that flags byte.
-pub(crate) fn vanilla_is_fox(entity_type_id: i32) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_FOX_ID
-}
-
 /// Whether the entity renders through vanilla `CatRenderer` rather than `OcelotRenderer`. Only cats
 /// project `TamableAnimal.isInSittingPose()` into `FelineRenderState.isSitting`.
 pub(crate) fn vanilla_is_cat(entity_type_id: i32) -> bool {

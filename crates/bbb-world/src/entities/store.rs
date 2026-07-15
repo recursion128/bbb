@@ -25,6 +25,7 @@ use super::schema::{
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
+    vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_minecart_default_display_offset,
@@ -32,7 +33,6 @@ use super::schema::{
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
-    VANILLA_FOX_DEFAULT_FLAGS as FOX_DEFAULT_FLAGS, VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_FACEPLANTED as FOX_FLAG_FACEPLANTED,
     VANILLA_FOX_FLAG_POUNCING as FOX_FLAG_POUNCING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
@@ -89,8 +89,8 @@ use crate::entities::animations::{
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat, vanilla_is_fox,
-    vanilla_is_vex, vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat, vanilla_is_vex,
+    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale, ENTITY_DATA_POSE_ID,
 };
@@ -1693,13 +1693,12 @@ impl EntityStore {
         // defines that flags byte, so the five bool projections are gated to it and default off. The
         // interest bit (8) is read by the animation layer instead, to drive the `headRollAngle`
         // accumulator below.
-        let is_fox = vanilla_is_fox(identity.entity_type_id);
-        let fox_flags = if is_fox {
-            self.metadata_byte(id, FOX_FLAGS_DATA_ID, FOX_DEFAULT_FLAGS)
-                .unwrap_or(FOX_DEFAULT_FLAGS)
-        } else {
-            0
-        };
+        let fox_flags =
+            vanilla_entity_metadata_fox_flags_accessor_for_entity_type(identity.entity_type_id)
+                .map(|(data_id, default)| {
+                    self.metadata_byte(id, data_id, default).unwrap_or(default)
+                })
+                .unwrap_or(0);
         let fox_is_crouching = fox_flags & FOX_FLAG_CROUCHING != 0;
         let fox_is_sleeping = fox_flags & FOX_FLAG_SLEEPING != 0;
         let fox_is_sitting = fox_flags & FOX_FLAG_SITTING != 0;
