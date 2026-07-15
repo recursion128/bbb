@@ -984,8 +984,12 @@ def render_particle_types(entries: list[ParticleTypeEntry]) -> str:
         "    pub override_limiter: bool,",
         "}",
         "",
-        "pub const VANILLA_PARTICLE_TYPES: &[ParticleTypeCatalogEntry] = &[",
     ]
+    for type_id, entry in enumerate(entries):
+        lines.append(
+            f"pub const VANILLA_PARTICLE_TYPE_{entry.constant_name}_ID: i32 = {type_id};"
+        )
+    lines.extend(("", "pub const VANILLA_PARTICLE_TYPES: &[ParticleTypeCatalogEntry] = &["))
     for type_id, entry in enumerate(entries):
         lines.extend(
             (
@@ -1064,6 +1068,9 @@ def render_particle_types(entries: list[ParticleTypeEntry]) -> str:
             "        assert_eq!(vanilla_particle_type_id_for_resource_id(\"minecraft:missing\"), None);",
             "        assert_eq!(vanilla_particle_type(-1), None);",
             "        assert_eq!(vanilla_particle_type(117), None);",
+            "        assert_eq!(VANILLA_PARTICLE_TYPE_ANGRY_VILLAGER_ID, 0);",
+            "        assert_eq!(VANILLA_PARTICLE_TYPE_VIBRATION_ID, 48);",
+            "        assert_eq!(VANILLA_PARTICLE_TYPE_FIREFLY_ID, 116);",
             "    }",
             "",
             "    #[test]",
@@ -1077,12 +1084,22 @@ def render_particle_types(entries: list[ParticleTypeEntry]) -> str:
             "                if display.ends_with(\"/particle_types.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
             "                let production = source.split(\"#[cfg(test)]\").next().unwrap_or(&source);",
-            "                if production.contains(\"struct ParticleTypeInfo\") || production.contains(\"fn vanilla_particle_type(\") || production.contains(\"fn particle_type_id(\") { violations.push(display.to_string()); }",
+            "                if production.contains(\"struct ParticleTypeInfo\") || production.contains(\"fn vanilla_particle_type(\") || production.contains(\"fn particle_type_id(\") || production.contains(\"_PARTICLE_TYPE_ID\") { violations.push(display.to_string()); }",
             "            }",
             "        }",
             "        let mut violations = Vec::new();",
             "        visit(Path::new(env!(\"CARGO_MANIFEST_DIR\")).parent().unwrap(), &mut violations);",
             "        assert!(violations.is_empty(), \"parallel particle catalog lookup bridges: {violations:?}\");",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_particle_consumers_do_not_restore_resource_to_id_declarations() {",
+            "        let ids = include_str!(\"../../bbb-native/src/particle_runtime/ids.rs\");",
+            "        assert!(!ids.contains(\"macro_rules! particle_type_ids\"));",
+            "        assert!(!ids.contains(\"expect_registry_len\"));",
+            "        assert!(!ids.contains(\"minecraft:angry_villager\"));",
+            "        let runtime = include_str!(\"../../bbb-native/src/particle_runtime.rs\");",
+            "        assert!(runtime.contains(\"particle_types::*\"));",
             "    }",
             "}",
             "",

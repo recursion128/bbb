@@ -421,7 +421,7 @@ fn totem_entity_event_emits_tracking_emitter_particles() {
     let state = particles.tracking_emitter_states[0];
     assert_eq!(
         state.particle_type_id,
-        crate::particle_runtime::TOTEM_OF_UNDYING_PARTICLE_TYPE_ID
+        bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_TOTEM_OF_UNDYING_ID
     );
     assert_eq!(state.position, [1.0, 64.0, -2.0]);
     assert_close(state.width, 0.6);
@@ -1541,11 +1541,11 @@ fn entity_animation_emits_crit_tracking_emitter_particles() {
     assert_eq!(particles.tracking_emitter_states.len(), 2);
     assert_eq!(
         particles.tracking_emitter_states[0].particle_type_id,
-        crate::particle_runtime::CRIT_PARTICLE_TYPE_ID
+        bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_CRIT_ID
     );
     assert_eq!(
         particles.tracking_emitter_states[1].particle_type_id,
-        crate::particle_runtime::ENCHANTED_HIT_PARTICLE_TYPE_ID
+        bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_ENCHANTED_HIT_ID
     );
     for state in &particles.tracking_emitter_states {
         assert_eq!(state.position, [1.0, 64.0, -2.0]);

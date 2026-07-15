@@ -7,7 +7,7 @@ impl ParticleCommandResolver {
         context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(COMPOSTER_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_COMPOSTER_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -56,7 +56,7 @@ impl ParticleCommandResolver {
         if !destroy_block_effect_accepts_block_state(block_state_id) {
             return ParticleSpawnBatch::default();
         }
-        let template = match self.simple_particle_template(BLOCK_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_BLOCK_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -157,7 +157,7 @@ impl ParticleCommandResolver {
         context: LevelEventParticleContext,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(DUST_PILLAR_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -248,9 +248,11 @@ impl ParticleCommandResolver {
         context: LevelEventParticleContext,
     ) -> ParticleSpawnBatch {
         let particle_type_id = match context.dripstone_drip_particle {
-            Some(LevelEventDripstoneDripParticle::Lava) => DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
+            Some(LevelEventDripstoneDripParticle::Lava) => {
+                VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_LAVA_ID
+            }
             Some(LevelEventDripstoneDripParticle::Water) => {
-                DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID
+                VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_WATER_ID
             }
             None => return ParticleSpawnBatch::default(),
         };
@@ -276,7 +278,7 @@ impl ParticleCommandResolver {
             LevelEventGrowthParticleMode::InBlock { spread_height } => self
                 .particle_in_block_batch_at(
                     growth.pos,
-                    HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
                     event.data,
                     spread_height,
                     random,
@@ -306,7 +308,7 @@ impl ParticleCommandResolver {
             );
         }
 
-        let template = match self.simple_particle_template(SCULK_CHARGE_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_SCULK_CHARGE_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -371,10 +373,11 @@ impl ParticleCommandResolver {
         is_full_block: bool,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(SCULK_CHARGE_POP_PARTICLE_TYPE_ID) {
-            Ok(template) => template,
-            Err(batch) => return batch,
-        };
+        let template =
+            match self.simple_particle_template(VANILLA_PARTICLE_TYPE_SCULK_CHARGE_POP_ID) {
+                Ok(template) => template,
+                Err(batch) => return batch,
+            };
         let mut batch = ParticleSpawnBatch {
             missing_sprite_count: template.missing_sprite_count,
             ..ParticleSpawnBatch::default()
@@ -454,7 +457,7 @@ impl ParticleCommandResolver {
     }
 
     pub(super) fn sculk_shriek_particle_batch(&self, event: &LevelEvent) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(SHRIEK_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_SHRIEK_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -483,7 +486,7 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(DRAGON_BREATH_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -539,9 +542,9 @@ impl ParticleCommandResolver {
         );
 
         let particle_type_id = if event.event_type == INSTANT_POTION_BREAK_LEVEL_EVENT {
-            INSTANT_EFFECT_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID
         } else {
-            EFFECT_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_EFFECT_ID
         };
         let Some(template) = self
             .append_template_result(&mut batch, self.simple_particle_template(particle_type_id))
@@ -618,7 +621,7 @@ impl ParticleCommandResolver {
         );
         let Some(template) = self.append_template_result(
             &mut batch,
-            self.simple_particle_template(PORTAL_PARTICLE_TYPE_ID),
+            self.simple_particle_template(VANILLA_PARTICLE_TYPE_PORTAL_ID),
         ) else {
             return batch;
         };
@@ -665,9 +668,10 @@ impl ParticleCommandResolver {
         position: Vec3d,
         random: &mut LevelEventSoundRandomState,
     ) {
-        let Some(template) = self
-            .append_template_result(batch, self.simple_particle_template(ITEM_PARTICLE_TYPE_ID))
-        else {
+        let Some(template) = self.append_template_result(
+            batch,
+            self.simple_particle_template(VANILLA_PARTICLE_TYPE_ITEM_ID),
+        ) else {
             return;
         };
         let raw_options_len = item_particle_raw_options_len(item_id, 1);
@@ -707,6 +711,6 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
-        self.particle_in_block_batch(event, POOF_PARTICLE_TYPE_ID, 10, 1.0, random)
+        self.particle_in_block_batch(event, VANILLA_PARTICLE_TYPE_POOF_ID, 10, 1.0, random)
     }
 }

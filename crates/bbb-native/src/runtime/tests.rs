@@ -475,7 +475,7 @@ fn primed_tnt_smoke_particle_batch_matches_vanilla_client_tick_spawn() {
 
     assert_eq!(batch.commands.len(), 1);
     let command = &batch.commands[0];
-    assert_eq!(command.particle_type_id, SMOKE_PARTICLE_TYPE_ID);
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_SMOKE_ID);
     assert_eq!(command.particle_id, "minecraft:smoke");
     assert_eq!(command.position, [3.0, 64.5, -5.0]);
     assert_eq!(command.velocity, [0.0, 0.0, 0.0]);
@@ -533,7 +533,10 @@ fn entity_client_tick_particle_batch_maps_ravager_and_fangs_particles() {
 
     assert_eq!(batch.commands.len(), 2);
     let stun = &batch.commands[0];
-    assert_eq!(stun.particle_type_id, ENTITY_EFFECT_PARTICLE_TYPE_ID);
+    assert_eq!(
+        stun.particle_type_id,
+        VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID
+    );
     assert_eq!(stun.particle_id, "minecraft:entity_effect");
     assert_eq!(stun.position, [1.25, 65.9, -0.5]);
     assert_eq!(stun.velocity, [0.0, 0.0, 0.0]);
@@ -543,7 +546,7 @@ fn entity_client_tick_particle_batch_maps_ravager_and_fangs_particles() {
     );
 
     let crit = &batch.commands[1];
-    assert_eq!(crit.particle_type_id, CRIT_PARTICLE_TYPE_ID);
+    assert_eq!(crit.particle_type_id, VANILLA_PARTICLE_TYPE_CRIT_ID);
     assert_eq!(crit.particle_id, "minecraft:crit");
     assert_eq!(crit.position, [0.9, 65.4, -1.8]);
     assert_eq!(crit.velocity, [-0.1, 0.45, 0.2]);

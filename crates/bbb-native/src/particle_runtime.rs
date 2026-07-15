@@ -15,10 +15,7 @@ use bbb_protocol::packets::{
     FireworkExplosionShapeSummary, FireworkExplosionSummary, ItemStackSummary, LevelEvent,
     LevelParticles, Vec3d,
 };
-use bbb_protocol::{
-    codec::Decoder,
-    particle_types::{vanilla_particle_type, ParticleTypeCatalogEntry},
-};
+use bbb_protocol::{codec::Decoder, particle_types::*};
 use bbb_renderer::{
     ParticleBlockOptionState, ParticleChildSpawnTemplate, ParticleEntityTargetSource,
     ParticleItemOptionState, ParticleItemPickupProjectileKind, ParticleItemPickupProjectileModel,
@@ -44,7 +41,7 @@ use crate::terrain_runtime::{
 };
 
 const PARTICLE_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
-const ITEM_PICKUP_PARTICLE_TYPE_ID: i32 = -1;
+const NATIVE_ITEM_PICKUP_PARTICLE_ID: i32 = -1;
 const ITEM_PICKUP_PARTICLE_ID: &str = "minecraft:item_pickup";
 const FIREWORK_ROCKET_BLAST_SOUND_EVENT_ID: &str = "minecraft:entity.firework_rocket.blast";
 const FIREWORK_ROCKET_BLAST_FAR_SOUND_EVENT_ID: &str = "minecraft:entity.firework_rocket.blast_far";
@@ -542,7 +539,7 @@ fn block_pos_containing(position: Vec3d) -> WorldBlockPos {
 }
 
 fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: &[u8]) -> u32 {
-    if particle_type_id != SHRIEK_PARTICLE_TYPE_ID {
+    if particle_type_id != VANILLA_PARTICLE_TYPE_SHRIEK_ID {
         return 0;
     }
     let mut decoder = Decoder::new(raw_options);
@@ -555,18 +552,18 @@ fn initial_delay_ticks_for_particle_options(particle_type_id: i32, raw_options: 
 fn definitionless_particle_type(particle_type_id: i32) -> bool {
     matches!(
         particle_type_id,
-        BLOCK_PARTICLE_TYPE_ID
-            | BLOCK_MARKER_PARTICLE_TYPE_ID
-            | ITEM_PARTICLE_TYPE_ID
-            | ITEM_SLIME_PARTICLE_TYPE_ID
-            | ITEM_COBWEB_PARTICLE_TYPE_ID
-            | ITEM_SNOWBALL_PARTICLE_TYPE_ID
-            | ELDER_GUARDIAN_PARTICLE_TYPE_ID
-            | EXPLOSION_EMITTER_PARTICLE_TYPE_ID
-            | GUST_EMITTER_LARGE_PARTICLE_TYPE_ID
-            | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID
-            | DUST_PILLAR_PARTICLE_TYPE_ID
-            | BLOCK_CRUMBLE_PARTICLE_TYPE_ID
+        VANILLA_PARTICLE_TYPE_BLOCK_ID
+            | VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID
+            | VANILLA_PARTICLE_TYPE_ITEM_ID
+            | VANILLA_PARTICLE_TYPE_ITEM_SLIME_ID
+            | VANILLA_PARTICLE_TYPE_ITEM_COBWEB_ID
+            | VANILLA_PARTICLE_TYPE_ITEM_SNOWBALL_ID
+            | VANILLA_PARTICLE_TYPE_ELDER_GUARDIAN_ID
+            | VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID
+            | VANILLA_PARTICLE_TYPE_GUST_EMITTER_LARGE_ID
+            | VANILLA_PARTICLE_TYPE_GUST_EMITTER_SMALL_ID
+            | VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID
+            | VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID
     )
 }
 
@@ -678,11 +675,11 @@ fn particle_option_render_state(
 ) -> ParticleOptionRenderState {
     let mut decoder = Decoder::new(raw_options);
     match particle_type_id {
-        BLOCK_PARTICLE_TYPE_ID
-        | BLOCK_MARKER_PARTICLE_TYPE_ID
-        | FALLING_DUST_PARTICLE_TYPE_ID
-        | DUST_PILLAR_PARTICLE_TYPE_ID
-        | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_BLOCK_ID
+        | VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID
+        | VANILLA_PARTICLE_TYPE_FALLING_DUST_ID
+        | VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID
+        | VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID => {
             let Ok(block_state_id) = decoder.read_var_i32() else {
                 return ParticleOptionRenderState::default();
             };
@@ -690,7 +687,7 @@ fn particle_option_render_state(
                 return ParticleOptionRenderState::default();
             }
             ParticleOptionRenderState {
-                color: if particle_type_id == FALLING_DUST_PARTICLE_TYPE_ID {
+                color: if particle_type_id == VANILLA_PARTICLE_TYPE_FALLING_DUST_ID {
                     falling_dust_color_for_block_state_id(block_state_id)
                 } else {
                     None
@@ -699,7 +696,7 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        ITEM_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_ITEM_ID => {
             let Ok(item_id) = decoder.read_var_i32() else {
                 return ParticleOptionRenderState::default();
             };
@@ -732,7 +729,7 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        EFFECT_PARTICLE_TYPE_ID | INSTANT_EFFECT_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_EFFECT_ID | VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID => {
             let Ok(color) = decoder.read_i32() else {
                 return ParticleOptionRenderState::default();
             };
@@ -748,7 +745,7 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        DUST_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_DUST_ID => {
             let Ok(color) = decoder.read_i32() else {
                 return ParticleOptionRenderState::default();
             };
@@ -764,7 +761,7 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_DUST_COLOR_TRANSITION_ID => {
             let Ok(from_color) = decoder.read_i32() else {
                 return ParticleOptionRenderState::default();
             };
@@ -784,9 +781,9 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        ENTITY_EFFECT_PARTICLE_TYPE_ID
-        | FLASH_PARTICLE_TYPE_ID
-        | TINTED_LEAVES_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID
+        | VANILLA_PARTICLE_TYPE_FLASH_ID
+        | VANILLA_PARTICLE_TYPE_TINTED_LEAVES_ID => {
             let Ok(color) = decoder.read_i32() else {
                 return ParticleOptionRenderState::default();
             };
@@ -798,7 +795,7 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        SCULK_CHARGE_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_SCULK_CHARGE_ID => {
             let Ok(roll) = decoder.read_f32() else {
                 return ParticleOptionRenderState::default();
             };
@@ -810,7 +807,7 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        VIBRATION_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_VIBRATION_ID => {
             let Ok(source) = decode_vibration_position_source(&mut decoder) else {
                 return ParticleOptionRenderState::default();
             };
@@ -833,7 +830,7 @@ fn particle_option_render_state(
                 ..ParticleOptionRenderState::default()
             }
         }
-        TRAIL_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_TRAIL_ID => {
             let Ok(target) = decode_option_vec3d(&mut decoder) else {
                 return ParticleOptionRenderState::default();
             };
@@ -867,10 +864,12 @@ fn particle_provider_accepts_spawn(
         return true;
     };
     match particle_type_id {
-        FALLING_DUST_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_FALLING_DUST_ID => {
             falling_dust_provider_accepts_block_state(block.block_state_id)
         }
-        BLOCK_PARTICLE_TYPE_ID | DUST_PILLAR_PARTICLE_TYPE_ID | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => {
+        VANILLA_PARTICLE_TYPE_BLOCK_ID
+        | VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID
+        | VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID => {
             terrain_particle_provider_accepts_block_state(block.block_state_id)
         }
         _ => true,
@@ -881,7 +880,7 @@ pub(crate) fn vibration_entity_position_source_from_options(
     particle_type_id: i32,
     raw_options: &[u8],
 ) -> Option<VibrationEntityPositionSource> {
-    if particle_type_id != VIBRATION_PARTICLE_TYPE_ID {
+    if particle_type_id != VANILLA_PARTICLE_TYPE_VIBRATION_ID {
         return None;
     }
     let mut decoder = Decoder::new(raw_options);
@@ -1382,7 +1381,7 @@ mod resolver_trial_vault;
 
 use atlas::*;
 use block_map_color::*;
-pub(crate) use ids::*;
+use ids::*;
 
 #[cfg(test)]
 mod tests;

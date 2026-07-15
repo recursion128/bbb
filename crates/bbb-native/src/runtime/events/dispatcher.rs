@@ -6,6 +6,10 @@ use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, LevelParticles, ParticlePayload, Vec3d as ProtocolVec3d,
 };
+use bbb_protocol::particle_types::{
+    VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ELDER_GUARDIAN_ID,
+    VANILLA_PARTICLE_TYPE_ENCHANTED_HIT_ID, VANILLA_PARTICLE_TYPE_TOTEM_OF_UNDYING_ID,
+};
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
     BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityTamingParticleState,
@@ -25,9 +29,7 @@ use crate::particle_runtime::{
     vibration_entity_position_source_from_options, LevelEventDripstoneDripParticle,
     LevelEventGrowthParticleContext, LevelEventGrowthParticleMode, LevelEventGrowthParticleSupport,
     LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
-    ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState, CRIT_PARTICLE_TYPE_ID,
-    ELDER_GUARDIAN_PARTICLE_TYPE_ID, ENCHANTED_HIT_PARTICLE_TYPE_ID,
-    TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+    ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState,
 };
 
 use super::control_state::apply_control_projection_event;
@@ -731,7 +733,7 @@ fn emit_elder_guardian_effect_particles(
             max_speed: 1.0,
             count: 0,
             particle: ParticlePayload {
-                particle_type_id: ELDER_GUARDIAN_PARTICLE_TYPE_ID,
+                particle_type_id: VANILLA_PARTICLE_TYPE_ELDER_GUARDIAN_ID,
                 raw_options: Vec::new(),
             },
         };
@@ -769,9 +771,11 @@ fn emit_tracking_emitter_particles(
         return;
     };
     let particle_type_id = match kind {
-        EntityTrackingEmitterParticleKind::Crit => CRIT_PARTICLE_TYPE_ID,
-        EntityTrackingEmitterParticleKind::EnchantedHit => ENCHANTED_HIT_PARTICLE_TYPE_ID,
-        EntityTrackingEmitterParticleKind::TotemOfUndying => TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+        EntityTrackingEmitterParticleKind::Crit => VANILLA_PARTICLE_TYPE_CRIT_ID,
+        EntityTrackingEmitterParticleKind::EnchantedHit => VANILLA_PARTICLE_TYPE_ENCHANTED_HIT_ID,
+        EntityTrackingEmitterParticleKind::TotemOfUndying => {
+            VANILLA_PARTICLE_TYPE_TOTEM_OF_UNDYING_ID
+        }
     };
     let state = TrackingEmitterParticleState {
         particle_type_id,

@@ -285,7 +285,7 @@ impl ParticleCommandResolver {
                         Vec3d::default(),
                     ));
                 }
-                self.simple_particle_batch(LARGE_SMOKE_PARTICLE_TYPE_ID, spawns)
+                self.simple_particle_batch(VANILLA_PARTICLE_TYPE_LARGE_SMOKE_ID, spawns)
             }
             REDSTONE_TORCH_BURNOUT_LEVEL_EVENT => {
                 let mut spawns = Vec::with_capacity(5);
@@ -299,7 +299,7 @@ impl ParticleCommandResolver {
                         Vec3d::default(),
                     ));
                 }
-                self.simple_particle_batch(SMOKE_PARTICLE_TYPE_ID, spawns)
+                self.simple_particle_batch(VANILLA_PARTICLE_TYPE_SMOKE_ID, spawns)
             }
             END_PORTAL_FRAME_FILL_LEVEL_EVENT => {
                 let mut spawns = Vec::with_capacity(16);
@@ -313,20 +313,20 @@ impl ParticleCommandResolver {
                         Vec3d::default(),
                     ));
                 }
-                self.simple_particle_batch(SMOKE_PARTICLE_TYPE_ID, spawns)
+                self.simple_particle_batch(VANILLA_PARTICLE_TYPE_SMOKE_ID, spawns)
             }
             DRIPSTONE_DRIP_LEVEL_EVENT => self.dripstone_drip_particle_batch(event, context),
             PLANT_GROWTH_LEVEL_EVENT => self.growth_particle_batch(event, context, random),
             DISPENSER_SMOKE_LEVEL_EVENT => {
-                self.shoot_particles(event, SMOKE_PARTICLE_TYPE_ID, random)
+                self.shoot_particles(event, VANILLA_PARTICLE_TYPE_SMOKE_ID, random)
             }
             DESTROY_BLOCK_PARTICLES_LEVEL_EVENT | BRUSH_BLOCK_COMPLETE_LEVEL_EVENT => {
                 self.destroy_block_particle_batch(event, context)
             }
             BLAZE_SMOKE_LEVEL_EVENT => {
                 let mut batch = ParticleSpawnBatch::default();
-                let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
-                let flame = self.simple_particle_template(FLAME_PARTICLE_TYPE_ID);
+                let smoke = self.simple_particle_template(VANILLA_PARTICLE_TYPE_SMOKE_ID);
+                let flame = self.simple_particle_template(VANILLA_PARTICLE_TYPE_FLAME_ID);
                 let smoke = self.append_template_result(&mut batch, smoke);
                 let flame = self.append_template_result(&mut batch, flame);
 
@@ -361,7 +361,7 @@ impl ParticleCommandResolver {
             DRAGON_FIREBALL_EXPLODE_LEVEL_EVENT => self.dragon_breath_particle_batch(event, random),
             ENDER_EYE_BREAK_LEVEL_EVENT => self.ender_eye_break_particle_batch(event, random),
             EXPLOSION_LEVEL_EVENT => self.simple_particle_batch(
-                EXPLOSION_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
                 vec![(
                     Vec3d {
                         x: f64::from(event.pos.x) + 0.5,
@@ -372,7 +372,7 @@ impl ParticleCommandResolver {
                 )],
             ),
             END_GATEWAY_SPAWN_LEVEL_EVENT => self.simple_particle_batch_with_visibility(
-                EXPLOSION_EMITTER_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID,
                 vec![(
                     Vec3d {
                         x: f64::from(event.pos.x) + 0.5,
@@ -386,7 +386,7 @@ impl ParticleCommandResolver {
             ELECTRIC_SPARK_LEVEL_EVENT => match event.data {
                 0..=2 => self.axis_particle_batch(
                     event,
-                    ELECTRIC_SPARK_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_ELECTRIC_SPARK_ID,
                     event.data,
                     ELECTRIC_SPARK_AXIS_RADIUS,
                     ELECTRIC_SPARK_AXIS_MIN,
@@ -395,7 +395,7 @@ impl ParticleCommandResolver {
                 ),
                 _ => self.block_face_particle_batch(
                     event,
-                    ELECTRIC_SPARK_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_ELECTRIC_SPARK_ID,
                     BLOCK_FACE_PARTICLE_MIN,
                     BLOCK_FACE_PARTICLE_MAX,
                     random,
@@ -403,21 +403,21 @@ impl ParticleCommandResolver {
             },
             WAX_ON_LEVEL_EVENT => self.block_face_particle_batch(
                 event,
-                WAX_ON_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_WAX_ON_ID,
                 BLOCK_FACE_PARTICLE_MIN,
                 BLOCK_FACE_PARTICLE_MAX,
                 random,
             ),
             WAX_OFF_LEVEL_EVENT => self.block_face_particle_batch(
                 event,
-                WAX_OFF_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_WAX_OFF_ID,
                 BLOCK_FACE_PARTICLE_MIN,
                 BLOCK_FACE_PARTICLE_MAX,
                 random,
             ),
             SCRAPE_LEVEL_EVENT => self.block_face_particle_batch(
                 event,
-                SCRAPE_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_SCRAPE_ID,
                 BLOCK_FACE_PARTICLE_MIN,
                 BLOCK_FACE_PARTICLE_MAX,
                 random,
@@ -425,7 +425,7 @@ impl ParticleCommandResolver {
             SCULK_CHARGE_LEVEL_EVENT => self.sculk_charge_particle_batch(event, context, random),
             EGG_CRACK_LEVEL_EVENT => self.block_face_particle_batch(
                 event,
-                EGG_CRACK_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_EGG_CRACK_ID,
                 BLOCK_FACE_PARTICLE_MIN,
                 EGG_CRACK_PARTICLE_MAX,
                 random,
@@ -438,7 +438,7 @@ impl ParticleCommandResolver {
             }
             TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT => self.trial_detect_player_particle_batch(
                 event,
-                TRIAL_SPAWNER_DETECTED_PLAYER_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_TRIAL_SPAWNER_DETECTED_PLAYER_ID,
                 event.data,
                 random,
             ),
@@ -453,7 +453,7 @@ impl ParticleCommandResolver {
             TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT => self
                 .trial_detect_player_particle_batch(
                     event,
-                    TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_ID,
                     event.data,
                     random,
                 ),
@@ -473,12 +473,12 @@ impl ParticleCommandResolver {
                         Vec3d::default(),
                     ));
                 }
-                self.simple_particle_batch(CLOUD_PARTICLE_TYPE_ID, spawns)
+                self.simple_particle_batch(VANILLA_PARTICLE_TYPE_CLOUD_ID, spawns)
             }
             BEE_GROWTH_PARTICLES_LEVEL_EVENT | TURTLE_EGG_PLACEMENT_PARTICLES_LEVEL_EVENT => self
                 .particle_in_block_batch(
                     event,
-                    HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
                     event.data,
                     context.in_block_particle_spread_height.unwrap_or(1.0),
                     random,
@@ -487,7 +487,7 @@ impl ParticleCommandResolver {
                 self.smash_attack_particle_batch(event, context, random)
             }
             DISPENSER_WHITE_SMOKE_LEVEL_EVENT => {
-                self.shoot_particles(event, WHITE_SMOKE_PARTICLE_TYPE_ID, random)
+                self.shoot_particles(event, VANILLA_PARTICLE_TYPE_WHITE_SMOKE_ID, random)
             }
             _ => ParticleSpawnBatch::default(),
         }
@@ -590,7 +590,8 @@ impl ParticleCommandResolver {
         if count <= 0 {
             return ParticleSpawnBatch::default();
         }
-        let template = match self.simple_particle_template(HAPPY_VILLAGER_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID)
+        {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -896,10 +897,10 @@ impl ParticleCommandResolver {
     ) -> Vec<String> {
         if matches!(
             particle_type_id,
-            BLOCK_PARTICLE_TYPE_ID
-                | BLOCK_MARKER_PARTICLE_TYPE_ID
-                | DUST_PILLAR_PARTICLE_TYPE_ID
-                | BLOCK_CRUMBLE_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_BLOCK_ID
+                | VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID
+                | VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID
+                | VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID
         ) {
             if let Some(sprite_id) = option_state
                 .block
@@ -908,7 +909,7 @@ impl ParticleCommandResolver {
                 return vec![sprite_id.clone()];
             }
         }
-        if particle_type_id == ITEM_PARTICLE_TYPE_ID {
+        if particle_type_id == VANILLA_PARTICLE_TYPE_ITEM_ID {
             if let (Some(items), Some(stack)) = (item_runtime, option_state.item_stack.as_ref()) {
                 if let Some(sprite_ids) = items.item_particle_sprite_ids_for_stack(stack) {
                     if !sprite_ids.is_empty() {
@@ -939,15 +940,15 @@ impl ParticleCommandResolver {
         let block_pos = block_pos_containing(position);
         let biome_id = biome_sampler.and_then(|sampler| sampler.biome_id_at(block_pos));
         match particle_type_id {
-            BLOCK_PARTICLE_TYPE_ID
-            | DUST_PILLAR_PARTICLE_TYPE_ID
-            | BLOCK_CRUMBLE_PARTICLE_TYPE_ID => self
+            VANILLA_PARTICLE_TYPE_BLOCK_ID
+            | VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID
+            | VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID => self
                 .terrain_particle_tint_color_for_block_position(
                     block_state_id,
                     block_pos,
                     biome_id,
                 ),
-            FALLING_DUST_PARTICLE_TYPE_ID => {
+            VANILLA_PARTICLE_TYPE_FALLING_DUST_ID => {
                 let render_position = BlockRenderPosition {
                     x: block_pos.x,
                     y: block_pos.y,
@@ -1011,48 +1012,59 @@ impl ParticleCommandResolver {
         particle_type: &'static ParticleTypeCatalogEntry,
     ) -> Vec<ParticleChildSpawnTemplate> {
         let child_particle_type_ids = match particle_type.id {
-            EXPLOSION_EMITTER_PARTICLE_TYPE_ID => vec![EXPLOSION_PARTICLE_TYPE_ID],
-            LAVA_PARTICLE_TYPE_ID => vec![SMOKE_PARTICLE_TYPE_ID],
-            DRIPPING_LAVA_PARTICLE_TYPE_ID => {
-                vec![FALLING_LAVA_PARTICLE_TYPE_ID, LANDING_LAVA_PARTICLE_TYPE_ID]
-            }
-            FALLING_LAVA_PARTICLE_TYPE_ID => vec![LANDING_LAVA_PARTICLE_TYPE_ID],
-            DRIPPING_WATER_PARTICLE_TYPE_ID => {
-                vec![FALLING_WATER_PARTICLE_TYPE_ID, SPLASH_PARTICLE_TYPE_ID]
-            }
-            FALLING_WATER_PARTICLE_TYPE_ID => vec![SPLASH_PARTICLE_TYPE_ID],
-            DRIPPING_HONEY_PARTICLE_TYPE_ID => {
+            VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID => vec![VANILLA_PARTICLE_TYPE_EXPLOSION_ID],
+            VANILLA_PARTICLE_TYPE_LAVA_ID => vec![VANILLA_PARTICLE_TYPE_SMOKE_ID],
+            VANILLA_PARTICLE_TYPE_DRIPPING_LAVA_ID => {
                 vec![
-                    FALLING_HONEY_PARTICLE_TYPE_ID,
-                    LANDING_HONEY_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_FALLING_LAVA_ID,
+                    VANILLA_PARTICLE_TYPE_LANDING_LAVA_ID,
                 ]
             }
-            FALLING_HONEY_PARTICLE_TYPE_ID => vec![LANDING_HONEY_PARTICLE_TYPE_ID],
-            DRIPPING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID => {
+            VANILLA_PARTICLE_TYPE_FALLING_LAVA_ID => vec![VANILLA_PARTICLE_TYPE_LANDING_LAVA_ID],
+            VANILLA_PARTICLE_TYPE_DRIPPING_WATER_ID => {
                 vec![
-                    FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
-                    LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_FALLING_WATER_ID,
+                    VANILLA_PARTICLE_TYPE_SPLASH_ID,
                 ]
             }
-            FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID => {
-                vec![LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID]
-            }
-            DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID => {
+            VANILLA_PARTICLE_TYPE_FALLING_WATER_ID => vec![VANILLA_PARTICLE_TYPE_SPLASH_ID],
+            VANILLA_PARTICLE_TYPE_DRIPPING_HONEY_ID => {
                 vec![
-                    FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
-                    LANDING_LAVA_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_FALLING_HONEY_ID,
+                    VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID,
                 ]
             }
-            FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID => vec![LANDING_LAVA_PARTICLE_TYPE_ID],
-            DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID => {
+            VANILLA_PARTICLE_TYPE_FALLING_HONEY_ID => vec![VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID],
+            VANILLA_PARTICLE_TYPE_DRIPPING_OBSIDIAN_TEAR_ID => {
                 vec![
-                    FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
-                    SPLASH_PARTICLE_TYPE_ID,
+                    VANILLA_PARTICLE_TYPE_FALLING_OBSIDIAN_TEAR_ID,
+                    VANILLA_PARTICLE_TYPE_LANDING_OBSIDIAN_TEAR_ID,
                 ]
             }
-            FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID => vec![SPLASH_PARTICLE_TYPE_ID],
-            GUST_EMITTER_LARGE_PARTICLE_TYPE_ID | GUST_EMITTER_SMALL_PARTICLE_TYPE_ID => {
-                vec![GUST_PARTICLE_TYPE_ID]
+            VANILLA_PARTICLE_TYPE_FALLING_OBSIDIAN_TEAR_ID => {
+                vec![VANILLA_PARTICLE_TYPE_LANDING_OBSIDIAN_TEAR_ID]
+            }
+            VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_LAVA_ID => {
+                vec![
+                    VANILLA_PARTICLE_TYPE_FALLING_DRIPSTONE_LAVA_ID,
+                    VANILLA_PARTICLE_TYPE_LANDING_LAVA_ID,
+                ]
+            }
+            VANILLA_PARTICLE_TYPE_FALLING_DRIPSTONE_LAVA_ID => {
+                vec![VANILLA_PARTICLE_TYPE_LANDING_LAVA_ID]
+            }
+            VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_WATER_ID => {
+                vec![
+                    VANILLA_PARTICLE_TYPE_FALLING_DRIPSTONE_WATER_ID,
+                    VANILLA_PARTICLE_TYPE_SPLASH_ID,
+                ]
+            }
+            VANILLA_PARTICLE_TYPE_FALLING_DRIPSTONE_WATER_ID => {
+                vec![VANILLA_PARTICLE_TYPE_SPLASH_ID]
+            }
+            VANILLA_PARTICLE_TYPE_GUST_EMITTER_LARGE_ID
+            | VANILLA_PARTICLE_TYPE_GUST_EMITTER_SMALL_ID => {
+                vec![VANILLA_PARTICLE_TYPE_GUST_ID]
             }
             _ => return Vec::new(),
         };

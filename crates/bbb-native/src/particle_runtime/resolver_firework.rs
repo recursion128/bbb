@@ -7,7 +7,7 @@ impl ParticleCommandResolver {
         camera_position: Option<[f64; 3]>,
     ) -> ParticleSpawnBatch {
         let count = self.random.next_i32(3) + 2;
-        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_POOF_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -50,8 +50,8 @@ impl ParticleCommandResolver {
         state: &FireworkRocketExplosionParticleState,
         camera_position: Option<[f64; 3]>,
     ) -> ParticleSpawnBatch {
-        let firework = self.simple_particle_template(FIREWORK_PARTICLE_TYPE_ID);
-        let flash = self.simple_particle_template(FLASH_PARTICLE_TYPE_ID);
+        let firework = self.simple_particle_template(VANILLA_PARTICLE_TYPE_FIREWORK_ID);
+        let flash = self.simple_particle_template(VANILLA_PARTICLE_TYPE_FLASH_ID);
         let mut batch = ParticleSpawnBatch::default();
         let firework = self.append_template_result(&mut batch, firework);
         let flash = self.append_template_result(&mut batch, flash);
@@ -104,7 +104,7 @@ impl ParticleCommandResolver {
         &mut self,
         state: FireworkRocketTrailParticleState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(FIREWORK_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_FIREWORK_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -129,10 +129,11 @@ impl ParticleCommandResolver {
         &mut self,
         state: OminousItemSpawnerParticleState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(OMINOUS_SPAWNING_PARTICLE_TYPE_ID) {
-            Ok(template) => template,
-            Err(batch) => return batch,
-        };
+        let template =
+            match self.simple_particle_template(VANILLA_PARTICLE_TYPE_OMINOUS_SPAWNING_ID) {
+                Ok(template) => template,
+                Err(batch) => return batch,
+            };
         let position = Vec3d {
             x: state.position.x,
             y: state.position.y,

@@ -384,7 +384,8 @@ Inventory:
 Owner: `bbb-renderer` + `bbb-native` + `bbb-pack`
 
 The fixed vanilla 26.1 particle type id/resource/override-limiter catalog is
-generated. Particle definition JSON and atlas sprites remain resource-pack-owned
+generated, including its named type-id constants; native consumers must not restore
+resource-to-id declaration macros or a second expected registry length. Particle definition JSON and atlas sprites remain resource-pack-owned
 runtime catalogs rather than fixed vanilla snapshots; the remaining items below
 are provider and presentation behavior.
 

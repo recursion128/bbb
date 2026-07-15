@@ -26,6 +26,10 @@ use bbb_protocol::{
         AdvancementFrameType, GameType, ItemCostSummary, ItemStackSummary,
         MapPostProcessingSummary, RemoteDebugSampleType, SlotDisplaySummary, Vec3d,
     },
+    particle_types::{
+        VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
+    },
     MC_VERSION,
 };
 use bbb_renderer::{
@@ -144,10 +148,7 @@ use crate::{
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
-    particle_runtime::{
-        ParticleEventSink, CRIT_PARTICLE_TYPE_ID, ENTITY_EFFECT_PARTICLE_TYPE_ID,
-        SMOKE_PARTICLE_TYPE_ID,
-    },
+    particle_runtime::ParticleEventSink,
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
         crafting_recipe_book_ghost_slots, crafting_recipe_book_tab_has_highlighted_recipe,
@@ -2982,7 +2983,7 @@ fn entity_client_tick_particle_batch(
         Vec::with_capacity(ravager_stun_particles.len() + evoker_fangs_crit_particles.len());
     commands.extend(ravager_stun_particles.into_iter().map(|state| {
         let mut command = direct_particle_spawn_command(
-            ENTITY_EFFECT_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
             "minecraft:entity_effect",
             [state.position.x, state.position.y, state.position.z],
             [0.0, 0.0, 0.0],
@@ -2992,7 +2993,7 @@ fn entity_client_tick_particle_batch(
     }));
     commands.extend(evoker_fangs_crit_particles.into_iter().map(|state| {
         direct_particle_spawn_command(
-            CRIT_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_CRIT_ID,
             "minecraft:crit",
             [state.position.x, state.position.y, state.position.z],
             [state.velocity.x, state.velocity.y, state.velocity.z],
@@ -3007,7 +3008,7 @@ fn entity_client_tick_particle_batch(
 
 fn primed_tnt_smoke_particle_command(state: PrimedTntSmokeParticleState) -> ParticleSpawnCommand {
     direct_particle_spawn_command(
-        SMOKE_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         [state.position.x, state.position.y + 0.5, state.position.z],
         [0.0, 0.0, 0.0],

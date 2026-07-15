@@ -48,7 +48,7 @@ impl ParticleCommandResolver {
         let target_y_offset = state.target_eye_height * 0.5;
         ParticleSpawnBatch {
             commands: vec![ParticleSpawnCommand {
-                particle_type_id: ITEM_PICKUP_PARTICLE_TYPE_ID,
+                particle_type_id: NATIVE_ITEM_PICKUP_PARTICLE_ID,
                 particle_id: ITEM_PICKUP_PARTICLE_ID.to_string(),
                 sprite_ids: Vec::new(),
                 position: [
@@ -107,7 +107,7 @@ impl ParticleCommandResolver {
         &mut self,
         state: RavagerRoarParticleState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_POOF_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -137,7 +137,7 @@ impl ParticleCommandResolver {
         &mut self,
         state: WitchMagicParticleState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(WITCH_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_WITCH_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -166,7 +166,7 @@ impl ParticleCommandResolver {
         &mut self,
         state: LivingEntityPoofParticleState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(POOF_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_POOF_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -199,7 +199,7 @@ impl ParticleCommandResolver {
         &mut self,
         state: LivingEntityDrownParticleState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(BUBBLE_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_BUBBLE_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -229,7 +229,7 @@ impl ParticleCommandResolver {
         &mut self,
         state: LivingEntityPortalParticleState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(PORTAL_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_PORTAL_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -265,7 +265,7 @@ impl ParticleCommandResolver {
         &mut self,
         state: ArrowEffectParticleState,
     ) -> ParticleSpawnBatch {
-        let template = match self.simple_particle_template(ENTITY_EFFECT_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -295,7 +295,7 @@ impl ParticleCommandResolver {
         state: AnimalLoveParticleState,
     ) -> ParticleSpawnBatch {
         self.entity_event_aabb_particle_batch(
-            HEART_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_HEART_ID,
             state.position,
             state.width,
             state.height,
@@ -310,7 +310,7 @@ impl ParticleCommandResolver {
         state: AllayDuplicationParticleState,
     ) -> ParticleSpawnBatch {
         self.entity_event_aabb_particle_batch(
-            HEART_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_HEART_ID,
             state.position,
             state.width,
             state.height,
@@ -325,9 +325,9 @@ impl ParticleCommandResolver {
         state: EntityTamingParticleState,
     ) -> ParticleSpawnBatch {
         let particle_type_id = if state.success {
-            HEART_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_HEART_ID
         } else {
-            SMOKE_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_SMOKE_ID
         };
         self.entity_event_aabb_particle_batch(
             particle_type_id,
@@ -345,10 +345,10 @@ impl ParticleCommandResolver {
         state: VillagerParticleState,
     ) -> ParticleSpawnBatch {
         let particle_type_id = match state.kind {
-            VillagerParticleKind::Heart => HEART_PARTICLE_TYPE_ID,
-            VillagerParticleKind::Angry => ANGRY_VILLAGER_PARTICLE_TYPE_ID,
-            VillagerParticleKind::Happy => HAPPY_VILLAGER_PARTICLE_TYPE_ID,
-            VillagerParticleKind::Splash => SPLASH_PARTICLE_TYPE_ID,
+            VillagerParticleKind::Heart => VANILLA_PARTICLE_TYPE_HEART_ID,
+            VillagerParticleKind::Angry => VANILLA_PARTICLE_TYPE_ANGRY_VILLAGER_ID,
+            VillagerParticleKind::Happy => VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
+            VillagerParticleKind::Splash => VANILLA_PARTICLE_TYPE_SPLASH_ID,
         };
         self.entity_event_aabb_particle_batch(
             particle_type_id,
@@ -366,7 +366,7 @@ impl ParticleCommandResolver {
         state: DolphinHappyParticleState,
     ) -> ParticleSpawnBatch {
         self.entity_event_aabb_particle_batch(
-            HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
             state.position,
             state.width,
             state.height,
@@ -384,7 +384,7 @@ impl ParticleCommandResolver {
         let Some(item) = particle_item_option_state_for_stack(&state.item_stack) else {
             return ParticleSpawnBatch::default();
         };
-        let template = match self.simple_particle_template(ITEM_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_ITEM_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -485,7 +485,7 @@ impl ParticleCommandResolver {
             .and_then(particle_item_option_state_for_stack)
         {
             Some(item) => (
-                ITEM_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_ITEM_ID,
                 ParticleOptionRenderState {
                     item: Some(item),
                     item_stack: state.item_stack.clone(),
@@ -497,7 +497,7 @@ impl ParticleCommandResolver {
                 },
             ),
             None => (
-                ITEM_SNOWBALL_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_ITEM_SNOWBALL_ID,
                 ParticleOptionRenderState::default(),
             ),
         };
@@ -539,7 +539,7 @@ impl ParticleCommandResolver {
         let Some(item) = particle_item_option_state_for_stack(&state.item_stack) else {
             return ParticleSpawnBatch::default();
         };
-        let template = match self.simple_particle_template(ITEM_PARTICLE_TYPE_ID) {
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_ITEM_ID) {
             Ok(template) => template,
             Err(batch) => return batch,
         };
@@ -584,7 +584,7 @@ impl ParticleCommandResolver {
         &self,
         state: HoneyBlockParticleState,
     ) -> ParticleSpawnBatch {
-        let Some(particle_type) = vanilla_particle_type(BLOCK_PARTICLE_TYPE_ID) else {
+        let Some(particle_type) = vanilla_particle_type(VANILLA_PARTICLE_TYPE_BLOCK_ID) else {
             return ParticleSpawnBatch {
                 unknown_particle_type_count: 1,
                 ..ParticleSpawnBatch::default()

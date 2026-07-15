@@ -1442,7 +1442,7 @@ fn game_events_emit_local_player_sounds_and_elder_guardian_particles() {
     for packet in &particles.packets {
         assert_eq!(
             packet.particle.particle_type_id,
-            crate::particle_runtime::ELDER_GUARDIAN_PARTICLE_TYPE_ID
+            bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_ELDER_GUARDIAN_ID
         );
         assert_eq!(
             packet.position,

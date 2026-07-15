@@ -15611,3 +15611,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] native 动态变体纹理同步删除 `ANIMAL_VARIANT_REGISTRIES` 手写表并消费生成迭代 API；
   protocol exact-count、全部 5 个 native 纹理回归、Python 嵌套-codec fixture 与
   generator-emitted 反向门禁防止该集合回流。
+
+## 2026-07-15：Generate named particle type ids
+
+- [x] core registry generator 为 `ParticleTypes.java` 有序注册的全部 117 项输出
+  `VANILLA_PARTICLE_TYPE_*_ID` 常量；id/resource/override-limiter 与命名常量共享同一
+  generated owner，不再要求消费者反向做 resource lookup。
+- [x] native 粒子 runtime 删除约 80 项 resource-to-id 宏声明、重复 registry 长度和配对测试，
+  resolver/runtime/event 消费端直接使用 protocol 常量；native-only item-pickup `-1` 哨兵保持
+  独立命名。protocol catalog/反向门禁、native child-template 回归与完整 gate 锁定该边界。

@@ -7,11 +7,11 @@ impl ParticleCommandResolver {
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
         let flame_particle_type_id = match event.data {
-            1 => SOUL_FIRE_FLAME_PARTICLE_TYPE_ID,
-            _ => FLAME_PARTICLE_TYPE_ID,
+            1 => VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID,
+            _ => VANILLA_PARTICLE_TYPE_FLAME_ID,
         };
         let mut batch = ParticleSpawnBatch::default();
-        let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
+        let smoke = self.simple_particle_template(VANILLA_PARTICLE_TYPE_SMOKE_ID);
         let flame = self.simple_particle_template(flame_particle_type_id);
         let smoke = self.append_template_result(&mut batch, smoke);
         let flame = self.append_template_result(&mut batch, flame);
@@ -49,8 +49,8 @@ impl ParticleCommandResolver {
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
         let mut batch = ParticleSpawnBatch::default();
-        let small_flame = self.simple_particle_template(SMALL_FLAME_PARTICLE_TYPE_ID);
-        let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
+        let small_flame = self.simple_particle_template(VANILLA_PARTICLE_TYPE_SMALL_FLAME_ID);
+        let smoke = self.simple_particle_template(VANILLA_PARTICLE_TYPE_SMOKE_ID);
         let small_flame = self.append_template_result(&mut batch, small_flame);
         let smoke = self.append_template_result(&mut batch, smoke);
 
@@ -115,17 +115,17 @@ impl ParticleCommandResolver {
         }
 
         let flame_particle_type_id = if event.data == 0 {
-            SMALL_FLAME_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_SMALL_FLAME_ID
         } else {
-            SOUL_FIRE_FLAME_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID
         };
         let mut batch = ParticleSpawnBatch::default();
-        let smoke = self.simple_particle_template(SMOKE_PARTICLE_TYPE_ID);
+        let smoke = self.simple_particle_template(VANILLA_PARTICLE_TYPE_SMOKE_ID);
         let flame = self.simple_particle_template(flame_particle_type_id);
         let vault_connection = context
             .vault_connection_particles
             .as_ref()
-            .map(|_| self.simple_particle_template(VAULT_CONNECTION_PARTICLE_TYPE_ID));
+            .map(|_| self.simple_particle_template(VANILLA_PARTICLE_TYPE_VAULT_CONNECTION_ID));
         let smoke = self.append_template_result(&mut batch, smoke);
         let flame = self.append_template_result(&mut batch, flame);
         let vault_connection =
@@ -207,9 +207,9 @@ impl ParticleCommandResolver {
         random: &mut LevelEventSoundRandomState,
     ) -> ParticleSpawnBatch {
         let flame_particle_type_id = if event.data == 0 {
-            SMALL_FLAME_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_SMALL_FLAME_ID
         } else {
-            SOUL_FIRE_FLAME_PARTICLE_TYPE_ID
+            VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID
         };
         let template = match self.simple_particle_template(flame_particle_type_id) {
             Ok(template) => template,
@@ -248,7 +248,7 @@ impl ParticleCommandResolver {
         self.append_trial_detect_player_particles(
             &mut batch,
             event,
-            TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_ID,
             0,
             random,
         );
@@ -293,8 +293,9 @@ impl ParticleCommandResolver {
         event: &LevelEvent,
         random: &mut LevelEventSoundRandomState,
     ) {
-        let trial_omen = self.simple_particle_template(TRIAL_OMEN_PARTICLE_TYPE_ID);
-        let soul_fire_flame = self.simple_particle_template(SOUL_FIRE_FLAME_PARTICLE_TYPE_ID);
+        let trial_omen = self.simple_particle_template(VANILLA_PARTICLE_TYPE_TRIAL_OMEN_ID);
+        let soul_fire_flame =
+            self.simple_particle_template(VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID);
         let trial_omen = self.append_template_result(batch, trial_omen);
         let soul_fire_flame = self.append_template_result(batch, soul_fire_flame);
 

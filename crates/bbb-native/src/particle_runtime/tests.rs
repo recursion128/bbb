@@ -51,7 +51,7 @@ fn firework_rocket_trail_batch_matches_vanilla_client_tick_particle() {
     let command = &batch.commands[0];
     assert_particle_command(
         command,
-        FIREWORK_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_FIREWORK_ID,
         "minecraft:firework",
         [10.0, 64.0, -3.0],
         [
@@ -99,7 +99,7 @@ fn ominous_item_spawner_batch_matches_vanilla_client_tick_particles() {
         ];
         assert_particle_command(
             command,
-            OMINOUS_SPAWNING_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_OMINOUS_SPAWNING_ID,
             "minecraft:ominous_spawning",
             [-1.5, 80.0, 2.25],
             velocity,
@@ -116,7 +116,7 @@ fn ominous_item_spawner_batch_matches_vanilla_client_tick_particles() {
 fn tracking_emitter_batch_spawns_totem_particles_around_entity_bounds() {
     let mut resolver = test_resolver(0);
     let batch = resolver.tracking_emitter_particle_batch(TrackingEmitterParticleState {
-        particle_type_id: TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+        particle_type_id: VANILLA_PARTICLE_TYPE_TOTEM_OF_UNDYING_ID,
         position: [10.0, 64.0, -3.0],
         width: 0.6,
         height: 1.8,
@@ -130,7 +130,7 @@ fn tracking_emitter_batch_spawns_totem_particles_around_entity_bounds() {
     assert!(batch
         .commands
         .iter()
-        .all(|command| command.particle_type_id == TOTEM_OF_UNDYING_PARTICLE_TYPE_ID));
+        .all(|command| command.particle_type_id == VANILLA_PARTICLE_TYPE_TOTEM_OF_UNDYING_ID));
     assert!(batch
         .commands
         .iter()
@@ -150,7 +150,7 @@ fn tracking_emitter_batch_spawns_totem_particles_around_entity_bounds() {
 
     assert_particle_command_with_delay(
         &batch.commands[0],
-        TOTEM_OF_UNDYING_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_TOTEM_OF_UNDYING_ID,
         "minecraft:totem_of_undying",
         [
             10.069_290_330_779_168,
@@ -207,7 +207,7 @@ fn take_item_entity_pickup_batch_preserves_source_and_target_context() {
 
     assert_eq!(batch.commands.len(), 1);
     let command = &batch.commands[0];
-    assert_eq!(command.particle_type_id, ITEM_PICKUP_PARTICLE_TYPE_ID);
+    assert_eq!(command.particle_type_id, NATIVE_ITEM_PICKUP_PARTICLE_ID);
     assert_eq!(command.particle_id, ITEM_PICKUP_PARTICLE_ID);
     assert!(command.sprite_ids.is_empty());
     assert_eq!(command.position, [1.0, 64.0, -2.0]);
@@ -394,7 +394,7 @@ fn ravager_roar_batch_spawns_poof_at_aabb_center_with_gaussian_velocity() {
     assert_eq!(batch.len(), 40);
     assert_particle_command(
         &batch.commands[0],
-        POOF_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_POOF_ID,
         "minecraft:poof",
         [1.0, 65.1, -2.0],
         expected_velocity,
@@ -431,7 +431,7 @@ fn witch_magic_batch_matches_vanilla_entity_event_particles() {
     assert_eq!(batch.len(), expected_count as usize);
     assert_particle_command(
         &batch.commands[0],
-        WITCH_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_WITCH_ID,
         "minecraft:witch",
         expected_position,
         [0.0, 0.0, 0.0],
@@ -475,7 +475,7 @@ fn living_entity_poof_batch_matches_vanilla_make_poof_particles() {
     assert_eq!(batch.len(), 20);
     assert_particle_command(
         &batch.commands[0],
-        POOF_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_POOF_ID,
         "minecraft:poof",
         expected_position,
         expected_velocity,
@@ -515,7 +515,7 @@ fn living_entity_drown_batch_matches_vanilla_make_drown_particles() {
     assert_eq!(batch.len(), 8);
     assert_particle_command(
         &batch.commands[0],
-        BUBBLE_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_BUBBLE_ID,
         "minecraft:bubble",
         expected_position,
         [0.1, -0.2, 0.3],
@@ -564,7 +564,7 @@ fn living_entity_portal_batch_matches_vanilla_event_particles() {
     assert_eq!(batch.len(), 128);
     assert_particle_command(
         &batch.commands[0],
-        PORTAL_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_PORTAL_ID,
         "minecraft:portal",
         expected_position,
         expected_velocity,
@@ -598,7 +598,7 @@ fn snowball_hit_batch_matches_vanilla_event_particles() {
     assert_eq!(batch.len(), 8);
     assert_particle_command(
         &batch.commands[0],
-        ITEM_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_ITEM_ID,
         "minecraft:item",
         [10.0, 64.0, -3.0],
         [0.0, 0.0, 0.0],
@@ -636,7 +636,7 @@ fn snowball_hit_batch_uses_item_snowball_for_empty_stack() {
     assert_eq!(batch.len(), 8);
     assert_particle_command(
         &batch.commands[0],
-        ITEM_SNOWBALL_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_ITEM_SNOWBALL_ID,
         "minecraft:item_snowball",
         [10.0, 64.0, -3.0],
         [0.0, 0.0, 0.0],
@@ -677,7 +677,7 @@ fn thrown_egg_hit_batch_matches_vanilla_event_particles() {
     assert_eq!(batch.len(), 8);
     assert_particle_command(
         &batch.commands[0],
-        ITEM_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_ITEM_ID,
         "minecraft:item",
         [10.0, 64.0, -3.0],
         expected_velocity,
@@ -735,7 +735,7 @@ fn arrow_effect_batch_matches_vanilla_event_particles() {
     assert_eq!(batch.len(), ARROW_EFFECT_PARTICLE_COUNT);
     assert_particle_command(
         &batch.commands[0],
-        ENTITY_EFFECT_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
         "minecraft:entity_effect",
         expected_position,
         [0.0, 0.0, 0.0],
@@ -786,7 +786,7 @@ fn animal_love_batch_matches_vanilla_event_particles() {
     assert_eq!(batch.len(), ANIMAL_LOVE_PARTICLE_COUNT);
     assert_particle_command(
         &batch.commands[0],
-        HEART_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_HEART_ID,
         "minecraft:heart",
         expected_position,
         expected_velocity,
@@ -832,7 +832,7 @@ fn allay_duplication_batch_matches_vanilla_event_particles() {
     assert_eq!(batch.len(), ALLAY_DUPLICATION_PARTICLE_COUNT);
     assert_particle_command(
         &batch.commands[0],
-        HEART_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_HEART_ID,
         "minecraft:heart",
         expected_position,
         expected_velocity,
@@ -880,7 +880,7 @@ fn entity_taming_batch_matches_vanilla_success_and_failure_particles() {
     assert_eq!(success_batch.len(), ENTITY_TAMING_PARTICLE_COUNT);
     assert_particle_command(
         &success_batch.commands[0],
-        HEART_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_HEART_ID,
         "minecraft:heart",
         expected_position,
         expected_velocity,
@@ -889,7 +889,7 @@ fn entity_taming_batch_matches_vanilla_success_and_failure_particles() {
     assert_eq!(failure_batch.len(), ENTITY_TAMING_PARTICLE_COUNT);
     assert_particle_command(
         &failure_batch.commands[0],
-        SMOKE_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         expected_position,
         expected_velocity,
@@ -906,22 +906,22 @@ fn villager_event_batches_match_vanilla_particles() {
     for (kind, particle_type_id, particle_name) in [
         (
             VillagerParticleKind::Heart,
-            HEART_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_HEART_ID,
             "minecraft:heart",
         ),
         (
             VillagerParticleKind::Angry,
-            ANGRY_VILLAGER_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_ANGRY_VILLAGER_ID,
             "minecraft:angry_villager",
         ),
         (
             VillagerParticleKind::Happy,
-            HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
             "minecraft:happy_villager",
         ),
         (
             VillagerParticleKind::Splash,
-            SPLASH_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_SPLASH_ID,
             "minecraft:splash",
         ),
     ] {
@@ -1001,7 +1001,7 @@ fn dolphin_happy_batch_matches_vanilla_event_particles() {
     assert_eq!(batch.len(), DOLPHIN_HAPPY_PARTICLE_COUNT);
     assert_particle_command(
         &batch.commands[0],
-        HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
         "minecraft:happy_villager",
         expected_position,
         expected_velocity,
@@ -1054,7 +1054,7 @@ fn fox_eat_batch_matches_vanilla_item_particles() {
     assert_eq!(batch.len(), FOX_EAT_PARTICLE_COUNT);
     assert_particle_command(
         &batch.commands[0],
-        ITEM_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_ITEM_ID,
         "minecraft:item",
         expected_position,
         expected_velocity,
@@ -1135,15 +1135,16 @@ fn count_zero_emits_single_spawn_with_offset_velocity() {
 #[test]
 fn lava_level_particle_command_carries_smoke_child_template() {
     let mut resolver = test_resolver(0);
-    let batch = resolver.resolve_level_particles(&level_particles_packet(LAVA_PARTICLE_TYPE_ID, 0));
+    let batch =
+        resolver.resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_LAVA_ID, 0));
 
     assert_eq!(batch.len(), 1);
     let command = &batch.commands[0];
-    assert_eq!(command.particle_type_id, LAVA_PARTICLE_TYPE_ID);
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_LAVA_ID);
     assert_eq!(command.particle_id, "minecraft:lava");
     assert_eq!(command.child_spawn_templates.len(), 1);
     let child = &command.child_spawn_templates[0];
-    assert_eq!(child.particle_type_id, SMOKE_PARTICLE_TYPE_ID);
+    assert_eq!(child.particle_type_id, VANILLA_PARTICLE_TYPE_SMOKE_ID);
     assert_eq!(child.particle_id, "minecraft:smoke");
     assert_eq!(child.sprite_ids, vec!["minecraft:smoke_0".to_string()]);
 }
@@ -1153,64 +1154,70 @@ fn drip_particle_commands_carry_vanilla_child_templates() {
     let mut resolver = test_resolver(0);
     for (particle_type_id, child_particle_type_ids) in [
         (
-            DRIPPING_HONEY_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_DRIPPING_HONEY_ID,
             &[
-                FALLING_HONEY_PARTICLE_TYPE_ID,
-                LANDING_HONEY_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_FALLING_HONEY_ID,
+                VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID,
             ][..],
         ),
         (
-            FALLING_HONEY_PARTICLE_TYPE_ID,
-            &[LANDING_HONEY_PARTICLE_TYPE_ID][..],
+            VANILLA_PARTICLE_TYPE_FALLING_HONEY_ID,
+            &[VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID][..],
         ),
         (
-            DRIPPING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_DRIPPING_OBSIDIAN_TEAR_ID,
             &[
-                FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
-                LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_FALLING_OBSIDIAN_TEAR_ID,
+                VANILLA_PARTICLE_TYPE_LANDING_OBSIDIAN_TEAR_ID,
             ][..],
         ),
         (
-            FALLING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID,
-            &[LANDING_OBSIDIAN_TEAR_PARTICLE_TYPE_ID][..],
+            VANILLA_PARTICLE_TYPE_FALLING_OBSIDIAN_TEAR_ID,
+            &[VANILLA_PARTICLE_TYPE_LANDING_OBSIDIAN_TEAR_ID][..],
         ),
         (
-            DRIPPING_LAVA_PARTICLE_TYPE_ID,
-            &[FALLING_LAVA_PARTICLE_TYPE_ID, LANDING_LAVA_PARTICLE_TYPE_ID][..],
-        ),
-        (
-            FALLING_LAVA_PARTICLE_TYPE_ID,
-            &[LANDING_LAVA_PARTICLE_TYPE_ID][..],
-        ),
-        (
-            DRIPPING_WATER_PARTICLE_TYPE_ID,
-            &[FALLING_WATER_PARTICLE_TYPE_ID, SPLASH_PARTICLE_TYPE_ID][..],
-        ),
-        (
-            FALLING_WATER_PARTICLE_TYPE_ID,
-            &[SPLASH_PARTICLE_TYPE_ID][..],
-        ),
-        (
-            DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_DRIPPING_LAVA_ID,
             &[
-                FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
-                LANDING_LAVA_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_FALLING_LAVA_ID,
+                VANILLA_PARTICLE_TYPE_LANDING_LAVA_ID,
             ][..],
         ),
         (
-            FALLING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID,
-            &[LANDING_LAVA_PARTICLE_TYPE_ID][..],
+            VANILLA_PARTICLE_TYPE_FALLING_LAVA_ID,
+            &[VANILLA_PARTICLE_TYPE_LANDING_LAVA_ID][..],
         ),
         (
-            DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_DRIPPING_WATER_ID,
             &[
-                FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
-                SPLASH_PARTICLE_TYPE_ID,
+                VANILLA_PARTICLE_TYPE_FALLING_WATER_ID,
+                VANILLA_PARTICLE_TYPE_SPLASH_ID,
             ][..],
         ),
         (
-            FALLING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
-            &[SPLASH_PARTICLE_TYPE_ID][..],
+            VANILLA_PARTICLE_TYPE_FALLING_WATER_ID,
+            &[VANILLA_PARTICLE_TYPE_SPLASH_ID][..],
+        ),
+        (
+            VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_LAVA_ID,
+            &[
+                VANILLA_PARTICLE_TYPE_FALLING_DRIPSTONE_LAVA_ID,
+                VANILLA_PARTICLE_TYPE_LANDING_LAVA_ID,
+            ][..],
+        ),
+        (
+            VANILLA_PARTICLE_TYPE_FALLING_DRIPSTONE_LAVA_ID,
+            &[VANILLA_PARTICLE_TYPE_LANDING_LAVA_ID][..],
+        ),
+        (
+            VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_WATER_ID,
+            &[
+                VANILLA_PARTICLE_TYPE_FALLING_DRIPSTONE_WATER_ID,
+                VANILLA_PARTICLE_TYPE_SPLASH_ID,
+            ][..],
+        ),
+        (
+            VANILLA_PARTICLE_TYPE_FALLING_DRIPSTONE_WATER_ID,
+            &[VANILLA_PARTICLE_TYPE_SPLASH_ID][..],
         ),
     ] {
         let batch = resolver.resolve_level_particles(&level_particles_packet(particle_type_id, 0));
@@ -1239,19 +1246,22 @@ fn drip_particle_commands_carry_vanilla_child_templates() {
 fn explosion_emitter_particle_commands_carry_explosion_child_template_without_definition() {
     let mut resolver = test_resolver(0);
     let batch = resolver.resolve_level_particles(&level_particles_packet(
-        EXPLOSION_EMITTER_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID,
         0,
     ));
 
     assert_eq!(batch.len(), 1);
     assert_eq!(batch.missing_definition_count, 0);
     let command = &batch.commands[0];
-    assert_eq!(command.particle_type_id, EXPLOSION_EMITTER_PARTICLE_TYPE_ID);
+    assert_eq!(
+        command.particle_type_id,
+        VANILLA_PARTICLE_TYPE_EXPLOSION_EMITTER_ID
+    );
     assert_eq!(command.particle_id, "minecraft:explosion_emitter");
     assert!(command.sprite_ids.is_empty());
     assert_eq!(command.child_spawn_templates.len(), 1);
     let child = &command.child_spawn_templates[0];
-    assert_eq!(child.particle_type_id, EXPLOSION_PARTICLE_TYPE_ID);
+    assert_eq!(child.particle_type_id, VANILLA_PARTICLE_TYPE_EXPLOSION_ID);
     assert_eq!(child.particle_id, "minecraft:explosion");
     assert_eq!(child.sprite_ids, vec!["minecraft:explosion_0".to_string()]);
 }
@@ -1259,13 +1269,18 @@ fn explosion_emitter_particle_commands_carry_explosion_child_template_without_de
 #[test]
 fn elder_guardian_particle_command_is_definitionless_special_group_input() {
     let mut resolver = test_resolver(0);
-    let batch = resolver
-        .resolve_level_particles(&level_particles_packet(ELDER_GUARDIAN_PARTICLE_TYPE_ID, 0));
+    let batch = resolver.resolve_level_particles(&level_particles_packet(
+        VANILLA_PARTICLE_TYPE_ELDER_GUARDIAN_ID,
+        0,
+    ));
 
     assert_eq!(batch.len(), 1);
     assert_eq!(batch.missing_definition_count, 0);
     let command = &batch.commands[0];
-    assert_eq!(command.particle_type_id, ELDER_GUARDIAN_PARTICLE_TYPE_ID);
+    assert_eq!(
+        command.particle_type_id,
+        VANILLA_PARTICLE_TYPE_ELDER_GUARDIAN_ID
+    );
     assert_eq!(command.particle_id, "minecraft:elder_guardian");
     assert!(command.sprite_ids.is_empty());
     assert!(command.child_spawn_templates.is_empty());
@@ -1276,35 +1291,35 @@ fn terrain_and_item_atlas_particles_are_definitionless_submission_inputs() {
     let mut resolver = test_resolver(0);
     for (particle_type_id, particle_id, raw_options, block_state_id, item) in [
         (
-            BLOCK_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_BLOCK_ID,
             "minecraft:block",
             block_particle_options(129),
             Some(129),
             None,
         ),
         (
-            BLOCK_MARKER_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID,
             "minecraft:block_marker",
             block_particle_options(2),
             Some(2),
             None,
         ),
         (
-            DUST_PILLAR_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID,
             "minecraft:dust_pillar",
             block_particle_options(3),
             Some(3),
             None,
         ),
         (
-            BLOCK_CRUMBLE_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID,
             "minecraft:block_crumble",
             block_particle_options(4),
             Some(4),
             None,
         ),
         (
-            ITEM_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_ITEM_ID,
             "minecraft:item",
             item_particle_options(5, 6, 0),
             None,
@@ -1315,21 +1330,21 @@ fn terrain_and_item_atlas_particles_are_definitionless_submission_inputs() {
             }),
         ),
         (
-            ITEM_SLIME_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_ITEM_SLIME_ID,
             "minecraft:item_slime",
             Vec::new(),
             None,
             None,
         ),
         (
-            ITEM_COBWEB_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_ITEM_COBWEB_ID,
             "minecraft:item_cobweb",
             Vec::new(),
             None,
             None,
         ),
         (
-            ITEM_SNOWBALL_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_ITEM_SNOWBALL_ID,
             "minecraft:item_snowball",
             Vec::new(),
             None,
@@ -1366,10 +1381,19 @@ fn terrain_particle_commands_use_installed_block_sprite_ids() {
         .insert(stone_id, "minecraft:block/stone".to_string());
 
     for (particle_type_id, particle_id) in [
-        (BLOCK_PARTICLE_TYPE_ID, "minecraft:block"),
-        (BLOCK_MARKER_PARTICLE_TYPE_ID, "minecraft:block_marker"),
-        (DUST_PILLAR_PARTICLE_TYPE_ID, "minecraft:dust_pillar"),
-        (BLOCK_CRUMBLE_PARTICLE_TYPE_ID, "minecraft:block_crumble"),
+        (VANILLA_PARTICLE_TYPE_BLOCK_ID, "minecraft:block"),
+        (
+            VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID,
+            "minecraft:block_marker",
+        ),
+        (
+            VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID,
+            "minecraft:dust_pillar",
+        ),
+        (
+            VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID,
+            "minecraft:block_crumble",
+        ),
     ] {
         let mut packet = level_particles_packet(particle_type_id, 0);
         packet.particle.raw_options = block_particle_options(stone_id);
@@ -1400,9 +1424,15 @@ fn terrain_particle_commands_use_installed_block_tint_colors() {
     );
 
     for (particle_type_id, particle_id) in [
-        (BLOCK_PARTICLE_TYPE_ID, "minecraft:block"),
-        (DUST_PILLAR_PARTICLE_TYPE_ID, "minecraft:dust_pillar"),
-        (BLOCK_CRUMBLE_PARTICLE_TYPE_ID, "minecraft:block_crumble"),
+        (VANILLA_PARTICLE_TYPE_BLOCK_ID, "minecraft:block"),
+        (
+            VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID,
+            "minecraft:dust_pillar",
+        ),
+        (
+            VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID,
+            "minecraft:block_crumble",
+        ),
     ] {
         let mut packet = level_particles_packet(particle_type_id, 0);
         packet.particle.raw_options = block_particle_options(redstone_id);
@@ -1416,7 +1446,7 @@ fn terrain_particle_commands_use_installed_block_tint_colors() {
         );
     }
 
-    let mut marker = level_particles_packet(BLOCK_MARKER_PARTICLE_TYPE_ID, 0);
+    let mut marker = level_particles_packet(VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID, 0);
     marker.particle.raw_options = block_particle_options(redstone_id);
     let marker_batch = resolver.resolve_level_particles(&marker);
     assert_eq!(marker_batch.len(), 1);
@@ -1443,7 +1473,7 @@ fn terrain_particle_tint_samples_biome_at_each_spawn_position() {
         left_biome_id: 7,
         right_biome_id: 11,
     };
-    let mut packet = level_particles_packet(BLOCK_PARTICLE_TYPE_ID, 4);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_BLOCK_ID, 4);
     packet.position.x = 0.0;
     packet.offset.x = 8.0;
     packet.offset.y = 0.0;
@@ -1514,7 +1544,7 @@ fn terrain_particle_tint_snapshot_accepts_session_biome_remap() {
         left_biome_id: 1,
         right_biome_id: 1,
     };
-    let mut packet = level_particles_packet(BLOCK_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_BLOCK_ID, 0);
     packet.particle.raw_options = block_particle_options(short_grass_id);
     let batch = resolver.resolve_level_particles_with_context(
         &packet,
@@ -1550,7 +1580,7 @@ fn falling_dust_tint_samples_biome_foliage_color_at_spawn_position() {
         left_biome_id: 3,
         right_biome_id: 3,
     };
-    let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
     packet.position.x = -0.25;
     packet.particle.raw_options = block_particle_options(oak_leaves_id);
 
@@ -1576,7 +1606,7 @@ fn generic_item_particle_uses_installed_default_item_sprite_for_empty_component_
         ],
     );
 
-    let mut empty_patch = level_particles_packet(ITEM_PARTICLE_TYPE_ID, 0);
+    let mut empty_patch = level_particles_packet(VANILLA_PARTICLE_TYPE_ITEM_ID, 0);
     empty_patch.particle.raw_options = item_particle_options(5, 6, 0);
     let empty_batch = resolver.resolve_level_particles(&empty_patch);
 
@@ -1597,7 +1627,7 @@ fn generic_item_particle_uses_installed_default_item_sprite_for_empty_component_
         })
     );
 
-    let mut non_empty_patch = level_particles_packet(ITEM_PARTICLE_TYPE_ID, 0);
+    let mut non_empty_patch = level_particles_packet(VANILLA_PARTICLE_TYPE_ITEM_ID, 0);
     non_empty_patch.particle.raw_options = item_particle_options(5, 6, 1);
     let non_empty_component_patch_len = non_empty_patch.particle.raw_options.len()
         - positive_var_i32_len(5)
@@ -1622,7 +1652,7 @@ fn generic_item_particle_uses_item_runtime_for_component_stack_sprite() {
     write_item_particle_item_model_fixture(&root);
     let items = NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(ITEM_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_ITEM_ID, 0);
     packet.particle.raw_options = item_particle_options(0, 1, 1);
     let component_patch_len =
         packet.particle.raw_options.len() - positive_var_i32_len(0) - positive_var_i32_len(1);
@@ -1663,9 +1693,9 @@ fn terrain_particle_providers_reject_vanilla_filtered_block_states() {
     let stone_id = test_block_state_id("minecraft:stone", []);
 
     for particle_type_id in [
-        BLOCK_PARTICLE_TYPE_ID,
-        DUST_PILLAR_PARTICLE_TYPE_ID,
-        BLOCK_CRUMBLE_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_BLOCK_ID,
+        VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID,
+        VANILLA_PARTICLE_TYPE_BLOCK_CRUMBLE_ID,
     ] {
         for block_state_id in [air_id, moving_piston_id, barrier_id, structure_void_id] {
             let mut resolver = test_resolver(0);
@@ -1699,7 +1729,7 @@ fn terrain_particle_providers_reject_vanilla_filtered_block_states() {
 fn block_marker_provider_keeps_invisible_and_no_terrain_particle_states() {
     let barrier_id = test_block_state_id("minecraft:barrier", [("waterlogged", "false")]);
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(BLOCK_MARKER_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_BLOCK_MARKER_ID, 0);
     packet.particle.raw_options = block_particle_options(barrier_id);
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -1720,9 +1750,9 @@ fn terrain_particle_provider_rejection_preserves_packet_random_sequence() {
     let stone_id = test_block_state_id("minecraft:stone", []);
     let mut rejected_resolver = test_resolver(42);
     let mut accepted_resolver = test_resolver(42);
-    let mut rejected = level_particles_packet(BLOCK_PARTICLE_TYPE_ID, 2);
+    let mut rejected = level_particles_packet(VANILLA_PARTICLE_TYPE_BLOCK_ID, 2);
     rejected.particle.raw_options = block_particle_options(barrier_id);
-    let mut accepted = level_particles_packet(BLOCK_PARTICLE_TYPE_ID, 2);
+    let mut accepted = level_particles_packet(VANILLA_PARTICLE_TYPE_BLOCK_ID, 2);
     accepted.particle.raw_options = block_particle_options(stone_id);
 
     let rejected_batch = rejected_resolver.resolve_level_particles(&rejected);
@@ -1731,9 +1761,9 @@ fn terrain_particle_provider_rejection_preserves_packet_random_sequence() {
     assert_eq!(accepted_batch.len(), 2);
 
     let next_rejected = rejected_resolver
-        .resolve_level_particles(&level_particles_packet(SMOKE_PARTICLE_TYPE_ID, 1));
+        .resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_SMOKE_ID, 1));
     let next_accepted = accepted_resolver
-        .resolve_level_particles(&level_particles_packet(SMOKE_PARTICLE_TYPE_ID, 1));
+        .resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_SMOKE_ID, 1));
 
     assert_eq!(next_rejected.len(), 1);
     assert_eq!(next_accepted.len(), 1);
@@ -1750,7 +1780,7 @@ fn terrain_particle_provider_rejection_preserves_packet_random_sequence() {
 #[test]
 fn falling_dust_decodes_block_particle_option_metadata() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
     packet.particle.raw_options = block_particle_options(321);
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -1758,7 +1788,10 @@ fn falling_dust_decodes_block_particle_option_metadata() {
     assert_eq!(batch.len(), 1);
     assert_eq!(batch.missing_definition_count, 0);
     let command = &batch.commands[0];
-    assert_eq!(command.particle_type_id, FALLING_DUST_PARTICLE_TYPE_ID);
+    assert_eq!(
+        command.particle_type_id,
+        VANILLA_PARTICLE_TYPE_FALLING_DUST_ID
+    );
     assert_eq!(command.particle_id, "minecraft:falling_dust");
     assert_eq!(command.sprite_ids, vec!["minecraft:generic_0".to_string()]);
     assert_eq!(
@@ -1812,7 +1845,7 @@ fn falling_dust_decodes_falling_block_dust_colors() {
         ),
     ] {
         let mut resolver = test_resolver(0);
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -1836,7 +1869,7 @@ fn falling_dust_uses_installed_block_tint_for_non_falling_block_colors() {
     let mut resolver = test_resolver(0);
     resolver.set_terrain_particle_sprite_ids(&TerrainTextureState::default());
     let lily_pad_id = test_block_state_id("minecraft:lily_pad", []);
-    let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
     packet.particle.raw_options = block_particle_options(lily_pad_id);
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -1905,7 +1938,7 @@ fn falling_dust_uses_map_color_fallback_for_non_tinted_blocks() {
             rgb_option(0x81, 0x56, 0x31),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -1959,7 +1992,7 @@ fn falling_dust_uses_misc_static_map_color_fallbacks() {
             rgb_option(0xf7, 0xe9, 0xa3),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2085,7 +2118,7 @@ fn falling_dust_uses_wood_log_and_stem_map_color_fallbacks() {
             rgb_option(0x56, 0x2c, 0x3e),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2245,7 +2278,7 @@ fn falling_dust_uses_wooden_stairs_and_slabs_map_color_fallbacks() {
             rgb_option(0x3a, 0x8e, 0x8c),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2312,7 +2345,7 @@ fn falling_dust_uses_wooden_pressure_plate_map_color_fallbacks() {
         ),
     ] {
         let block_state_id = test_block_state_id(block_name, [("powered", "true")]);
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2389,7 +2422,7 @@ fn falling_dust_uses_wooden_door_trapdoor_fence_map_color_fallbacks() {
                 ),
                 _ => unreachable!("covered test kinds"),
             };
-            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 
             let batch = resolver.resolve_level_particles(&packet);
@@ -2434,7 +2467,7 @@ fn falling_dust_uses_wooden_sign_map_color_fallbacks() {
                 }
                 _ => unreachable!("covered test kinds"),
             };
-            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 
             let batch = resolver.resolve_level_particles(&packet);
@@ -2478,7 +2511,7 @@ fn falling_dust_uses_wooden_shelf_map_color_fallbacks() {
                 ("waterlogged", "true"),
             ],
         );
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2578,7 +2611,7 @@ fn falling_dust_uses_hanging_sign_map_color_fallbacks() {
                 }
                 _ => unreachable!("covered test kinds"),
             };
-            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 
             let batch = resolver.resolve_level_particles(&packet);
@@ -2618,7 +2651,7 @@ fn falling_dust_uses_button_none_map_color_fallbacks() {
             block_name,
             [("face", "floor"), ("facing", "north"), ("powered", "true")],
         );
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2678,7 +2711,7 @@ fn falling_dust_uses_potted_none_map_color_fallbacks() {
         "minecraft:potted_closed_eyeblossom",
     ] {
         let block_state_id = test_block_state_id(block_name, []);
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2771,7 +2804,7 @@ fn falling_dust_uses_cake_none_map_color_fallbacks() {
             "minecraft:black_candle_cake",
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2847,7 +2880,7 @@ fn falling_dust_uses_colored_family_map_color_fallbacks() {
             rgb_option(0x8e, 0x3c, 0x2e),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -2891,7 +2924,7 @@ fn falling_dust_uses_banner_static_map_color_fallbacks() {
                 "wall_banner" => test_block_state_id(&block_name, [("facing", "north")]),
                 _ => unreachable!("covered test kinds"),
             };
-            let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+            let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
             packet.particle.raw_options = block_particle_options(block_state_id);
 
             let batch = resolver.resolve_level_particles(&packet);
@@ -3003,7 +3036,7 @@ fn falling_dust_uses_mineral_and_natural_map_color_fallbacks() {
             rgb_option(0x19, 0x19, 0x19),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3068,7 +3101,7 @@ fn falling_dust_uses_deepslate_construction_map_color_fallbacks() {
             "minecraft:deepslate_brick_stairs",
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3109,7 +3142,7 @@ fn falling_dust_uses_infested_stone_map_color_fallbacks() {
             rgb_option(0x64, 0x64, 0x64),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3182,7 +3215,7 @@ fn falling_dust_uses_natural_static_map_color_fallbacks() {
             rgb_option(0x57, 0x5c, 0x5c),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3258,7 +3291,7 @@ fn falling_dust_uses_crop_static_map_color_fallbacks() {
             rgb_option(0xf2, 0x7f, 0xa5),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3364,7 +3397,7 @@ fn falling_dust_uses_produce_and_fungus_static_map_color_fallbacks() {
             rgb_option(0x66, 0x7f, 0x33),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3433,7 +3466,7 @@ fn falling_dust_uses_static_foliage_map_color_fallbacks() {
             rgb_option(0x00, 0x7c, 0x00),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3665,7 +3698,7 @@ fn falling_dust_uses_utility_static_map_color_fallbacks() {
             rgb_option(0xa7, 0xa7, 0xa7),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3784,7 +3817,7 @@ fn falling_dust_uses_skull_and_head_none_map_color_fallbacks() {
             "minecraft:piglin_wall_head",
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -3901,7 +3934,7 @@ fn falling_dust_uses_redstone_fixture_none_map_color_fallbacks() {
             "minecraft:tripwire",
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4002,7 +4035,7 @@ fn falling_dust_uses_redstone_utility_static_map_color_fallbacks() {
             rgb_option(0x99, 0x99, 0x99),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4077,7 +4110,7 @@ fn falling_dust_uses_aquatic_static_map_color_fallbacks() {
             rgb_option(0x5c, 0xdb, 0xd5),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4157,7 +4190,7 @@ fn falling_dust_uses_bamboo_honey_static_map_color_fallbacks() {
             rgb_option(0xa7, 0xa7, 0xa7),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4225,7 +4258,7 @@ fn falling_dust_uses_water_plant_and_egg_static_map_color_fallbacks() {
             rgb_option(0x4c, 0x4c, 0x4c),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4263,7 +4296,7 @@ fn falling_dust_uses_flower_static_map_color_fallbacks() {
     ] {
         let block_name = format!("minecraft:{flower}");
         let block_state_id = test_block_state_id(&block_name, []);
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4290,7 +4323,7 @@ fn falling_dust_uses_tall_flower_static_map_color_fallbacks() {
     ] {
         let block_name = format!("minecraft:{flower}");
         let block_state_id = test_block_state_id(&block_name, [("half", half)]);
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4348,7 +4381,7 @@ fn falling_dust_uses_fire_cocoa_static_map_color_fallbacks() {
             rgb_option(0xd8, 0x7f, 0x33),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4386,7 +4419,7 @@ fn falling_dust_uses_vanilla_default_none_map_color_fallbacks() {
             "minecraft:test_instance_block",
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4476,7 +4509,7 @@ fn falling_dust_uses_final_static_map_color_fallbacks() {
             rgb_option(0xa7, 0xa7, 0xa7),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4501,7 +4534,7 @@ fn falling_dust_colors_cover_all_accepted_vanilla_block_states() {
             continue;
         }
 
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state.id);
         let batch = resolver.resolve_level_particles(&packet);
         if batch
@@ -4572,7 +4605,7 @@ fn falling_dust_uses_default_none_fixture_map_color_fallbacks() {
             "minecraft:end_rod",
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4623,7 +4656,7 @@ fn falling_dust_uses_default_none_pane_map_color_fallbacks() {
             "minecraft:iron_bars",
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4662,7 +4695,7 @@ fn falling_dust_uses_default_none_metal_bars_chain_map_color_fallbacks() {
                 ("west", "true"),
             ],
         );
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4688,7 +4721,7 @@ fn falling_dust_uses_default_none_metal_bars_chain_map_color_fallbacks() {
     ] {
         let block_state_id =
             test_block_state_id(block_name, [("axis", "x"), ("waterlogged", "true")]);
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4805,7 +4838,7 @@ fn falling_dust_uses_functional_static_map_color_fallbacks() {
             rgb_option(0x8f, 0x77, 0x48),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4841,7 +4874,7 @@ fn falling_dust_uses_magic_utility_static_map_color_fallbacks() {
             rgb_option(0x5c, 0xdb, 0xd5),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -4925,7 +4958,7 @@ fn falling_dust_uses_decorative_colored_map_color_fallbacks() {
             rgb_option(0x7a, 0x49, 0x58),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -5023,7 +5056,7 @@ fn falling_dust_uses_cave_and_emissive_map_color_fallbacks() {
             rgb_option(0xf2, 0x7f, 0xa5),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -5143,7 +5176,7 @@ fn falling_dust_uses_copper_weathering_map_color_fallbacks() {
             rgb_option(0x3a, 0x8e, 0x8c),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -5237,7 +5270,7 @@ fn falling_dust_uses_nether_flora_and_blackstone_map_color_fallbacks() {
             rgb_option(0x19, 0x19, 0x19),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -5373,7 +5406,7 @@ fn falling_dust_uses_quartz_prismarine_and_end_map_color_fallbacks() {
             rgb_option(0x7f, 0x3f, 0xb2),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -5483,7 +5516,7 @@ fn falling_dust_uses_construction_map_color_fallbacks() {
             rgb_option(0x70, 0x02, 0x00),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -5583,7 +5616,7 @@ fn falling_dust_uses_resin_and_pale_garden_map_color_fallbacks() {
             rgb_option(0x00, 0x7c, 0x00),
         ),
     ] {
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -5666,7 +5699,7 @@ fn falling_dust_rejects_non_air_invisible_render_shape_blocks() {
         ),
     ] {
         let mut resolver = test_resolver(0);
-        let mut packet = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 0);
+        let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 0);
         packet.particle.raw_options = block_particle_options(block_state_id);
 
         let batch = resolver.resolve_level_particles(&packet);
@@ -5690,9 +5723,9 @@ fn falling_dust_provider_rejection_preserves_packet_random_sequence() {
     let stone_id = test_block_state_id("minecraft:stone", []);
     let mut rejected_resolver = test_resolver(42);
     let mut accepted_resolver = test_resolver(42);
-    let mut rejected = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 2);
+    let mut rejected = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 2);
     rejected.particle.raw_options = block_particle_options(barrier_id);
-    let mut accepted = level_particles_packet(FALLING_DUST_PARTICLE_TYPE_ID, 2);
+    let mut accepted = level_particles_packet(VANILLA_PARTICLE_TYPE_FALLING_DUST_ID, 2);
     accepted.particle.raw_options = block_particle_options(stone_id);
 
     let rejected_batch = rejected_resolver.resolve_level_particles(&rejected);
@@ -5701,9 +5734,9 @@ fn falling_dust_provider_rejection_preserves_packet_random_sequence() {
     assert_eq!(accepted_batch.len(), 2);
 
     let next_rejected = rejected_resolver
-        .resolve_level_particles(&level_particles_packet(SMOKE_PARTICLE_TYPE_ID, 1));
+        .resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_SMOKE_ID, 1));
     let next_accepted = accepted_resolver
-        .resolve_level_particles(&level_particles_packet(SMOKE_PARTICLE_TYPE_ID, 1));
+        .resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_SMOKE_ID, 1));
 
     assert_eq!(next_rejected.len(), 1);
     assert_eq!(next_accepted.len(), 1);
@@ -5721,8 +5754,8 @@ fn falling_dust_provider_rejection_preserves_packet_random_sequence() {
 fn gust_seed_particle_commands_carry_gust_child_template() {
     let mut resolver = test_resolver(0);
     for particle_type_id in [
-        GUST_EMITTER_LARGE_PARTICLE_TYPE_ID,
-        GUST_EMITTER_SMALL_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_GUST_EMITTER_LARGE_ID,
+        VANILLA_PARTICLE_TYPE_GUST_EMITTER_SMALL_ID,
     ] {
         let batch = resolver.resolve_level_particles(&level_particles_packet(particle_type_id, 0));
 
@@ -5731,7 +5764,7 @@ fn gust_seed_particle_commands_carry_gust_child_template() {
         assert_eq!(command.particle_type_id, particle_type_id);
         assert_eq!(command.child_spawn_templates.len(), 1);
         let child = &command.child_spawn_templates[0];
-        assert_eq!(child.particle_type_id, GUST_PARTICLE_TYPE_ID);
+        assert_eq!(child.particle_type_id, VANILLA_PARTICLE_TYPE_GUST_ID);
         assert_eq!(child.particle_id, "minecraft:gust");
         assert_eq!(child.sprite_ids, vec!["minecraft:gust_0".to_string()]);
     }
@@ -5740,7 +5773,7 @@ fn gust_seed_particle_commands_carry_gust_child_template() {
 #[test]
 fn spell_particle_options_decode_color_and_power_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(EFFECT_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_EFFECT_ID, 0);
     packet.particle.raw_options = spell_particle_options(0x0011_2233, 0.5);
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5759,7 +5792,7 @@ fn spell_particle_options_decode_color_and_power_into_spawn_command() {
     );
     assert_eq!(command.option_power, Some(0.5));
 
-    let mut instant_packet = level_particles_packet(INSTANT_EFFECT_PARTICLE_TYPE_ID, 0);
+    let mut instant_packet = level_particles_packet(VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID, 0);
     instant_packet.particle.raw_options = spell_particle_options(0x00aa_bbcc, 1.25);
     let instant = resolver.resolve_level_particles(&instant_packet);
     assert_eq!(instant.len(), 1);
@@ -5770,7 +5803,7 @@ fn spell_particle_options_decode_color_and_power_into_spawn_command() {
 #[test]
 fn entity_effect_particle_options_decode_argb_color_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(ENTITY_EFFECT_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID, 0);
     packet.particle.raw_options = 0x8011_2233_u32.to_be_bytes().to_vec();
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5793,7 +5826,7 @@ fn entity_effect_particle_options_decode_argb_color_into_spawn_command() {
 #[test]
 fn flash_particle_options_decode_argb_color_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(FLASH_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_FLASH_ID, 0);
     packet.particle.raw_options = 0x6612_3456_u32.to_be_bytes().to_vec();
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5816,7 +5849,7 @@ fn flash_particle_options_decode_argb_color_into_spawn_command() {
 #[test]
 fn tinted_leaves_particle_options_decode_argb_color_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(TINTED_LEAVES_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_TINTED_LEAVES_ID, 0);
     packet.particle.raw_options = 0x7f44_6688_u32.to_be_bytes().to_vec();
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5843,7 +5876,7 @@ fn tinted_leaves_particle_options_decode_argb_color_into_spawn_command() {
 #[test]
 fn dust_particle_options_decode_color_scale_and_transition_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(DUST_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_DUST_ID, 0);
     packet.particle.raw_options = dust_particle_options(0x0012_3456, 2.5);
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5864,7 +5897,8 @@ fn dust_particle_options_decode_color_scale_and_transition_into_spawn_command() 
     assert_eq!(command.option_scale, Some(2.5));
     assert_eq!(command.option_color_to, None);
 
-    let mut transition_packet = level_particles_packet(DUST_COLOR_TRANSITION_PARTICLE_TYPE_ID, 0);
+    let mut transition_packet =
+        level_particles_packet(VANILLA_PARTICLE_TYPE_DUST_COLOR_TRANSITION_ID, 0);
     transition_packet.particle.raw_options =
         dust_color_transition_options(0x0001_0203, 0x00a0_b0c0, 9.0);
     let transition = resolver.resolve_level_particles(&transition_packet);
@@ -5888,7 +5922,7 @@ fn dust_particle_options_decode_color_scale_and_transition_into_spawn_command() 
 #[test]
 fn sculk_charge_particle_options_decode_roll_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(SCULK_CHARGE_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_SCULK_CHARGE_ID, 0);
     packet.particle.raw_options = 0.75_f32.to_be_bytes().to_vec();
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5908,7 +5942,7 @@ fn sculk_charge_particle_options_decode_roll_into_spawn_command() {
 #[test]
 fn trail_particle_options_decode_target_color_and_duration_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(TRAIL_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_TRAIL_ID, 0);
     packet.particle.raw_options = trail_particle_options([1.5, 65.25, -4.75], 0x0012_3456, 27);
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5934,7 +5968,7 @@ fn trail_particle_options_decode_target_color_and_duration_into_spawn_command() 
 #[test]
 fn vibration_particle_options_decode_block_target_and_arrival_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(VIBRATION_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_VIBRATION_ID, 0);
     packet.particle.raw_options = vibration_particle_block_options([1, 64, -2], 27);
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5953,7 +5987,7 @@ fn vibration_particle_options_decode_block_target_and_arrival_into_spawn_command
 #[test]
 fn vibration_particle_options_keep_entity_source_unresolved_for_later_lookup() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(VIBRATION_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_VIBRATION_ID, 0);
     packet.particle.raw_options = vibration_particle_entity_options(123, 0.75, 27);
 
     let batch = resolver.resolve_level_particles(&packet);
@@ -5982,7 +6016,7 @@ fn vibration_particle_options_keep_entity_source_unresolved_for_later_lookup() {
     );
     assert_eq!(
         vibration_entity_position_source_from_options(
-            CLOUD_PARTICLE_TYPE_ID,
+            VANILLA_PARTICLE_TYPE_CLOUD_ID,
             &packet.particle.raw_options
         ),
         None
@@ -5992,7 +6026,7 @@ fn vibration_particle_options_keep_entity_source_unresolved_for_later_lookup() {
 #[test]
 fn vibration_particle_options_resolve_entity_source_with_spawn_context() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(VIBRATION_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_VIBRATION_ID, 0);
     packet.particle.raw_options = vibration_particle_entity_options(123, 0.75, 27);
     let context = LevelParticleSpawnContext {
         vibration_entity_position: Some(LevelParticleEntityPosition {
@@ -6021,14 +6055,14 @@ fn vibration_particle_options_resolve_entity_source_with_spawn_context() {
 #[test]
 fn level_particles_decodes_shriek_delay_option_into_spawn_command() {
     let mut resolver = test_resolver(0);
-    let mut packet = level_particles_packet(SHRIEK_PARTICLE_TYPE_ID, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_SHRIEK_ID, 0);
     packet.particle.raw_options = vec![17];
 
     let batch = resolver.resolve_level_particles(&packet);
 
     assert_eq!(batch.len(), 1);
     let command = &batch.commands[0];
-    assert_eq!(command.particle_type_id, SHRIEK_PARTICLE_TYPE_ID);
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_SHRIEK_ID);
     assert_eq!(command.particle_id, "minecraft:shriek");
     assert_eq!(command.sprite_ids, vec!["minecraft:shriek_0".to_string()]);
     assert_eq!(command.raw_options_len, 1);
@@ -6226,7 +6260,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     let (expected_position, expected_velocity) = first_composter_fill_particle(13.0 / 16.0);
     assert_particle_command(
         &composter.commands[0],
-        COMPOSTER_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_COMPOSTER_ID,
         "minecraft:composter",
         expected_position,
         expected_velocity,
@@ -6242,7 +6276,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     let (expected_position, expected_velocity) = first_composter_fill_particle(1.0);
     assert_particle_command(
         &fallback_composter.commands[0],
-        COMPOSTER_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_COMPOSTER_ID,
         "minecraft:composter",
         expected_position,
         expected_velocity,
@@ -6319,7 +6353,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(water_drip.len(), 1);
     assert_particle_command(
         &water_drip.commands[0],
-        DRIPPING_DRIPSTONE_WATER_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_WATER_ID,
         "minecraft:dripping_dripstone_water",
         [10.583_333_343_267_44, 64.25, -2.416_666_656_732_56],
         [0.0, 0.0, 0.0],
@@ -6338,7 +6372,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(lava_drip.len(), 1);
     assert_eq!(
         lava_drip.commands[0].particle_type_id,
-        DRIPPING_DRIPSTONE_LAVA_PARTICLE_TYPE_ID
+        VANILLA_PARTICLE_TYPE_DRIPPING_DRIPSTONE_LAVA_ID
     );
     assert_eq!(
         lava_drip.commands[0].particle_id,
@@ -6370,7 +6404,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(growth_in_block.len(), 2);
     assert_particle_command(
         &growth_in_block.commands[0],
-        HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
         "minecraft:happy_villager",
         [
             10.597_545_277_797_202,
@@ -6403,7 +6437,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(growth_wide.len(), 6);
     assert_particle_command(
         &growth_wide.commands[0],
-        HAPPY_VILLAGER_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
         "minecraft:happy_villager",
         growth_wide_position,
         growth_wide_velocity,
@@ -6437,7 +6471,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(shriek.len(), 10);
     assert_particle_command(
         &shriek.commands[0],
-        SHRIEK_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SHRIEK_ID,
         "minecraft:shriek",
         [10.5, 64.5, -2.5],
         [0.0, 0.0, 0.0],
@@ -6446,7 +6480,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(shriek.commands[0].initial_delay_ticks, 0);
     assert_particle_command_with_delay(
         &shriek.commands[9],
-        SHRIEK_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SHRIEK_ID,
         "minecraft:shriek",
         [10.5, 64.5, -2.5],
         [0.0, 0.0, 0.0],
@@ -6530,7 +6564,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         first_potion_break_spell_particle(0x0033_66cc);
     assert_particle_command(
         &potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize],
-        EFFECT_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_EFFECT_ID,
         "minecraft:effect",
         expected_position,
         expected_velocity,
@@ -6563,7 +6597,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_eq!(
         instant_potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize].particle_type_id,
-        INSTANT_EFFECT_PARTICLE_TYPE_ID
+        VANILLA_PARTICLE_TYPE_INSTANT_EFFECT_ID
     );
     assert_eq!(
         instant_potion.commands[POTION_BREAK_ITEM_PARTICLE_COUNT as usize].particle_id,
@@ -7056,7 +7090,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(vault_activation.len(), 40);
     assert_particle_command(
         &vault_activation.commands[0],
-        SMOKE_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         vault_activation_position,
         [0.0, 0.0, 0.0],
@@ -7064,7 +7098,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_particle_command(
         &vault_activation.commands[1],
-        SMALL_FLAME_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SMALL_FLAME_ID,
         "minecraft:small_flame",
         vault_activation_position,
         [0.0, 0.0, 0.0],
@@ -7121,7 +7155,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_particle_command(
         &vault_activation_with_connection.commands[0],
-        VAULT_CONNECTION_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_VAULT_CONNECTION_ID,
         "minecraft:vault_connection",
         connection_origin,
         expected_connection_velocity,
@@ -7130,7 +7164,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_particle_command(
         &vault_activation_with_connection.commands
             [usize::try_from(expected_connection_count).unwrap()],
-        SMOKE_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         expected_smoke_position_after_connection,
         [0.0, 0.0, 0.0],
@@ -7153,7 +7187,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(ominous_vault_activation.len(), 40);
     assert_eq!(
         ominous_vault_activation.commands[1].particle_type_id,
-        SOUL_FIRE_FLAME_PARTICLE_TYPE_ID
+        VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID
     );
     assert_eq!(
         ominous_vault_activation.commands[1].particle_id,
@@ -7174,7 +7208,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(vault_deactivation.len(), 20);
     assert_particle_command(
         &vault_deactivation.commands[0],
-        SMALL_FLAME_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SMALL_FLAME_ID,
         "minecraft:small_flame",
         vault_deactivation_position,
         vault_deactivation_velocity,
@@ -7193,7 +7227,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(ominous_vault_deactivation.len(), 20);
     assert_particle_command(
         &ominous_vault_deactivation.commands[0],
-        SOUL_FIRE_FLAME_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID,
         "minecraft:soul_fire_flame",
         vault_deactivation_position,
         vault_deactivation_velocity,
@@ -7305,7 +7339,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         121
     );
     let first_spark = &firework_explosion.commands[0];
-    assert_eq!(first_spark.particle_type_id, FIREWORK_PARTICLE_TYPE_ID);
+    assert_eq!(
+        first_spark.particle_type_id,
+        VANILLA_PARTICLE_TYPE_FIREWORK_ID
+    );
     assert_eq!(first_spark.particle_id, "minecraft:firework");
     assert_eq!(first_spark.position, [10.0, 64.0, -3.0]);
     assert!(first_spark.option_firework_trail);
@@ -7336,7 +7373,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         ])
     );
     let flash = firework_explosion.commands.last().unwrap();
-    assert_eq!(flash.particle_type_id, FLASH_PARTICLE_TYPE_ID);
+    assert_eq!(flash.particle_type_id, VANILLA_PARTICLE_TYPE_FLASH_ID);
     assert_eq!(flash.particle_id, "minecraft:flash");
     assert_eq!(
         flash.option_color,
@@ -7600,7 +7637,7 @@ fn level_event_item_break_particles_use_installed_item_sprite_ids() {
         vec!["minecraft:item/ender_eye".to_string()],
     );
     let assert_item_sprites = |command: &ParticleSpawnCommand, item_id: i32, sprite_id: &str| {
-        assert_eq!(command.particle_type_id, ITEM_PARTICLE_TYPE_ID);
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_ITEM_ID);
         assert_eq!(command.particle_id, "minecraft:item");
         assert_eq!(
             command.option_item,
@@ -7861,7 +7898,7 @@ fn level_event_smash_attack_particles_use_vanilla_dust_pillar_context() {
     assert_eq!(batch.missing_sprite_count, 0);
     assert_particle_command(
         &batch.commands[0],
-        DUST_PILLAR_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID,
         "minecraft:dust_pillar",
         expected[0].0,
         expected[0].1,
@@ -7870,7 +7907,7 @@ fn level_event_smash_attack_particles_use_vanilla_dust_pillar_context() {
     assert_eq!(batch.commands[0].sprite_ids, Vec::<String>::new());
     assert_particle_command(
         &batch.commands[2],
-        DUST_PILLAR_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_DUST_PILLAR_ID,
         "minecraft:dust_pillar",
         expected[2].0,
         expected[2].1,
@@ -9192,7 +9229,7 @@ fn assert_sculk_charge_command(
 ) {
     assert_particle_command(
         command,
-        SCULK_CHARGE_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SCULK_CHARGE_ID,
         "minecraft:sculk_charge",
         expected.position,
         expected.velocity,
@@ -9207,7 +9244,7 @@ fn assert_sculk_charge_pop_command(
 ) {
     assert_particle_command(
         command,
-        SCULK_CHARGE_POP_PARTICLE_TYPE_ID,
+        VANILLA_PARTICLE_TYPE_SCULK_CHARGE_POP_ID,
         "minecraft:sculk_charge_pop",
         expected.position,
         expected.velocity,
@@ -9222,7 +9259,7 @@ fn assert_item_break_particle_command(
     position: [f64; 3],
     velocity: [f64; 3],
 ) {
-    assert_eq!(command.particle_type_id, ITEM_PARTICLE_TYPE_ID);
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_ITEM_ID);
     assert_eq!(command.particle_id, "minecraft:item");
     assert!(command.sprite_ids.is_empty());
     for (actual, expected) in command.position.iter().zip(position) {
@@ -9254,7 +9291,7 @@ fn assert_block_destroy_particle_command(
     position: [f64; 3],
     velocity: [f64; 3],
 ) {
-    assert_eq!(command.particle_type_id, BLOCK_PARTICLE_TYPE_ID);
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_BLOCK_ID);
     assert_eq!(command.particle_id, "minecraft:block");
     assert!(command.sprite_ids.is_empty());
     for (actual, expected) in command.position.iter().zip(position) {
