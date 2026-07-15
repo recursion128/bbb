@@ -16544,3 +16544,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   sitting pose 与 part pick projection。
 - animation 生产消费者删除固定 accessor/default 别名；phase ordinals、sitting membership
   与 dragon serde/default 继续直接消费生成事实，reverse guard 禁止恢复平行 metadata 读取。
+
+## 2026-07-15：统一推导 Wither side-head target metadata accessors
+
+- `bbb-world` 现在从生成 schema 的 `WitherBoss.DATA_TARGET_B/C` 成对解析 membership、
+  wire id 17/18 与 int typed default 0；world tick 显式携带 entity type，继续只把 B/C 投影
+  到两侧 head rotation，中央目标 A 不进入模型 surface。
+- animation 生产消费者删除四个固定 accessor/default 别名；现有 Wither projection reverse
+  guard 同时锁定 invulnerability 与 side-head 两条 schema 路径。

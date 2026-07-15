@@ -319,6 +319,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   EnderDragon phase membership, wire index and typed default must remain derived from generated
   `EnderDragon.DATA_PHASE`; metadata animation consumers must not restore fixed accessor/default
   aliases or duplicate generated phase ordinals and sitting membership.
+  Wither side-head target membership, wire indices and typed defaults must remain derived from
+  generated `WitherBoss.DATA_TARGET_B/C`; world tick consumers must carry entity type and must not
+  restore fixed accessor/default aliases or mix in center-head `DATA_TARGET_A`.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

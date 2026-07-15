@@ -2654,7 +2654,7 @@ impl EntityStore {
                     transform.position,
                     transform.y_rot,
                     vanilla_render_scale(identity.entity_type_id, &attributes.attributes),
-                    wither_side_head_target_ids(&metadata.data_values),
+                    wither_side_head_target_ids(identity.entity_type_id, &metadata.data_values),
                 ));
             }
         }

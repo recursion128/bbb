@@ -277,6 +277,14 @@ pub(crate) struct VanillaGuardianMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct VanillaWitherSideHeadTargetMetadataAccessors {
+    pub(crate) target_b_data_id: u8,
+    pub(crate) target_b_default: i32,
+    pub(crate) target_c_data_id: u8,
+    pub(crate) target_c_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaShulkerMetadataAccessors {
     pub attach_face_data_id: u8,
     pub attach_face_default: i32,
@@ -1694,6 +1702,47 @@ pub(crate) fn vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_ent
     }
 }
 
+/// Resolves the generated WitherBoss side-head target accessors and their typed defaults.
+pub(crate) fn vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaWitherSideHeadTargetMetadataAccessors> {
+    let target_b =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_TARGET_B")?;
+    let target_c =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_TARGET_C")?;
+    match (
+        (
+            target_b.owner,
+            target_b.serializer_name,
+            target_b.typed_default,
+        ),
+        (
+            target_c.owner,
+            target_c.serializer_name,
+            target_c.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.boss.wither.WitherBoss",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(target_b_default)),
+            ),
+            (
+                "net.minecraft.world.entity.boss.wither.WitherBoss",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(target_c_default)),
+            ),
+        ) => Some(VanillaWitherSideHeadTargetMetadataAccessors {
+            target_b_data_id: target_b.data_id,
+            target_b_default,
+            target_c_data_id: target_c.data_id,
+            target_c_default,
+        }),
+        _ => None,
+    }
+}
+
 /// Resolves the nearest generated boolean `DATA_BABY_ID` accessor and its typed default.
 ///
 /// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
@@ -3104,6 +3153,31 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_wither_side_head_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_WITHER_ID
+            ),
+            Some(VanillaWitherSideHeadTargetMetadataAccessors {
+                target_b_data_id: 17,
+                target_b_default: 0,
+                target_c_data_id: 18,
+                target_c_default: 0,
+            })
+        );
+        assert_eq!(
+            vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(-1),
             None
         );
     }

@@ -22141,6 +22141,9 @@ mod generated_catalog_guards {
         assert!(source.contains(
             "vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type"
         ));
+        assert!(source.contains(
+            "wither_side_head_target_ids(identity.entity_type_id, &metadata.data_values)"
+        ));
         for removed in [
             "vanilla_is_wither",
             "WITHER_INVULNERABLE_TICKS_DATA_ID",
@@ -22150,6 +22153,20 @@ mod generated_catalog_guards {
         }
         let dimensions = include_str!("../dimensions.rs");
         assert!(!dimensions.contains("fn vanilla_is_wither"));
+        let animations = include_str!("../animations.rs");
+        assert!(animations
+            .contains("vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type"));
+        for removed in [
+            "WITHER_TARGET_B_DATA_ID",
+            "WITHER_TARGET_C_DATA_ID",
+            "WITHER_DEFAULT_TARGET_B",
+            "WITHER_DEFAULT_TARGET_C",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+        }
     }
 
     #[test]

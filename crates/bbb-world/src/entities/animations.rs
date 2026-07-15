@@ -42,6 +42,7 @@ use super::schema::{
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,
+    vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type,
     vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,
     VanillaVehicleMetadataAccessors,
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
@@ -64,10 +65,6 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_SCENTING_ID as SNIFFER_STATE_SCENTING_ID,
     VANILLA_SNIFFER_STATE_SEARCHING_ID as SNIFFER_STATE_SEARCHING_ID,
     VANILLA_SNIFFER_STATE_SNIFFING_ID as SNIFFER_STATE_SNIFFING_ID,
-    VANILLA_WITHER_DEFAULT_TARGET_B as WITHER_DEFAULT_TARGET_B,
-    VANILLA_WITHER_DEFAULT_TARGET_C as WITHER_DEFAULT_TARGET_C,
-    VANILLA_WITHER_TARGET_B_DATA_ID as WITHER_TARGET_B_DATA_ID,
-    VANILLA_WITHER_TARGET_C_DATA_ID as WITHER_TARGET_C_DATA_ID,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid,
@@ -2915,20 +2912,28 @@ fn walk_update_target_speed(
 }
 
 /// Vanilla `WitherBoss.getAlternativeTarget(1/2)`: side heads read
-/// `DATA_TARGET_B/C`. Target `0` means "no target".
-pub(crate) fn wither_side_head_target_ids(data_values: &[EntityDataValue]) -> [i32; 2] {
-    [
-        entity_data_int(
-            data_values,
-            WITHER_TARGET_B_DATA_ID,
-            WITHER_DEFAULT_TARGET_B,
-        ),
-        entity_data_int(
-            data_values,
-            WITHER_TARGET_C_DATA_ID,
-            WITHER_DEFAULT_TARGET_C,
-        ),
-    ]
+/// `DATA_TARGET_B/C`. The generated accessor pair supplies membership, wire indices and defaults;
+/// target `0` means "no target".
+pub(crate) fn wither_side_head_target_ids(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> [i32; 2] {
+    vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| {
+            [
+                entity_data_int(
+                    data_values,
+                    accessors.target_b_data_id,
+                    accessors.target_b_default,
+                ),
+                entity_data_int(
+                    data_values,
+                    accessors.target_c_data_id,
+                    accessors.target_c_default,
+                ),
+            ]
+        })
+        .unwrap_or_default()
 }
 
 /// Vanilla `WitherBoss.aiStep` target-angle math for side head `head_index`
