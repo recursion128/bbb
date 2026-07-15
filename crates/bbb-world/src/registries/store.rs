@@ -36,12 +36,18 @@ impl WorldStore {
     }
 
     pub fn record_registry_data(&mut self, update: RegistryData) {
+        let collect_contents = synchronized_registry_data_type(&update.registry).is_some();
         let entries = update
             .entries
             .into_iter()
             .map(RegistryPacketEntry::from)
             .collect();
-        self.record_registry_entries(update.registry, update.raw_payload_len, entries);
+        self.record_registry_entries_with_policy(
+            update.registry,
+            update.raw_payload_len,
+            entries,
+            collect_contents,
+        );
     }
 
     pub fn record_registry_entries(
@@ -49,6 +55,16 @@ impl WorldStore {
         name: impl Into<String>,
         raw_payload_len: usize,
         entries: Vec<RegistryPacketEntry>,
+    ) {
+        self.record_registry_entries_with_policy(name, raw_payload_len, entries, true);
+    }
+
+    fn record_registry_entries_with_policy(
+        &mut self,
+        name: impl Into<String>,
+        raw_payload_len: usize,
+        entries: Vec<RegistryPacketEntry>,
+        collect_contents: bool,
     ) {
         let name = name.into();
         self.counters.last_registry_data_registry = Some(name.clone());
@@ -60,18 +76,22 @@ impl WorldStore {
             entries,
         };
         if let Some(pending) = self.registries.pending.as_mut() {
-            pending
-                .contents
-                .entry(packet.name.clone())
-                .or_insert_with(|| RegistryContentState::new(packet.name.clone()))
-                .append_packet(&packet.entries);
+            if collect_contents {
+                pending
+                    .contents
+                    .entry(packet.name.clone())
+                    .or_insert_with(|| RegistryContentState::new(packet.name.clone()))
+                    .append_packet(&packet.entries);
+            }
             pending.registries.push(packet);
         } else {
-            self.registries
-                .contents
-                .entry(packet.name.clone())
-                .or_insert_with(|| RegistryContentState::new(packet.name.clone()))
-                .append_packet(&packet.entries);
+            if collect_contents {
+                self.registries
+                    .contents
+                    .entry(packet.name.clone())
+                    .or_insert_with(|| RegistryContentState::new(packet.name.clone()))
+                    .append_packet(&packet.entries);
+            }
             self.registries.registries.push(packet);
             self.sync_registry_counters();
         }

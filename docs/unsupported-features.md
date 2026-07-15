@@ -56,11 +56,11 @@ Owner: `bbb-protocol`
   offered packs whose registry data bbb can actually provide, and pass that
   intersection to the existing 64-entry response encoder instead of always
   returning an empty configuration response.
-- Enforce the generated `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory
-  during production RegistryData collection. Packets are now annotated from the
-  source-derived 28-entry catalog, but non-synchronized element packets are still
-  retained, declared registry validators are not yet applied generically, and the
-  built-in-only/holder-consumer inventory remains incomplete.
+- Apply the validators declared by the generated
+  `RegistryDataLoader.SYNCHRONIZED_REGISTRIES` inventory and finish the
+  built-in-only/holder-consumer inventory. Production RegistryData collection now
+  admits only the source-derived 28-entry catalog into canonical holder contents
+  while retaining other packets solely as diagnostics.
 - Complete the remaining configuration/play transfer runtime behavior. Production
   now stops using the old transport, carries cookies and the login identity, opens
   the requested target with a Transfer-intent handshake, resets connection-local

@@ -174,6 +174,35 @@ fn registry_data_entries_decode_nbt_payload_summary() {
 }
 
 #[test]
+fn production_registry_data_keeps_non_synchronized_elements_out_of_holder_state() {
+    let mut store = WorldStore::new();
+    let ambient_cave_id =
+        bbb_protocol::sound_event_types::vanilla_sound_event_registry_id("minecraft:ambient.cave")
+            .unwrap();
+
+    store.record_registry_data(RegistryData {
+        registry: "minecraft:sound_event".to_string(),
+        entries: vec![RegistryDataEntry {
+            id: "example:injected".to_string(),
+            raw_data: Some(nbt_compound_with_string("sound_id", "example:injected")),
+        }],
+        raw_payload_len: 48,
+    });
+
+    let packet = &store.registries().registries[0];
+    assert!(!packet.configuration_synchronized);
+    assert_eq!(packet.entries[0].id, "example:injected");
+    assert!(store.registry_content("minecraft:sound_event").is_none());
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:sound_event", ambient_cave_id),
+        Some("minecraft:ambient.cave")
+    );
+    assert_eq!(store.counters().registries_seen, 1);
+    assert_eq!(store.counters().registry_entries_seen, 1);
+    assert_eq!(store.counters().registry_content_registries_tracked, 0);
+}
+
+#[test]
 fn registry_holder_lookup_uses_checked_wire_order_identity() {
     let mut store = WorldStore::new();
     store.record_registry_entries(
@@ -244,6 +273,9 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
     let snowball_id = bbb_protocol::item_types::VANILLA_ITEM_SNOWBALL_ID;
     let zombie_id = bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID;
     let poison_id = bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_POISON_ID;
+    let ambient_cave_id =
+        bbb_protocol::sound_event_types::vanilla_sound_event_registry_id("minecraft:ambient.cave")
+            .unwrap();
 
     assert_eq!(
         store.resolved_registry_entry_by_holder_id("minecraft:item", snowball_id),
@@ -284,6 +316,19 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
     assert_eq!(
         store.resolved_registry_entry_by_resource_id("minecraft:mob_effect", "minecraft:poison"),
         store.resolved_registry_entry_by_holder_id("minecraft:mob_effect", poison_id)
+    );
+    let resolved_sound = store
+        .resolved_registry_entry_by_holder_id("minecraft:sound_event", ambient_cave_id)
+        .unwrap();
+    assert_eq!(resolved_sound.holder_id, ambient_cave_id);
+    assert_eq!(resolved_sound.resource_id, "minecraft:ambient.cave");
+    assert_ne!(resolved_sound.source, RegistryEntrySource::Server);
+    assert_eq!(
+        store.resolved_registry_entry_by_resource_id(
+            "minecraft:sound_event",
+            "minecraft:ambient.cave",
+        ),
+        store.resolved_registry_entry_by_holder_id("minecraft:sound_event", ambient_cave_id)
     );
     assert!(store
         .resolved_registry_entry_by_resource_id("minecraft:item", "snowball")

@@ -565,10 +565,11 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     }
 }
 
-fn sound_event_registry_from_world(world: &WorldStore) -> Option<SoundEventRegistry> {
-    Some(SoundEventRegistry::from_ids(
-        world.registry_resource_ids_in_holder_order("minecraft:sound_event")?,
-    ))
+fn sound_event_registry_from_world(world: &WorldStore) -> SoundEventRegistry {
+    world
+        .registry_resource_ids_in_holder_order("minecraft:sound_event")
+        .map(SoundEventRegistry::from_ids)
+        .unwrap_or_else(SoundEventRegistry::vanilla_26_1)
 }
 
 fn jukebox_song_registry_from_world(world: &WorldStore) -> Option<JukeboxSongRegistry> {
@@ -584,9 +585,7 @@ fn synchronize_audio_registry_from_world(
 ) {
     match registry {
         "minecraft:sound_event" => {
-            if let Some(registry) = sound_event_registry_from_world(world) {
-                audio_events.set_sound_event_registry(registry);
-            }
+            audio_events.set_sound_event_registry(sound_event_registry_from_world(world));
         }
         "minecraft:jukebox_song" => {
             if let Some(registry) = jukebox_song_registry_from_world(world) {
@@ -601,8 +600,7 @@ fn synchronize_audio_registries_from_world(
     world: &WorldStore,
     audio_events: &mut dyn AudioEventSink,
 ) {
-    audio_events
-        .set_sound_event_registry(sound_event_registry_from_world(world).unwrap_or_default());
+    audio_events.set_sound_event_registry(sound_event_registry_from_world(world));
     audio_events
         .set_jukebox_song_registry(jukebox_song_registry_from_world(world).unwrap_or_default());
 }

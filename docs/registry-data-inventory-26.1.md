@@ -13,15 +13,15 @@ The generated inventory preserves three distinct loader lists:
   versus direct codec choice and optional validator expression.
 
 `WorldStore` annotates every collected registry packet with membership in the
-configuration-synchronized list. This makes the current permissive collection
-visible without confusing static registries such as `minecraft:item` or
-`minecraft:sound_event` with registries whose elements vanilla accepts through
-`ClientboundRegistryDataPacket`.
+configuration-synchronized list. Production collection keeps every packet for
+diagnostics, but only members of that list enter canonical holder contents.
+Static registries such as `minecraft:item` and `minecraft:sound_event` therefore
+keep their generated vanilla order when presented with invalid element packets;
+fixture-only injection remains available for focused consumer tests.
 
 Regenerate and verify the inventory through the existing bootstrap catalog
 generator. The authoritative pre-commit gate remains the one in `goal.md`.
 
-Remaining lifecycle work is tracked in `docs/unsupported-features.md`: production
-must use this classification to ignore non-synchronized element packets, enforce
-the declared validators when typed contents are available, and finish the
-consumer/holder inventory.
+Remaining lifecycle work is tracked in `docs/unsupported-features.md`: apply the
+declared validators when typed contents are available and finish the
+built-in/consumer/holder inventory.

@@ -742,8 +742,9 @@ cell 在其 family custom-reorder test 通过前不得标为 complete。
 
 当前已从 vanilla `RegistryDataLoader`/`Registries` 生成 45 项 worldgen、1 项 dimension 与
 28 项 configuration-synchronized registry catalog，保留每项 Codec 和 validator，并由
-`RegistryPacket` 标注 configuration element-data membership。production 对非同步 element packet
-的忽略、validator 执行以及 built-in-only/holder-consumer inventory 仍是 foundation 剩余工作。
+`RegistryPacket` 标注 configuration element-data membership；production 仅把这 28 项写入
+canonical holder contents，其他 packet 只保留诊断，静态 sound-event 查询继续使用生成的
+26.1 顺序。validator 执行以及 built-in-only/holder-consumer inventory 仍是 foundation 剩余工作。
 
 完成标准：由 vanilla 26.1 network-synced registry 清单和全部 Holder/HolderSet codec
 消费点派生覆盖 inventory，每项都映射到 resolver consumer、带证据的 `not-applicable`

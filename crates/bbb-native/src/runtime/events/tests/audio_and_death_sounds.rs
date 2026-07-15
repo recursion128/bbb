@@ -802,7 +802,7 @@ fn skeleton_family_death_events_emit_positioned_audio_commands() {
 }
 
 #[test]
-fn sound_event_registry_data_updates_audio_reference_resolution() {
+fn non_synchronized_sound_event_registry_data_keeps_static_audio_reference_resolution() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::RegistryData(RegistryData {
         registry: "minecraft:sound_event".to_string(),
@@ -814,7 +814,7 @@ fn sound_event_registry_data_updates_audio_reference_resolution() {
     }))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::Sound(SoundEvent {
-        sound: SoundEventHolder::Reference { registry_id: 0 },
+        sound: SoundEventHolder::Reference { registry_id: 7 },
         source: SoundSource::Ambient,
         position: ProtocolVec3d {
             x: 2.5,
@@ -838,13 +838,11 @@ fn sound_event_registry_data_updates_audio_reference_resolution() {
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
     assert_eq!(world.counters().registries_seen, 1);
+    assert!(world.registry_content("minecraft:sound_event").is_none());
+    assert!(!world.registries().registries[0].configuration_synchronized);
     assert_eq!(
-        world
-            .registry_content("minecraft:sound_event")
-            .unwrap()
-            .entries[0]
-            .id,
-        "minecraft:ambient.cave"
+        audio.registry.event_id(0),
+        Some("minecraft:entity.allay.ambient_with_item")
     );
     match &audio.commands[0] {
         AudioCommand::PlayPositionedSound(command) => {
@@ -928,9 +926,13 @@ fn configuration_audio_registry_projections_commit_at_play_transition() {
     );
     assert_eq!(
         world.registry_resource_id_by_holder_id("minecraft:sound_event", 0),
-        Some("minecraft:ambient.cave")
+        Some("minecraft:entity.allay.ambient_with_item")
     );
-    assert_eq!(audio.registry.event_id(0), Some("minecraft:ambient.cave"));
+    assert_eq!(
+        audio.registry.event_id(0),
+        Some("minecraft:entity.allay.ambient_with_item")
+    );
+    assert_eq!(audio.registry.event_id(7), Some("minecraft:ambient.cave"));
     assert_eq!(audio.jukebox_registry.song_id(0), Some("minecraft:tears"));
 }
 

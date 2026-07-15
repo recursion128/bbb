@@ -15137,3 +15137,11 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] `WorldStore` 的每个 `RegistryPacket` 由生成 lookup 标注 configuration-synchronized membership，
   focused regressions 锁定同步 biome、静态 item 和 custom registry 的分类。production filter、validator
   执行及完整 holder consumer inventory 保持后续 foundation 工作。
+
+## 2026-07-15：Gate canonical RegistryData contents by the vanilla inventory
+
+- [x] production `RegistryData` 仍无损保留 packet/entry 诊断，但只有生成的 28 项
+  `SYNCHRONIZED_REGISTRIES` membership 才追加到 canonical holder contents；同步 packet 的多包顺序、
+  duplicate 与 configuration transaction 路径保持不变。
+- [x] `minecraft:sound_event` 加入统一静态双向 holder 查询，非法 element packet 不再重排音频 reference；
+  configuration→play 音频投影回到生成的 1902 项 vanilla 顺序，同时合法动态 `jukebox_song` 继续提交。
