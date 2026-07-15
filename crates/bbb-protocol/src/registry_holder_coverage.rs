@@ -141,12 +141,15 @@ mod tests {
             });
         assert_eq!(counts["network-holder-or-inline"], 8);
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
-        assert_eq!(counts["network-holder-reference"], 1);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
         assert_eq!(counts["network-holder-reference-attribute-built-in"], 1);
         assert_eq!(counts["network-holder-reference-cat-variant"], 1);
         assert_eq!(counts["network-holder-reference-damage-type"], 1);
         assert_eq!(counts["network-holder-reference-dimension-type"], 1);
+        assert_eq!(
+            counts["network-holder-reference-enchantment-synchronized"],
+            1
+        );
         assert_eq!(counts["network-holder-reference-farm-animal-variants"], 3);
         assert_eq!(counts["network-holder-reference-frog-variant"], 1);
         assert_eq!(counts["network-holder-reference-item-built-in"], 2);
@@ -177,7 +180,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            166
+            165
         );
         assert_eq!(
             ledger
@@ -200,7 +203,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 25);
+        assert_eq!(complete.len(), 26);
         assert_eq!(
             complete
                 .iter()
@@ -216,6 +219,7 @@ mod tests {
                 "minecraft:cow_variant",
                 "minecraft:damage_type",
                 "minecraft:dimension_type",
+                "minecraft:enchantment",
                 "minecraft:frog_variant",
                 "minecraft:item",
                 "minecraft:map_decoration_type",

@@ -1230,7 +1230,7 @@ fn decode_varint_map(decoder: &mut Decoder<'_>) -> Result<Vec<ItemEnchantmentSum
     let mut entries = Vec::with_capacity(count);
     for _ in 0..count {
         entries.push(ItemEnchantmentSummary {
-            holder_id: decoder.read_var_i32()?,
+            holder_id: decode_holder_registry_id(decoder)?,
             level: decoder.read_var_i32()?,
         });
     }
@@ -4128,6 +4128,23 @@ mod tests {
             }
         );
         assert!(decoder.is_empty());
+    }
+
+    #[test]
+    fn enchantment_maps_reject_negative_registry_holders() {
+        for type_id in [13, 42] {
+            let mut payload = Encoder::new();
+            payload.write_var_i32(1);
+            payload.write_var_i32(0);
+            payload.write_var_i32(type_id);
+            payload.write_var_i32(1);
+            payload.write_var_i32(-1);
+
+            let error =
+                decode_data_component_patch_summary(&mut Decoder::new(&payload.into_inner()))
+                    .unwrap_err();
+            assert_eq!(error.to_string(), "negative length -1");
+        }
     }
 
     #[test]

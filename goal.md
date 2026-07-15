@@ -343,7 +343,9 @@ tool 的 ordered rules、block holder-set 与 optional rule 字段也无损落�
 optional potion holder 按 46 项 client built-in static order 校验，world 正反查与反向
 RegistryData 注入保持同一 identity；color/name 与 recursive custom mob-effect details 同样复用
 protocol summary；
-两类 enchantment map 的 ordered holder-id/level entries 分别落到对应字段；
+两类 enchantment map 拒绝负 holder 并把 nonnegative server holder-id/level ordered entries
+分别落到对应字段；同步 registry 的 custom reordered definition 已按 session order 驱动 tooltip、
+attribute effect、item-model predicate 与 crossbow charge-time effect；
 attribute modifier 的 ordered holder/id/amount bits/operation/slot 与 default/hidden/override display
 dispatch（含 override styled Component）也保持 wire summary 形状；
 adventure predicate 的 ordered block holder-set、state exact/range、block-entity NBT、已支持 exact

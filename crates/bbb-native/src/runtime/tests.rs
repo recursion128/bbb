@@ -10277,7 +10277,7 @@ fn hud_inventory_tooltip_uses_local_player_base_attributes_for_default_weapon() 
 }
 
 #[test]
-fn hud_inventory_tooltip_applies_synced_enchantment_definition_and_attribute_effects() {
+fn hud_inventory_tooltip_follows_synced_enchantment_holder_order_and_effects() {
     let root = unique_runtime_temp_dir("inventory-enchantment-attribute-tooltip");
     write_runtime_tooltip_item_assets(&root);
     let item_runtime =
@@ -10285,15 +10285,21 @@ fn hud_inventory_tooltip_applies_synced_enchantment_definition_and_attribute_eff
     let mut world = WorldStore::new();
     world.record_registry_data(bbb_protocol::packets::RegistryData {
         registry: "minecraft:enchantment".to_string(),
-        entries: vec![bbb_protocol::packets::RegistryDataEntry {
-            id: "example:efficiency".to_string(),
-            raw_data: Some(efficiency_enchantment_attribute_nbt()),
-        }],
+        entries: vec![
+            bbb_protocol::packets::RegistryDataEntry {
+                id: "example:decoy".to_string(),
+                raw_data: None,
+            },
+            bbb_protocol::packets::RegistryDataEntry {
+                id: "example:efficiency".to_string(),
+                raw_data: Some(efficiency_enchantment_attribute_nbt()),
+            },
+        ],
         raw_payload_len: 0,
     });
     let mut stack = item_stack(0, 1);
     stack.component_patch.enchantments = vec![bbb_protocol::packets::ItemEnchantmentSummary {
-        holder_id: 0,
+        holder_id: 1,
         level: 1,
     }];
     world.apply_set_player_inventory(bbb_protocol::packets::SetPlayerInventory {

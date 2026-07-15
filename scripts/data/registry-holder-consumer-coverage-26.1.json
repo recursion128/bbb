@@ -442,48 +442,31 @@
       "decision": "Vanilla 26.1 owns potions in the immutable 46-entry client built-in registry. PotionContents validates its optional holder at the protocol boundary against the generated order, and world lookup preserves checked static identity in both directions. Tooltip, model-predicate, and persistent-input consumers share the generated resource ids and effects; reversed configuration RegistryData cannot remap any identity."
     },
     {
-      "id": "network-holder-reference",
+      "id": "network-holder-reference-enchantment-synchronized",
       "selector": {
         "kind": "network_holder_reference",
-        "exclude_source_paths": [
-          "net/minecraft/network/HashedStack.java",
-          "net/minecraft/network/codec/ByteBufCodecs.java",
-          "net/minecraft/util/debug/DebugGameEventInfo.java",
-          "net/minecraft/util/debug/DebugPoiInfo.java",
-          "net/minecraft/world/entity/animal/chicken/ChickenSoundVariant.java",
-          "net/minecraft/world/entity/animal/chicken/ChickenVariant.java",
-          "net/minecraft/world/entity/animal/cow/CowSoundVariant.java",
-          "net/minecraft/world/entity/animal/cow/CowVariant.java",
-          "net/minecraft/world/entity/animal/feline/CatSoundVariant.java",
-          "net/minecraft/world/entity/animal/feline/CatVariant.java",
-          "net/minecraft/world/entity/animal/frog/FrogVariant.java",
-          "net/minecraft/world/entity/animal/nautilus/ZombieNautilusVariant.java",
-          "net/minecraft/world/entity/animal/pig/PigVariant.java",
-          "net/minecraft/world/entity/animal/pig/PigSoundVariant.java",
-          "net/minecraft/world/entity/animal/wolf/WolfSoundVariant.java",
-          "net/minecraft/world/entity/animal/wolf/WolfVariant.java",
-          "net/minecraft/world/entity/ai/attributes/Attribute.java",
-          "net/minecraft/world/entity/npc/villager/VillagerData.java",
-          "net/minecraft/world/entity/npc/villager/VillagerType.java",
-          "net/minecraft/world/effect/MobEffect.java",
-          "net/minecraft/world/item/Item.java",
-          "net/minecraft/world/item/alchemy/Potion.java",
-          "net/minecraft/world/clock/WorldClock.java",
-          "net/minecraft/world/damagesource/DamageType.java",
-          "net/minecraft/world/level/dimension/DimensionType.java",
-          "net/minecraft/world/level/saveddata/maps/MapDecorationType.java"
+        "source_paths": [
+          "net/minecraft/world/item/enchantment/Enchantment.java"
         ]
       },
-      "status": "partial",
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/runtime.rs#fn hud_item_tooltip_lines",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holderRegistry",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.ENCHANTMENT, Enchantment.DIRECT_CODEC)",
+        "vanilla:net/minecraft/world/item/enchantment/Enchantment.java#ByteBufCodecs.holderRegistry(Registries.ENCHANTMENT)",
+        "vanilla:net/minecraft/world/item/enchantment/ItemEnchantments.java#Enchantment.STREAM_CODEC",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_varint_map",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn enchantment_maps_reject_negative_registry_holders",
         "crates/bbb-protocol/src/packets/data_components.rs#fn decode_holder_registry_id",
-        "crates/bbb-protocol/src/packets/entities.rs#EntityDataValueKind::RegistryId",
-        "crates/bbb-protocol/src/packets/serverbound.rs#fn encode_hashed_stack",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id"
+        "crates/bbb-world/src/registries/enchantments.rs#fn decodes_synced_enchantment_tooltip_definitions_in_holder_order",
+        "crates/bbb-world/src/registries/enchantments.rs#fn resolves_synced_enchantment_attribute_effects_in_stack_and_effect_order",
+        "crates/bbb-world/src/registries/enchantments.rs#fn crossbow_charge_time_applies_stub_fallback_and_custom_effects_in_stack_order",
+        "crates/bbb-native/src/item_models.rs#fn world_enchantment_keys",
+        "crates/bbb-item-model/src/item_runtime/icon_model.rs#fn item_stack_matches_enchantments_predicate",
+        "crates/bbb-native/src/runtime/tests.rs#fn hud_inventory_tooltip_follows_synced_enchantment_holder_order_and_effects",
+        "crates/bbb-native/src/runtime/tests.rs#fn hotbar_item_icons_apply_synced_custom_crossbow_charge_time_effect"
       ],
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
+      "decision": "Vanilla 26.1 synchronizes enchantment definitions and holder order during configuration, then uses Enchantment.STREAM_CODEC only inside the enchantments/stored-enchantments component map. The protocol rejects impossible negative references while retaining nonnegative server ids; world and native consumers resolve custom reordered definitions, tooltip text, attribute effects, item-model predicates, and crossbow charge effects through the current session order. Remaining unsupported effect-component semantics stay tracked independently from holder identity."
     },
     {
       "id": "network-holder-set-or-tag",
