@@ -40,6 +40,7 @@ use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
 #[cfg(test)]
 use bbb_world::VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID as SKELETON_STRAY_CONVERSION_DATA_ID;
+#[cfg(test)]
 use bbb_world::VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID as ZOMBIE_VILLAGER_CONVERTING_DATA_ID;
 use bbb_world::{
     vanilla_entity_type_illager_arm_pose_uses_celebrating, vanilla_entity_type_is_living,

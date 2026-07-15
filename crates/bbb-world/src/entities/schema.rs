@@ -376,6 +376,20 @@ pub fn vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated ZombieVillager curing-conversion accessor and its typed default.
+pub fn vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_CONVERTING_ID")?;
+    match (accessor.serializer_name, accessor.typed_default) {
+        ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
+            Some((accessor.data_id, default))
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the nearest generated boolean `DATA_BABY_ID` accessor and its typed default.
 ///
 /// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
@@ -2339,6 +2353,22 @@ mod tests {
         assert_eq!(VANILLA_ZOMBIE_VILLAGER_DATA_FINALIZED_DATA_ID, 21);
         assert!(!VANILLA_ZOMBIE_VILLAGER_DEFAULT_CONVERTING);
         assert!(!VANILLA_ZOMBIE_VILLAGER_DEFAULT_DATA_FINALIZED);
+        assert_eq!(
+            vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
+            ),
+            Some((19, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(-1),
+            None
+        );
         let zombie_villager_data = VANILLA_ENTITY_METADATA_ACCESSORS_26_1
             .iter()
             .find(|entry| {

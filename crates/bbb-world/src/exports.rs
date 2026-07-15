@@ -12,6 +12,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     vanilla_entity_metadata_villager_data_accessor_for_entity_type,
+    vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_renderer_extracts_zombie_underwater_converting,
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_is_noop,
     vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,

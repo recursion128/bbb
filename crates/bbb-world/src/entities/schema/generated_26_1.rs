@@ -22037,6 +22037,22 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_zombie_villager_shaking_does_not_restore_entity_type_membership() {
+        let source = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
+        let body = source
+            .split("fn entity_shaking")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("entity shaking projection source");
+        assert!(body.contains(
+            "vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type"
+        ));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID"));
+        assert!(!body.contains("ZOMBIE_VILLAGER_CONVERTING_DATA_ID"));
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

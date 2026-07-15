@@ -904,10 +904,16 @@ pub(super) fn entity_shaking(
             return true;
         }
     }
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => {
-            entity_data_bool(data_values, ZOMBIE_VILLAGER_CONVERTING_DATA_ID, false)
+    if let Some((data_id, default)) =
+        bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
+            entity_type_id,
+        )
+    {
+        if entity_data_bool(data_values, data_id, default) {
+            return true;
         }
+    }
+    match entity_type_id {
         _ if bbb_world::vanilla_entity_type_is_abstract_piglin(entity_type_id) => {
             piglins_zombify
                 && !entity_data_bool(

@@ -1176,6 +1176,16 @@ fn entity_model_instances_shake_zombie_family_while_converting() {
     assert_eq!(body_rot(&world, 84), 0.0);
     assert_eq!(body_rot(&world, 85), 0.0);
 
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 84,
+        values: vec![protocol_bool_data(ZOMBIE_VILLAGER_CONVERTING_DATA_ID, true,)],
+    }));
+    assert_eq!(
+        body_rot(&world, 84),
+        0.0,
+        "Zombie does not own ZombieVillager.DATA_CONVERTING_ID"
+    );
+
     // AbstractZombieRenderer.isShaking ORs in DATA_DROWNED_CONVERSION_ID (18) for the
     // registered Zombie, Husk, and Drowned renderers.
     for id in [84, 86, 87] {

@@ -16149,3 +16149,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   默认 false），并明确排除同索引布尔字段的 Pig 与未知实体。
 - native shake projection 已移除 Strider 类型分支，仍由模型 owner 合法共享 accessor 常量
   选择 cold texture；函数级生成 reverse guard 与 Strider/Pig 对照测试锁定该边界。
+
+## 2026-07-15：从 metadata hierarchy 推导 zombie-villager curing shake
+
+- `bbb-world` 现在从生成 schema 解析 ZombieVillager 独有的 `DATA_CONVERTING_ID`
+  （wire id 19、默认 false），普通 Zombie 与未知实体不会因相同数值索引误入。
+- native shake projection 已移除 ZombieVillager 类型分支和生产索引别名；生成器 reverse
+  guard、world 查询测试与 Zombie/ZombieVillager 对照测试锁定 curing 与 underwater 两条边界。
