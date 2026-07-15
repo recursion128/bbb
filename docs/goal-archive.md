@@ -15201,3 +15201,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] F3 可保存的递归 ItemStack context 贯通 instrument holder order；回归覆盖自定义 holder、
   unknown holder、固定 catalog fallback、codec-backed raw 优先级与 item-frame Item SNBT。网络 direct
   summary 不足以无损重建 sound/use-duration/range/Component 时继续安全省略。
+
+## 2026-07-15：Fix persistent banner-pattern holder identity
+
+- [x] 对照 vanilla 26.1 `RegistryCodecs.homogeneousList(BANNER_PATTERN)`、
+  `BannerPattern.CODEC/STREAM_CODEC` 与 `BannerPatternLayers.Layer.CODEC/STREAM_CODEC`，
+  provides-banner-patterns explicit holder set 与每层 named holder 均由当前 session banner-pattern
+  order 解析 persistent resource id；tag shape 与 direct asset/translation payload 保持无损。
+- [x] 无同步 contents 时使用生成的 43 项 26.1 catalog；回归覆盖 custom/reordered holder、unknown
+  holder、single/list/tag holder-set 形状、direct layer 以及 item-frame 递归 ItemStack SNBT。
+  banner tooltip/render 的 typed registry entry 投影仍作为后续消费者切片开放。

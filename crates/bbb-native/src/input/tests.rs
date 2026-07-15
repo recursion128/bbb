@@ -10007,7 +10007,10 @@ fn item_stack_snbt_preserves_resolvable_banner_pattern_holder_sets() {
     );
 
     patch.provides_banner_pattern_registry_ids = vec![0];
-    assert_eq!(debug_provides_banner_patterns_component_snbt(&patch), None);
+    assert_eq!(
+        debug_provides_banner_patterns_component_snbt(&patch),
+        Some("\"minecraft:base\"".to_string())
+    );
 }
 
 #[test]
@@ -11467,6 +11470,11 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         0,
         vec![RegistryPacketEntry::stub("example:custom_horn")],
     );
+    world.record_registry_entries(
+        "minecraft:banner_pattern",
+        0,
+        vec![RegistryPacketEntry::stub("example:custom_pattern")],
+    );
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 63,
@@ -11503,13 +11511,22 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                     item_id: Some(0),
                     count: 1,
                     component_patch: DataComponentPatchSummary {
-                        added: 2,
+                        added: 4,
                         added_type_ids: vec![
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_DAMAGE_TYPE_TYPE_ID,
                             bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID,
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+                            bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
                         ],
                         damage_type_id: Some(0),
                         instrument_id: Some(0),
+                        provides_banner_pattern_registry_ids: vec![0],
+                        banner_pattern_layers: vec![bbb_protocol::packets::BannerPatternLayerSummary {
+                            registry_id: Some(0),
+                            asset_id: None,
+                            translation_key: None,
+                            color_id: 14,
+                        }],
                         ..Default::default()
                     },
                 }),
@@ -11574,7 +11591,9 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         snbt.contains(
             "block_pos: [I; 0, 1, 2], Item: {id: \"minecraft:diamond\", components: \
          {\"minecraft:damage_type\": \"example:custom\", \
-         \"minecraft:instrument\": \"example:custom_horn\"}}, \
+         \"minecraft:instrument\": \"example:custom_horn\", \
+         \"minecraft:provides_banner_patterns\": \"example:custom_pattern\", \
+         \"minecraft:banner_patterns\": [{pattern: \"example:custom_pattern\", color: \"red\"}]}}, \
          ItemRotation: 3b"
         ),
         "unexpected item-frame SNBT: {snbt}"

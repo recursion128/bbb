@@ -27,6 +27,7 @@ pub(super) struct PersistentSnbtContext<'a> {
     pub painting_variant_keys: Option<&'a [String]>,
     pub damage_type_keys: Option<&'a [String]>,
     pub instrument_keys: Option<&'a [String]>,
+    pub banner_pattern_keys: Option<&'a [String]>,
 }
 
 #[derive(Clone, Copy)]
@@ -1552,9 +1553,9 @@ fn encode_jukebox_playable(
 fn encode_provides_banner_patterns(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
-    debug_provides_banner_patterns_component_snbt(patch)
+    debug_provides_banner_patterns_component_snbt_with_keys(patch, context.banner_pattern_keys)
 }
 
 fn encode_lodestone_tracker(
@@ -1606,16 +1607,17 @@ fn encode_note_block_sound(
 fn encode_banner_patterns(
     _type_id: i32,
     patch: &bbb_protocol::packets::DataComponentPatchSummary,
-    _context: PersistentSnbtContext<'_>,
+    context: PersistentSnbtContext<'_>,
 ) -> Option<String> {
     let layers = patch
         .banner_pattern_layers
         .iter()
         .map(|layer| {
             let pattern = if let Some(registry_id) = layer.registry_id {
-                debug_snbt_string(
-                    BannerPatternKind::for_vanilla_registry_id(registry_id)?.resource_id(),
-                )
+                debug_snbt_string(debug_banner_pattern_resource_id(
+                    registry_id,
+                    context.banner_pattern_keys,
+                )?)
             } else {
                 format!(
                     "{{asset_id: {}, translation_key: {}}}",
@@ -2564,7 +2566,7 @@ mod tests {
     }
 
     #[test]
-    fn banner_pattern_layers_encode_named_and_direct_holders() {
+    fn banner_pattern_encoders_use_session_order_or_fixed_catalog() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             banner_pattern_layers: vec![
                 bbb_protocol::packets::BannerPatternLayerSummary {
@@ -2592,6 +2594,38 @@ mod tests {
             )
         );
 
+        let banner_pattern_keys = ["example:custom".to_string()];
+        patch.banner_pattern_layers[0].registry_id = Some(0);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    banner_pattern_keys: Some(&banner_pattern_keys),
+                    ..Default::default()
+                },
+            ),
+            Some(
+                "[{pattern: \"example:custom\", color: \"red\"}, \
+                 {pattern: {asset_id: \"example:custom_banner/pattern\", \
+                 translation_key: \"block.example.banner.custom\"}, color: \"light_blue\"}]"
+                    .to_string()
+            )
+        );
+
+        patch.banner_pattern_layers[0].registry_id = Some(1);
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    banner_pattern_keys: Some(&banner_pattern_keys),
+                    ..Default::default()
+                },
+            ),
+            None
+        );
+
         patch.banner_pattern_layers[0].registry_id = Some(43);
         assert_eq!(encode_added_component_value_snbt(72, &patch, None), None);
         patch.banner_pattern_layers.remove(0);
@@ -2601,6 +2635,49 @@ mod tests {
         assert_eq!(
             encode_added_component_value_snbt(72, &patch, None),
             Some("[]".to_string())
+        );
+
+        patch.provides_banner_pattern_registry_ids = vec![0, 42];
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+                &patch,
+                None,
+            ),
+            Some("[\"minecraft:base\", \"minecraft:guster\"]".to_string())
+        );
+        patch.provides_banner_pattern_registry_ids = vec![0];
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    banner_pattern_keys: Some(&banner_pattern_keys),
+                    ..Default::default()
+                },
+            ),
+            Some("\"example:custom\"".to_string())
+        );
+        patch.provides_banner_pattern_tag = Some("example:patterns".to_string());
+        assert_eq!(
+            encode_added_component_value_snbt_with_context(
+                component_id::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+                &patch,
+                PersistentSnbtContext {
+                    banner_pattern_keys: Some(&banner_pattern_keys),
+                    ..Default::default()
+                },
+            ),
+            None
+        );
+        patch.provides_banner_pattern_registry_ids.clear();
+        assert_eq!(
+            encode_added_component_value_snbt(
+                component_id::VANILLA_DATA_COMPONENT_PROVIDES_BANNER_PATTERNS_TYPE_ID,
+                &patch,
+                None,
+            ),
+            Some("\"#example:patterns\"".to_string())
         );
     }
 
@@ -2737,6 +2814,7 @@ mod tests {
             painting_variant_keys: None,
             damage_type_keys: None,
             instrument_keys: None,
+            banner_pattern_keys: None,
         };
         let patch = bbb_protocol::packets::DataComponentPatchSummary {
             provides_trim_material_id: Some(0),
