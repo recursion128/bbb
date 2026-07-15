@@ -313,8 +313,8 @@ code-of-conduct 的单次展示、自动/手工接受、持久 hash、拒绝断�
 enabled-features 的 Set 去重/unknown 过滤及 reset-chat canonical clear 也已闭合。
 custom-report details 与 server-links 的 decode/ownership/canonical/runtime 适用格已闭合；
 transfer 的 target decode、canonical projection、旧 transport 停用、cookie/identity carry、
-Transfer-intent handshake 与目标 login 重连已审计；显式 closing late-packet window 以及尚未建模的
-seen-player/insecure-chat-warning carry 仍保持具体 `partial`。
+Transfer-intent handshake、目标 login 重连及 already-read/bundled late StoreCookie/Transfer closing
+window 已审计；尚未建模的 seen-player/insecure-chat-warning carry 仍保持具体 `partial`。
 configuration client-information 的 startup command owner、language bound、9 字段 encoder、
 configuration finish 无 play duplicate 与无 ack 语义已闭合；仓库禁止的 in-game option UI
 不再作为 play packet 的虚构 command surface。
@@ -573,12 +573,12 @@ canonical complete。native ChatScreen 现提交 vanilla 10 行 scroll list、se
 play CookieRequest 的 resource id wire、shared session cookie lookup、hit payload/miss null response、ownership
 与 protocol/world/net/native tests 已全行闭合；StoreCookie 的 5120-byte 上限继续约束可回传数据。
 play StoreCookie 的 resource id + bounded payload wire、normal-play upsert 与 tests 已闭合；transfer cookie
-carry/reconnect 已接入，剩余 closing window 的 late StoreCookie 接收保持 runtime partial。
+carry/reconnect 及 closing window 的 late StoreCookie 接收已闭合。
 play StartConfiguration 的 strict unit wire、pending chat ack 先发、level clear、configuration state
 transition/ack 与 online/probe/native tests 已全行闭合；bundle 内 terminal enforcement 仍由 bundle 行拥有。
 play Transfer 的 shared host/port wire、strict payload consumption、world projection、旧 transport 停用、
 cookie/identity carry、Transfer-intent handshake、目标 login 重连与 online/probe/native tests 已闭合；
-closing-window late packet 及 seen-player/insecure-chat-warning carry 保持 runtime partial。
+closing-window late packet 也已闭合，seen-player/insecure-chat-warning carry 保持 runtime partial。
 play TagQuery 的 transaction + nullable CompoundTag wire、bounded/strict NBT validation、world apply 与 F3+I
 matching/null/stale callback tests 已全行闭合；Login/Respawn/clear 推进 client-level generation 并清旧 response，
 跨 level 的未发送 request 与 matching response 均在 clipboard 前拒绝；persistent entity Codec/SNBT 仍由各语义 owner 单独实现。

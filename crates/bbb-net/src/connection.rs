@@ -49,10 +49,8 @@ impl RawConnection {
 
     pub(crate) async fn read_packet(&mut self) -> Result<(i32, Vec<u8>)> {
         loop {
-            if let Some(frame) = try_read_frame(&mut self.read_buf)? {
-                let body = decode_packet_body(&frame, self.compression_threshold)?;
-                let (packet_id, payload) = split_packet(&body)?;
-                return Ok((packet_id, payload.to_vec()));
+            if let Some(packet) = self.try_read_buffered_packet()? {
+                return Ok(packet);
             }
 
             let mut temp = [0u8; 4096];
@@ -62,5 +60,16 @@ impl RawConnection {
             }
             self.read_buf.extend_from_slice(&temp[..read]);
         }
+    }
+
+    /// Decodes one packet that the transport has already read without waiting
+    /// for more socket input.
+    pub(crate) fn try_read_buffered_packet(&mut self) -> Result<Option<(i32, Vec<u8>)>> {
+        let Some(frame) = try_read_frame(&mut self.read_buf)? else {
+            return Ok(None);
+        };
+        let body = decode_packet_body(&frame, self.compression_threshold)?;
+        let (packet_id, payload) = split_packet(&body)?;
+        Ok(Some((packet_id, payload.to_vec())))
     }
 }

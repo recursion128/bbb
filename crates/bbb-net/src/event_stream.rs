@@ -111,7 +111,8 @@ pub async fn run_offline_event_stream(
             },
         )?;
 
-        let transfer = match stream.state {
+        let packet_state = stream.state;
+        let transfer = match packet_state {
             ConnectionState::Login => {
                 let packet = packets::decode_login_clientbound(packet_id, &payload)?;
                 stream.handle_login_packet(packet).await?;
@@ -126,9 +127,14 @@ pub async fn run_offline_event_stream(
                 let mut transfer = None;
                 if let Some(batch) = play_bundle.push(packet)? {
                     for packet in batch {
-                        transfer = stream.handle_play_packet(packet).await?;
                         if transfer.is_some() {
-                            break;
+                            if let Some(next) =
+                                stream.handle_transfer_closing_play_packet(packet).await?
+                            {
+                                transfer = Some(next);
+                            }
+                        } else {
+                            transfer = stream.handle_play_packet(packet).await?;
                         }
                     }
                 }
@@ -140,9 +146,75 @@ pub async fn run_offline_event_stream(
         };
 
         if let Some(transfer) = transfer {
+            let transfer = stream
+                .drain_transfer_closing_packets(packet_state, transfer)
+                .await?;
             reconnect_for_transfer(&mut stream, &options, transfer).await?;
             play_bundle = PlayPacketBundleAssembler::default();
         }
+    }
+}
+
+impl EventStreamContext {
+    async fn handle_transfer_closing_play_packet(
+        &mut self,
+        packet: packets::PlayClientbound,
+    ) -> Result<Option<Transfer>> {
+        if matches!(
+            &packet,
+            packets::PlayClientbound::StoreCookie(_) | packets::PlayClientbound::Transfer(_)
+        ) {
+            self.handle_play_packet(packet).await
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn drain_transfer_closing_packets(
+        &mut self,
+        packet_state: ConnectionState,
+        mut transfer: Transfer,
+    ) -> Result<Transfer> {
+        while let Some((packet_id, payload)) = self.conn.try_read_buffered_packet()? {
+            tracing::debug!(
+                state = ?packet_state,
+                packet_id,
+                len = payload.len(),
+                "clientbound packet during transfer close"
+            );
+            emit_best_effort(
+                &self.events,
+                NetEvent::PacketSeen {
+                    state: packet_state,
+                    packet_id,
+                    len: payload.len(),
+                },
+            )?;
+
+            let next = match packet_state {
+                ConnectionState::Configuration => {
+                    let packet = packets::decode_configuration_clientbound(packet_id, &payload)?;
+                    if matches!(
+                        &packet,
+                        packets::ConfigurationClientbound::StoreCookie(_)
+                            | packets::ConfigurationClientbound::Transfer(_)
+                    ) {
+                        self.handle_configuration_packet(packet).await?
+                    } else {
+                        None
+                    }
+                }
+                ConnectionState::Play => {
+                    let packet = packets::decode_play_clientbound(packet_id, &payload)?;
+                    self.handle_transfer_closing_play_packet(packet).await?
+                }
+                _ => unreachable!("transfer is only legal in configuration or play"),
+            };
+            if let Some(next) = next {
+                transfer = next;
+            }
+        }
+        Ok(transfer)
     }
 }
 
@@ -221,7 +293,7 @@ fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
 mod tests {
     use super::*;
     use bbb_protocol::{
-        codec::Decoder,
+        codec::{Decoder, Encoder},
         ids,
         packets::{ChatAcknowledgement, GameProfile, LoginClientbound, PlayClientbound},
     };
@@ -4376,6 +4448,158 @@ mod tests {
         assert!(decoder.is_empty());
     }
 
+    #[tokio::test]
+    async fn play_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only() {
+        let (mut client, _server) = raw_connection_pair().await;
+        client
+            .read_buf
+            .extend_from_slice(&encoded_store_cookie_packet(
+                ids::play::CLIENTBOUND_STORE_COOKIE,
+                "bbb:handoff",
+                &[4, 5, 6],
+            ));
+        let mut ignored_ping = Encoder::new();
+        ignored_ping.write_i32(19);
+        client.read_buf.extend_from_slice(&encode_packet(
+            ids::play::CLIENTBOUND_PING,
+            &ignored_ping.into_inner(),
+        ));
+        client.read_buf.extend_from_slice(&encoded_transfer_packet(
+            ids::play::CLIENTBOUND_TRANSFER,
+            "latest.example.invalid",
+            25567,
+        ));
+
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Play,
+            player_position_state: PlayerPositionState::default(),
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let transfer = stream
+            .drain_transfer_closing_packets(
+                ConnectionState::Play,
+                Transfer {
+                    host: "first.example.invalid".to_string(),
+                    port: 25566,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            transfer,
+            Transfer {
+                host: "latest.example.invalid".to_string(),
+                port: 25567,
+            }
+        );
+        assert_eq!(
+            stream.server_cookies.get("bbb:handoff"),
+            Some(&vec![4, 5, 6])
+        );
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::StoreCookie {
+                key,
+                payload_len: 3,
+                stored_cookie_count: 1,
+            }) if key == "bbb:handoff"
+        ));
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::Play(PlayClientbound::Transfer(Transfer {
+                host,
+                port: 25567,
+            }))) if host == "latest.example.invalid"
+        ));
+        assert!(events_rx.try_recv().is_err());
+    }
+
+    #[tokio::test]
+    async fn configuration_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only(
+    ) {
+        let (mut client, _server) = raw_connection_pair().await;
+        client
+            .read_buf
+            .extend_from_slice(&encoded_store_cookie_packet(
+                ids::configuration::CLIENTBOUND_STORE_COOKIE,
+                "bbb:handoff",
+                &[7, 8],
+            ));
+        let mut ignored_ping = Encoder::new();
+        ignored_ping.write_i32(23);
+        client.read_buf.extend_from_slice(&encode_packet(
+            ids::configuration::CLIENTBOUND_PING,
+            &ignored_ping.into_inner(),
+        ));
+        client.read_buf.extend_from_slice(&encoded_transfer_packet(
+            ids::configuration::CLIENTBOUND_TRANSFER,
+            "latest.example.invalid",
+            25568,
+        ));
+
+        let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_position_state: PlayerPositionState::default(),
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let transfer = stream
+            .drain_transfer_closing_packets(
+                ConnectionState::Configuration,
+                Transfer {
+                    host: "first.example.invalid".to_string(),
+                    port: 25566,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            transfer,
+            Transfer {
+                host: "latest.example.invalid".to_string(),
+                port: 25568,
+            }
+        );
+        assert_eq!(stream.server_cookies.get("bbb:handoff"), Some(&vec![7, 8]));
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::StoreCookie {
+                key,
+                payload_len: 2,
+                stored_cookie_count: 1,
+            }) if key == "bbb:handoff"
+        ));
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::Transfer(Transfer {
+                host,
+                port: 25568,
+            })) if host == "latest.example.invalid"
+        ));
+        assert!(events_rx.try_recv().is_err());
+    }
+
     async fn raw_connection_pair() -> (RawConnection, RawConnection) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
@@ -4392,6 +4616,21 @@ mod tests {
             compression_threshold: None,
         };
         (client, server)
+    }
+
+    fn encoded_store_cookie_packet(packet_id: i32, key: &str, payload: &[u8]) -> Vec<u8> {
+        let mut encoder = Encoder::new();
+        encoder.write_string(key);
+        encoder.write_var_i32(payload.len() as i32);
+        encoder.write_bytes(payload);
+        encode_packet(packet_id, &encoder.into_inner())
+    }
+
+    fn encoded_transfer_packet(packet_id: i32, host: &str, port: i32) -> Vec<u8> {
+        let mut encoder = Encoder::new();
+        encoder.write_string(host);
+        encoder.write_var_i32(port);
+        encode_packet(packet_id, &encoder.into_inner())
     }
 
     fn test_item_stack(item_id: i32, count: i32) -> packets::ItemStackSummary {

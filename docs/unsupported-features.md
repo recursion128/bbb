@@ -59,9 +59,10 @@ Owner: `bbb-protocol`
 - Complete the remaining configuration/play transfer runtime behavior. Production
   now stops using the old transport, carries cookies and the login identity, opens
   the requested target with a Transfer-intent handshake, resets connection-local
-  compression/configuration state, and re-enters login. Remaining work is an
-  explicit closing window for late StoreCookie/Transfer packets plus the currently
-  unmodeled seen-player and insecure-chat-warning TransferState members.
+  compression/configuration state, and re-enters login. Its bounded closing window
+  drains already-read and bundled StoreCookie/Transfer packets while suppressing
+  other old-session work. Remaining work is the currently unmodeled seen-player and
+  insecure-chat-warning TransferState members.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while
   preserving an explicit unknown result in context-free callers.

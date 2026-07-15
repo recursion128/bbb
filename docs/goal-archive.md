@@ -15111,3 +15111,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   handler 都显式返回 reconnect directive。focused regressions 锁定两状态 directive、Connected→Login event、cookie
   carry、identity、compression reset 与目标收到的 exact handshake/Login Hello。显式 closing late-packet window 以及
   尚未建模的 seen-player/insecure-chat-warning TransferState 仍保持 runtime partial。
+
+## 2026-07-15：Drain late packets while closing transferred sessions
+
+- [x] 对照 `ClientCommonPacketListenerImpl.shouldHandleMessage`，Transfer directive 产生后进入 bounded closing
+  window：只处理旧 transport 已读入 framing buffer 或同一 play bundle 已排队的 StoreCookie/Transfer，其他旧会话
+  packet 不再进入 handler；后到 Transfer 依 vanilla 可放行策略替换最终目标。
+- [x] `RawConnection` 提供不等待新 socket input 的 buffered packet decode，重连前完成 closing drain 后才丢弃旧
+  transport。configuration/play focused regressions 均覆盖 cookie carry、latest target 以及 Ping suppression；play
+  StoreCookie runtime coverage 因而闭合。Transfer 的 seen-player/insecure-chat-warning carry 仍单独保持 partial。

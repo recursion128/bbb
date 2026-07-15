@@ -1854,6 +1854,7 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-net/src/event_stream.rs#configuration_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only",
             "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleStoreCookie"
           ],
@@ -1862,7 +1863,8 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/tests.rs#configuration_store_cookie_enforces_vanilla_payload_limit"
+            "crates/bbb-protocol/src/packets/tests.rs#configuration_store_cookie_enforces_vanilla_payload_limit",
+            "crates/bbb-net/src/event_stream.rs#configuration_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only"
           ],
           "gap": null,
           "status": "complete"
@@ -1902,6 +1904,7 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-net/src/event_stream.rs#configuration_transfer_emits_target_and_requests_reconnect",
+            "crates/bbb-net/src/event_stream.rs#configuration_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only",
             "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies",
             "crates/bbb-world/src/client/server_presentation.rs#transfer_stores_latest_server_target",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleTransfer"
@@ -1912,6 +1915,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-net/src/event_stream.rs#configuration_transfer_emits_target_and_requests_reconnect",
+            "crates/bbb-net/src/event_stream.rs#configuration_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only",
             "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies",
             "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world"
           ],
@@ -7634,7 +7638,8 @@
             "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
             "crates/bbb-net/src/probe/play.rs#probe_play_cookie_events_update_world_and_respond",
             "crates/bbb-world/src/client/server_presentation.rs#cookie_metadata_tracks_requests_and_stores",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#cookie_events_update_world_counters"
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#cookie_events_update_world_counters",
+            "crates/bbb-protocol/src/packet_coverage.rs#play_store_cookie_coverage_is_complete"
           ],
           "gap": null,
           "status": "complete"
@@ -12974,16 +12979,18 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/event_stream.rs#play_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#shouldHandleMessage"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#decodes_and_encodes_cookie_packets",
             "crates/bbb-protocol/src/packets/tests.rs#configuration_store_cookie_enforces_vanilla_payload_limit",
             "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/event_stream.rs#play_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only",
             "crates/bbb-net/src/probe/play.rs#probe_play_cookie_events_update_world_and_respond",
             "crates/bbb-world/src/client/server_presentation.rs#cookie_metadata_tracks_requests_and_stores",
             "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#cookie_events_update_world_counters"
@@ -13450,6 +13457,7 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/event_stream.rs#play_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only",
             "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleTransfer",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#shouldHandleMessage"
@@ -13461,6 +13469,7 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#decodes_transfer_packets_in_configuration_and_play",
             "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response",
+            "crates/bbb-net/src/event_stream.rs#play_transfer_closing_window_handles_buffered_cookie_and_latest_transfer_only",
             "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies",
             "crates/bbb-net/src/probe/play.rs#probe_play_transfer_updates_world",
             "crates/bbb-world/src/client/server_presentation.rs#transfer_stores_latest_server_target",
