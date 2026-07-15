@@ -1770,6 +1770,26 @@ pub fn vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
     }
 }
 
+/// Resolves the inherited SpellcasterIllager casting-spell accessor and its typed default.
+pub(crate) fn vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i8)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SPELL_CASTING_ID")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.illager.SpellcasterIllager",
+            "BYTE",
+            Some(VanillaEntityMetadataDefault::Byte(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated WitherBoss invulnerability-ticks accessor and its typed default.
 ///
 /// The accessor owner supplies both the Wither presentation membership and its wire index, so
@@ -2175,8 +2195,7 @@ pub fn vanilla_entity_metadata_type_is_abstract_piglin(entity_type_id: i32) -> b
 /// Returns whether the generated metadata accessor hierarchy inherits
 /// `SpellcasterIllager` and therefore owns `DATA_SPELL_CASTING_ID`.
 pub fn vanilla_entity_metadata_type_is_spellcaster_illager(entity_type_id: i32) -> bool {
-    vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SPELL_CASTING_ID")
-        .is_some()
+    vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(entity_type_id).is_some()
 }
 
 pub fn vanilla_entity_metadata_type_is_spider(entity_type_id: i32) -> bool {
@@ -4326,6 +4345,35 @@ mod tests {
             vanilla_entity_metadata_vex_flags_accessor_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_spellcaster_casting_accessor_owns_membership_index_and_default() {
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_EVOKER_ID,
+            VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                Some((17, 0)),
+                "entity type {entity_type_id}"
+            );
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                None,
+                "entity type {entity_type_id}"
+            );
+        }
     }
 
     #[test]

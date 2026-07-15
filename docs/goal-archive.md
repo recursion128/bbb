@@ -16592,3 +16592,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 模型、fuse 插值与 client smoke 三条路径删除 TNT type predicate 和固定 accessor/default
   aliases；既有语义测试锁定 block-state 覆盖、倒计时插值及 post-decrement smoke 判据，
   生成器 reverse guard 禁止恢复平行事实源。
+
+## 2026-07-15：统一推导 SpellcasterIllager casting metadata accessor
+
+- entity model-source 投影继续消费 renderer catalog 生成的 Evoker/Illusioner
+  `extractRenderState` assignment，并与生成 schema 的
+  `SpellcasterIllager.DATA_SPELL_CASTING_ID` membership、wire id 17、BYTE default 0 取交集。
+- world store 删除固定 accessor/default aliases 与重复的 untyped membership query；既有语义
+  测试继续证明 Vindicator 无 accessor、Pillager 的 boolean id 17 不会被误读，生成器 reverse
+  guard 禁止恢复平行事实源。

@@ -177,6 +177,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   boolean accessors there rather than entity-type branches. Piglin/PiglinBrute/Hoglin conversion
   shake must likewise resolve the nearest generated `DATA_IMMUNE_TO_ZOMBIFICATION` accessor rather
   than split class membership and Hoglin into parallel dispatch arms.
+  Spellcaster render-state projection must intersect generated renderer assignment with the
+  generated `SpellcasterIllager.DATA_SPELL_CASTING_ID` accessor; it must not restore a fixed byte
+  slot/default or substitute a parallel Evoker/Illusioner type predicate.
   Spectator camera post-effect selection must remain generated from
   `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
   projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This

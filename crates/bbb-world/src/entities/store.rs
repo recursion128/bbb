@@ -30,6 +30,7 @@ use super::schema::{
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
+    vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
@@ -110,7 +111,7 @@ use crate::entities::renderer_catalog::{
 use crate::entities::schema::{
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_item_frame,
-    vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_spellcaster_illager,
+    vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
     VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
@@ -133,7 +134,6 @@ use crate::entities::schema::{
     VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID,
     VANILLA_PLAYER_ABSORPTION_DATA_ID, VANILLA_PLAYER_DEFAULT_ABSORPTION,
     VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
-    VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID, VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -1605,15 +1605,12 @@ impl EntityStore {
         // Pillager uses the same id for its BOOLEAN crossbow flag.
         let illager_spellcasting =
             vanilla_entity_renderer_extracts_casting_spell(identity.entity_type_id)
-                && vanilla_entity_metadata_type_is_spellcaster_illager(identity.entity_type_id)
-                && self
-                    .metadata_byte(
-                        id,
-                        VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID,
-                        VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING,
-                    )
-                    .unwrap_or(VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING)
-                    > 0;
+                && vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(
+                    identity.entity_type_id,
+                )
+                .is_some_and(|(data_id, default)| {
+                    self.metadata_byte(id, data_id, default).unwrap_or(default) > 0
+                });
         // Vanilla `VillagerRenderer` / `WanderingTraderRenderer.extractRenderState`:
         // `state.isUnhappy = entity.getUnhappyCounter() > 0`. PandaRenderer has the same assignment
         // for Panda.UNHAPPY_COUNTER, so intersect the renderer fact with the generated
