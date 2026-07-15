@@ -2,11 +2,9 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::entity_poses::{VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_POSE_EMERGING_ID};
 use bbb_protocol::entity_types::{
-    vanilla_entity_type_is_powder_snow_walkable, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
-    VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-    VANILLA_ENTITY_TYPE_WARDEN_ID,
+    vanilla_entity_type_is_powder_snow_walkable, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SHULKER_ID,
 };
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
@@ -14,10 +12,10 @@ use super::local_player::LocalPlayerPoseState;
 #[cfg(test)]
 use crate::entities::VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID;
 use crate::entities::{
-    is_vanilla_abstract_horse_type, is_vanilla_boat_type, is_vanilla_minecart_type,
-    vanilla_living_entity_type, EntitySupportingBlock, VANILLA_CREAKING_CAN_MOVE_DATA_ID,
-    VANILLA_CREAKING_DEFAULT_CAN_MOVE, VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
-    VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
+    is_vanilla_boat_type, is_vanilla_minecart_type, vanilla_entity_metadata_type_pushability_kind,
+    vanilla_living_entity_type, EntitySupportingBlock, VanillaEntityPushabilityKind,
+    VANILLA_CREAKING_CAN_MOVE_DATA_ID, VANILLA_CREAKING_DEFAULT_CAN_MOVE,
+    VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL, VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
 use crate::terrain::{
     block_name_has_empty_collision_shape, block_name_is_air, block_name_is_amethyst_cluster,
@@ -722,34 +720,31 @@ impl WorldStore {
         target_type: i32,
         target_position: [f64; 3],
     ) -> bool {
-        if is_vanilla_boat_type(target_type) || is_vanilla_minecart_type(target_type) {
-            return true;
-        }
-        if target_type == VANILLA_ENTITY_TYPE_PARROT_ID {
-            return true;
-        }
-        if matches!(
-            target_type,
-            VANILLA_ENTITY_TYPE_BAT_ID | VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
-        ) {
+        let Some(kind) = vanilla_entity_metadata_type_pushability_kind(target_type) else {
             return false;
+        };
+        match kind {
+            VanillaEntityPushabilityKind::Never => return false,
+            VanillaEntityPushabilityKind::Always => return true,
+            VanillaEntityPushabilityKind::NotVehicle => {
+                return self
+                    .entities
+                    .mount(target_id)
+                    .is_some_and(|mount| mount.passengers.is_empty());
+            }
+            VanillaEntityPushabilityKind::Living
+            | VanillaEntityPushabilityKind::LivingCanMove
+            | VanillaEntityPushabilityKind::LivingNotDiggingOrEmerging => {}
         }
-        if is_vanilla_abstract_horse_type(target_type) {
-            return self
-                .entities
-                .mount(target_id)
-                .is_some_and(|mount| mount.passengers.is_empty());
-        }
-        if !crate::vanilla_entity_type_is_living(target_type)
-            || !self
-                .entities
-                .living_entity_health(target_id)
-                .is_some_and(|health| health > 0.0)
+        if !self
+            .entities
+            .living_entity_health(target_id)
+            .is_some_and(|health| health > 0.0)
             || self.debug_living_entity_on_climbable(target_id, target_position)
         {
             return false;
         }
-        if target_type == VANILLA_ENTITY_TYPE_WARDEN_ID
+        if kind == VanillaEntityPushabilityKind::LivingNotDiggingOrEmerging
             && self.entities.pose(target_id).is_some_and(|pose| {
                 matches!(
                     pose,
@@ -759,7 +754,7 @@ impl WorldStore {
         {
             return false;
         }
-        if target_type == VANILLA_ENTITY_TYPE_CREAKING_ID
+        if kind == VanillaEntityPushabilityKind::LivingCanMove
             && !self
                 .entities
                 .metadata_bool_for_entity(
@@ -3880,6 +3875,11 @@ mod tests {
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
         PalettedContainerData, WorldDimension,
     };
+    use bbb_protocol::entity_types::{
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BAT_ID,
+        VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    };
 
     #[test]
     fn leaves_collision_membership_rejects_suffix_lookalikes() {
@@ -4966,6 +4966,63 @@ mod tests {
             40,
             bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
             [0.5, 0.0, 0.5],
+        ));
+    }
+
+    #[test]
+    fn generated_pushability_kinds_preserve_warden_and_creaking_instance_gates() {
+        let mut world = empty_world();
+        add_collision_test_entity(
+            &mut world,
+            41,
+            VANILLA_ENTITY_TYPE_WARDEN_ID,
+            [0.5, 0.0, 0.5],
+        );
+        add_collision_test_entity(
+            &mut world,
+            42,
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+            [1.5, 0.0, 0.5],
+        );
+        assert!(world.debug_entity_is_pushable(41, VANILLA_ENTITY_TYPE_WARDEN_ID, [0.5, 0.0, 0.5],));
+        assert!(world.debug_entity_is_pushable(
+            42,
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+            [1.5, 0.0, 0.5],
+        ));
+
+        assert!(
+            world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+                id: 41,
+                values: vec![bbb_protocol::packets::EntityDataValue {
+                    data_id: 6,
+                    serializer_id: 20,
+                    value: bbb_protocol::packets::EntityDataValueKind::Pose(
+                        VANILLA_ENTITY_POSE_DIGGING_ID,
+                    ),
+                }],
+            })
+        );
+        assert!(!world.debug_entity_is_pushable(
+            41,
+            VANILLA_ENTITY_TYPE_WARDEN_ID,
+            [0.5, 0.0, 0.5],
+        ));
+
+        assert!(
+            world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
+                id: 42,
+                values: vec![bbb_protocol::packets::EntityDataValue {
+                    data_id: VANILLA_CREAKING_CAN_MOVE_DATA_ID,
+                    serializer_id: 8,
+                    value: bbb_protocol::packets::EntityDataValueKind::Boolean(false),
+                }],
+            })
+        );
+        assert!(!world.debug_entity_is_pushable(
+            42,
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+            [1.5, 0.0, 0.5],
         ));
     }
 

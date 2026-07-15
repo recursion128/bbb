@@ -168,6 +168,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   behavior plus redirectable-projectile tag, with spectator/marker kept as per-instance gates.
   Remote-entity powder-snow collision must consume the generated
   `powder_snow_walkable_mobs` entity-type tag rather than a parallel entity-type set.
+  Collision-debug pushability class dispatch must consume the generated nearest-`isPushable`
+  behavior; health/climbable/mount/pose/metadata checks remain runtime instance gates.
   Hoglin/Zoglin shared attack-animation event and tick membership must remain derived from the
   generated `HoglinBase` interface graph rather than parallel entity-type tables.
   Illager celebrating-arm-pose membership must remain derived from the nearest generated

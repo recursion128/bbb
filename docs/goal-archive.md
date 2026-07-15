@@ -15528,3 +15528,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
 - [x] remote supporting-block powder-snow 碰撞删除手写四项 type match，直接消费
   generated tag query；靴子、descending 和 falling-block 实例分支未改，generator-emitted
   反向门禁防止平行集合回流。
+
+## 2026-07-15：Generate entity pushability class behavior
+
+- [x] metadata generator 解析最近 `Entity.isPushable()` override，将 vanilla 全部 10 个
+  声明点收敛为 Never/Always/Living/NotVehicle/LivingCanMove/
+  LivingNotDiggingOrEmerging 六类生成行为，未知 id 不猜测。
+- [x] collision-debug `isPushable` 分发删除 boat/minecart/parrot/bat/armor-stand/horse/
+  warden/creaking 手写 type 判定，改为消费 generated kind；health、climbable、mount、
+  pose 和 metadata 实例门保持原顺序；exact-kind/unknown-id 与 Warden/Creaking
+  动态门聚焦测试、generator-emitted 反向门禁防止回流。

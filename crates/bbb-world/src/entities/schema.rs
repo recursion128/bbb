@@ -221,6 +221,16 @@ pub enum VanillaEntitySoundSourceKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityPushabilityKind {
+    Never,
+    Always,
+    Living,
+    NotVehicle,
+    LivingCanMove,
+    LivingNotDiggingOrEmerging,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -229,6 +239,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub schema_class: Option<&'static str>,
     pub is_pickable_by_class: bool,
     pub sound_source_kind: VanillaEntitySoundSourceKind,
+    pub pushability_kind: VanillaEntityPushabilityKind,
     pub is_living: bool,
     pub is_animal: bool,
     pub is_tamable_animal: bool,
@@ -396,6 +407,18 @@ pub fn vanilla_entity_metadata_type_sound_source_kind(
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).ok()?)
         .map(|entry| entry.sound_source_kind)
+}
+
+/// Returns the nearest generated `Entity.isPushable()` class behavior.
+///
+/// Dynamic variants retain only the class-level predicate shape here. Health, spectator,
+/// climbable, passenger, pose, and synchronized-metadata state remain caller-owned.
+pub fn vanilla_entity_metadata_type_pushability_kind(
+    entity_type_id: i32,
+) -> Option<VanillaEntityPushabilityKind> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .map(|entry| entry.pushability_kind)
 }
 
 /// Returns whether the generated vanilla runtime class implements `Leashable`,
@@ -652,10 +675,12 @@ mod tests {
         vanilla_entity_data_serializer_for_constant_name, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
     };
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_AXOLOTL_ID,
-        VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID, VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID,
+        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID,
+        VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID, VANILLA_ENTITY_TYPE_BAT_ID,
         VANILLA_ENTITY_TYPE_BLAZE_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_CHICKEN_ID,
+        VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
@@ -669,7 +694,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
         VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
@@ -1365,6 +1390,77 @@ mod tests {
             .map(|(body, _)| body)
             .expect("arrow tag query source");
         assert!(!arrow_query.contains("matches!"));
+    }
+
+    #[test]
+    fn generated_pushability_kinds_follow_nearest_class_override() {
+        for (kind, expected_count) in [
+            (VanillaEntityPushabilityKind::Never, 40),
+            (VanillaEntityPushabilityKind::Always, 28),
+            (VanillaEntityPushabilityKind::Living, 78),
+            (VanillaEntityPushabilityKind::NotVehicle, 9),
+            (VanillaEntityPushabilityKind::LivingCanMove, 1),
+            (VanillaEntityPushabilityKind::LivingNotDiggingOrEmerging, 1),
+        ] {
+            assert_eq!(
+                VANILLA_ENTITY_TYPE_METADATA_26_1
+                    .iter()
+                    .filter(|entry| entry.pushability_kind == kind)
+                    .count(),
+                expected_count,
+                "{kind:?}"
+            );
+        }
+        for (entity_type_id, expected) in [
+            (
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+                VanillaEntityPushabilityKind::Never,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_BAT_ID,
+                VanillaEntityPushabilityKind::Never,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+                VanillaEntityPushabilityKind::Never,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_PARROT_ID,
+                VanillaEntityPushabilityKind::Always,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+                VanillaEntityPushabilityKind::Always,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_MINECART_ID,
+                VanillaEntityPushabilityKind::Always,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_COW_ID,
+                VanillaEntityPushabilityKind::Living,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_HORSE_ID,
+                VanillaEntityPushabilityKind::NotVehicle,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_CREAKING_ID,
+                VanillaEntityPushabilityKind::LivingCanMove,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_WARDEN_ID,
+                VanillaEntityPushabilityKind::LivingNotDiggingOrEmerging,
+            ),
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_type_pushability_kind(entity_type_id),
+                Some(expected),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(vanilla_entity_metadata_type_pushability_kind(-1), None);
+        assert_eq!(vanilla_entity_metadata_type_pushability_kind(157), None);
     }
 
     #[test]
