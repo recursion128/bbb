@@ -15,6 +15,7 @@ use super::dimensions::{entity_data_pose, vanilla_living_entity_type};
 use super::dragon::EnderDragonAnimationState;
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 use super::schema::{
+    vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
@@ -101,10 +102,7 @@ use super::schema::{
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid,
-    EntityTransform, EntityVec3,
-    VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS as ABSTRACT_HORSE_DEFAULT_FLAGS,
-    VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
-    VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
+    EntityTransform, EntityVec3, VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
     VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH as ABSTRACT_HORSE_FLAG_OPEN_MOUTH,
     VANILLA_ABSTRACT_HORSE_FLAG_STANDING as ABSTRACT_HORSE_FLAG_STANDING,
     VANILLA_ENTITY_SHARED_FLAGS_DATA_ID, VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING,
@@ -4006,7 +4004,7 @@ impl EntityClientAnimationState {
             entity_type_id
                 if vanilla_entity_renderer_uses_abstract_horse_renderer(entity_type_id) =>
             {
-                let (eating, standing, open_mouth) = equine_pose_flags(data_values);
+                let (eating, standing, open_mouth) = equine_pose_flags(entity_type_id, data_values);
                 if let Some(pose) = self.equine_pose.as_mut() {
                     pose.set_flags(eating, standing, open_mouth);
                 } else if eating || standing || open_mouth {
@@ -6212,12 +6210,11 @@ fn panda_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (bo
     )
 }
 
-fn equine_pose_flags(data_values: &[EntityDataValue]) -> (bool, bool, bool) {
-    let flags = entity_data_byte(
-        data_values,
-        ABSTRACT_HORSE_FLAGS_DATA_ID,
-        ABSTRACT_HORSE_DEFAULT_FLAGS,
-    );
+fn equine_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (bool, bool, bool) {
+    let flags =
+        vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(entity_type_id)
+            .map(|(data_id, default)| entity_data_byte(data_values, data_id, default))
+            .unwrap_or(0);
     (
         flags & ABSTRACT_HORSE_FLAG_EATING != 0,
         flags & ABSTRACT_HORSE_FLAG_STANDING != 0,

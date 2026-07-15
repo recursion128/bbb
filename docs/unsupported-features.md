@@ -205,6 +205,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Panda pose/sneeze membership, wire index and default must remain derived from generated
   `Panda.DATA_ID_FLAGS`; world animation and native render projection must not restore fixed
   accessor aliases.
+  AbstractHorse pose/tame/debug membership, wire index and default must remain derived from
+  generated `AbstractHorse.DATA_ID_FLAGS`; animation, mount inventory and native debug consumers
+  must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

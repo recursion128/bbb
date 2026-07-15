@@ -22267,6 +22267,33 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_abstract_horse_flags_do_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        let inventory = include_str!("../../client/inventory.rs");
+        let slot_ops = include_str!("../../client/inventory/slot_ops.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        for source in [animations, inventory, slot_ops, native_input] {
+            assert!(source
+                .contains("vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type"));
+        }
+        for removed in [
+            "ABSTRACT_HORSE_FLAGS_DATA_ID",
+            "ABSTRACT_HORSE_DEFAULT_FLAGS",
+        ] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(!inventory.contains(removed), "inventory restored {removed}");
+            assert!(!slot_ops.contains(removed), "slot ops restored {removed}");
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source

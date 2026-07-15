@@ -539,6 +539,26 @@ pub fn vanilla_entity_metadata_panda_flags_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated AbstractHorse flags accessor and its typed default.
+pub fn vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i8)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_FLAGS")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.equine.AbstractHorse",
+            "BYTE",
+            Some(VanillaEntityMetadataDefault::Byte(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Vex flags accessor and its typed default.
 pub(crate) fn vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
     entity_type_id: i32,
@@ -2085,6 +2105,28 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_panda_flags_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_abstract_horse_flags_accessor_owns_membership_index_and_default() {
+        for entity_type_id in [VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_CAMEL_ID] {
+            assert_eq!(
+                vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                Some((18, 0))
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(-1),
             None
         );
     }

@@ -72,6 +72,7 @@ use bbb_protocol::{
     MC_DATA_VERSION, MC_DATA_VERSION_SERIES, MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION,
     PROTOCOL_VERSION,
 };
+use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
 use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -144,7 +145,6 @@ use bbb_world::{
 use bbb_world::{
     BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
     TagQueryResponseState, WorldStore,
-    VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
     VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
     VANILLA_ABSTRACT_HORSE_FLAG_TAME as ABSTRACT_HORSE_FLAG_TAME,
@@ -6900,7 +6900,14 @@ fn debug_push_animal_additional_save_data(_fields: &mut Vec<String>) {}
 fn debug_push_allay_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_abstract_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    if let Some(flags) = debug_entity_data_byte_present(entity, ABSTRACT_HORSE_FLAGS_DATA_ID) {
+    let Some((flags_data_id, _)) =
+        vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    if let Some(flags) = debug_entity_data_byte_present(entity, flags_data_id) {
         fields.push(format!(
             "EatingHaystack: {}",
             debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_EATING != 0)

@@ -16245,3 +16245,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   与 byte 默认值 0 的 typed accessor；world pose animation 与 native sneeze/sitting render
   projection 共同消费它，并继续使用生成的 flag masks。
 - 两个生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 AbstractHorse metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `AbstractHorse.DATA_ID_FLAGS` 解析继承 membership、
+  wire id 18 与 byte 默认值 0 的 typed accessor；world pose animation、mount saddle slot 判定
+  与 native debug save projection 共同消费它，并继续使用生成的 flag masks。
+- 三类生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复这些平行事实源。
