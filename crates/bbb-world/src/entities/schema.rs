@@ -308,6 +308,24 @@ pub fn vanilla_entity_metadata_accessor_for_entity_type(
     }
 }
 
+/// Resolves the nearest generated boolean `DATA_BABY_ID` accessor and its typed default.
+///
+/// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
+/// `Zoglin`; walking the generated schema hierarchy preserves their distinct wire indices without
+/// maintaining a parallel entity-type membership table.
+pub(crate) fn vanilla_entity_metadata_baby_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_BABY_ID")?;
+    match (accessor.serializer_name, accessor.typed_default) {
+        ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
+            Some((accessor.data_id, default))
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the single accessor with `serializer_name` along an entity type's generated schema
 /// inheritance chain. Missing and ambiguous matches both return `None`, so consumers cannot silently
 /// choose one of several same-serializer fields.
@@ -620,12 +638,14 @@ mod tests {
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
         VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
     };
 
     use super::*;
@@ -1096,6 +1116,35 @@ mod tests {
             VANILLA_ENTITY_TYPE_HORSE_ID
         ));
         assert!(!vanilla_entity_metadata_type_is_tamable_animal(-1));
+        assert_eq!(
+            VANILLA_ENTITY_TYPE_METADATA_26_1
+                .iter()
+                .filter(|entry| {
+                    vanilla_entity_metadata_baby_accessor_for_entity_type(entry.entity_type_id)
+                        .is_some()
+                })
+                .count(),
+            46
+        );
+        for (entity_type_id, expected_data_id) in [
+            (VANILLA_ENTITY_TYPE_CAMEL_ID, 16),
+            (VANILLA_ENTITY_TYPE_ZOMBIE_ID, 16),
+            (VANILLA_ENTITY_TYPE_PIGLIN_ID, 17),
+            (VANILLA_ENTITY_TYPE_ZOGLIN_ID, 16),
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id),
+                Some((expected_data_id, false))
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_baby_accessor_for_entity_type(VANILLA_ENTITY_TYPE_PILLAGER_ID),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_baby_accessor_for_entity_type(-1),
+            None
+        );
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_EVOKER_ID,
             VANILLA_ENTITY_TYPE_ILLUSIONER_ID,

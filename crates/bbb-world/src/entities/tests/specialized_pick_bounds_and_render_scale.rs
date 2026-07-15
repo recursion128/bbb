@@ -1,6 +1,46 @@
 use super::*;
 
 #[test]
+fn generated_baby_accessor_membership_covers_all_ageable_families() {
+    const AGEABLE_BABY_DATA_ID: u8 = 16;
+
+    let mut store = WorldStore::new();
+    for (id, entity_type_id) in [
+        (180, VANILLA_ENTITY_TYPE_CAMEL_ID),
+        (181, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID),
+        (182, VANILLA_ENTITY_TYPE_FROG_ID),
+        (183, VANILLA_ENTITY_TYPE_GOAT_ID),
+        (184, VANILLA_ENTITY_TYPE_PARROT_ID),
+        (185, VANILLA_ENTITY_TYPE_SNIFFER_ID),
+        (186, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+        assert_eq!(store.entities.is_baby(id), Some(false));
+        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+            id,
+            values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        }));
+        assert_eq!(
+            store.entities.is_baby(id),
+            Some(true),
+            "generated AgeableMob accessor: type {entity_type_id}"
+        );
+    }
+
+    // Pillager.IS_CHARGING_CROSSBOW is also BOOLEAN id 17 and Raider.IS_CELEBRATING is BOOLEAN id
+    // 16, but the class hierarchy has no DATA_BABY_ID accessor, so neither can make it a baby.
+    store.apply_add_entity(protocol_add_entity_with_type(
+        187,
+        VANILLA_ENTITY_TYPE_PILLAGER_ID,
+    ));
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 187,
+        values: vec![protocol_bool_data(16, true), protocol_bool_data(17, true),],
+    }));
+    assert_eq!(store.entities.is_baby(187), Some(false));
+}
+
+#[test]
 fn baby_pick_bounds_follow_vanilla_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const AGEABLE_BABY_DATA_ID: u8 = 16;

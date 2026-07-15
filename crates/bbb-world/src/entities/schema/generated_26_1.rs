@@ -21228,4 +21228,16 @@ mod generated_catalog_guards {
             !source.contains("VANILLA_ENTITY_TYPE_EVOKER_ID | VANILLA_ENTITY_TYPE_ILLUSIONER_ID")
         );
     }
+
+    #[test]
+    fn production_baby_projection_does_not_restore_entity_type_membership() {
+        let source = include_str!("../dimensions.rs");
+        let body = source
+            .split("fn vanilla_is_baby")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("baby projection source");
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+    }
 }

@@ -15473,3 +15473,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   class query。catalog exact-set、Python fixture、world
   Evoker/Illusioner/Vindicator/Pillager semantic test、既有 native 集成回归与 generator-emitted
   renderer/metadata 双反向门禁覆盖该边界。
+
+## 2026-07-15：Derive baby state from metadata accessors
+
+- [x] `vanilla_is_baby` 删除 39 项手写 type membership 与 Zombie/Piglin/Ageable 三路索引分支，
+  改为沿 generated schema class hierarchy 解析最近的 BOOLEAN `DATA_BABY_ID` 及 typed default；
+  AgeableMob、Zombie、Piglin、Zoglin 四个声明 owner 的不同 wire index 由同一查询处理。
+- [x] 46 项生成 membership 补齐旧表漏掉的 Camel、CamelHusk、Frog、Goat、Parrot、Sniffer、
+  ZombieNautilus baby projection；Pillager 等在同一 index 拥有其他 BOOLEAN accessor 的类型仍保持
+  非 baby。catalog count/family-index、world semantic regression 与 metadata-generator 反向门禁覆盖
+  该边界。

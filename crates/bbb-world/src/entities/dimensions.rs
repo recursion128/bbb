@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
 pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::schema::{
+    vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_type_is_pickable,
@@ -36,8 +37,6 @@ use super::schema::{
     VANILLA_INTERACTION_WIDTH_DATA_ID as INTERACTION_DATA_WIDTH_ID,
     VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
-    VANILLA_PIGLIN_BABY_DATA_ID as PIGLIN_BABY_DATA_ID,
-    VANILLA_PIGLIN_DEFAULT_BABY as PIGLIN_DEFAULT_BABY,
     VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE as PUFFERFISH_DEFAULT_PUFF_STATE,
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
     VANILLA_SALMON_DEFAULT_VARIANT as SALMON_DEFAULT_VARIANT,
@@ -48,8 +47,6 @@ use super::schema::{
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_SNIFFER_STATE_DATA_ID as SNIFFER_STATE_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
-    VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
-    VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_camel_type, is_vanilla_minecart_type, is_vanilla_slime_type,
@@ -884,62 +881,16 @@ fn sniffer_pick_bounds(data_values: &[EntityDataValue]) -> EntityPickBoundsState
     }
 }
 
-/// Vanilla `Mob.isBaby` (`AgeableMob.DATA_BABY_ID`, `Zombie.DATA_BABY_ID`,
-/// `AbstractPiglin.DATA_BABY_ID`): reads the synced baby flag at the per-family
-/// metadata id. Zombies/piglins keep the flag at their own ids; every other
-/// ageable mob uses the shared `AgeableMob` id. Non-ageable entities are never
-/// babies.
+/// Vanilla `Mob.isBaby`: reads the nearest generated boolean `DATA_BABY_ID` accessor from
+/// `AgeableMob`, `Zombie`, `Piglin`, or `Zoglin`, preserving each class's wire index. Entity classes
+/// without that accessor are never babies even when another boolean occupies the same index.
 pub(crate) fn vanilla_is_baby(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
-    match entity_type_id {
-        VANILLA_ENTITY_TYPE_DROWNED_ID
-        | VANILLA_ENTITY_TYPE_HUSK_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIE_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => {
-            entity_data_bool(data_values, ZOMBIE_BABY_DATA_ID, ZOMBIE_DEFAULT_BABY)
-        }
-        VANILLA_ENTITY_TYPE_PIGLIN_ID => {
-            entity_data_bool(data_values, PIGLIN_BABY_DATA_ID, PIGLIN_DEFAULT_BABY)
-        }
-        VANILLA_ENTITY_TYPE_ARMADILLO_ID
-        | VANILLA_ENTITY_TYPE_AXOLOTL_ID
-        | VANILLA_ENTITY_TYPE_BEE_ID
-        | VANILLA_ENTITY_TYPE_CAT_ID
-        | VANILLA_ENTITY_TYPE_CHICKEN_ID
-        | VANILLA_ENTITY_TYPE_COW_ID
-        | VANILLA_ENTITY_TYPE_DOLPHIN_ID
-        | VANILLA_ENTITY_TYPE_DONKEY_ID
-        | VANILLA_ENTITY_TYPE_FOX_ID
-        | VANILLA_ENTITY_TYPE_GLOW_SQUID_ID
-        | VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
-        | VANILLA_ENTITY_TYPE_HOGLIN_ID
-        | VANILLA_ENTITY_TYPE_HORSE_ID
-        | VANILLA_ENTITY_TYPE_LLAMA_ID
-        | VANILLA_ENTITY_TYPE_MOOSHROOM_ID
-        | VANILLA_ENTITY_TYPE_MULE_ID
-        | VANILLA_ENTITY_TYPE_NAUTILUS_ID
-        | VANILLA_ENTITY_TYPE_OCELOT_ID
-        | VANILLA_ENTITY_TYPE_PANDA_ID
-        | VANILLA_ENTITY_TYPE_PIG_ID
-        | VANILLA_ENTITY_TYPE_POLAR_BEAR_ID
-        | VANILLA_ENTITY_TYPE_RABBIT_ID
-        | VANILLA_ENTITY_TYPE_SHEEP_ID
-        | VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID
-        | VANILLA_ENTITY_TYPE_SQUID_ID
-        | VANILLA_ENTITY_TYPE_STRIDER_ID
-        | VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID
-        | VANILLA_ENTITY_TYPE_TURTLE_ID
-        | VANILLA_ENTITY_TYPE_VILLAGER_ID
-        | VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID
-        | VANILLA_ENTITY_TYPE_WOLF_ID
-        | VANILLA_ENTITY_TYPE_ZOGLIN_ID
-        | VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => entity_data_bool(
-            data_values,
-            AGEABLE_MOB_BABY_DATA_ID,
-            AGEABLE_MOB_DEFAULT_BABY,
-        ),
-        _ => false,
-    }
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
+    entity_data_bool(data_values, data_id, default)
 }
 
 fn baby_pick_bounds(

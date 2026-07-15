@@ -160,6 +160,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   compatibility lookup functions whose only behavior is forwarding an
   id/resource lookup across an unrelated crate boundary, and have the owner
   generator reject those bridges from production sources.
+  Baby-capable entity membership and the per-family wire index/default must remain derived from
+  the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Keep static data-component-map membership such as
   `DataComponents.COMMON_ITEM_COMPONENTS` in the generated component catalog;
   pack/item consumers must not reconstruct those type-id sets by hand.

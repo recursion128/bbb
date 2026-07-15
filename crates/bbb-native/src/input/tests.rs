@@ -6101,7 +6101,9 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
         entity_type_id: VANILLA_ENTITY_TYPE_PARROT_ID,
         position: ProtocolVec3d {
             x: 0.0,
-            y: 1.0,
+            // Keep the standing player's horizontal eye ray inside the parrot's generated baby
+            // bounds (adult 0.5 × 0.9, scaled by AgeableMob's 0.5 age scale).
+            y: 1.2,
             z: 2.0,
         },
         delta_movement: ProtocolVec3d::default(),
@@ -6171,7 +6173,7 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
     assert_eq!(
         clipboard.text.as_deref(),
         Some(
-            "/summon minecraft:parrot 0.00 1.00 2.00 \
+            "/summon minecraft:parrot 0.00 1.20 2.00 \
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              LeftHanded: 1b, NoAI: 1b, Age: -1, \
              AgeLocked: 1b, Sitting: 1b, Variant: 3}"
