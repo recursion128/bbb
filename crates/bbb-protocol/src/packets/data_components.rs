@@ -27,6 +27,7 @@ use crate::{
         FireworkExplosionShapeSummary, ItemRaritySummary, ItemUseAnimationSummary,
         MapPostProcessingSummary, SwingAnimationTypeSummary,
     },
+    potion_types::vanilla_potion,
     tropical_fish_patterns::vanilla_tropical_fish_pattern,
 };
 use uuid::Uuid;
@@ -2285,7 +2286,13 @@ struct PotionContentsSummary {
 
 fn decode_potion_contents(decoder: &mut Decoder<'_>) -> Result<PotionContentsSummary> {
     let potion_id = if decoder.read_bool()? {
-        Some(decoder.read_var_i32()?)
+        let potion_id = decoder.read_var_i32()?;
+        if vanilla_potion(potion_id).is_none() {
+            return Err(ProtocolError::InvalidData(format!(
+                "invalid vanilla potion holder id {potion_id}"
+            )));
+        }
+        Some(potion_id)
     } else {
         None
     };
@@ -5780,6 +5787,22 @@ mod tests {
             decode_attribute_modifiers(&mut Decoder::new(&payload.into_inner())).unwrap_err();
         assert!(error.to_string().contains(&format!(
             "invalid vanilla attribute holder id {invalid_attribute_id}"
+        )));
+    }
+
+    #[test]
+    fn potion_contents_rejects_holders_outside_the_builtin_registry() {
+        let invalid_potion_id = crate::potion_types::VANILLA_POTIONS.len() as i32;
+        let mut payload = Encoder::new();
+        payload.write_bool(true);
+        payload.write_var_i32(invalid_potion_id);
+
+        let error = match decode_potion_contents(&mut Decoder::new(&payload.into_inner())) {
+            Ok(_) => panic!("out-of-range potion holder unexpectedly decoded"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains(&format!(
+            "invalid vanilla potion holder id {invalid_potion_id}"
         )));
     }
 

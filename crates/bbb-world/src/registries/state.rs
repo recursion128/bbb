@@ -8,6 +8,7 @@ use bbb_protocol::mob_effect_types::{
     vanilla_mob_effect_type, vanilla_mob_effect_type_for_resource_id,
 };
 use bbb_protocol::packets::RegistryDataEntry as ProtocolRegistryDataEntry;
+use bbb_protocol::potion_types::{vanilla_potion, vanilla_potion_for_resource_id};
 use bbb_protocol::sound_event_types::{
     vanilla_sound_event_registry_id, vanilla_sound_event_resource_id,
 };
@@ -286,6 +287,7 @@ impl RegistrySet {
             "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
             "minecraft:damage_type" => Some(vanilla_damage_type(holder_id)?.resource_id),
             "minecraft:mob_effect" => Some(vanilla_mob_effect_type(holder_id)?.resource_id),
+            "minecraft:potion" => Some(vanilla_potion(holder_id)?.resource_id),
             "minecraft:sound_event" => vanilla_sound_event_resource_id(holder_id),
             "minecraft:world_clock" => Some(vanilla_world_clock_type_by_id(holder_id)?.resource_id),
             "minecraft:stat_type" => Some(vanilla_stat_type_by_id(holder_id)?.resource_id),
@@ -311,6 +313,7 @@ impl RegistrySet {
             "minecraft:mob_effect" => {
                 Some(vanilla_mob_effect_type_for_resource_id(resource_id)?.id)
             }
+            "minecraft:potion" => Some(vanilla_potion_for_resource_id(resource_id)?.id),
             "minecraft:sound_event" => vanilla_sound_event_registry_id(resource_id),
             "minecraft:world_clock" => {
                 Some(vanilla_world_clock_type_by_resource_id(resource_id)?.id)

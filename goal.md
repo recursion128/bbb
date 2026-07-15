@@ -340,7 +340,9 @@ direct id/range、kinetic condition float bits 及 equippable 的 entity holder-
 无损保留；blocks-attacks 的 ordered reductions、damage-type sets 与 item-damage bits 也保持协议形状。
 consume-effect 的五类 dispatch、ordered mob-effect instances 与递归 hidden details 同样保持协议形状；
 tool 的 ordered rules、block holder-set 与 optional rule 字段也无损落位；
-optional potion holder、color/name 与 recursive custom mob-effect details 同样复用 protocol summary；
+optional potion holder 按 46 项 client built-in static order 校验，world 正反查与反向
+RegistryData 注入保持同一 identity；color/name 与 recursive custom mob-effect details 同样复用
+protocol summary；
 两类 enchantment map 的 ordered holder-id/level entries 分别落到对应字段；
 attribute modifier 的 ordered holder/id/amount bits/operation/slot 与 default/hidden/override display
 dispatch（含 override styled Component）也保持 wire summary 形状；
