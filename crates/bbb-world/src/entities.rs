@@ -64,6 +64,7 @@ pub use schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
+    vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,

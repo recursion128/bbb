@@ -16441,3 +16441,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   消费它。
 - 生产消费者删除固定 accessor/default 别名并显式传递 entity type；生成器 reverse
   guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Allay dancing metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Allay.DATA_DANCING` 解析 membership、wire id
+  16 与 boolean typed default false；world tick 的 dance/spin accumulator 读取显式携带
+  entity type，不再把其他 family 的同号槽位当成 dancing。
+- animation 生产消费者删除固定 accessor/default 别名；生成器 reverse guard 禁止恢复
+  这些平行事实源或丢失 store 调用处的 entity-type 传递。

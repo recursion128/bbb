@@ -3542,7 +3542,8 @@ impl EntityStore {
                     copper_golem_is_dropping_item(&metadata.data_values);
                 let copper_golem_is_dropping_no_item =
                     copper_golem_is_dropping_no_item(&metadata.data_values);
-                let allay_is_dancing = allay_is_dancing(&metadata.data_values);
+                let allay_is_dancing =
+                    allay_is_dancing(identity.entity_type_id, &metadata.data_values);
                 let allay_has_item_in_hand = equipment.is_some_and(|equipment| {
                     equipment.equipment.iter().any(|update| {
                         update.slot == ProtocolEquipmentSlot::MainHand

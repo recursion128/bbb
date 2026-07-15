@@ -18,6 +18,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
@@ -27,8 +28,6 @@ use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type, VanillaVehicleMetadataAccessors,
-    VANILLA_ALLAY_DANCING_DATA_ID as ALLAY_DANCING_DATA_ID,
-    VANILLA_ALLAY_DEFAULT_DANCING as ALLAY_DEFAULT_DANCING,
     VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
     VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
@@ -6037,10 +6036,11 @@ pub(crate) fn player_is_using_item(data_values: &[EntityDataValue]) -> bool {
 }
 
 /// Vanilla `Allay.isDancing()` (`entityData.get(DATA_DANCING)`): the synced boolean that drives the
-/// dance/spin accumulators. Read straight from the entity metadata in the tick loop; non-allays (whose
-/// synced slot `16` is not this boolean) fall back to `false`.
-pub(crate) fn allay_is_dancing(data_values: &[EntityDataValue]) -> bool {
-    entity_data_bool(data_values, ALLAY_DANCING_DATA_ID, ALLAY_DEFAULT_DANCING)
+/// dance/spin accumulators. The generated accessor supplies membership, wire index and default.
+pub(crate) fn allay_is_dancing(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_allay_dancing_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `Axolotl.isPlayingDead()` (`entityData.get(DATA_PLAYING_DEAD)`): the synced boolean that

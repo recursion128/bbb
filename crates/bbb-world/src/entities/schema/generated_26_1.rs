@@ -23058,6 +23058,23 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_allay_dancing_does_not_restore_accessor_constants() {
+        let animations = include_str!("../animations.rs");
+        let store = include_str!("../store.rs");
+        assert!(
+            animations.contains("vanilla_entity_metadata_allay_dancing_accessor_for_entity_type")
+        );
+        assert!(store.contains("allay_is_dancing(identity.entity_type_id, &metadata.data_values)"));
+        for removed in ["ALLAY_DANCING_DATA_ID", "ALLAY_DEFAULT_DANCING"] {
+            assert!(
+                !animations.contains(removed),
+                "animations restored {removed}"
+            );
+            assert!(!store.contains(removed), "store restored {removed}");
+        }
+    }
+
+    #[test]
     fn production_debug_save_data_does_not_restore_class_type_memberships() {
         let source = include_str!("../../../../bbb-native/src/input.rs");
         let body = source
