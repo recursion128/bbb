@@ -117,10 +117,10 @@ audio），2026-07-05 起取代原"workspace 无 -D + 六个 crate 逐个 -D"的
 等待确认，也不因历史 ledger 文字重开 P0。
 
 1. **收尾**：确认工作树；已验证未提交的 slice 先完成提交。
-2. **audit**：`rg -n 'residual|fallback|unsupported'` 扫 crates/ 代码侧命中，
-   逐个归类 renderer 路径；同时检查最近一次完整 gate 与已有 playable/session
-   smoke 是否存在下节跨域 P0 重开条件。全部命中可归类且无失败/复现 ⇒ 无新 P0
-   blocker。不与历史计数对比，只看新的不可归类命中或行为回退。
+2. **audit**：运行 `scripts/audit-p0.sh`；exit 0 且最近一次完整 gate 与已有
+   playable/session smoke 没有回退迹象 ⇒ 无新 P0 blocker。exit 1 时人工归类新增命中，
+   并在同一 slice 将有明确非 P0 依据的新分类附注释写入 allowlist。不与历史计数对比，
+   只看新的不可归类命中或行为回退。
 3. **分支**：命中重开条件 → 开 P0 regression slice，只修 blocker，不顺手
    吸收视觉 parity；未命中 → 本轮立即从当前最高优先级队列取首个可执行小
    slice 进入实现，不等待确认。
@@ -166,15 +166,7 @@ audio），2026-07-05 起取代原"workspace 无 -D + 六个 crate 逐个 -D"的
 - 新 layer/renderer 继承错误 light/overlay，或 invisible、self-visible
   translucent、hidden glowing outline 分支回退到普通可见路径。
 
-已知非 P0 分类（audit 归类基准；分类变化时更新此清单，不记计数）：
-
-- `residual`：仅 `entity_models/dispatch.rs` 的"无 residual mesh-emitting
-  arm"注释。
-- `unsupported`：screenshot surface format bail、dynamic-player texture
-  render-type defensive panic、pack / font 等资产解析校验 bail、unknown
-  packet / component diagnostics、tests 和 docs 指针。
-- `fallback`：colored debug/profile/terrain/HUD/map/test 或 vanilla fallback
-  注释。
+已知非 P0 分类基准见 `scripts/data/p0-audit-allowlist.txt`；分类变化时更新该文件并附依据。
 
 P0 完成标准：触发回退有最小复现和对应 semantic/integration regression test；修复后
 完整 gate 与适用的 playable/security smoke 通过。renderer 问题继续断言完整

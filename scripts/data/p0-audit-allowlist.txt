@@ -1,0 +1,71 @@
+# P0 audit classifications. Format: <path-regex><TAB><line-regex>.
+# Keep entries narrow enough to identify one of the non-P0 categories documented
+# by goal.md; a new path or meaning must fail the audit until it is classified.
+
+# goal.md residual category: entity dispatch has no residual textured mesh arm.
+^crates/bbb-renderer/src/entity_models/dispatch[.]rs$	residual mesh-emitting arm|no residual
+# Runtime tick cadence uses “residual” as a numeric accumulator, not a mesh path.
+^crates/bbb-native/src/runtime[.]rs$	entity_animation_tick_residual|dimensionless residual
+
+# goal.md unsupported category: explicit renderer defensive failures.
+^crates/bbb-renderer/src/screenshot[.]rs$	unsupported screenshot surface format
+^crates/bbb-renderer/src/entity_models/textured[.]rs$	unsupported dynamic player (skin|texture) render type
+# Pack/catalog/font parsers reject unsupported source shapes with bounded errors.
+^crates/bbb-pack/src/.*[.]rs$	unsupported
+^crates/bbb-item-model/src/font(/.*)?[.]rs$	unsupported
+# Unknown packet/component/registry values remain explicit diagnostics; owner-specific
+# entries below deliberately avoid allowing arbitrary new “unsupported” comments.
+^crates/bbb-control/src/types/net[.]rs$	unsupported_packet
+^crates/bbb-net/src/types/probe[.]rs$	unsupported_packet
+^crates/bbb-net/src/probe[.]rs$	unsupported_packet|record_unsupported_packet
+^crates/bbb-net/src/probe/(configuration|login|play)[.]rs$	unsupported_packet|record_unsupported_packet
+^crates/bbb-net/src/event_stream[.]rs$	unsupported_packet|unsupported packet
+^crates/bbb-native/src/runtime/events/control_state[.]rs$	unsupported_packet
+^crates/bbb-native/src/input/component_patch[.]rs$	unsupported_exact
+^crates/bbb-protocol/src/packets/entities[.]rs$	unsupported entity data serializer
+^crates/bbb-protocol/src/packets/data_components[.]rs$	unsupported data component type id
+^crates/bbb-protocol/src/packets/data_components/catalog[.]rs$	unsupported built-in enum component type id
+^crates/bbb-protocol/src/component/codec[.]rs$	unsupported scheme
+^crates/bbb-world/src/level[.]rs$	mut unsupported|unsupported[.]|^[[:space:]]*unsupported$
+^crates/bbb-world/src/client/dialog(/action|/body|/input)?[.]rs$	unsupported dialog|unsupported scheme
+^crates/bbb-world/src/registries/animal_variants[.]rs$	unsupported (farm-animal registry|model type)
+^crates/bbb-world/src/registries/sound_variants[.]rs$	unsupported sound-variant registry
+
+# goal.md explicitly classifies tests as non-P0 evidence/fixtures.
+^crates/.*/tests[.]rs$	residual|fallback|unsupported
+^crates/.*/tests/.*[.]rs$	residual|fallback|unsupported
+
+# goal.md fallback category: pack/model/language resource fallback behavior.
+^crates/bbb-pack/src/.*[.]rs$	fallback
+# Colored entity/debug geometry and renderer-owned vanilla fallbacks.
+^crates/bbb-renderer/src/entity_models/.*[.]rs$	fallback
+^crates/bbb-renderer/src/terrain(/.*)?[.]rs$	fallback
+^crates/bbb-renderer/src/hud(/.*)?[.]rs$	fallback
+^crates/bbb-renderer/src/(camera|render|item_models|offscreen|sky|transparency)[.]rs$	fallback
+^crates/bbb-renderer/src/item_models/.*[.]rs$	fallback
+^crates/bbb-renderer/src/particles/descriptors[.]rs$	fallback
+^crates/bbb-renderer/src/renderer[.]rs$	force_fallback_adapter
+^crates/bbb-render-types/src/(entity_textures|hud_glyphs)[.]rs$	fallback
+# Item profile, icon, tooltip and font fallback behavior.
+^crates/bbb-item-model/src/item_runtime(/.*)?[.]rs$	fallback
+^crates/bbb-item-model/src/(font|profile_resolver)[.]rs$	fallback
+^crates/bbb-item-model/src/font/.*[.]rs$	fallback
+# Native terrain/entity/item/particle/HUD/debug fallback behavior.
+^crates/bbb-native/src/terrain_runtime/.*[.]rs$	fallback
+^crates/bbb-native/src/entity_scene(/.*)?[.]rs$	fallback
+^crates/bbb-native/src/item_models(/.*)?[.]rs$	fallback
+^crates/bbb-native/src/particle_runtime(/.*)?[.]rs$	fallback
+^crates/bbb-native/src/(runtime|input|item_frames|banner_scene|debug_entries|main)[.]rs$	fallback
+^crates/bbb-native/src/input/.*[.]rs$	fallback
+# World registry/entity/chunk/client fallbacks preserve vanilla/offline semantics.
+^crates/bbb-world/src/registries/.*[.]rs$	fallback
+^crates/bbb-world/src/entities(/.*)?[.]rs$	fallback
+^crates/bbb-world/src/client/.*[.]rs$	fallback
+^crates/bbb-world/src/chunks/.*[.]rs$	fallback
+^crates/bbb-world/src/(level|terrain|sign_blocks|banner_blocks)[.]rs$	fallback
+^crates/bbb-world/src/play_apply[.]rs$	fallback
+# Protocol enum/component fallbacks are wire/canonical compatibility behavior.
+^crates/bbb-protocol/src/.*[.]rs$	fallback
+
+# Documentation pointers in code comments are explicitly non-P0 audit context.
+^crates/.*/.*[.]rs$	docs/unsupported-features[.]md
