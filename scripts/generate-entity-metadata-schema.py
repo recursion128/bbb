@@ -2497,6 +2497,64 @@ def class_pushability_kind(
     return value
 
 
+def class_collidability_kind(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    cache: dict[str, str],
+) -> str:
+    """Interpret the nearest vanilla ``canBeCollidedWith`` override."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(
+            f"unknown entity class in canBeCollidedWith hierarchy: {owner}"
+        )
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == "canBeCollidedWith" and len(method.parameters) == 1
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(
+            f"{owner}.canBeCollidedWith/1: expected at most one method"
+        )
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(
+                f"{owner}: no canBeCollidedWith override or superclass"
+            )
+        value = class_collidability_kind(result, class_map, item.superclass, cache)
+        cache[owner] = value
+        return value
+
+    body = methods[0].node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{owner}.canBeCollidedWith: method lacks body")
+    canonical = source.expression(body).canonical
+    kinds = {
+        "{return false;}": "Never",
+        "{return true;}": "Always",
+        "{return this.isAlive ();}": "Alive",
+        (
+            "{if (! this.isBaby () && this.isAlive ()) {"
+            "if (this.level ().isClientSide () && other instanceof Player && "
+            "other.position ().y >= this.getBoundingBox ().maxY) {return true;} else {"
+            "return this.isVehicle () && other instanceof HappyGhast ? true : "
+            "this.isOnStillTimeout ();}} else {return false;}}"
+        ): "HappyGhast",
+    }
+    value = kinds.get(canonical)
+    if value is None:
+        raise ExtractionError(
+            f"{owner}.canBeCollidedWith: unsupported body {canonical!r}"
+        )
+    cache[owner] = value
+    return value
+
+
 def class_sound_source_kind(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -2899,6 +2957,7 @@ def render(result: ExtractionResult) -> str:
     class_map = {item.fqcn: item for item in result.classes}
     pickable_cache: dict[str, bool] = {}
     pushability_cache: dict[str, str] = {}
+    collidability_cache: dict[str, str] = {}
     sound_source_cache: dict[str, str] = {}
     boat_ride_height_cache: dict[str, str] = {}
     can_use_every_slot_cache: dict[str, bool] = {}
@@ -2925,6 +2984,13 @@ def render(result: ExtractionResult) -> str:
         ):
             class_pushability_kind(
                 result, class_map, java_class, pushability_cache
+            )
+        if any(
+            method.name == "canBeCollidedWith" and len(method.parameters) == 1
+            for method in source.methods_for(java_class)
+        ):
+            class_collidability_kind(
+                result, class_map, java_class, collidability_cache
             )
         if any(
             method.name == "canUseSlot" and len(method.parameters) == 1
@@ -3205,6 +3271,7 @@ def render(result: ExtractionResult) -> str:
                 f"        is_pickable_by_class: {str(class_is_pickable_without_type_tag(result, class_map, item.runtime_class, pickable_cache)).lower()},",
                 f"        sound_source_kind: VanillaEntitySoundSourceKind::{class_sound_source_kind(result, class_map, item.runtime_class, sound_source_cache)},",
                 f"        pushability_kind: VanillaEntityPushabilityKind::{class_pushability_kind(result, class_map, item.runtime_class, pushability_cache)},",
+                f"        collidability_kind: VanillaEntityCollidabilityKind::{class_collidability_kind(result, class_map, item.runtime_class, collidability_cache)},",
                 f"        is_living: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity')).lower()},",
                 f"        is_animal: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.animal.Animal')).lower()},",
                 f"        is_tamable_animal: {str(extends_class(item.runtime_class, 'net.minecraft.world.entity.TamableAnimal')).lower()},",
@@ -3357,6 +3424,25 @@ def render(result: ExtractionResult) -> str:
             '            "is_vanilla_minecart_type",',
             '            "vanilla_entity_type_is_wind_charge",',
             '            "matches!",',
+            '        ] {',
+            '            assert!(!body.contains(removed), "restored {removed}");',
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_collision_debug_does_not_restore_collidability_type_membership() {",
+            '        let source = include_str!("../../client/local_player_collision.rs");',
+            '        let body = source',
+            '            .split("fn debug_entity_can_be_collided_with")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n    }"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("collision debug collidability source");',
+            '        assert!(body.contains("vanilla_entity_metadata_type_collidability_kind"));',
+            '        for removed in [',
+            '            "is_vanilla_boat_type(target_type)",',
+            '            "target_type == VANILLA_ENTITY_TYPE_SHULKER_ID",',
+            '            "target_type != VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID",',
             '        ] {',
             '            assert!(!body.contains(removed), "restored {removed}");',
             "        }",

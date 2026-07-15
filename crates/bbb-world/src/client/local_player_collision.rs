@@ -4,7 +4,6 @@ use bbb_protocol::entity_poses::{VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_
 use bbb_protocol::entity_types::{
     vanilla_entity_type_is_powder_snow_walkable, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
     VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SHULKER_ID,
 };
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
@@ -12,10 +11,12 @@ use super::local_player::LocalPlayerPoseState;
 #[cfg(test)]
 use crate::entities::VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID;
 use crate::entities::{
-    is_vanilla_boat_type, is_vanilla_minecart_type, vanilla_entity_metadata_type_pushability_kind,
-    vanilla_living_entity_type, EntitySupportingBlock, VanillaEntityPushabilityKind,
-    VANILLA_CREAKING_CAN_MOVE_DATA_ID, VANILLA_CREAKING_DEFAULT_CAN_MOVE,
-    VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL, VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
+    is_vanilla_boat_type, is_vanilla_minecart_type,
+    vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_pushability_kind,
+    vanilla_living_entity_type, EntitySupportingBlock, VanillaEntityCollidabilityKind,
+    VanillaEntityPushabilityKind, VANILLA_CREAKING_CAN_MOVE_DATA_ID,
+    VANILLA_CREAKING_DEFAULT_CAN_MOVE, VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
+    VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
 use crate::terrain::{
     block_name_has_empty_collision_shape, block_name_is_air, block_name_is_amethyst_cluster,
@@ -676,17 +677,18 @@ impl WorldStore {
         target_type: i32,
         target_box: WorldCollisionBox,
     ) -> bool {
-        if is_vanilla_boat_type(target_type) {
-            return true;
+        match vanilla_entity_metadata_type_collidability_kind(target_type) {
+            Some(VanillaEntityCollidabilityKind::Always) => return true,
+            Some(VanillaEntityCollidabilityKind::Alive) => {
+                return self
+                    .entities
+                    .living_entity_health(target_id)
+                    .is_some_and(|health| health > 0.0);
+            }
+            Some(VanillaEntityCollidabilityKind::HappyGhast) => {}
+            Some(VanillaEntityCollidabilityKind::Never) | None => return false,
         }
-        if target_type == VANILLA_ENTITY_TYPE_SHULKER_ID {
-            return self
-                .entities
-                .living_entity_health(target_id)
-                .is_some_and(|health| health > 0.0);
-        }
-        if target_type != VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
-            || self.entities.is_baby(target_id).unwrap_or(false)
+        if self.entities.is_baby(target_id).unwrap_or(false)
             || !self
                 .entities
                 .living_entity_health(target_id)
@@ -3878,7 +3880,7 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BAT_ID,
         VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_WARDEN_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
     };
 
     #[test]

@@ -231,6 +231,14 @@ pub enum VanillaEntityPushabilityKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityCollidabilityKind {
+    Never,
+    Always,
+    Alive,
+    HappyGhast,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -240,6 +248,7 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub is_pickable_by_class: bool,
     pub sound_source_kind: VanillaEntitySoundSourceKind,
     pub pushability_kind: VanillaEntityPushabilityKind,
+    pub collidability_kind: VanillaEntityCollidabilityKind,
     pub is_living: bool,
     pub is_animal: bool,
     pub is_tamable_animal: bool,
@@ -419,6 +428,17 @@ pub fn vanilla_entity_metadata_type_pushability_kind(
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).ok()?)
         .map(|entry| entry.pushability_kind)
+}
+
+/// Returns the nearest generated `Entity.canBeCollidedWith(other)` class behavior.
+///
+/// `Alive` and `HappyGhast` retain their instance predicates for the world collision owner.
+pub fn vanilla_entity_metadata_type_collidability_kind(
+    entity_type_id: i32,
+) -> Option<VanillaEntityCollidabilityKind> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .map(|entry| entry.collidability_kind)
 }
 
 /// Returns whether the generated vanilla runtime class implements `Leashable`,
@@ -684,15 +704,16 @@ mod tests {
         VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID,
+        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
         VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
         VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
@@ -1461,6 +1482,51 @@ mod tests {
         }
         assert_eq!(vanilla_entity_metadata_type_pushability_kind(-1), None);
         assert_eq!(vanilla_entity_metadata_type_pushability_kind(157), None);
+    }
+
+    #[test]
+    fn generated_collidability_kinds_follow_nearest_class_override() {
+        for (kind, expected_count) in [
+            (VanillaEntityCollidabilityKind::Never, 135),
+            (VanillaEntityCollidabilityKind::Always, 20),
+            (VanillaEntityCollidabilityKind::Alive, 1),
+            (VanillaEntityCollidabilityKind::HappyGhast, 1),
+        ] {
+            assert_eq!(
+                VANILLA_ENTITY_TYPE_METADATA_26_1
+                    .iter()
+                    .filter(|entry| entry.collidability_kind == kind)
+                    .count(),
+                expected_count,
+                "{kind:?}"
+            );
+        }
+        for (entity_type_id, expected) in [
+            (
+                VANILLA_ENTITY_TYPE_COW_ID,
+                VanillaEntityCollidabilityKind::Never,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+                VanillaEntityCollidabilityKind::Always,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_SHULKER_ID,
+                VanillaEntityCollidabilityKind::Alive,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+                VanillaEntityCollidabilityKind::HappyGhast,
+            ),
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_type_collidability_kind(entity_type_id),
+                Some(expected),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(vanilla_entity_metadata_type_collidability_kind(-1), None);
+        assert_eq!(vanilla_entity_metadata_type_collidability_kind(157), None);
     }
 
     #[test]

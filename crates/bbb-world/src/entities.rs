@@ -109,7 +109,8 @@ pub use schema::{
     VANILLA_SLIME_DEFAULT_SIZE, VANILLA_SLIME_SIZE_DATA_ID,
 };
 pub use schema::{
-    vanilla_entity_metadata_type_pushability_kind, vanilla_entity_metadata_type_sound_source_kind,
+    vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_pushability_kind,
+    vanilla_entity_metadata_type_sound_source_kind, VanillaEntityCollidabilityKind,
     VanillaEntityPushabilityKind, VanillaEntitySoundSourceKind,
 };
 pub use schema::{

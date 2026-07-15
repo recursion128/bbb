@@ -15538,3 +15538,13 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   warden/creaking 手写 type 判定，改为消费 generated kind；health、climbable、mount、
   pose 和 metadata 实例门保持原顺序；exact-kind/unknown-id 与 Warden/Creaking
   动态门聚焦测试、generator-emitted 反向门禁防止回流。
+
+## 2026-07-15：Generate entity collidability class behavior
+
+- [x] metadata generator 解析最近 `Entity.canBeCollidedWith(other)` override，将 Entity/
+  AbstractBoat/Shulker/HappyGhast 四个声明点收敛为 Never/Always/Alive/
+  HappyGhast 四类生成行为；复合 HappyGhast 控制流按 Tree-sitter 规范形状
+  fail closed，未知 id 不猜测。
+- [x] collision-debug `canBeCollidedWith` 删除 boat/shulker/happy-ghast target type 分发，
+  直接消费 generated kind；Shulker health 与 HappyGhast age/health/player-above/vehicle-pair/
+  stays-still 实例门未改，exact-kind/unknown-id 和既有 collision 回归锁定行为。
