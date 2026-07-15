@@ -19,6 +19,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
@@ -49,10 +50,6 @@ use super::schema::{
     VANILLA_CREAKING_DEFAULT_CAN_MOVE as CREAKING_DEFAULT_CAN_MOVE,
     VANILLA_CREAKING_DEFAULT_TEARING_DOWN as CREAKING_DEFAULT_TEARING_DOWN,
     VANILLA_CREAKING_TEARING_DOWN_DATA_ID as CREAKING_IS_TEARING_DOWN_DATA_ID,
-    VANILLA_CREEPER_DEFAULT_IGNITED as CREEPER_DEFAULT_IGNITED,
-    VANILLA_CREEPER_DEFAULT_SWELL_DIR as CREEPER_DEFAULT_SWELL_DIR,
-    VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
-    VANILLA_CREEPER_SWELL_DIR_DATA_ID as CREEPER_SWELL_DIR_DATA_ID,
     VANILLA_ENDER_DRAGON_DEFAULT_PHASE as ENDER_DRAGON_DEFAULT_PHASE,
     VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
@@ -3930,7 +3927,7 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_CREEPER_ID => {
-                let swell_dir = creeper_effective_swell_dir(data_values);
+                let swell_dir = creeper_effective_swell_dir(entity_type_id, data_values);
                 if let Some(swell) = self.creeper_swell.as_mut() {
                     swell.set_swell_dir(swell_dir);
                 } else if swell_dir > 0 {
@@ -6263,18 +6260,22 @@ pub(crate) fn cat_relax_state_one(data_values: &[EntityDataValue]) -> bool {
 /// Vanilla `Creeper.tick`: the fuse advances by `getSwellDir()`, but an ignited
 /// creeper forces the direction to `1`. Mirrors that effective direction from
 /// the synced `DATA_SWELL_DIR` (default `-1`) and `DATA_IS_IGNITED`.
-fn creeper_effective_swell_dir(data_values: &[EntityDataValue]) -> i32 {
+fn creeper_effective_swell_dir(entity_type_id: i32, data_values: &[EntityDataValue]) -> i32 {
+    let Some(accessors) = vanilla_entity_metadata_creeper_accessors_for_entity_type(entity_type_id)
+    else {
+        return 0;
+    };
     if entity_data_bool(
         data_values,
-        CREEPER_IGNITED_DATA_ID,
-        CREEPER_DEFAULT_IGNITED,
+        accessors.ignited_data_id,
+        accessors.ignited_default,
     ) {
         1
     } else {
         entity_data_int(
             data_values,
-            CREEPER_SWELL_DIR_DATA_ID,
-            CREEPER_DEFAULT_SWELL_DIR,
+            accessors.swell_dir_data_id,
+            accessors.swell_dir_default,
         )
     }
 }

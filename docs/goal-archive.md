@@ -16315,3 +16315,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   minecart 伤害摇晃和 hurt event dispatch 共享该来源。
 - 动画生产消费者删除固定 accessor/default 别名，原先的 boat/minecart membership union
   改为生成 accessor membership；生成器 reverse guard 禁止恢复这些平行事实源。
+
+## 2026-07-15：统一推导 Creeper metadata accessors
+
+- `bbb-world` 现在公开从生成 schema 的 `Creeper.DATA_SWELL_DIR`、`DATA_IS_POWERED` 与
+  `DATA_IS_IGNITED` 解析 membership、wire ids 16/17/18 及 typed defaults -1/false/false；
+  world fuse 动画、native power layer 与 native debug 共同消费该 bundle。
+- 生产消费者删除 Creeper 固定 accessor/default 别名与 model type predicate；生成器 reverse
+  guard 禁止恢复这些平行事实源。

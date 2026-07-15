@@ -77,6 +77,7 @@ use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
@@ -99,10 +100,6 @@ use bbb_world::{
     VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_CREAKING_HOME_POS_DATA_ID as CREAKING_HOME_POS_DATA_ID,
-    VANILLA_CREEPER_DEFAULT_IGNITED as CREEPER_DEFAULT_IGNITED,
-    VANILLA_CREEPER_DEFAULT_POWERED as CREEPER_DEFAULT_POWERED,
-    VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
-    VANILLA_CREEPER_POWERED_DATA_ID as CREEPER_POWERED_DATA_ID,
     VANILLA_DOLPHIN_DEFAULT_GOT_FISH as DOLPHIN_DEFAULT_GOT_FISH,
     VANILLA_DOLPHIN_DEFAULT_MOISTNESS as DOLPHIN_DEFAULT_MOISTNESS,
     VANILLA_DOLPHIN_GOT_FISH_DATA_ID as DOLPHIN_GOT_FISH_DATA_ID,
@@ -7362,10 +7359,15 @@ fn debug_push_parrot_additional_save_data(entity: &EntityState, fields: &mut Vec
 }
 
 fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let powered = debug_entity_data_bool_present(entity, CREEPER_POWERED_DATA_ID)
-        .unwrap_or(CREEPER_DEFAULT_POWERED);
-    let ignited = debug_entity_data_bool_present(entity, CREEPER_IGNITED_DATA_ID)
-        .unwrap_or(CREEPER_DEFAULT_IGNITED);
+    let Some(accessors) =
+        vanilla_entity_metadata_creeper_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let powered = debug_entity_data_bool_present(entity, accessors.powered_data_id)
+        .unwrap_or(accessors.powered_default);
+    let ignited = debug_entity_data_bool_present(entity, accessors.ignited_data_id)
+        .unwrap_or(accessors.ignited_default);
     fields.push(format!("powered: {}", debug_snbt_bool(powered)));
     fields.push(format!("ignited: {}", debug_snbt_bool(ignited)));
 }

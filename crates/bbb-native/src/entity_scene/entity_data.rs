@@ -16,15 +16,17 @@ pub(super) fn entity_data_bool(
         .unwrap_or(default)
 }
 
-/// Vanilla `Creeper.isPowered()` = the synced `DATA_IS_POWERED` boolean (entity-data index `17`:
-/// `Entity` `0..=7`, `LivingEntity` `8..=14`, `Mob` `15`, then `Creeper`'s `DATA_SWELL_DIR` `16` and
-/// `DATA_IS_POWERED` `17`). Read only for the creeper, gating the `CreeperPowerLayer` energy swirl.
+/// Vanilla `Creeper.isPowered()` = the generated synced `DATA_IS_POWERED` boolean. Read only for
+/// entity types owning the Creeper accessor bundle, gating the `CreeperPowerLayer` energy swirl.
 pub(super) fn creeper_powered(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_CREEPER_ID
-        && entity_data_bool(values, CREEPER_IS_POWERED_DATA_ID, CREEPER_DEFAULT_POWERED)
+    let Some(accessors) = vanilla_entity_metadata_creeper_accessors_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
+    entity_data_bool(values, accessors.powered_data_id, accessors.powered_default)
 }
 
 /// Vanilla `WitherBoss.isPowered()` = `getHealth() <= getMaxHealth() / 2.0`, gating the

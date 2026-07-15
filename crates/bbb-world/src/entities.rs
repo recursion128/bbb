@@ -55,6 +55,7 @@ pub use renderer_catalog::{
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_is_noop,
     vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,
 };
+pub use schema::VanillaCreeperMetadataAccessors;
 pub use schema::VanillaInteractionMetadataAccessors;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
@@ -64,7 +65,8 @@ pub use schema::{
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
-    vanilla_entity_metadata_bee_flags_accessor_for_entity_type, vanilla_entity_metadata_field,
+    vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_creeper_accessors_for_entity_type, vanilla_entity_metadata_field,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,

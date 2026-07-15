@@ -1,6 +1,7 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
+pub use crate::entities::VanillaCreeperMetadataAccessors;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
@@ -10,7 +11,8 @@ pub use crate::entities::{
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
-    vanilla_entity_metadata_bee_flags_accessor_for_entity_type, vanilla_entity_metadata_field,
+    vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_creeper_accessors_for_entity_type, vanilla_entity_metadata_field,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,

@@ -307,6 +307,16 @@ pub struct VanillaInteractionMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaCreeperMetadataAccessors {
+    pub swell_dir_data_id: u8,
+    pub swell_dir_default: i32,
+    pub powered_data_id: u8,
+    pub powered_default: bool,
+    pub ignited_data_id: u8,
+    pub ignited_default: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -870,6 +880,61 @@ pub fn vanilla_entity_metadata_interaction_accessors_for_entity_type(
             height_default,
             response_data_id: response.data_id,
             response_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the generated Creeper fuse and powered-state accessors with typed defaults.
+pub fn vanilla_entity_metadata_creeper_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaCreeperMetadataAccessors> {
+    let swell_dir =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SWELL_DIR")?;
+    let powered =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_IS_POWERED")?;
+    let ignited =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_IS_IGNITED")?;
+    match (
+        (
+            swell_dir.owner,
+            swell_dir.serializer_name,
+            swell_dir.typed_default,
+        ),
+        (
+            powered.owner,
+            powered.serializer_name,
+            powered.typed_default,
+        ),
+        (
+            ignited.owner,
+            ignited.serializer_name,
+            ignited.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.monster.Creeper",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(swell_dir_default)),
+            ),
+            (
+                "net.minecraft.world.entity.monster.Creeper",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(powered_default)),
+            ),
+            (
+                "net.minecraft.world.entity.monster.Creeper",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(ignited_default)),
+            ),
+        ) => Some(VanillaCreeperMetadataAccessors {
+            swell_dir_data_id: swell_dir.data_id,
+            swell_dir_default,
+            powered_data_id: powered.data_id,
+            powered_default,
+            ignited_data_id: ignited.data_id,
+            ignited_default,
         }),
         _ => None,
     }
@@ -2646,6 +2711,33 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_interaction_accessors_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_creeper_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_creeper_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREEPER_ID
+            ),
+            Some(VanillaCreeperMetadataAccessors {
+                swell_dir_data_id: 16,
+                swell_dir_default: -1,
+                powered_data_id: 17,
+                powered_default: false,
+                ignited_data_id: 18,
+                ignited_default: false,
+            })
+        );
+        assert_eq!(
+            vanilla_entity_metadata_creeper_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_creeper_accessors_for_entity_type(-1),
             None
         );
     }
