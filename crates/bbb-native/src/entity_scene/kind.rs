@@ -306,7 +306,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
         VANILLA_ENTITY_TYPE_PARROT_ID => parrot_model_kind(data_values),
         VANILLA_ENTITY_TYPE_PHANTOM_ID => EntityModelKind::Phantom {
-            size: phantom_size(data_values),
+            size: phantom_size(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => EntityModelKind::Piglin {
             family: PiglinModelFamily::PiglinBrute,

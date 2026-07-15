@@ -1292,8 +1292,13 @@ pub(super) fn slime_size(
         .unwrap_or_default()
 }
 
-pub(super) fn phantom_size(values: &[bbb_protocol::packets::EntityDataValue]) -> i32 {
-    entity_data_int(values, PHANTOM_SIZE_DATA_ID, PHANTOM_DEFAULT_SIZE)
+pub(super) fn phantom_size(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> i32 {
+    vanilla_entity_metadata_phantom_size_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_int(values, data_id, default))
+        .unwrap_or_default()
 }
 
 pub(super) fn pufferfish_puff_state(

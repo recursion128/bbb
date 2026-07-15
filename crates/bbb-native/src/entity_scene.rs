@@ -35,6 +35,7 @@ use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
@@ -197,10 +198,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_PARROT_DEFAULT_VARIANT as PARROT_DEFAULT_VARIANT,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
-};
-pub(crate) use bbb_world::{
-    VANILLA_PHANTOM_DEFAULT_SIZE as PHANTOM_DEFAULT_SIZE,
-    VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
 };
 pub(crate) use bbb_world::{
     VANILLA_PIGLIN_BABY_DATA_ID as PIGLIN_BABY_DATA_ID,

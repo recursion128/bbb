@@ -255,6 +255,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Slime size membership, inherited wire index and typed default must remain derived from generated
   `Slime.ID_SIZE`; world bounds/passenger attachment and native Slime/MagmaCube model/debug
   consumers must not restore fixed accessor/default aliases or parallel family predicates.
+  Phantom size membership, wire index and typed default must remain derived from generated
+  `Phantom.ID_SIZE`; world bounds and native model/debug consumers must not restore fixed
+  accessor/default aliases or confuse it with the same-named Slime accessor.
   IronGolem player-created debug membership, wire index and default must remain derived from
   generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability

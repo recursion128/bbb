@@ -16377,3 +16377,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   模型与 debug 共同消费它。
 - 生产消费者删除固定 accessor/default 别名，world dimensions 删除平行 Slime family
   predicate；动画与 debug save-chain 调度继续使用生成的类层次 membership。
+
+## 2026-07-15：统一推导 Phantom size metadata accessor
+
+- `bbb-world` 现在公开从生成 schema 的 `Phantom.ID_SIZE` 解析 membership、wire id 16
+  与 int typed default 0，并通过 accessor owner 与同名的 `Slime.ID_SIZE` 分离；world pick
+  bounds、native model 与 debug 共同消费它。
+- 生产消费者删除固定 accessor/default 别名，world bounds 删除平行 Phantom type
+  predicate；生成器 reverse guard 禁止恢复这些平行事实源。

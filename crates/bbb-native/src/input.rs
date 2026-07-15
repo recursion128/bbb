@@ -81,6 +81,7 @@ use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
@@ -281,7 +282,6 @@ use crate::entity_scene::{
     END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
     END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
-use crate::entity_scene::{PHANTOM_DEFAULT_SIZE, PHANTOM_SIZE_DATA_ID};
 use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
@@ -7569,8 +7569,12 @@ fn debug_push_abstract_villager_additional_save_data(fields: &mut Vec<String>) {
 }
 
 fn debug_push_phantom_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let size =
-        debug_entity_data_int_present(entity, PHANTOM_SIZE_DATA_ID).unwrap_or(PHANTOM_DEFAULT_SIZE);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_phantom_size_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let size = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
     fields.push(format!("size: {size}"));
 }
 

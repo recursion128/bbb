@@ -96,7 +96,7 @@ use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
     ChunkSection, ChunkState, ItemEquipmentSlot, LightData, LocalPlayerPoseState, PaletteDomain,
     PaletteKind, PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState, WorldStore,
-    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
 };
