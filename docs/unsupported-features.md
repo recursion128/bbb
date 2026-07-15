@@ -166,6 +166,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class
   behavior plus redirectable-projectile tag, with spectator/marker kept as per-instance gates.
+  Remote-entity powder-snow collision must consume the generated
+  `powder_snow_walkable_mobs` entity-type tag rather than a parallel entity-type set.
   Hoglin/Zoglin shared attack-animation event and tick membership must remain derived from the
   generated `HoglinBase` interface graph rather than parallel entity-type tables.
   Illager celebrating-arm-pose membership must remain derived from the nearest generated

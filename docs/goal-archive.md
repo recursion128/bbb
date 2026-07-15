@@ -15519,3 +15519,12 @@ AO/face culling/render shape 烘焙/fluid overlay/selection/透明排序（段�
   redirectable-projectile tag；Player spectator 和 ArmorStand marker 仍保持为实例状态门。
 - [x] world 聚焦测试锁定 living/vehicle/redirectable/non-pickable 类型及两项实例状态门；
   metadata generator 输出反向门禁，防止平行 type membership 回流。
+
+## 2026-07-15：Generate powder-snow-walkable entity membership
+
+- [x] core entity-type catalog 解析 vanilla `powder_snow_walkable_mobs` data tag，为
+  Rabbit/Endermite/Silverfish/Fox 生成唯一 membership 字段和 typed query，并锁定
+  4 项 exact set 与 unknown-id fallback。
+- [x] remote supporting-block powder-snow 碰撞删除手写四项 type match，直接消费
+  generated tag query；靴子、descending 和 falling-block 实例分支未改，generator-emitted
+  反向门禁防止平行集合回流。

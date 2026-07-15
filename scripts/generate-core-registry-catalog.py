@@ -194,6 +194,7 @@ def render_entity_types(
     entries: list[EntityTypeEntry],
     arrows: frozenset[str],
     redirectable_projectiles: frozenset[str],
+    powder_snow_walkable_mobs: frozenset[str],
     can_equip_saddle: frozenset[str],
     can_wear_horse_armor: frozenset[str],
 ) -> str:
@@ -217,6 +218,7 @@ def render_entity_types(
         "    pub passenger_attachments: &'static [[f32; 3]],",
         "    pub in_arrows_tag: bool,",
         "    pub redirectable_projectile: bool,",
+        "    pub powder_snow_walkable: bool,",
         "    pub can_equip_saddle: bool,",
         "    pub can_wear_horse_armor: bool,",
         "}",
@@ -248,6 +250,7 @@ def render_entity_types(
                 + "],",
                 f"        in_arrows_tag: {str(entry.resource_id in arrows).lower()},",
                 f"        redirectable_projectile: {str(entry.resource_id in redirectable_projectiles).lower()},",
+                f"        powder_snow_walkable: {str(entry.resource_id in powder_snow_walkable_mobs).lower()},",
                 f"        can_equip_saddle: {str(entry.resource_id in can_equip_saddle).lower()},",
                 f"        can_wear_horse_armor: {str(entry.resource_id in can_wear_horse_armor).lower()},",
                 "    },",
@@ -333,6 +336,12 @@ def render_entity_types(
             "        .unwrap_or(false)",
             "}",
             "",
+            "pub fn vanilla_entity_type_is_powder_snow_walkable(entity_type_id: i32) -> bool {",
+            "    vanilla_entity_type(entity_type_id)",
+            "        .map(|entry| entry.powder_snow_walkable)",
+            "        .unwrap_or(false)",
+            "}",
+            "",
             "pub fn vanilla_entity_type_can_wear_horse_armor(entity_type_id: i32) -> bool {",
             "    vanilla_entity_type(entity_type_id)",
             "        .map(|entry| entry.can_wear_horse_armor)",
@@ -364,6 +373,7 @@ def render_entity_types(
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| !entry.passenger_attachments.is_empty()).count(), 57);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.in_arrows_tag).count(), 2);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.redirectable_projectile).count(), 3);",
+            "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.powder_snow_walkable).count(), 4);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_equip_saddle).count(), 11);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.can_wear_horse_armor).count(), 2);",
             "    }",
@@ -396,6 +406,16 @@ def render_entity_types(
             "        assert!(vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_BREEZE_WIND_CHARGE_ID));",
             "        assert!(!vanilla_entity_type_is_redirectable_projectile(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID));",
             "        assert!(!vanilla_entity_type_is_redirectable_projectile(-1));",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn powder_snow_walkable_membership_comes_from_the_vanilla_tag() {",
+            "        assert!(vanilla_entity_type_is_powder_snow_walkable(VANILLA_ENTITY_TYPE_RABBIT_ID));",
+            "        assert!(vanilla_entity_type_is_powder_snow_walkable(VANILLA_ENTITY_TYPE_ENDERMITE_ID));",
+            "        assert!(vanilla_entity_type_is_powder_snow_walkable(VANILLA_ENTITY_TYPE_SILVERFISH_ID));",
+            "        assert!(vanilla_entity_type_is_powder_snow_walkable(VANILLA_ENTITY_TYPE_FOX_ID));",
+            "        assert!(!vanilla_entity_type_is_powder_snow_walkable(VANILLA_ENTITY_TYPE_COW_ID));",
+            "        assert!(!vanilla_entity_type_is_powder_snow_walkable(-1));",
             "    }",
             "",
             "    #[test]",
@@ -440,6 +460,20 @@ def render_entity_types(
             "            .map(|(body, _)| body)",
             '            .expect("saved projectile bounds source");',
             '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_powder_snow_collision_does_not_redeclare_walkable_mobs() {",
+            '        let source = include_str!("../../bbb-world/src/client/local_player_collision.rs");',
+            '        let body = source',
+            '            .split("fn remote_entity_can_walk_on_powder_snow")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n    }"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("remote powder-snow collision source");',
+            '        assert!(body.contains("vanilla_entity_type_is_powder_snow_walkable"));',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
+            '        assert!(!body.contains("matches!"));',
             "    }",
             "",
             "    #[test]",
@@ -1004,6 +1038,14 @@ def generated_files(
             registry_name="entity type",
         )
     )
+    powder_snow_walkable_mobs = frozenset(
+        resolve_tag_values(
+            entity_type_tags,
+            "minecraft:powder_snow_walkable_mobs",
+            4,
+            registry_name="entity type",
+        )
+    )
     can_equip_saddle = frozenset(
         resolve_tag_values(
             entity_type_tags,
@@ -1023,6 +1065,7 @@ def generated_files(
     unknown_tag_values = (
         arrows
         | redirectable_projectiles
+        | powder_snow_walkable_mobs
         | can_equip_saddle
         | can_wear_horse_armor
     ) - entity_type_resources
@@ -1044,6 +1087,7 @@ def generated_files(
                 entity_types,
                 arrows,
                 redirectable_projectiles,
+                powder_snow_walkable_mobs,
                 can_equip_saddle,
                 can_wear_horse_armor,
             )

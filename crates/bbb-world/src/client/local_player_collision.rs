@@ -2,12 +2,11 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::entity_poses::{VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_POSE_EMERGING_ID};
 use bbb_protocol::entity_types::{
-    VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BAT_ID,
-    VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_ENDERMITE_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-    VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
+    vanilla_entity_type_is_powder_snow_walkable, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    VANILLA_ENTITY_TYPE_BAT_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
+    VANILLA_ENTITY_TYPE_WARDEN_ID,
 };
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
@@ -454,13 +453,7 @@ impl WorldStore {
         let Some(entity_type_id) = self.entity_type_id(entity_id) else {
             return false;
         };
-        if matches!(
-            entity_type_id,
-            VANILLA_ENTITY_TYPE_RABBIT_ID
-                | VANILLA_ENTITY_TYPE_ENDERMITE_ID
-                | VANILLA_ENTITY_TYPE_SILVERFISH_ID
-                | VANILLA_ENTITY_TYPE_FOX_ID
-        ) {
+        if vanilla_entity_type_is_powder_snow_walkable(entity_type_id) {
             return true;
         }
         vanilla_living_entity_type(entity_type_id)
@@ -4601,7 +4594,12 @@ mod tests {
         ]));
         let powder_snow = vanilla_block_state_id("minecraft:powder_snow", []);
         let cases = [
-            (51, VANILLA_ENTITY_TYPE_FOX_ID, 0, true),
+            (
+                51,
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FOX_ID,
+                0,
+                true,
+            ),
             (
                 52,
                 bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
