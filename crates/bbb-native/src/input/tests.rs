@@ -119,7 +119,7 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
     VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID as ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
-    VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
+    VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
     VANILLA_CREEPER_POWERED_DATA_ID as CREEPER_POWERED_DATA_ID,
@@ -3808,6 +3808,10 @@ fn shift_f3_i_with_permission_copies_local_copper_golem_save_nbt_to_clipboard() 
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_bee_save_nbt_to_clipboard() {
+    let bee_accessors = bbb_world::vanilla_entity_metadata_bee_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_BEE_ID,
+    )
+    .expect("generated Bee metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -3840,12 +3844,14 @@ fn shift_f3_i_with_permission_copies_local_bee_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: BEE_FLAGS_DATA_ID,
+                data_id: bee_accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(BEE_FLAG_HAS_NECTAR | BEE_FLAG_HAS_STUNG),
+                value: EntityDataValueKind::Byte(
+                    bee_accessors.has_nectar_mask | bee_accessors.has_stung_mask,
+                ),
             },
             ProtocolEntityDataValue {
-                data_id: BEE_ANGER_END_TIME_DATA_ID,
+                data_id: bee_accessors.anger_end_time_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
                 value: EntityDataValueKind::Long(240),
             },

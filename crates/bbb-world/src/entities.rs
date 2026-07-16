@@ -212,6 +212,9 @@ pub use schema::{
     VANILLA_SLIME_DEFAULT_SIZE, VANILLA_SLIME_SIZE_DATA_ID,
 };
 pub use schema::{
+    vanilla_entity_metadata_bee_accessors_for_entity_type, VanillaBeeMetadataAccessors,
+};
+pub use schema::{
     vanilla_entity_metadata_cat_accessors_for_entity_type, VanillaCatMetadataAccessors,
 };
 pub use schema::{

@@ -316,6 +316,17 @@ pub struct VanillaCatMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaBeeMetadataAccessors {
+    pub flags_data_id: u8,
+    pub flags_default: i8,
+    pub roll_mask: i8,
+    pub has_stung_mask: i8,
+    pub has_nectar_mask: i8,
+    pub anger_end_time_data_id: u8,
+    pub anger_end_time_default: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaWolfMetadataAccessors {
     pub interested_data_id: u8,
     pub interested_default: bool,
@@ -1100,24 +1111,61 @@ pub fn vanilla_entity_metadata_bat_flags_accessor_for_entity_type(
     }
 }
 
+/// Resolves Bee's generated flags, named masks, and anger-end-time accessor.
+pub fn vanilla_entity_metadata_bee_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaBeeMetadataAccessors> {
+    let flags = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
+    let anger_end_time =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ANGER_END_TIME")?;
+    match (
+        (flags.owner, flags.serializer_name, flags.typed_default),
+        (
+            anger_end_time.owner,
+            anger_end_time.serializer_name,
+            anger_end_time.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.bee.Bee",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(flags_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.bee.Bee",
+                "LONG",
+                Some(VanillaEntityMetadataDefault::Long(anger_end_time_default)),
+            ),
+        ) => {
+            let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bee);
+            let mask = |name| {
+                schema
+                    .own_flags
+                    .iter()
+                    .find(|flag| flag.name == name && flag.data_id == flags.data_id)
+                    .map(|flag| flag.mask)
+            };
+            Some(VanillaBeeMetadataAccessors {
+                flags_data_id: flags.data_id,
+                flags_default,
+                roll_mask: mask("FLAG_ROLL")?,
+                has_stung_mask: mask("FLAG_HAS_STUNG")?,
+                has_nectar_mask: mask("FLAG_HAS_NECTAR")?,
+                anger_end_time_data_id: anger_end_time.data_id,
+                anger_end_time_default,
+            })
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the generated Bee flags accessor and its typed default.
 pub fn vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i8)> {
-    let accessor =
-        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
-        (
-            "net.minecraft.world.entity.animal.bee.Bee",
-            "BYTE",
-            Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+    vanilla_entity_metadata_bee_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.flags_data_id, accessors.flags_default))
 }
 
 /// Resolves the generated Fox flags accessor and its typed default.
@@ -4943,21 +4991,30 @@ mod tests {
     }
 
     #[test]
-    fn generated_bee_flags_accessor_owns_membership_index_and_default() {
+    fn generated_bee_accessors_own_membership_indices_defaults_and_masks() {
+        let expected = VanillaBeeMetadataAccessors {
+            flags_data_id: VANILLA_BEE_FLAGS_DATA_ID,
+            flags_default: VANILLA_BEE_DEFAULT_FLAGS,
+            roll_mask: VANILLA_BEE_FLAG_ROLL,
+            has_stung_mask: VANILLA_BEE_FLAG_HAS_STUNG,
+            has_nectar_mask: VANILLA_BEE_FLAG_HAS_NECTAR,
+            anger_end_time_data_id: VANILLA_BEE_ANGER_END_TIME_DATA_ID,
+            anger_end_time_default: VANILLA_BEE_DEFAULT_ANGER_END_TIME,
+        };
+        assert_eq!(
+            vanilla_entity_metadata_bee_accessors_for_entity_type(VANILLA_ENTITY_TYPE_BEE_ID),
+            Some(expected)
+        );
         assert_eq!(
             vanilla_entity_metadata_bee_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_BEE_ID),
-            Some((18, 0))
+            Some((expected.flags_data_id, expected.flags_default))
         );
-        assert_eq!(
-            vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
-                VANILLA_ENTITY_TYPE_CHICKEN_ID
-            ),
-            None
-        );
-        assert_eq!(
-            vanilla_entity_metadata_bee_flags_accessor_for_entity_type(-1),
-            None
-        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_CHICKEN_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_bee_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]

@@ -848,13 +848,14 @@ pub(super) fn bee_is_angry(
     values: &[bbb_protocol::packets::EntityDataValue],
     game_time: i64,
 ) -> bool {
-    if entity_type_id != VANILLA_ENTITY_TYPE_BEE_ID {
+    let Some(accessors) = vanilla_entity_metadata_bee_accessors_for_entity_type(entity_type_id)
+    else {
         return false;
-    }
+    };
     let end_time = entity_data_long(
         values,
-        BEE_ANGER_END_TIME_DATA_ID,
-        BEE_DEFAULT_ANGER_END_TIME,
+        accessors.anger_end_time_data_id,
+        accessors.anger_end_time_default,
     );
     end_time > 0 && end_time - game_time > 0
 }
@@ -866,9 +867,11 @@ pub(super) fn bee_has_nectar(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    vanilla_entity_metadata_bee_flags_accessor_for_entity_type(entity_type_id).is_some_and(
-        |(data_id, default)| entity_data_byte(values, data_id, default) & BEE_FLAG_HAS_NECTAR != 0,
-    )
+    vanilla_entity_metadata_bee_accessors_for_entity_type(entity_type_id).is_some_and(|accessors| {
+        entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
+            & accessors.has_nectar_mask
+            != 0
+    })
 }
 
 /// The three projected camel sit/stand elapsed-seconds values, each `-1.0` when its

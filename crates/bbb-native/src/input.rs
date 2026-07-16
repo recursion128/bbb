@@ -79,7 +79,7 @@ use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
-use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_bee_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_cat_accessors_for_entity_type;
@@ -160,9 +160,6 @@ use bbb_world::{
     vanilla_painting_variant_resource_id,
     VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET as AXOLOTL_DEFAULT_FROM_BUCKET,
     VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID as AXOLOTL_FROM_BUCKET_DATA_ID,
-    VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
-    VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
-    VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_DOLPHIN_DEFAULT_GOT_FISH as DOLPHIN_DEFAULT_GOT_FISH,
     VANILLA_DOLPHIN_DEFAULT_MOISTNESS as DOLPHIN_DEFAULT_MOISTNESS,
@@ -7521,16 +7518,19 @@ fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<St
 }
 
 fn debug_push_bee_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = vanilla_entity_metadata_bee_flags_accessor_for_entity_type(entity.entity_type_id)
-        .map(|(data_id, default)| {
-            debug_entity_data_byte_present(entity, data_id).unwrap_or(default)
-        })
-        .unwrap_or(0);
-    let has_nectar = flags & BEE_FLAG_HAS_NECTAR != 0;
-    let has_stung = flags & BEE_FLAG_HAS_STUNG != 0;
+    let Some(accessors) =
+        vanilla_entity_metadata_bee_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let flags = debug_entity_data_byte_present(entity, accessors.flags_data_id)
+        .unwrap_or(accessors.flags_default);
+    let has_nectar = flags & accessors.has_nectar_mask != 0;
+    let has_stung = flags & accessors.has_stung_mask != 0;
     fields.push(format!("HasNectar: {}", debug_snbt_bool(has_nectar)));
     fields.push(format!("HasStung: {}", debug_snbt_bool(has_stung)));
-    if let Some(anger_end_time) = debug_entity_data_long_present(entity, BEE_ANGER_END_TIME_DATA_ID)
+    if let Some(anger_end_time) =
+        debug_entity_data_long_present(entity, accessors.anger_end_time_data_id)
     {
         debug_push_neutral_mob_additional_save_data_with_end_time(fields, anger_end_time);
     }

@@ -1104,9 +1104,10 @@ fn entity_model_sources_project_wither_side_head_tracking() {
 
 #[test]
 fn entity_model_sources_project_bee_stinger_from_flags() {
-    // Vanilla Bee.DATA_FLAGS_ID (18, BYTE); FLAG_HAS_STUNG (4).
-    const VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
-    const BEE_FLAG_HAS_STUNG: i8 = 4;
+    // Vanilla Bee.DATA_FLAGS_ID and FLAG_HAS_STUNG are generated from Bee.java.
+    let accessors =
+        vanilla_entity_metadata_bee_accessors_for_entity_type(VANILLA_ENTITY_TYPE_BEE_ID)
+            .expect("generated Bee metadata accessors");
 
     let has_stinger = |store: &WorldStore, id: i32| {
         store
@@ -1120,7 +1121,7 @@ fn entity_model_sources_project_bee_stinger_from_flags() {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
             values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_BEE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(flags),
             }],
@@ -1135,7 +1136,7 @@ fn entity_model_sources_project_bee_stinger_from_flags() {
     // A fresh bee has not stung, so it keeps its stinger.
     assert!(has_stinger(&store, 72));
     // Setting Bee.hasStung (DATA_FLAGS_ID & 4) hides the stinger; clearing it restores it.
-    assert!(set_flags(&mut store, 72, BEE_FLAG_HAS_STUNG));
+    assert!(set_flags(&mut store, 72, accessors.has_stung_mask));
     assert!(!has_stinger(&store, 72));
     assert!(set_flags(&mut store, 72, 0));
     assert!(has_stinger(&store, 72));
@@ -1145,7 +1146,7 @@ fn entity_model_sources_project_bee_stinger_from_flags() {
         73,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_flags(&mut store, 73, BEE_FLAG_HAS_STUNG));
+    assert!(set_flags(&mut store, 73, accessors.has_stung_mask));
     assert!(has_stinger(&store, 73));
 }
 

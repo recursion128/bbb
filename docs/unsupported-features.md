@@ -268,9 +268,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Bat resting/debug membership, wire index and default must remain derived from generated
   `Bat.DATA_ID_FLAGS`; world projection and native debug must not restore a Bat type predicate or
   fixed accessor aliases.
-  Bee stinger/nectar/debug membership plus flags wire index and default must remain derived from
-  generated `Bee.DATA_FLAGS_ID`; world and native consumers must not restore a Bee type predicate
-  or fixed accessor aliases.
+  Bee rolling/stinger/nectar/anger/debug membership, wire indices, typed defaults and named masks
+  must remain derived together from generated `Bee.DATA_FLAGS_ID`, `FLAG_ROLL`, `FLAG_HAS_STUNG`,
+  `FLAG_HAS_NECTAR` and `DATA_ANGER_END_TIME`; world/native consumers and fixtures must not restore
+  a Bee type predicate, fixed accessor/default aliases or hand-copied flag masks.
   Fox pose/debug membership plus flags wire index and default must remain derived from generated
   `Fox.DATA_FLAGS_ID`; world and native debug consumers must not restore a Fox type predicate or
   fixed accessor aliases.

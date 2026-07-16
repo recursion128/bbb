@@ -17149,3 +17149,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   save-debug 不再维护固定 wire index/default aliases。
 - world/native/input fixtures 同步复用 bundle；schema generator 的 Cat 反向守卫扩展到
   animations/store/scene/input，同时保留 companion variant/sound holder bundle 的职责边界。
+
+## 2026-07-16：派生 Bee metadata accessor bundle
+
+- Bee flags、三个 named masks 与 anger-end-time metadata identity 组合为 typed bundle；既有
+  flags 窄 helper 委托该 bundle，world rolling/stinger、native nectar/anger model 与 F3+I
+  save-debug 不再维护固定 wire index/default/mask aliases。
+- world/native/input fixtures 同步复用 bundle；schema generator 的 Bee 反向守卫扩展到所有
+  production consumers 与语义 fixtures，继续以 generated family schema 作为 flag mask 来源。

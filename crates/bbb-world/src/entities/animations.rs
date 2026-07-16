@@ -21,7 +21,7 @@ use super::schema::{
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
-    vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
@@ -48,7 +48,6 @@ use super::schema::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
-    VANILLA_BEE_FLAG_ROLL as BEE_FLAG_ROLL,
     VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
@@ -6242,9 +6241,14 @@ fn shulker_target_peek_amount(entity_type_id: i32, data_values: &[EntityDataValu
 
 /// Vanilla `Bee.isRolling()` = `getFlag(FLAG_ROLL)` = `(flags & 2) != 0`.
 fn bee_is_rolling(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
-    vanilla_entity_metadata_bee_flags_accessor_for_entity_type(entity_type_id).is_some_and(
-        |(data_id, default)| entity_data_byte(data_values, data_id, default) & BEE_FLAG_ROLL != 0,
-    )
+    vanilla_entity_metadata_bee_accessors_for_entity_type(entity_type_id).is_some_and(|accessors| {
+        entity_data_byte(
+            data_values,
+            accessors.flags_data_id,
+            accessors.flags_default,
+        ) & accessors.roll_mask
+            != 0
+    })
 }
 
 fn panda_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (bool, bool, bool) {

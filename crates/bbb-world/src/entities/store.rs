@@ -30,7 +30,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
-    vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
@@ -44,8 +44,7 @@ use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
-    VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
-    VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
+    VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_FACEPLANTED as FOX_FLAG_FACEPLANTED,
     VANILLA_FOX_FLAG_POUNCING as FOX_FLAG_POUNCING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
     VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
@@ -1758,9 +1757,11 @@ impl EntityStore {
         // (`DATA_FLAGS_ID & 4`). Only the bee defines that flags byte; every other entity keeps
         // its stinger field at the `true` default (and never renders a stinger anyway).
         let bee_has_stinger =
-            vanilla_entity_metadata_bee_flags_accessor_for_entity_type(identity.entity_type_id)
-                .is_none_or(|(data_id, default)| {
-                    self.metadata_byte(id, data_id, default).unwrap_or(default) & BEE_FLAG_HAS_STUNG
+            vanilla_entity_metadata_bee_accessors_for_entity_type(identity.entity_type_id)
+                .is_none_or(|accessors| {
+                    self.metadata_byte(id, accessors.flags_data_id, accessors.flags_default)
+                        .unwrap_or(accessors.flags_default)
+                        & accessors.has_stung_mask
                         == 0
                 });
         // Vanilla `FoxModel.setupAnim` reads the fox's synced `DATA_FLAGS_ID` (19) crouch / sleep /

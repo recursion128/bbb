@@ -21,8 +21,7 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID as ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
     VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID, VANILLA_BAT_FLAGS_DATA_ID,
-    VANILLA_BAT_FLAG_RESTING, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
-    VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
+    VANILLA_BAT_FLAG_RESTING, VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
@@ -38,6 +37,11 @@ use bbb_world::{
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
+
+fn bee_metadata_accessors() -> bbb_world::VanillaBeeMetadataAccessors {
+    bbb_world::vanilla_entity_metadata_bee_accessors_for_entity_type(VANILLA_ENTITY_TYPE_BEE_ID)
+        .expect("generated Bee metadata accessors")
+}
 
 #[test]
 fn entity_hand_projection_does_not_restore_component_id_aliases() {
@@ -4638,9 +4642,8 @@ fn entity_model_instance_projects_ender_dragon_healing_beam_from_source() {
 
 #[test]
 fn entity_model_instances_project_bee_stinger() {
-    // Vanilla Bee.DATA_FLAGS_ID (18, BYTE) and the has-stung bit (4).
-    const VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
-    const BEE_FLAG_HAS_STUNG: i8 = 4;
+    // Vanilla Bee.DATA_FLAGS_ID and FLAG_HAS_STUNG are generated from Bee.java.
+    let accessors = bee_metadata_accessors();
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -4665,8 +4668,8 @@ fn entity_model_instances_project_bee_stinger() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 96,
         values: vec![protocol_byte_data(
-            VANILLA_BEE_FLAGS_DATA_ID,
-            BEE_FLAG_HAS_STUNG
+            accessors.flags_data_id,
+            accessors.has_stung_mask,
         )],
     }));
     assert!(!has_stinger(&world, 96));
@@ -4674,9 +4677,9 @@ fn entity_model_instances_project_bee_stinger() {
 
 #[test]
 fn entity_model_instances_project_bee_angry_from_anger_end_time() {
-    // Vanilla Bee.DATA_ANGER_END_TIME (19, LONG): isAngry = endTime > 0 && endTime - gameTime
+    // Vanilla Bee.DATA_ANGER_END_TIME (LONG): isAngry = endTime > 0 && endTime - gameTime
     // > 0. The world has no time set here, so the game time defaults to 0.
-    const VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
+    let accessors = bee_metadata_accessors();
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -4700,14 +4703,14 @@ fn entity_model_instances_project_bee_angry_from_anger_end_time() {
     // An anger end time in the future (game time 0) makes the bee angry.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 97,
-        values: vec![protocol_long_data(VANILLA_BEE_ANGER_END_TIME_DATA_ID, 200)],
+        values: vec![protocol_long_data(accessors.anger_end_time_data_id, 200)],
     }));
     assert!(angry(&world, 97));
 
     // A zero/past end time is calm again.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 97,
-        values: vec![protocol_long_data(VANILLA_BEE_ANGER_END_TIME_DATA_ID, 0)],
+        values: vec![protocol_long_data(accessors.anger_end_time_data_id, 0)],
     }));
     assert!(!angry(&world, 97));
 }
@@ -7939,10 +7942,14 @@ fn entity_model_kind_projects_bee_nectar_and_angry_texture_flags() {
     // Vanilla `BeeRenderer.getTextureLocation` keys on `hasNectar` (the synced
     // `DATA_FLAGS_ID & 8`, index 18) and `isAngry` (the synced `DATA_ANGER_END_TIME`, index 19,
     // in the future). A bee carrying nectar swaps to the `*_nectar*` texture.
+    let accessors = bee_metadata_accessors();
     assert_eq!(
         entity_model_kind_with_time_and_registries(
             VANILLA_ENTITY_TYPE_BEE_ID,
-            &[protocol_byte_data(BEE_FLAGS_DATA_ID, BEE_FLAG_HAS_NECTAR)],
+            &[protocol_byte_data(
+                accessors.flags_data_id,
+                accessors.has_nectar_mask,
+            )],
             0.0,
             0,
             None,
@@ -7958,7 +7965,7 @@ fn entity_model_kind_projects_bee_nectar_and_angry_texture_flags() {
     assert_eq!(
         entity_model_kind_with_time_and_registries(
             VANILLA_ENTITY_TYPE_BEE_ID,
-            &[protocol_long_data(BEE_ANGER_END_TIME_DATA_ID, 100)],
+            &[protocol_long_data(accessors.anger_end_time_data_id, 100)],
             0.0,
             10,
             None,

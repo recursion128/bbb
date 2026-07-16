@@ -42,7 +42,7 @@ use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
-use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_bee_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_cat_accessors_for_entity_type;
@@ -148,11 +148,6 @@ use bbb_world::{
     VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID,
     VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID,
     VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
-    VANILLA_BEE_DEFAULT_ANGER_END_TIME as BEE_DEFAULT_ANGER_END_TIME,
-    VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
 };
 #[cfg(test)]
 use bbb_world::{

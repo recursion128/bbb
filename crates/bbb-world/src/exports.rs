@@ -171,6 +171,9 @@ pub use crate::entities::{
     VANILLA_SLIME_DEFAULT_SIZE, VANILLA_SLIME_SIZE_DATA_ID,
 };
 pub use crate::entities::{
+    vanilla_entity_metadata_bee_accessors_for_entity_type, VanillaBeeMetadataAccessors,
+};
+pub use crate::entities::{
     vanilla_entity_metadata_cat_accessors_for_entity_type, VanillaCatMetadataAccessors,
 };
 pub use crate::entities::{
