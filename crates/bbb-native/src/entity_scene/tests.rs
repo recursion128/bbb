@@ -127,6 +127,23 @@ fn end_crystal_beam_target_collision_data(
     end_crystal_beam_target_data(target)
 }
 
+fn goat_metadata_accessors() -> bbb_world::VanillaGoatMetadataAccessors {
+    bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_GOAT_ID)
+        .expect("generated Goat metadata accessors must resolve")
+}
+
+fn goat_left_horn_data(has_left_horn: bool) -> EntityDataValue {
+    let accessors = goat_metadata_accessors();
+    assert!(accessors.left_horn_default);
+    protocol_bool_data(accessors.left_horn_data_id, has_left_horn)
+}
+
+fn goat_right_horn_data(has_right_horn: bool) -> EntityDataValue {
+    let accessors = goat_metadata_accessors();
+    assert!(accessors.right_horn_default);
+    protocol_bool_data(accessors.right_horn_data_id, has_right_horn)
+}
+
 fn mob_aggressive_data(entity_type_id: i32) -> EntityDataValue {
     let accessors =
         bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
@@ -8996,8 +9013,8 @@ fn entity_model_kind_uses_exact_models_for_goats() {
             VANILLA_ENTITY_TYPE_GOAT_ID,
             &[
                 baby_data(VANILLA_ENTITY_TYPE_GOAT_ID, true),
-                protocol_bool_data(GOAT_LEFT_HORN_DATA_ID, false),
-                protocol_bool_data(GOAT_RIGHT_HORN_DATA_ID, true),
+                goat_left_horn_data(false),
+                goat_right_horn_data(true),
             ]
         ),
         EntityModelKind::Goat {
@@ -9009,10 +9026,7 @@ fn entity_model_kind_uses_exact_models_for_goats() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_GOAT_ID,
-            &[
-                protocol_bool_data(GOAT_LEFT_HORN_DATA_ID, false),
-                protocol_bool_data(GOAT_RIGHT_HORN_DATA_ID, false),
-            ]
+            &[goat_left_horn_data(false), goat_right_horn_data(false),]
         ),
         EntityModelKind::Goat {
             baby: false,

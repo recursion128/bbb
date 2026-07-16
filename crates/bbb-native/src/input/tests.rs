@@ -396,6 +396,11 @@ fn end_crystal_metadata_accessors(
     accessors
 }
 
+fn goat_metadata_accessors() -> bbb_world::VanillaGoatMetadataAccessors {
+    vanilla_entity_metadata_goat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_GOAT_ID)
+        .expect("generated Goat metadata accessors must resolve")
+}
+
 fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
     let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
         .expect("generated nearest baby accessor must resolve");
@@ -6117,6 +6122,10 @@ fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let goat_accessors = goat_metadata_accessors();
+    assert!(!goat_accessors.screaming_default);
+    assert!(goat_accessors.left_horn_default);
+    assert!(goat_accessors.right_horn_default);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 65,
@@ -6140,17 +6149,17 @@ fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
             baby_data(VANILLA_ENTITY_TYPE_GOAT_ID, true),
             age_locked_data(&world, 65, true),
             ProtocolEntityDataValue {
-                data_id: GOAT_SCREAMING_DATA_ID,
+                data_id: goat_accessors.screaming_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: GOAT_LEFT_HORN_DATA_ID,
+                data_id: goat_accessors.left_horn_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(false),
             },
             ProtocolEntityDataValue {
-                data_id: GOAT_RIGHT_HORN_DATA_ID,
+                data_id: goat_accessors.right_horn_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },

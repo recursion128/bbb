@@ -18174,3 +18174,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   BYTE，使用 typed default 与 named `is_using_mask`，删除固定 id/mask 和 `& 1` 注释。
 - LivingEntity reverse guard 纳入完整 transient-events tests；共享 use-item tick counter 与
   native crossbow pose 边界保持不变。
+
+## 2026-07-16：统一 Goat metadata fixtures
+
+- native entity-scene 与 F3+I fixtures 统一通过 generated Goat bundle 构造 screaming、左右 horn
+  BOOLEAN metadata，并校验 vanilla typed defaults `false/true/true`，删除 test-only 固定 id aliases。
+- Goat reverse guard 扩展到两份 native facade 与完整 fixtures，生产 model/debug 投影继续由同一
+  membership-aware accessor bundle 驱动。

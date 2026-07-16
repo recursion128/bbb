@@ -252,7 +252,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases or a separate GlowSquid type gate for renderer light projection.
   Goat screaming/left-horn/right-horn membership, wire indices and typed defaults must remain
   derived together from generated `DATA_IS_SCREAMING_GOAT`, `DATA_HAS_LEFT_HORN` and
-  `DATA_HAS_RIGHT_HORN`; native model/debug consumers must not restore fixed accessor/default aliases.
+  `DATA_HAS_RIGHT_HORN`; native model/debug consumers and semantic fixtures must not restore fixed
+  accessor/default aliases.
   WitherSkull dangerous texture/debug membership, wire index and typed default must remain derived
   from generated `WitherSkull.DATA_DANGEROUS`; native consumers must not restore fixed
   accessor/default aliases or apply the field to another hurting-projectile family.
