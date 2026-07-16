@@ -395,9 +395,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   as the playing-dead flag.
   Camel dash and pose-tick membership, wire indices and typed defaults must remain derived from
   generated `Camel.DASH` and `Camel.LAST_POSE_CHANGE_TICK`, including inherited CamelHusk
-  membership; world animation/dimensions consumers must not restore fixed accessor/default aliases
-  or confuse dash with `AbstractNautilus.DASH`. Camel-only baby scaling must read the generated
-  inherited baby accessor while preserving CamelHusk's `isBaby() = false` override.
+  membership; world animation/dimensions consumers and semantic fixtures must not restore fixed
+  accessor/default aliases, hand-written wire indices or confuse dash with `AbstractNautilus.DASH`.
+  Camel-only baby scaling and its fixtures must read the generated inherited baby accessor while
+  preserving CamelHusk's `isBaby() = false` override.
   PolarBear standing membership, wire index and typed default must remain derived from generated
   `PolarBear.DATA_STANDING_ID`; world animation consumers must not restore fixed accessor/default
   aliases or read the standing flag without generated PolarBear membership.

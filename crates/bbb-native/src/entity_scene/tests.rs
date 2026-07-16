@@ -142,6 +142,23 @@ fn axolotl_variant_data(variant: i32) -> EntityDataValue {
     protocol_int_data(data_id, variant)
 }
 
+fn camel_dash_data(dashing: bool) -> EntityDataValue {
+    let (data_id, _) = bbb_world::vanilla_entity_metadata_camel_dash_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    )
+    .expect("generated Camel dash accessor must resolve");
+    protocol_bool_data(data_id, dashing)
+}
+
+fn camel_last_pose_change_tick_data(entity_type_id: i32, tick: i64) -> EntityDataValue {
+    let (data_id, _) =
+        bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .expect("generated Camel last-pose-change accessor must resolve");
+    protocol_long_data(data_id, tick)
+}
+
 fn mushroom_cow_variant_data(variant: i32) -> EntityDataValue {
     let (data_id, _) =
         bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
@@ -843,8 +860,6 @@ fn entity_model_instances_project_evoker_fangs_bite_progress_from_world() {
 
 #[test]
 fn entity_model_instances_project_camel_dash_seconds_from_world() {
-    const CAMEL_DASH_DATA_ID: u8 = 19;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         99,
@@ -873,7 +888,7 @@ fn entity_model_instances_project_camel_dash_seconds_from_world() {
     // (`CamelModel.setupAnim` looping `CAMEL_DASH` gallop).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 99,
-        values: vec![protocol_bool_data(CAMEL_DASH_DATA_ID, true)],
+        values: vec![camel_dash_data(true)],
     }));
     world.advance_entity_client_animations(2);
     let progress = dash(&world).expect("the dashing camel projects an instance");
@@ -4862,12 +4877,10 @@ fn entity_model_instances_project_bee_angry_from_anger_end_time() {
 
 #[test]
 fn entity_model_instances_project_camel_class_sit_then_sit_pose_from_pose_change_tick() {
-    // Vanilla Camel.LAST_POSE_CHANGE_TICK (20, LONG): the SIGN encodes sitting (< 0) and the
+    // Vanilla Camel.LAST_POSE_CHANGE_TICK (LONG): the SIGN encodes sitting (< 0) and the
     // magnitude is the change tick. getPoseTime = gameTime - |LAST_POSE_CHANGE_TICK|. A camel that
     // sat at game tick 100 (so LAST_POSE_CHANGE_TICK = -100) plays CAMEL_SIT for getPoseTime < 40,
     // then CAMEL_SIT_POSE (which starts when the 40-tick sit-down window ends).
-    const VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         150,
@@ -4880,13 +4893,13 @@ fn entity_model_instances_project_camel_class_sit_then_sit_pose_from_pose_change
         [2.0, 64.0, -2.0],
     ));
     // Sat down at game tick 100 (negative magnitude → sitting).
-    for id in [150, 152] {
+    for (id, entity_type_id) in [
+        (150, VANILLA_ENTITY_TYPE_CAMEL_ID),
+        (152, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID),
+    ] {
         assert!(world.apply_set_entity_data(SetEntityData {
             id,
-            values: vec![protocol_long_data(
-                VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-                -100,
-            )],
+            values: vec![camel_last_pose_change_tick_data(entity_type_id, -100)],
         }));
     }
 
@@ -4923,13 +4936,13 @@ fn entity_model_instances_project_camel_class_sit_then_sit_pose_from_pose_change
 
     // Standing back up at game tick 200 (positive magnitude → not sitting): getPoseTime = 210 -
     // 200 = 10 (< 52 STANDUP window, >= 0), so CAMEL_STANDUP is active at 10/20 = 0.5 s.
-    for id in [150, 152] {
+    for (id, entity_type_id) in [
+        (150, VANILLA_ENTITY_TYPE_CAMEL_ID),
+        (152, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID),
+    ] {
         assert!(world.apply_set_entity_data(SetEntityData {
             id,
-            values: vec![protocol_long_data(
-                VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-                200,
-            )],
+            values: vec![camel_last_pose_change_tick_data(entity_type_id, 200)],
         }));
     }
     world.apply_world_time(PlayTime {
@@ -4951,7 +4964,6 @@ fn entity_model_instances_project_camel_class_sit_then_sit_pose_from_pose_change
 #[test]
 fn camel_body_anchor_y_offset_is_exposed_for_native_attachment_projection() {
     const ENTITY_DATA_POSE_ID: u8 = 6;
-    const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
     const POSE_STANDING: i32 = 0;
     const POSE_SITTING: i32 = 10;
 
@@ -4965,7 +4977,7 @@ fn camel_body_anchor_y_offset_is_exposed_for_native_attachment_projection() {
         id: 151,
         values: vec![
             protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
-            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, -100),
+            camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, -100),
         ],
     }));
     world.apply_world_time(PlayTime {
@@ -4984,7 +4996,7 @@ fn camel_body_anchor_y_offset_is_exposed_for_native_attachment_projection() {
         id: 151,
         values: vec![
             protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING),
-            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 200),
+            camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, 200),
         ],
     }));
     world.apply_world_time(PlayTime {

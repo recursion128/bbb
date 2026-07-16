@@ -5883,13 +5883,22 @@ mod tests {
 
     #[test]
     fn generated_camel_dash_accessor_owns_inherited_membership_index_and_default() {
+        let camel = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Camel);
+        let dash = camel
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DASH")
+            .expect("generated Camel dash field");
+        let VanillaEntityMetadataDefault::Boolean(default) = dash.default else {
+            panic!("generated Camel dash default must be BOOLEAN");
+        };
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_CAMEL_ID,
             VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         ] {
             assert_eq!(
                 vanilla_entity_metadata_camel_dash_accessor_for_entity_type(entity_type_id),
-                Some((19, false)),
+                Some((dash.data_id, default)),
                 "entity type {entity_type_id}"
             );
         }
@@ -5907,6 +5916,15 @@ mod tests {
 
     #[test]
     fn generated_camel_pose_tick_accessor_owns_inherited_membership_index_and_default() {
+        let camel = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Camel);
+        let pose_tick = camel
+            .own_fields
+            .iter()
+            .find(|field| field.name == "LAST_POSE_CHANGE_TICK")
+            .expect("generated Camel last-pose-change field");
+        let VanillaEntityMetadataDefault::Long(default) = pose_tick.default else {
+            panic!("generated Camel last-pose-change default must be LONG");
+        };
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_CAMEL_ID,
             VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
@@ -5915,7 +5933,7 @@ mod tests {
                 vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
                     entity_type_id
                 ),
-                Some((20, 0)),
+                Some((pose_tick.data_id, default)),
                 "entity type {entity_type_id}"
             );
         }
@@ -7630,10 +7648,26 @@ mod tests {
         );
         assert_eq!(camel.inherited_field_count, 19);
         assert_eq!(camel.own_fields.len(), 2);
-        assert_eq!(VANILLA_CAMEL_DASH_DATA_ID, 19);
-        assert_eq!(VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 20);
-        assert!(!VANILLA_CAMEL_DEFAULT_DASH);
-        assert_eq!(VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK, 0);
+        let (dash_data_id, dash_default) =
+            vanilla_entity_metadata_camel_dash_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CAMEL_ID,
+            )
+            .expect("generated Camel dash accessor");
+        assert_eq!(dash_data_id, camel.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(dash_default),
+            camel.own_fields[0].default
+        );
+        let (pose_tick_data_id, pose_tick_default) =
+            vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CAMEL_ID,
+            )
+            .expect("generated Camel last-pose-change accessor");
+        assert_eq!(pose_tick_data_id, camel.own_fields[1].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Long(pose_tick_default),
+            camel.own_fields[1].default
+        );
         let horse = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Horse);
         assert_eq!(
             horse.parent,

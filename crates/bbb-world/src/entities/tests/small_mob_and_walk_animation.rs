@@ -1602,9 +1602,11 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
     // `targetSpeed = min(distance * 6, 1)` and `WalkAnimationState.update(..., factor = 0.2)`.
     // Non-standing or dashing camels target zero. This differs from the base cow mapping
     // (`min(distance * 4, 1)`, factor 0.4) for the same movement.
-    const CAMEL_DASH_DATA_ID: u8 = 19;
     const POSE_STANDING: i32 = 0;
     const POSE_SITTING: i32 = 10;
+    let (camel_dash_data_id, _) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
+            .expect("generated Camel dash accessor must resolve");
 
     let walk = |store: &WorldStore, id: i32| -> (f32, f32) {
         let source = store
@@ -1677,7 +1679,7 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
         run_case(
             VANILLA_ENTITY_TYPE_CAMEL_ID,
             vec![ProtocolEntityDataValue {
-                data_id: CAMEL_DASH_DATA_ID,
+                data_id: camel_dash_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             }]

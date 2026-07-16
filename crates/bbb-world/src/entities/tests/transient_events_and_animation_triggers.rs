@@ -39,6 +39,17 @@ fn axolotl_playing_dead_data(playing_dead: bool) -> ProtocolEntityDataValue {
     }
 }
 
+fn camel_dash_data(dashing: bool) -> ProtocolEntityDataValue {
+    let (data_id, _) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
+            .expect("generated Camel dash accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(dashing),
+    }
+}
+
 #[test]
 fn tracks_entity_transient_events() {
     let mut store = WorldStore::new();
@@ -460,8 +471,6 @@ fn evoker_fangs_attack_tick_emits_twelve_crit_particles_once() {
 
 #[test]
 fn camel_dash_flag_drives_the_dash_animation_timer() {
-    const CAMEL_DASH_DATA_ID: u8 = 19;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         90,
@@ -495,11 +504,7 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
     let set_dashing = |store: &mut WorldStore, dashing: bool| {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 90,
-            values: vec![ProtocolEntityDataValue {
-                data_id: CAMEL_DASH_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(dashing),
-            }],
+            values: vec![camel_dash_data(dashing)],
         }));
     };
 

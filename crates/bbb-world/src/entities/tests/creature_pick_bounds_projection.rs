@@ -31,6 +31,21 @@ fn salmon_variant_data(variant: i32) -> ProtocolEntityDataValue {
     protocol_int_data(data_id, variant)
 }
 
+fn camel_baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+        .expect("generated Camel inherited baby accessor must resolve");
+    protocol_bool_data(data_id, is_baby)
+}
+
+fn camel_last_pose_change_tick_data(entity_type_id: i32, tick: i64) -> ProtocolEntityDataValue {
+    let (data_id, _) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .expect("generated Camel last-pose-change accessor must resolve");
+    protocol_long_data(data_id, tick)
+}
+
 #[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
@@ -1040,13 +1055,18 @@ fn warden_pick_bounds_follow_vanilla_pose_metadata() {
 fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const ENTITY_DATA_POSE_ID: u8 = 6;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
     const POSE_STANDING: i32 = 0;
     const POSE_SITTING: i32 = 10;
 
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(43, 19));
-    store.apply_add_entity(protocol_add_entity_with_type(44, 20));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        43,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        44,
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    ));
 
     assert_eq!(
         store.probe_entity_pick_bounds(43),
@@ -1068,7 +1088,7 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 43,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![camel_baby_data(VANILLA_ENTITY_TYPE_CAMEL_ID, true)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(43),
@@ -1113,7 +1133,7 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
         id: 44,
         values: vec![
             protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
-            protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
+            camel_baby_data(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, true),
         ],
     }));
     assert_eq!(
@@ -1147,15 +1167,22 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
 fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const ENTITY_DATA_POSE_ID: u8 = 6;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
-    const CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
     const POSE_STANDING: i32 = 0;
     const POSE_SITTING: i32 = 10;
 
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(45, 19));
-    store.apply_add_entity(protocol_add_entity_with_type(46, 20));
-    store.apply_add_entity(protocol_add_entity_with_type(47, 30));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        45,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        46,
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        47,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
     store.apply_world_time(ProtocolPlayTime {
         game_time: 200,
         clock_updates: Vec::new(),
@@ -1183,7 +1210,7 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
         id: 45,
         values: vec![
             protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
-            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, -100),
+            camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, -100),
         ],
     }));
     store.apply_world_time(ProtocolPlayTime {
@@ -1209,7 +1236,7 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
         id: 45,
         values: vec![
             protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING),
-            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, 200),
+            camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, 200),
         ],
     }));
     store.apply_world_time(ProtocolPlayTime {
@@ -1237,8 +1264,8 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
         id: 45,
         values: vec![
             protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
-            protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
-            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, -100),
+            camel_baby_data(VANILLA_ENTITY_TYPE_CAMEL_ID, true),
+            camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, -100),
         ],
     }));
     assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
@@ -1261,8 +1288,8 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
         id: 46,
         values: vec![
             protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
-            protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
-            protocol_long_data(CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID, -100),
+            camel_baby_data(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, true),
+            camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, -100),
         ],
     }));
     assert!(store.apply_update_attributes(ProtocolUpdateAttributes {

@@ -466,7 +466,7 @@ pub(super) fn entity_model_instance(
     let light_coords =
         entity_light_coords(source.entity_type_id, &source.data_values, source.light);
     // Vanilla `Camel.setupAnimationStates()`: the sit/sit-pose/stand-up timing projected purely
-    // from the synced `LAST_POSE_CHANGE_TICK` (id 20) and the world game time.
+    // from the synced `LAST_POSE_CHANGE_TICK` and the world game time.
     let camel_sit = camel_sit_state(source.entity_type_id, &source.data_values, game_time);
     // Vanilla LivingEntityRenderer.extractRenderState:
     //   state.yRot = Mth.wrapDegrees(headRot - bodyRot)  (net head-look yaw)

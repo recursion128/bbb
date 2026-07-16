@@ -17377,3 +17377,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `DATA_PLAYING_DEAD` accessor，移除固定 wire index，并保持其他 entity family 不读取 slot 19。
 - 删除 `bbb-world` 的 Axolotl playing-dead data/default facade 转发，schema 期望由 generated
   Axolotl family schema 组装；generator 反向守卫覆盖 production 和 world/native fixtures。
+
+## 2026-07-16：统一 Camel dash 与 pose-tick metadata 消费
+
+- world animation、尺寸/乘坐投影、native render/F3+I fixtures 统一按实际 Camel 或 CamelHusk
+  类型解析 generated `DASH` 与 `LAST_POSE_CHANGE_TICK` accessor，移除固定 wire index。
+- 删除 `bbb-world` 的 Camel dash/pose-tick data/default facade 转发，schema 期望由 generated
+  Camel family schema 组装；Camel 尺寸 fixtures 也由 generated baby accessor 注入数据，并保持
+  CamelHusk `isBaby() = false` 的成年尺寸语义。

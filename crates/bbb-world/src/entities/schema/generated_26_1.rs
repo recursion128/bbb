@@ -151,11 +151,6 @@ const GENERATED_VANILLA_TURTLE_LAYING_EGG_DATA_ID: u8 = 19;
 pub const VANILLA_TURTLE_LAYING_EGG_DATA_ID: u8 = GENERATED_VANILLA_TURTLE_LAYING_EGG_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID;
-const GENERATED_VANILLA_CAMEL_DASH_DATA_ID: u8 = 19;
-pub const VANILLA_CAMEL_DASH_DATA_ID: u8 = GENERATED_VANILLA_CAMEL_DASH_DATA_ID;
-const GENERATED_VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 = 20;
-pub const VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID: u8 =
-    GENERATED_VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID;
 const GENERATED_VANILLA_HORSE_VARIANT_DATA_ID: u8 = 19;
 pub const VANILLA_HORSE_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_HORSE_VARIANT_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID: u8 = 19;
@@ -740,11 +735,6 @@ const GENERATED_VANILLA_TURTLE_DEFAULT_LAYING_EGG: bool = false;
 pub const VANILLA_TURTLE_DEFAULT_LAYING_EGG: bool = GENERATED_VANILLA_TURTLE_DEFAULT_LAYING_EGG;
 const GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS;
-const GENERATED_VANILLA_CAMEL_DEFAULT_DASH: bool = false;
-pub const VANILLA_CAMEL_DEFAULT_DASH: bool = GENERATED_VANILLA_CAMEL_DEFAULT_DASH;
-const GENERATED_VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK: i64 = 0;
-pub const VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK: i64 =
-    GENERATED_VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK;
 const GENERATED_VANILLA_HORSE_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_HORSE_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_HORSE_DEFAULT_VARIANT;
 const GENERATED_VANILLA_ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST: bool = false;
@@ -24510,17 +24500,24 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_camel_dash_does_not_restore_accessor_constants() {
+    fn camel_metadata_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
         let dimensions = include_str!("../dimensions.rs");
+        let walk_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
+        let transient_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
+        let passenger_tests = include_str!("../tests/passenger_and_vehicle_movement.rs");
+        let bounds_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_instance = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let sit_body = variants
             .split("pub(super) fn camel_sit_state")
             .nth(1)
             .and_then(|source| source.split("pub(super) fn chicken_model_kind").next())
             .expect("Camel sit projection source");
         let input = include_str!("../../../../bbb-native/src/input.rs");
+        let input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         let debug_body = input
             .split("fn debug_push_camel_additional_save_data")
             .nth(1)
@@ -24532,6 +24529,14 @@ mod generated_catalog_guards {
             .expect("Camel debug projection source");
         assert!(animations.contains("vanilla_entity_metadata_camel_dash_accessor_for_entity_type"));
         assert!(store.contains("camel_is_dashing(identity.entity_type_id, &metadata.data_values)"));
+        for source in [
+            walk_tests,
+            transient_tests,
+            passenger_tests,
+            native_scene_tests,
+        ] {
+            assert!(source.contains("vanilla_entity_metadata_camel_dash_accessor_for_entity_type"));
+        }
         assert_eq!(
             dimensions
                 .matches(
@@ -24546,30 +24551,73 @@ mod generated_catalog_guards {
         assert!(debug_body.contains(
             "vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type"
         ));
+        for source in [bounds_tests, native_scene_tests, input_tests] {
+            assert!(source.contains(
+                "vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type"
+            ));
+        }
+        assert!(!native_instance.contains("LAST_POSE_CHANGE_TICK (id 20)"));
+        assert!(!native_scene_tests.contains("LAST_POSE_CHANGE_TICK (20"));
         assert!(dimensions.contains("vanilla_is_baby(entity_type_id, data_values)"));
         for removed in ["CAMEL_DASH_DATA_ID", "CAMEL_DEFAULT_DASH"] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
-            assert!(!store.contains(removed), "store restored {removed}");
+            for source in [
+                animations,
+                store,
+                walk_tests,
+                transient_tests,
+                passenger_tests,
+                native_scene_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Camel dash projection restored {removed}"
+                );
+            }
         }
         for removed in [
             "CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID",
             "CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK",
         ] {
-            assert!(
-                !dimensions.contains(removed),
-                "dimensions restored {removed}"
-            );
-            assert!(
-                !sit_body.contains(removed),
-                "native sit projection restored {removed}"
-            );
-            assert!(
-                !debug_body.contains(removed),
-                "native debug projection restored {removed}"
-            );
+            for source in [
+                dimensions,
+                sit_body,
+                debug_body,
+                input,
+                bounds_tests,
+                native_scene_tests,
+                input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Camel pose projection restored {removed}"
+                );
+            }
+        }
+        let camel_pick_bounds_test = bounds_tests
+            .split("fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve")
+                    .next()
+            })
+            .expect("Camel pick-bounds fixture source");
+        let camel_anchor_test = bounds_tests
+            .split("fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split(
+                        "
+#[test]",
+                    )
+                    .next()
+            })
+            .expect("Camel body-anchor fixture source");
+        assert!(bounds_tests.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        for source in [camel_pick_bounds_test, camel_anchor_test] {
+            assert!(source.contains("camel_baby_data"));
+            assert!(!source.contains("AGEABLE_BABY_DATA_ID"));
         }
     }
 

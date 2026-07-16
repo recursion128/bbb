@@ -606,8 +606,9 @@ fn local_player_rideable_jumping_vehicle_id_tracks_vanilla_controlled_mounts() {
 
 #[test]
 fn local_player_rideable_jumping_vehicle_cooldown_tracks_camel_dash_cooldown() {
-    const CAMEL_DASH_DATA_ID: u8 = 19;
-
+    let (camel_dash_data_id, _) =
+        vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
+            .expect("generated Camel dash accessor must resolve");
     let mut store = WorldStore::new();
     store.set_default_item_equipment_slots(BTreeMap::from([(
         TEST_SADDLE_ITEM_ID,
@@ -645,7 +646,7 @@ fn local_player_rideable_jumping_vehicle_cooldown_tracks_camel_dash_cooldown() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 20,
         values: vec![ProtocolEntityDataValue {
-            data_id: CAMEL_DASH_DATA_ID,
+            data_id: camel_dash_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],
