@@ -17,7 +17,6 @@ use bbb_protocol::packets::{
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
-    VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
 
@@ -85,6 +84,21 @@ fn bat_flags_data(flags: i8) -> EntityDataValue {
         .expect("generated Bat flags accessor must resolve");
     assert_eq!(default, 0);
     protocol_byte_data(data_id, flags)
+}
+
+fn vex_flags_data(flags: i8) -> EntityDataValue {
+    let (data_id, default, _charging_mask) =
+        bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_VEX_ID,
+        )
+        .expect("generated Vex flags accessor must resolve");
+    assert_eq!(default, 0);
+    protocol_byte_data(data_id, flags)
+}
+
+/// Deliberately sends the Vex flags field to a non-Vex to cover data-id/type gating.
+fn vex_flags_collision_data(flags: i8) -> EntityDataValue {
+    vex_flags_data(flags)
 }
 
 fn mob_aggressive_data(entity_type_id: i32) -> EntityDataValue {
@@ -2135,9 +2149,13 @@ fn entity_model_instances_project_bat_resting() {
 
 #[test]
 fn entity_model_instances_project_vex_charging() {
-    // Vanilla Vex.DATA_FLAGS_ID (16, BYTE) and the FLAG_IS_CHARGING bit (1).
-    const VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
-    const VEX_FLAG_IS_CHARGING: i8 = 1;
+    // Vanilla Vex.DATA_FLAGS_ID (BYTE) and its named FLAG_IS_CHARGING bit.
+    let (_, default, charging_mask) =
+        bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_VEX_ID,
+        )
+        .expect("generated Vex flags accessor must resolve");
+    assert_eq!(default, 0);
     const PLAIN_ITEM_ID: i32 = 702;
 
     let mut world = WorldStore::new();
@@ -2180,13 +2198,10 @@ fn entity_model_instances_project_vex_charging() {
     assert!(!idle.vex_right_hand_item_non_empty);
     assert!(!idle.vex_left_hand_item_non_empty);
 
-    // Setting Vex.isCharging (DATA_FLAGS_ID & 1) projects through to the charging pose.
+    // Setting Vex.isCharging through the named mask projects through to the charging pose.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 97,
-        values: vec![protocol_byte_data(
-            VANILLA_VEX_FLAGS_DATA_ID,
-            VEX_FLAG_IS_CHARGING
-        )],
+        values: vec![vex_flags_data(charging_mask)],
     }));
     assert!(state(&world, 97).vex_charging);
 
@@ -2208,15 +2223,13 @@ fn entity_model_instances_project_vex_charging() {
     assert!(offhand_only.vex_left_hand_item_non_empty);
 
     // The same flag byte set on a non-vex (bat) does NOT project vex_charging — the
-    // derivation is gated to vanilla_is_vex. The same held items also do not project Vex hand state.
+    // derivation is gated by the generated accessor's Vex membership. The same held items also do
+    // not project Vex hand state.
     assert!(world.apply_set_equipment(equip(98, EquipmentSlot::MainHand, Some(PLAIN_ITEM_ID), 1)));
     assert!(world.apply_set_equipment(equip(98, EquipmentSlot::OffHand, Some(PLAIN_ITEM_ID), 1)));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 98,
-        values: vec![protocol_byte_data(
-            VANILLA_VEX_FLAGS_DATA_ID,
-            VEX_FLAG_IS_CHARGING
-        )],
+        values: vec![vex_flags_collision_data(charging_mask)],
     }));
     let bat = state(&world, 98);
     assert!(!bat.vex_charging);
@@ -8034,13 +8047,20 @@ fn entity_model_kind_projects_pufferfish_puff_state_from_data() {
 #[test]
 fn entity_model_kind_maps_vex_to_real_model() {
     // The vex resolves to the real `VexModel`. Its idle wing flap / arm bob / head look read the
-    // projected age and look angles. `Vex.DATA_FLAGS_ID` (16, BYTE) bit 1 (`isCharging`) projects
-    // to `charging`, which vanilla `VexRenderer.getTextureLocation` swaps to `vex_charging.png`.
+    // projected age and look angles. The generated `Vex.DATA_FLAGS_ID` and named charging mask
+    // project to `charging`, which vanilla `VexRenderer.getTextureLocation` swaps to
+    // `vex_charging.png`.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_VEX_ID, &[]),
         EntityModelKind::Vex { charging: false }
     );
-    let charging_values = vec![protocol_byte_data(VEX_FLAGS_DATA_ID, VEX_FLAG_IS_CHARGING)];
+    let (_, default, charging_mask) =
+        bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_VEX_ID,
+        )
+        .expect("generated Vex flags accessor must resolve");
+    assert_eq!(default, 0);
+    let charging_values = vec![vex_flags_data(charging_mask)];
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_VEX_ID, &charging_values),
         EntityModelKind::Vex { charging: true }

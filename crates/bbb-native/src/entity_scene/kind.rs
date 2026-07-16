@@ -365,8 +365,8 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_VEX_ID => EntityModelKind::Vex {
             charging: vanilla_entity_metadata_vex_flags_accessor_for_entity_type(entity_type_id)
-                .is_some_and(|(data_id, default)| {
-                    entity_data_byte(data_values, data_id, default) & VEX_FLAG_IS_CHARGING != 0
+                .is_some_and(|(data_id, default, charging_mask)| {
+                    entity_data_byte(data_values, data_id, default) & charging_mask != 0
                 }),
         },
         VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,

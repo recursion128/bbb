@@ -18111,3 +18111,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   mask；world resting projection 与 native F3+I debug-save 不再消费固定 mask alias。
 - world combat-state、native entity-scene 与 input Bat fixtures 全部通过 accessor 构造 metadata；
   Chicken 同 id 负例保留为显式 collision helper，禁止固定 wire id/mask 回流。
+
+## 2026-07-16：统一 Vex flags accessor 与 fixtures
+
+- generated Vex accessor 除 membership、BYTE wire index/default 外同时解析
+  `FLAG_IS_CHARGING` named mask；world model-source 与 native model-kind 生产投影删除固定 mask。
+- world combat-state 与 native entity-scene fixtures 全部通过 accessor 构造 metadata；Chicken/Bat
+  同 id 负例保留为显式 collision helper，Vex 装备姿态回归保持不变。

@@ -3440,12 +3440,17 @@ pub fn vanilla_entity_metadata_living_entity_accessors_for_entity_type(
     })
 }
 
-/// Resolves the generated Vex flags accessor and its typed default.
+/// Resolves the generated Vex flags accessor, typed default, and named charging mask.
 pub fn vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
     entity_type_id: i32,
-) -> Option<(u8, i8)> {
+) -> Option<(u8, i8, i8)> {
     let accessor =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
+    let charging_mask = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Vex)
+        .own_flags
+        .iter()
+        .find(|flag| flag.name == "FLAG_IS_CHARGING" && flag.data_id == accessor.data_id)?
+        .mask;
     match (
         accessor.owner,
         accessor.serializer_name,
@@ -3455,7 +3460,7 @@ pub fn vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
             "net.minecraft.world.entity.monster.Vex",
             "BYTE",
             Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
+        ) => Some((accessor.data_id, default, charging_mask)),
         _ => None,
     }
 }
@@ -7353,10 +7358,10 @@ mod tests {
     }
 
     #[test]
-    fn generated_vex_flags_accessor_owns_membership_index_and_default() {
+    fn generated_vex_flags_accessor_owns_membership_index_default_and_mask() {
         assert_eq!(
             vanilla_entity_metadata_vex_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_VEX_ID),
-            Some((16, 0))
+            Some((16, 0, 1))
         );
         assert_eq!(
             vanilla_entity_metadata_vex_flags_accessor_for_entity_type(

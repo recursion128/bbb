@@ -310,9 +310,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `DATA_TRUSTED_ID_0/1` and `FLAG_*`; world/native consumers and fixtures must not restore a Fox
   type predicate, fixed accessor/default aliases, trusted-slot ids or hand-copied flag masks, and
   invalid variant ids must continue following vanilla ZERO fallback.
-  Vex charging membership, wire index and default must remain derived from generated
-  `Vex.DATA_FLAGS_ID`; world and native render projection must not restore a Vex type predicate or
-  fixed accessor aliases.
+  Vex charging membership, wire index, default and named charging mask must remain derived from
+  generated `Vex.DATA_FLAGS_ID`; world/native render consumers and fixtures must not restore a Vex
+  type predicate, fixed accessor/default aliases or a hand-copied flag mask.
   Panda counter/gene/pose/sneeze membership, wire indices, typed defaults and four named masks must
   remain derived together from generated `UNHAPPY_COUNTER`, `SNEEZE_COUNTER`, `EAT_COUNTER`,
   `MAIN_GENE_ID`, `HIDDEN_GENE_ID`, `DATA_ID_FLAGS` and `FLAG_*`; world/native consumers and

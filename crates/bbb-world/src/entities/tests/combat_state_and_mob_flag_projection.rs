@@ -73,6 +73,19 @@ fn bat_flags_collision_data(flags: i8) -> ProtocolEntityDataValue {
     bat_flags_data(VANILLA_ENTITY_TYPE_BAT_ID, flags)
 }
 
+fn vex_flags_data(entity_type_id: i32, flags: i8) -> ProtocolEntityDataValue {
+    let (data_id, default, _charging_mask) =
+        vanilla_entity_metadata_vex_flags_accessor_for_entity_type(entity_type_id)
+            .expect("generated Vex flags accessor must resolve");
+    assert_eq!(default, 0);
+    protocol_byte_data(data_id, flags)
+}
+
+/// Deliberately sends the Vex flags field to a non-Vex to cover data-id/type gating.
+fn vex_flags_collision_data(flags: i8) -> ProtocolEntityDataValue {
+    vex_flags_data(VANILLA_ENTITY_TYPE_VEX_ID, flags)
+}
+
 fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEntityDataValue> {
     let accessors =
         crate::entities::schema::vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
@@ -921,7 +934,10 @@ fn entity_model_sources_project_bat_resting_from_flags() {
 
 #[test]
 fn entity_model_sources_project_vex_charging_from_flags() {
-    // Vanilla Vex.DATA_FLAGS_ID (16, BYTE); FLAG_IS_CHARGING (1).
+    // Vanilla Vex.DATA_FLAGS_ID (BYTE); FLAG_IS_CHARGING.
+    let (_, default, charging_mask) =
+        vanilla_entity_metadata_vex_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_VEX_ID)
+            .expect("generated Vex flags accessor must resolve");
     let charging = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -930,14 +946,10 @@ fn entity_model_sources_project_vex_charging_from_flags() {
             .unwrap()
             .vex_charging
     };
-    let set_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+    let set_flags = |store: &mut WorldStore, id: i32, value: ProtocolEntityDataValue| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_VEX_FLAGS_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(flags),
-            }],
+            values: vec![value],
         })
     };
 
@@ -947,9 +959,17 @@ fn entity_model_sources_project_vex_charging_from_flags() {
         VANILLA_ENTITY_TYPE_VEX_ID,
     ));
     assert!(!charging(&store, 72));
-    assert!(set_flags(&mut store, 72, VANILLA_VEX_FLAG_CHARGING));
+    assert!(set_flags(
+        &mut store,
+        72,
+        vex_flags_data(VANILLA_ENTITY_TYPE_VEX_ID, charging_mask)
+    ));
     assert!(charging(&store, 72));
-    assert!(set_flags(&mut store, 72, 0));
+    assert!(set_flags(
+        &mut store,
+        72,
+        vex_flags_data(VANILLA_ENTITY_TYPE_VEX_ID, default)
+    ));
     assert!(!charging(&store, 72));
 
     // A chicken carries no Vex flags accessor; a stray bit at the same data id remains idle.
@@ -957,7 +977,11 @@ fn entity_model_sources_project_vex_charging_from_flags() {
         73,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_flags(&mut store, 73, VANILLA_VEX_FLAG_CHARGING));
+    assert!(set_flags(
+        &mut store,
+        73,
+        vex_flags_collision_data(charging_mask)
+    ));
     assert!(!charging(&store, 73));
 }
 

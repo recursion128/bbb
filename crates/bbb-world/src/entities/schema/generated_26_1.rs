@@ -23670,21 +23670,34 @@ mod generated_catalog_guards {
     #[test]
     fn production_vex_charging_does_not_restore_type_or_accessor_constants() {
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
-        for source in [store, native_scene, native_kind] {
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        for source in [
+            store,
+            world_tests,
+            native_scene,
+            native_kind,
+            native_scene_tests,
+        ] {
             assert!(source.contains("vanilla_entity_metadata_vex_flags_accessor_for_entity_type"));
         }
-        for removed in ["vanilla_is_vex", "VEX_FLAGS_DATA_ID", "VEX_DEFAULT_FLAGS"] {
-            assert!(!store.contains(removed), "store restored {removed}");
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_kind.contains(removed),
-                "native kind restored {removed}"
-            );
+        for removed in [
+            "vanilla_is_vex",
+            "VEX_FLAGS_DATA_ID",
+            "VEX_DEFAULT_FLAGS",
+            "VEX_FLAG_IS_CHARGING",
+        ] {
+            for source in [
+                store,
+                world_tests,
+                native_scene,
+                native_kind,
+                native_scene_tests,
+            ] {
+                assert!(!source.contains(removed), "Vex consumer restored {removed}");
+            }
         }
         let dimensions = include_str!("../dimensions.rs");
         assert!(!dimensions.contains("fn vanilla_is_vex"));

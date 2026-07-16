@@ -46,7 +46,7 @@ use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
-    VanillaFireworkRocketMetadataAccessors, VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
+    VanillaFireworkRocketMetadataAccessors,
 };
 
 use super::{
@@ -1808,14 +1808,13 @@ impl EntityStore {
                     != 0
             });
         // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms
-        // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & 1`). The generated
-        // accessor owns the Vex membership, wire id and default, so every other type stays idle.
+        // (`setArmsCharging`) while `Vex.isCharging` (`DATA_FLAGS_ID & FLAG_IS_CHARGING`). The
+        // generated accessor owns the Vex membership, wire id, default, and named mask, so every
+        // other type stays idle.
         let vex_charging =
             vanilla_entity_metadata_vex_flags_accessor_for_entity_type(identity.entity_type_id)
-                .map(|(data_id, default)| {
-                    self.metadata_byte(id, data_id, default).unwrap_or(default)
-                        & VEX_FLAG_IS_CHARGING
-                        != 0
+                .map(|(data_id, default, charging_mask)| {
+                    self.metadata_byte(id, data_id, default).unwrap_or(default) & charging_mask != 0
                 })
                 .unwrap_or(false);
         // Vanilla `SnowGolemRenderer.extractRenderState`: when `SnowGolem.hasPumpkin()` is true, the
