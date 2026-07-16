@@ -22386,6 +22386,8 @@ mod generated_catalog_guards {
         let model_source_fixture = include_str!("../tests/vehicle_and_block_entity_projection.rs");
         let animation_fixture = include_str!("../tests/small_mob_and_walk_animation.rs");
         let creature_bounds_fixture = include_str!("../tests/creature_pick_bounds_projection.rs");
+        let visibility_fixture =
+            include_str!("../tests/visibility_equipment_and_mount_projection.rs");
         let body = source
             .split("fn vanilla_is_baby")
             .nth(1)
@@ -22410,12 +22412,16 @@ mod generated_catalog_guards {
         assert!(animation_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(creature_bounds_fixture
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(
+            visibility_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type")
+        );
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,
                 model_source_fixture,
                 animation_fixture,
                 creature_bounds_fixture,
+                visibility_fixture,
             ] {
                 assert!(
                     !fixture.contains(removed),

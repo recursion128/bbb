@@ -17850,3 +17850,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   generated Entity bundle 并校验默认 flags 0。
 - Entity reverse guard 纳入整份 visibility/equipment 测试；living/non-living spectator 差异、
   friendly-invisible team option 与 outline color 回归保持不变。
+
+## 2026-07-16：统一 visibility body-layer baby fixture accessor 消费
+
+- Nautilus、Horse、Wolf body armor 与 Llama body decor fixtures 删除固定 AgeableMob baby wire
+  id 16，按具体 entity type 查询 generated nearest baby accessor 并校验默认 false。
+- baby projection reverse guard 纳入整份 visibility/equipment 测试；四类成人 layer 材质/染色/
+  crackiness/foil 投影、非目标实体 negative gate 与 baby 无模型 layer suppression 回归保持不变。

@@ -150,8 +150,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
   Continue the remaining fixed metadata-id fixture-alias pass across `bbb-native`
   entity-scene/input tests and `bbb-world` entity test submodules, including the remaining
-  baby-state fixtures outside specialized/creature pick-bounds, model-source, and small-mob animation
-  coverage, plus pose/shared-base fixtures outside movement/swim, combat-state, player-sleeping,
+  baby-state fixtures outside specialized/creature pick-bounds, model-source, small-mob animation,
+  and visibility/equipment body-layer coverage, plus pose/shared-base fixtures outside movement/swim,
+  combat-state, player-sleeping,
   creature pick-bounds projection, transient Breeze animation, aquatic Frog walk animation,
   small-mob animation, and visibility/equipment shared-flags coverage; migrate only families whose
   exact inherited accessor is already owned by the generated schema, without substituting a

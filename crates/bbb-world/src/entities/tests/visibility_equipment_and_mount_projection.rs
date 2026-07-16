@@ -11,6 +11,13 @@ fn entity_shared_flags_data(flags: i8) -> ProtocolEntityDataValue {
     protocol_byte_data(accessors.shared_flags_data_id, flags)
 }
 
+fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+        .expect("generated nearest baby accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, is_baby)
+}
+
 #[test]
 fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
     let accessors = vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
@@ -1071,7 +1078,6 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
     const IRON_NAUTILUS_ARMOR_ITEM_ID: i32 = 841;
     const NETHERITE_NAUTILUS_ARMOR_ITEM_ID: i32 = 842;
     const PLAIN_ITEM_ID: i32 = 843;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {
         ItemStackSummary {
@@ -1108,7 +1114,7 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 81,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_NAUTILUS_ID, true)],
     }));
 
     for (entity_id, item_id) in [
@@ -1175,7 +1181,6 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
     const DIAMOND_HORSE_ARMOR_ITEM_ID: i32 = 845;
     const NETHERITE_HORSE_ARMOR_ITEM_ID: i32 = 846;
     const PLAIN_ITEM_ID: i32 = 847;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
     const LEATHER_DYE: i32 = 0x0033_66CC;
 
     fn stack(item_id: i32, count: i32, dyed_color: Option<i32>) -> ItemStackSummary {
@@ -1223,7 +1228,7 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 86,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_HORSE_ID, true)],
     }));
 
     for (entity_id, item_id, dye) in [
@@ -1292,7 +1297,6 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
 
     const WOLF_ARMOR_ITEM_ID: i32 = 848;
     const PLAIN_ITEM_ID: i32 = 849;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
     const WOLF_ARMOR_DYE: i32 = 0x0033_66CC;
 
     fn stack(
@@ -1354,7 +1358,7 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 89,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_WOLF_ID, true)],
     }));
 
     for entity_id in [87, 88, 89] {
@@ -1479,7 +1483,6 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     const WHITE_CARPET_ITEM_ID: i32 = 838;
     const BLACK_CARPET_ITEM_ID: i32 = 839;
     const PLAIN_ITEM_ID: i32 = 840;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     fn stack(item_id: i32, count: i32) -> ItemStackSummary {
         ItemStackSummary {
@@ -1516,7 +1519,7 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 77,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_LLAMA_ID, true)],
     }));
 
     for (entity_id, item_id) in [
