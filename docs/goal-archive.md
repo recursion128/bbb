@@ -16845,3 +16845,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   实现 `Leashable`。bbb 当前虽保留 `SetEntityLink` canonical state，尚未生成 vanilla
   `EntityRenderer.extractRenderState` 的 leash state/rope geometry，因此
   `equipment/passenger/leash` 格继续保持 partial，剩余工作只指向可见 leash presentation。
+
+## 2026-07-16：Turtle save/debug coverage
+
+- Turtle entity coverage 的 `save/debug` 格由 partial 改为 complete。Shift+F3+I 的客户端
+  `saveWithoutId` 投影现在写出远端 Turtle 未同步且保持构造默认值的
+  `home_pos: [I; 0, 0, 0]`，并继续从 metadata 写出 `has_egg`。
+- 普通 F3+I 的服务端 tag-query 路径保留权威非零 `home_pos` 与 `has_egg`，只按 vanilla
+  summon recreate 规则移除 `UUID` 和 `Pos`；两条 focused 测试分别锁定本地与服务端边界。

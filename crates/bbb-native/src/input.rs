@@ -7210,6 +7210,10 @@ fn debug_push_turtle_additional_save_data(entity: &EntityState, fields: &mut Vec
     else {
         return;
     };
+    // Vanilla client-side Shift+F3+I calls `Turtle.saveWithoutId`. `homePos` starts at
+    // `BlockPos.ZERO` and is not synchronized to remote clients, so the client-owned save value
+    // is zero; ordinary F3+I uses the server tag-query path for the authoritative value.
+    fields.push("home_pos: [I; 0, 0, 0]".to_string());
     let has_egg = debug_entity_data_bool_present(entity, accessors.has_egg_data_id)
         .unwrap_or(accessors.has_egg_default);
     fields.push(format!("has_egg: {}", debug_snbt_bool(has_egg)));

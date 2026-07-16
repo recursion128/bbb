@@ -180,12 +180,15 @@ catalog/accessor，不能把本文列出的 registry ordinal 或 metadata wire i
   `goingHome` 不保存。
   来源：`net/minecraft/world/entity/animal/turtle/Turtle.java`，
   `addAdditionalSaveData` / `readAdditionalSaveData`。
-- 本地轻量 F3+I 能从 synced metadata 可靠重建 `has_egg`；非默认 `home_pos` 不同步，
-  不能从客户端 state 猜测。需要精确值时必须走已有 server query/probe 路由；若后续要
-  改本地 fallback 的 `home_pos` 策略，标“需实现时二次确认”，不要把字段初始
-  `BlockPos.ZERO` 与 load-missing 的 `blockPosition()` 混为一谈。
-  来源：`net/minecraft/world/entity/animal/turtle/Turtle.java`，字段初始化、
-  `finalizeSpawn` 与 `readAdditionalSaveData`。
+- Shift+F3+I 对客户端实体直接调用 `saveWithoutId`。客户端新建的远端 Turtle 将
+  `homePos` 初始化为 `BlockPos.ZERO`，且后续没有同步该字段，因此本地导出写出
+  `home_pos: [I; 0, 0, 0]`，同时从 synced metadata 重建 `has_egg`。普通 F3+I 则通过
+  `queryEntityTag` 获得服务端权威 NBT，因此保留非零 `home_pos`；复制 summon 命令时只
+  删除 `UUID` 与 `Pos`。不要把字段初始值与 load-missing 的 `blockPosition()` fallback
+  混为一谈。
+  来源：`net/minecraft/client/KeyboardHandler.java`，`copyRecreateCommand` /
+  `copyCreateEntityCommand`；`net/minecraft/world/entity/animal/turtle/Turtle.java`，字段初始化、
+  `addAdditionalSaveData` / `readAdditionalSaveData`。
 
 ## Event、particle 与 audio ids
 
@@ -257,9 +260,10 @@ catalog/accessor，不能把本文列出的 registry ordinal 或 metadata wire i
   `crates/bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs` 的
   `entity_model_sources_project_on_ground_from_movement`。
 - local debug evidence 是 `crates/bbb-native/src/input/tests.rs` 的
-  `shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard`；egg-placement event
-  evidence 是 `crates/bbb-native/src/particle_runtime/tests.rs` 的 level-event particle
-  测试。
+  `shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard`，服务端权威
+  `home_pos` evidence 是同文件的 `turtle_server_query_preserves_authoritative_home_pos`；
+  egg-placement event evidence 是 `crates/bbb-native/src/particle_runtime/tests.rs` 的
+  level-event particle 测试。
 
 ## 明确的 not-applicable 与需二次确认项
 
@@ -268,8 +272,7 @@ catalog/accessor，不能把本文列出的 registry ordinal 或 metadata wire i
   这些由服务端决定，客户端只接收可观察结果。
   来源：`net/minecraft/world/entity/animal/turtle/Turtle.java`，`registerGoals`、各
   `Turtle*Goal`、`checkTurtleSpawnRules`、`ageBoundaryReached`、`thunderHit`。
-- 需实现时二次确认：bbb 的 shadow pipeline 是否已经组合 baby `0.83F`；F3+I 本地
-  fallback 对不可观测 `home_pos` 的产品判据。
+- 需实现时二次确认：bbb 的 shadow pipeline 是否已经组合 baby `0.83F`。
 - 需实现时二次确认：level event `2001` 的现有 generic destroy-block effect 是否同时
   保持 block break sound 公式与 block-state-driven particles；不要因为 `2012` 已有
   focused test 就推断 `2001` 的 Turtle 路径也已有等价 evidence。

@@ -209,6 +209,21 @@
         "vanilla:net/minecraft/client/renderer/entity/EntityRenderer.java#public void extractRenderState"
       ]
     },
+    "turtle_save_debug": {
+      "implementation": [
+        "crates/bbb-native/src/input.rs#fn debug_push_turtle_additional_save_data",
+        "crates/bbb-native/src/input.rs#pub(crate) fn consume_debug_recreate_server_query_response"
+      ],
+      "tests": [
+        "crates/bbb-native/src/input/tests.rs#shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard",
+        "crates/bbb-native/src/input/tests.rs#turtle_server_query_preserves_authoritative_home_pos"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/KeyboardHandler.java#private void copyRecreateCommand",
+        "vanilla:net/minecraft/client/KeyboardHandler.java#private void copyCreateEntityCommand",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void addAdditionalSaveData"
+      ]
+    },
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
@@ -343,6 +358,10 @@
         "status": "partial",
         "evidence_ref": "turtle_equipment_passenger_leash",
         "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash"
+      },
+      "save/debug": {
+        "status": "complete",
+        "evidence_ref": "turtle_save_debug"
       }
     }
   }

@@ -2526,6 +2526,70 @@ fn f3_i_server_entity_tag_response_copies_recreate_command_without_uuid_or_pos()
 }
 
 #[test]
+fn turtle_server_query_preserves_authoritative_home_pos() {
+    let mut input = ClientInputState::new(true);
+    let mut world = world_with_debug_player(false);
+    world.apply_add_entity(AddEntity {
+        id: 57,
+        uuid: Uuid::from_u128(57),
+        entity_type_id: VANILLA_ENTITY_TYPE_TURTLE_ID,
+        position: ProtocolVec3d {
+            x: 4.0,
+            y: 5.0,
+            z: 6.0,
+        },
+        delta_movement: ProtocolVec3d::default(),
+        x_rot: 0.0,
+        y_rot: 0.0,
+        y_head_rot: 0.0,
+        data: 0,
+    });
+    input.pending_debug_recreate_server_query = Some(PendingDebugRecreateServerQuery {
+        transaction_id: 9,
+        client_level_generation: world.client_level_generation(),
+        target: PendingDebugRecreateServerQueryTarget::Entity {
+            entity_id: 57,
+            entity_uuid: Uuid::from_u128(57),
+            entity_type: "minecraft:turtle".to_string(),
+            position: [4.0, 5.0, 6.0],
+        },
+    });
+    world.apply_tag_query(TagQuery {
+        transaction_id: 9,
+        tag_present: true,
+        raw_nbt: nbt_compound(vec![
+            nbt_long_array("UUID", &[1, 2]),
+            nbt_list(
+                "Pos",
+                6,
+                vec![
+                    4.0f64.to_be_bytes().to_vec(),
+                    5.0f64.to_be_bytes().to_vec(),
+                    6.0f64.to_be_bytes().to_vec(),
+                ],
+            ),
+            nbt_int_array("home_pos", &[12, 63, -8]),
+            nbt_byte("has_egg", 1),
+        ]),
+    });
+    let mut clipboard = MockDebugClipboard::accepting();
+
+    assert!(input.consume_debug_recreate_server_query_response(&mut world, &mut clipboard));
+    assert_eq!(
+        clipboard.text.as_deref(),
+        Some(
+            "/summon minecraft:turtle 4.00 5.00 6.00 \
+             {home_pos: [I; 12, 63, -8], has_egg: 1b}"
+        )
+    );
+    assert_eq!(input.pending_debug_recreate_server_query, None);
+    assert_eq!(
+        world.client_chat().messages[0].content,
+        "[Debug]: Copied server-side entity data to clipboard"
+    );
+}
+
+#[test]
 fn f3_i_null_server_tag_response_reports_failure_without_copying() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
@@ -2791,6 +2855,16 @@ fn nbt_list(name: &str, element_type: u8, values: Vec<Vec<u8>>) -> Vec<u8> {
 
 fn nbt_long_array(name: &str, values: &[i64]) -> Vec<u8> {
     let mut out = vec![12];
+    write_mutf8(&mut out, name);
+    out.extend_from_slice(&(values.len() as i32).to_be_bytes());
+    for value in values {
+        out.extend_from_slice(&value.to_be_bytes());
+    }
+    out
+}
+
+fn nbt_int_array(name: &str, values: &[i32]) -> Vec<u8> {
+    let mut out = vec![11];
     write_mutf8(&mut out, name);
     out.extend_from_slice(&(values.len() as i32).to_be_bytes());
     for value in values {
@@ -4336,6 +4410,7 @@ fn shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard() {
              {Motion: [0.0d, 0.0d, 0.0d], Rotation: [0.0f, 0.0f], \
              LeftHanded: 1b, NoAI: 1b, \
              AgeLocked: 1b, \
+             home_pos: [I; 0, 0, 0], \
              has_egg: 1b}"
         )
     );

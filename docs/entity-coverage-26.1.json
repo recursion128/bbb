@@ -7730,9 +7730,8 @@
           "status": "partial"
         },
         "save/debug": {
-          "evidence_ref": "save_debug_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-save-and-debug",
-          "status": "partial"
+          "evidence_ref": "turtle_save_debug",
+          "status": "complete"
         },
         "spawn/default": {
           "evidence_ref": "turtle_spawn_defaults",
@@ -9016,6 +9015,21 @@
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void playStepSound",
         "vanilla:net/minecraft/client/renderer/LevelEventHandler.java#public void globalLevelEvent",
         "vanilla:net/minecraft/server/level/ServerLevel.java#public void playSeededSound"
+      ]
+    },
+    "turtle_save_debug": {
+      "implementation": [
+        "crates/bbb-native/src/input.rs#fn debug_push_turtle_additional_save_data",
+        "crates/bbb-native/src/input.rs#pub(crate) fn consume_debug_recreate_server_query_response"
+      ],
+      "tests": [
+        "crates/bbb-native/src/input/tests.rs#shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard",
+        "crates/bbb-native/src/input/tests.rs#turtle_server_query_preserves_authoritative_home_pos"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/KeyboardHandler.java#private void copyRecreateCommand",
+        "vanilla:net/minecraft/client/KeyboardHandler.java#private void copyCreateEntityCommand",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void addAdditionalSaveData"
       ]
     },
     "turtle_server_authoritative_movement": {
