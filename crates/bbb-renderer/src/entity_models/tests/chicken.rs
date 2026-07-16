@@ -134,55 +134,37 @@ fn chicken_texture_refs_match_vanilla_variant_assets() {
             ChickenModelVariant::Temperate,
             false,
             "chicken_temperate",
-            EntityModelTextureRef {
-                path: "textures/entity/chicken/chicken_temperate.png",
-                size: [64, 32],
-            },
+            chicken_entity_texture_refs()[0],
         ),
         (
             ChickenModelVariant::Temperate,
             true,
             "chicken_temperate_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/chicken/chicken_temperate_baby.png",
-                size: [16, 16],
-            },
+            chicken_entity_texture_refs()[1],
         ),
         (
             ChickenModelVariant::Warm,
             false,
             "chicken_warm",
-            EntityModelTextureRef {
-                path: "textures/entity/chicken/chicken_warm.png",
-                size: [64, 32],
-            },
+            chicken_entity_texture_refs()[2],
         ),
         (
             ChickenModelVariant::Warm,
             true,
             "chicken_warm_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/chicken/chicken_warm_baby.png",
-                size: [16, 16],
-            },
+            chicken_entity_texture_refs()[3],
         ),
         (
             ChickenModelVariant::Cold,
             false,
             "chicken_cold",
-            EntityModelTextureRef {
-                path: "textures/entity/chicken/chicken_cold.png",
-                size: [64, 32],
-            },
+            chicken_entity_texture_refs()[4],
         ),
         (
             ChickenModelVariant::Cold,
             true,
             "chicken_cold_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/chicken/chicken_cold_baby.png",
-                size: [16, 16],
-            },
+            chicken_entity_texture_refs()[5],
         ),
     ];
 
@@ -294,32 +276,13 @@ fn entity_texture_atlas_stitches_official_chicken_png_slots() {
 
     let (layout, rgba) = build_entity_model_texture_atlas(&images).unwrap();
 
-    assert_eq!(layout.width, 64);
-    assert_eq!(layout.height, 144);
-    assert_eq!(
-        layout
-            .entries
-            .iter()
-            .map(|entry| entry.texture.path)
-            .collect::<Vec<_>>(),
-        vec![
-            "textures/entity/chicken/chicken_temperate.png",
-            "textures/entity/chicken/chicken_temperate_baby.png",
-            "textures/entity/chicken/chicken_warm.png",
-            "textures/entity/chicken/chicken_warm_baby.png",
-            "textures/entity/chicken/chicken_cold.png",
-            "textures/entity/chicken/chicken_cold_baby.png",
-        ]
-    );
-    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
-    assert_close2(layout.entries[0].uv.max, [1.0, 32.0 / 144.0]);
-    assert_close2(layout.entries[1].uv.min, [0.0, 32.0 / 144.0]);
-    assert_close2(layout.entries[1].uv.max, [0.25, 48.0 / 144.0]);
-    assert_close2(layout.entries[4].uv.min, [0.0, 96.0 / 144.0]);
-    assert_close2(layout.entries[4].uv.max, [1.0, 128.0 / 144.0]);
-    let warm_first_pixel = rgba_offset(layout.width, 48, 0, "test").unwrap();
+    let textures = chicken_entity_texture_refs();
+    assert_texture_atlas_layout_matches_refs(&layout, textures);
+    let warm_first_pixel =
+        rgba_offset(layout.width, texture_atlas_entry_y(textures, 2), 0, "test").unwrap();
     assert_eq!(&rgba[warm_first_pixel..warm_first_pixel + 4], &[2; 4]);
-    let cold_baby_first_pixel = rgba_offset(layout.width, 128, 0, "test").unwrap();
+    let cold_baby_first_pixel =
+        rgba_offset(layout.width, texture_atlas_entry_y(textures, 5), 0, "test").unwrap();
     assert_eq!(
         &rgba[cold_baby_first_pixel..cold_baby_first_pixel + 4],
         &[5; 4]

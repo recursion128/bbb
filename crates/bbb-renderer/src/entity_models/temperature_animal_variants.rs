@@ -749,6 +749,66 @@ mod tests {
                 texture.path
             );
         }
+        for (source, texture_test, atlas_test, refs_fn, asset_prefix) in [
+            (
+                include_str!("tests/chicken.rs"),
+                "fn chicken_texture_refs_match_vanilla_variant_assets",
+                "fn entity_texture_atlas_stitches_official_chicken_png_slots",
+                "chicken_entity_texture_refs()",
+                "textures/entity/chicken/",
+            ),
+            (
+                include_str!("tests/cow.rs"),
+                "fn cow_texture_refs_match_vanilla_renderers",
+                "fn entity_texture_atlas_stitches_official_cow_png_slots",
+                "cow_entity_texture_refs()",
+                "textures/entity/cow/",
+            ),
+            (
+                include_str!("tests/pig.rs"),
+                "fn pig_texture_refs_match_vanilla_variant_assets",
+                "fn entity_texture_atlas_stitches_official_pig_png_slots",
+                "pig_entity_texture_refs()",
+                "textures/entity/pig/",
+            ),
+        ] {
+            let texture_fixture = source
+                .split(texture_test)
+                .nth(1)
+                .and_then(|source| source.split("\n#[test]").next())
+                .expect("temperature-animal texture-ref fixture");
+            assert!(texture_fixture.contains(refs_fn));
+            assert!(
+                !texture_fixture.contains("size: ["),
+                "{texture_test} restored hand-authored PNG dimensions"
+            );
+            let atlas_fixture = source
+                .split(atlas_test)
+                .nth(1)
+                .and_then(|source| source.split("\n#[test]").next())
+                .expect("temperature-animal atlas fixture");
+            assert!(atlas_fixture.contains("assert_texture_atlas_layout_matches_refs"));
+            assert!(atlas_fixture.contains("texture_atlas_entry_y"));
+            assert!(
+                !atlas_fixture.contains(asset_prefix),
+                "{atlas_test} restored hand-authored texture paths"
+            );
+        }
+        let creeper_tests = include_str!("tests/creeper.rs");
+        let creeper_fixture = creeper_tests
+            .split("fn creeper_texture_ref_matches_vanilla_renderer")
+            .nth(1)
+            .and_then(|source| source.split("\n#[test]").next())
+            .expect("creeper texture-ref fixture");
+        assert!(creeper_fixture.contains("CHICKEN_TEMPERATE_TEXTURE_REF"));
+        let chicken_assertion = creeper_fixture
+            .split("EntityModelKind::Chicken")
+            .nth(1)
+            .expect("creeper chicken texture assertion");
+        assert!(
+            !chicken_assertion.contains("size: ["),
+            "creeper fixture restored hand-authored chicken PNG dimensions"
+        );
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();

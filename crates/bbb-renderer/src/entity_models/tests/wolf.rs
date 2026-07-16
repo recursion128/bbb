@@ -393,65 +393,41 @@ fn wolf_meshes_use_vanilla_body_layer_geometry() {
 #[test]
 fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets() {
     let cases = [
-        (
-            false,
-            false,
-            false,
-            "wolf",
-            EntityModelTextureRef {
-                path: "textures/entity/wolf/wolf.png",
-                size: [64, 32],
-            },
-        ),
+        (false, false, false, "wolf", wolf_entity_texture_refs()[0]),
         (
             false,
             true,
             false,
             "wolf_tame",
-            EntityModelTextureRef {
-                path: "textures/entity/wolf/wolf_tame.png",
-                size: [64, 32],
-            },
+            wolf_entity_texture_refs()[1],
         ),
         (
             false,
             false,
             true,
             "wolf_angry",
-            EntityModelTextureRef {
-                path: "textures/entity/wolf/wolf_angry.png",
-                size: [64, 32],
-            },
+            wolf_entity_texture_refs()[2],
         ),
         (
             true,
             false,
             false,
             "wolf_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/wolf/wolf_baby.png",
-                size: [32, 32],
-            },
+            wolf_entity_texture_refs()[3],
         ),
         (
             true,
             true,
             false,
             "wolf_tame_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/wolf/wolf_tame_baby.png",
-                size: [32, 32],
-            },
+            wolf_entity_texture_refs()[4],
         ),
         (
             true,
             false,
             true,
             "wolf_angry_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/wolf/wolf_angry_baby.png",
-                size: [32, 32],
-            },
+            wolf_entity_texture_refs()[5],
         ),
     ];
     for (baby, tame, angry, model_key, texture) in cases {

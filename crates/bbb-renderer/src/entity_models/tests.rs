@@ -1737,6 +1737,44 @@ fn assert_close2(actual: [f32; 2], expected: [f32; 2]) {
     }
 }
 
+fn assert_texture_atlas_layout_matches_refs(
+    layout: &EntityModelTextureAtlasLayout,
+    textures: &[EntityModelTextureRef],
+) {
+    let expected_width = textures
+        .iter()
+        .map(|texture| texture.size[0])
+        .max()
+        .unwrap_or_default();
+    let expected_height = textures.iter().map(|texture| texture.size[1]).sum();
+    assert_eq!(
+        (layout.width, layout.height),
+        (expected_width, expected_height)
+    );
+    assert_eq!(layout.entries.len(), textures.len());
+
+    let mut y = 0;
+    for (entry, texture) in layout.entries.iter().zip(textures) {
+        assert_eq!(&entry.texture, texture);
+        assert_close2(entry.uv.min, [0.0, y as f32 / expected_height as f32]);
+        y += texture.size[1];
+        assert_close2(
+            entry.uv.max,
+            [
+                texture.size[0] as f32 / expected_width as f32,
+                y as f32 / expected_height as f32,
+            ],
+        );
+    }
+}
+
+fn texture_atlas_entry_y(textures: &[EntityModelTextureRef], index: usize) -> u32 {
+    textures[..index]
+        .iter()
+        .map(|texture| texture.size[1])
+        .sum()
+}
+
 fn spider_texture_images() -> Vec<EntityModelTextureImage> {
     spider_entity_texture_refs()
         .iter()

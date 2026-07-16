@@ -76,10 +76,7 @@ fn creeper_texture_ref_matches_vanilla_renderer() {
             baby: false
         }
         .vanilla_texture_ref(),
-        Some(EntityModelTextureRef {
-            path: "textures/entity/chicken/chicken_temperate.png",
-            size: [64, 32],
-        })
+        Some(CHICKEN_TEMPERATE_TEXTURE_REF)
     );
 }
 

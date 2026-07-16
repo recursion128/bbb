@@ -17618,3 +17618,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - decorated-pot/banner generated guard 精确禁止各自模型 fixture 重写 generated pattern 尺寸，
   并禁止 production 恢复 side 常量/helper；43 张 banner pattern 与 24 张 decorated-pot
   pattern/blank sheet 的尺寸均由维护生成读取官方 PNG。
+
+## 2026-07-16：统一 animal-variant texture dimensions 消费
+
+- chicken/cow/pig/wolf renderer fixture 删除手写 presentation PNG 尺寸，统一消费 bootstrap
+  generator 从官方资源 IHDR 生成的 texture refs；creeper 的跨模型 chicken fallback 断言也改用
+  generated `CHICKEN_TEMPERATE_TEXTURE_REF`。
+- chicken/cow/pig atlas fixture 以 generated refs 动态推导总尺寸、UV 与像素偏移，不再平行维护
+  texture path/height 表；temperature-animal/wolf generated guard 精确锁定这些消费点，防止手写
+  presentation 尺寸回流。cat/frog/zombie-nautilus 继续由既有 generated catalog 独占尺寸事实。

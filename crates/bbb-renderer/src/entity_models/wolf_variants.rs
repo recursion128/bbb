@@ -416,6 +416,17 @@ mod tests {
                 texture.path
             );
         }
+        let renderer_tests = include_str!("tests/wolf.rs");
+        let texture_fixture = renderer_tests
+            .split("fn wolf_texture_refs_match_vanilla_renderer_pale_variant_assets")
+            .nth(1)
+            .and_then(|source| source.split("\n#[test]").next())
+            .expect("wolf texture-ref fixture");
+        assert!(texture_fixture.contains("wolf_entity_texture_refs()"));
+        assert!(
+            !texture_fixture.contains("size: ["),
+            "wolf texture fixture restored hand-authored PNG dimensions"
+        );
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();

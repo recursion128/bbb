@@ -228,55 +228,37 @@ fn pig_texture_refs_match_vanilla_variant_assets() {
             PigModelVariant::Temperate,
             false,
             "pig_temperate",
-            EntityModelTextureRef {
-                path: "textures/entity/pig/pig_temperate.png",
-                size: [64, 64],
-            },
+            pig_entity_texture_refs()[0],
         ),
         (
             PigModelVariant::Temperate,
             true,
             "pig_temperate_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/pig/pig_temperate_baby.png",
-                size: [32, 32],
-            },
+            pig_entity_texture_refs()[1],
         ),
         (
             PigModelVariant::Warm,
             false,
             "pig_warm",
-            EntityModelTextureRef {
-                path: "textures/entity/pig/pig_warm.png",
-                size: [64, 64],
-            },
+            pig_entity_texture_refs()[2],
         ),
         (
             PigModelVariant::Warm,
             true,
             "pig_warm_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/pig/pig_warm_baby.png",
-                size: [32, 32],
-            },
+            pig_entity_texture_refs()[3],
         ),
         (
             PigModelVariant::Cold,
             false,
             "pig_cold",
-            EntityModelTextureRef {
-                path: "textures/entity/pig/pig_cold.png",
-                size: [64, 64],
-            },
+            pig_entity_texture_refs()[4],
         ),
         (
             PigModelVariant::Cold,
             true,
             "pig_cold_baby",
-            EntityModelTextureRef {
-                path: "textures/entity/pig/pig_cold_baby.png",
-                size: [32, 32],
-            },
+            pig_entity_texture_refs()[5],
         ),
     ];
 
@@ -348,35 +330,16 @@ fn entity_texture_atlas_stitches_official_pig_png_slots() {
 
     let (layout, rgba) = build_entity_model_texture_atlas(&images).unwrap();
 
-    assert_eq!(layout.width, 64);
-    assert_eq!(layout.height, 288);
-    assert_eq!(
-        layout
-            .entries
-            .iter()
-            .map(|entry| entry.texture.path)
-            .collect::<Vec<_>>(),
-        vec![
-            "textures/entity/pig/pig_temperate.png",
-            "textures/entity/pig/pig_temperate_baby.png",
-            "textures/entity/pig/pig_warm.png",
-            "textures/entity/pig/pig_warm_baby.png",
-            "textures/entity/pig/pig_cold.png",
-            "textures/entity/pig/pig_cold_baby.png",
-        ]
-    );
-    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
-    assert_close2(layout.entries[0].uv.max, [1.0, 64.0 / 288.0]);
-    assert_close2(layout.entries[1].uv.min, [0.0, 64.0 / 288.0]);
-    assert_close2(layout.entries[1].uv.max, [0.5, 96.0 / 288.0]);
-    assert_close2(layout.entries[4].uv.min, [0.0, 192.0 / 288.0]);
-    assert_close2(layout.entries[4].uv.max, [1.0, 256.0 / 288.0]);
-    let warm_baby_first_pixel = rgba_offset(layout.width, 160, 0, "test").unwrap();
+    let textures = pig_entity_texture_refs();
+    assert_texture_atlas_layout_matches_refs(&layout, textures);
+    let warm_baby_first_pixel =
+        rgba_offset(layout.width, texture_atlas_entry_y(textures, 3), 0, "test").unwrap();
     assert_eq!(
         &rgba[warm_baby_first_pixel..warm_baby_first_pixel + 4],
         &[3; 4]
     );
-    let cold_first_pixel = rgba_offset(layout.width, 192, 0, "test").unwrap();
+    let cold_first_pixel =
+        rgba_offset(layout.width, texture_atlas_entry_y(textures, 4), 0, "test").unwrap();
     assert_eq!(&rgba[cold_first_pixel..cold_first_pixel + 4], &[4; 4]);
 }
 
