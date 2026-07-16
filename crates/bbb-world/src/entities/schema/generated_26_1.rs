@@ -315,8 +315,6 @@ const GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID;
 const GENERATED_VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_BAT_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_BAT_FLAGS_DATA_ID;
-const GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID: u8 = 16;
-pub const VANILLA_BOGGED_SHEARED_DATA_ID: u8 = GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID;
 const GENERATED_VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID: u8 = 16;
 pub const VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID: u8 =
     GENERATED_VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID;
@@ -882,8 +880,6 @@ const GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS;
 const GENERATED_VANILLA_BAT_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_BAT_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_BAT_DEFAULT_FLAGS;
-const GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED: bool = false;
-pub const VANILLA_BOGGED_DEFAULT_SHEARED: bool = GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED;
 const GENERATED_VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION: bool = false;
 pub const VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION: bool =
     GENERATED_VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION;
@@ -24427,34 +24423,39 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_bogged_sheared_does_not_restore_accessor_constants() {
+    fn bogged_sheared_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [native_scene, native_variants, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(
                 source.contains("vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type")
             );
         }
         assert!(native_kind.contains("bogged_sheared(entity_type_id, data_values)"));
         for removed in ["BOGGED_SHEARED_DATA_ID", "BOGGED_DEFAULT_SHEARED"] {
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_kind.contains(removed),
-                "native kind restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                native_scene,
+                native_kind,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Bogged sheared projection restored {removed}"
+                );
+            }
         }
     }
 

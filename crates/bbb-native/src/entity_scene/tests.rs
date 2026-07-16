@@ -14,7 +14,6 @@ use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
     VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING,
-    VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
@@ -150,6 +149,14 @@ fn mushroom_cow_variant_data(variant: i32) -> EntityDataValue {
         )
         .expect("generated MushroomCow variant accessor must resolve");
     protocol_int_data(data_id, variant)
+}
+
+fn bogged_sheared_data(sheared: bool) -> EntityDataValue {
+    let (data_id, _) = bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_BOGGED_ID,
+    )
+    .expect("generated Bogged sheared accessor must resolve");
+    protocol_bool_data(data_id, sheared)
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -7838,10 +7845,7 @@ fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
         }
     );
     assert_eq!(
-        entity_model_kind(
-            VANILLA_ENTITY_TYPE_BOGGED_ID,
-            &[protocol_bool_data(BOGGED_SHEARED_DATA_ID, true)]
-        ),
+        entity_model_kind(VANILLA_ENTITY_TYPE_BOGGED_ID, &[bogged_sheared_data(true)]),
         EntityModelKind::SkeletonVariant {
             family: SkeletonModelFamily::Bogged { sheared: true }
         }

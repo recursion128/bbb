@@ -382,8 +382,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases, hand-written wire indices or a parallel serialized-name mapper, and
   invalid ids must follow vanilla CLAMP behavior.
   Bogged sheared membership, wire index and typed default must remain derived from generated
-  `Bogged.DATA_SHEARED`; native model/debug consumers must not restore fixed accessor/default
-  aliases or read the boolean slot without generated Bogged membership.
+  `Bogged.DATA_SHEARED`; native model/debug consumers and semantic fixtures must not restore fixed
+  accessor/default aliases, hand-written wire indices or read the boolean slot without generated
+  Bogged membership.
   Allay dancing membership, wire index and typed default must remain derived from generated
   `Allay.DATA_DANCING`; world animation consumers must not restore fixed accessor/default aliases
   or read another entity family's slot 16 as the dancing flag.

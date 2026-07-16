@@ -110,7 +110,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
     VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
-    VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
     VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
@@ -266,6 +265,19 @@ fn mushroom_cow_variant_data(variant: i32) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
         value: EntityDataValueKind::Int(variant),
+    }
+}
+
+fn bogged_sheared_data(sheared: bool) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_BOGGED_ID,
+    )
+    .expect("generated Bogged sheared accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(sheared),
     }
 }
 
@@ -8698,14 +8710,11 @@ fn shift_f3_i_with_permission_copies_local_bogged_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
-            ProtocolEntityDataValue {
-                data_id: BOGGED_SHEARED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            bogged_sheared_data(true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

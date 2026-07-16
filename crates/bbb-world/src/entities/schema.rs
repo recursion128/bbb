@@ -5796,11 +5796,20 @@ mod tests {
 
     #[test]
     fn generated_bogged_sheared_accessor_owns_membership_index_and_default() {
+        let bogged = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bogged);
+        let sheared = bogged
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_SHEARED")
+            .expect("generated Bogged sheared field");
+        let VanillaEntityMetadataDefault::Boolean(default) = sheared.default else {
+            panic!("generated Bogged sheared default must be BOOLEAN");
+        };
         assert_eq!(
             vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_BOGGED_ID
             ),
-            Some((16, false))
+            Some((sheared.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(
@@ -8631,18 +8640,17 @@ mod tests {
         let bogged = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bogged);
         assert_eq!(bogged.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(bogged.inherited_field_count, 16);
+        assert_eq!(bogged.own_fields.len(), 1);
+        let (sheared_data_id, sheared_default) =
+            vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_BOGGED_ID,
+            )
+            .expect("generated Bogged sheared accessor");
+        assert_eq!(sheared_data_id, bogged.own_fields[0].data_id);
         assert_eq!(
-            bogged.own_fields,
-            &[VanillaEntityMetadataFieldSchema {
-                name: "DATA_SHEARED",
-                data_id: 16,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                default: VanillaEntityMetadataDefault::Boolean(false),
-            }]
+            VanillaEntityMetadataDefault::Boolean(sheared_default),
+            bogged.own_fields[0].default
         );
-        assert_eq!(VANILLA_BOGGED_SHEARED_DATA_ID, 16);
-        assert!(!VANILLA_BOGGED_DEFAULT_SHEARED);
         let skeleton = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Skeleton);
         assert_eq!(skeleton.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(skeleton.inherited_field_count, 16);
