@@ -469,6 +469,7 @@ Owner: `scripts/` + each generated catalog's semantic crate
   behavior; production and class-dispatch fixtures must not restore representative entity-type
   tables, while health/climbable/mount/pose/metadata checks remain runtime instance gates.
   Collision-debug `canBeCollidedWith` dispatch must consume the generated nearest class behavior;
+  production and class-dispatch fixtures must not restore representative entity-type tables, while
   Shulker health and HappyGhast age/health/other-entity/metadata checks remain instance gates.
   Ender-dragon sitting pose membership must consume the generated nearest `isSitting()` phase-class
   behavior, including `DragonHoverPhase`'s direct override, rather than a parallel phase-id table.

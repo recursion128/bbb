@@ -4770,6 +4770,36 @@ mod tests {
     }
 
     #[test]
+    fn collision_debug_collidability_matches_generated_class_dispatch() {
+        let mut world = empty_world();
+        world.set_local_player_pose(LocalPlayerPoseState::default());
+        let camera = world
+            .debug_camera_collision_query()
+            .expect("local-player collision query");
+        let target_box = WorldCollisionBox {
+            min: [0.0; 3],
+            max: [1.0; 3],
+        };
+        for entry in bbb_protocol::entity_types::VANILLA_ENTITY_TYPES {
+            let entity_id = 1_000 + entry.id;
+            add_collision_test_entity(&mut world, entity_id, entry.id, [0.5, 0.0, 0.5]);
+            let expected = matches!(
+                vanilla_entity_metadata_type_collidability_kind(entry.id),
+                Some(
+                    VanillaEntityCollidabilityKind::Always | VanillaEntityCollidabilityKind::Alive
+                )
+            );
+            assert_eq!(
+                world.debug_entity_can_be_collided_with(camera, entity_id, entry.id, target_box,),
+                expected,
+                "entity type {}",
+                entry.resource_id
+            );
+        }
+        assert!(!world.debug_entity_can_be_collided_with(camera, i32::MAX, -1, target_box,));
+    }
+
+    #[test]
     fn debug_camera_collision_boxes_prepend_collidable_entities_and_exclude_same_vehicle() {
         let mut world = empty_world();
         world.set_local_player_pose(LocalPlayerPoseState {

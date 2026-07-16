@@ -17512,3 +17512,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   living/vehicle/never 类型代表最近 `isPushable` class 行为的验证方式，并覆盖 unknown id。
 - health、climbable、mount、Warden pose 与 Creaking metadata 仍由既有实例态测试负责；metadata
   generator 守卫同时锁定 generated kind 消费、这些动态门和无代表 type 表的 fixture。
+
+## 2026-07-16：统一 Collision-debug collidability dispatch 消费
+
+- 新增对 generated entity-type catalog 的全量 fresh-instance dispatch 比较，逐项覆盖
+  Never/Always/Alive/HappyGhast 四类最近 `canBeCollidedWith` 行为与 unknown id。
+- Shulker health 及 HappyGhast age/health/source-entity/vehicle/metadata 保持实例态 owner；metadata
+  generator 守卫锁定 production 动态门与无代表 type 表的 class-dispatch fixture。
