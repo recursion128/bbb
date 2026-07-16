@@ -6214,13 +6214,33 @@ mod tests {
 
     #[test]
     fn generated_wolf_accessors_own_membership_indices_and_defaults() {
+        let wolf = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Wolf);
+        let field = |name| {
+            wolf.own_fields
+                .iter()
+                .find(|field| field.name == name)
+                .unwrap_or_else(|| panic!("generated Wolf {name} field"))
+        };
+        let interested = field("DATA_INTERESTED_ID");
+        let collar_color = field("DATA_COLLAR_COLOR");
+        let anger_end_time = field("DATA_ANGER_END_TIME");
+        let VanillaEntityMetadataDefault::Boolean(interested_default) = interested.default else {
+            panic!("generated Wolf interested default must be BOOLEAN");
+        };
+        let VanillaEntityMetadataDefault::Int(collar_color_default) = collar_color.default else {
+            panic!("generated Wolf collar-color default must be INT");
+        };
+        let VanillaEntityMetadataDefault::Long(anger_end_time_default) = anger_end_time.default
+        else {
+            panic!("generated Wolf anger-end-time default must be LONG");
+        };
         let expected = VanillaWolfMetadataAccessors {
-            interested_data_id: VANILLA_WOLF_INTERESTED_DATA_ID,
-            interested_default: VANILLA_WOLF_DEFAULT_INTERESTED,
-            collar_color_data_id: VANILLA_WOLF_COLLAR_COLOR_DATA_ID,
-            collar_color_default: VANILLA_WOLF_DEFAULT_COLLAR_COLOR,
-            anger_end_time_data_id: VANILLA_WOLF_ANGER_END_TIME_DATA_ID,
-            anger_end_time_default: VANILLA_WOLF_DEFAULT_ANGER_END_TIME,
+            interested_data_id: interested.data_id,
+            interested_default,
+            collar_color_data_id: collar_color.data_id,
+            collar_color_default,
+            anger_end_time_data_id: anger_end_time.data_id,
+            anger_end_time_default,
         };
         assert_eq!(
             vanilla_entity_metadata_wolf_accessors_for_entity_type(VANILLA_ENTITY_TYPE_WOLF_ID),
@@ -7744,14 +7764,26 @@ mod tests {
         );
         assert_eq!(wolf.inherited_field_count, 20);
         assert_eq!(wolf.own_fields.len(), 5);
-        assert_eq!(VANILLA_WOLF_INTERESTED_DATA_ID, 20);
-        assert_eq!(VANILLA_WOLF_COLLAR_COLOR_DATA_ID, 21);
-        assert_eq!(VANILLA_WOLF_ANGER_END_TIME_DATA_ID, 22);
+        let accessors =
+            vanilla_entity_metadata_wolf_accessors_for_entity_type(VANILLA_ENTITY_TYPE_WOLF_ID)
+                .expect("generated Wolf metadata accessors");
+        assert_eq!(accessors.interested_data_id, wolf.own_fields[0].data_id);
+        assert_eq!(accessors.collar_color_data_id, wolf.own_fields[1].data_id);
+        assert_eq!(accessors.anger_end_time_data_id, wolf.own_fields[2].data_id);
         assert_eq!(VANILLA_WOLF_VARIANT_DATA_ID, 23);
         assert_eq!(VANILLA_WOLF_SOUND_VARIANT_DATA_ID, 24);
-        assert!(!VANILLA_WOLF_DEFAULT_INTERESTED);
-        assert_eq!(VANILLA_WOLF_DEFAULT_COLLAR_COLOR, 14);
-        assert_eq!(VANILLA_WOLF_DEFAULT_ANGER_END_TIME, -1);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(accessors.interested_default),
+            wolf.own_fields[0].default
+        );
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(accessors.collar_color_default),
+            wolf.own_fields[1].default
+        );
+        assert_eq!(
+            VanillaEntityMetadataDefault::Long(accessors.anger_end_time_default),
+            wolf.own_fields[2].default
+        );
         assert_eq!(VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID, "minecraft:pale");
         assert_eq!(
             VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID,

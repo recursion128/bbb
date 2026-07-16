@@ -17392,3 +17392,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   解析 generated `DATA_STANDING_ID` accessor，移除固定 wire index 与裸 entity type id。
 - 删除 `bbb-world` 的 standing data/default facade 转发，schema 期望由 generated PolarBear
   family schema 组装；generator 反向守卫覆盖 production 和 world/native fixtures。
+
+## 2026-07-16：统一 Wolf 成组 metadata 消费
+
+- interested、collar-color 与 anger-end-time 的 wire index/default 统一由 generated Wolf
+  family schema 组装为 typed bundle；world/native/F3+I production 与 fixtures 继续消费该 bundle。
+- 删除 `bbb-world` 对三项 data/default 六个独立 facade 常量的转发；generator 反向守卫扩展到
+  world/native/F3+I fixtures，variant 与 sound-variant 的独立生成字段保持不变。

@@ -172,12 +172,6 @@ const GENERATED_VANILLA_CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
 pub const VANILLA_CAT_COLLAR_COLOR_DATA_ID: u8 = GENERATED_VANILLA_CAT_COLLAR_COLOR_DATA_ID;
 const GENERATED_VANILLA_CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
 pub const VANILLA_CAT_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_CAT_SOUND_VARIANT_DATA_ID;
-const GENERATED_VANILLA_WOLF_INTERESTED_DATA_ID: u8 = 20;
-pub const VANILLA_WOLF_INTERESTED_DATA_ID: u8 = GENERATED_VANILLA_WOLF_INTERESTED_DATA_ID;
-const GENERATED_VANILLA_WOLF_COLLAR_COLOR_DATA_ID: u8 = 21;
-pub const VANILLA_WOLF_COLLAR_COLOR_DATA_ID: u8 = GENERATED_VANILLA_WOLF_COLLAR_COLOR_DATA_ID;
-const GENERATED_VANILLA_WOLF_ANGER_END_TIME_DATA_ID: u8 = 22;
-pub const VANILLA_WOLF_ANGER_END_TIME_DATA_ID: u8 = GENERATED_VANILLA_WOLF_ANGER_END_TIME_DATA_ID;
 const GENERATED_VANILLA_WOLF_VARIANT_DATA_ID: u8 = 23;
 pub const VANILLA_WOLF_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_WOLF_VARIANT_DATA_ID;
 const GENERATED_VANILLA_WOLF_SOUND_VARIANT_DATA_ID: u8 = 24;
@@ -754,12 +748,6 @@ pub const VANILLA_CAT_DEFAULT_COLLAR_COLOR: i32 = GENERATED_VANILLA_CAT_DEFAULT_
 const GENERATED_VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
 pub const VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
-const GENERATED_VANILLA_WOLF_DEFAULT_INTERESTED: bool = false;
-pub const VANILLA_WOLF_DEFAULT_INTERESTED: bool = GENERATED_VANILLA_WOLF_DEFAULT_INTERESTED;
-const GENERATED_VANILLA_WOLF_DEFAULT_COLLAR_COLOR: i32 = 14;
-pub const VANILLA_WOLF_DEFAULT_COLLAR_COLOR: i32 = GENERATED_VANILLA_WOLF_DEFAULT_COLLAR_COLOR;
-const GENERATED_VANILLA_WOLF_DEFAULT_ANGER_END_TIME: i64 = -1;
-pub const VANILLA_WOLF_DEFAULT_ANGER_END_TIME: i64 = GENERATED_VANILLA_WOLF_DEFAULT_ANGER_END_TIME;
 const GENERATED_VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:pale";
 pub const VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID;
@@ -24638,17 +24626,20 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_wolf_accessors_do_not_restore_fixed_metadata_facts() {
+    fn wolf_accessor_consumers_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/movement_combat_and_swing_projection.rs");
         let entity_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let wolf_model = variants
             .split("pub(super) fn wolf_model_kind")
             .nth(1)
             .and_then(|source| source.split("pub(super) fn entity_invisible").next())
             .expect("Wolf model projection source");
         let input = include_str!("../../../../bbb-native/src/input.rs");
+        let input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         let wolf_debug = input
             .split("fn debug_push_wolf_additional_save_data")
             .nth(1)
@@ -24664,10 +24655,25 @@ mod generated_catalog_guards {
         assert!(
             store.contains("wolf_is_interested(identity.entity_type_id, &metadata.data_values)")
         );
-        for source in [wolf_model, wolf_debug] {
+        for source in [
+            wolf_model,
+            wolf_debug,
+            world_tests,
+            native_scene_tests,
+            input_tests,
+        ] {
             assert!(source.contains("vanilla_entity_metadata_wolf_accessors_for_entity_type"));
         }
-        for source in [animations, store, entity_scene, variants, input] {
+        for source in [
+            animations,
+            store,
+            world_tests,
+            entity_scene,
+            variants,
+            native_scene_tests,
+            input,
+            input_tests,
+        ] {
             for removed in [
                 "WOLF_INTERESTED_DATA_ID",
                 "WOLF_DEFAULT_INTERESTED",
