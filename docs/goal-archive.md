@@ -18009,3 +18009,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   baby fixture 固定别名至此全部迁移。
 - baby reverse guard 精确覆盖两项测试并整文件禁止旧别名回流；age lock、Squid/WanderingTrader
   本地 save NBT 以及权限/剪贴板行为回归保持不变。
+
+## 2026-07-16：统一 world mount-inventory baby fixture accessor 消费
+
+- world inventory 的 tamed Donkey mount-equipment visibility fixture 删除固定 AgeableMob baby
+  wire id 16，按 Donkey type 查询 generated nearest-baby accessor 并校验默认 false。
+- baby reverse guard 纳入整份 world inventory tests；成人 tame saddle 可见、baby saddle 隐藏与
+  Nautilus equipment slot visibility 回归保持不变。

@@ -1,7 +1,7 @@
 use super::*;
 use crate::entities::{
-    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-    VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    vanilla_entity_metadata_baby_accessor_for_entity_type, VANILLA_ENTITY_TYPE_DONKEY_ID,
+    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
 };
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, CraftingRecipeDisplaySummary,
@@ -333,6 +333,13 @@ fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
         VANILLA_ENTITY_TYPE_DONKEY_ID,
     )
     .expect("generated AbstractHorse metadata accessors must resolve");
+    let (baby_data_id, baby_default) =
+        vanilla_entity_metadata_baby_accessor_for_entity_type(VANILLA_ENTITY_TYPE_DONKEY_ID)
+            .expect("generated Donkey inherited baby accessor must resolve");
+    assert!(
+        !baby_default,
+        "vanilla AgeableMob baby default must be false"
+    );
     assert_eq!(
         mount_visibility_for_entity(
             VANILLA_ENTITY_TYPE_DONKEY_ID,
@@ -350,7 +357,7 @@ fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
         mount_visibility_for_entity(
             VANILLA_ENTITY_TYPE_DONKEY_ID,
             vec![
-                protocol_bool_data(VANILLA_AGEABLE_MOB_BABY_DATA_ID, true),
+                protocol_bool_data(baby_data_id, true),
                 protocol_byte_data(horse_accessors.flags_data_id, horse_accessors.tame_mask,),
             ],
         ),

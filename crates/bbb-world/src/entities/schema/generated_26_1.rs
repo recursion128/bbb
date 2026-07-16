@@ -22395,6 +22395,7 @@ mod generated_catalog_guards {
         let creature_bounds_fixture = include_str!("../tests/creature_pick_bounds_projection.rs");
         let visibility_fixture =
             include_str!("../tests/visibility_equipment_and_mount_projection.rs");
+        let world_inventory_fixture = include_str!("../../client/inventory/tests.rs");
         let native_inventory_fixture =
             include_str!("../../../../bbb-native/src/input/inventory/tests.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
@@ -22445,6 +22446,8 @@ mod generated_catalog_guards {
         assert!(
             visibility_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type")
         );
+        assert!(world_inventory_fixture
+            .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(native_inventory_fixture
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(native_scene_baby_helper
@@ -22783,6 +22786,7 @@ mod generated_catalog_guards {
                 animation_fixture,
                 creature_bounds_fixture,
                 visibility_fixture,
+                world_inventory_fixture,
                 native_inventory_fixture,
             ] {
                 assert!(
