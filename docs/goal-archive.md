@@ -17093,3 +17093,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   index/default，测试 fixture 同样复用 bundle 与生成 enum ordinals。
 - schema generator 的跨 crate 反向守卫扩展到 world animation/store 与 native
   scene/kind/entity-data/input，拒绝两项 metadata 的固定 aliases 或丢失 entity-type membership。
+
+## 2026-07-16：派生 projectile family metadata accessor bundles
+
+- Arrow effect-color 与 ThrownTrident loyalty/foil 的自有 metadata identity 新增 typed bundle，
+  与既有 AbstractArrow flags/pierce/in-ground bundle 一起覆盖完整继承链；world pickup/particle、
+  native texture/foil 与相关 semantic fixtures 不再维护固定 wire index/default。
+- schema generator 的跨 crate 反向守卫扩展到 projectile lifecycle、world pickup/particle、
+  native scene/kind/entity-data/input，拒绝 AbstractArrow/Arrow/ThrownTrident 固定 aliases 回流。

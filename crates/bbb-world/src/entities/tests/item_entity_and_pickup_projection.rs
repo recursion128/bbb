@@ -508,6 +508,13 @@ fn take_item_entity_pickup_particle_state_captures_projectile_models() {
     // picked entity; arrows and tridents render their projectile models through
     // `ArrowRenderer` / `TippableArrowRenderer` / `SpectralArrowRenderer` /
     // `ThrownTridentRenderer` using the extracted `yRot`/`xRot`.
+    let arrow_accessors =
+        vanilla_entity_metadata_arrow_accessors_for_entity_type(VANILLA_ENTITY_TYPE_ARROW_ID)
+            .expect("generated Arrow metadata accessors");
+    let trident_accessors = vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    )
+    .expect("generated ThrownTrident metadata accessors");
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
@@ -545,7 +552,7 @@ fn take_item_entity_pickup_particle_state_captures_projectile_models() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 11,
         values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+            data_id: arrow_accessors.effect_color_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(0x38_5DC6),
         }],
@@ -554,7 +561,7 @@ fn take_item_entity_pickup_particle_state_captures_projectile_models() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 12,
         values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+            data_id: arrow_accessors.effect_color_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(0),
         }],
@@ -563,7 +570,7 @@ fn take_item_entity_pickup_particle_state_captures_projectile_models() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 15,
         values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_TRIDENT_FOIL_DATA_ID,
+            data_id: trident_accessors.foil_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],

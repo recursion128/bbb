@@ -57,6 +57,7 @@ pub use renderer_catalog::{
     vanilla_entity_renderer_minimum_block_light, vanilla_entity_renderer_thrown_item_scale,
     vanilla_entity_renderer_thrown_item_scales, vanilla_entity_renderer_uses_native_non_model_pass,
 };
+pub use schema::VanillaArrowMetadataAccessors;
 pub use schema::VanillaCompanionVariantMetadataAccessors;
 pub use schema::VanillaCopperGolemMetadataAccessors;
 pub use schema::VanillaCreeperMetadataAccessors;
@@ -69,6 +70,7 @@ pub use schema::VanillaLlamaMetadataAccessors;
 pub use schema::VanillaMobMetadataAccessors;
 pub use schema::VanillaPandaMetadataAccessors;
 pub use schema::VanillaShulkerMetadataAccessors;
+pub use schema::VanillaThrownTridentMetadataAccessors;
 pub use schema::VanillaTurtleMetadataAccessors;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
@@ -79,6 +81,7 @@ pub use schema::{
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
+    vanilla_entity_metadata_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
@@ -135,6 +138,7 @@ pub use schema::{
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_thrown_trident_accessors_for_entity_type,
     vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type,
     vanilla_entity_metadata_turtle_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,
@@ -2623,28 +2627,38 @@ impl WorldStore {
         let projectile_model = match item.entity_type_id {
             // Vanilla `TippableArrowRenderer.isTipped = getColor() > 0`.
             VANILLA_ENTITY_TYPE_ARROW_ID => Some(TakeItemEntityPickupProjectileModel::Arrow {
-                tipped: self
-                    .entities
-                    .metadata_int_for_entity(
-                        item_entity_id,
-                        VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
-                        VANILLA_ARROW_DEFAULT_EFFECT_COLOR,
-                    )
-                    .unwrap_or(-1)
-                    > 0,
+                tipped: vanilla_entity_metadata_arrow_accessors_for_entity_type(
+                    item.entity_type_id,
+                )
+                .map(|accessors| {
+                    self.entities
+                        .metadata_int_for_entity(
+                            item_entity_id,
+                            accessors.effect_color_data_id,
+                            accessors.effect_color_default,
+                        )
+                        .unwrap_or(accessors.effect_color_default)
+                        > 0
+                })
+                .unwrap_or(false),
             }),
             VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID => {
                 Some(TakeItemEntityPickupProjectileModel::SpectralArrow)
             }
             VANILLA_ENTITY_TYPE_TRIDENT_ID => Some(TakeItemEntityPickupProjectileModel::Trident {
-                foil: self
-                    .entities
-                    .metadata_bool_for_entity(
-                        item_entity_id,
-                        VANILLA_TRIDENT_FOIL_DATA_ID,
-                        VANILLA_TRIDENT_DEFAULT_FOIL,
-                    )
-                    .unwrap_or(false),
+                foil: vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+                    item.entity_type_id,
+                )
+                .map(|accessors| {
+                    self.entities
+                        .metadata_bool_for_entity(
+                            item_entity_id,
+                            accessors.foil_data_id,
+                            accessors.foil_default,
+                        )
+                        .unwrap_or(accessors.foil_default)
+                })
+                .unwrap_or(false),
             }),
             _ => None,
         };
@@ -2744,12 +2758,14 @@ impl WorldStore {
         if transform.entity_type_id != VANILLA_ENTITY_TYPE_ARROW_ID {
             return None;
         }
+        let accessors =
+            vanilla_entity_metadata_arrow_accessors_for_entity_type(transform.entity_type_id)?;
         let color = self.entities.metadata_int_for_entity(
             entity_id,
-            VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
-            -1,
+            accessors.effect_color_data_id,
+            accessors.effect_color_default,
         )?;
-        if color == -1 {
+        if color == accessors.effect_color_default {
             return None;
         }
         let bounds = self

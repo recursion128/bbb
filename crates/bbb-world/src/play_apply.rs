@@ -3912,6 +3912,11 @@ mod tests {
 
     #[test]
     fn arrow_effect_clear_event_forwards_particle_state() {
+        let arrow_accessors =
+            crate::entities::vanilla_entity_metadata_arrow_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+            )
+            .expect("generated Arrow metadata accessors");
         let mut store = WorldStore::new();
         let mut random = LevelEventSoundRandomState::with_seed(0);
         let mut effects = RecordingEffects::default();
@@ -3929,7 +3934,7 @@ mod tests {
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 118,
                 values: vec![int_entity_data(
-                    crate::entities::VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+                    arrow_accessors.effect_color_data_id,
                     0x0033_66cc,
                 )],
             }),
@@ -3944,10 +3949,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 119,
-                values: vec![int_entity_data(
-                    crate::entities::VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
-                    0,
-                )],
+                values: vec![int_entity_data(arrow_accessors.effect_color_data_id, 0)],
             }),
             PlayClientbound::AddEntity(add_entity(
                 120,
@@ -3960,10 +3962,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 120,
-                values: vec![int_entity_data(
-                    crate::entities::VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
-                    -1,
-                )],
+                values: vec![int_entity_data(arrow_accessors.effect_color_data_id, -1)],
             }),
             PlayClientbound::AddEntity(add_entity(
                 121,
@@ -3977,7 +3976,7 @@ mod tests {
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 121,
                 values: vec![int_entity_data(
-                    crate::entities::VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
+                    arrow_accessors.effect_color_data_id,
                     0x0011_2233,
                 )],
             }),

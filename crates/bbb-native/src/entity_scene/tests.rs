@@ -9186,7 +9186,7 @@ fn entity_model_kind_maps_arrows_to_real_model() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ARROW_ID,
-            &[protocol_int_data(ARROW_EFFECT_COLOR_DATA_ID, 0x385dc6)]
+            &[protocol_arrow_effect_color_data(0x385dc6)]
         ),
         EntityModelKind::Arrow {
             texture: ArrowModelTexture::Tipped
@@ -9196,7 +9196,7 @@ fn entity_model_kind_maps_arrows_to_real_model() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ARROW_ID,
-            &[protocol_int_data(ARROW_EFFECT_COLOR_DATA_ID, -1)]
+            &[protocol_arrow_effect_color_data(-1)]
         ),
         EntityModelKind::Arrow {
             texture: ArrowModelTexture::Normal
@@ -9221,7 +9221,10 @@ fn entity_model_instances_project_arrow_impact_shake() {
     world.advance_entity_client_animations(1);
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 60,
-        values: vec![protocol_bool_data(ARROW_IN_GROUND_DATA_ID, true)],
+        values: vec![protocol_abstract_arrow_in_ground_data(
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            true,
+        )],
     }));
 
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
@@ -9268,7 +9271,7 @@ fn entity_model_instances_project_thrown_trident_foil_flag() {
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 135,
-        values: vec![protocol_bool_data(TRIDENT_FOIL_DATA_ID, true)],
+        values: vec![protocol_thrown_trident_foil_data(true)],
     }));
 
     let foiled_instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
@@ -11430,6 +11433,28 @@ fn protocol_armadillo_state_data(id: i32) -> EntityDataValue {
             id,
         },
     }
+}
+
+fn protocol_abstract_arrow_in_ground_data(entity_type_id: i32, in_ground: bool) -> EntityDataValue {
+    let accessors =
+        vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(entity_type_id)
+            .expect("generated AbstractArrow metadata accessors");
+    protocol_bool_data(accessors.in_ground_data_id, in_ground)
+}
+
+fn protocol_arrow_effect_color_data(color: i32) -> EntityDataValue {
+    let accessors =
+        vanilla_entity_metadata_arrow_accessors_for_entity_type(VANILLA_ENTITY_TYPE_ARROW_ID)
+            .expect("generated Arrow metadata accessors");
+    protocol_int_data(accessors.effect_color_data_id, color)
+}
+
+fn protocol_thrown_trident_foil_data(foil: bool) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    )
+    .expect("generated ThrownTrident metadata accessors");
+    protocol_bool_data(accessors.foil_data_id, foil)
 }
 
 fn protocol_copper_golem_weathering_data(id: i32) -> EntityDataValue {

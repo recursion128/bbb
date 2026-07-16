@@ -114,9 +114,6 @@ use bbb_world::{
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
-    VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-    VANILLA_ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID as ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
     VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
     VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
     VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
@@ -10768,6 +10765,10 @@ fn shift_f3_i_skips_unpickable_llama_spit_but_direct_copy_encodes_save_nbt() {
 
 #[test]
 fn shift_f3_i_skips_unpickable_arrow_but_direct_copy_encodes_save_nbt() {
+    let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    )
+    .expect("generated Arrow inherited metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10790,13 +10791,13 @@ fn shift_f3_i_skips_unpickable_arrow_but_direct_copy_encodes_save_nbt() {
         id: 58,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
+                data_id: accessors.pierce_level_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(3),
@@ -10844,6 +10845,10 @@ fn shift_f3_i_skips_unpickable_arrow_but_direct_copy_encodes_save_nbt() {
 
 #[test]
 fn shift_f3_i_skips_unpickable_spectral_arrow_but_direct_copy_encodes_save_nbt() {
+    let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+    )
+    .expect("generated SpectralArrow inherited metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10866,13 +10871,13 @@ fn shift_f3_i_skips_unpickable_spectral_arrow_but_direct_copy_encodes_save_nbt()
         id: 59,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
+                data_id: accessors.pierce_level_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(2),
@@ -10920,6 +10925,10 @@ fn shift_f3_i_skips_unpickable_spectral_arrow_but_direct_copy_encodes_save_nbt()
 
 #[test]
 fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
+    let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    )
+    .expect("generated ThrownTrident inherited metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -10942,13 +10951,13 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
         id: 60,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
+                data_id: accessors.pierce_level_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(4),
@@ -10996,7 +11005,7 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 60,
         values: vec![ProtocolEntityDataValue {
-            data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+            data_id: accessors.in_ground_data_id,
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),

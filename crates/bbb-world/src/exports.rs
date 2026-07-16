@@ -1,6 +1,7 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
+pub use crate::entities::VanillaArrowMetadataAccessors;
 pub use crate::entities::VanillaCompanionVariantMetadataAccessors;
 pub use crate::entities::VanillaCopperGolemMetadataAccessors;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
@@ -13,6 +14,7 @@ pub use crate::entities::VanillaLlamaMetadataAccessors;
 pub use crate::entities::VanillaMobMetadataAccessors;
 pub use crate::entities::VanillaPandaMetadataAccessors;
 pub use crate::entities::VanillaShulkerMetadataAccessors;
+pub use crate::entities::VanillaThrownTridentMetadataAccessors;
 pub use crate::entities::VanillaTurtleMetadataAccessors;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
@@ -23,6 +25,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
+    vanilla_entity_metadata_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
@@ -79,6 +82,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_thrown_trident_accessors_for_entity_type,
     vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type,
     vanilla_entity_metadata_turtle_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,

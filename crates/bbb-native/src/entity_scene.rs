@@ -33,8 +33,11 @@ use bbb_renderer::{
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
+#[cfg(test)]
+use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
@@ -64,6 +67,7 @@ use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_thrown_trident_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
@@ -120,12 +124,8 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE as ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_ARROW_DEFAULT_EFFECT_COLOR as ARROW_DEFAULT_EFFECT_COLOR,
-    VANILLA_ARROW_EFFECT_COLOR_DATA_ID as ARROW_EFFECT_COLOR_DATA_ID,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION as AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID as AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
-    VANILLA_TRIDENT_DEFAULT_FOIL as TRIDENT_DEFAULT_FOIL,
-    VANILLA_TRIDENT_FOIL_DATA_ID as TRIDENT_FOIL_DATA_ID,
 };
 use bbb_world::{CHICKEN_VARIANT_REGISTRY, COW_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY};
 #[cfg(test)]
@@ -362,10 +362,6 @@ const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL
 // Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
 // accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
 // and `null` (the default, byte 16) otherwise.
-// Vanilla `AbstractArrow.IN_GROUND` (10, BOOLEAN): updating it to true after the first client tick
-// starts the seven-tick `shakeTime` impact wobble that `ArrowRenderer.extractRenderState` projects.
-#[cfg(test)]
-const ARROW_IN_GROUND_DATA_ID: u8 = 10;
 /// Vanilla `Camel.SITDOWN_DURATION_TICKS` (40 ticks = 2.0 s `CAMEL_SIT`): the sit-down
 /// window, after which `CAMEL_SIT_POSE` takes over.
 const CAMEL_SITDOWN_DURATION_TICKS: i64 = 40;

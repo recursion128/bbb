@@ -293,6 +293,7 @@ pub(super) fn thrown_trident_foil(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_TRIDENT_ID
-        && entity_data_bool(values, TRIDENT_FOIL_DATA_ID, TRIDENT_DEFAULT_FOIL)
+    vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| entity_data_bool(values, accessors.foil_data_id, accessors.foil_default))
+        .unwrap_or(false)
 }

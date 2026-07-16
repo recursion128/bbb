@@ -23286,16 +23286,40 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_abstract_arrow_accessors_do_not_restore_fixed_metadata_facts() {
+    fn production_projectile_family_accessors_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
         let projectiles = include_str!("../projectiles.rs");
         let projectiles = projectiles.split("#[cfg(test)]\nmod tests").next().unwrap();
+        let world_entities = include_str!("../../entities.rs");
+        let world_consumers = world_entities
+            .split("pub fn take_item_entity_pickup_particle_state")
+            .nth(1)
+            .and_then(|source| source.split_once("pub fn animal_love_particle_state"))
+            .map(|(body, _)| body)
+            .expect("projectile pickup and arrow particle consumers");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_data = include_str!("../../../../bbb-native/src/entity_scene/entity_data.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         for source in [animations, projectiles, native_input] {
             assert!(
                 source.contains("vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type")
             );
         }
+        for source in [world_consumers, native_scene, native_kind, native_data] {
+            assert!(
+                source.contains("vanilla_entity_metadata_arrow_accessors_for_entity_type")
+                    || source.contains(
+                        "vanilla_entity_metadata_thrown_trident_accessors_for_entity_type"
+                    )
+            );
+        }
+        assert!(world_consumers.contains("vanilla_entity_metadata_arrow_accessors_for_entity_type"));
+        assert!(world_consumers
+            .contains("vanilla_entity_metadata_thrown_trident_accessors_for_entity_type"));
+        assert!(native_kind.contains("vanilla_entity_metadata_arrow_accessors_for_entity_type"));
+        assert!(native_data
+            .contains("vanilla_entity_metadata_thrown_trident_accessors_for_entity_type"));
         assert!(!animations.contains("fn is_vanilla_arrow_type"));
         for removed in [
             "ABSTRACT_ARROW_FLAGS_DATA_ID",
@@ -23304,6 +23328,10 @@ mod generated_catalog_guards {
             "ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL",
             "ABSTRACT_ARROW_IN_GROUND_DATA_ID",
             "ABSTRACT_ARROW_DEFAULT_IN_GROUND",
+            "ARROW_EFFECT_COLOR_DATA_ID",
+            "ARROW_DEFAULT_EFFECT_COLOR",
+            "TRIDENT_FOIL_DATA_ID",
+            "TRIDENT_DEFAULT_FOIL",
         ] {
             assert!(
                 !animations.contains(removed),
@@ -23316,6 +23344,22 @@ mod generated_catalog_guards {
             assert!(
                 !native_input.contains(removed),
                 "native input restored {removed}"
+            );
+            assert!(
+                !world_consumers.contains(removed),
+                "world consumers restored {removed}"
+            );
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_kind.contains(removed),
+                "native kind restored {removed}"
+            );
+            assert!(
+                !native_data.contains(removed),
+                "native data restored {removed}"
             );
         }
     }

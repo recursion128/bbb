@@ -1252,7 +1252,19 @@ fn rabbit_jump_event_drives_the_hop_window() {
 
 #[test]
 fn entity_model_sources_project_arrow_impact_shake() {
-    const ABSTRACT_ARROW_IN_GROUND_DATA_ID: u8 = 10;
+    let arrow_accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARROW_ID,
+    )
+    .expect("generated Arrow inherited metadata accessors");
+    let spectral_arrow_accessors =
+        vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        )
+        .expect("generated SpectralArrow inherited metadata accessors");
+    let trident_accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    )
+    .expect("generated ThrownTrident inherited metadata accessors");
 
     let source = |store: &WorldStore, id: i32, partial: f32| {
         store
@@ -1279,7 +1291,7 @@ fn entity_model_sources_project_arrow_impact_shake() {
     // Vanilla `AbstractArrow.onSyncedDataUpdated(IN_GROUND)` ignores the entity's first tick.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 60,
-        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+        values: vec![protocol_bool_data(arrow_accessors.in_ground_data_id, true)],
     }));
     assert_eq!(source(&store, 60, 0.0).arrow_shake, 0.0);
 
@@ -1291,7 +1303,7 @@ fn entity_model_sources_project_arrow_impact_shake() {
     );
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 60,
-        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, false)],
+        values: vec![protocol_bool_data(arrow_accessors.in_ground_data_id, false)],
     }));
     assert_eq!(source(&store, 60, 0.0).arrow_shake, 0.0);
 
@@ -1299,7 +1311,7 @@ fn entity_model_sources_project_arrow_impact_shake() {
     // `ArrowRenderer.extractRenderState` projects `shakeTime - partialTick`.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 60,
-        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+        values: vec![protocol_bool_data(arrow_accessors.in_ground_data_id, true)],
     }));
     assert_eq!(source(&store, 60, 0.0).arrow_shake, 7.0);
     assert_eq!(source(&store, 60, 0.5).arrow_shake, 6.5);
@@ -1308,7 +1320,7 @@ fn entity_model_sources_project_arrow_impact_shake() {
     assert_eq!(source(&store, 60, 0.0).arrow_shake, 6.0);
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 60,
-        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+        values: vec![protocol_bool_data(arrow_accessors.in_ground_data_id, true)],
     }));
     assert_eq!(
         source(&store, 60, 0.0).arrow_shake,
@@ -1320,7 +1332,10 @@ fn entity_model_sources_project_arrow_impact_shake() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 61,
-        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+        values: vec![protocol_bool_data(
+            spectral_arrow_accessors.in_ground_data_id,
+            true,
+        )],
     }));
     assert_eq!(
         source(&store, 61, 0.25).arrow_shake,
@@ -1330,7 +1345,10 @@ fn entity_model_sources_project_arrow_impact_shake() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 62,
-        values: vec![protocol_bool_data(ABSTRACT_ARROW_IN_GROUND_DATA_ID, true)],
+        values: vec![protocol_bool_data(
+            trident_accessors.in_ground_data_id,
+            true
+        )],
     }));
     assert_eq!(
         source(&store, 62, 0.0).arrow_shake,

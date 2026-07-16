@@ -274,7 +274,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   debug consumers must not restore fixed accessor aliases.
   AbstractArrow flags, pierce-level and in-ground membership, inherited wire indices and defaults
   must remain derived from generated `AbstractArrow.ID_FLAGS`, `PIERCE_LEVEL` and `IN_GROUND`;
-  animation, projectile lifecycle and native debug consumers must not restore fixed accessor aliases.
+  Arrow effect color plus ThrownTrident loyalty/foil identity must likewise come from generated
+  `Arrow.ID_EFFECT_COLOR`, `ThrownTrident.ID_LOYALTY` and `ThrownTrident.ID_FOIL`; animation,
+  projectile lifecycle, pickup/particle, native render and debug consumers must not restore fixed
+  accessor/default aliases or confuse sibling ownership.
   ArmorStand client flags and six pose accessors, wire indices and typed defaults must remain
   derived from the generated `ArmorStand` schema; world bounds/pickability and native model/debug
   consumers must not restore fixed metadata aliases or use the renderer preview pose as wire truth.

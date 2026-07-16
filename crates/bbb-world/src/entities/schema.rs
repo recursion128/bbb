@@ -438,6 +438,20 @@ pub struct VanillaAbstractArrowMetadataAccessors {
     pub in_ground_default: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaArrowMetadataAccessors {
+    pub effect_color_data_id: u8,
+    pub effect_color_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaThrownTridentMetadataAccessors {
+    pub loyalty_data_id: u8,
+    pub loyalty_default: i8,
+    pub foil_data_id: u8,
+    pub foil_default: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VanillaArmorStandMetadataAccessors {
     pub client_flags_data_id: u8,
@@ -2078,6 +2092,64 @@ pub fn vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
             pierce_level_default,
             in_ground_data_id: in_ground.data_id,
             in_ground_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the generated Arrow effect-color accessor and its typed default.
+pub fn vanilla_entity_metadata_arrow_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaArrowMetadataAccessors> {
+    let effect_color =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "ID_EFFECT_COLOR")?;
+    match (
+        effect_color.owner,
+        effect_color.serializer_name,
+        effect_color.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.projectile.arrow.Arrow",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(effect_color_default)),
+        ) => Some(VanillaArrowMetadataAccessors {
+            effect_color_data_id: effect_color.data_id,
+            effect_color_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the generated ThrownTrident loyalty/foil accessors and typed defaults.
+pub fn vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaThrownTridentMetadataAccessors> {
+    let loyalty = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "ID_LOYALTY")?;
+    let foil = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "ID_FOIL")?;
+    match (
+        (
+            loyalty.owner,
+            loyalty.serializer_name,
+            loyalty.typed_default,
+        ),
+        (foil.owner, foil.serializer_name, foil.typed_default),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.projectile.arrow.ThrownTrident",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(loyalty_default)),
+            ),
+            (
+                "net.minecraft.world.entity.projectile.arrow.ThrownTrident",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(foil_default)),
+            ),
+        ) => Some(VanillaThrownTridentMetadataAccessors {
+            loyalty_data_id: loyalty.data_id,
+            loyalty_default,
+            foil_data_id: foil.data_id,
+            foil_default,
         }),
         _ => None,
     }
@@ -5357,6 +5429,52 @@ mod tests {
             vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_arrow_accessors_own_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_arrow_accessors_for_entity_type(VANILLA_ENTITY_TYPE_ARROW_ID),
+            Some(VanillaArrowMetadataAccessors {
+                effect_color_data_id: 11,
+                effect_color_default: -1,
+            })
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_arrow_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_thrown_trident_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_TRIDENT_ID
+            ),
+            Some(VanillaThrownTridentMetadataAccessors {
+                loyalty_data_id: 11,
+                loyalty_default: 0,
+                foil_data_id: 12,
+                foil_default: false,
+            })
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_thrown_trident_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]

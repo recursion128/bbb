@@ -402,11 +402,7 @@ fn is_vanilla_wind_charge_type(entity_type_id: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::schema::{
-        VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID as ABSTRACT_ARROW_FLAGS_DATA_ID,
-        VANILLA_ABSTRACT_ARROW_IN_GROUND_DATA_ID as ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-        VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-    };
+    use crate::entities::schema::VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID;
     use crate::WorldStore;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_EGG_ID,
@@ -773,6 +769,10 @@ mod tests {
 
     #[test]
     fn trident_dealt_damage_uses_previous_in_ground_time_and_physics_flag() {
+        let accessors = vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_TRIDENT_ID,
+        )
+        .expect("generated ThrownTrident inherited metadata accessors");
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity_with_type(
             30,
@@ -785,7 +785,7 @@ mod tests {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 30,
             values: vec![ProtocolEntityDataValue {
-                data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+                data_id: accessors.in_ground_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             }],
@@ -794,12 +794,12 @@ mod tests {
             id: 31,
             values: vec![
                 ProtocolEntityDataValue {
-                    data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
+                    data_id: accessors.flags_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_NO_PHYSICS),
                 },
                 ProtocolEntityDataValue {
-                    data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+                    data_id: accessors.in_ground_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: EntityDataValueKind::Boolean(true),
                 },
@@ -827,7 +827,7 @@ mod tests {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 30,
             values: vec![ProtocolEntityDataValue {
-                data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
+                data_id: accessors.in_ground_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(false),
             }],
