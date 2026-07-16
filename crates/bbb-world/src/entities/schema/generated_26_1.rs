@@ -87,8 +87,6 @@ pub const VANILLA_AGEABLE_MOB_BABY_DATA_ID: u8 = GENERATED_VANILLA_AGEABLE_MOB_B
 const GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 =
     GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID;
-const GENERATED_VANILLA_ARMADILLO_STATE_DATA_ID: u8 = 18;
-pub const VANILLA_ARMADILLO_STATE_DATA_ID: u8 = GENERATED_VANILLA_ARMADILLO_STATE_DATA_ID;
 const GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
 pub const VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID;
 const GENERATED_VANILLA_DOLPHIN_GOT_FISH_DATA_ID: u8 = 18;
@@ -631,8 +629,6 @@ pub const VANILLA_AGEABLE_MOB_DEFAULT_BABY: bool = GENERATED_VANILLA_AGEABLE_MOB
 const GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool =
     GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED;
-const GENERATED_VANILLA_ARMADILLO_DEFAULT_STATE: i32 = 0;
-pub const VANILLA_ARMADILLO_DEFAULT_STATE: i32 = GENERATED_VANILLA_ARMADILLO_DEFAULT_STATE;
 const GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET;
 const GENERATED_VANILLA_DOLPHIN_DEFAULT_GOT_FISH: bool = false;
@@ -25062,7 +25058,7 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_armadillo_state_does_not_restore_accessor_constants() {
+    fn armadillo_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         assert_eq!(
             animations
@@ -25070,11 +25066,22 @@ mod generated_catalog_guards {
                 .count(),
             3
         );
+        assert!(!animations.contains("ArmadilloState` id (id 18)"));
+        let world_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
+        let world_fixture = world_tests
+            .split("fn entity_model_sources_project_armadillo_state_animation")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("Armadillo animation fixture source");
+        assert!(world_fixture.contains("armadillo_state_data("));
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         assert!(native_variants
             .contains("vanilla_entity_metadata_armadillo_state_accessor_for_entity_type"));
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
         assert!(native_kind.contains("armadillo_rolled_up(entity_type_id, data_values)"));
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        assert!(native_scene_tests
+            .contains("vanilla_entity_metadata_armadillo_state_accessor_for_entity_type"));
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         let debug_body = native_input
             .split("fn debug_push_armadillo_additional_save_data")
@@ -25084,10 +25091,21 @@ mod generated_catalog_guards {
         assert!(
             debug_body.contains("vanilla_entity_metadata_armadillo_state_accessor_for_entity_type")
         );
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let native_input_fixture = native_input_tests
+            .split("fn shift_f3_i_with_permission_copies_local_armadillo_save_nbt_to_clipboard")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("Armadillo F3+I fixture source");
+        assert!(native_input_fixture.contains("armadillo_state_data("));
         for removed in ["ARMADILLO_STATE_DATA_ID", "ARMADILLO_DEFAULT_STATE"] {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
+            );
+            assert!(
+                !world_fixture.contains(removed),
+                "world fixture restored {removed}"
             );
             assert!(
                 !native_variants.contains(removed),
@@ -25098,8 +25116,16 @@ mod generated_catalog_guards {
                 "native kind restored {removed}"
             );
             assert!(
+                !native_scene_tests.contains(removed),
+                "native scene fixtures restored {removed}"
+            );
+            assert!(
                 !debug_body.contains(removed),
                 "native debug restored {removed}"
+            );
+            assert!(
+                !native_input_fixture.contains(removed),
+                "native input fixture restored {removed}"
             );
         }
     }

@@ -6155,11 +6155,20 @@ mod tests {
 
     #[test]
     fn generated_armadillo_state_accessor_owns_membership_index_and_default() {
+        let armadillo = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Armadillo);
+        let state = armadillo
+            .own_fields
+            .iter()
+            .find(|field| field.name == "ARMADILLO_STATE")
+            .expect("generated Armadillo state field");
+        let VanillaEntityMetadataDefault::Int(state_default) = state.default else {
+            panic!("generated Armadillo state default must be enum INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_ARMADILLO_ID
             ),
-            Some((18, 0))
+            Some((state.data_id, state_default))
         );
         assert_eq!(
             vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
@@ -7581,8 +7590,16 @@ mod tests {
         );
         assert_eq!(armadillo.inherited_field_count, 18);
         assert_eq!(armadillo.own_fields.len(), 1);
-        assert_eq!(VANILLA_ARMADILLO_STATE_DATA_ID, 18);
-        assert_eq!(VANILLA_ARMADILLO_DEFAULT_STATE, 0);
+        let (state_data_id, state_default) =
+            vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+            )
+            .expect("generated Armadillo state accessor");
+        assert_eq!(state_data_id, armadillo.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(state_default),
+            armadillo.own_fields[0].default
+        );
         assert_eq!(VANILLA_ARMADILLO_STATE_IDLE_ID, 0);
         assert_eq!(VANILLA_ARMADILLO_STATE_ROLLING_ID, 1);
         assert_eq!(VANILLA_ARMADILLO_STATE_SCARED_ID, 2);

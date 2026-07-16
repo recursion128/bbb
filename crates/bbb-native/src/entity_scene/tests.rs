@@ -9114,9 +9114,9 @@ fn entity_model_kind_projects_armadillo_baby_from_data() {
 
 #[test]
 fn entity_model_kind_projects_armadillo_rolled_up_from_state() {
-    // Vanilla `Armadillo.ARMADILLO_STATE` (data id 18, `ArmadilloState` enum). Only the steady
-    // SCARED state (id 2) is `shouldHideInShell` for every tick, so it maps to `rolled_up`; the
-    // tick-gated ROLLING (1) / UNROLLING (3) transitions and IDLE (0) stay not-rolled-up.
+    // Vanilla `Armadillo.ARMADILLO_STATE` is an `ArmadilloState` enum. Only the steady SCARED state
+    // is `shouldHideInShell` for every tick, so it maps to `rolled_up`; the tick-gated ROLLING /
+    // UNROLLING transitions and IDLE stay not-rolled-up.
     let kind = |id: i32| {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ARMADILLO_ID,
@@ -9124,13 +9124,17 @@ fn entity_model_kind_projects_armadillo_rolled_up_from_state() {
         )
     };
     assert_eq!(
-        kind(2),
+        kind(ARMADILLO_STATE_SCARED_ID),
         EntityModelKind::Armadillo {
             baby: false,
             rolled_up: true
         }
     );
-    for non_scared in [0, 1, 3] {
+    for non_scared in [
+        bbb_world::VANILLA_ARMADILLO_STATE_IDLE_ID,
+        bbb_world::VANILLA_ARMADILLO_STATE_ROLLING_ID,
+        bbb_world::VANILLA_ARMADILLO_STATE_UNROLLING_ID,
+    ] {
         assert_eq!(
             kind(non_scared),
             EntityModelKind::Armadillo {
@@ -9147,7 +9151,7 @@ fn entity_model_kind_projects_armadillo_rolled_up_from_state() {
             VANILLA_ENTITY_TYPE_ARMADILLO_ID,
             &[
                 protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
-                protocol_armadillo_state_data(2),
+                protocol_armadillo_state_data(ARMADILLO_STATE_SCARED_ID),
             ]
         ),
         EntityModelKind::Armadillo {
@@ -11617,8 +11621,12 @@ fn protocol_chicken_variant_data(id: i32) -> EntityDataValue {
 
 fn protocol_armadillo_state_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.ARMADILLO_STATE` is serializer id 36.
+    let (data_id, _) = vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+    )
+    .expect("generated Armadillo state accessor must resolve");
     EntityDataValue {
-        data_id: ARMADILLO_STATE_DATA_ID,
+        data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ARMADILLO_STATE_ID,
         value: EntityDataValueKind::EnumId {
             serializer: EntityDataEnumSerializer::ArmadilloState,

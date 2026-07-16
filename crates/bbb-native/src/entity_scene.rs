@@ -85,8 +85,6 @@ use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_enti
 use bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type;
 #[cfg(test)]
 use bbb_world::WolfVariantAssetPresentation;
-#[cfg(test)]
-use bbb_world::VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID;
 use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID;

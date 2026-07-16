@@ -14,6 +14,14 @@ fn sniffer_state_data(state_id: i32) -> ProtocolEntityDataValue {
     protocol_enum_data(data_id, EntityDataEnumSerializer::SnifferState, state_id)
 }
 
+fn armadillo_state_data(state_id: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+    )
+    .expect("generated Armadillo state accessor must resolve");
+    protocol_enum_data(data_id, EntityDataEnumSerializer::ArmadilloState, state_id)
+}
+
 #[test]
 fn entity_model_sources_project_chicken_wing_flap() {
     let source = |store: &WorldStore, partial: f32| {
@@ -782,13 +790,9 @@ fn entity_model_sources_project_sniffer_state_animation() {
 
 #[test]
 fn entity_model_sources_project_armadillo_state_animation() {
-    // Vanilla `Armadillo.ARMADILLO_STATE` (id 18), the `ArmadilloState` id VarInt (serializer 36).
+    // Vanilla `Armadillo.ARMADILLO_STATE`, the `ArmadilloState` id VarInt (serializer 36).
     // `Armadillo.setupAnimationStates` `.startIfStopped`s rollUp into ROLLING / rollOut into
     // UNROLLING, and `shouldHideInShell(inStateTicks)` gates the shell-ball swap.
-    const ARMADILLO_STATE_DATA_ID: u8 = 18;
-    const ARMADILLO_STATE_ROLLING_ID: i32 = 1;
-    const ARMADILLO_STATE_SCARED_ID: i32 = 2;
-    const ARMADILLO_STATE_UNROLLING_ID: i32 = 3;
     const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
     let project = |store: &WorldStore| {
         let source = store
@@ -817,11 +821,7 @@ fn entity_model_sources_project_armadillo_state_animation() {
     // hide: vanilla `ROLLING.shouldHideInShell(inStateTicks) = inStateTicks > 5`.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 4,
-        values: vec![protocol_enum_data(
-            ARMADILLO_STATE_DATA_ID,
-            EntityDataEnumSerializer::ArmadilloState,
-            ARMADILLO_STATE_ROLLING_ID,
-        )],
+        values: vec![armadillo_state_data(VANILLA_ARMADILLO_STATE_ROLLING_ID)],
     }));
     let (hiding, roll_up, roll_out, peek) = project(&store);
     assert!(!hiding, "rolling does not hide until inStateTicks > 5");
@@ -845,11 +845,7 @@ fn entity_model_sources_project_armadillo_state_animation() {
     // 50-tick animation duration. The shell stays hidden for the whole SCARED state.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 4,
-        values: vec![protocol_enum_data(
-            ARMADILLO_STATE_DATA_ID,
-            EntityDataEnumSerializer::ArmadilloState,
-            ARMADILLO_STATE_SCARED_ID,
-        )],
+        values: vec![armadillo_state_data(VANILLA_ARMADILLO_STATE_SCARED_ID)],
     }));
     let (hiding, roll_up, roll_out, peek) = project(&store);
     assert!(hiding, "SCARED always hides in the shell");
@@ -889,11 +885,7 @@ fn entity_model_sources_project_armadillo_state_animation() {
     // stays hidden while `inStateTicks < 26` (`UNROLLING.shouldHideInShell`); peek stops.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 4,
-        values: vec![protocol_enum_data(
-            ARMADILLO_STATE_DATA_ID,
-            EntityDataEnumSerializer::ArmadilloState,
-            ARMADILLO_STATE_UNROLLING_ID,
-        )],
+        values: vec![armadillo_state_data(VANILLA_ARMADILLO_STATE_UNROLLING_ID,)],
     }));
     let (hiding, roll_up, roll_out, peek) = project(&store);
     assert!(

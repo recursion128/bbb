@@ -17442,3 +17442,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 删除 state data/default 两个 facade，保留 drop-seed accessor/default 与全部 generated state
   ordinal；Sniffer baby bounds/fixtures 改由继承的 generated `AgeableMob.DATA_BABY_ID` accessor
   构造，generator 反向守卫禁止恢复固定 slot。
+
+## 2026-07-16：统一 Armadillo metadata 消费
+
+- animation-state 的 membership、wire index 与 `IDLE` typed default 统一由 generated
+  `Armadillo.ARMADILLO_STATE` accessor 提供；world animation、native model 与 F3+I production/
+  fixtures 共享该入口。
+- 删除 state data/default 两个 facade，保留四个 generated `ArmadilloState` ordinal 与事件
+  `64`；world/native fixtures 移除固定 slot/ordinal，generator 反向守卫覆盖所有消费面。

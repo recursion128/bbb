@@ -4091,7 +4091,7 @@ impl EntityClientAnimationState {
             }
             VANILLA_ENTITY_TYPE_ARMADILLO_ID => {
                 // Vanilla `Armadillo.onSyncedDataUpdated(ARMADILLO_STATE)` → `setupAnimationStates`:
-                // the synced `ArmadilloState` id (id 18) selects the shell-ball hide window and the
+                // the synced `ArmadilloState` id selects the shell-ball hide window and the
                 // rollUp/rollOut/peek `AnimationState`s. The armadillo's `aiStep` runs client-side for
                 // remote entities, so the synced state drives the transitions directly. We track the
                 // state and the `age_ticks` at the change (for `inStateTicks`); IDLE carries no hide
