@@ -78,6 +78,7 @@ use bbb_world::vanilla_entity_metadata_abstract_minecart_accessors_for_entity_ty
 use bbb_world::vanilla_entity_metadata_age_locked_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_axolotl_from_bucket_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_accessors_for_entity_type;
@@ -133,8 +134,6 @@ use bbb_world::{
 };
 use bbb_world::{
     vanilla_painting_variant_resource_id,
-    VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET as AXOLOTL_DEFAULT_FROM_BUCKET,
-    VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID as AXOLOTL_FROM_BUCKET_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
     VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
@@ -7168,8 +7167,13 @@ fn debug_push_axolotl_additional_save_data(entity: &EntityState, fields: &mut Ve
     };
     let variant = debug_entity_data_int_present(entity, variant_data_id).unwrap_or(default_variant);
     let variant = AxolotlModelVariant::from_id(variant).vanilla_id();
-    let from_bucket = debug_entity_data_bool_present(entity, AXOLOTL_FROM_BUCKET_DATA_ID)
-        .unwrap_or(AXOLOTL_DEFAULT_FROM_BUCKET);
+    let Some((from_bucket_data_id, from_bucket_default)) =
+        vanilla_entity_metadata_axolotl_from_bucket_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let from_bucket =
+        debug_entity_data_bool_present(entity, from_bucket_data_id).unwrap_or(from_bucket_default);
     fields.push(format!("Variant: {variant}"));
     fields.push(format!("FromBucket: {}", debug_snbt_bool(from_bucket)));
 }

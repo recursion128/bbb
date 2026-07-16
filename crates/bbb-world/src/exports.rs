@@ -42,6 +42,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_arrow_accessors_for_entity_type,
+    vanilla_entity_metadata_axolotl_from_bucket_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,

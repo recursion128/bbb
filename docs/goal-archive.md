@@ -18202,3 +18202,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   farm-animal bundle 构造 variant/sound-variant holder metadata，删除 7 处固定 accessor ID。
 - dynamic registry holder order 与 NBT payload 保持不变；reverse guard 扩展到 native input 和
   world play fixture，禁止六组 fixed variant/sound-variant aliases 回流。
+
+## 2026-07-16：派生 Axolotl from-bucket metadata
+
+- world schema 新增 Axolotl-only `FROM_BUCKET` BOOLEAN/default `false` typed accessor；native
+  F3+I production 与 fixture 删除固定 wire id/default aliases，并继续与 AbstractFish 字段分离。
+- generator reverse guard 覆盖 native input facade 与完整 tests，禁止固定 accessor/default
+  aliases 或 sibling-family 替代回流。

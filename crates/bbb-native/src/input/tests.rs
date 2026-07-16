@@ -273,6 +273,20 @@ fn axolotl_variant_data(variant: i32) -> ProtocolEntityDataValue {
     }
 }
 
+fn axolotl_from_bucket_data(from_bucket: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) = vanilla_entity_metadata_axolotl_from_bucket_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+    )
+    .expect("generated Axolotl from-bucket accessor must resolve");
+    assert!(!default);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(from_bucket),
+    }
+}
+
 fn mushroom_cow_variant_data(variant: i32) -> ProtocolEntityDataValue {
     let (data_id, _) = vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
@@ -4968,11 +4982,7 @@ fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard() {
             baby_data(VANILLA_ENTITY_TYPE_AXOLOTL_ID, true),
             age_locked_data(&world, 57, true),
             axolotl_variant_data(9),
-            ProtocolEntityDataValue {
-                data_id: AXOLOTL_FROM_BUCKET_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            axolotl_from_bucket_data(true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
