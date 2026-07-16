@@ -5594,7 +5594,10 @@ fn entity_model_instances_project_powered_wither_from_world() {
     // A healthy wither (health 200/300 > 150) stays un-powered.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 145,
-        values: vec![protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 200.0)],
+        values: vec![living_entity_health_data(
+            VANILLA_ENTITY_TYPE_WITHER_ID,
+            200.0
+        )],
     }));
     let healthy = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
     assert!(!healthy[0].render_state.wither_powered);
@@ -5603,7 +5606,10 @@ fn entity_model_instances_project_powered_wither_from_world() {
     // health (120 ≤ 150) the `WitherArmorLayer` energy swirl ignites.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 145,
-        values: vec![protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 120.0)],
+        values: vec![living_entity_health_data(
+            VANILLA_ENTITY_TYPE_WITHER_ID,
+            120.0
+        )],
     }));
     let powered = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
     assert!(
@@ -10681,7 +10687,7 @@ fn entity_model_instances_project_wolf_tame_tail_angle_from_health() {
         id: 148,
         values: vec![
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, true, false),
-            protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 8.0),
+            living_entity_health_data(VANILLA_ENTITY_TYPE_WOLF_ID, 8.0),
         ],
     }));
 
@@ -10702,7 +10708,7 @@ fn entity_model_instances_project_wolf_tame_tail_angle_from_health() {
     ));
     assert!(wild.apply_set_entity_data(SetEntityData {
         id: 149,
-        values: vec![protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 4.0)],
+        values: vec![living_entity_health_data(VANILLA_ENTITY_TYPE_WOLF_ID, 4.0)],
     }));
     let wild_instances = entity_model_instances_from_world_at_partial_tick(&wild, None, 1.0);
     assert_eq!(
@@ -11425,7 +11431,10 @@ fn entity_model_kind_uses_exact_model_for_iron_golem() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-            &[protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 40.0)]
+            &[living_entity_health_data(
+                VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+                40.0,
+            )]
         ),
         EntityModelKind::IronGolem {
             crackiness: IronGolemCrackiness::Medium,
@@ -11612,6 +11621,13 @@ fn wither_skull_dangerous_data(dangerous: bool) -> EntityDataValue {
         .expect("generated WitherSkull dangerous accessor");
     assert!(!default);
     protocol_bool_data(data_id, dangerous)
+}
+
+fn living_entity_health_data(entity_type_id: i32, health: f32) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated LivingEntity metadata accessors");
+    assert_eq!(accessors.health_default, 1.0);
+    protocol_float_data(accessors.health_data_id, health)
 }
 
 fn zombification_immunity_data(entity_type_id: i32, immune: bool) -> EntityDataValue {

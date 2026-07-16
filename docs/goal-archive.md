@@ -17712,3 +17712,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - metadata generator 守卫从 production model/debug 函数体扩到 entity-scene/input 父模块及两份
   semantic fixture，禁止固定 id/default 和 `VANILLA_*` compatibility alias 回流；unpickable
   crosshair 与 direct-copy `dangerous: 1b` 行为保持不变。
+
+## 2026-07-16：统一 LivingEntity health entity-scene fixture accessor 消费
+
+- Wither powered、Wolf tail damage 与 IronGolem crackiness fixtures 删除固定 health wire id，
+  均按实际 entity type 查询 generated LivingEntity bundle 并校验 metadata default 1.0。
+- LivingEntity generator 守卫新增 entity-scene 父模块与 semantic fixture 的 health 专项检查，
+  禁止固定/`VANILLA_*` health id alias 回流；其他仍开放的 living flags 夹具不被本切片误报。
