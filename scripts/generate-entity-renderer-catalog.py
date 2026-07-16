@@ -108,6 +108,13 @@ def render(source_root: Path) -> str:
                 "        static_full_block_light: "
                 + str(entry.static_full_block_light).lower()
                 + ",",
+                "        minimum_block_light: "
+                + (
+                    f"Some({entry.minimum_block_light})"
+                    if entry.minimum_block_light is not None
+                    else "None"
+                )
+                + ",",
                 "        thrown_item_scale_bits: "
                 + (
                     f"Some({entry.thrown_item_scale_bits})"
@@ -167,6 +174,16 @@ def render(source_root: Path) -> str:
             "    fn native_light_projection_does_not_restore_static_full_bright_membership() {",
             '        let source = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");',
             '        assert!(!source.contains("VANILLA_ENTITY_TYPE_BLAZE_ID"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn item_frame_light_projection_does_not_restore_glow_type_membership() {",
+            '        let native = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");',
+            '        let world = include_str!("../store.rs");',
+            '        for source in [native, world] {',
+            '            assert!(source.contains("vanilla_entity_renderer_minimum_block_light"));',
+            '            assert!(!source.contains("VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID"));',
+            "        }",
             "    }",
             "",
             "    #[test]",

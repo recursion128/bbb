@@ -17021,3 +17021,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `entity_scene/kind.rs` 恢复这些 entity-type 常量。renderer generator 同时补齐
   `Avatar.DEFAULT_VEHICLE_ATTACHMENT` 的权威常量解析，使依赖完整 `EntityType` catalog 的
   生成过程可在当前 26.1 vanilla source 上重放。
+
+## 2026-07-16：生成 Glow ItemFrame 光照判定
+
+- entity renderer extractor 现在从 `ItemFrameRenderer.getBlockLightLevel` 的 ternary 同时解析
+  `EntityType.GLOW_ITEM_FRAME` membership 与 `Math.max(5, super...)` 下限，并验证
+  `extractRenderState` 使用同一条件设置 `state.isGlowFrame`；155 项 provider registration
+  新增可选 `minimum_block_light`，当前仅 GlowItemFrame 生成 `Some(5)`。
+- world item-frame render state 的 glow 标志和 native entity light clamp 共享该生成属性，移除
+  两处 production GlowItemFrame type 判定及 native 的裸 `5`。generator 输出反向门禁，防止
+  两个消费者恢复平行事实；普通 ItemFrame 仍保持无下限，既有周围光采样不变。

@@ -10,6 +10,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     constant_name: &'static str,
     renderer_class: &'static str,
     static_full_block_light: bool,
+    minimum_block_light: Option<u8>,
     thrown_item_scale_bits: Option<u32>,
     uses_abstract_feline_model: bool,
     uses_abstract_horse_renderer: bool,
@@ -38,6 +39,10 @@ fn vanilla_entity_renderer_registration(
 pub fn vanilla_entity_renderer_has_static_full_block_light(entity_type_id: i32) -> bool {
     vanilla_entity_renderer_registration(entity_type_id)
         .is_some_and(|entry| entry.static_full_block_light)
+}
+
+pub fn vanilla_entity_renderer_minimum_block_light(entity_type_id: i32) -> Option<u8> {
+    vanilla_entity_renderer_registration(entity_type_id).and_then(|entry| entry.minimum_block_light)
 }
 
 pub fn vanilla_entity_renderer_is_noop(entity_type_id: i32) -> bool {
@@ -199,6 +204,29 @@ mod tests {
         }
         assert!(!vanilla_entity_renderer_has_static_full_block_light(-1));
         assert!(!vanilla_entity_renderer_has_static_full_block_light(157));
+    }
+
+    #[test]
+    fn generated_minimum_block_light_matches_item_frame_renderer_condition() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter_map(|entry| {
+                entry
+                    .minimum_block_light
+                    .map(|minimum| (entry.entity_type_id, minimum))
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(actual, vec![(VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, 5)]);
+        assert_eq!(
+            vanilla_entity_renderer_minimum_block_light(VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID),
+            Some(5)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_minimum_block_light(VANILLA_ENTITY_TYPE_ITEM_FRAME_ID),
+            None
+        );
+        assert_eq!(vanilla_entity_renderer_minimum_block_light(-1), None);
+        assert_eq!(vanilla_entity_renderer_minimum_block_light(157), None);
     }
 
     #[test]

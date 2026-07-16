@@ -24,6 +24,7 @@ THROWN_ITEM_RENDERER_CLASS = RENDERER_PACKAGE + ".ThrownItemRenderer"
 ABSTRACT_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".AbstractHorseRenderer"
 MOB_RENDERER_CLASS = RENDERER_PACKAGE + ".MobRenderer"
 ITEM_IN_HAND_LAYER_CLASS = RENDERER_PACKAGE + ".layers.ItemInHandLayer"
+ITEM_FRAME_RENDERER_CLASS = RENDERER_PACKAGE + ".ItemFrameRenderer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
@@ -40,6 +41,7 @@ class EntityRendererRegistration:
     constant_name: str
     renderer_class: str
     static_full_block_light: bool
+    minimum_block_light: int | None
     thrown_item_scale_bits: int | None
     uses_abstract_feline_model: bool
     uses_abstract_horse_renderer: bool
@@ -321,6 +323,93 @@ def _validate_thrown_item_constructor_contract(
         )
 
 
+def _extract_item_frame_minimum_block_light(
+    source_by_type: dict[str, JavaSource],
+    type_by_name: dict[str, JavaType],
+) -> tuple[str, int]:
+    renderer_type = type_by_name.get(ITEM_FRAME_RENDERER_CLASS)
+    if renderer_type is None:
+        raise EntityRendererCatalogExtractionError("missing ItemFrameRenderer class")
+    source = source_by_type[renderer_type.fqcn]
+    overrides = [
+        method
+        for method in source.methods_for(renderer_type)
+        if method.name == "getBlockLightLevel" and len(method.parameters) == 2
+    ]
+    if len(overrides) != 1:
+        raise EntityRendererCatalogExtractionError(
+            "ItemFrameRenderer must define one getBlockLightLevel override"
+        )
+    expression = _method_return_expression(source, overrides[0])
+    if expression is None or expression.node.type != "ternary_expression":
+        _fail(
+            source,
+            source.expression(overrides[0].node),
+            "ItemFrameRenderer block-light override is not one conditional return",
+        )
+    condition = expression.node.child_by_field_name("condition")
+    consequence = expression.node.child_by_field_name("consequence")
+    alternative = expression.node.child_by_field_name("alternative")
+    if condition is None or consequence is None or alternative is None:
+        _fail(source, expression, "incomplete ItemFrameRenderer block-light ternary")
+
+    condition_object = condition.child_by_field_name("object")
+    condition_name = condition.child_by_field_name("name")
+    condition_arguments = condition.child_by_field_name("arguments")
+    if (
+        condition.type != "method_invocation"
+        or condition_object is None
+        or source.expression(condition_object).canonical != "entity"
+        or condition_name is None
+        or source.text(condition_name) != "is"
+        or condition_arguments is None
+        or len(condition_arguments.named_children) != 1
+    ):
+        _fail(source, source.expression(condition), "unsupported item-frame type condition")
+    constant_name = _entity_type_constant(
+        source, source.expression(condition_arguments.named_children[0])
+    )
+
+    consequence_object = consequence.child_by_field_name("object")
+    consequence_name = consequence.child_by_field_name("name")
+    consequence_arguments = consequence.child_by_field_name("arguments")
+    if (
+        consequence.type != "method_invocation"
+        or consequence_object is None
+        or source.expression(consequence_object).canonical != "Math"
+        or consequence_name is None
+        or source.text(consequence_name) != "max"
+        or consequence_arguments is None
+        or len(consequence_arguments.named_children) != 2
+    ):
+        _fail(source, source.expression(consequence), "unsupported item-frame light clamp")
+    minimum_node, fallback_node = consequence_arguments.named_children
+    if minimum_node.type != "decimal_integer_literal":
+        _fail(source, source.expression(minimum_node), "item-frame light clamp is not an integer")
+    minimum = int(source.text(minimum_node))
+    fallback = "super.getBlockLightLevel (entity, blockPos)"
+    if (
+        not 0 <= minimum <= 15
+        or source.expression(fallback_node).canonical != fallback
+        or source.expression(alternative).canonical != fallback
+    ):
+        _fail(source, expression, "unsupported item-frame block-light fallback")
+
+    expected_assignment = (
+        f"state.isGlowFrame = entity.is (EntityType.{constant_name})"
+    )
+    if not _renderer_hierarchy_contains_extract_assignment(
+        ITEM_FRAME_RENDERER_CLASS,
+        expected_assignment,
+        source_by_type,
+        type_by_name,
+    ):
+        raise EntityRendererCatalogExtractionError(
+            "ItemFrameRenderer does not project the block-light type condition"
+        )
+    return constant_name, minimum
+
+
 def _renderer_hierarchy_references_superclass_type(
     renderer_class: str,
     target_class: str,
@@ -445,6 +534,9 @@ def extract_entity_renderer_registrations(
         )
 
     _validate_thrown_item_constructor_contract(source_by_type, type_by_name)
+    item_frame_light_constant, item_frame_minimum_block_light = (
+        _extract_item_frame_minimum_block_light(source_by_type, type_by_name)
+    )
 
     calls = [
         call
@@ -535,6 +627,10 @@ def extract_entity_renderer_registrations(
                 constant_name,
                 renderer_class.removeprefix(RENDERER_PACKAGE + "."),
                 static_full_block_light,
+                item_frame_minimum_block_light
+                if renderer_class == ITEM_FRAME_RENDERER_CLASS
+                and constant_name == item_frame_light_constant
+                else None,
                 thrown_item_scale_bits,
                 _renderer_hierarchy_references_superclass_type(
                     renderer_class,
@@ -591,6 +687,13 @@ def extract_entity_renderer_registrations(
             "entity renderer registration coverage mismatch: "
             f"unregistered={sorted(unregistered)}, "
             f"expected_avatar_path={sorted(SPECIAL_AVATAR_ENTITY_TYPES)}"
+        )
+    minimum_block_light_entries = [
+        entry for entry in registrations if entry.minimum_block_light is not None
+    ]
+    if len(minimum_block_light_entries) != 1:
+        raise EntityRendererCatalogExtractionError(
+            "expected one ItemFrameRenderer minimum block-light registration"
         )
     registrations.sort(key=lambda entry: entry.entity_type_id)
     return registrations

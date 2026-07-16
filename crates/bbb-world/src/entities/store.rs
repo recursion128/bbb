@@ -109,7 +109,7 @@ use crate::entities::projectiles::{
 use crate::entities::renderer_catalog::{
     vanilla_entity_renderer_extracts_casting_spell,
     vanilla_entity_renderer_extracts_mob_aggressive,
-    vanilla_entity_renderer_extracts_unhappy_counter,
+    vanilla_entity_renderer_extracts_unhappy_counter, vanilla_entity_renderer_minimum_block_light,
     vanilla_entity_renderer_uses_abstract_feline_model,
     vanilla_entity_renderer_uses_abstract_horse_renderer,
     vanilla_entity_renderer_uses_mob_item_in_hand_layer,
@@ -2977,7 +2977,8 @@ impl EntityStore {
                 facing: item_frame_facing(accessors, identity.data, &metadata.data_values),
                 light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
                 rotation: item_frame_rotation(accessors, &metadata.data_values),
-                glow: identity.entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+                glow: vanilla_entity_renderer_minimum_block_light(identity.entity_type_id)
+                    .is_some(),
                 invisible: self
                     .metadata_byte(
                         identity.id,

@@ -162,6 +162,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   suppression for `FallingBlockRenderer`, `FireworkEntityRenderer`, `ItemFrameRenderer`,
   `ItemEntityRenderer`, `LightningBoltRenderer`, `OminousItemSpawnerRenderer`, and `TntRenderer`
   must remain derived from generated provider registrations rather than an entity-type switch.
+  `ItemFrameRenderer`'s glow-frame render-state membership and minimum block-light clamp must remain
+  extracted together; world/native consumers must not restore the GlowItemFrame type id or literal
+  clamp as parallel facts.
   Zombie underwater
   conversion shaking must remain derived from the registered renderer hierarchy's
   `extractRenderState` assignment rather than a Zombie/Husk/Drowned type switch. Emit every new

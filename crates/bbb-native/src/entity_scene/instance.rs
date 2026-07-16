@@ -1012,10 +1012,10 @@ pub(super) fn entity_light_coords(
     if bbb_world::vanilla_entity_renderer_has_static_full_block_light(entity_type_id) {
         block = 15;
     }
-    // Vanilla `ItemFrameRenderer.getBlockLightLevel`: glow item frames keep their surrounding light, but
-    // raise the block component to at least `GLOW_FRAME_BRIGHTNESS = 5`.
-    if entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID {
-        block = block.max(5);
+    // Renderer-specific lower bounds (currently `ItemFrameRenderer`'s glow-frame clamp) are
+    // source-generated together with their exact provider registration membership.
+    if let Some(minimum) = bbb_world::vanilla_entity_renderer_minimum_block_light(entity_type_id) {
+        block = block.max(u32::from(minimum));
     }
     // Vanilla `GlowSquidRenderer.getBlockLightLevel`: a bioluminescent boost
     // `max(blockLight, (int)clampedLerp(1 − darkTicks/10, 0, 15))`. Undamaged (`darkTicks == 0`) it is fully

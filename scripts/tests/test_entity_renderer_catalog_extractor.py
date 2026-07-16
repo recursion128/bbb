@@ -85,6 +85,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.HUSK, HuskRenderer::new);
                     register(EntityType.DROWNED, DrownedRenderer::new);
                     register(EntityType.ZOMBIE_VILLAGER, ZombieVillagerRenderer::new);
+                    register(EntityType.GLOW_ITEM_FRAME, ItemFrameRenderer::new);
+                    register(EntityType.ITEM_FRAME, ItemFrameRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -294,6 +296,23 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 }
                 """,
             ),
+            java(
+                "net/minecraft/client/renderer/entity/ItemFrameRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                import net.minecraft.world.entity.EntityType;
+                public class ItemFrameRenderer extends EntityRenderer {
+                    protected int getBlockLightLevel(final Object entity, final Object blockPos) {
+                        return entity.is(EntityType.GLOW_ITEM_FRAME)
+                            ? Math.max(5, super.getBlockLightLevel(entity, blockPos))
+                            : super.getBlockLightLevel(entity, blockPos);
+                    }
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isGlowFrame = entity.is(EntityType.GLOW_ITEM_FRAME);
+                    }
+                }
+                """,
+            ),
         ]
 
         entries = extract_entity_renderer_registrations(
@@ -317,6 +336,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "HUSK",
                 "DROWNED",
                 "ZOMBIE_VILLAGER",
+                "GLOW_ITEM_FRAME",
+                "ITEM_FRAME",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -329,6 +350,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     entry.constant_name,
                     entry.renderer_class,
                     entry.static_full_block_light,
+                    entry.minimum_block_light,
                     entry.thrown_item_scale_bits,
                     entry.uses_abstract_feline_model,
                     entry.uses_abstract_horse_renderer,
@@ -340,23 +362,25 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 for entry in entries
             ],
             [
-                (0, "BLAZE", "BlazeRenderer", True, None, False, False, False, False, False, False),
-                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, 1065353216, False, False, False, False, False, False),
-                (2, "CAT", "CatRenderer", False, None, True, False, False, False, False, False),
-                (3, "HORSE", "HorseRenderer", False, None, False, True, False, False, False, False),
-                (4, "ALLAY", "AllayRenderer", False, None, False, False, True, True, False, False),
-                (5, "ARMOR_STAND", "ArmorStandRenderer", False, None, False, False, False, False, False, False),
-                (6, "VEX", "VexRenderer", False, None, False, False, True, True, False, False),
-                (7, "VILLAGER", "VillagerRenderer", False, None, False, False, False, False, True, False),
-                (8, "WANDERING_TRADER", "WanderingTraderRenderer", False, None, False, False, False, False, True, False),
-                (9, "EVOKER", "EvokerRenderer", False, None, False, False, False, False, False, True),
-                (10, "ILLUSIONER", "IllusionerRenderer", False, None, False, False, False, False, False, True),
-                (11, "EGG", "ThrownItemRenderer", False, 1065353216, False, False, False, False, False, False),
-                (12, "FIREBALL", "ThrownItemRenderer", True, 1077936128, False, False, False, False, False, False),
-                (13, "ZOMBIE", "ZombieRenderer", False, None, False, False, False, False, False, False),
-                (14, "HUSK", "HuskRenderer", False, None, False, False, False, False, False, False),
-                (15, "DROWNED", "DrownedRenderer", False, None, False, False, False, False, False, False),
-                (16, "ZOMBIE_VILLAGER", "ZombieVillagerRenderer", False, None, False, False, False, False, False, False),
+                (0, "BLAZE", "BlazeRenderer", True, None, None, False, False, False, False, False, False),
+                (1, "EYE_OF_ENDER", "ThrownItemRenderer", True, None, 1065353216, False, False, False, False, False, False),
+                (2, "CAT", "CatRenderer", False, None, None, True, False, False, False, False, False),
+                (3, "HORSE", "HorseRenderer", False, None, None, False, True, False, False, False, False),
+                (4, "ALLAY", "AllayRenderer", False, None, None, False, False, True, True, False, False),
+                (5, "ARMOR_STAND", "ArmorStandRenderer", False, None, None, False, False, False, False, False, False),
+                (6, "VEX", "VexRenderer", False, None, None, False, False, True, True, False, False),
+                (7, "VILLAGER", "VillagerRenderer", False, None, None, False, False, False, False, True, False),
+                (8, "WANDERING_TRADER", "WanderingTraderRenderer", False, None, None, False, False, False, False, True, False),
+                (9, "EVOKER", "EvokerRenderer", False, None, None, False, False, False, False, False, True),
+                (10, "ILLUSIONER", "IllusionerRenderer", False, None, None, False, False, False, False, False, True),
+                (11, "EGG", "ThrownItemRenderer", False, None, 1065353216, False, False, False, False, False, False),
+                (12, "FIREBALL", "ThrownItemRenderer", True, None, 1077936128, False, False, False, False, False, False),
+                (13, "ZOMBIE", "ZombieRenderer", False, None, None, False, False, False, False, False, False),
+                (14, "HUSK", "HuskRenderer", False, None, None, False, False, False, False, False, False),
+                (15, "DROWNED", "DrownedRenderer", False, None, None, False, False, False, False, False, False),
+                (16, "ZOMBIE_VILLAGER", "ZombieVillagerRenderer", False, None, None, False, False, False, False, False, False),
+                (17, "GLOW_ITEM_FRAME", "ItemFrameRenderer", False, 5, None, False, False, False, False, False, False),
+                (18, "ITEM_FRAME", "ItemFrameRenderer", False, None, None, False, False, False, False, False, False),
             ],
         )
         self.assertEqual(
