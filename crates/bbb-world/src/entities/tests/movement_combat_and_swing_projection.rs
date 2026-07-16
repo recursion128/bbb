@@ -1,4 +1,14 @@
 use super::*;
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
+};
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated Entity metadata accessors must resolve");
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose_id)
+}
 
 #[test]
 fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
@@ -210,10 +220,6 @@ fn living_swim_amount_follows_vanilla_pose_swimming_ease_for_drowned() {
     // Vanilla `LivingEntity.updateSwimAmount`: save `swimAmountO`, then if
     // `isVisuallySwimming()` (`Pose.SWIMMING`) add `0.09` up to `1.0`, else subtract
     // `0.09` down to `0.0`. `getSwimAmount(partialTick)` lerps the two endpoints.
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_STANDING: i32 = 0;
-    const POSE_SWIMMING: i32 = 3;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         184,
@@ -233,7 +239,7 @@ fn living_swim_amount_follows_vanilla_pose_swimming_ease_for_drowned() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 184,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SWIMMING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SWIMMING_ID)],
     }));
     store.advance_entity_client_animations(1);
     assert_eq!(
@@ -256,7 +262,7 @@ fn living_swim_amount_follows_vanilla_pose_swimming_ease_for_drowned() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 184,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     store.advance_entity_client_animations(1);
     assert_eq!(

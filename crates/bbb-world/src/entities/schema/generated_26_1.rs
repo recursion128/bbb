@@ -23392,6 +23392,7 @@ mod generated_catalog_guards {
         let instance = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let movement_tests = include_str!("../tests/movement_combat_and_swing_projection.rs");
         for source in [
             dimensions,
             animations,
@@ -23402,6 +23403,7 @@ mod generated_catalog_guards {
             instance,
             native_scene,
             native_scene_tests,
+            movement_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [
@@ -23442,6 +23444,9 @@ mod generated_catalog_guards {
                 );
             }
         }
+        assert!(!movement_tests.contains("ENTITY_DATA_POSE_ID"));
+        assert!(!movement_tests.contains("const POSE_STANDING"));
+        assert!(!movement_tests.contains("const POSE_SWIMMING"));
     }
 
     #[test]

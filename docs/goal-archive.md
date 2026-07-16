@@ -17777,3 +17777,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   scale 2.0 的组合断言保持不变。
 - baby projection reverse guard 扩展到 creature pick-bounds 测试模块，禁止 Ageable baby 固定
   别名回流；同文件尚待迁移的 Entity pose 固定夹具保持下一切片范围。
+
+## 2026-07-16：统一 movement swim pose fixture accessor 消费
+
+- Drowned `LivingEntity.updateSwimAmount` ease fixture 删除固定 Entity pose wire id 6 与 standing/
+  swimming ordinal，改由 generated Entity bundle 提供 accessor/default，并使用 protocol pose
+  catalog 的命名 ordinal。
+- Entity reverse guard 扩展到 movement/combat/swing 测试模块，禁止 `ENTITY_DATA_POSE_ID` 历史
+  别名和局部 standing/swimming ordinal 回流；0.09/tick 的进入、退出与 clamp 回归保持不变。

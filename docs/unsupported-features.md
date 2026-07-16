@@ -151,9 +151,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Continue the remaining fixed metadata-id fixture-alias pass across `bbb-native`
   entity-scene/input tests and `bbb-world` entity test submodules, including the remaining
   baby-state fixtures outside specialized/creature pick-bounds, model-source, and small-mob animation
-  coverage, plus pose and other shared-base-field fixtures; migrate only families whose exact
-  inherited accessor is already owned by the generated schema, without substituting a same-index
-  accessor from another class.
+  coverage, plus pose fixtures outside movement/swim projection and other shared-base-field fixtures;
+  migrate only families whose exact inherited accessor is already owned by the generated schema,
+  without substituting a same-index accessor from another class.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression
