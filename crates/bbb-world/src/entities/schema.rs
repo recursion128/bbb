@@ -6213,11 +6213,20 @@ mod tests {
 
     #[test]
     fn generated_ender_dragon_phase_accessor_owns_membership_index_and_default() {
+        let dragon = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::EnderDragon);
+        let phase = dragon
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_PHASE")
+            .expect("generated EnderDragon phase field");
+        let VanillaEntityMetadataDefault::Int(phase_default) = phase.default else {
+            panic!("generated EnderDragon phase default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID
             ),
-            Some((16, 10))
+            Some((phase.data_id, phase_default))
         );
         assert_eq!(
             vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
@@ -8651,17 +8660,21 @@ mod tests {
         assert_eq!(ender_dragon.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(ender_dragon.inherited_field_count, 16);
         assert_eq!(ender_dragon.own_fields.len(), 1);
-        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_DATA_ID, 16);
-        assert_eq!(VANILLA_ENDER_DRAGON_DEFAULT_PHASE, 10);
+        let (phase_data_id, phase_default) =
+            vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            )
+            .expect("generated EnderDragon phase accessor");
+        assert_eq!(phase_data_id, ender_dragon.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(phase_default),
+            ender_dragon.own_fields[0].default
+        );
         assert_eq!(VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID, 0);
         assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID, 5);
         assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID, 6);
         assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID, 7);
         assert_eq!(VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID, 10);
-        assert_eq!(
-            ender_dragon.own_fields[0].default,
-            VanillaEntityMetadataDefault::Int(10)
-        );
         let painting = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Painting);
         assert_eq!(
             painting.parent,

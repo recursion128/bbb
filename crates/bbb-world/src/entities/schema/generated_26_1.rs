@@ -244,8 +244,6 @@ pub const VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID: u8 =
 const GENERATED_VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 = 9;
 pub const VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID: u8 =
     GENERATED_VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID;
-const GENERATED_VANILLA_ENDER_DRAGON_PHASE_DATA_ID: u8 = 16;
-pub const VANILLA_ENDER_DRAGON_PHASE_DATA_ID: u8 = GENERATED_VANILLA_ENDER_DRAGON_PHASE_DATA_ID;
 const GENERATED_VANILLA_INTERACTION_WIDTH_DATA_ID: u8 = 8;
 pub const VANILLA_INTERACTION_WIDTH_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_WIDTH_DATA_ID;
 const GENERATED_VANILLA_INTERACTION_HEIGHT_DATA_ID: u8 = 9;
@@ -759,8 +757,6 @@ pub const VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS: bool =
 const GENERATED_VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool = true;
 pub const VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM: bool =
     GENERATED_VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM;
-const GENERATED_VANILLA_ENDER_DRAGON_DEFAULT_PHASE: i32 = 10;
-pub const VANILLA_ENDER_DRAGON_DEFAULT_PHASE: i32 = GENERATED_VANILLA_ENDER_DRAGON_DEFAULT_PHASE;
 const GENERATED_VANILLA_INTERACTION_DEFAULT_WIDTH: f32 = 1.0;
 pub const VANILLA_INTERACTION_DEFAULT_WIDTH: f32 = GENERATED_VANILLA_INTERACTION_DEFAULT_WIDTH;
 const GENERATED_VANILLA_INTERACTION_DEFAULT_HEIGHT: f32 = 1.0;
@@ -25156,14 +25152,32 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_ender_dragon_phase_does_not_restore_accessor_constants() {
+    fn ender_dragon_phase_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         assert!(animations
             .contains("vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type"));
+        let dragon = include_str!("../dragon.rs");
+        assert!(
+            dragon.contains("vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type")
+        );
+        assert!(dragon.contains("fn default_ender_dragon_phase_id()"));
+        let world_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
+        assert!(world_tests.contains("fn ender_dragon_phase_data("));
+        let native_crosshair = include_str!("../../../../bbb-native/src/crosshair.rs");
+        assert!(native_crosshair.contains("fn ender_dragon_phase_data("));
         for removed in ["ENDER_DRAGON_PHASE_DATA_ID", "ENDER_DRAGON_DEFAULT_PHASE"] {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
+            );
+            assert!(!dragon.contains(removed), "dragon state restored {removed}");
+            assert!(
+                !world_tests.contains(removed),
+                "world fixtures restored {removed}"
+            );
+            assert!(
+                !native_crosshair.contains(removed),
+                "crosshair fixtures restored {removed}"
             );
         }
     }

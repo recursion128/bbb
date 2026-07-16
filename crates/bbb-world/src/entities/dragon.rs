@@ -1,11 +1,13 @@
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::schema::vanilla_ender_dragon_phase_is_sitting;
-use super::{
-    EntityPickBoundsState, EntityPickTargetState, EntityTransform, EntityVec3,
-    VANILLA_ENDER_DRAGON_DEFAULT_PHASE,
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID;
+
+use super::schema::{
+    vanilla_ender_dragon_phase_is_sitting,
+    vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
 };
+use super::{EntityPickBoundsState, EntityPickTargetState, EntityTransform, EntityVec3};
 
 const DRAGON_FLIGHT_HISTORY_LEN: usize = 64;
 const DRAGON_FLIGHT_HISTORY_MASK: i32 = 63;
@@ -169,7 +171,11 @@ fn default_flight_history_head() -> i8 {
 }
 
 fn default_ender_dragon_phase_id() -> i32 {
-    VANILLA_ENDER_DRAGON_DEFAULT_PHASE
+    vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    )
+    .expect("generated EnderDragon phase accessor must resolve")
+    .1
 }
 
 impl EnderDragonAnimationState {

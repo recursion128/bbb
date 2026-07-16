@@ -62,6 +62,14 @@ fn sniffer_baby_data(is_baby: bool) -> ProtocolEntityDataValue {
     protocol_bool_data(data_id, is_baby)
 }
 
+fn ender_dragon_phase_data(phase_id: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+    )
+    .expect("generated EnderDragon phase accessor must resolve");
+    protocol_int_data(data_id, phase_id)
+}
+
 #[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
@@ -196,8 +204,7 @@ fn ender_dragon_pick_targets_follow_flight_history_and_phase() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 120,
-        values: vec![protocol_int_data(
-            VANILLA_ENDER_DRAGON_PHASE_DATA_ID,
+        values: vec![ender_dragon_phase_data(
             VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID,
         )],
     }));
@@ -284,8 +291,7 @@ fn ender_dragon_pick_targets_interpolate_flight_history_by_partial_tick() {
     store.advance_entity_client_animations(1);
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 130,
-        values: vec![protocol_int_data(
-            VANILLA_ENDER_DRAGON_PHASE_DATA_ID,
+        values: vec![ender_dragon_phase_data(
             VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID,
         )],
     }));

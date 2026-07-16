@@ -8,7 +8,7 @@ use bbb_renderer::{CameraPose, SelectionOutline};
 use bbb_world::{BlockPos, EntityPickTargetState, ItemAttackRange, WorldStore};
 #[cfg(test)]
 use bbb_world::{
-    LocalPlayerPoseState, VANILLA_ENDER_DRAGON_PHASE_DATA_ID as ENDER_DRAGON_PHASE_DATA_ID,
+    LocalPlayerPoseState,
     VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID as ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID,
 };
 
@@ -1070,6 +1070,19 @@ mod tests {
     const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
 
+    fn ender_dragon_phase_data(phase_id: i32) -> EntityDataValue {
+        let (data_id, _) =
+            bbb_world::vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+            )
+            .expect("generated EnderDragon phase accessor must resolve");
+        EntityDataValue {
+            data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+            value: EntityDataValueKind::Int(phase_id),
+        }
+    }
+
     #[test]
     fn crosshair_raycast_hits_first_selectable_block() {
         let pose = player_pose(0.0, 0.0, 0.0);
@@ -1376,11 +1389,9 @@ mod tests {
         world.advance_entity_client_animations(1);
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 130,
-            values: vec![EntityDataValue {
-                data_id: ENDER_DRAGON_PHASE_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID),
-            }],
+            values: vec![ender_dragon_phase_data(
+                ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID,
+            )],
         }));
         assert!(world.apply_entity_position_sync(EntityPositionSync {
             id: 130,

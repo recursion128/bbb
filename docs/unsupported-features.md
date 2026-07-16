@@ -444,8 +444,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   restore fixed accessor/default aliases or hand-written wire indices, and must not read another
   family's slot 16 as anger.
   EnderDragon phase membership, wire index and typed default must remain derived from generated
-  `EnderDragon.DATA_PHASE`; metadata animation consumers must not restore fixed accessor/default
-  aliases or duplicate generated phase ordinals and sitting membership.
+  `EnderDragon.DATA_PHASE`; animation/default-state consumers and world/native fixtures must not
+  restore fixed accessor/default aliases or hand-written wire indices, and must not duplicate
+  generated phase ordinals or sitting membership.
   Wither side-head target membership, wire indices and typed defaults must remain derived from
   generated `WitherBoss.DATA_TARGET_B/C`; world tick consumers must carry entity type and must not
   restore fixed accessor/default aliases or mix in center-head `DATA_TARGET_A`.

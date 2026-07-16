@@ -17458,3 +17458,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Warden 不会把同号 slot 误读为 anger。
 - 删除 anger data/default 两个 facade，heartbeat fixture 改由 generated accessor 构造；
   generator 反向守卫覆盖 production/fixture，并禁止恢复手写继承索引说明。
+
+## 2026-07-16：统一 EnderDragon phase metadata 消费
+
+- phase membership、wire index 与 `HOVERING` typed default 统一由 generated
+  `EnderDragon.DATA_PHASE` accessor 提供；animation 更新与 dragon serde/default 状态共享该
+  入口，sitting membership 继续由 generated phase-class 关系判定。
+- 删除 phase data/default 两个 facade，保留 generated phase ordinal 与 sitting helper；world
+  pick-bounds、native crosshair fixtures 改由 accessor 构造，generator 反向守卫覆盖全部消费面。
