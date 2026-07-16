@@ -17857,3 +17857,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   id 16，按具体 entity type 查询 generated nearest baby accessor 并校验默认 false。
 - baby projection reverse guard 纳入整份 visibility/equipment 测试；四类成人 layer 材质/染色/
   crackiness/foil 投影、非目标实体 negative gate 与 baby 无模型 layer suppression 回归保持不变。
+
+## 2026-07-16：统一 native runtime health fixture accessor 消费
+
+- native runtime simulation-distance fixture 删除固定 LivingEntity health wire id 9，按 Chicken
+  type 查询 generated LivingEntity bundle、校验默认 health 1.0 并生成 Float metadata。
+- LivingEntity health 专项 reverse guard 纳入该 runtime-event 测试；31.9/32.0 block 边界、仅远端
+  death tick 受 simulation distance gate 影响以及事件计数回归保持不变。

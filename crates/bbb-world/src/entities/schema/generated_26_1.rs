@@ -23494,6 +23494,9 @@ mod generated_catalog_guards {
         let combat_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
         let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
         let small_mob_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
+        let runtime_event_tests = include_str!(
+            "../../../../bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs"
+        );
         for source in [
             metadata,
             animations,
@@ -23527,13 +23530,19 @@ mod generated_catalog_guards {
                 );
             }
         }
-        for source in [combat_tests, player_pose_tests, small_mob_tests] {
+        for source in [
+            combat_tests,
+            player_pose_tests,
+            small_mob_tests,
+            runtime_event_tests,
+        ] {
             assert!(
                 source.contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type")
             );
             for removed in [
                 "VANILLA_LIVING_ENTITY_HEALTH_DATA_ID",
                 "VANILLA_ENTITY_HEALTH_DATA_ID",
+                "LIVING_HEALTH_DATA_ID",
             ] {
                 assert!(
                     !source.contains(removed),

@@ -157,8 +157,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   small-mob animation, and visibility/equipment shared-flags coverage; migrate only families whose
   exact inherited accessor is already owned by the generated schema, without substituting a
   same-index accessor from another class.
-  Living health fixtures in combat-state, player-pose, and small-mob animation coverage already use
-  the generated inherited accessor/default and remain guarded against fixed aliases.
+  Living health fixtures in combat-state, player-pose, small-mob animation, and native runtime-event
+  coverage already use the generated inherited accessor/default and remain guarded against fixed
+  aliases.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression

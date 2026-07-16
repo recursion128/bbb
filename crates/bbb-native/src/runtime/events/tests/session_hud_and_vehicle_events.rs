@@ -1,9 +1,20 @@
 use super::*;
 
+fn living_health_data(entity_type_id: i32, health: f32) -> EntityDataValue {
+    let accessors =
+        bbb_world::vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+            .expect("generated LivingEntity metadata accessors must resolve");
+    assert_eq!(accessors.health_default, 1.0);
+    EntityDataValue {
+        data_id: accessors.health_data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+        value: EntityDataValueKind::Float(health),
+    }
+}
+
 #[test]
 fn simulation_distance_event_gates_only_remote_death_ticks() {
-    const LIVING_HEALTH_DATA_ID: u8 = 9;
-
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Play(PlayClientbound::SetSimulationDistance(
         bbb_protocol::packets::SetSimulationDistance { distance: 1 },
@@ -26,12 +37,7 @@ fn simulation_distance_event_gates_only_remote_death_ticks() {
         });
         assert!(world.apply_set_entity_data(SetEntityData {
             id,
-            values: vec![EntityDataValue {
-                data_id: LIVING_HEALTH_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-                value: EntityDataValueKind::Float(0.0),
-            }],
+            values: vec![living_health_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, 0.0)],
         }));
     }
 
