@@ -17769,3 +17769,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   default false。
 - baby projection reverse guard 扩展到 small-mob/walk-animation 测试模块，禁止两种历史
   Ageable baby 固定别名回流；原有 Panda 0.5 倍 roll-time 与 baby walk-position 3 倍行为不变。
+
+## 2026-07-16：统一 Goat pick-bounds baby fixture accessor 消费
+
+- Goat long-jump/age/scale 组合边界 fixture 删除固定 AgeableMob baby wire id 16，按 Goat type
+  查询 generated nearest baby accessor 并校验 default false；long-jump 0.7、baby 0.55 与属性
+  scale 2.0 的组合断言保持不变。
+- baby projection reverse guard 扩展到 creature pick-bounds 测试模块，禁止 Ageable baby 固定
+  别名回流；同文件尚待迁移的 Entity pose 固定夹具保持下一切片范围。

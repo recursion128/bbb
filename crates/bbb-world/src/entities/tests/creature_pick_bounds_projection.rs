@@ -37,6 +37,15 @@ fn camel_baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValu
     protocol_bool_data(data_id, is_baby)
 }
 
+fn goat_baby_data(is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_GOAT_ID,
+    )
+    .expect("generated Goat inherited baby accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, is_baby)
+}
+
 fn camel_last_pose_change_tick_data(entity_type_id: i32, tick: i64) -> ProtocolEntityDataValue {
     let (data_id, _) =
         vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
@@ -1331,7 +1340,6 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
 fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const ENTITY_DATA_POSE_ID: u8 = 6;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
     const POSE_STANDING: i32 = 0;
     const POSE_LONG_JUMPING: i32 = 6;
 
@@ -1358,7 +1366,7 @@ fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 41,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![goat_baby_data(true)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(41),
