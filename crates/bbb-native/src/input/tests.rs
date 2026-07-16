@@ -94,6 +94,18 @@ use bbb_protocol::{
     MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
 };
 use bbb_world::{
+    vanilla_entity_metadata_baby_accessor_for_entity_type,
+    vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
+    VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
+    VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
+    VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
+    VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
+    VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
+    VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
+    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
+    VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID, VANILLA_SNIFFER_STATE_DIGGING_ID,
+};
+use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
     ChunkSection, ChunkState, ItemEquipmentSlot, LightData, LocalPlayerPoseState, PaletteDomain,
     PaletteKind, PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState, WorldStore,
@@ -106,15 +118,6 @@ use bbb_world::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
-    VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
-    VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
-    VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
-    VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
-    VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
-    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
 };
 use std::{
     collections::BTreeMap,
@@ -291,6 +294,34 @@ fn allay_dancing_data(dancing: bool) -> ProtocolEntityDataValue {
         serializer_id:
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         value: EntityDataValueKind::Boolean(dancing),
+    }
+}
+
+fn sniffer_state_data(state_id: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    )
+    .expect("generated Sniffer state accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
+        value: EntityDataValueKind::EnumId {
+            serializer: EntityDataEnumSerializer::SnifferState,
+            id: state_id,
+        },
+    }
+}
+
+fn sniffer_baby_data(is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, _) =
+        vanilla_entity_metadata_baby_accessor_for_entity_type(VANILLA_ENTITY_TYPE_SNIFFER_ID)
+            .expect("generated Sniffer inherited baby accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(is_baby),
     }
 }
 
@@ -6571,10 +6602,6 @@ fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
-    const SNIFFER_STATE_DATA_ID: u8 = 18;
-    const SNIFFER_DROP_SEED_AT_TICK_DATA_ID: u8 = 19;
-    const SNIFFER_STATE_DIGGING_ID: i32 = 5;
-
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -6601,26 +6628,15 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            sniffer_baby_data(true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
+            sniffer_state_data(VANILLA_SNIFFER_STATE_DIGGING_ID),
             ProtocolEntityDataValue {
-                data_id: SNIFFER_STATE_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
-                value: EntityDataValueKind::EnumId {
-                    serializer: EntityDataEnumSerializer::SnifferState,
-                    id: SNIFFER_STATE_DIGGING_ID,
-                },
-            },
-            ProtocolEntityDataValue {
-                data_id: SNIFFER_DROP_SEED_AT_TICK_DATA_ID,
+                data_id: VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(1234),
             },

@@ -17434,3 +17434,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   schema 组装为 typed bundle；world/native/F3+I production 与 fixtures 继续消费该 bundle。
 - 删除两项 data/default 四个 facade 转发，保留全部 generated enum ordinal 常量；generator
   反向守卫扩展到 world/native/input fixtures，并保持每帧一次状态读取约束。
+
+## 2026-07-16：统一 Sniffer metadata 消费
+
+- animation-state 的 membership、wire index 与 `IDLING` typed default 统一由 generated
+  `Sniffer.DATA_STATE` accessor 提供；world animation/dimensions 与 F3+I fixtures 共享该入口。
+- 删除 state data/default 两个 facade，保留 drop-seed accessor/default 与全部 generated state
+  ordinal；Sniffer baby bounds/fixtures 改由继承的 generated `AgeableMob.DATA_BABY_ID` accessor
+  构造，generator 反向守卫禁止恢复固定 slot。

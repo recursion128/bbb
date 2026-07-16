@@ -6126,11 +6126,20 @@ mod tests {
 
     #[test]
     fn generated_sniffer_state_accessor_owns_membership_index_and_default() {
+        let sniffer = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Sniffer);
+        let state = sniffer
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_STATE")
+            .expect("generated Sniffer state field");
+        let VanillaEntityMetadataDefault::Int(state_default) = state.default else {
+            panic!("generated Sniffer state default must be enum INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_SNIFFER_ID
             ),
-            Some((18, 0))
+            Some((state.data_id, state_default))
         );
         assert_eq!(
             vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
@@ -7759,10 +7768,18 @@ mod tests {
         );
         assert_eq!(sniffer.inherited_field_count, 18);
         assert_eq!(sniffer.own_fields.len(), 2);
-        assert_eq!(VANILLA_SNIFFER_STATE_DATA_ID, 18);
         assert_eq!(VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID, 19);
-        assert_eq!(VANILLA_SNIFFER_DEFAULT_STATE, 0);
         assert_eq!(VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK, 0);
+        let (state_data_id, state_default) =
+            vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SNIFFER_ID,
+            )
+            .expect("generated Sniffer state accessor");
+        assert_eq!(state_data_id, sniffer.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(state_default),
+            sniffer.own_fields[0].default
+        );
         assert_eq!(VANILLA_SNIFFER_STATE_IDLING_ID, 0);
         assert_eq!(VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID, 1);
         assert_eq!(VANILLA_SNIFFER_STATE_SCENTING_ID, 2);

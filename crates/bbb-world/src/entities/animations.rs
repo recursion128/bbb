@@ -4070,7 +4070,7 @@ impl EntityClientAnimationState {
                     .set_pose(pose_id, self.age_ticks);
             }
             VANILLA_ENTITY_TYPE_SNIFFER_ID => {
-                // Vanilla `Sniffer.onSyncedDataUpdated(DATA_STATE)`: the synced state (id 18) selects
+                // Vanilla `Sniffer.onSyncedDataUpdated(DATA_STATE)`: the synced state selects
                 // the one mutually-exclusive `AnimationState` to start, and a state change
                 // `resetAnimations()` + restarts it. The sniffer's `aiStep` runs client-side for
                 // remote entities, so the synced state drives the pose directly. `DATA_STATE` is

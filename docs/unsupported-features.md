@@ -431,9 +431,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   semantic fixtures must not restore fixed accessor/default aliases or hand-written wire indices,
   and must keep generated enum ordinals.
   Sniffer animation-state membership, wire index and typed default must remain derived from
-  generated `Sniffer.DATA_STATE`; world animation and dimensions consumers must not restore fixed
-  accessor/default aliases or duplicate the generated `Sniffer.State` ordinals. Sniffer baby
-  bounds must use the generated inherited baby accessor rather than a fixed AgeableMob slot.
+  generated `Sniffer.DATA_STATE`; world animation, dimensions, F3+I and semantic fixtures must not
+  restore fixed accessor/default aliases, hand-written wire indices, or duplicate the generated
+  `Sniffer.State` ordinals. Sniffer baby bounds and fixtures must use the generated inherited baby
+  accessor rather than a fixed AgeableMob slot; the separate drop-seed accessor remains generated.
   Armadillo animation-state membership, wire index and typed default must remain derived from
   generated `Armadillo.ARMADILLO_STATE`; world metadata/event and native model/debug consumers
   must not restore fixed accessor/default aliases or duplicate the generated `ArmadilloState`

@@ -6,6 +6,14 @@ use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_USING_TONGUE_ID,
 };
 
+fn sniffer_state_data(state_id: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    )
+    .expect("generated Sniffer state accessor must resolve");
+    protocol_enum_data(data_id, EntityDataEnumSerializer::SnifferState, state_id)
+}
+
 #[test]
 fn entity_model_sources_project_chicken_wing_flap() {
     let source = |store: &WorldStore, partial: f32| {
@@ -694,13 +702,8 @@ fn entity_model_sources_project_frog_jump_seconds() {
 
 #[test]
 fn entity_model_sources_project_sniffer_state_animation() {
-    // Vanilla `Sniffer.DATA_STATE` (id 18), the `Sniffer.State` ordinal VarInt;
+    // Vanilla `Sniffer.DATA_STATE`, the `Sniffer.State` ordinal VarInt;
     // `Sniffer.onSyncedDataUpdated` `resetAnimations()` then starts the matching one-shot.
-    const SNIFFER_STATE_DATA_ID: u8 = 18;
-    const SNIFFER_STATE_IDLING_ID: i32 = 0;
-    const SNIFFER_STATE_SNIFFING_ID: i32 = 3;
-    const SNIFFER_STATE_SEARCHING_ID: i32 = 4;
-    const SNIFFER_STATE_DIGGING_ID: i32 = 5;
     let animation = |store: &WorldStore, partial: f32| {
         let source = store
             .entity_model_sources_at_partial_tick(partial)
@@ -735,41 +738,35 @@ fn entity_model_sources_project_sniffer_state_animation() {
     // and the elapsed seconds begin at `0` (plus the partial tick), advancing `1 / 20` per tick.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
-        values: vec![protocol_enum_data(
-            SNIFFER_STATE_DATA_ID,
-            EntityDataEnumSerializer::SnifferState,
-            SNIFFER_STATE_DIGGING_ID
-        )],
+        values: vec![sniffer_state_data(VANILLA_SNIFFER_STATE_DIGGING_ID)],
     }));
     let (id, seconds) = animation(&store, 0.0);
-    assert_eq!(id, SNIFFER_STATE_DIGGING_ID);
+    assert_eq!(id, VANILLA_SNIFFER_STATE_DIGGING_ID);
     assert!((seconds - 0.0).abs() < 1.0e-6);
     // The partial tick folds into the live age (`(0 + 0.5) / 20`).
     assert!((animation(&store, 0.5).1 - 0.025).abs() < 1.0e-6);
     store.advance_entity_client_animations(4);
-    assert_eq!(animation(&store, 0.0), (SNIFFER_STATE_DIGGING_ID, 0.2));
+    assert_eq!(
+        animation(&store, 0.0),
+        (VANILLA_SNIFFER_STATE_DIGGING_ID, 0.2)
+    );
 
     // Changing to a different animated state restarts the timer from `0` (vanilla `resetAnimations()`
     // + `startIfStopped` on the transition) and switches the id to the new state.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
-        values: vec![protocol_enum_data(
-            SNIFFER_STATE_DATA_ID,
-            EntityDataEnumSerializer::SnifferState,
-            SNIFFER_STATE_SNIFFING_ID
-        )],
+        values: vec![sniffer_state_data(VANILLA_SNIFFER_STATE_SNIFFING_ID)],
     }));
-    assert_eq!(animation(&store, 0.0), (SNIFFER_STATE_SNIFFING_ID, 0.0));
+    assert_eq!(
+        animation(&store, 0.0),
+        (VANILLA_SNIFFER_STATE_SNIFFING_ID, 0.0)
+    );
 
     // `SEARCHING` carries no one-shot (it drives the looping search-walk), so it clears to the
     // no-animation sentinel — but `sniffer_is_searching` flips true to swap in the search-walk.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
-        values: vec![protocol_enum_data(
-            SNIFFER_STATE_DATA_ID,
-            EntityDataEnumSerializer::SnifferState,
-            SNIFFER_STATE_SEARCHING_ID
-        )],
+        values: vec![sniffer_state_data(VANILLA_SNIFFER_STATE_SEARCHING_ID)],
     }));
     assert_eq!(animation(&store, 1.0), (-1, -1.0));
     assert!(is_searching(&store));
@@ -777,11 +774,7 @@ fn entity_model_sources_project_sniffer_state_animation() {
     // Returning to `IDLING` likewise stays cleared and is no longer searching.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 119,
-        values: vec![protocol_enum_data(
-            SNIFFER_STATE_DATA_ID,
-            EntityDataEnumSerializer::SnifferState,
-            SNIFFER_STATE_IDLING_ID
-        )],
+        values: vec![sniffer_state_data(VANILLA_SNIFFER_STATE_IDLING_ID)],
     }));
     assert_eq!(animation(&store, 1.0), (-1, -1.0));
     assert!(!is_searching(&store));

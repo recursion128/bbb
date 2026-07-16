@@ -46,6 +46,22 @@ fn camel_last_pose_change_tick_data(entity_type_id: i32, tick: i64) -> ProtocolE
     protocol_long_data(data_id, tick)
 }
 
+fn sniffer_state_data(state_id: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    )
+    .expect("generated Sniffer state accessor must resolve");
+    protocol_enum_data(data_id, EntityDataEnumSerializer::SnifferState, state_id)
+}
+
+fn sniffer_baby_data(is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_baby_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SNIFFER_ID,
+    )
+    .expect("generated Sniffer inherited baby accessor must resolve");
+    protocol_bool_data(data_id, is_baby)
+}
+
 #[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
@@ -1381,10 +1397,6 @@ fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
 #[test]
 fn sniffer_pick_bounds_follow_vanilla_state_and_age_scale() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
-    const SNIFFER_STATE_DATA_ID: u8 = 18;
-    const SNIFFER_STATE_SEARCHING: i32 = 4;
-    const SNIFFER_STATE_DIGGING: i32 = 5;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(42, 119));
@@ -1396,11 +1408,7 @@ fn sniffer_pick_bounds_follow_vanilla_state_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 42,
-        values: vec![protocol_enum_data(
-            SNIFFER_STATE_DATA_ID,
-            EntityDataEnumSerializer::SnifferState,
-            SNIFFER_STATE_DIGGING,
-        )],
+        values: vec![sniffer_state_data(VANILLA_SNIFFER_STATE_DIGGING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(42),
@@ -1409,7 +1417,7 @@ fn sniffer_pick_bounds_follow_vanilla_state_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 42,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![sniffer_baby_data(true)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(42),
@@ -1439,11 +1447,7 @@ fn sniffer_pick_bounds_follow_vanilla_state_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 42,
-        values: vec![protocol_enum_data(
-            SNIFFER_STATE_DATA_ID,
-            EntityDataEnumSerializer::SnifferState,
-            SNIFFER_STATE_SEARCHING,
-        )],
+        values: vec![sniffer_state_data(VANILLA_SNIFFER_STATE_SEARCHING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(42),

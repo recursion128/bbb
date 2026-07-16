@@ -133,8 +133,6 @@ const GENERATED_VANILLA_PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
 pub const VANILLA_PANDA_HIDDEN_GENE_DATA_ID: u8 = GENERATED_VANILLA_PANDA_HIDDEN_GENE_DATA_ID;
 const GENERATED_VANILLA_PANDA_FLAGS_DATA_ID: u8 = 23;
 pub const VANILLA_PANDA_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_PANDA_FLAGS_DATA_ID;
-const GENERATED_VANILLA_SNIFFER_STATE_DATA_ID: u8 = 18;
-pub const VANILLA_SNIFFER_STATE_DATA_ID: u8 = GENERATED_VANILLA_SNIFFER_STATE_DATA_ID;
 const GENERATED_VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID: u8 = 19;
 pub const VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID: u8 =
     GENERATED_VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID;
@@ -676,8 +674,6 @@ const GENERATED_VANILLA_PANDA_DEFAULT_HIDDEN_GENE: i8 = 0;
 pub const VANILLA_PANDA_DEFAULT_HIDDEN_GENE: i8 = GENERATED_VANILLA_PANDA_DEFAULT_HIDDEN_GENE;
 const GENERATED_VANILLA_PANDA_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_PANDA_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_PANDA_DEFAULT_FLAGS;
-const GENERATED_VANILLA_SNIFFER_DEFAULT_STATE: i32 = 0;
-pub const VANILLA_SNIFFER_DEFAULT_STATE: i32 = GENERATED_VANILLA_SNIFFER_DEFAULT_STATE;
 const GENERATED_VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK: i32 = 0;
 pub const VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK: i32 =
     GENERATED_VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK;
@@ -25007,17 +25003,40 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_sniffer_state_does_not_restore_accessor_constants() {
+    fn sniffer_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         assert!(
             animations.contains("vanilla_entity_metadata_sniffer_state_accessor_for_entity_type")
         );
         assert!(animations.contains("sniffer_state_id(entity_type_id, data_values)"));
+        assert!(!animations.contains("synced state (id 18)"));
         let dimensions = include_str!("../dimensions.rs");
         assert!(
             dimensions.contains("vanilla_entity_metadata_sniffer_state_accessor_for_entity_type")
         );
         assert!(dimensions.contains("vanilla_is_baby(entity_type_id, data_values)"));
+        let bounds_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
+        let bounds_fixture = bounds_tests
+            .split("fn sniffer_pick_bounds_follow_vanilla_state_and_age_scale")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("Sniffer bounds fixture source");
+        assert!(bounds_fixture.contains("sniffer_state_data("));
+        assert!(bounds_fixture.contains("sniffer_baby_data("));
+        let animation_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
+        let animation_fixture = animation_tests
+            .split("fn entity_model_sources_project_sniffer_state_animation")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("Sniffer animation fixture source");
+        assert!(animation_fixture.contains("sniffer_state_data("));
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let native_input_fixture = native_input_tests
+            .split("fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("Sniffer F3+I fixture source");
+        assert!(native_input_fixture.contains("sniffer_state_data("));
         for removed in ["SNIFFER_STATE_DATA_ID", "SNIFFER_DEFAULT_STATE"] {
             assert!(
                 !animations.contains(removed),
@@ -25026,6 +25045,18 @@ mod generated_catalog_guards {
             assert!(
                 !dimensions.contains(removed),
                 "dimensions restored {removed}"
+            );
+            assert!(
+                !bounds_fixture.contains(removed),
+                "bounds fixture restored {removed}"
+            );
+            assert!(
+                !animation_fixture.contains(removed),
+                "animation fixture restored {removed}"
+            );
+            assert!(
+                !native_input_fixture.contains(removed),
+                "native input fixture restored {removed}"
             );
         }
     }
