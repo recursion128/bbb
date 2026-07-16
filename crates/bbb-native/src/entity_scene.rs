@@ -45,6 +45,7 @@ use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_cat_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_companion_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_copper_golem_accessors_for_entity_type;
@@ -152,10 +153,6 @@ use bbb_world::{
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
     VANILLA_BEE_DEFAULT_ANGER_END_TIME as BEE_DEFAULT_ANGER_END_TIME,
     VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
-};
-use bbb_world::{
-    VANILLA_CAT_COLLAR_COLOR_DATA_ID as CAT_COLLAR_COLOR_DATA_ID,
-    VANILLA_CAT_DEFAULT_COLLAR_COLOR as CAT_DEFAULT_COLLAR_COLOR_ID,
 };
 #[cfg(test)]
 use bbb_world::{

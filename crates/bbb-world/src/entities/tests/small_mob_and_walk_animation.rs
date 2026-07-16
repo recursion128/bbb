@@ -1156,6 +1156,9 @@ fn entity_model_sources_project_fox_head_roll_and_crouch() {
 
 #[test]
 fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
+    let accessors =
+        vanilla_entity_metadata_cat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID)
+            .expect("generated Cat metadata accessors must resolve");
     let source = |store: &WorldStore, id: i32, partial: f32| {
         store
             .entity_model_sources_at_partial_tick(partial)
@@ -1197,8 +1200,8 @@ fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 92,
         values: vec![
-            protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true),
-            protocol_bool_data(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, true),
+            protocol_bool_data(accessors.lying_data_id, true),
+            protocol_bool_data(accessors.relax_state_one_data_id, true),
         ],
     }));
     store.advance_entity_client_animations(2);
@@ -1208,8 +1211,8 @@ fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 92,
         values: vec![
-            protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, false),
-            protocol_bool_data(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, false),
+            protocol_bool_data(accessors.lying_data_id, false),
+            protocol_bool_data(accessors.relax_state_one_data_id, false),
         ],
     }));
     store.advance_entity_client_animations(1);
@@ -1219,8 +1222,8 @@ fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 93,
         values: vec![
-            protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true),
-            protocol_bool_data(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, true),
+            protocol_bool_data(accessors.lying_data_id, true),
+            protocol_bool_data(accessors.relax_state_one_data_id, true),
         ],
     }));
     store.advance_entity_client_animations(2);
@@ -1233,6 +1236,9 @@ fn entity_model_sources_project_cat_lie_down_and_relax_amounts() {
 
 #[test]
 fn entity_model_sources_project_cat_lying_on_sleeping_player() {
+    let accessors =
+        vanilla_entity_metadata_cat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID)
+            .expect("generated Cat metadata accessors must resolve");
     const POSE_STANDING: i32 = 0;
     const POSE_SLEEPING: i32 = 2;
 
@@ -1284,7 +1290,7 @@ fn entity_model_sources_project_cat_lying_on_sleeping_player() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 94,
-        values: vec![protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true)],
+        values: vec![protocol_bool_data(accessors.lying_data_id, true)],
     }));
     assert!(
         lying_on_player(&store, 94),
@@ -1307,7 +1313,7 @@ fn entity_model_sources_project_cat_lying_on_sleeping_player() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 97,
-        values: vec![protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true)],
+        values: vec![protocol_bool_data(accessors.lying_data_id, true)],
     }));
     assert!(
         !lying_on_player(&store, 97),

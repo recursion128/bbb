@@ -22,8 +22,8 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID, VANILLA_BAT_FLAGS_DATA_ID,
     VANILLA_BAT_FLAG_RESTING, VANILLA_BEE_FLAGS_DATA_ID as BEE_FLAGS_DATA_ID,
-    VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID, VANILLA_CAT_IS_LYING_DATA_ID,
-    VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
+    VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
+    VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
@@ -9978,7 +9978,10 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
     assert_eq!(
         collar_of(&feline_model_kind(
             VANILLA_ENTITY_TYPE_CAT_ID,
-            &[protocol_int_data(CAT_COLLAR_COLOR_DATA_ID, 5)],
+            &[protocol_int_data(
+                cat_metadata_accessors().collar_color_data_id,
+                5,
+            )],
             true,
             None,
         )),
@@ -10003,7 +10006,7 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
             VANILLA_ENTITY_TYPE_CAT_ID,
             &[
                 protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
-                protocol_int_data(CAT_COLLAR_COLOR_DATA_ID, 5),
+                protocol_int_data(cat_metadata_accessors().collar_color_data_id, 5),
             ],
             true,
             None,
@@ -10233,8 +10236,8 @@ fn entity_model_instances_project_cat_lie_down_and_relax_amounts_from_world() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 46,
         values: vec![
-            protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true),
-            protocol_bool_data(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, true),
+            protocol_bool_data(cat_metadata_accessors().lying_data_id, true),
+            protocol_bool_data(cat_metadata_accessors().relax_state_one_data_id, true),
         ],
     }));
     world.advance_entity_client_animations(2);
@@ -10244,8 +10247,8 @@ fn entity_model_instances_project_cat_lie_down_and_relax_amounts_from_world() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 47,
         values: vec![
-            protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true),
-            protocol_bool_data(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, true),
+            protocol_bool_data(cat_metadata_accessors().lying_data_id, true),
+            protocol_bool_data(cat_metadata_accessors().relax_state_one_data_id, true),
         ],
     }));
     world.advance_entity_client_animations(2);
@@ -10273,7 +10276,10 @@ fn entity_model_instances_project_cat_lying_on_sleeping_player_from_world() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 48,
-        values: vec![protocol_bool_data(VANILLA_CAT_IS_LYING_DATA_ID, true)],
+        values: vec![protocol_bool_data(
+            cat_metadata_accessors().lying_data_id,
+            true,
+        )],
     }));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 49,
@@ -11593,6 +11599,11 @@ fn protocol_pig_variant_data(id: i32) -> EntityDataValue {
 fn wolf_metadata_accessors() -> bbb_world::VanillaWolfMetadataAccessors {
     vanilla_entity_metadata_wolf_accessors_for_entity_type(VANILLA_ENTITY_TYPE_WOLF_ID)
         .expect("generated Wolf metadata accessors must resolve")
+}
+
+fn cat_metadata_accessors() -> bbb_world::VanillaCatMetadataAccessors {
+    vanilla_entity_metadata_cat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID)
+        .expect("generated Cat metadata accessors must resolve")
 }
 
 fn protocol_zombie_nautilus_variant_data(id: i32) -> EntityDataValue {

@@ -145,6 +145,10 @@ pub(super) fn feline_model_kind(
     cat: bool,
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
+    let cat_accessors = cat.then(|| {
+        vanilla_entity_metadata_cat_accessors_for_entity_type(entity_type_id)
+            .expect("generated Cat metadata accessors must resolve")
+    });
     let tame =
         vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
             .is_some_and(|(data_id, default)| {
@@ -159,10 +163,11 @@ pub(super) fn feline_model_kind(
             CatModelVariant::Black
         },
         collar: (cat && tame).then(|| {
+            let accessors = cat_accessors.expect("Cat metadata accessors resolved above");
             EntityDyeColor::from_vanilla_id(entity_data_int(
                 values,
-                CAT_COLLAR_COLOR_DATA_ID,
-                CAT_DEFAULT_COLLAR_COLOR_ID,
+                accessors.collar_color_data_id,
+                accessors.collar_color_default,
             ))
         }),
     }

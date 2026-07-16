@@ -306,6 +306,16 @@ pub struct VanillaCompanionVariantMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaCatMetadataAccessors {
+    pub lying_data_id: u8,
+    pub lying_default: bool,
+    pub relax_state_one_data_id: u8,
+    pub relax_state_one_default: bool,
+    pub collar_color_data_id: u8,
+    pub collar_color_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaWolfMetadataAccessors {
     pub interested_data_id: u8,
     pub interested_default: bool,
@@ -1484,43 +1494,74 @@ pub fn vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_t
     }
 }
 
+/// Resolves Cat's generated lying, relax-state-one, and collar-color accessors.
+pub fn vanilla_entity_metadata_cat_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaCatMetadataAccessors> {
+    let lying = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IS_LYING")?;
+    let relax_state_one =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "RELAX_STATE_ONE")?;
+    let collar_color =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_COLLAR_COLOR")?;
+    match (
+        (lying.owner, lying.serializer_name, lying.typed_default),
+        (
+            relax_state_one.owner,
+            relax_state_one.serializer_name,
+            relax_state_one.typed_default,
+        ),
+        (
+            collar_color.owner,
+            collar_color.serializer_name,
+            collar_color.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.feline.Cat",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(lying_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.feline.Cat",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(relax_state_one_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.feline.Cat",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(collar_color_default)),
+            ),
+        ) => Some(VanillaCatMetadataAccessors {
+            lying_data_id: lying.data_id,
+            lying_default,
+            relax_state_one_data_id: relax_state_one.data_id,
+            relax_state_one_default,
+            collar_color_data_id: collar_color.data_id,
+            collar_color_default,
+        }),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Cat lying accessor and its typed default.
 pub fn vanilla_entity_metadata_cat_lying_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, bool)> {
-    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IS_LYING")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
-        (
-            "net.minecraft.world.entity.animal.feline.Cat",
-            "BOOLEAN",
-            Some(VanillaEntityMetadataDefault::Boolean(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+    vanilla_entity_metadata_cat_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.lying_data_id, accessors.lying_default))
 }
 
 /// Resolves the generated Cat relax-state-one accessor and its typed default.
 pub fn vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, bool)> {
-    let accessor =
-        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "RELAX_STATE_ONE")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
+    vanilla_entity_metadata_cat_accessors_for_entity_type(entity_type_id).map(|accessors| {
         (
-            "net.minecraft.world.entity.animal.feline.Cat",
-            "BOOLEAN",
-            Some(VanillaEntityMetadataDefault::Boolean(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+            accessors.relax_state_one_data_id,
+            accessors.relax_state_one_default,
+        )
+    })
 }
 
 /// Resolves the generated Creaking can-move accessor and its typed default.
@@ -5312,26 +5353,35 @@ mod tests {
     }
 
     #[test]
-    fn generated_cat_lie_down_accessors_own_membership_indices_and_defaults() {
+    fn generated_cat_accessors_own_membership_indices_and_defaults() {
+        let expected = VanillaCatMetadataAccessors {
+            lying_data_id: VANILLA_CAT_IS_LYING_DATA_ID,
+            lying_default: VANILLA_CAT_DEFAULT_IS_LYING,
+            relax_state_one_data_id: VANILLA_CAT_RELAX_STATE_ONE_DATA_ID,
+            relax_state_one_default: VANILLA_CAT_DEFAULT_RELAX_STATE_ONE,
+            collar_color_data_id: VANILLA_CAT_COLLAR_COLOR_DATA_ID,
+            collar_color_default: VANILLA_CAT_DEFAULT_COLLAR_COLOR,
+        };
+        assert_eq!(
+            vanilla_entity_metadata_cat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID),
+            Some(expected)
+        );
         assert_eq!(
             vanilla_entity_metadata_cat_lying_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID),
-            Some((21, false))
+            Some((expected.lying_data_id, expected.lying_default))
         );
         assert_eq!(
             vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_CAT_ID
             ),
-            Some((22, false))
+            Some((
+                expected.relax_state_one_data_id,
+                expected.relax_state_one_default,
+            ))
         );
         for entity_type_id in [VANILLA_ENTITY_TYPE_WOLF_ID, -1] {
             assert_eq!(
-                vanilla_entity_metadata_cat_lying_accessor_for_entity_type(entity_type_id),
-                None
-            );
-            assert_eq!(
-                vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type(
-                    entity_type_id
-                ),
+                vanilla_entity_metadata_cat_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

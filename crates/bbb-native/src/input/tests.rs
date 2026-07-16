@@ -7021,6 +7021,13 @@ fn shift_f3_i_with_permission_copies_local_camel_husk_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors =
+        vanilla_entity_metadata_cat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID)
+            .expect("generated Cat metadata accessors must resolve");
+    let variant_accessors = vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_CAT_ID,
+    )
+    .expect("generated Cat variant metadata accessors must resolve");
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
         "minecraft:cat_variant",
@@ -7072,7 +7079,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
             },
             ProtocolEntityDataValue {
-                data_id: CAT_VARIANT_DATA_ID,
+                data_id: variant_accessors.variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatVariant,
@@ -7080,7 +7087,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
                 },
             },
             ProtocolEntityDataValue {
-                data_id: CAT_SOUND_VARIANT_DATA_ID,
+                data_id: variant_accessors.sound_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatSoundVariant,
@@ -7088,7 +7095,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
                 },
             },
             ProtocolEntityDataValue {
-                data_id: CAT_COLLAR_COLOR_DATA_ID,
+                data_id: accessors.collar_color_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(5),
             },

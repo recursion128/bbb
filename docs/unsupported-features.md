@@ -375,9 +375,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   remain derived together from generated `Wolf.DATA_INTERESTED_ID`, `DATA_COLLAR_COLOR` and
   `DATA_ANGER_END_TIME`; world head-roll plus native model/tail/F3+I consumers and fixtures must not
   restore fixed accessor/default aliases or read same-index metadata from another entity family.
-  Cat lie-down and relax-state-one membership, wire indices and typed defaults must remain derived
-  from generated `Cat.IS_LYING` and `Cat.RELAX_STATE_ONE`; world animation and sleeping-player
-  projection must not restore fixed accessor/default aliases or parallel Cat membership gates.
+  Cat lie-down/relax-state-one/collar-color membership, wire indices and typed defaults must remain
+  derived together from generated `Cat.IS_LYING`, `RELAX_STATE_ONE` and `DATA_COLLAR_COLOR`; world
+  animation/sleeping-player plus native model/F3+I consumers and fixtures must not restore fixed
+  accessor/default aliases or parallel Cat membership gates.
   Creaking can-move, active, tearing-down and home-position membership, wire indices and typed
   defaults must remain derived from generated `Creaking.CAN_MOVE`, `Creaking.IS_ACTIVE`,
   `Creaking.IS_TEARING_DOWN` and `Creaking.HOME_POS`; world animation/collision, native model and

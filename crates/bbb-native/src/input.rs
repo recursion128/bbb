@@ -82,6 +82,7 @@ use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_cat_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_companion_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_copper_golem_accessors_for_entity_type;
@@ -185,15 +186,6 @@ use bbb_world::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
-};
-use bbb_world::{
-    VANILLA_CAT_COLLAR_COLOR_DATA_ID as CAT_COLLAR_COLOR_DATA_ID,
-    VANILLA_CAT_DEFAULT_COLLAR_COLOR as CAT_DEFAULT_COLLAR_COLOR_ID,
-};
-#[cfg(test)]
-use bbb_world::{
-    VANILLA_CAT_SOUND_VARIANT_DATA_ID as CAT_SOUND_VARIANT_DATA_ID,
-    VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID,
 };
 #[cfg(test)]
 use bbb_world::{
@@ -6985,14 +6977,19 @@ fn debug_push_cat_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    let Some(accessors) =
+    let Some(variant_accessors) =
         vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let Some(accessors) =
+        vanilla_entity_metadata_cat_accessors_for_entity_type(entity.entity_type_id)
     else {
         return;
     };
     let variant = debug_entity_data_registry_id_present(
         entity,
-        accessors.variant_data_id,
+        variant_accessors.variant_data_id,
         EntityDataRegistryHolder::CatVariant,
     )
     .and_then(|id| {
@@ -7000,10 +6997,10 @@ fn debug_push_cat_additional_save_data(
             CatModelVariant::for_vanilla_registry_id(id).map(CatModelVariant::resource_id)
         })
     })
-    .unwrap_or(accessors.variant_default_resource_id);
+    .unwrap_or(variant_accessors.variant_default_resource_id);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
-        accessors.sound_variant_data_id,
+        variant_accessors.sound_variant_data_id,
         EntityDataRegistryHolder::CatSoundVariant,
     )
     .and_then(|id| {
@@ -7012,10 +7009,10 @@ fn debug_push_cat_additional_save_data(
                 .map(CatSoundVariantIdentity::resource_id)
         })
     })
-    .unwrap_or(accessors.sound_variant_default_resource_id);
-    let collar_color = debug_entity_data_int_present(entity, CAT_COLLAR_COLOR_DATA_ID)
+    .unwrap_or(variant_accessors.sound_variant_default_resource_id);
+    let collar_color = debug_entity_data_int_present(entity, accessors.collar_color_data_id)
         .map(debug_dye_color_legacy_save_id)
-        .unwrap_or(CAT_DEFAULT_COLLAR_COLOR_ID);
+        .unwrap_or(accessors.collar_color_default);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",

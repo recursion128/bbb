@@ -17141,3 +17141,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   save-debug 不再维护固定 wire index/default aliases。
 - world/native/input fixtures 同步复用 bundle；schema generator 的 Wolf 反向守卫扩展到
   animations/store/scene/input，同时保留 companion variant/sound holder bundle 的职责边界。
+
+## 2026-07-16：派生 Cat metadata accessor bundle
+
+- Cat lying、relax-state-one 与 collar-color 三项 metadata identity 组合为 typed bundle；既有
+  lying/relax 窄 helper 委托该 bundle，world animation/sleeping-player、native model 与 F3+I
+  save-debug 不再维护固定 wire index/default aliases。
+- world/native/input fixtures 同步复用 bundle；schema generator 的 Cat 反向守卫扩展到
+  animations/store/scene/input，同时保留 companion variant/sound holder bundle 的职责边界。
