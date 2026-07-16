@@ -386,9 +386,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generated `HoglinBase` interface graph rather than parallel entity-type tables.
   Illager celebrating-arm-pose membership must remain derived from the nearest generated
   `getArmPose` class behavior rather than an Evoker/Vindicator entity-type table.
-  Camel sit/sit-pose/stand-up animation membership must consume the generated `Camel` class
-  hierarchy directly, including CamelHusk, rather than a parallel two-type table or forwarding
-  compatibility query.
   Debug entity save-data dispatch for Camel, Guardian, and Slime families must consume their
   generated class memberships rather than parallel base/subclass type pairs.
   The shared AbstractChestedHorse debug save chain must consume its generated four-type class

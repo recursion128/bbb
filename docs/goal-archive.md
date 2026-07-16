@@ -16853,3 +16853,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `home_pos: [I; 0, 0, 0]`，并继续从 metadata 写出 `has_egg`。
 - 普通 F3+I 的服务端 tag-query 路径保留权威非零 `home_pos` 与 `has_egg`，只按 vanilla
   summon recreate 规则移除 `UUID` 和 `Pos`；两条 focused 测试分别锁定本地与服务端边界。
+
+## 2026-07-16：统一 Camel family walk-animation membership
+
+- Camel walk-animation speed/factor override 不再只匹配 `CAMEL` type id，而是消费生成的
+  Camel class hierarchy membership；`CamelHusk extends Camel` 因此与 vanilla 一样继承
+  `distance × 6`、上限 `1.0`、easing factor `0.2` 的 walk update。
+- focused test 同时锁定 Camel 与 CamelHusk，metadata schema generator 输出反向门禁，禁止
+  walk-update 消费面恢复 Camel/CamelHusk type-id 分支。

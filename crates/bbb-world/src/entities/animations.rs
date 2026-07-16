@@ -2901,8 +2901,12 @@ fn walk_update_target_speed(
     camel_walk_active: bool,
 ) -> (f32, f32) {
     match entity_type_id {
-        VANILLA_ENTITY_TYPE_CAMEL_ID if camel_walk_active => ((distance * 6.0).min(1.0), 0.2),
-        VANILLA_ENTITY_TYPE_CAMEL_ID => (0.0, 0.2),
+        entity_type_id
+            if vanilla_entity_metadata_type_is_camel(entity_type_id) && camel_walk_active =>
+        {
+            ((distance * 6.0).min(1.0), 0.2)
+        }
+        entity_type_id if vanilla_entity_metadata_type_is_camel(entity_type_id) => (0.0, 0.2),
         VANILLA_ENTITY_TYPE_CREAKING_ID => ((distance * 25.0).min(3.0), 0.4),
         VANILLA_ENTITY_TYPE_FROG_ID if frog_jump_started => (0.0, 0.4),
         VANILLA_ENTITY_TYPE_FROG_ID => ((distance * 25.0).min(1.0), 0.4),

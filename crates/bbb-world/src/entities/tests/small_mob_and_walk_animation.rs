@@ -1657,6 +1657,14 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
     );
     assert_eq!(
         run_case(
+            VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+            vec![protocol_pose_data(6, POSE_STANDING)]
+        ),
+        (0.2, 0.2),
+        "CamelHusk inherits the Camel walk override through the generated class membership"
+    );
+    assert_eq!(
+        run_case(
             VANILLA_ENTITY_TYPE_CAMEL_ID,
             vec![protocol_pose_data(6, POSE_SITTING)]
         ),
