@@ -2,7 +2,6 @@ use super::*;
 use crate::entities::{
     VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
     VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as VANILLA_TAMABLE_ANIMAL_TAME_FLAGS_DATA_ID,
 };
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, CraftingRecipeDisplaySummary,
@@ -363,10 +362,13 @@ fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
     assert_eq!(
         mount_visibility_for_entity(
             VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-            vec![protocol_byte_data(
-                VANILLA_TAMABLE_ANIMAL_TAME_FLAGS_DATA_ID,
-                VANILLA_TAMABLE_ANIMAL_TAME_FLAG,
-            )],
+            vec![{
+                let accessors = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
+                    VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+                )
+                .expect("generated TamableAnimal metadata accessors must resolve");
+                protocol_byte_data(accessors.flags_data_id, accessors.tame_mask)
+            }],
         ),
         Some(MountEquipmentSlotVisibility {
             saddle: true,

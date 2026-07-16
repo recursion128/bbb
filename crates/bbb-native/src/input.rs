@@ -110,7 +110,7 @@ use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type;
-use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_tamable_animal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type;
@@ -131,7 +131,6 @@ use bbb_world::VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID;
 use bbb_world::VANILLA_LLAMA_STRENGTH_DATA_ID as LLAMA_STRENGTH_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID;
-use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 #[cfg(test)]
 use bbb_world::VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID;
 #[cfg(test)]
@@ -6940,14 +6939,17 @@ fn debug_llama_variant_save_id(variant: i32, default: i32) -> i32 {
 fn debug_push_trader_llama_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_tamable_animal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
-        entity.entity_type_id,
-    )
-    .map(|(data_id, default)| debug_entity_data_byte_present(entity, data_id).unwrap_or(default))
-    .unwrap_or(0);
+    let accessors =
+        vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity.entity_type_id);
+    let flags = accessors
+        .map(|accessors| {
+            debug_entity_data_byte_present(entity, accessors.flags_data_id)
+                .unwrap_or(accessors.flags_default)
+        })
+        .unwrap_or(0);
     fields.push(format!(
         "Sitting: {}",
-        debug_snbt_bool(flags & TAMABLE_ANIMAL_SITTING_FLAG != 0)
+        debug_snbt_bool(accessors.is_some_and(|accessors| flags & accessors.sitting_mask != 0))
     ));
 }
 

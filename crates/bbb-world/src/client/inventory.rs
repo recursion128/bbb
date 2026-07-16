@@ -43,9 +43,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::entities::{
     vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
-    vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type, EntityStore,
+    vanilla_entity_metadata_tamable_animal_accessors_for_entity_type, EntityStore,
     ATTACK_SWING_DURATION, VANILLA_AGEABLE_MOB_BABY_DATA_ID, VANILLA_AGEABLE_MOB_DEFAULT_BABY,
-    VANILLA_TAMABLE_ANIMAL_FLAG_TAME as VANILLA_TAMABLE_ANIMAL_TAME_FLAG,
 };
 use crate::item_profiles::{
     clamp_vanilla_item_max_stack_size, ItemProfiles, VANILLA_DEFAULT_MAX_STACK_SIZE,

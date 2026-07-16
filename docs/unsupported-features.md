@@ -299,9 +299,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   remain derived together from generated `AbstractHorse.DATA_ID_FLAGS` and `FLAG_*`; animation,
   mount inventory, native debug and their fixtures must not restore fixed accessor/default aliases
   or hand-copied flag masks.
-  TamableAnimal sitting/tame membership, inherited wire index and default must remain derived from
-  generated `TamableAnimal.DATA_FLAGS_ID`; world/native presentation, mount inventory and native
-  debug consumers must not restore fixed accessor aliases.
+  TamableAnimal sitting/tame/owner membership, inherited wire indices, typed defaults and two named
+  masks must remain derived together from generated `TamableAnimal.DATA_FLAGS_ID`,
+  `DATA_OWNERUUID_ID` and their `FLAG_*`; world/native presentation, mount inventory, native debug
+  and their fixtures must not restore fixed accessor/default aliases or hand-copied masks.
   AbstractArrow flags, pierce-level and in-ground membership, inherited wire indices and defaults
   must remain derived from generated `AbstractArrow.ID_FLAGS`, `PIERCE_LEVEL` and `IN_GROUND`;
   Arrow effect color plus ThrownTrident loyalty/foil identity must likewise come from generated

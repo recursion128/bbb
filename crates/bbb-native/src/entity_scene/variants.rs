@@ -149,11 +149,12 @@ pub(super) fn feline_model_kind(
         vanilla_entity_metadata_cat_accessors_for_entity_type(entity_type_id)
             .expect("generated Cat metadata accessors must resolve")
     });
-    let tame =
-        vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
-            .is_some_and(|(data_id, default)| {
-                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_TAME_FLAG != 0
-            });
+    let tame = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+        .is_some_and(|accessors| {
+            entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
+                & accessors.tame_mask
+                != 0
+        });
     EntityModelKind::Feline {
         cat,
         baby: ageable_baby(values),
@@ -739,11 +740,12 @@ pub(super) fn wolf_model_kind(
 ) -> EntityModelKind {
     let accessors = vanilla_entity_metadata_wolf_accessors_for_entity_type(entity_type_id)
         .expect("generated Wolf metadata accessors must resolve");
-    let tame =
-        vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
-            .is_some_and(|(data_id, default)| {
-                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_TAME_FLAG != 0
-            });
+    let tame = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+        .is_some_and(|accessors| {
+            entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
+                & accessors.tame_mask
+                != 0
+        });
     EntityModelKind::Wolf {
         baby: ageable_baby(values),
         tame,
@@ -988,11 +990,12 @@ pub(super) fn wolf_tail_angle(
         // `Wolf.getTailAngle()` angry branch returns this exact constant.
         return 1.5393804;
     }
-    let tame =
-        vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
-            .is_some_and(|(data_id, default)| {
-                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_TAME_FLAG != 0
-            });
+    let tame = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+        .is_some_and(|accessors| {
+            entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
+                & accessors.tame_mask
+                != 0
+        });
     if !tame {
         return WILD_TAIL_ANGLE;
     }
@@ -1013,23 +1016,27 @@ pub(super) fn wolf_sitting(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
-        && vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
-            .is_some_and(|(data_id, default)| {
-                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_SITTING_FLAG != 0
+        && vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+            .is_some_and(|accessors| {
+                entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
+                    & accessors.sitting_mask
+                    != 0
             })
 }
 
 /// Vanilla `ParrotModel.getPose == SITTING` (`Parrot.isInSittingPose()`): the `TamableAnimal`
-/// `DATA_FLAGS_ID` sitting bit (id 18, the same byte the wolf uses for `isSitting`). Only the
-/// parrot renders the `prepare(SITTING)` perch pose, so non-parrot entities report `false`.
+/// generated `DATA_FLAGS_ID` sitting bit inherited by the wolf. Only the parrot renders the
+/// `prepare(SITTING)` perch pose, so non-parrot entities report `false`.
 pub(super) fn parrot_sitting(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID
-        && vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
-            .is_some_and(|(data_id, default)| {
-                entity_data_byte(values, data_id, default) & TAMABLE_ANIMAL_SITTING_FLAG != 0
+        && vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+            .is_some_and(|accessors| {
+                entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
+                    & accessors.sitting_mask
+                    != 0
             })
 }
 

@@ -297,6 +297,16 @@ pub struct VanillaAbstractHorseMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaTamableAnimalMetadataAccessors {
+    pub flags_data_id: u8,
+    pub flags_default: i8,
+    pub sitting_mask: i8,
+    pub tame_mask: i8,
+    pub owner_data_id: u8,
+    pub owner_default: Option<uuid::Uuid>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaLlamaMetadataAccessors {
     pub strength_data_id: u8,
     pub strength_default: i32,
@@ -2081,24 +2091,56 @@ pub fn vanilla_entity_metadata_wolf_interested_accessor_for_entity_type(
         .map(|accessors| (accessors.interested_data_id, accessors.interested_default))
 }
 
+/// Resolves the inherited TamableAnimal accessors, typed defaults, and named masks.
+pub fn vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaTamableAnimalMetadataAccessors> {
+    let flags = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
+    let owner =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_OWNERUUID_ID")?;
+    match (
+        (flags.owner, flags.serializer_name, flags.typed_default),
+        (owner.owner, owner.serializer_name, owner.typed_default),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.TamableAnimal",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(flags_default)),
+            ),
+            (
+                "net.minecraft.world.entity.TamableAnimal",
+                "OPTIONAL_LIVING_ENTITY_REFERENCE",
+                Some(VanillaEntityMetadataDefault::OptionalLivingEntityReferenceNone),
+            ),
+        ) => {
+            let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::TamableAnimal);
+            let mask = |name| {
+                schema
+                    .own_flags
+                    .iter()
+                    .find(|flag| flag.name == name && flag.data_id == flags.data_id)
+                    .map(|flag| flag.mask)
+            };
+            Some(VanillaTamableAnimalMetadataAccessors {
+                flags_data_id: flags.data_id,
+                flags_default,
+                sitting_mask: mask("FLAG_SITTING")?,
+                tame_mask: mask("FLAG_TAME")?,
+                owner_data_id: owner.data_id,
+                owner_default: None,
+            })
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the inherited TamableAnimal flags accessor and its typed default.
 pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i8)> {
-    let accessor =
-        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
-        (
-            "net.minecraft.world.entity.TamableAnimal",
-            "BYTE",
-            Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+    vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.flags_data_id, accessors.flags_default))
 }
 
 /// Resolves the inherited AbstractBoat paddle and bubble-time accessors with typed defaults.
@@ -5973,7 +6015,15 @@ mod tests {
     }
 
     #[test]
-    fn generated_tamable_animal_flags_accessor_owns_inherited_membership_index_and_default() {
+    fn generated_tamable_animal_accessors_own_inherited_membership_indices_defaults_and_masks() {
+        let expected = VanillaTamableAnimalMetadataAccessors {
+            flags_data_id: VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
+            flags_default: VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS,
+            sitting_mask: VANILLA_TAMABLE_ANIMAL_FLAG_SITTING,
+            tame_mask: VANILLA_TAMABLE_ANIMAL_FLAG_TAME,
+            owner_data_id: VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID,
+            owner_default: None,
+        };
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_CAT_ID,
             VANILLA_ENTITY_TYPE_WOLF_ID,
@@ -5982,21 +6032,26 @@ mod tests {
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         ] {
             assert_eq!(
+                vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id),
+                Some(expected),
+                "entity type {entity_type_id}"
+            );
+            assert_eq!(
                 vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
                     entity_type_id
                 ),
-                Some((18, 0)),
+                Some((expected.flags_data_id, expected.flags_default)),
                 "entity type {entity_type_id}"
             );
         }
         assert_eq!(
-            vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
+            vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
                 VANILLA_ENTITY_TYPE_CHICKEN_ID
             ),
             None
         );
         assert_eq!(
-            vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(-1),
+            vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(-1),
             None
         );
     }

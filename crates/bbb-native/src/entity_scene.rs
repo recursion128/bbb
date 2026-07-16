@@ -70,7 +70,7 @@ use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type;
-use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_tamable_animal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_thrown_trident_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
@@ -174,10 +174,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_COLOR_MASK as SHEEP_WOOL_COLOR_MASK,
-};
-use bbb_world::{
-    VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
-    VANILLA_TAMABLE_ANIMAL_FLAG_TAME as TAMABLE_ANIMAL_TAME_FLAG,
 };
 use bbb_world::{
     VANILLA_TROPICAL_FISH_BASE_COLOR_MASK as TROPICAL_FISH_BASE_COLOR_MASK,

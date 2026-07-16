@@ -1202,9 +1202,12 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
 fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
     const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
     const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
-    const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
     const POSE_STANDING: i32 = 0;
     const POSE_CROUCHING: i32 = 5;
+    let tamable_accessors = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_CAT_ID,
+    )
+    .expect("generated TamableAnimal metadata accessors must resolve");
 
     let state = |store: &WorldStore, id: i32| {
         let source = store
@@ -1250,8 +1253,8 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
             ),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
             protocol_byte_data(
-                VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                TAMABLE_ANIMAL_SITTING_FLAG,
+                tamable_accessors.flags_data_id,
+                tamable_accessors.sitting_mask,
             ),
         ],
     ));
@@ -1268,8 +1271,8 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
                 POSE_CROUCHING,
             ),
             protocol_byte_data(
-                VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                TAMABLE_ANIMAL_SITTING_FLAG,
+                tamable_accessors.flags_data_id,
+                tamable_accessors.sitting_mask,
             ),
         ],
     ));
@@ -1287,8 +1290,8 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
             ),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
             protocol_byte_data(
-                VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                TAMABLE_ANIMAL_SITTING_FLAG,
+                tamable_accessors.flags_data_id,
+                tamable_accessors.sitting_mask,
             ),
         ],
     ));
@@ -1305,7 +1308,10 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
                 POSE_STANDING,
             ),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
-            protocol_byte_data(VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID, 0),
+            protocol_byte_data(
+                tamable_accessors.flags_data_id,
+                tamable_accessors.flags_default
+            ),
         ],
     ));
     assert_eq!(state(&store, 76), (false, false, false));

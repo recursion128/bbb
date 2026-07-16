@@ -137,7 +137,6 @@ use bbb_world::{
     VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
     VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
-    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
 };
 use std::{
     collections::BTreeMap,
@@ -148,6 +147,24 @@ use uuid::Uuid;
 
 const TEST_SADDLE_ITEM_ID: i32 = 8_903;
 const VANILLA_ENTITY_DATA_POSE_ID: u8 = 6;
+
+fn tamable_animal_flags_data(
+    entity_type_id: i32,
+    tame: bool,
+    sitting: bool,
+) -> ProtocolEntityDataValue {
+    let accessors =
+        vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+            .expect("generated TamableAnimal metadata accessors must resolve");
+    let flags = if tame { accessors.tame_mask } else { 0 }
+        | if sitting { accessors.sitting_mask } else { 0 };
+    ProtocolEntityDataValue {
+        data_id: accessors.flags_data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(flags),
+    }
+}
 const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 
 fn abstract_horse_metadata_accessors(
@@ -4698,11 +4715,7 @@ fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
-            },
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_NAUTILUS_ID, false, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -4797,11 +4810,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
-            },
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, false, true),
             ProtocolEntityDataValue {
                 data_id: zombie_nautilus_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
@@ -6274,7 +6283,6 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
-    const TAMABLE_ANIMAL_SITTING_FLAG: i8 = 0x01;
     const PARROT_VARIANT_DATA_ID: u8 = 20;
 
     let mut input = ClientInputState::new(true);
@@ -6315,11 +6323,7 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
-            },
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_PARROT_ID, false, true),
             ProtocolEntityDataValue {
                 data_id: PARROT_VARIANT_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
@@ -7082,11 +7086,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
-            },
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
             ProtocolEntityDataValue {
                 data_id: variant_accessors.variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
@@ -7242,11 +7242,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
-            },
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, false, true),
             ProtocolEntityDataValue {
                 data_id: accessors.collar_color_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,

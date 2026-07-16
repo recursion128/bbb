@@ -17216,3 +17216,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native mount layout/hit-test 的 Donkey fixtures 不再与 TamableAnimal 共享同 index 测试常量，
   改为按 Donkey entity type 解析 AbstractHorse bundle 的 flags id 与 tame mask。
 - AbstractHorse 反向守卫扩展到 native inventory fixtures，并同时移除其中手写 Donkey type id。
+
+## 2026-07-16：派生 TamableAnimal metadata accessor bundle
+
+- TamableAnimal flags、owner optional living-entity reference、typed defaults 与 sitting/tame 两个
+  named masks 组合为 typed bundle；既有 flags 窄 helper 委托该 bundle，world/native
+  presentation、mount inventory 与 F3+I save-debug 不再维护固定 accessor/default/mask aliases。
+- world/native/inventory fixtures 同步按实际 entity type 解析 bundle；schema generator 的
+  TamableAnimal 反向守卫覆盖所有 production consumers 与相关语义 fixtures。

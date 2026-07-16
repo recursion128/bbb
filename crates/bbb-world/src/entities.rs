@@ -74,6 +74,7 @@ pub use schema::VanillaLlamaMetadataAccessors;
 pub use schema::VanillaMobMetadataAccessors;
 pub use schema::VanillaPandaMetadataAccessors;
 pub use schema::VanillaShulkerMetadataAccessors;
+pub use schema::VanillaTamableAnimalMetadataAccessors;
 pub use schema::VanillaThrownTridentMetadataAccessors;
 pub use schema::VanillaTurtleMetadataAccessors;
 pub use schema::VanillaZombieMetadataAccessors;
@@ -146,6 +147,7 @@ pub use schema::{
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
+    vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
     vanilla_entity_metadata_thrown_trident_accessors_for_entity_type,
     vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type,

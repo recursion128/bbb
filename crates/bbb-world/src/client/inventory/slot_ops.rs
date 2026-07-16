@@ -45,14 +45,17 @@ pub(super) fn mount_nautilus_can_use_equipment_slots(
     entity_type_id: i32,
     data_values: &[ProtocolEntityDataValue],
 ) -> bool {
-    let Some((flags_data_id, default_flags)) =
-        vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
+    let Some(accessors) =
+        vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
     else {
         return false;
     };
     !mount_entity_is_ageable_baby(data_values)
-        && (entity_data_byte(data_values, flags_data_id, default_flags)
-            & VANILLA_TAMABLE_ANIMAL_TAME_FLAG)
+        && (entity_data_byte(
+            data_values,
+            accessors.flags_data_id,
+            accessors.flags_default,
+        ) & accessors.tame_mask)
             != 0
 }
 

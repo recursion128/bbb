@@ -31,7 +31,6 @@ use bbb_world::{
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
     VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
-    VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
@@ -45,6 +44,15 @@ fn bee_metadata_accessors() -> bbb_world::VanillaBeeMetadataAccessors {
 fn panda_metadata_accessors() -> bbb_world::VanillaPandaMetadataAccessors {
     vanilla_entity_metadata_panda_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PANDA_ID)
         .expect("generated Panda metadata accessors must resolve")
+}
+
+fn tamable_animal_flags_data(entity_type_id: i32, tame: bool, sitting: bool) -> EntityDataValue {
+    let accessors =
+        bbb_world::vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
+            .expect("generated TamableAnimal metadata accessors must resolve");
+    let flags = if tame { accessors.tame_mask } else { 0 }
+        | if sitting { accessors.sitting_mask } else { 0 };
+    protocol_byte_data(accessors.flags_data_id, flags)
 }
 
 #[test]
@@ -9657,9 +9665,10 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_WOLF_ID,
-            &[protocol_byte_data(
-                TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                TAMABLE_ANIMAL_TAME_FLAG
+            &[tamable_animal_flags_data(
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                true,
+                false,
             )]
         ),
         EntityModelKind::Wolf {
@@ -9674,7 +9683,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_WOLF_ID,
             &[
-                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, true, false),
                 protocol_int_data(wolf_metadata_accessors().collar_color_data_id, 11),
             ]
         ),
@@ -9691,7 +9700,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
             VANILLA_ENTITY_TYPE_WOLF_ID,
             &[
                 protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
-                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, true, false),
                 protocol_int_data(wolf_metadata_accessors().collar_color_data_id, 11),
             ]
         ),
@@ -10008,9 +10017,10 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
     assert_eq!(
         collar_of(&feline_model_kind(
             VANILLA_ENTITY_TYPE_CAT_ID,
-            &[protocol_byte_data(
-                TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                TAMABLE_ANIMAL_TAME_FLAG
+            &[tamable_animal_flags_data(
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                true,
+                false,
             )],
             true,
             None,
@@ -10022,7 +10032,7 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
         collar_of(&feline_model_kind(
             VANILLA_ENTITY_TYPE_CAT_ID,
             &[
-                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, true, false),
                 protocol_int_data(cat_metadata_accessors().collar_color_data_id, 5),
             ],
             true,
@@ -10034,9 +10044,10 @@ fn entity_model_kind_projects_cat_collar_from_tame_and_color() {
     assert_eq!(
         collar_of(&feline_model_kind(
             VANILLA_ENTITY_TYPE_OCELOT_ID,
-            &[protocol_byte_data(
-                TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                TAMABLE_ANIMAL_TAME_FLAG
+            &[tamable_animal_flags_data(
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                true,
+                false,
             )],
             false,
             None,
@@ -10174,7 +10185,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
         values: vec![
             pose_data(POSE_CROUCHING),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
         ],
     }));
     assert_eq!(feline_state(&world, 43), (true, true, true));
@@ -10183,7 +10194,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
         id: 44,
         values: vec![
             pose_data(POSE_CROUCHING),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
         ],
     }));
     assert_eq!(feline_state(&world, 44), (true, false, false));
@@ -10193,7 +10204,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
         values: vec![
             pose_data(POSE_CROUCHING),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_SITTING_FLAG),
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
         ],
     }));
     assert_eq!(feline_state(&world, 45), (false, false, false));
@@ -10203,7 +10214,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
         values: vec![
             pose_data(POSE_STANDING),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, 0),
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, false),
         ],
     }));
     assert_eq!(feline_state(&world, 43), (false, false, false));
@@ -10365,7 +10376,7 @@ fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
         entity_model_kind_with_time_and_registries(
             VANILLA_ENTITY_TYPE_WOLF_ID,
             &[
-                protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+                tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, true, false),
                 protocol_long_data(wolf_metadata_accessors().anger_end_time_data_id, 200),
             ],
             0.0,
@@ -10460,7 +10471,7 @@ fn entity_model_instances_project_wolf_invisible_shared_flag_from_world() {
         id: 148,
         values: vec![
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, true, false),
             protocol_int_data(wolf_metadata_accessors().collar_color_data_id, 11),
         ],
     }));
@@ -10506,7 +10517,7 @@ fn entity_model_instances_project_wolf_tame_tail_angle_from_health() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 148,
         values: vec![
-            protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
+            tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, true, false),
             protocol_float_data(LIVING_ENTITY_HEALTH_DATA_ID, 8.0),
         ],
     }));
@@ -10540,7 +10551,7 @@ fn entity_model_instances_project_wolf_tame_tail_angle_from_health() {
 #[test]
 fn entity_model_instances_project_wolf_sitting_flag_from_world() {
     // Vanilla `WolfRenderState.isSitting = Wolf.isInSittingPose()` = `TamableAnimal`
-    // `DATA_FLAGS_ID` bit 1. A sitting (tame) wolf projects `wolf_sitting`; clearing the
+    // generated `DATA_FLAGS_ID` sitting mask. A sitting (tame) wolf projects `wolf_sitting`; clearing the
     // bit projects `false`.
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -10550,9 +10561,10 @@ fn entity_model_instances_project_wolf_sitting_flag_from_world() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 148,
-        values: vec![protocol_byte_data(
-            TAMABLE_ANIMAL_FLAGS_DATA_ID,
-            TAMABLE_ANIMAL_TAME_FLAG | TAMABLE_ANIMAL_SITTING_FLAG,
+        values: vec![tamable_animal_flags_data(
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            true,
+            true,
         )],
     }));
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
@@ -10563,9 +10575,10 @@ fn entity_model_instances_project_wolf_sitting_flag_from_world() {
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 148,
-        values: vec![protocol_byte_data(
-            TAMABLE_ANIMAL_FLAGS_DATA_ID,
-            TAMABLE_ANIMAL_TAME_FLAG,
+        values: vec![tamable_animal_flags_data(
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            true,
+            false,
         )],
     }));
     let standing = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
@@ -10627,7 +10640,7 @@ fn entity_model_instance_projects_wolf_wet_shade_from_source() {
 #[test]
 fn entity_model_instances_project_parrot_sitting_flag_from_world() {
     // Vanilla `ParrotModel.getPose == SITTING` = `Parrot.isInSittingPose()` = the same
-    // `TamableAnimal.DATA_FLAGS_ID` bit 1 (id 18) the wolf uses. A sitting parrot projects
+    // The generated `TamableAnimal.DATA_FLAGS_ID` sitting bit inherited by the wolf. A sitting parrot projects
     // `parrot_sitting`; the projection is gated to the parrot, so the same flag byte on
     // another tamable (wolf) never sets `parrot_sitting`.
     let mut world = WorldStore::new();
@@ -10657,9 +10670,10 @@ fn entity_model_instances_project_parrot_sitting_flag_from_world() {
     // Setting the TamableAnimal sitting bit projects through to the perch pose.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 150,
-        values: vec![protocol_byte_data(
-            TAMABLE_ANIMAL_FLAGS_DATA_ID,
-            TAMABLE_ANIMAL_SITTING_FLAG,
+        values: vec![tamable_animal_flags_data(
+            VANILLA_ENTITY_TYPE_PARROT_ID,
+            false,
+            true,
         )],
     }));
     assert!(parrot_sitting(&world, 150));
@@ -10668,9 +10682,10 @@ fn entity_model_instances_project_parrot_sitting_flag_from_world() {
     // derivation is gated to the parrot type.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 151,
-        values: vec![protocol_byte_data(
-            TAMABLE_ANIMAL_FLAGS_DATA_ID,
-            TAMABLE_ANIMAL_TAME_FLAG | TAMABLE_ANIMAL_SITTING_FLAG,
+        values: vec![tamable_animal_flags_data(
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            true,
+            true,
         )],
     }));
     assert!(!parrot_sitting(&world, 151));

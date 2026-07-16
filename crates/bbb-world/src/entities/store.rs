@@ -42,13 +42,12 @@ use super::schema::{
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
-    vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     VanillaFireworkRocketMetadataAccessors, VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
-    VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
 
@@ -1787,8 +1786,8 @@ impl EntityStore {
         // Vanilla `CatRenderer` / `OcelotRenderer.extractRenderState` copies
         // `Entity.isCrouching()` and `Entity.isSprinting()` into `FelineRenderState`. The former is the
         // synced `Pose.CROUCHING`; the latter is shared entity flags bit 3. `CatRenderer` additionally
-        // projects `Cat.isInSittingPose()` from `TamableAnimal.DATA_FLAGS_ID & 1`; `OcelotRenderer`
-        // leaves `isSitting` at its default.
+        // projects `Cat.isInSittingPose()` from the generated TamableAnimal sitting mask;
+        // `OcelotRenderer` leaves `isSitting` at its default.
         let feline_is_crouching = is_feline
             && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
         let feline_is_sprinting = is_feline
@@ -1802,12 +1801,13 @@ impl EntityStore {
                 & entity_accessors.sprinting_mask
                 != 0;
         let feline_is_sitting = vanilla_is_cat(identity.entity_type_id)
-            && vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
+            && vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
                 identity.entity_type_id,
             )
-            .is_some_and(|(data_id, default)| {
-                self.metadata_byte(id, data_id, default).unwrap_or(default)
-                    & TAMABLE_ANIMAL_SITTING_FLAG
+            .is_some_and(|accessors| {
+                self.metadata_byte(id, accessors.flags_data_id, accessors.flags_default)
+                    .unwrap_or(accessors.flags_default)
+                    & accessors.sitting_mask
                     != 0
             });
         // Vanilla `VexModel.setupAnim` levels the body (`xRot = 0`) and raises both arms
