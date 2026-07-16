@@ -17627,3 +17627,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - chicken/cow/pig atlas fixture 以 generated refs 动态推导总尺寸、UV 与像素偏移，不再平行维护
   texture path/height 表；temperature-animal/wolf generated guard 精确锁定这些消费点，防止手写
   presentation 尺寸回流。cat/frog/zombie-nautilus 继续由既有 generated catalog 独占尺寸事实。
+
+## 2026-07-16：强化 heightmap debug presentation 消费
+
+- native heightmap debug fixture 不再手写 4 组 ordinal-indexed RGBA，改为给 chunk 注入 generated
+  `VANILLA_HEIGHTMAP_TYPES` 全 6 项并逐项比较 descriptor 的 `debug_color_rgba`；box 顺序、枚举 id
+  高度偏移与 x/z 扫描顺序仍由同一端到端回归覆盖。
+- gameplay-id generated guard 精确检查 native production 只通过 `vanilla_heightmap_type(kind_id)`
+  投影颜色，并要求 full-catalog fixture 消费 descriptor、禁止恢复手写颜色数组。

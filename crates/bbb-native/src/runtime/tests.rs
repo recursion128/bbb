@@ -12,6 +12,7 @@ use bbb_pack::{
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
 };
+use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_TYPES;
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary, AdvancementDisplaySummary, AdvancementFrameType,
@@ -3483,11 +3484,15 @@ fn debug_chunk_border_outline_follows_f3_g_chunk_border_toggle() {
 }
 
 #[test]
-fn debug_heightmap_boxes_follow_custom_entry_and_vanilla_order() {
+fn debug_heightmap_boxes_follow_custom_entry_and_generated_descriptor_order() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     let min_y = world.dimension().min_y as f32;
     let mut chunk = empty_lightmap_test_chunk(world.dimension());
     chunk.pos = ChunkPos { x: -1, z: -1 };
+    chunk.heightmaps = VANILLA_HEIGHTMAP_TYPES
+        .iter()
+        .map(|entry| test_heightmap(entry.id, world.dimension(), &[]))
+        .collect();
     world.insert_decoded_chunk(chunk);
     let camera_pose = Some(CameraPose {
         position: [-0.2, 42.0, -0.2],
@@ -3504,27 +3509,16 @@ fn debug_heightmap_boxes_follow_custom_entry_and_vanilla_order() {
     );
 
     let boxes = debug_heightmap_boxes(&input, &world, camera_pose);
-    assert_eq!(boxes.len(), 4 * 16 * 16);
-    assert_eq!(
-        boxes[0],
-        DebugFilledBox {
-            min: [-15.75, min_y + 3.0 / 32.0, -15.75],
-            max: [-15.25, min_y + 6.0 / 32.0, -15.25],
-            color: [0, 178, 0, 255],
-        }
-    );
-    assert_eq!(boxes[1].min, [-15.75, min_y + 3.0 / 32.0, -14.75]);
-    assert_eq!(boxes[16].min, [-14.75, min_y + 3.0 / 32.0, -15.75]);
-    assert_eq!(
-        boxes[256],
-        DebugFilledBox {
-            min: [-15.75, min_y + 9.0 / 32.0, -15.75],
-            max: [-15.25, min_y + 12.0 / 32.0, -15.25],
-            color: [0, 0, 127, 255],
-        }
-    );
-    assert_eq!(boxes[512].color, [0, 76, 76, 255]);
-    assert_eq!(boxes[768].color, [0, 127, 127, 255]);
+    assert_eq!(boxes.len(), VANILLA_HEIGHTMAP_TYPES.len() * 16 * 16);
+    for (entry_index, entry) in VANILLA_HEIGHTMAP_TYPES.iter().enumerate() {
+        let first = &boxes[entry_index * 16 * 16];
+        let y = min_y + entry.id as f32 * DEBUG_HEIGHTMAP_BOX_HEIGHT;
+        assert_eq!(first.min, [-15.75, y, -15.75]);
+        assert_eq!(first.max, [-15.25, y + DEBUG_HEIGHTMAP_BOX_HEIGHT, -15.25]);
+        assert_eq!(first.color, entry.debug_color_rgba);
+    }
+    assert_eq!(boxes[1].min[2], -14.75);
+    assert_eq!(boxes[16].min[0], -14.75);
 }
 
 #[test]

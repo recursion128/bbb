@@ -113,6 +113,35 @@ mod tests {
 
     #[test]
     fn production_sources_do_not_handwrite_heightmap_catalog_facts() {
+        let native = include_str!("../../bbb-native/src/runtime.rs");
+        let projection = native
+            .split("fn debug_heightmap_boxes(")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("#[derive(Debug, Clone, Copy, PartialEq)]")
+                    .next()
+            })
+            .expect("native heightmap debug projection");
+        assert_eq!(
+            projection
+                .matches("vanilla_heightmap_type(kind_id)")
+                .count(),
+            1
+        );
+        assert_eq!(projection.matches("debug_color_rgba").count(), 1);
+        let native_tests = include_str!("../../bbb-native/src/runtime/tests.rs");
+        let fixture = native_tests
+            .split("fn debug_heightmap_boxes_follow_custom_entry_and_generated_descriptor_order")
+            .nth(1)
+            .and_then(|source| source.split("\n#[test]").next())
+            .expect("native heightmap debug fixture");
+        assert!(fixture.contains("VANILLA_HEIGHTMAP_TYPES"));
+        assert!(fixture.contains("entry.debug_color_rgba"));
+        assert!(
+            !fixture.contains("color: ["),
+            "native heightmap fixture restored hand-authored debug colors"
+        );
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();
