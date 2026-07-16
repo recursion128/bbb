@@ -1,5 +1,15 @@
 use super::*;
 
+fn furnace_minecart_fuel_data(fueled: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        crate::entities::schema::vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+        )
+        .expect("generated MinecartFurnace fuel accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, fueled)
+}
+
 fn abstract_boat_metadata_accessors() -> VanillaAbstractBoatMetadataAccessors {
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
         .expect("generated AbstractBoat metadata accessors must resolve")
@@ -442,10 +452,7 @@ fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 25,
-        values: vec![protocol_bool_data(
-            VANILLA_FURNACE_MINECART_FUEL_DATA_ID,
-            true,
-        )],
+        values: vec![furnace_minecart_fuel_data(true)],
     }));
     assert_eq!(
         store

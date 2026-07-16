@@ -274,7 +274,7 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Chest/Hopper exception arms or standalone virtual-default constants.
   FurnaceMinecart fuel membership, wire index and default must remain derived from generated
   `MinecartFurnace.DATA_ID_FUEL`; default display-block projection must not restore a furnace type
-  predicate or fixed accessor/default aliases.
+  predicate or fixed accessor/default aliases, and semantic fixtures must use the same accessor.
   PrimedTnt fuse/block-state membership, wire indices and typed defaults must remain derived
   together from generated `DATA_FUSE_ID` and `DATA_BLOCK_STATE_ID`; model, fuse interpolation,
   smoke, native F3+I and semantic fixtures must not restore a TNT type predicate or fixed

@@ -18153,3 +18153,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   stack 查询以 accessor membership 替代平行 type gate 与固定 slot 8。
 - world item/age projection fixtures 从该 accessor 构造正常、Cow collision 与 adjacent wrong-id
   样本；generator reverse guard 覆盖生产和 fixtures，禁止固定 metadata id 回流。
+
+## 2026-07-16：迁移 FurnaceMinecart fuel fixture
+
+- world vehicle/display fixture 改由既有 generated `MinecartFurnace.DATA_ID_FUEL` BOOLEAN/default
+  accessor 构造 fueled metadata，删除固定 wire id。
+- minecart display reverse guard 纳入完整 vehicle/block-entity tests，禁止 fuel accessor/default
+  alias 回流；lit furnace block-state 语义回归保持不变。
