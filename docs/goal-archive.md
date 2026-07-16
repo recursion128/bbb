@@ -17753,3 +17753,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Piglin 错 owner 负例改用 Goat 的 generated AgeableMob accessor 构造，随后再用 Piglin 自己的
   nearest accessor 置 baby，继续证明同为 baby 语义也不能跨 owner 复用；generator reverse guard
   禁止该 fixture 恢复 Ageable baby 固定别名。
+
+## 2026-07-16：统一 model-source baby fixture accessor 消费
+
+- vehicle/block-entity 测试中的 Chicken model-source list/single-query fixtures 删除固定
+  AgeableMob baby wire id 16，按 Chicken type 查询 generated nearest baby accessor 并校验
+  boolean default false；透传的 `data_values` 断言复用同一 payload helper。
+- baby projection reverse guard 扩展到该测试模块，和 specialized pick-bounds fixture 一并禁止
+  Ageable baby 固定别名回流。

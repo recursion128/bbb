@@ -10,10 +10,16 @@ fn vehicle_metadata_accessors(entity_type_id: i32) -> VanillaVehicleMetadataAcce
         .expect("generated VehicleEntity metadata accessors must resolve")
 }
 
+fn chicken_baby_data(is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_baby_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CHICKEN_ID)
+            .expect("generated Chicken baby accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, is_baby)
+}
+
 #[test]
 fn entity_model_sources_project_narrow_render_state_from_model_targets() {
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_y_rot(
         35,
@@ -22,7 +28,7 @@ fn entity_model_sources_project_narrow_render_state_from_model_targets() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 35,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![chicken_baby_data(true)],
     }));
 
     let sources = store.entity_model_sources_at_partial_tick(1.0);
@@ -40,10 +46,7 @@ fn entity_model_sources_project_narrow_render_state_from_model_targets() {
     );
     assert_eq!(sources[0].y_rot, 135.0);
     assert_eq!(sources[0].age_ticks, 0);
-    assert_eq!(
-        sources[0].data_values,
-        vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)]
-    );
+    assert_eq!(sources[0].data_values, vec![chicken_baby_data(true)]);
 
     store.advance_entity_client_animations(3);
     let sources = store.entity_model_sources_at_partial_tick(0.5);
@@ -52,8 +55,6 @@ fn entity_model_sources_project_narrow_render_state_from_model_targets() {
 
 #[test]
 fn entity_model_source_single_entity_matches_list_entry() {
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_y_rot(
         35,
@@ -62,7 +63,7 @@ fn entity_model_source_single_entity_matches_list_entry() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 35,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![chicken_baby_data(true)],
     }));
     store.apply_add_entity(protocol_add_entity_with_type(
         20,

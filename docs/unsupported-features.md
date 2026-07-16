@@ -150,9 +150,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
   Continue the remaining fixed metadata-id fixture-alias pass across `bbb-native`
   entity-scene/input tests and `bbb-world` entity test submodules, including the remaining
-  baby-state, pose, and other shared-base-field fixtures; migrate only families whose exact inherited
-  accessor is already owned by the generated schema, without substituting a same-index accessor
-  from another class.
+  baby-state fixtures outside specialized pick-bounds/model-source coverage, pose, and other
+  shared-base-field fixtures; migrate only families whose exact inherited accessor is already owned
+  by the generated schema, without substituting a same-index accessor from another class.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression

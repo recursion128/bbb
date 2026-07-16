@@ -22383,6 +22383,7 @@ mod generated_catalog_guards {
     fn production_baby_projection_does_not_restore_entity_type_membership() {
         let source = include_str!("../dimensions.rs");
         let fixture = include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");
+        let model_source_fixture = include_str!("../tests/vehicle_and_block_entity_projection.rs");
         let body = source
             .split("fn vanilla_is_baby")
             .nth(1)
@@ -22401,11 +22402,16 @@ mod generated_catalog_guards {
             6
         );
         assert!(fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(
+            model_source_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type")
+        );
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
-            assert!(
-                !fixture.contains(removed),
-                "baby fixture restored {removed}"
-            );
+            for fixture in [fixture, model_source_fixture] {
+                assert!(
+                    !fixture.contains(removed),
+                    "baby fixture restored {removed}"
+                );
+            }
         }
     }
 
