@@ -92,8 +92,8 @@ use runtime::{
 use sky_assets::load_sky_textures;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
-    load_pack_roots, parse_args, run_probe_if_requested, spawn_frame_tick, start_control_api,
-    start_network_if_requested, NetworkHandles,
+    load_pack_roots, parse_args, run_probe_if_requested, run_status_if_requested, spawn_frame_tick,
+    start_control_api, start_network_if_requested, NetworkHandles,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 
@@ -183,6 +183,9 @@ fn main() -> Result<()> {
     let args = parse_args();
     let runtime = tokio::runtime::Runtime::new()?;
 
+    if run_status_if_requested(&runtime, &args)? {
+        return Ok(());
+    }
     if run_probe_if_requested(&runtime, &args)? {
         return Ok(());
     }

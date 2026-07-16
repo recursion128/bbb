@@ -32,6 +32,8 @@ pub(crate) struct Args {
     pub(crate) server: String,
     #[arg(long, default_value = "bbb-client")]
     pub(crate) username: String,
+    #[arg(long, value_name = "ADDR", conflicts_with = "probe_server")]
+    pub(crate) status_server: Option<String>,
     #[arg(long)]
     pub(crate) probe_server: bool,
     #[arg(long, default_value_t = 0)]
@@ -217,6 +219,15 @@ pub(crate) fn init_tracing() {
 
 pub(crate) fn parse_args() -> Args {
     Args::parse()
+}
+
+pub(crate) fn run_status_if_requested(runtime: &Runtime, args: &Args) -> Result<bool> {
+    let Some(address) = args.status_server.as_deref() else {
+        return Ok(false);
+    };
+    let status = runtime.block_on(bbb_net::status_ping(address))?;
+    println!("{}", serde_json::to_string_pretty(&status)?);
+    Ok(true)
 }
 
 pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<bool> {
@@ -445,6 +456,20 @@ pub(crate) fn spawn_frame_tick(event_loop: &EventLoop<()>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn args_accept_delegated_status_server_and_reject_probe_conflict() {
+        let args =
+            Args::try_parse_from(["bbb-native", "--status-server", "127.0.0.1:25565"]).unwrap();
+        assert_eq!(args.status_server.as_deref(), Some("127.0.0.1:25565"));
+        assert!(Args::try_parse_from([
+            "bbb-native",
+            "--status-server",
+            "127.0.0.1:25565",
+            "--probe-server",
+        ])
+        .is_err());
+    }
 
     #[test]
     fn args_accept_repeated_resource_pack_dirs() {

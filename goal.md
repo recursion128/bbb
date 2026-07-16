@@ -361,25 +361,20 @@ unsupported 值安全保留或省略且可诊断；连接切换不泄漏旧 regi
 集成，不让大量 focused unit tests 掩盖 protocol→net→world→native→renderer/audio 的
 连接级断裂。标准 pre-commit gate 保持快速；新增 `playable-gate` 作为 P1 milestone、
 session/registry 大改和队列关闭时的权威慢门禁，CI/本地缺 Java server 时必须运行等价
-recorded fixture smoke 并明确报告未运行 live 部分。
+recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实现与证据归档见
+`docs/goal-archive.md`；当前命令入口为 `scripts/playable-gate.sh`。
 
-按以下阶段建立：
+剩余阶段：
 
-1. **可复现 harness**：脚本启动受控 vanilla 26.1 offline server、分配临时世界/端口、
-   等待 ready marker、启动 bbb、设置超时并可靠回收进程；资源、世界 seed、玩家命令与
-   期望 snapshot checked-in 或可确定性生成，不依赖人工点击。
-2. **连接基线**：覆盖 status、login、compression、known packs、configuration registry/
-   tags、finish configuration、play login、初始 chunk/local player/entity spawn；断言阶段
-   顺序、无 unknown required packet、canonical dimension/chunk/player 状态与关键 counters。
-3. **基础游玩**：通过 control/CLI 驱动移动、视角、破坏/放置、实体交互、hotbar、容器、
+1. **基础游玩**：通过 control/CLI 驱动移动、视角、破坏/放置、实体交互、hotbar、容器、
    inventory、chat/command、声音/粒子与 deterministic screenshot/readback，验证 server
    acknowledgement、world 结果和呈现 side effect，而不只检查命令入队。
-4. **生命周期场景**：覆盖 respawn、dimension change、death、resource-pack push/pop、
+2. **生命周期场景**：覆盖 respawn、dimension change、death、resource-pack push/pop、
    configuration re-entry、disconnect/reconnect 与第二 session registry；断言旧 world、
    registry、renderer/audio runtime 和 pending request 不泄漏。
-5. **失败证据**：harness 输出 packet/session timeline、world/control snapshot、renderer/
-   audio counters、最后 screenshot 与 server log；失败必须能区分 server 启动、网络、
-   canonical apply、runtime side effect 和 presentation 阶段。
+3. **扩展失败证据**：在已有 packet/session timeline、world/control snapshot 与 server log
+   基础上增加 renderer/audio counters 和最后 screenshot；失败继续区分 server 启动、
+   网络、canonical apply、runtime side effect 和 presentation 阶段。
 
 完成标准：fixture smoke 可在 clean checkout 的标准测试环境运行；live `playable-gate`
 能一条命令完成上述场景并稳定回收；合法 vanilla session 无 panic、hang、required unknown

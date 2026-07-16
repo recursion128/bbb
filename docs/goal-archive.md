@@ -16688,3 +16688,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   差异均保守保持 partial。AreaEffectCloud、Interaction、Marker 的模型格按 vanilla
   `NoopRenderer` 注册标记为 not-applicable。结构测试锁定 157 项完整性、十格 schema、
   complete 证据要求及 catalog 增项必须重新审计。
+
+## 2026-07-16：建立 playable-gate harness 与连接基线
+
+- `scripts/playable-gate.sh` 提供 auto/fixture/live 三种模式：live 使用显式 vanilla server
+  jar、EULA 确认、临时世界/端口、ready marker、timeout 与进程组回收；缺 Java/server/
+  display 时 auto 明确报告 live 未运行并执行同一断言的 recorded fixture，显式 live 则
+  安全失败。
+- status 阶段通过 `bbb-native --status-server` 委托既有 `bbb_net::status_ping`，不复制 wire
+  实现；连接阶段从 bbb-net packet trace 与 bbb-control canonical snapshot 断言 status→
+  login→compression→known packs→registry/tags→finish configuration→play login→初始
+  chunk/local-player spawn 的顺序、零 required unknown packet 和 dimension/chunk/player 状态。
+- 失败证据保留 packet/session timeline、world snapshot 与 server log 路径；fixture 与 live
+  共用一个 evidence schema 和 assertion 实现。
