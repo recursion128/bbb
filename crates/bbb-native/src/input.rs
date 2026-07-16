@@ -232,10 +232,6 @@ use bbb_world::{
     VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET as ABSTRACT_FISH_DEFAULT_FROM_BUCKET,
     VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID as ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
 };
-use bbb_world::{
-    VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION as HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
-    VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
-};
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
 pub(crate) use commands::{
@@ -7570,9 +7566,15 @@ fn debug_push_glow_squid_additional_save_data(entity: &EntityState, fields: &mut
 fn debug_push_happy_ghast_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_hoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some((data_id, default)) =
+        bbb_world::vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
     let immune_to_zombification =
-        debug_entity_data_bool_present(entity, HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID)
-            .unwrap_or(HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION);
+        debug_entity_data_bool_present(entity, data_id).unwrap_or(default);
     fields.push(format!(
         "IsImmuneToZombification: {}",
         debug_snbt_bool(immune_to_zombification)

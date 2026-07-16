@@ -17678,3 +17678,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - companion metadata generator 守卫新增 production 入口与整份 entity-scene semantic fixture
   检查，禁止 Cat/Wolf variant wire id 别名回流；custom session registry order 和 fallback
   模型/纹理行为保持由既有端到端回归覆盖。
+
+## 2026-07-16：统一 conversion/environment metadata accessor 消费
+
+- Skeleton freeze conversion、Strider suffocating 与 AbstractPiglin/Hoglin zombification immunity
+  的 entity-scene fixture 删除固定 wire id，按实际 entity type 查询 generated accessor；同索引
+  写入 Stray/Pig 的负例继续证明 owner membership fail closed。
+- Hoglin F3+I production 与 fixture 同步删除固定 id/default，和 Piglin/PiglinBrute 共用 generated
+  zombification-immunity accessor；metadata generator 守卫覆盖 scene、debug-save 函数体及两侧
+  semantic fixtures，禁止三族固定别名回流。

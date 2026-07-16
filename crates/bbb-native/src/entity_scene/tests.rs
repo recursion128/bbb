@@ -1481,7 +1481,10 @@ fn entity_model_instances_shake_striders_while_suffocating() {
     // selects the cold texture.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 86,
-        values: vec![protocol_bool_data(STRIDER_SUFFOCATING_DATA_ID, true)],
+        values: vec![strider_suffocating_data(
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+            true,
+        )],
     }));
     let shaking = strider(&world);
     let expected_shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
@@ -1497,7 +1500,10 @@ fn entity_model_instances_shake_striders_while_suffocating() {
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 87,
-        values: vec![protocol_bool_data(STRIDER_SUFFOCATING_DATA_ID, true)],
+        values: vec![strider_suffocating_data(
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+            true,
+        )],
     }));
     let pig_body_rot = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25)
         .into_iter()
@@ -1538,14 +1544,20 @@ fn entity_model_instances_shake_skeletons_while_freeze_converting() {
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 87,
-        values: vec![protocol_bool_data(SKELETON_STRAY_CONVERSION_DATA_ID, true,)],
+        values: vec![skeleton_freeze_conversion_data(
+            VANILLA_ENTITY_TYPE_SKELETON_ID,
+            true,
+        )],
     }));
     let expected_shake = (2.0_f32 * 3.25).cos() * std::f32::consts::PI * 0.4;
     assert!((body_rot(&world) - expected_shake).abs() < 1e-6);
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 88,
-        values: vec![protocol_bool_data(SKELETON_STRAY_CONVERSION_DATA_ID, true)],
+        values: vec![skeleton_freeze_conversion_data(
+            VANILLA_ENTITY_TYPE_SKELETON_ID,
+            true,
+        )],
     }));
     let stray_body_rot = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
         .into_iter()
@@ -1616,22 +1628,22 @@ fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
     // Synced immune-to-zombification metadata suppresses the conversion shake.
     assert!(overworld.apply_set_entity_data(SetEntityData {
         id: 87,
-        values: vec![protocol_bool_data(
-            piglin_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_ID),
+        values: vec![zombification_immunity_data(
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
             true,
         )],
     }));
     assert!(overworld.apply_set_entity_data(SetEntityData {
         id: 88,
-        values: vec![protocol_bool_data(
-            piglin_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
+        values: vec![zombification_immunity_data(
+            VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
             true,
         )],
     }));
     assert!(overworld.apply_set_entity_data(SetEntityData {
         id: 89,
-        values: vec![protocol_bool_data(
-            HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+        values: vec![zombification_immunity_data(
+            VANILLA_ENTITY_TYPE_HOGLIN_ID,
             true,
         )],
     }));
@@ -8311,7 +8323,10 @@ fn entity_model_kind_projects_strider_baby_and_cold_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_STRIDER_ID,
-            &[protocol_bool_data(STRIDER_SUFFOCATING_DATA_ID, true)]
+            &[strider_suffocating_data(
+                VANILLA_ENTITY_TYPE_STRIDER_ID,
+                true,
+            )]
         ),
         EntityModelKind::Strider {
             baby: false,
@@ -11539,14 +11554,32 @@ fn protocol_add_entity_with_rotation(
     }
 }
 
-fn piglin_immunity_data_id(entity_type_id: i32) -> u8 {
+fn skeleton_freeze_conversion_data(entity_type_id: i32, converting: bool) -> EntityDataValue {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .expect("generated Skeleton freeze-conversion accessor");
+    assert!(!default);
+    protocol_bool_data(data_id, converting)
+}
+
+fn strider_suffocating_data(entity_type_id: i32, suffocating: bool) -> EntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(entity_type_id)
+            .expect("generated Strider suffocating accessor");
+    assert!(!default);
+    protocol_bool_data(data_id, suffocating)
+}
+
+fn zombification_immunity_data(entity_type_id: i32, immune: bool) -> EntityDataValue {
     let (data_id, default) =
         bbb_world::vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
             entity_type_id,
         )
-        .expect("generated AbstractPiglin immunity accessor");
+        .expect("generated zombification-immunity accessor");
     assert!(!default);
-    data_id
+    protocol_bool_data(data_id, immune)
 }
 
 fn piglin_baby_data_id() -> u8 {

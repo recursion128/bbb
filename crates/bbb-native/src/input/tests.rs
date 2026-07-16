@@ -370,12 +370,22 @@ fn creeper_metadata_accessors() -> bbb_world::VanillaCreeperMetadataAccessors {
         .expect("generated Creeper metadata accessors must resolve")
 }
 
-fn piglin_immunity_data_id(entity_type_id: i32) -> u8 {
+fn zombification_immunity_data_id(entity_type_id: i32) -> u8 {
     let (data_id, default) =
         bbb_world::vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
             entity_type_id,
         )
-        .expect("generated AbstractPiglin immunity accessor");
+        .expect("generated zombification-immunity accessor");
+    assert!(!default);
+    data_id
+}
+
+fn strider_suffocating_data_id() -> u8 {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+        )
+        .expect("generated Strider suffocating accessor");
     assert!(!default);
     data_id
 }
@@ -6716,7 +6726,6 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
 #[test]
 fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
     const STRIDER_BOOST_TIME_DATA_ID: u8 = 18;
-    const STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
 
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
@@ -6760,7 +6769,7 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Int(40),
             },
             ProtocolEntityDataValue {
-                data_id: STRIDER_SUFFOCATING_DATA_ID,
+                data_id: strider_suffocating_data_id(),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
@@ -6814,8 +6823,6 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
-    const HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
-
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -6853,7 +6860,7 @@ fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+                data_id: zombification_immunity_data_id(VANILLA_ENTITY_TYPE_HOGLIN_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
@@ -8225,7 +8232,7 @@ fn shift_f3_i_with_permission_copies_local_piglin_brute_save_nbt_to_clipboard() 
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: piglin_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
+                data_id: zombification_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
@@ -8306,7 +8313,7 @@ fn shift_f3_i_with_permission_copies_local_piglin_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: piglin_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_ID),
+                data_id: zombification_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
