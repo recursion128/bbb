@@ -162,10 +162,12 @@ pub(super) fn custom_head_skull_for_resource_id(
     local_dynamic_skins: &RefCell<LocalDynamicPlayerSkinCache>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
-    match resource_id {
-        "minecraft:skeleton_skull" => Some(EntityCustomHeadSkull::Skeleton),
-        "minecraft:wither_skeleton_skull" => Some(EntityCustomHeadSkull::WitherSkeleton),
-        "minecraft:player_head" => custom_head_player_skull(
+    match vanilla_namespaced_item_type_id(resource_id) {
+        Some(item_types::VANILLA_ITEM_SKELETON_SKULL_ID) => Some(EntityCustomHeadSkull::Skeleton),
+        Some(item_types::VANILLA_ITEM_WITHER_SKELETON_SKULL_ID) => {
+            Some(EntityCustomHeadSkull::WitherSkeleton)
+        }
+        Some(item_types::VANILLA_ITEM_PLAYER_HEAD_ID) => custom_head_player_skull(
             component_patch,
             profile_resolutions,
             dynamic_skins,
@@ -174,10 +176,10 @@ pub(super) fn custom_head_skull_for_resource_id(
             local_dynamic_skins,
             profile_skins,
         ),
-        "minecraft:zombie_head" => Some(EntityCustomHeadSkull::Zombie),
-        "minecraft:creeper_head" => Some(EntityCustomHeadSkull::Creeper),
-        "minecraft:dragon_head" => Some(EntityCustomHeadSkull::Dragon),
-        "minecraft:piglin_head" => Some(EntityCustomHeadSkull::Piglin),
+        Some(item_types::VANILLA_ITEM_ZOMBIE_HEAD_ID) => Some(EntityCustomHeadSkull::Zombie),
+        Some(item_types::VANILLA_ITEM_CREEPER_HEAD_ID) => Some(EntityCustomHeadSkull::Creeper),
+        Some(item_types::VANILLA_ITEM_DRAGON_HEAD_ID) => Some(EntityCustomHeadSkull::Dragon),
+        Some(item_types::VANILLA_ITEM_PIGLIN_HEAD_ID) => Some(EntityCustomHeadSkull::Piglin),
         _ => None,
     }
 }

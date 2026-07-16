@@ -7593,4 +7593,52 @@ mod tests {
         );
         assert_eq!(vanilla_item_type_for_resource_id("example:snowball"), None);
     }
+
+    #[test]
+    fn item_model_consumers_do_not_restore_item_resource_literals() {
+        let sources = [
+            include_str!("../../bbb-item-model/src/item_runtime.rs"),
+            include_str!("../../bbb-item-model/src/item_runtime/icon.rs"),
+            include_str!("../../bbb-item-model/src/item_runtime/profiles.rs"),
+            include_str!("../../bbb-item-model/src/item_runtime/tooltip.rs"),
+        ];
+        let migrated_item_ids = [
+            VANILLA_ITEM_FIREWORK_ROCKET_ID,
+            VANILLA_ITEM_BOW_ID,
+            VANILLA_ITEM_BRUSH_ID,
+            VANILLA_ITEM_CROSSBOW_ID,
+            VANILLA_ITEM_SPYGLASS_ID,
+            VANILLA_ITEM_TRIDENT_ID,
+            VANILLA_ITEM_ENDER_EYE_ID,
+            VANILLA_ITEM_LEATHER_BOOTS_ID,
+            VANILLA_ITEM_DISC_FRAGMENT_5_ID,
+            VANILLA_ITEM_PAINTING_ID,
+            VANILLA_ITEM_SPAWNER_ID,
+            VANILLA_ITEM_TRIAL_SPAWNER_ID,
+            VANILLA_ITEM_NETHERITE_UPGRADE_SMITHING_TEMPLATE_ID,
+            VANILLA_ITEM_SKELETON_SKULL_ID,
+            VANILLA_ITEM_WITHER_SKELETON_SKULL_ID,
+            VANILLA_ITEM_PLAYER_HEAD_ID,
+            VANILLA_ITEM_ZOMBIE_HEAD_ID,
+            VANILLA_ITEM_CREEPER_HEAD_ID,
+            VANILLA_ITEM_DRAGON_HEAD_ID,
+            VANILLA_ITEM_PIGLIN_HEAD_ID,
+            VANILLA_ITEM_CLOCK_ID,
+            VANILLA_ITEM_COMPASS_ID,
+            VANILLA_ITEM_RECOVERY_COMPASS_ID,
+        ];
+        let combined = sources.concat();
+        for item_id in migrated_item_ids {
+            let resource_id = vanilla_item_type(item_id)
+                .expect("generated item id")
+                .resource_id;
+            let literal = format!("\"{resource_id}\"");
+            assert!(
+                !combined.contains(&literal),
+                "item-model restored {literal}"
+            );
+        }
+        assert!(sources[0].contains("use bbb_protocol::item_types"));
+        assert!(sources[0].contains("vanilla_item_type_for_resource_id"));
+    }
 }

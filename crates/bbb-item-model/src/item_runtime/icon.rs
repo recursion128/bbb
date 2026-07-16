@@ -148,11 +148,15 @@ pub(super) fn item_use_duration_ticks(
     item_id: &str,
     component_patch: &DataComponentPatchSummary,
 ) -> i32 {
-    match item_id {
-        BOW_ITEM_ID | CROSSBOW_ITEM_ID | TRIDENT_ITEM_ID => return VANILLA_LONG_USE_DURATION_TICKS,
-        BRUSH_ITEM_ID => return VANILLA_BRUSH_USE_DURATION_TICKS,
-        SPYGLASS_ITEM_ID => return VANILLA_SPYGLASS_USE_DURATION_TICKS,
-        ENDER_EYE_ITEM_ID => return VANILLA_ENDER_EYE_USE_DURATION_TICKS,
+    match vanilla_namespaced_item_type_id(item_id) {
+        Some(
+            item_types::VANILLA_ITEM_BOW_ID
+            | item_types::VANILLA_ITEM_CROSSBOW_ID
+            | item_types::VANILLA_ITEM_TRIDENT_ID,
+        ) => return VANILLA_LONG_USE_DURATION_TICKS,
+        Some(item_types::VANILLA_ITEM_BRUSH_ID) => return VANILLA_BRUSH_USE_DURATION_TICKS,
+        Some(item_types::VANILLA_ITEM_SPYGLASS_ID) => return VANILLA_SPYGLASS_USE_DURATION_TICKS,
+        Some(item_types::VANILLA_ITEM_ENDER_EYE_ID) => return VANILLA_ENDER_EYE_USE_DURATION_TICKS,
         _ => {}
     }
     if let Some(consumable) = component_patch.consumable {
@@ -181,7 +185,7 @@ pub(super) fn crossbow_charge_duration_ticks(
     item_id: &str,
     synchronized_duration_ticks: Option<i32>,
 ) -> Option<i32> {
-    if item_id != CROSSBOW_ITEM_ID {
+    if vanilla_namespaced_item_type_id(item_id) != Some(item_types::VANILLA_ITEM_CROSSBOW_ID) {
         return None;
     }
     Some(
@@ -837,7 +841,7 @@ impl NativeItemRuntime {
     }
 
     pub(super) fn item_resource_uses_special_foil_texture(&self, resource_id: &str) -> bool {
-        if resource_id == "minecraft:clock" {
+        if vanilla_namespaced_item_type_id(resource_id) == Some(item_types::VANILLA_ITEM_CLOCK_ID) {
             return true;
         }
         self.item_tags
@@ -845,8 +849,11 @@ impl NativeItemRuntime {
             .map(|tags| tags.contains("minecraft:compasses", resource_id))
             .unwrap_or_else(|| {
                 matches!(
-                    resource_id,
-                    "minecraft:compass" | "minecraft:recovery_compass"
+                    vanilla_namespaced_item_type_id(resource_id),
+                    Some(
+                        item_types::VANILLA_ITEM_COMPASS_ID
+                            | item_types::VANILLA_ITEM_RECOVERY_COMPASS_ID
+                    )
                 )
             })
     }
@@ -1732,7 +1739,8 @@ impl NativeItemRuntime {
             self.registry
                 .as_ref()
                 .and_then(|registry| registry.resource_id(template.item_id))
-                == Some(FIREWORK_ROCKET_ITEM_ID)
+                .and_then(vanilla_namespaced_item_type_id)
+                == Some(item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID)
         });
         if is_rocket {
             CrossbowChargeType::Rocket

@@ -64,22 +64,16 @@ const TOOLTIP_DARK_GRAY_TEXT_COLOR: u32 = 0x55_55_55;
 const TOOLTIP_DARK_PURPLE_TEXT_COLOR: u32 = 0xAA_00_AA;
 const TOOLTIP_RED_TEXT_COLOR: u32 = 0xFF_55_55;
 const TOOLTIP_YELLOW_TEXT_COLOR: u32 = 0xFF_FF_55;
-const DISC_FRAGMENT_5_RESOURCE_ID: &str = "minecraft:disc_fragment_5";
 const DISC_FRAGMENT_5_DESCRIPTION_KEY: &str = "item.minecraft.disc_fragment_5.desc";
-const PAINTING_RESOURCE_ID: &str = "minecraft:painting";
 const PAINTING_DIMENSIONS_KEY: &str = "painting.dimensions";
 const PAINTING_RANDOM_KEY: &str = "painting.random";
 const POTION_WHEN_DRANK_KEY: &str = "potion.whenDrank";
-const SPAWNER_RESOURCE_ID: &str = "minecraft:spawner";
-const TRIAL_SPAWNER_RESOURCE_ID: &str = "minecraft:trial_spawner";
 const SPAWNER_DESC1_KEY: &str = "block.minecraft.spawner.desc1";
 const SPAWNER_DESC2_KEY: &str = "block.minecraft.spawner.desc2";
 const CAN_BREAK_HEADER_KEY: &str = "item.canBreak";
 const CAN_PLACE_HEADER_KEY: &str = "item.canPlace";
 const CAN_USE_UNKNOWN_KEY: &str = "item.canUse.unknown";
 const SPAWN_EGG_PEACEFUL_KEY: &str = "item.spawn_egg.peaceful";
-const NETHERITE_UPGRADE_SMITHING_TEMPLATE_RESOURCE_ID: &str =
-    "minecraft:netherite_upgrade_smithing_template";
 const ARMOR_TRIM_SMITHING_TEMPLATE_SUFFIX: &str = "_armor_trim_smithing_template";
 const SMITHING_TEMPLATE_SUFFIX_KEY: &str = "item.minecraft.smithing_template";
 const SMITHING_TEMPLATE_APPLIES_TO_TITLE_KEY: &str = "item.minecraft.smithing_template.applies_to";
@@ -671,7 +665,8 @@ fn push_item_specific_tooltip_lines(
     options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    if item_id == DISC_FRAGMENT_5_RESOURCE_ID {
+    let item_type_id = vanilla_namespaced_item_type_id(item_id);
+    if item_type_id == Some(item_types::VANILLA_ITEM_DISC_FRAGMENT_5_ID) {
         lines.push(NativeItemTooltipLine::plain(
             language
                 .get_or_key(DISC_FRAGMENT_5_DESCRIPTION_KEY)
@@ -682,7 +677,7 @@ fn push_item_specific_tooltip_lines(
     if let Some((applies_to_key, ingredients_key)) = smithing_template_tooltip_keys(item_id) {
         push_smithing_template_tooltip_lines(language, applies_to_key, ingredients_key, lines);
     }
-    if item_id == PAINTING_RESOURCE_ID
+    if item_type_id == Some(item_types::VANILLA_ITEM_PAINTING_ID)
         && tooltip_display_shows(
             component_patch,
             component_id::VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
@@ -881,7 +876,10 @@ fn push_entity_data_tooltip_lines(
 }
 
 fn item_is_spawner(resource_id: &str) -> bool {
-    matches!(resource_id, SPAWNER_RESOURCE_ID | TRIAL_SPAWNER_RESOURCE_ID)
+    matches!(
+        vanilla_namespaced_item_type_id(resource_id),
+        Some(item_types::VANILLA_ITEM_SPAWNER_ID | item_types::VANILLA_ITEM_TRIAL_SPAWNER_ID)
+    )
 }
 
 fn push_adventure_mode_predicate_tooltip_lines(
@@ -925,7 +923,9 @@ fn localized_block_name(language: &LanguageCatalog, resource_id: &str) -> String
 }
 
 fn smithing_template_tooltip_keys(item_id: &str) -> Option<(&'static str, &'static str)> {
-    if item_id == NETHERITE_UPGRADE_SMITHING_TEMPLATE_RESOURCE_ID {
+    if vanilla_namespaced_item_type_id(item_id)
+        == Some(item_types::VANILLA_ITEM_NETHERITE_UPGRADE_SMITHING_TEMPLATE_ID)
+    {
         return Some((
             SMITHING_TEMPLATE_NETHERITE_UPGRADE_APPLIES_TO_KEY,
             SMITHING_TEMPLATE_NETHERITE_UPGRADE_INGREDIENTS_KEY,

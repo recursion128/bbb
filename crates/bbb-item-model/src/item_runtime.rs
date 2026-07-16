@@ -25,6 +25,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_ITEM_MODEL_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID,
 };
+use bbb_protocol::item_types;
 use bbb_protocol::packets::{
     AttributeModifierSummary, BannerPatternLayerSummary, ConsumableSummary,
     DataComponentPatchSummary, FireworkExplosionShapeSummary, FireworkExplosionSummary,
@@ -95,20 +96,6 @@ use tables::*;
 use tooltip::*;
 pub use tooltip::{NativeItemMapTooltipData, NativeItemTooltipLine, NativeItemTooltipOptions};
 
-const FIREWORK_ROCKET_ITEM_ID: &str = "minecraft:firework_rocket";
-
-const BOW_ITEM_ID: &str = "minecraft:bow";
-
-const BRUSH_ITEM_ID: &str = "minecraft:brush";
-
-const CROSSBOW_ITEM_ID: &str = "minecraft:crossbow";
-
-const SPYGLASS_ITEM_ID: &str = "minecraft:spyglass";
-
-const TRIDENT_ITEM_ID: &str = "minecraft:trident";
-
-const ENDER_EYE_ITEM_ID: &str = "minecraft:ender_eye";
-
 const VANILLA_LONG_USE_DURATION_TICKS: i32 = 72_000;
 
 const VANILLA_BRUSH_USE_DURATION_TICKS: i32 = 200;
@@ -118,6 +105,12 @@ const VANILLA_SPYGLASS_USE_DURATION_TICKS: i32 = 1_200;
 const VANILLA_ENDER_EYE_USE_DURATION_TICKS: i32 = 0;
 
 const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: i32 = 25;
+
+fn vanilla_namespaced_item_type_id(resource_id: &str) -> Option<i32> {
+    item_types::vanilla_item_type_for_resource_id(resource_id)
+        .filter(|entry| entry.resource_id == resource_id)
+        .map(|entry| entry.id)
+}
 
 const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/equipment/wings/elytra.png",
@@ -552,7 +545,10 @@ impl NativeItemRuntime {
             .unwrap_or_default();
         let powder_snow_walkable_foot_item_ids = registry
             .as_ref()
-            .and_then(|registry| registry.protocol_id("minecraft:leather_boots"))
+            .and_then(|registry| {
+                item_types::vanilla_item_type(item_types::VANILLA_ITEM_LEATHER_BOOTS_ID)
+                    .and_then(|entry| registry.protocol_id(entry.resource_id))
+            })
             .into_iter()
             .collect();
         let recipe_specific_crafting_remainder_item_ids = registry

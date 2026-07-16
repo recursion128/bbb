@@ -16861,3 +16861,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `distance × 6`、上限 `1.0`、easing factor `0.2` 的 walk update。
 - focused test 同时锁定 Camel 与 CamelHusk，metadata schema generator 输出反向门禁，禁止
   walk-update 消费面恢复 Camel/CamelHusk type-id 分支。
+
+## 2026-07-16：统一 item-model 单品身份选择器
+
+- `bbb-item-model` 的 use duration、Crossbow firework charge、powder-snow boots、特殊 foil、
+  skull projection、painting/disc/spawner/smithing tooltip 共 23 个 vanilla 单品选择器，现统一
+  通过 `bbb_protocol::item_types` 的生成 catalog 解析 resource id 与协议 id，不再维护平行
+  resource 字面量；非 `minecraft:` 命名空间仍保持不匹配。
+- catalog 继续由 26.1 `Items.java` 注册顺序经共享 Tree-sitter frontend 生成；item registry
+  generator 新增跨 crate 反向测试，按生成 id 反查上述 resource，并拒绝四个生产消费文件恢复
+  精确字面量。既有 use tick、charge、tooltip、skull 与 foil focused tests 继续锁定行为。
