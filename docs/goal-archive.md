@@ -17576,3 +17576,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 守卫中的 component/registry 成员名单由 extractor 结果生成，禁止 production 恢复平行表；
   native registry-context 与 world holder-decode 两组全 12 项 fixture 也必须动态遍历 generated
   catalog，实例态的具体 variant 字段路由保持不变。
+
+## 2026-07-16：统一 MapColor full packed-domain 消费
+
+- native map-color fixture 删除 Grass 两个亮度和透明 0 的代表值断言，改为遍历全部 256 个
+  packed id，并仅由 generated 64 项 material palette 与 4 项 brightness modifier 计算期望 RGBA。
+- gameplay-id generator 守卫精确检查 runtime scaling 函数与 full-domain fixture 各消费一次两张
+  owner 表，禁止恢复 material-id match 或手写 Grass/RGB fixture；生产仍只拥有颜色通道缩放算法。

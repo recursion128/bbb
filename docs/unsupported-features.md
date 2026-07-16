@@ -482,9 +482,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
   or an Evoker/Vindicator entity-type table. Spellcaster casting and Pillager charging fixtures must
   likewise use their generated accessors instead of hand-written wire indices; generated guards
   must inspect those specific fixtures rather than rely on whole-file matches.
-  Keep fixed presentation lookup domains such as `MapColor.MATERIAL_COLORS` and
-  its packed-id brightness modifiers in deterministic owner-generated data;
-  runtime texture code must only implement the scaling/application algorithm.
   Built-in holder registries with client presentation payloads, including map
   decoration registry key/asset/show-on-frame projection, must likewise stay
   source-generated rather than becoming renderer tuple tables. Built-in

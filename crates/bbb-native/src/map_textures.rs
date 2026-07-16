@@ -36,11 +36,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn map_color_rgba_matches_vanilla_map_color_scaling() {
-        // Vanilla `MapColor.GRASS` is 0x7fb238. Brightness HIGH (id 2) leaves it unscaled.
-        assert_eq!(map_color_rgba8((1 << 2) | 2), [0x7f, 0xb2, 0x38, 255]);
-        // Brightness NORMAL (id 1) uses ARGB.scaleRGB(color, 220), i.e. integer channel * 220 / 255.
-        assert_eq!(map_color_rgba8((1 << 2) | 1), [109, 153, 48, 255]);
-        assert_eq!(map_color_rgba8(0), [0, 0, 0, 0]);
+    fn map_color_rgba_matches_generated_full_packed_domain() {
+        for packed in u8::MIN..=u8::MAX {
+            let base = MAP_MATERIAL_COLORS[usize::from(packed >> 2)];
+            let modifier = MAP_BRIGHTNESS_MODIFIERS[usize::from(packed & 3)];
+            let expected = if base == 0 {
+                [0, 0, 0, 0]
+            } else {
+                [
+                    ((((base >> 16) & 0xFF) * modifier) / 255) as u8,
+                    ((((base >> 8) & 0xFF) * modifier) / 255) as u8,
+                    (((base & 0xFF) * modifier) / 255) as u8,
+                    255,
+                ]
+            };
+            assert_eq!(map_color_rgba8(packed), expected, "packed id {packed}");
+        }
     }
 }
