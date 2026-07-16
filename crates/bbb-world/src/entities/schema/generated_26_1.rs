@@ -24173,6 +24173,7 @@ mod generated_catalog_guards {
         let combat_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
         let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
         let small_mob_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
+        let transient_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
         let runtime_event_tests = include_str!(
             "../../../../bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs"
         );
@@ -24184,6 +24185,7 @@ mod generated_catalog_guards {
             variants,
             native_scene,
             native_scene_tests,
+            transient_tests,
         ] {
             assert!(
                 source.contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type")

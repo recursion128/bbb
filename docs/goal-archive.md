@@ -18167,3 +18167,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   optional beam target/show-bottom metadata，删除 entity-scene/input 的 test-only 固定 id re-export。
 - Bat 同 id 负例改为显式 collision helper；reverse guard 覆盖三份 fixtures 与两个 native
   facade，锁定 membership、wire indices 和 show-bottom default，nearest-crystal 逻辑保持独立。
+
+## 2026-07-16：迁移 LivingEntity use-item flag fixture
+
+- world transient-event player fixture 通过 generated inherited LivingEntity bundle 构造 flags
+  BYTE，使用 typed default 与 named `is_using_mask`，删除固定 id/mask 和 `& 1` 注释。
+- LivingEntity reverse guard 纳入完整 transient-events tests；共享 use-item tick counter 与
+  native crossbow pose 边界保持不变。

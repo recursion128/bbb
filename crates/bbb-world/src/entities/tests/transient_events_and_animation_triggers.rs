@@ -20,6 +20,20 @@ fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
     protocol_pose_data(accessors.pose_data_id, pose_id)
 }
 
+fn living_entity_using_item_data(entity_type_id: i32, using: bool) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated inherited LivingEntity metadata accessors must resolve");
+    assert_eq!(accessors.flags_default, 0);
+    protocol_byte_data(
+        accessors.flags_data_id,
+        if using {
+            accessors.is_using_mask
+        } else {
+            accessors.flags_default
+        },
+    )
+}
+
 fn copper_golem_state_data_id() -> u8 {
     vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
@@ -1065,9 +1079,6 @@ fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
 
 #[test]
 fn player_using_item_flag_drives_the_shared_use_item_tick_counter() {
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         79,
@@ -1084,21 +1095,16 @@ fn player_using_item_flag_drives_the_shared_use_item_tick_counter() {
     let set_using = |store: &mut WorldStore, using: bool| {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 79,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(if using {
-                    LIVING_ENTITY_FLAG_IS_USING
-                } else {
-                    0
-                }),
-            }],
+            values: vec![living_entity_using_item_data(
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                using,
+            )],
         }));
     };
 
     // Vanilla `getTicksUsingItem()` is item-agnostic, so the player drives the SAME draw counter off its
-    // `isUsingItem` bit (`DATA_LIVING_ENTITY_FLAGS & 1`); the native layer applies the crossbow pose only
-    // when the using item is an uncharged crossbow.
+    // generated `isUsingItem` bit; the native layer applies the crossbow pose only when the using
+    // item is an uncharged crossbow.
     assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
     store.advance_entity_client_animations(2);
     assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);

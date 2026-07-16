@@ -170,6 +170,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Living health fixtures in combat-state, player-pose, small-mob animation, and native runtime-event
   coverage already use the generated inherited accessor/default and remain guarded against fixed
   aliases.
+  LivingEntity use-item flag fixtures must likewise derive the inherited BYTE wire index, default
+  and named using-item mask from the generated accessor bundle rather than fixed aliases.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression
