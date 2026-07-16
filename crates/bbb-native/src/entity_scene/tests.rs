@@ -5669,7 +5669,7 @@ fn entity_model_kind_uses_vanilla_chicken_variant_metadata() {
             VANILLA_ENTITY_TYPE_CHICKEN_ID,
             &[
                 protocol_chicken_variant_data(2),
-                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                baby_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, true),
             ]
         ),
         EntityModelKind::Chicken {
@@ -5720,7 +5720,7 @@ fn entity_model_instances_project_chicken_variants_from_world_registry_order() {
         id: 27,
         values: vec![
             protocol_chicken_variant_data(2),
-            protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            baby_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, true),
         ],
     }));
 
@@ -5771,7 +5771,7 @@ fn entity_model_kind_uses_vanilla_cow_variant_metadata() {
             VANILLA_ENTITY_TYPE_COW_ID,
             &[
                 protocol_cow_variant_data(2),
-                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                baby_data(VANILLA_ENTITY_TYPE_COW_ID, true),
             ]
         ),
         EntityModelKind::Cow {
@@ -5822,7 +5822,7 @@ fn entity_model_instances_project_cow_variants_from_world_registry_order() {
         id: 31,
         values: vec![
             protocol_cow_variant_data(2),
-            protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            baby_data(VANILLA_ENTITY_TYPE_COW_ID, true),
         ],
     }));
 
@@ -5873,7 +5873,7 @@ fn entity_model_kind_uses_vanilla_pig_variant_metadata() {
             VANILLA_ENTITY_TYPE_PIG_ID,
             &[
                 protocol_pig_variant_data(2),
-                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                baby_data(VANILLA_ENTITY_TYPE_PIG_ID, true),
             ]
         ),
         EntityModelKind::Pig {
@@ -5924,7 +5924,7 @@ fn entity_model_instances_project_pig_variants_from_world_registry_order() {
         id: 101,
         values: vec![
             protocol_pig_variant_data(2),
-            protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            baby_data(VANILLA_ENTITY_TYPE_PIG_ID, true),
         ],
     }));
 

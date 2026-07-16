@@ -17909,3 +17909,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   helper。
 - baby reverse guard 精确截取四个测试函数；Chicken adult/baby model、Turtle baby egg suppression
   与 Goat baby ramming head-tilt gate 回归保持不变。
+
+## 2026-07-16：统一 native farm-variant baby fixtures
+
+- Chicken/Cow/Pig 的 model-kind 与 world-registry-order fixtures 共删除 6 处全局 AgeableMob baby
+  alias，分别按实际 farm-animal type 调用 generated nearest-baby helper。
+- baby reverse guard 覆盖完整连续 farm-variant 区段；default/unknown holder fallback、registry
+  order remap、adult/baby model 与 baby texture 选择回归保持不变。

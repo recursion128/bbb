@@ -22486,6 +22486,27 @@ mod generated_catalog_guards {
                 );
             }
         }
+        let native_scene_farm_variant_fixtures = native_scene_tests
+            .split("fn entity_model_kind_uses_vanilla_chicken_variant_metadata")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("struct ReadyFarmAnimalPresentationLookup")
+                    .next()
+            })
+            .expect("native scene farm-variant baby fixture source");
+        assert_eq!(
+            native_scene_farm_variant_fixtures
+                .matches("baby_data(")
+                .count(),
+            6
+        );
+        for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+            assert!(
+                !native_scene_farm_variant_fixtures.contains(removed),
+                "native scene farm-variant baby fixtures restored {removed}"
+            );
+        }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,
