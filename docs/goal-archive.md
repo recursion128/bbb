@@ -17719,3 +17719,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   均按实际 entity type 查询 generated LivingEntity bundle 并校验 metadata default 1.0。
 - LivingEntity generator 守卫新增 entity-scene 父模块与 semantic fixture 的 health 专项检查，
   禁止固定/`VANILLA_*` health id alias 回流；其他仍开放的 living flags 夹具不被本切片误报。
+
+## 2026-07-16：统一 Entity shared flags/custom-name fixture accessor 消费
+
+- entity-scene 的 on-fire/invisible/glowing/sprinting 与 default shared-flags payload 全部改由
+  generated Entity bundle 提供 wire id、typed default 和 named masks；Dinnerbone/Grumm、jeb_
+  与 Toast custom-name fixtures 同样从 bundle 取得 accessor。
+- 删除父模块的 2 个固定 id 与 3 个 mask compatibility aliases，Entity generator 守卫把整个
+  entity-scene parent/fixture 纳入已有完整 alias 禁止集；同一 bundle 的 freeze-shake fixture 也
+  删除固定 ticks-frozen id 7。光照、隐身/光效、feline sprint、命名彩蛋与冻结抖动回归保持不变。

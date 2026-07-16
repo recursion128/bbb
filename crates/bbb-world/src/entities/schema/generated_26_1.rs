@@ -23366,6 +23366,8 @@ mod generated_catalog_guards {
         let input = include_str!("../../../../bbb-native/src/input.rs");
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let instance = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         for source in [
             dimensions,
             animations,
@@ -23374,6 +23376,8 @@ mod generated_catalog_guards {
             input,
             variants,
             instance,
+            native_scene,
+            native_scene_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [

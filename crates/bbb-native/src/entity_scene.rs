@@ -86,16 +86,6 @@ use bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_e
 #[cfg(test)]
 use bbb_world::WolfVariantAssetPresentation;
 use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
-#[cfg(test)]
-use bbb_world::VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE;
-#[cfg(test)]
-use bbb_world::VANILLA_ENTITY_SHARED_FLAG_ON_FIRE as ENTITY_SHARED_FLAG_ON_FIRE;
 use bbb_world::VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING;
 use bbb_world::{
     vanilla_entity_metadata_creeper_accessors_for_entity_type,

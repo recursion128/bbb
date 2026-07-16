@@ -1330,8 +1330,6 @@ fn entity_model_instances_project_ender_dragon_death_time() {
 
 #[test]
 fn entity_model_instances_fold_freeze_shake_into_body_rot() {
-    const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         83,
@@ -1348,7 +1346,7 @@ fn entity_model_instances_fold_freeze_shake_into_body_rot() {
     // uses the floored (integer) tick count, so it does not lerp with partial.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 83,
-        values: vec![protocol_int_data(VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, 140)],
+        values: vec![entity_ticks_frozen_data(140)],
     }));
     world.advance_entity_client_animations(2);
     let frozen = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
@@ -5104,10 +5102,7 @@ fn entity_model_instances_project_upside_down_dinnerbone() {
     // flips the model; extractRenderState then negates the head yaw and pitch.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 88,
-        values: vec![protocol_optional_component_data(
-            ENTITY_CUSTOM_NAME_DATA_ID,
-            Some("Dinnerbone"),
-        )],
+        values: vec![entity_custom_name_data(Some("Dinnerbone"))],
     }));
     let flipped = render_state(&world, 88);
     assert!(flipped
@@ -5119,28 +5114,19 @@ fn entity_model_instances_project_upside_down_dinnerbone() {
     // "Grumm" flips too; an unrelated name does not.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 88,
-        values: vec![protocol_optional_component_data(
-            ENTITY_CUSTOM_NAME_DATA_ID,
-            Some("Grumm"),
-        )],
+        values: vec![entity_custom_name_data(Some("Grumm"))],
     }));
     assert!(render_state(&world, 88).upside_down_height.is_some());
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 88,
-        values: vec![protocol_optional_component_data(
-            ENTITY_CUSTOM_NAME_DATA_ID,
-            Some("Steve"),
-        )],
+        values: vec![entity_custom_name_data(Some("Steve"))],
     }));
     assert_eq!(render_state(&world, 88).upside_down_height, None);
 
     // A non-living entity named Dinnerbone is still never flipped.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 89,
-        values: vec![protocol_optional_component_data(
-            ENTITY_CUSTOM_NAME_DATA_ID,
-            Some("Dinnerbone"),
-        )],
+        values: vec![entity_custom_name_data(Some("Dinnerbone"))],
     }));
     assert_eq!(render_state(&world, 89).upside_down_height, None);
 }
@@ -5343,10 +5329,7 @@ fn entity_light_coords_packs_vanilla_block_and_sky_with_on_fire_override() {
     );
     // EntityRenderer.getBlockLightLevel forces block light to 15 on fire,
     // leaving sky light untouched.
-    let on_fire = vec![protocol_byte_data(
-        ENTITY_SHARED_FLAGS_DATA_ID,
-        ENTITY_SHARED_FLAG_ON_FIRE,
-    )];
+    let on_fire = vec![entity_on_fire_data()];
     assert_eq!(
         entity_light_coords(generic, &on_fire, TerrainLight { sky: 4, block: 0 }),
         (15 << 4) | (4 << 20)
@@ -8736,10 +8719,7 @@ fn entity_model_kind_uses_vanilla_sheep_wool_metadata() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SHEEP_ID,
-            &[
-                protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
-                sheep_wool_data(14, false),
-            ]
+            &[entity_invisible_data(), sheep_wool_data(14, false),]
         ),
         EntityModelKind::Sheep {
             baby: false,
@@ -8757,7 +8737,7 @@ fn entity_model_kind_projects_sheep_jeb_custom_name_and_age() {
         entity_model_kind_with_time_and_registries(
             VANILLA_ENTITY_TYPE_SHEEP_ID,
             &[
-                protocol_optional_component_data(ENTITY_CUSTOM_NAME_DATA_ID, Some("jeb_")),
+                entity_custom_name_data(Some("jeb_")),
                 sheep_wool_data(0, false),
             ],
             12.5,
@@ -8775,10 +8755,7 @@ fn entity_model_kind_projects_sheep_jeb_custom_name_and_age() {
     assert_eq!(
         entity_model_kind_with_time_and_registries(
             VANILLA_ENTITY_TYPE_SHEEP_ID,
-            &[protocol_optional_component_data(
-                ENTITY_CUSTOM_NAME_DATA_ID,
-                Some("Not jeb_"),
-            )],
+            &[entity_custom_name_data(Some("Not jeb_"))],
             25.0,
             0,
             None,
@@ -8794,10 +8771,7 @@ fn entity_model_kind_projects_sheep_jeb_custom_name_and_age() {
     assert_eq!(
         entity_model_kind_with_time_and_registries(
             VANILLA_ENTITY_TYPE_SHEEP_ID,
-            &[protocol_optional_component_data(
-                ENTITY_CUSTOM_NAME_DATA_ID,
-                None
-            )],
+            &[entity_custom_name_data(None)],
             25.0,
             0,
             None,
@@ -8858,10 +8832,7 @@ fn entity_model_instances_project_sheep_jeb_custom_name_and_age_from_world() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 112,
-        values: vec![protocol_optional_component_data(
-            ENTITY_CUSTOM_NAME_DATA_ID,
-            Some("jeb_"),
-        )],
+        values: vec![entity_custom_name_data(Some("jeb_"))],
     }));
     world.advance_entity_client_animations(12);
 
@@ -8896,10 +8867,7 @@ fn entity_model_instances_project_sheep_invisible_shared_flag_from_world() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 113,
-        values: vec![
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
-            sheep_wool_data(14, false),
-        ],
+        values: vec![entity_invisible_data(), sheep_wool_data(14, false),],
     }));
 
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);
@@ -8936,10 +8904,7 @@ fn entity_model_instances_project_spectator_visible_invisible_sheep_from_world()
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 113,
-        values: vec![
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
-            sheep_wool_data(14, false),
-        ],
+        values: vec![entity_invisible_data(), sheep_wool_data(14, false),],
     }));
     world.apply_game_event(bbb_protocol::packets::GameEvent {
         event_id: 3,
@@ -8961,13 +8926,7 @@ fn entity_model_instances_project_glowing_shared_flag_from_world() {
     world.apply_add_entity(sheep);
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 113,
-        values: vec![
-            protocol_byte_data(
-                ENTITY_SHARED_FLAGS_DATA_ID,
-                ENTITY_SHARED_FLAG_INVISIBLE | ENTITY_SHARED_FLAG_GLOWING,
-            ),
-            sheep_wool_data(14, false),
-        ],
+        values: vec![entity_invisible_glowing_data(), sheep_wool_data(14, false),],
     }));
     assert!(world.apply_set_player_team(SetPlayerTeam {
         name: "green".to_string(),
@@ -9871,7 +9830,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_WOLF_ID,
             &[
-                protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
+                entity_invisible_data(),
                 tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, true, false),
                 protocol_int_data(wolf_metadata_accessors().collar_color_data_id, 11),
             ]
@@ -10030,10 +9989,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_RABBIT_ID,
-            &[protocol_optional_component_data(
-                ENTITY_CUSTOM_NAME_DATA_ID,
-                Some("Toast")
-            )]
+            &[entity_custom_name_data(Some("Toast"))]
         ),
         EntityModelKind::Rabbit {
             baby: false,
@@ -10044,10 +10000,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_RABBIT_ID,
-            &[protocol_optional_component_data(
-                ENTITY_CUSTOM_NAME_DATA_ID,
-                Some("toast")
-            )]
+            &[entity_custom_name_data(Some("toast"))]
         ),
         EntityModelKind::Rabbit {
             baby: false,
@@ -10308,7 +10261,6 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
     // (Pose.CROUCHING, ordinal 5) and `Entity.isSprinting()` (shared flags bit 3). Cat also copies
     // `TamableAnimal.isInSittingPose()`; ocelot leaves `isSitting` at the default false.
     const ENTITY_DATA_POSE_ID: u8 = 6;
-    const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
     const POSE_STANDING: i32 = 0;
     const POSE_CROUCHING: i32 = 5;
 
@@ -10353,7 +10305,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
         id: 43,
         values: vec![
             pose_data(POSE_CROUCHING),
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+            entity_sprinting_data(),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
         ],
     }));
@@ -10372,7 +10324,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
         id: 45,
         values: vec![
             pose_data(POSE_CROUCHING),
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+            entity_sprinting_data(),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
         ],
     }));
@@ -10382,7 +10334,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
         id: 43,
         values: vec![
             pose_data(POSE_STANDING),
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
+            entity_default_shared_flags_data(),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, false),
         ],
     }));
@@ -10639,7 +10591,7 @@ fn entity_model_instances_project_wolf_invisible_shared_flag_from_world() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 148,
         values: vec![
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
+            entity_invisible_data(),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, true, false),
             protocol_int_data(wolf_metadata_accessors().collar_color_data_id, 11),
         ],
@@ -11628,6 +11580,45 @@ fn living_entity_health_data(entity_type_id: i32, health: f32) -> EntityDataValu
         .expect("generated LivingEntity metadata accessors");
     assert_eq!(accessors.health_default, 1.0);
     protocol_float_data(accessors.health_data_id, health)
+}
+
+fn entity_metadata_accessors() -> bbb_world::VanillaEntityMetadataAccessors {
+    vanilla_entity_metadata_entity_accessors().expect("generated Entity metadata accessors")
+}
+
+fn entity_custom_name_data(value: Option<&str>) -> EntityDataValue {
+    protocol_optional_component_data(entity_metadata_accessors().custom_name_data_id, value)
+}
+
+fn entity_shared_flags_data(flags: i8) -> EntityDataValue {
+    protocol_byte_data(entity_metadata_accessors().shared_flags_data_id, flags)
+}
+
+fn entity_on_fire_data() -> EntityDataValue {
+    entity_shared_flags_data(entity_metadata_accessors().on_fire_mask)
+}
+
+fn entity_invisible_data() -> EntityDataValue {
+    entity_shared_flags_data(entity_metadata_accessors().invisible_mask)
+}
+
+fn entity_invisible_glowing_data() -> EntityDataValue {
+    let accessors = entity_metadata_accessors();
+    entity_shared_flags_data(accessors.invisible_mask | accessors.glowing_mask)
+}
+
+fn entity_sprinting_data() -> EntityDataValue {
+    entity_shared_flags_data(entity_metadata_accessors().sprinting_mask)
+}
+
+fn entity_default_shared_flags_data() -> EntityDataValue {
+    entity_shared_flags_data(entity_metadata_accessors().shared_flags_default)
+}
+
+fn entity_ticks_frozen_data(ticks: i32) -> EntityDataValue {
+    let accessors = entity_metadata_accessors();
+    assert_eq!(accessors.ticks_frozen_default, 0);
+    protocol_int_data(accessors.ticks_frozen_data_id, ticks)
 }
 
 fn zombification_immunity_data(entity_type_id: i32, immune: bool) -> EntityDataValue {
