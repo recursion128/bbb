@@ -18118,3 +18118,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `FLAG_IS_CHARGING` named mask；world model-source 与 native model-kind 生产投影删除固定 mask。
 - world combat-state 与 native entity-scene fixtures 全部通过 accessor 构造 metadata；Chicken/Bat
   同 id 负例保留为显式 collision helper，Vex 装备姿态回归保持不变。
+
+## 2026-07-16：完成 Wither invulnerability fixture 迁移
+
+- world combat-state 与 native F3+I Wither fixtures 统一通过既有 generated
+  `WitherBoss.DATA_ID_INV` accessor 构造 INT metadata，并校验 typed default 0。
+- Chicken 同 id 负例改为显式 collision helper；Wither reverse guard 纳入两份 fixtures，
+  禁止固定 wire id alias 回流，生产 render/debug 投影保持由同一 accessor 驱动。

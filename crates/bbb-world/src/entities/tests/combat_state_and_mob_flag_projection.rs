@@ -86,6 +86,19 @@ fn vex_flags_collision_data(flags: i8) -> ProtocolEntityDataValue {
     vex_flags_data(VANILLA_ENTITY_TYPE_VEX_ID, flags)
 }
 
+fn wither_invulnerability_data(entity_type_id: i32, ticks: i32) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(entity_type_id)
+            .expect("generated WitherBoss invulnerability accessor must resolve");
+    assert_eq!(default, 0);
+    protocol_int_data(data_id, ticks)
+}
+
+/// Deliberately sends the WitherBoss field to a non-Wither to cover data-id/type gating.
+fn wither_invulnerability_collision_data(ticks: i32) -> ProtocolEntityDataValue {
+    wither_invulnerability_data(VANILLA_ENTITY_TYPE_WITHER_ID, ticks)
+}
+
 fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEntityDataValue> {
     let accessors =
         crate::entities::schema::vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
@@ -987,8 +1000,11 @@ fn entity_model_sources_project_vex_charging_from_flags() {
 
 #[test]
 fn entity_model_sources_project_wither_invulnerable_ticks() {
-    // Vanilla WitherBoss.DATA_ID_INV (19, INT): the spawn-invulnerability countdown.
-    const VANILLA_WITHER_INV_DATA_ID: u8 = 19;
+    // Vanilla WitherBoss.DATA_ID_INV (INT): the spawn-invulnerability countdown.
+    let (_, default) = vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_WITHER_ID,
+    )
+    .expect("generated WitherBoss invulnerability accessor must resolve");
 
     let ticks = |store: &WorldStore, id: i32, partial: f32| {
         store
@@ -998,14 +1014,10 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
             .unwrap()
             .wither_invulnerable_ticks
     };
-    let set_inv = |store: &mut WorldStore, id: i32, value: i32| {
+    let set_inv = |store: &mut WorldStore, id: i32, value: ProtocolEntityDataValue| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_WITHER_INV_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(value),
-            }],
+            values: vec![value],
         })
     };
 
@@ -1017,11 +1029,19 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
     // A fully-spawned wither (DATA_ID_INV = 0) projects 0.0.
     assert_eq!(ticks(&store, 80, 0.0), 0.0);
     // A freshly-summoned wither (220) lerps `invulnerableTicks - partialTicks`.
-    assert!(set_inv(&mut store, 80, 220));
+    assert!(set_inv(
+        &mut store,
+        80,
+        wither_invulnerability_data(VANILLA_ENTITY_TYPE_WITHER_ID, 220)
+    ));
     assert!((ticks(&store, 80, 0.0) - 220.0).abs() < 1.0e-6);
     assert!((ticks(&store, 80, 0.5) - 219.5).abs() < 1.0e-6);
     // Clearing it returns to 0.0 (a non-positive countdown is not lerped).
-    assert!(set_inv(&mut store, 80, 0));
+    assert!(set_inv(
+        &mut store,
+        80,
+        wither_invulnerability_data(VANILLA_ENTITY_TYPE_WITHER_ID, default)
+    ));
     assert_eq!(ticks(&store, 80, 0.5), 0.0);
 
     // A chicken carries no DATA_ID_INV accessor; a stray int at the same data id never reaches its
@@ -1030,7 +1050,11 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
         81,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_inv(&mut store, 81, 220));
+    assert!(set_inv(
+        &mut store,
+        81,
+        wither_invulnerability_collision_data(220)
+    ));
     assert_eq!(ticks(&store, 81, 0.0), 0.0);
 }
 

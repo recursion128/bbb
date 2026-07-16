@@ -403,6 +403,25 @@ fn bat_flags_data(world: &WorldStore, entity_id: i32) -> ProtocolEntityDataValue
     }
 }
 
+fn wither_invulnerability_data(
+    world: &WorldStore,
+    entity_id: i32,
+    ticks: i32,
+) -> ProtocolEntityDataValue {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("Wither fixture entity must exist before metadata is constructed");
+    let (data_id, default) =
+        vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(entity_type_id)
+            .expect("generated WitherBoss invulnerability accessor must resolve");
+    assert_eq!(default, 0);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(ticks),
+    }
+}
+
 fn sniffer_baby_data(is_baby: bool) -> ProtocolEntityDataValue {
     let (data_id, _) =
         vanilla_entity_metadata_baby_accessor_for_entity_type(VANILLA_ENTITY_TYPE_SNIFFER_ID)
@@ -13830,12 +13849,7 @@ fn shift_f3_i_with_permission_copies_local_wither_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, false, true),
-            ProtocolEntityDataValue {
-                data_id: WITHER_INVULNERABLE_TICKS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(220),
-            },
+            wither_invulnerability_data(&world, 50, 220),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

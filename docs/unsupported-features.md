@@ -290,8 +290,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   override, including HappyGhast/Shulker maximum clamps and EnderDragon's fixed 1.0 result;
   dimensions/render projection must not restore a type switch or local cap constants.
   Wither invulnerability/render membership, wire index and default must remain derived from the
-  generated `WitherBoss.DATA_ID_INV` accessor; world projection must not restore a Wither type
-  predicate or fixed accessor aliases.
+  generated `WitherBoss.DATA_ID_INV` accessor; world/native debug consumers and fixtures must not
+  restore a Wither type predicate or fixed accessor/default aliases.
   EnderMan carried-block/creepy render membership, wire indices and defaults must remain derived
   together from generated `DATA_CARRY_STATE`/`DATA_CREEPY`; world projection must not restore an
   EnderMan type predicate or fixed accessor aliases.

@@ -23463,9 +23463,26 @@ mod generated_catalog_guards {
         assert!(animations
             .contains("vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type"));
         let world_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        assert!(world_tests.contains("fn wither_invulnerability_data("));
+        assert!(world_tests.contains(
+            "vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type"
+        ));
         assert!(world_tests.contains("fn wither_side_head_target_data("));
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         assert!(native_scene_tests.contains("fn protocol_wither_target_b_data("));
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        assert!(native_input_tests.contains("fn wither_invulnerability_data("));
+        assert!(native_input_tests.contains(
+            "vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type"
+        ));
+        for source in [world_tests, native_input, native_input_tests] {
+            for removed in ["WITHER_INVULNERABLE_TICKS_DATA_ID", "WITHER_INV_DATA_ID"] {
+                assert!(
+                    !source.contains(removed),
+                    "Wither fixture restored {removed}"
+                );
+            }
+        }
         assert!(native_scene_tests.contains("vanilla_entity_metadata_accessor_for_entity_type"));
         for removed in [
             "WITHER_TARGET_B_DATA_ID",
