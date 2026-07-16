@@ -140,6 +140,9 @@ def render(source_root: Path) -> str:
                 "        extracts_casting_spell: "
                 + str(entry.extracts_casting_spell).lower()
                 + ",",
+                "        extracts_sheep_head_eat: "
+                + str(entry.extracts_sheep_head_eat).lower()
+                + ",",
                 "        extracts_zombie_underwater_converting: "
                 + str(entry.extracts_zombie_underwater_converting).lower()
                 + ",",
@@ -232,6 +235,19 @@ def render(source_root: Path) -> str:
             "    fn native_projection_does_not_restore_spellcaster_illager_membership() {",
             '        let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");',
             '        assert!(!source.contains("fn illager_spellcasting"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_projection_does_not_restore_sheep_head_eat_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");',
+            '        let body = source',
+            '            .split("pub(super) fn sheep_head_eat_pose")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\\n}"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("sheep head-eat projection source");',
+            '        assert!(body.contains("vanilla_entity_renderer_extracts_sheep_head_eat"));',
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_SHEEP_ID"));',
             "    }",
             "",
             "    #[test]",

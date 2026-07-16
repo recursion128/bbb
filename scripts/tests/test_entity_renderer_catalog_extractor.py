@@ -87,6 +87,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.ZOMBIE_VILLAGER, ZombieVillagerRenderer::new);
                     register(EntityType.GLOW_ITEM_FRAME, ItemFrameRenderer::new);
                     register(EntityType.ITEM_FRAME, ItemFrameRenderer::new);
+                    register(EntityType.SHEEP, SheepRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -313,6 +314,18 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 }
                 """,
             ),
+            java(
+                "net/minecraft/client/renderer/entity/SheepRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class SheepRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.headEatAngleScale = entity.getHeadEatAngleScale(partialTicks);
+                        state.headEatPositionScale = entity.getHeadEatPositionScale(partialTicks);
+                    }
+                }
+                """,
+            ),
         ]
 
         entries = extract_entity_renderer_registrations(
@@ -338,6 +351,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "ZOMBIE_VILLAGER",
                 "GLOW_ITEM_FRAME",
                 "ITEM_FRAME",
+                "SHEEP",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -381,6 +395,7 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (16, "ZOMBIE_VILLAGER", "ZombieVillagerRenderer", False, None, None, False, False, False, False, False, False),
                 (17, "GLOW_ITEM_FRAME", "ItemFrameRenderer", False, 5, None, False, False, False, False, False, False),
                 (18, "ITEM_FRAME", "ItemFrameRenderer", False, None, None, False, False, False, False, False, False),
+                (19, "SHEEP", "SheepRenderer", False, None, None, False, False, False, False, False, False),
             ],
         )
         self.assertEqual(
@@ -390,6 +405,10 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 if entry.extracts_zombie_underwater_converting
             ],
             ["ZOMBIE", "HUSK", "DROWNED"],
+        )
+        self.assertEqual(
+            [entry.constant_name for entry in entries if entry.extracts_sheep_head_eat],
+            ["SHEEP"],
         )
 
 

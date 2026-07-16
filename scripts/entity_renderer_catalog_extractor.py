@@ -49,6 +49,7 @@ class EntityRendererRegistration:
     extracts_mob_aggressive: bool
     extracts_unhappy_counter: bool
     extracts_casting_spell: bool
+    extracts_sheep_head_eat: bool
     extracts_zombie_underwater_converting: bool
 
 
@@ -669,6 +670,18 @@ def extract_entity_renderer_registrations(
                 _renderer_hierarchy_contains_extract_assignment(
                     renderer_class,
                     "state.isCastingSpell = entity.isCastingSpell ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.headEatAngleScale = entity.getHeadEatAngleScale (partialTicks)",
+                    source_by_type,
+                    type_by_name,
+                )
+                and _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.headEatPositionScale = entity.getHeadEatPositionScale (partialTicks)",
                     source_by_type,
                     type_by_name,
                 ),

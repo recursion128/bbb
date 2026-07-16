@@ -17031,3 +17031,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - world item-frame render state 的 glow 标志和 native entity light clamp 共享该生成属性，移除
   两处 production GlowItemFrame type 判定及 native 的裸 `5`。generator 输出反向门禁，防止
   两个消费者恢复平行事实；普通 ItemFrame 仍保持无下限，既有周围光采样不变。
+
+## 2026-07-16：生成 Sheep head-eat pose membership
+
+- entity renderer extractor 现在要求同一注册 renderer hierarchy 同时包含
+  `state.headEatAngleScale = entity.getHeadEatAngleScale(partialTicks)` 与
+  `state.headEatPositionScale = entity.getHeadEatPositionScale(partialTicks)`，由此生成唯一 Sheep
+  head-eat projection membership；单独出现任一赋值都不会误分类。
+- native `sheep_head_eat_pose` 改为消费该 renderer membership，不再直接门控 Sheep type id；
+  generator 输出的跨 crate 反向测试锁定 consumer，现有 eatAnimationTick 公式与 partial-tick
+  语义保持不变。

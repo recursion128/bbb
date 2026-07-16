@@ -21,6 +21,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -36,6 +37,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -51,6 +53,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -66,6 +69,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -81,6 +85,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -96,6 +101,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -111,6 +117,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -126,6 +133,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -141,6 +149,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -156,6 +165,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -171,6 +181,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -186,6 +197,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -201,6 +213,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -216,6 +229,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -231,6 +245,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -246,6 +261,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -261,6 +277,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -276,6 +293,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -291,6 +309,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -306,6 +325,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -321,6 +341,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -336,6 +357,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -351,6 +373,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -366,6 +389,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -381,6 +405,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -396,6 +421,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -411,6 +437,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -426,6 +453,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -441,6 +469,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -456,6 +485,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -471,6 +501,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -486,6 +517,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -501,6 +533,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -516,6 +549,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -531,6 +565,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -546,6 +581,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -561,6 +597,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -576,6 +613,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -591,6 +629,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: true,
     },
     VanillaEntityRendererRegistration {
@@ -606,6 +645,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -621,6 +661,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -636,6 +677,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -651,6 +693,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -666,6 +709,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -681,6 +725,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -696,6 +741,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -711,6 +757,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: true,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -726,6 +773,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -741,6 +789,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -756,6 +805,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -771,6 +821,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -786,6 +837,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -801,6 +853,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -816,6 +869,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -831,6 +885,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -846,6 +901,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -861,6 +917,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -876,6 +933,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -891,6 +949,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -906,6 +965,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -921,6 +981,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -936,6 +997,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -951,6 +1013,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -966,6 +1029,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -981,6 +1045,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -996,6 +1061,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1011,6 +1077,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1026,6 +1093,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: true,
     },
     VanillaEntityRendererRegistration {
@@ -1041,6 +1109,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: true,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1056,6 +1125,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1071,6 +1141,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1086,6 +1157,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1101,6 +1173,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1116,6 +1189,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1131,6 +1205,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1146,6 +1221,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1161,6 +1237,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1176,6 +1253,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1191,6 +1269,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1206,6 +1285,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1221,6 +1301,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1236,6 +1317,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1251,6 +1333,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1266,6 +1349,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1281,6 +1365,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1296,6 +1381,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1311,6 +1397,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1326,6 +1413,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1341,6 +1429,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1356,6 +1445,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1371,6 +1461,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1386,6 +1477,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1401,6 +1493,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1416,6 +1509,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1431,6 +1525,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1446,6 +1541,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: true,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1461,6 +1557,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1476,6 +1573,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1491,6 +1589,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1506,6 +1605,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1521,6 +1621,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1536,6 +1637,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1551,6 +1653,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1566,6 +1669,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1581,6 +1685,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1596,6 +1701,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1611,6 +1717,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1626,6 +1733,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1641,6 +1749,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1656,6 +1765,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1671,6 +1781,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: true,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1686,6 +1797,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1701,6 +1813,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1716,6 +1829,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1731,6 +1845,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1746,6 +1861,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1761,6 +1877,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1776,6 +1893,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1791,6 +1909,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1806,6 +1925,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1821,6 +1941,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1836,6 +1957,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1851,6 +1973,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1866,6 +1989,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1881,6 +2005,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1896,6 +2021,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1911,6 +2037,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1926,6 +2053,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1941,6 +2069,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1956,6 +2085,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1971,6 +2101,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -1986,6 +2117,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2001,6 +2133,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2016,6 +2149,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2031,6 +2165,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2046,6 +2181,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2061,6 +2197,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2076,6 +2213,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2091,6 +2229,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: true,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2106,6 +2245,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2121,6 +2261,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: true,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2136,6 +2277,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2151,6 +2293,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2166,6 +2309,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2181,6 +2325,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2196,6 +2341,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2211,6 +2357,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2226,6 +2373,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2241,6 +2389,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2256,6 +2405,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: true,
     },
     VanillaEntityRendererRegistration {
@@ -2271,6 +2421,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2286,6 +2437,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2301,6 +2453,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2316,6 +2469,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: true,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
     VanillaEntityRendererRegistration {
@@ -2331,6 +2485,7 @@ pub(super) const VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1:
         extracts_mob_aggressive: false,
         extracts_unhappy_counter: false,
         extracts_casting_spell: false,
+        extracts_sheep_head_eat: false,
         extracts_zombie_underwater_converting: false,
     },
 ];
@@ -2424,6 +2579,19 @@ mod generated_catalog_guards {
     fn native_projection_does_not_restore_spellcaster_illager_membership() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         assert!(!source.contains("fn illager_spellcasting"));
+    }
+
+    #[test]
+    fn native_projection_does_not_restore_sheep_head_eat_membership() {
+        let source = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
+        let body = source
+            .split("pub(super) fn sheep_head_eat_pose")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("sheep head-eat projection source");
+        assert!(body.contains("vanilla_entity_renderer_extracts_sheep_head_eat"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_SHEEP_ID"));
     }
 
     #[test]

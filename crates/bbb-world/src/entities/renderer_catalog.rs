@@ -18,6 +18,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     extracts_mob_aggressive: bool,
     extracts_unhappy_counter: bool,
     extracts_casting_spell: bool,
+    extracts_sheep_head_eat: bool,
     extracts_zombie_underwater_converting: bool,
 }
 
@@ -117,6 +118,11 @@ pub(super) fn vanilla_entity_renderer_extracts_casting_spell(entity_type_id: i32
         .is_some_and(|entry| entry.extracts_casting_spell)
 }
 
+pub fn vanilla_entity_renderer_extracts_sheep_head_eat(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.extracts_sheep_head_eat)
+}
+
 pub fn vanilla_entity_renderer_extracts_zombie_underwater_converting(entity_type_id: i32) -> bool {
     vanilla_entity_renderer_registration(entity_type_id)
         .is_some_and(|entry| entry.extracts_zombie_underwater_converting)
@@ -146,16 +152,17 @@ mod tests {
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
         VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
         VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
 
     use super::*;
@@ -500,6 +507,21 @@ mod tests {
         assert!(!vanilla_entity_renderer_extracts_casting_spell(
             VANILLA_ENTITY_TYPE_VINDICATOR_ID
         ));
+    }
+
+    #[test]
+    fn generated_sheep_head_eat_projection_matches_renderer_extractors() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.extracts_sheep_head_eat)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(actual, vec![VANILLA_ENTITY_TYPE_SHEEP_ID]);
+        assert!(vanilla_entity_renderer_extracts_sheep_head_eat(
+            VANILLA_ENTITY_TYPE_SHEEP_ID
+        ));
+        assert!(!vanilla_entity_renderer_extracts_sheep_head_eat(-1));
+        assert!(!vanilla_entity_renderer_extracts_sheep_head_eat(157));
     }
 
     #[test]

@@ -1041,7 +1041,7 @@ pub(super) fn sheep_head_eat_pose(
     sheep_eat_animation_tick: i32,
     partial_tick: f32,
 ) -> SheepHeadEatPose {
-    if entity_type_id == VANILLA_ENTITY_TYPE_SHEEP_ID {
+    if bbb_world::vanilla_entity_renderer_extracts_sheep_head_eat(entity_type_id) {
         SheepHeadEatPose::from_eat_tick(sheep_eat_animation_tick, partial_tick)
     } else {
         SheepHeadEatPose::NONE

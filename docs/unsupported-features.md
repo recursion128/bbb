@@ -164,7 +164,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   must remain derived from generated provider registrations rather than an entity-type switch.
   `ItemFrameRenderer`'s glow-frame render-state membership and minimum block-light clamp must remain
   extracted together; world/native consumers must not restore the GlowItemFrame type id or literal
-  clamp as parallel facts.
+  clamp as parallel facts. Sheep head-eat pose membership must remain the intersection of both
+  `SheepRenderer.extractRenderState` head-eat assignments rather than a native Sheep type gate.
   Zombie underwater
   conversion shaking must remain derived from the registered renderer hierarchy's
   `extractRenderState` assignment rather than a Zombie/Husk/Drowned type switch. Emit every new
