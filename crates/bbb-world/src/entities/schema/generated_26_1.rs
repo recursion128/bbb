@@ -22555,12 +22555,29 @@ mod generated_catalog_guards {
         assert!(source.contains(
             "wither_side_head_target_ids(identity.entity_type_id, &metadata.data_values)"
         ));
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let debug_body = native_input
+            .split("fn debug_push_wither_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_wandering_trader_additional_save_data")
+                    .next()
+            })
+            .expect("Wither debug projection source");
+        assert!(debug_body.contains(
+            "vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type"
+        ));
         for removed in [
             "vanilla_is_wither",
             "WITHER_INVULNERABLE_TICKS_DATA_ID",
             "WITHER_DEFAULT_INVULNERABLE_TICKS",
         ] {
             assert!(!source.contains(removed), "restored {removed}");
+            assert!(
+                !debug_body.contains(removed),
+                "native debug restored {removed}"
+            );
         }
         let dimensions = include_str!("../dimensions.rs");
         assert!(!dimensions.contains("fn vanilla_is_wither"));

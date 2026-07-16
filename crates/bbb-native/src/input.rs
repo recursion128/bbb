@@ -102,6 +102,7 @@ use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_ty
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 #[cfg(test)]
@@ -111,6 +112,8 @@ use bbb_world::VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DA
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 #[cfg(test)]
 use bbb_world::VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_TICKS_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 use bbb_world::{
@@ -175,8 +178,6 @@ use bbb_world::{
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_COLOR_MASK as SHEEP_WOOL_COLOR_MASK,
     VANILLA_TADPOLE_AGE_LOCKED_DATA_ID as TADPOLE_AGE_LOCKED_DATA_ID,
-    VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS as WITHER_DEFAULT_INVULNERABLE_TICKS,
-    VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_TICKS_DATA_ID,
     VANILLA_ZOGLIN_BABY_DATA_ID as ZOGLIN_BABY_DATA_ID,
     VANILLA_ZOGLIN_DEFAULT_BABY as ZOGLIN_DEFAULT_BABY,
     VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
@@ -7750,9 +7751,15 @@ fn debug_push_ravager_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_wither_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let invulnerable_ticks =
-        debug_entity_data_int_present(entity, WITHER_INVULNERABLE_TICKS_DATA_ID)
-            .unwrap_or(WITHER_DEFAULT_INVULNERABLE_TICKS);
+    let Some((invulnerable_ticks_data_id, invulnerable_ticks_default)) =
+        vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let invulnerable_ticks = debug_entity_data_int_present(entity, invulnerable_ticks_data_id)
+        .unwrap_or(invulnerable_ticks_default);
     fields.push(format!("Invul: {invulnerable_ticks}"));
 }
 

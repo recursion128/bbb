@@ -16736,3 +16736,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native gene-driven model、unhappy/sneeze/eating/scared render state 与 F3+I gene 保存投影删除
   固定 accessor/default aliases；既有模型、动画和 debug 语义测试继续锁定行为，metadata
   generator reverse guard 覆盖完整 family 消费面。
+
+## 2026-07-16：补齐 Wither metadata accessor 的 debug 消费路径
+
+- F3+I `Invul` 保存投影现在与 world render-state 投影共同消费 generated
+  `WitherBoss.DATA_ID_INV` accessor，由 schema 解析 membership、INT wire id 与 typed
+  default；native debug 删除固定 accessor/default aliases。
+- 既有 Wither debug 与 world 语义测试继续锁定行为；metadata generator reverse guard 扩展到
+  native 生产路径。

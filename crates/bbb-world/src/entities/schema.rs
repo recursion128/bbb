@@ -2235,7 +2235,7 @@ pub(crate) fn vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_ent
 ///
 /// The accessor owner supplies both the Wither presentation membership and its wire index, so
 /// world consumers do not need a parallel single-type predicate or fixed data-id import.
-pub(crate) fn vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
+pub fn vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i32)> {
     let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_INV")?;
