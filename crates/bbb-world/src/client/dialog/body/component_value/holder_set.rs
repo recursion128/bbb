@@ -13,7 +13,10 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         VANILLA_DATA_COMPONENT_VILLAGER_VARIANT_TYPE_ID,
     },
-    item_types::vanilla_item_type_for_resource_id,
+    item_types::{
+        vanilla_item_resource_id_matches_type, vanilla_item_type_for_resource_id,
+        VANILLA_ITEM_BRICK_ID,
+    },
     mob_effect_types::vanilla_mob_effect_type_for_resource_id,
     NbtSummaryEntry, NbtSummaryValue,
 };
@@ -304,8 +307,10 @@ fn decode_pot_decorations(
         .iter()
         .enumerate()
         .map(|(index, value)| {
-            decode_builtin_item_holder_reference(value, &format!("{what}[{index}]"))
-                .map(|item| (item.resource_id != "minecraft:brick").then_some(item))
+            decode_builtin_item_holder_reference(value, &format!("{what}[{index}]")).map(|item| {
+                (!vanilla_item_resource_id_matches_type(&item.resource_id, VANILLA_ITEM_BRICK_ID))
+                    .then_some(item)
+            })
         })
         .collect::<Result<Vec<_>, String>>()?
         .into_iter();

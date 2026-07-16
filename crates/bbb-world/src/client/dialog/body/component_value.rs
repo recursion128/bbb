@@ -7,7 +7,9 @@ use bbb_protocol::attribute_modifier_types::{
 use bbb_protocol::item_component_value_types::{
     FireworkExplosionShapeSummary, ItemRaritySummary, SwingAnimationTypeSummary,
 };
-use bbb_protocol::item_types::vanilla_item_type_for_resource_id;
+use bbb_protocol::item_types::{
+    vanilla_item_type, vanilla_item_type_for_resource_id, VANILLA_ITEM_BRICK_ID,
+};
 use bbb_protocol::packets::{
     chunks::BlockPos,
     inventory::{
@@ -1025,7 +1027,7 @@ pub(super) fn apply_item_patch_value(
                 .insert(type_id, NbtSummaryValue::Compound(entries));
         }
         (VANILLA_DATA_COMPONENT_POT_DECORATIONS_TYPE_ID, Value::PotDecorations { decorations }) => {
-            let Some(brick) = vanilla_item_type_for_resource_id("minecraft:brick") else {
+            let Some(brick) = vanilla_item_type(VANILLA_ITEM_BRICK_ID) else {
                 return false;
             };
             patch.pot_decorations_item_ids = [

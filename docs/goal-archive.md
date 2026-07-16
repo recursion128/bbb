@@ -16880,3 +16880,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - item catalog 新增按生成 id 对 canonical namespaced resource 做 O(1) 比较的共享谓词，避免
   渲染热路径为机械迁移扫描 1506 项。generator 生成的跨 crate 反向测试覆盖 native 消费面；
   19 条 first-person、137 条 entity-model focused tests（含新增 Witch 正向 potion case）锁定行为。
+
+## 2026-07-16：统一 decorated-pot 空面物品身份
+
+- `bbb-world` block-entity NBT、dialog holder decode、canonical JSON length 与 component patch
+  projection 四处 `PotDecorations.getItem/ordered` 的空面 `Items.BRICK` 判断/默认值，现直接消费
+  生成的 `VANILLA_ITEM_BRICK_ID` 与 item catalog，不再维护 production resource 字面量。
+- item registry generator 的反向测试按 item-model、native hand、decorated-pot semantic group
+  分别校验，避免跨组 fixture 误判；dialog pot-decorations 与 6 条 decorated-pot focused tests
+  锁定四面顺序、空面归一化、canonical 编码和 block presentation 行为。

@@ -7612,16 +7612,27 @@ mod tests {
 
     #[test]
     fn item_identity_consumers_do_not_restore_item_resource_literals() {
-        let sources = [
+        fn assert_no_resource_literals(sources: &[&str], item_ids: &[i32]) {
+            let combined = sources.concat();
+            for &item_id in item_ids {
+                let resource_id = vanilla_item_type(item_id)
+                    .expect("generated item id")
+                    .resource_id;
+                let literal = format!("\"{resource_id}\"");
+                assert!(
+                    !combined.contains(&literal),
+                    "production consumer restored {literal}"
+                );
+            }
+        }
+
+        let item_model_sources = [
             include_str!("../../bbb-item-model/src/item_runtime.rs"),
             include_str!("../../bbb-item-model/src/item_runtime/icon.rs"),
             include_str!("../../bbb-item-model/src/item_runtime/profiles.rs"),
             include_str!("../../bbb-item-model/src/item_runtime/tooltip.rs"),
-            include_str!("../../bbb-native/src/item_models/first_person.rs"),
-            include_str!("../../bbb-native/src/entity_scene/hands.rs"),
-            include_str!("../../bbb-native/src/entity_scene/instance.rs"),
         ];
-        let migrated_item_ids = [
+        let item_model_ids = [
             VANILLA_ITEM_FIREWORK_ROCKET_ID,
             VANILLA_ITEM_BOW_ID,
             VANILLA_ITEM_BRUSH_ID,
@@ -7645,25 +7656,45 @@ mod tests {
             VANILLA_ITEM_CLOCK_ID,
             VANILLA_ITEM_COMPASS_ID,
             VANILLA_ITEM_RECOVERY_COMPASS_ID,
+        ];
+        assert_no_resource_literals(&item_model_sources, &item_model_ids);
+        assert!(item_model_sources[0].contains("use bbb_protocol::item_types"));
+
+        let native_sources = [
+            include_str!("../../bbb-native/src/item_models/first_person.rs"),
+            include_str!("../../bbb-native/src/entity_scene/hands.rs"),
+            include_str!("../../bbb-native/src/entity_scene/instance.rs"),
+        ];
+        let native_ids = [
+            VANILLA_ITEM_BOW_ID,
+            VANILLA_ITEM_BRUSH_ID,
             VANILLA_ITEM_BUNDLE_ID,
+            VANILLA_ITEM_CROSSBOW_ID,
             VANILLA_ITEM_GOAT_HORN_ID,
             VANILLA_ITEM_SHIELD_ID,
+            VANILLA_ITEM_SPYGLASS_ID,
+            VANILLA_ITEM_TRIDENT_ID,
             VANILLA_ITEM_POTION_ID,
         ];
-        let combined = sources.concat();
-        for item_id in migrated_item_ids {
-            let resource_id = vanilla_item_type(item_id)
-                .expect("generated item id")
-                .resource_id;
-            let literal = format!("\"{resource_id}\"");
-            assert!(
-                !combined.contains(&literal),
-                "item-model restored {literal}"
-            );
-        }
-        assert!(sources[0].contains("use bbb_protocol::item_types"));
-        assert!(sources
+        assert_no_resource_literals(&native_sources, &native_ids);
+
+        let pot_sources = [
+            include_str!("../../bbb-world/src/chunks/pot_decorations.rs"),
+            include_str!("../../bbb-world/src/client/dialog/body/component_value.rs"),
+            include_str!("../../bbb-world/src/client/dialog/body/component_value/holder_set.rs"),
+            include_str!(
+                "../../bbb-world/src/client/dialog/body/component_value/canonical_json.rs"
+            )
+            .split("#[cfg(test)]\nmod tests")
+            .next()
+            .unwrap(),
+        ];
+        assert_no_resource_literals(&pot_sources, &[VANILLA_ITEM_BRICK_ID]);
+
+        assert!(item_model_sources
             .iter()
+            .chain(native_sources.iter())
+            .chain(pot_sources.iter())
             .any(|source| source.contains("vanilla_item_resource_id_matches_type")));
     }
 }

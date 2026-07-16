@@ -1,4 +1,5 @@
 use bbb_protocol::item_component_value_types::ItemUseAnimationSummary;
+use bbb_protocol::item_types::{vanilla_item_type, VANILLA_ITEM_BRICK_ID};
 use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 use bbb_protocol::{
     attribute_modifier_types::{
@@ -687,22 +688,25 @@ fn canonical_component_value_json_utf16_len(
                 object_len(fields.into_iter())
             }))
         }
-        DialogDataComponentValueState::PotDecorations { decorations } => array_len(
-            [
-                decorations.back.as_ref(),
-                decorations.left.as_ref(),
-                decorations.right.as_ref(),
-                decorations.front.as_ref(),
-            ]
-            .into_iter()
-            .map(|decoration| {
-                string_len(
-                    decoration
-                        .map(|decoration| decoration.resource_id.as_str())
-                        .unwrap_or("minecraft:brick"),
-                )
-            }),
-        ),
+        DialogDataComponentValueState::PotDecorations { decorations } => {
+            let empty_face = vanilla_item_type(VANILLA_ITEM_BRICK_ID)?.resource_id;
+            array_len(
+                [
+                    decorations.back.as_ref(),
+                    decorations.left.as_ref(),
+                    decorations.right.as_ref(),
+                    decorations.front.as_ref(),
+                ]
+                .into_iter()
+                .map(|decoration| {
+                    string_len(
+                        decoration
+                            .map(|decoration| decoration.resource_id.as_str())
+                            .unwrap_or(empty_face),
+                    )
+                }),
+            )
+        }
         DialogDataComponentValueState::RegistryVariant { holder, .. } => {
             string_len(&holder.resource_id)
         }

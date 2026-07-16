@@ -1,13 +1,10 @@
 use crate::Result;
+use bbb_protocol::item_types::{vanilla_item_resource_id_matches_type, VANILLA_ITEM_BRICK_ID};
 
 use super::{
     nbt::{decode_nbt_root, find_entry, NbtValue},
     state::DecoratedPotSherdsState,
 };
-
-/// Vanilla `PotDecorations.getItem`: `Items.BRICK` marks an undecorated face
-/// (`PotDecorations.java:41-48`), and `ordered()` pads missing faces with it.
-const VANILLA_POT_EMPTY_SHERD_ITEM: &str = "minecraft:brick";
 
 /// Decodes the decorated pot's `sherds` list from a block-entity NBT payload
 /// (`DecoratedPotBlockEntity.loadAdditional` reading `PotDecorations.CODEC` —
@@ -30,7 +27,11 @@ pub(crate) fn decode_decorated_pot_sherds(
     };
     let item = |index: usize| -> Option<String> {
         match sherds.get(index) {
-            Some(NbtValue::String(id)) if id != VANILLA_POT_EMPTY_SHERD_ITEM => Some(id.clone()),
+            Some(NbtValue::String(id))
+                if !vanilla_item_resource_id_matches_type(id, VANILLA_ITEM_BRICK_ID) =>
+            {
+                Some(id.clone())
+            }
             _ => None,
         }
     };
