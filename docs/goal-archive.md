@@ -18031,3 +18031,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   baby wire id 16，按 Cat type 复用 generated nearest-baby helper。
 - baby reverse guard 精确覆盖 synchronized 测试并整文件禁止旧别名回流；服务器 holder 顺序、
   typed payload、adult/baby custom death sound 与 baby fixed range 回归保持不变。
+
+## 2026-07-16：迁移 native debug-save production baby accessor
+
+- `debug_push_ageable_mob_additional_save_data` 删除固定 AgeableMob baby wire id 16，按当前
+  `EntityState.entity_type_id` 查询 generated nearest-baby accessor；metadata 未出现时仍省略
+  Age，AgeLocked 继续独立处理。
+- baby reverse guard 精确检查 production 函数并全局禁止 `input.rs` 恢复旧别名；所有本地实体
+  Shift+F3+I save NBT fixture 回归保持不变。

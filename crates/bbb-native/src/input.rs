@@ -132,6 +132,7 @@ use bbb_world::VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_TICKS_DATA_ID;
 use bbb_world::{
+    vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_dolphin_accessors_for_entity_type,
     vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
@@ -141,7 +142,6 @@ use bbb_world::{
     EntityVec3, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
     VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
     VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
 };
 use bbb_world::{
     vanilla_painting_variant_resource_id,
@@ -6817,13 +6817,17 @@ fn debug_push_leash_additional_save_data(
 }
 
 fn debug_push_ageable_mob_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    if let Some(is_baby) = debug_entity_data_bool_present(entity, AGEABLE_MOB_BABY_DATA_ID) {
-        let age = if is_baby {
-            AGEABLE_MOB_CLIENT_BABY_AGE
-        } else {
-            AGEABLE_MOB_CLIENT_ADULT_AGE
-        };
-        fields.push(format!("Age: {age}"));
+    if let Some((baby_data_id, _default)) =
+        vanilla_entity_metadata_baby_accessor_for_entity_type(entity.entity_type_id)
+    {
+        if let Some(is_baby) = debug_entity_data_bool_present(entity, baby_data_id) {
+            let age = if is_baby {
+                AGEABLE_MOB_CLIENT_BABY_AGE
+            } else {
+                AGEABLE_MOB_CLIENT_ADULT_AGE
+            };
+            fields.push(format!("Age: {age}"));
+        }
     }
     if let Some(age_locked) = debug_entity_data_bool_present(entity, AGEABLE_MOB_AGE_LOCKED_DATA_ID)
     {

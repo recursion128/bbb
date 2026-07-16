@@ -22400,6 +22400,7 @@ mod generated_catalog_guards {
         let native_inventory_fixture =
             include_str!("../../../../bbb-native/src/input/inventory/tests.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
         let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         let native_scene_baby_helper = native_scene_tests
             .split("fn baby_data")
@@ -22504,6 +22505,18 @@ mod generated_catalog_guards {
         assert!(native_input_baby_helper
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(native_input_baby_helper.contains("assert!(!default"));
+        let native_input_debug_save = native_input
+            .split("fn debug_push_ageable_mob_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_animal_additional_save_data")
+                    .next()
+            })
+            .expect("native input ageable debug-save source");
+        assert!(native_input_debug_save
+            .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(native_input_debug_save.contains("entity.entity_type_id"));
         assert_eq!(
             native_scene_body_layer_fixtures
                 .matches("baby_data(")
@@ -22837,6 +22850,7 @@ mod generated_catalog_guards {
                 visibility_fixture,
                 world_inventory_fixture,
                 native_inventory_fixture,
+                native_input,
             ] {
                 assert!(
                     !fixture.contains(removed),
