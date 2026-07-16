@@ -22055,6 +22055,31 @@ mod generated_catalog_guards {
             }
         }
         assert!(!light_body.contains("VANILLA_ENTITY_TYPE_GLOW_SQUID_ID"));
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
+            assert!(source.contains(
+                "vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type"
+            ));
+            for removed in [
+                "GLOW_SQUID_DARK_TICKS_DATA_ID",
+                "GLOW_SQUID_DEFAULT_DARK_TICKS",
+                "VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID",
+                "VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "GlowSquid fixture restored {removed}"
+                );
+            }
+        }
     }
 
     #[test]

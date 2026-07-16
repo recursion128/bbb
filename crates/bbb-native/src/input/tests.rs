@@ -390,6 +390,16 @@ fn strider_suffocating_data_id() -> u8 {
     data_id
 }
 
+fn glow_squid_dark_ticks_data_id() -> u8 {
+    let (data_id, default) =
+        vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        )
+        .expect("generated GlowSquid dark-ticks accessor");
+    assert_eq!(default, 0);
+    data_id
+}
+
 fn piglin_baby_data_id() -> u8 {
     let (data_id, default) = bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_PIGLIN_ID,
@@ -13297,7 +13307,7 @@ fn shift_f3_i_with_permission_copies_local_glow_squid_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: GLOW_SQUID_DARK_TICKS_DATA_ID,
+                data_id: glow_squid_dark_ticks_data_id(),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(77),
             },

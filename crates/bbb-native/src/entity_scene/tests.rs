@@ -5409,7 +5409,7 @@ fn entity_light_coords_applies_vanilla_per_renderer_block_light_overrides() {
         entity_light_coords(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, &[], dark),
         15 << 4
     );
-    let dark_ticks = |ticks: i32| vec![protocol_int_data(GLOW_SQUID_DARK_TICKS_DATA_ID, ticks)];
+    let dark_ticks = |ticks: i32| vec![glow_squid_dark_ticks_data(ticks)];
     // Just hurt (darkTicks 100): factor = 1 - 10 = -9 < 0 -> min 0, so the boost is 0 and the squid is as
     // dark as its surroundings (block 0 here).
     assert_eq!(
@@ -11592,6 +11592,16 @@ fn strider_suffocating_data(entity_type_id: i32, suffocating: bool) -> EntityDat
             .expect("generated Strider suffocating accessor");
     assert!(!default);
     protocol_bool_data(data_id, suffocating)
+}
+
+fn glow_squid_dark_ticks_data(ticks: i32) -> EntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+        )
+        .expect("generated GlowSquid dark-ticks accessor");
+    assert_eq!(default, 0);
+    protocol_int_data(data_id, ticks)
 }
 
 fn zombification_immunity_data(entity_type_id: i32, immune: bool) -> EntityDataValue {

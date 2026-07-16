@@ -17696,3 +17696,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - AbstractVillager unhappy-counter serializer 错位负例改由 generic generated schema 查询精确
   owner accessor，不再手写 id 18；generator 守卫覆盖 production 与整份 semantic fixture，
   禁止 Villager/ZombieVillager 固定 wire id 别名或 numeric helper 回流。
+
+## 2026-07-16：统一 GlowSquid dark-ticks fixture accessor 消费
+
+- entity light-ramp 与 F3+I semantic fixtures 删除固定 `DATA_DARK_TICKS_REMAINING` wire id，
+  均按 GlowSquid entity type 查询 generated accessor 并校验 typed default 0。
+- metadata generator 守卫从 production light/debug 函数体扩到 entity-scene/input 父模块及两份
+  fixture，禁止固定 id/default（含 `VANILLA_*` compatibility alias）回流；既有 0/5/10/100 tick
+  光照 ramp 和 save-data 77 tick 回归保持不变。
