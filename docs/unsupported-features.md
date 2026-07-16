@@ -462,7 +462,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   behavior plus redirectable-projectile tag; production and fixtures must not restore representative
   entity-type tables, while spectator/marker remain per-instance gates with generated metadata.
   Remote-entity powder-snow collision must consume the generated
-  `powder_snow_walkable_mobs` entity-type tag rather than a parallel entity-type set.
+  `powder_snow_walkable_mobs` entity-type tag rather than a parallel entity-type set; production
+  and fixtures must not restore representative tag members, while equipment/descending/falling-
+  block state remains runtime instance behavior.
   Collision-debug pushability class dispatch must consume the generated nearest-`isPushable`
   behavior; health/climbable/mount/pose/metadata checks remain runtime instance gates.
   Collision-debug `canBeCollidedWith` dispatch must consume the generated nearest class behavior;

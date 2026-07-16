@@ -4589,6 +4589,21 @@ mod tests {
     }
 
     #[test]
+    fn remote_powder_snow_walkability_matches_generated_entity_type_tag() {
+        let mut world = empty_world();
+        for entry in bbb_protocol::entity_types::VANILLA_ENTITY_TYPES {
+            let entity_id = 1_000 + entry.id;
+            add_collision_test_entity(&mut world, entity_id, entry.id, [0.0; 3]);
+            assert_eq!(
+                world.remote_entity_can_walk_on_powder_snow(entity_id),
+                entry.powder_snow_walkable,
+                "entity type {}",
+                entry.resource_id
+            );
+        }
+    }
+
+    #[test]
     fn remote_supporting_block_context_uses_type_boots_descending_and_falling_block() {
         const BOOTS_ITEM_ID: i32 = 43;
 
@@ -4597,13 +4612,13 @@ mod tests {
             BOOTS_ITEM_ID,
         ]));
         let powder_snow = vanilla_block_state_id("minecraft:powder_snow", []);
+        let tagged_entity_type_id = bbb_protocol::entity_types::VANILLA_ENTITY_TYPES
+            .iter()
+            .find(|entry| entry.powder_snow_walkable)
+            .map(|entry| entry.id)
+            .expect("generated powder-snow-walkable entity type");
         let cases = [
-            (
-                51,
-                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FOX_ID,
-                0,
-                true,
-            ),
+            (51, tagged_entity_type_id, 0, true),
             (
                 52,
                 bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,

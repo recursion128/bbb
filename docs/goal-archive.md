@@ -17498,3 +17498,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   最近 `isPickable` class 行为与 redirectable-projectile tag，覆盖完整 entity-type catalog。
 - Player spectator 与 ArmorStand marker 继续作为实例态门禁，后者通过 generated accessor bundle
   构造；metadata/core-registry 两个 generator 分别守住 production/query/fixture 消费边界。
+
+## 2026-07-16：统一 Remote powder-snow tag 消费
+
+- remote walkability fixture 删除 Fox 代表项，新增对 generated entity-type catalog 的全量比较；
+  综合 supporting-block 用例动态选择 generated tag 成员，不再重述 tag 内容。
+- leather-boots、descending 与 FallingBlock 保持运行时实例分支；core-registry generator 的消费
+  守卫扩展至 production 与两类 fixture，阻止固定 tag 成员回流。
