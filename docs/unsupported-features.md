@@ -154,8 +154,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   visibility/equipment body-layer, native mount-inventory, native entity-scene body-layer, and native
   early animal render-state, native farm-variant, native base aquatic/animal model-kind, and native
   specialized-animal model-kind, native PolarBear/Panda model-kind, native Villager/WanderingTrader,
-  native companion-animal model-kind, and native Cat registry-order coverage, plus pose/shared-base
-  fixtures outside
+  native companion-animal model-kind, native Cat registry-order, and native mount model-kind coverage,
+  plus pose/shared-base fixtures outside
   movement/swim, combat-state, player-sleeping,
   creature pick-bounds projection, transient Breeze animation, aquatic Frog walk animation,
   small-mob animation, visibility/equipment shared-flags coverage, and native ItemFrame invisibility

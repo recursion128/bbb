@@ -22624,6 +22624,22 @@ mod generated_catalog_guards {
                 "native scene cat-registry baby fixture restored {removed}"
             );
         }
+        let native_scene_mount_fixtures = native_scene_tests
+            .split("fn entity_model_kind_uses_exact_models_for_horses")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn entity_model_kind_uses_exact_models_for_illagers_and_witch")
+                    .next()
+            })
+            .expect("native scene mount baby fixture source");
+        assert_eq!(native_scene_mount_fixtures.matches("baby_data(").count(), 8);
+        for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+            assert!(
+                !native_scene_mount_fixtures.contains(removed),
+                "native scene mount baby fixtures restored {removed}"
+            );
+        }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,

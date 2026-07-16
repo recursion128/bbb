@@ -10892,7 +10892,7 @@ fn entity_model_kind_uses_exact_models_for_horses() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_HORSE_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_HORSE_ID, true)]
         ),
         EntityModelKind::Horse {
             baby: true,
@@ -10926,7 +10926,7 @@ fn entity_model_kind_uses_exact_models_for_horses() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_DONKEY_ID,
             &[
-                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                baby_data(VANILLA_ENTITY_TYPE_DONKEY_ID, true),
                 chested_horse_chest_data(VANILLA_ENTITY_TYPE_DONKEY_ID, true),
             ]
         ),
@@ -10957,7 +10957,7 @@ fn entity_model_kind_uses_exact_models_for_horses() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, true)]
         ),
         EntityModelKind::UndeadHorse {
             family: UndeadHorseModelFamily::Skeleton,
@@ -10984,7 +10984,7 @@ fn entity_model_kind_uses_exact_models_for_horses() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_NAUTILUS_ID, true)]
         ),
         EntityModelKind::Nautilus { baby: true }
     );
@@ -11018,7 +11018,7 @@ fn entity_model_kind_uses_exact_models_for_horses() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, true)]
         ),
         EntityModelKind::ZombieNautilus {
             variant: ZombieNautilusModelVariant::Temperate
@@ -11072,7 +11072,7 @@ fn entity_model_kind_uses_exact_models_for_camels() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_CAMEL_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_CAMEL_ID, true)]
         ),
         EntityModelKind::Camel {
             family: CamelModelFamily::Camel,
@@ -11089,7 +11089,7 @@ fn entity_model_kind_uses_exact_models_for_camels() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, true)]
         ),
         EntityModelKind::Camel {
             family: CamelModelFamily::CamelHusk,
@@ -11128,7 +11128,7 @@ fn entity_model_kind_uses_exact_models_for_llamas() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_LLAMA_ID,
             &[
-                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                baby_data(VANILLA_ENTITY_TYPE_LLAMA_ID, true),
                 chested_horse_chest_data(VANILLA_ENTITY_TYPE_LLAMA_ID, true),
                 llama_variant_data(VANILLA_ENTITY_TYPE_LLAMA_ID, 3),
             ]

@@ -17963,3 +17963,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   selection。
 - baby reverse guard 精确覆盖该测试；服务器 cat-variant holder 顺序、unknown fallback 与
   adult/baby instance texture variant 投影回归保持不变。
+
+## 2026-07-16：统一 native mount model-kind baby fixtures
+
+- Horse、Donkey、SkeletonHorse、Nautilus、ZombieNautilus、Camel、CamelHusk 与 Llama 的
+  model-kind fixtures 删除 8 处全局 AgeableMob baby alias，按各自实际 entity type 查询
+  generated nearest-baby helper；`AbstractNautilus` 经 TamableAnimal、CamelHusk 经 Camel 均
+  继承 AgeableMob metadata。
+- baby reverse guard 覆盖完整连续 mount 区段；coat/marking/chest/variant、adult/baby model，
+  以及 ZombieNautilus/CamelHusk renderer 忽略 baby state 的回归保持不变。
