@@ -17785,3 +17785,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   catalog 的命名 ordinal。
 - Entity reverse guard 扩展到 movement/combat/swing 测试模块，禁止 `ENTITY_DATA_POSE_ID` 历史
   别名和局部 standing/swimming ordinal 回流；0.09/tick 的进入、退出与 clamp 回归保持不变。
+
+## 2026-07-16：统一 combat-state Entity base fixture accessor 消费
+
+- combat-state 的 full-freeze、player/feline crouch 与 feline sprint fixtures 删除固定 Entity
+  ticks-frozen/shared-flags wire id、sprinting mask 及 standing/crouching ordinal，统一使用 generated
+  Entity bundle 和 protocol pose catalog。
+- reverse guard 将整个 combat-state 测试模块纳入 Entity 固定别名禁集，并额外禁止局部 pose
+  ordinal；Chicken 非 player/feline gate、Cat/Ocelot owner 差异与 140-tick fully-frozen 阈值不变。

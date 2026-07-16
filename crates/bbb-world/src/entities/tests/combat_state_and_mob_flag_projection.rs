@@ -1,4 +1,28 @@
 use super::*;
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
+};
+
+fn entity_metadata_accessors() -> VanillaEntityMetadataAccessors {
+    vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve")
+}
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = entity_metadata_accessors();
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose_id)
+}
+
+fn entity_shared_flags_data(flags: i8) -> ProtocolEntityDataValue {
+    protocol_byte_data(entity_metadata_accessors().shared_flags_data_id, flags)
+}
+
+fn entity_ticks_frozen_data(ticks: i32) -> ProtocolEntityDataValue {
+    let accessors = entity_metadata_accessors();
+    assert_eq!(accessors.ticks_frozen_default, 0);
+    protocol_int_data(accessors.ticks_frozen_data_id, ticks)
+}
 
 fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEntityDataValue> {
     let accessors =
@@ -215,8 +239,6 @@ fn entity_model_sources_project_ender_dragon_death_time() {
 
 #[test]
 fn entity_model_sources_project_full_freeze_for_living_entities() {
-    const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
-
     let fully_frozen = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -228,11 +250,7 @@ fn entity_model_sources_project_full_freeze_for_living_entities() {
     let set_ticks_frozen = |store: &mut WorldStore, id: i32, ticks: i32| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(ticks),
-            }],
+            values: vec![entity_ticks_frozen_data(ticks)],
         })
     };
 
@@ -1156,9 +1174,6 @@ fn entity_model_sources_project_bee_stinger_from_flags() {
 
 #[test]
 fn entity_model_sources_gate_crouch_pose_on_the_player() {
-    const POSE_STANDING: i32 = 0;
-    const POSE_CROUCHING: i32 = 5;
-
     let crouching = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -1170,12 +1185,7 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
     let set_pose = |store: &mut WorldStore, id: i32, pose: i32| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![protocol_pose_data(
-                super::vanilla_entity_metadata_entity_accessors()
-                    .expect("generated base Entity metadata accessors must resolve")
-                    .pose_data_id,
-                pose,
-            )],
+            values: vec![entity_pose_data(pose)],
         })
     };
 
@@ -1187,9 +1197,9 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
     // A standing player is not crouching.
     assert!(!crouching(&store, 74));
     // Vanilla Pose.CROUCHING marks the player sneaking; standing again clears it.
-    assert!(set_pose(&mut store, 74, POSE_CROUCHING));
+    assert!(set_pose(&mut store, 74, VANILLA_ENTITY_POSE_CROUCHING_ID));
     assert!(crouching(&store, 74));
-    assert!(set_pose(&mut store, 74, POSE_STANDING));
+    assert!(set_pose(&mut store, 74, VANILLA_ENTITY_POSE_STANDING_ID));
     assert!(!crouching(&store, 74));
 
     // A non-player entity is never crouched, even with a CROUCHING pose: only the player model
@@ -1198,16 +1208,13 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
         75,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_pose(&mut store, 75, POSE_CROUCHING));
+    assert!(set_pose(&mut store, 75, VANILLA_ENTITY_POSE_CROUCHING_ID));
     assert!(!crouching(&store, 75));
 }
 
 #[test]
 fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
-    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-    const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
-    const POSE_STANDING: i32 = 0;
-    const POSE_CROUCHING: i32 = 5;
+    let entity_accessors = entity_metadata_accessors();
     let tamable_accessors = vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(
         VANILLA_ENTITY_TYPE_CAT_ID,
     )
@@ -1249,13 +1256,8 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         &mut store,
         76,
         vec![
-            protocol_pose_data(
-                super::vanilla_entity_metadata_entity_accessors()
-                    .expect("generated base Entity metadata accessors must resolve")
-                    .pose_data_id,
-                POSE_CROUCHING,
-            ),
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+            entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
+            entity_shared_flags_data(entity_accessors.sprinting_mask),
             protocol_byte_data(
                 tamable_accessors.flags_data_id,
                 tamable_accessors.sitting_mask,
@@ -1268,12 +1270,7 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         &mut store,
         77,
         vec![
-            protocol_pose_data(
-                super::vanilla_entity_metadata_entity_accessors()
-                    .expect("generated base Entity metadata accessors must resolve")
-                    .pose_data_id,
-                POSE_CROUCHING,
-            ),
+            entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
             protocol_byte_data(
                 tamable_accessors.flags_data_id,
                 tamable_accessors.sitting_mask,
@@ -1286,13 +1283,8 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         &mut store,
         78,
         vec![
-            protocol_pose_data(
-                super::vanilla_entity_metadata_entity_accessors()
-                    .expect("generated base Entity metadata accessors must resolve")
-                    .pose_data_id,
-                POSE_CROUCHING,
-            ),
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
+            entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
+            entity_shared_flags_data(entity_accessors.sprinting_mask),
             protocol_byte_data(
                 tamable_accessors.flags_data_id,
                 tamable_accessors.sitting_mask,
@@ -1305,13 +1297,8 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         &mut store,
         76,
         vec![
-            protocol_pose_data(
-                super::vanilla_entity_metadata_entity_accessors()
-                    .expect("generated base Entity metadata accessors must resolve")
-                    .pose_data_id,
-                POSE_STANDING,
-            ),
-            protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
+            entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID),
+            entity_shared_flags_data(entity_accessors.shared_flags_default),
             protocol_byte_data(
                 tamable_accessors.flags_data_id,
                 tamable_accessors.flags_default
