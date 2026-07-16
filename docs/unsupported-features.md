@@ -334,6 +334,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   remain derived together from generated `AbstractHorse.DATA_ID_FLAGS` and `FLAG_*`; animation,
   mount inventory, native debug and their fixtures must not restore fixed accessor/default aliases
   or hand-copied flag masks.
+  Horse variant, AbstractChestedHorse chest and Llama strength/variant membership, wire indices and
+  typed defaults must remain derived from their generated accessor bundles; native model/debug
+  consumers and semantic fixtures must not restore fixed accessor/default aliases.
   TamableAnimal sitting/tame/owner membership, inherited wire indices, typed defaults and two named
   masks must remain derived together from generated `TamableAnimal.DATA_FLAGS_ID`,
   `DATA_OWNERUUID_ID` and their `FLAG_*`; world/native presentation, mount inventory, native debug

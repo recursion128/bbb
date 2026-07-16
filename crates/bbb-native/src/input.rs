@@ -120,14 +120,6 @@ use bbb_world::vanilla_entity_metadata_wolf_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
-#[cfg(test)]
-use bbb_world::VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_LLAMA_STRENGTH_DATA_ID as LLAMA_STRENGTH_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID;
 use bbb_world::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_dolphin_accessors_for_entity_type,

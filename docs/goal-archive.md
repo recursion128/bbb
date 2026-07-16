@@ -18188,3 +18188,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   laying-egg BOOLEAN metadata，并校验两个 vanilla typed default 均为 `false`。
 - Bat 同槽位负例保留为显式 collision helper；Turtle reverse guard 扩展到两份 native facade
   与完整 fixtures，禁止固定 accessor/default aliases 回流。
+
+## 2026-07-16：统一 equine F3+I metadata fixtures
+
+- native Horse、Donkey、Llama 与 TraderLlama F3+I fixtures 统一通过 generated Horse variant、
+  AbstractChestedHorse chest 和 Llama strength/variant accessors 构造 metadata，删除 7 处固定 ID。
+- fixtures 校验 vanilla typed defaults `0/false/0/0`；equine reverse guard 扩展到 native input
+  facade 与完整 tests，禁止 fixed accessor/default aliases 回流。

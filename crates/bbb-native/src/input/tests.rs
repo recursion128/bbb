@@ -565,6 +565,39 @@ fn abstract_horse_metadata_accessors(
         .expect("generated AbstractHorse metadata accessors must resolve")
 }
 
+fn horse_variant_data(entity_type_id: i32, packed_variant: i32) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_horse_variant_accessor_for_entity_type(entity_type_id)
+            .expect("generated Horse variant accessor must resolve");
+    assert_eq!(default, 0);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(packed_variant),
+    }
+}
+
+fn chested_horse_chest_data(entity_type_id: i32, has_chest: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(entity_type_id)
+            .expect("generated AbstractChestedHorse chest accessor must resolve");
+    assert!(!default);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(has_chest),
+    }
+}
+
+fn llama_metadata_accessors(entity_type_id: i32) -> bbb_world::VanillaLlamaMetadataAccessors {
+    let accessors = vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id)
+        .expect("generated Llama metadata accessors must resolve");
+    assert_eq!(accessors.strength_default, 0);
+    assert_eq!(accessors.variant_default, 0);
+    accessors
+}
+
 fn creeper_metadata_accessors() -> bbb_world::VanillaCreeperMetadataAccessors {
     vanilla_entity_metadata_creeper_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CREEPER_ID)
         .expect("generated Creeper metadata accessors must resolve")
@@ -6854,12 +6887,7 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
                     accessors.eating_mask | accessors.bred_mask | accessors.tame_mask,
                 ),
             },
-            ProtocolEntityDataValue {
-                data_id: HORSE_VARIANT_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(4 | (2 << 8)),
-            },
+            horse_variant_data(VANILLA_ENTITY_TYPE_HORSE_ID, 4 | (2 << 8)),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -7530,14 +7558,11 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
             age_locked_data(&world, 81, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(accessors.eating_mask | accessors.tame_mask),
             },
-            ProtocolEntityDataValue {
-                data_id: ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            chested_horse_chest_data(VANILLA_ENTITY_TYPE_DONKEY_ID, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -7673,6 +7698,7 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_LLAMA_ID);
+    let llama_accessors = llama_metadata_accessors(VANILLA_ENTITY_TYPE_LLAMA_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 83,
@@ -7696,22 +7722,21 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
             age_locked_data(&world, 83, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(accessors.bred_mask | accessors.tame_mask),
             },
+            chested_horse_chest_data(VANILLA_ENTITY_TYPE_LLAMA_ID, true),
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
-            ProtocolEntityDataValue {
-                data_id: LLAMA_STRENGTH_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                data_id: llama_accessors.strength_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(5),
             },
             ProtocolEntityDataValue {
-                data_id: LLAMA_VARIANT_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                data_id: llama_accessors.variant_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(2),
             },
         ],
@@ -7769,6 +7794,7 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID);
+    let llama_accessors = llama_metadata_accessors(VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 84,
@@ -7797,13 +7823,13 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
                 value: EntityDataValueKind::Byte(accessors.tame_mask),
             },
             ProtocolEntityDataValue {
-                data_id: LLAMA_STRENGTH_DATA_ID,
+                data_id: llama_accessors.strength_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(4),
             },
             ProtocolEntityDataValue {
-                data_id: LLAMA_VARIANT_DATA_ID,
+                data_id: llama_accessors.variant_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(3),

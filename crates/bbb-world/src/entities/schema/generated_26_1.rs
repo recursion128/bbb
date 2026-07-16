@@ -24074,7 +24074,14 @@ mod generated_catalog_guards {
         }
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
-        for source in [native_scene, native_scene_tests] {
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(
                 source.contains("vanilla_entity_metadata_horse_variant_accessor_for_entity_type")
             );
@@ -24084,7 +24091,12 @@ mod generated_catalog_guards {
             for removed in [
                 "ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID",
                 "HORSE_VARIANT_DATA_ID",
+                "LLAMA_STRENGTH_DATA_ID",
                 "LLAMA_VARIANT_DATA_ID",
+                "VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID",
+                "VANILLA_HORSE_VARIANT_DATA_ID",
+                "VANILLA_LLAMA_STRENGTH_DATA_ID",
+                "VANILLA_LLAMA_VARIANT_DATA_ID",
             ] {
                 assert!(
                     !source.contains(removed),
