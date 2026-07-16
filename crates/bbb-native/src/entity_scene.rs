@@ -40,6 +40,7 @@ use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_ghast_charging_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
@@ -162,9 +163,8 @@ use bbb_world::{
     VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_FROG_VARIANT_DATA_ID as FROG_VARIANT_DATA_ID,
 };
+#[cfg(test)]
 use bbb_world::{
-    VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN as GOAT_DEFAULT_HAS_LEFT_HORN,
-    VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN as GOAT_DEFAULT_HAS_RIGHT_HORN,
     VANILLA_GOAT_LEFT_HORN_DATA_ID as GOAT_LEFT_HORN_DATA_ID,
     VANILLA_GOAT_RIGHT_HORN_DATA_ID as GOAT_RIGHT_HORN_DATA_ID,
 };

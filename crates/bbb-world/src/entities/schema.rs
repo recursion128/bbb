@@ -256,6 +256,16 @@ pub struct VanillaEndCrystalMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaGoatMetadataAccessors {
+    pub screaming_data_id: u8,
+    pub screaming_default: bool,
+    pub left_horn_data_id: u8,
+    pub left_horn_default: bool,
+    pub right_horn_data_id: u8,
+    pub right_horn_default: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaHangingEntityMetadataAccessor {
     pub direction_data_id: u8,
     pub direction_default: i32,
@@ -661,6 +671,61 @@ pub fn vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(
             "INT",
             Some(VanillaEntityMetadataDefault::Int(default)),
         ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves Goat's generated screaming and horn accessors with typed defaults.
+pub fn vanilla_entity_metadata_goat_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaGoatMetadataAccessors> {
+    let screaming =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_IS_SCREAMING_GOAT")?;
+    let left_horn =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_HAS_LEFT_HORN")?;
+    let right_horn =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_HAS_RIGHT_HORN")?;
+    match (
+        (
+            screaming.owner,
+            screaming.serializer_name,
+            screaming.typed_default,
+        ),
+        (
+            left_horn.owner,
+            left_horn.serializer_name,
+            left_horn.typed_default,
+        ),
+        (
+            right_horn.owner,
+            right_horn.serializer_name,
+            right_horn.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.goat.Goat",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(screaming_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.goat.Goat",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(left_horn_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.goat.Goat",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(right_horn_default)),
+            ),
+        ) => Some(VanillaGoatMetadataAccessors {
+            screaming_data_id: screaming.data_id,
+            screaming_default,
+            left_horn_data_id: left_horn.data_id,
+            left_horn_default,
+            right_horn_data_id: right_horn.data_id,
+            right_horn_default,
+        }),
         _ => None,
     }
 }
@@ -3580,6 +3645,29 @@ mod tests {
                 vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(
                     entity_type_id
                 ),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_goat_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_goat_accessors_for_entity_type(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_GOAT_ID
+            ),
+            Some(VanillaGoatMetadataAccessors {
+                screaming_data_id: 18,
+                screaming_default: false,
+                left_horn_data_id: 19,
+                left_horn_default: true,
+                right_horn_data_id: 20,
+                right_horn_default: true,
+            })
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_COW_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_goat_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

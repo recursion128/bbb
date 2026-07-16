@@ -16661,3 +16661,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   固定 accessor/default aliases 或单独维护 renderer type gate。
 - 既有语义测试继续锁定受伤后的 block-light ramp 与 `DarkTicksRemaining` SNBT；schema
   membership 测试拒绝普通 Squid，metadata generator reverse guard 禁止恢复平行事实源。
+
+## 2026-07-16：统一推导 Goat metadata accessors
+
+- `bbb-world` 现在从生成 schema 成组解析 Goat 的 screaming/left-horn/right-horn membership、
+  BOOLEAN wire id 18/19/20 与 false/true/true typed defaults；native 模型消费 horn 子集，F3+I
+  保存投影消费完整 bundle。
+- 模型与 debug 生产路径删除固定 accessor/default aliases；既有语义测试继续锁定 horn 模型
+  显隐与三项 SNBT，schema membership 测试拒绝 Cow，生成器 reverse guard 禁止恢复平行事实源。

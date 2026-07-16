@@ -193,6 +193,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   GlowSquid dark-ticks light/debug membership, wire index and typed default must remain derived
   from generated `GlowSquid.DATA_DARK_TICKS_REMAINING`; native consumers must not restore fixed
   accessor/default aliases or a separate GlowSquid type gate for renderer light projection.
+  Goat screaming/left-horn/right-horn membership, wire indices and typed defaults must remain
+  derived together from generated `DATA_IS_SCREAMING_GOAT`, `DATA_HAS_LEFT_HORN` and
+  `DATA_HAS_RIGHT_HORN`; native model/debug consumers must not restore fixed accessor/default aliases.
   HangingEntity direction membership, inherited wire index and typed default must remain derived
   from generated `DATA_DIRECTION`; ItemFrame item/rotation membership, wire indices and rotation
   default must remain derived together from generated `DATA_ITEM`/`DATA_ROTATION`. World bounds,

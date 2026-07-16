@@ -85,6 +85,7 @@ use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
@@ -152,12 +153,6 @@ use bbb_world::{
     VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID as FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
     VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID as FIREWORK_ROCKET_ITEM_DATA_ID,
     VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID as FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
-    VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN as GOAT_DEFAULT_HAS_LEFT_HORN,
-    VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN as GOAT_DEFAULT_HAS_RIGHT_HORN,
-    VANILLA_GOAT_DEFAULT_SCREAMING as GOAT_DEFAULT_SCREAMING,
-    VANILLA_GOAT_LEFT_HORN_DATA_ID as GOAT_LEFT_HORN_DATA_ID,
-    VANILLA_GOAT_RIGHT_HORN_DATA_ID as GOAT_RIGHT_HORN_DATA_ID,
-    VANILLA_GOAT_SCREAMING_DATA_ID as GOAT_SCREAMING_DATA_ID,
     VANILLA_HORSE_DEFAULT_VARIANT as HORSE_DEFAULT_VARIANT,
     VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID,
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
@@ -226,6 +221,12 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_FROG_VARIANT_DATA_ID as FROG_VARIANT_DATA_ID,
+};
+#[cfg(test)]
+use bbb_world::{
+    VANILLA_GOAT_LEFT_HORN_DATA_ID as GOAT_LEFT_HORN_DATA_ID,
+    VANILLA_GOAT_RIGHT_HORN_DATA_ID as GOAT_RIGHT_HORN_DATA_ID,
+    VANILLA_GOAT_SCREAMING_DATA_ID as GOAT_SCREAMING_DATA_ID,
 };
 use bbb_world::{
     VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID as PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
@@ -7266,12 +7267,17 @@ fn debug_push_mooshroom_additional_save_data(entity: &EntityState, fields: &mut 
 }
 
 fn debug_push_goat_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let is_screaming = debug_entity_data_bool_present(entity, GOAT_SCREAMING_DATA_ID)
-        .unwrap_or(GOAT_DEFAULT_SCREAMING);
-    let has_left_horn = debug_entity_data_bool_present(entity, GOAT_LEFT_HORN_DATA_ID)
-        .unwrap_or(GOAT_DEFAULT_HAS_LEFT_HORN);
-    let has_right_horn = debug_entity_data_bool_present(entity, GOAT_RIGHT_HORN_DATA_ID)
-        .unwrap_or(GOAT_DEFAULT_HAS_RIGHT_HORN);
+    let Some(accessors) =
+        vanilla_entity_metadata_goat_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let is_screaming = debug_entity_data_bool_present(entity, accessors.screaming_data_id)
+        .unwrap_or(accessors.screaming_default);
+    let has_left_horn = debug_entity_data_bool_present(entity, accessors.left_horn_data_id)
+        .unwrap_or(accessors.left_horn_default);
+    let has_right_horn = debug_entity_data_bool_present(entity, accessors.right_horn_data_id)
+        .unwrap_or(accessors.right_horn_default);
     fields.push(format!(
         "IsScreamingGoat: {}",
         debug_snbt_bool(is_screaming)

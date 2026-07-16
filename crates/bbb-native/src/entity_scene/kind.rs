@@ -159,7 +159,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
             llama_model_kind(LlamaModelFamily::TraderLlama, data_values)
         }
-        VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
             zombie_nautilus_model_kind(data_values, variant_registries)

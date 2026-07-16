@@ -1188,12 +1188,26 @@ pub(super) fn llama_model_kind(
 }
 
 pub(super) fn goat_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
+    let accessors = vanilla_entity_metadata_goat_accessors_for_entity_type(entity_type_id);
     EntityModelKind::Goat {
         baby: ageable_baby(values),
-        left_horn: entity_data_bool(values, GOAT_LEFT_HORN_DATA_ID, GOAT_DEFAULT_HAS_LEFT_HORN),
-        right_horn: entity_data_bool(values, GOAT_RIGHT_HORN_DATA_ID, GOAT_DEFAULT_HAS_RIGHT_HORN),
+        left_horn: accessors.is_none_or(|accessors| {
+            entity_data_bool(
+                values,
+                accessors.left_horn_data_id,
+                accessors.left_horn_default,
+            )
+        }),
+        right_horn: accessors.is_none_or(|accessors| {
+            entity_data_bool(
+                values,
+                accessors.right_horn_data_id,
+                accessors.right_horn_default,
+            )
+        }),
     }
 }
 

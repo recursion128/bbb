@@ -56,6 +56,7 @@ pub use renderer_catalog::{
     vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,
 };
 pub use schema::VanillaCreeperMetadataAccessors;
+pub use schema::VanillaGoatMetadataAccessors;
 pub use schema::VanillaInteractionMetadataAccessors;
 pub use schema::VanillaShulkerMetadataAccessors;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
@@ -85,6 +86,7 @@ pub use schema::{
     vanilla_entity_metadata_fox_variant_accessor_for_entity_type,
     vanilla_entity_metadata_ghast_charging_accessor_for_entity_type,
     vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type,
+    vanilla_entity_metadata_goat_accessors_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
     vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type,
