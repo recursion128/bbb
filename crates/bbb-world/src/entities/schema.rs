@@ -6467,12 +6467,12 @@ mod tests {
                 VANILLA_ENTITY_TYPE_INTERACTION_ID
             ),
             Some(VanillaInteractionMetadataAccessors {
-                width_data_id: 8,
-                width_default: 1.0,
-                height_data_id: 9,
-                height_default: 1.0,
-                response_data_id: 10,
-                response_default: false,
+                width_data_id: VANILLA_INTERACTION_WIDTH_DATA_ID,
+                width_default: VANILLA_INTERACTION_DEFAULT_WIDTH,
+                height_data_id: VANILLA_INTERACTION_HEIGHT_DATA_ID,
+                height_default: VANILLA_INTERACTION_DEFAULT_HEIGHT,
+                response_data_id: VANILLA_INTERACTION_RESPONSE_DATA_ID,
+                response_default: VANILLA_INTERACTION_DEFAULT_RESPONSE,
             })
         );
         assert_eq!(

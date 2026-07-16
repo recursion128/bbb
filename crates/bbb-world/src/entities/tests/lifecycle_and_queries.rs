@@ -1097,6 +1097,10 @@ fn entity_transform_queries_read_components_without_full_entity_snapshot() {
 #[test]
 fn entity_pick_bounds_follow_vanilla_is_pickable() {
     let mut store = WorldStore::new();
+    let interaction_accessors = vanilla_entity_metadata_interaction_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_INTERACTION_ID,
+    )
+    .expect("generated Interaction metadata accessors must resolve");
     store.apply_add_entity(protocol_add_entity_with_type(10, 14));
     store.apply_add_entity(protocol_add_entity_with_type(11, 0));
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -1118,7 +1122,10 @@ fn entity_pick_bounds_follow_vanilla_is_pickable() {
         VANILLA_ENTITY_TYPE_ITEM_ID,
     ));
     store.apply_add_entity(protocol_add_entity_with_type(18, 43));
-    store.apply_add_entity(protocol_add_entity_with_type(19, 69));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        19,
+        VANILLA_ENTITY_TYPE_INTERACTION_ID,
+    ));
     store.apply_add_entity(protocol_add_entity_with_type(72, 18));
     store.apply_add_entity(protocol_add_entity_with_type(
         73,
@@ -1201,17 +1208,17 @@ fn entity_pick_bounds_follow_vanilla_is_pickable() {
         id: 19,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: VANILLA_INTERACTION_WIDTH_DATA_ID,
+                data_id: interaction_accessors.width_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(2.5),
             },
             ProtocolEntityDataValue {
-                data_id: VANILLA_INTERACTION_HEIGHT_DATA_ID,
+                data_id: interaction_accessors.height_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(0.75),
             },
             ProtocolEntityDataValue {
-                data_id: VANILLA_INTERACTION_RESPONSE_DATA_ID,
+                data_id: interaction_accessors.response_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },

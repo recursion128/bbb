@@ -17233,3 +17233,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - world/native/crosshair fixtures 同步复用 bundle 的七个 accessor、typed defaults 与 named
   masks，不再以 renderer preview pose 或手写 wire 数字作为 metadata truth；generator 反向
   守卫覆盖这些语义 fixtures。
+
+## 2026-07-16：统一 Interaction metadata accessor 消费
+
+- world pick-bounds、native crosshair 与 F3+I fixtures 改为按 Interaction entity type 解析
+  width/height/response bundle，不再引用固定 accessor aliases、裸 wire index 或手写 type id。
+- schema 语义测试以 generated constants 组装 expected bundle；generator 反向守卫扩展到
+  lifecycle、crosshair 与 native input fixtures。

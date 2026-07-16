@@ -1279,6 +1279,10 @@ mod tests {
     #[test]
     fn crosshair_target_hits_interaction_entity_with_metadata_bounds() {
         let mut world = WorldStore::new();
+        let accessors = bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        )
+        .expect("generated Interaction metadata accessors must resolve");
         world.apply_add_entity(protocol_add_entity(
             12,
             VANILLA_ENTITY_TYPE_INTERACTION_ID,
@@ -1288,12 +1292,12 @@ mod tests {
             id: 12,
             values: vec![
                 EntityDataValue {
-                    data_id: 8,
+                    data_id: accessors.width_data_id,
                     serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                     value: EntityDataValueKind::Float(2.0),
                 },
                 EntityDataValue {
-                    data_id: 9,
+                    data_id: accessors.height_data_id,
                     serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                     value: EntityDataValueKind::Float(1.25),
                 },

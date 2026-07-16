@@ -120,9 +120,6 @@ use bbb_world::{
     VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
     VANILLA_CREEPER_POWERED_DATA_ID as CREEPER_POWERED_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
-    VANILLA_INTERACTION_HEIGHT_DATA_ID as INTERACTION_HEIGHT_DATA_ID,
-    VANILLA_INTERACTION_RESPONSE_DATA_ID as INTERACTION_RESPONSE_DATA_ID,
-    VANILLA_INTERACTION_WIDTH_DATA_ID as INTERACTION_WIDTH_DATA_ID,
     VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
@@ -13251,6 +13248,10 @@ fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_interaction_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = vanilla_entity_metadata_interaction_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_INTERACTION_ID,
+    )
+    .expect("generated Interaction metadata accessors must resolve");
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 50,
@@ -13271,17 +13272,17 @@ fn shift_f3_i_with_permission_copies_local_interaction_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: INTERACTION_WIDTH_DATA_ID,
+                data_id: accessors.width_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(1.5),
             },
             ProtocolEntityDataValue {
-                data_id: INTERACTION_HEIGHT_DATA_ID,
+                data_id: accessors.height_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(2.0),
             },
             ProtocolEntityDataValue {
-                data_id: INTERACTION_RESPONSE_DATA_ID,
+                data_id: accessors.response_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },

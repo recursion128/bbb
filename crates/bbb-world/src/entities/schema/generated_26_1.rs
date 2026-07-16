@@ -23923,10 +23923,19 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_interaction_accessors_do_not_restore_fixed_metadata_facts() {
+    fn interaction_consumers_do_not_restore_fixed_metadata_facts() {
         let dimensions = include_str!("../dimensions.rs");
+        let world_tests = include_str!("../tests/lifecycle_and_queries.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [dimensions, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let native_crosshair = include_str!("../../../../bbb-native/src/crosshair.rs");
+        for source in [
+            dimensions,
+            world_tests,
+            native_input,
+            native_input_tests,
+            native_crosshair,
+        ] {
             assert!(
                 source.contains("vanilla_entity_metadata_interaction_accessors_for_entity_type")
             );
@@ -23939,14 +23948,18 @@ mod generated_catalog_guards {
             "INTERACTION_RESPONSE_DATA_ID",
             "INTERACTION_DEFAULT_RESPONSE",
         ] {
-            assert!(
-                !dimensions.contains(removed),
-                "dimensions restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                dimensions,
+                world_tests,
+                native_input,
+                native_input_tests,
+                native_crosshair,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Interaction projection restored {removed}"
+                );
+            }
         }
     }
 
