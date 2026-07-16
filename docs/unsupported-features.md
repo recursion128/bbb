@@ -295,9 +295,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   EnderMan carried-block/creepy render membership, wire indices and defaults must remain derived
   together from generated `DATA_CARRY_STATE`/`DATA_CREEPY`; world projection must not restore an
   EnderMan type predicate or fixed accessor aliases.
-  Bat resting/debug membership, wire index and default must remain derived from generated
-  `Bat.DATA_ID_FLAGS`; world projection and native debug must not restore a Bat type predicate or
-  fixed accessor aliases.
+  Bat resting/debug membership, wire index, default and named resting mask must remain derived from
+  generated `Bat.DATA_ID_FLAGS`; world projection and native debug must not restore a Bat type
+  predicate, fixed accessor/default aliases or a hand-copied flag mask.
   Bee rolling/stinger/nectar/anger/debug membership, wire indices, typed defaults and named masks
   must remain derived together from generated `Bee.DATA_FLAGS_ID`, `FLAG_ROLL`, `FLAG_HAS_STUNG`,
   `FLAG_HAS_NECTAR` and `DATA_ANGER_END_TIME`; world/native consumers and fixtures must not restore

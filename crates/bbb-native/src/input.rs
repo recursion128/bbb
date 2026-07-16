@@ -7494,7 +7494,7 @@ fn debug_push_snow_golem_additional_save_data(entity: &EntityState, fields: &mut
 
 fn debug_push_bat_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
     let flags = vanilla_entity_metadata_bat_flags_accessor_for_entity_type(entity.entity_type_id)
-        .map(|(data_id, default)| {
+        .map(|(data_id, default, _resting_mask)| {
             debug_entity_data_byte_present(entity, data_id).unwrap_or(default)
         })
         .unwrap_or(0);

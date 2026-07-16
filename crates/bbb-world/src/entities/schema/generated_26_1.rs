@@ -23510,16 +23510,34 @@ mod generated_catalog_guards {
     #[test]
     fn production_bat_resting_does_not_restore_type_or_accessor_constants() {
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [store, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            store,
+            world_tests,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(source.contains("vanilla_entity_metadata_bat_flags_accessor_for_entity_type"));
         }
-        for removed in ["vanilla_is_bat", "BAT_FLAGS_DATA_ID", "BAT_DEFAULT_FLAGS"] {
-            assert!(!store.contains(removed), "store restored {removed}");
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+        for removed in [
+            "vanilla_is_bat",
+            "BAT_FLAGS_DATA_ID",
+            "BAT_DEFAULT_FLAGS",
+            "BAT_FLAG_RESTING",
+        ] {
+            for source in [
+                store,
+                world_tests,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(!source.contains(removed), "Bat consumer restored {removed}");
+            }
         }
         let dimensions = include_str!("../dimensions.rs");
         assert!(!dimensions.contains("fn vanilla_is_bat"));

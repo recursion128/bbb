@@ -60,6 +60,19 @@ fn abstract_villager_unhappy_collision_data(counter: i32) -> ProtocolEntityDataV
     abstract_villager_unhappy_data(VANILLA_ENTITY_TYPE_VILLAGER_ID, counter)
 }
 
+fn bat_flags_data(entity_type_id: i32, flags: i8) -> ProtocolEntityDataValue {
+    let (data_id, default, _resting_mask) =
+        vanilla_entity_metadata_bat_flags_accessor_for_entity_type(entity_type_id)
+            .expect("generated Bat flags accessor must resolve");
+    assert_eq!(default, 0);
+    protocol_byte_data(data_id, flags)
+}
+
+/// Deliberately sends the Bat flags field to a non-Bat to cover data-id/type gating.
+fn bat_flags_collision_data(flags: i8) -> ProtocolEntityDataValue {
+    bat_flags_data(VANILLA_ENTITY_TYPE_BAT_ID, flags)
+}
+
 fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEntityDataValue> {
     let accessors =
         crate::entities::schema::vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
@@ -851,7 +864,10 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
 
 #[test]
 fn entity_model_sources_project_bat_resting_from_flags() {
-    // Vanilla Bat.DATA_ID_FLAGS (16, BYTE); FLAG_RESTING (1).
+    // Vanilla Bat.DATA_ID_FLAGS (BYTE); FLAG_RESTING.
+    let (_, default, resting_mask) =
+        vanilla_entity_metadata_bat_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_BAT_ID)
+            .expect("generated Bat flags accessor must resolve");
     let resting = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -860,14 +876,10 @@ fn entity_model_sources_project_bat_resting_from_flags() {
             .unwrap()
             .bat_resting
     };
-    let set_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+    let set_flags = |store: &mut WorldStore, id: i32, value: ProtocolEntityDataValue| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_BAT_FLAGS_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(flags),
-            }],
+            values: vec![value],
         })
     };
 
@@ -878,11 +890,19 @@ fn entity_model_sources_project_bat_resting_from_flags() {
     ));
     // A bat with no flags is flying.
     assert!(!resting(&store, 70));
-    // Setting Bat.FLAG_RESTING (DATA_ID_FLAGS & 1) projects the hanging pose; clearing it
+    // Setting Bat.FLAG_RESTING projects the hanging pose; clearing it
     // returns to flying.
-    assert!(set_flags(&mut store, 70, VANILLA_BAT_FLAG_RESTING));
+    assert!(set_flags(
+        &mut store,
+        70,
+        bat_flags_data(VANILLA_ENTITY_TYPE_BAT_ID, resting_mask)
+    ));
     assert!(resting(&store, 70));
-    assert!(set_flags(&mut store, 70, 0));
+    assert!(set_flags(
+        &mut store,
+        70,
+        bat_flags_data(VANILLA_ENTITY_TYPE_BAT_ID, default)
+    ));
     assert!(!resting(&store, 70));
 
     // A chicken carries no bat flags byte; a stray bit at the same data id never reaches its
@@ -891,7 +911,11 @@ fn entity_model_sources_project_bat_resting_from_flags() {
         71,
         VANILLA_ENTITY_TYPE_CHICKEN_ID,
     ));
-    assert!(set_flags(&mut store, 71, VANILLA_BAT_FLAG_RESTING));
+    assert!(set_flags(
+        &mut store,
+        71,
+        bat_flags_collision_data(resting_mask)
+    ));
     assert!(!resting(&store, 71));
 }
 

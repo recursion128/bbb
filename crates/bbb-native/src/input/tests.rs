@@ -94,7 +94,6 @@ use bbb_world::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
-    VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
@@ -385,6 +384,22 @@ fn mob_flags_data(
         serializer_id:
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(flags),
+    }
+}
+
+fn bat_flags_data(world: &WorldStore, entity_id: i32) -> ProtocolEntityDataValue {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("Bat fixture entity must exist before metadata is constructed");
+    let (data_id, default, resting_mask) =
+        vanilla_entity_metadata_bat_flags_accessor_for_entity_type(entity_type_id)
+            .expect("generated Bat flags accessor must resolve");
+    assert_eq!(default, 0);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(resting_mask),
     }
 }
 
@@ -3881,12 +3896,7 @@ fn shift_f3_i_with_permission_copies_local_bat_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, false, true),
-            ProtocolEntityDataValue {
-                data_id: BAT_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(1),
-            },
+            bat_flags_data(&world, 50),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

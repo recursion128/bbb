@@ -1188,12 +1188,17 @@ pub fn vanilla_entity_metadata_item_frame_accessors_for_entity_type(
     }
 }
 
-/// Resolves the generated Bat flags accessor and its typed default.
+/// Resolves the generated Bat flags accessor, typed default, and named resting mask.
 pub fn vanilla_entity_metadata_bat_flags_accessor_for_entity_type(
     entity_type_id: i32,
-) -> Option<(u8, i8)> {
+) -> Option<(u8, i8, i8)> {
     let accessor =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_FLAGS")?;
+    let resting_mask = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bat)
+        .own_flags
+        .iter()
+        .find(|flag| flag.name == "FLAG_RESTING" && flag.data_id == accessor.data_id)?
+        .mask;
     match (
         accessor.owner,
         accessor.serializer_name,
@@ -1203,7 +1208,7 @@ pub fn vanilla_entity_metadata_bat_flags_accessor_for_entity_type(
             "net.minecraft.world.entity.ambient.Bat",
             "BYTE",
             Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
+        ) => Some((accessor.data_id, default, resting_mask)),
         _ => None,
     }
 }
@@ -5356,10 +5361,10 @@ mod tests {
     }
 
     #[test]
-    fn generated_bat_flags_accessor_owns_membership_index_and_default() {
+    fn generated_bat_flags_accessor_owns_membership_index_default_and_mask() {
         assert_eq!(
             vanilla_entity_metadata_bat_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_BAT_ID),
-            Some((16, 0))
+            Some((16, 0, 1))
         );
         assert_eq!(
             vanilla_entity_metadata_bat_flags_accessor_for_entity_type(

@@ -46,8 +46,7 @@ use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
-    VanillaFireworkRocketMetadataAccessors, VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING,
-    VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
+    VanillaFireworkRocketMetadataAccessors, VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
 
 use super::{
@@ -1739,13 +1738,12 @@ impl EntityStore {
                 .unwrap_or(accessors.creepy_default)
         });
         // Vanilla `BatModel.setupAnim` swaps to the `BAT_RESTING` hanging pose while
-        // `Bat.isResting` (`DATA_ID_FLAGS & 1`). Only the bat defines that flags byte, so
+        // `Bat.isResting` (`DATA_ID_FLAGS & FLAG_RESTING`). Only the bat defines that flags byte, so
         // the projection is gated to it and defaults to flying otherwise.
         let bat_resting =
             vanilla_entity_metadata_bat_flags_accessor_for_entity_type(identity.entity_type_id)
-                .is_some_and(|(data_id, default)| {
-                    self.metadata_byte(id, data_id, default).unwrap_or(default) & BAT_FLAG_RESTING
-                        != 0
+                .is_some_and(|(data_id, default, resting_mask)| {
+                    self.metadata_byte(id, data_id, default).unwrap_or(default) & resting_mask != 0
                 });
         // Vanilla `BeeModel.setupAnim` hides the stinger cube once `Bee.hasStung`
         // (`DATA_FLAGS_ID & 4`). Only the bee defines that flags byte; every other entity keeps

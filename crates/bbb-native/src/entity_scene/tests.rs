@@ -17,7 +17,6 @@ use bbb_protocol::packets::{
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
-    VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
@@ -76,6 +75,16 @@ fn abstract_villager_unhappy_data(entity_type_id: i32, counter: i32) -> EntityDa
 
 fn abstract_villager_unhappy_collision_data(counter: i32) -> EntityDataValue {
     abstract_villager_unhappy_data(VANILLA_ENTITY_TYPE_VILLAGER_ID, counter)
+}
+
+fn bat_flags_data(flags: i8) -> EntityDataValue {
+    let (data_id, default, _resting_mask) =
+        bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_BAT_ID,
+        )
+        .expect("generated Bat flags accessor must resolve");
+    assert_eq!(default, 0);
+    protocol_byte_data(data_id, flags)
 }
 
 fn mob_aggressive_data(entity_type_id: i32) -> EntityDataValue {
@@ -2090,7 +2099,13 @@ fn entity_model_instances_project_enderman_carrying_and_creepy() {
 
 #[test]
 fn entity_model_instances_project_bat_resting() {
-    // Vanilla Bat.DATA_ID_FLAGS (16, BYTE) and the resting bit (1).
+    // Vanilla Bat.DATA_ID_FLAGS (BYTE) and its named resting bit.
+    let (_, default, resting_mask) =
+        bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_BAT_ID,
+        )
+        .expect("generated Bat flags accessor must resolve");
+    assert_eq!(default, 0);
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         95,
@@ -2110,13 +2125,10 @@ fn entity_model_instances_project_bat_resting() {
     // A flying bat projects bat_resting = false.
     assert!(!resting(&world, 95));
 
-    // Setting Bat.isResting (DATA_ID_FLAGS & 1) projects through to the hanging-pose state.
+    // Setting Bat.isResting via the named mask projects through to the hanging-pose state.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 95,
-        values: vec![protocol_byte_data(
-            VANILLA_BAT_FLAGS_DATA_ID,
-            VANILLA_BAT_FLAG_RESTING
-        )],
+        values: vec![bat_flags_data(resting_mask)],
     }));
     assert!(resting(&world, 95));
 }

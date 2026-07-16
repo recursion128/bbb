@@ -18104,3 +18104,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   均按实际类型查询并校验 default 0。
 - ZombieVillager/Panda 的同 id 负例保留为显式 collision helper；reverse guard 纳入两份整文件，
   防止固定 alias 或无类型语义的 sibling 替代回流。
+
+## 2026-07-16：统一 Bat flags accessor 与 fixtures
+
+- generated Bat accessor 除 membership、BYTE wire index/default 外同时解析 `FLAG_RESTING` named
+  mask；world resting projection 与 native F3+I debug-save 不再消费固定 mask alias。
+- world combat-state、native entity-scene 与 input Bat fixtures 全部通过 accessor 构造 metadata；
+  Chicken 同 id 负例保留为显式 collision helper，禁止固定 wire id/mask 回流。
