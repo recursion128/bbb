@@ -282,6 +282,14 @@ pub struct VanillaPandaMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaLlamaMetadataAccessors {
+    pub strength_data_id: u8,
+    pub strength_default: i32,
+    pub variant_data_id: u8,
+    pub variant_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaTurtleMetadataAccessors {
     pub has_egg_data_id: u8,
     pub has_egg_default: bool,
@@ -2167,6 +2175,87 @@ pub fn vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
             "BYTE",
             Some(VanillaEntityMetadataDefault::Byte(default)),
         ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves Horse's generated packed color/markings accessor and its typed default.
+pub fn vanilla_entity_metadata_horse_variant_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_TYPE_VARIANT")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.equine.Horse",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves AbstractChestedHorse's generated chest accessor and its typed default.
+pub fn vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_CHEST")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.equine.AbstractChestedHorse",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves Llama's generated strength and variant accessors with typed defaults.
+pub fn vanilla_entity_metadata_llama_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaLlamaMetadataAccessors> {
+    let strength =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_STRENGTH_ID")?;
+    let variant =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_VARIANT_ID")?;
+    match (
+        (
+            strength.owner,
+            strength.serializer_name,
+            strength.typed_default,
+        ),
+        (
+            variant.owner,
+            variant.serializer_name,
+            variant.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.equine.Llama",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(strength_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.equine.Llama",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(variant_default)),
+            ),
+        ) => Some(VanillaLlamaMetadataAccessors {
+            strength_data_id: strength.data_id,
+            strength_default,
+            variant_data_id: variant.data_id,
+            variant_default,
+        }),
         _ => None,
     }
 }
@@ -4987,6 +5076,66 @@ mod tests {
             vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_equine_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_horse_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_HORSE_ID
+            ),
+            Some((VANILLA_HORSE_VARIANT_DATA_ID, VANILLA_HORSE_DEFAULT_VARIANT))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_horse_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_DONKEY_ID
+            ),
+            None
+        );
+
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_DONKEY_ID,
+            VANILLA_ENTITY_TYPE_MULE_ID,
+            VANILLA_ENTITY_TYPE_LLAMA_ID,
+            VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                Some((
+                    VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
+                    VANILLA_ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST,
+                ))
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_HORSE_ID
+            ),
+            None
+        );
+
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_LLAMA_ID,
+            VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id),
+                Some(VanillaLlamaMetadataAccessors {
+                    strength_data_id: VANILLA_LLAMA_STRENGTH_DATA_ID,
+                    strength_default: VANILLA_LLAMA_DEFAULT_STRENGTH,
+                    variant_data_id: VANILLA_LLAMA_VARIANT_DATA_ID,
+                    variant_default: VANILLA_LLAMA_DEFAULT_VARIANT,
+                })
+            );
+        }
+        for entity_type_id in [VANILLA_ENTITY_TYPE_HORSE_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]

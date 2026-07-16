@@ -81,14 +81,17 @@ use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_horse_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_llama_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
@@ -106,9 +109,17 @@ use bbb_world::vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_en
 use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 #[cfg(test)]
+use bbb_world::VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID;
+#[cfg(test)]
 use bbb_world::VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_LLAMA_STRENGTH_DATA_ID as LLAMA_STRENGTH_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 #[cfg(test)]
 use bbb_world::VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID;
@@ -147,7 +158,6 @@ use bbb_world::{
 };
 use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
-    VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET as AXOLOTL_DEFAULT_FROM_BUCKET,
@@ -164,13 +174,7 @@ use bbb_world::{
     VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID as FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
     VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID as FIREWORK_ROCKET_ITEM_DATA_ID,
     VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID as FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
-    VANILLA_HORSE_DEFAULT_VARIANT as HORSE_DEFAULT_VARIANT,
-    VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID,
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
-    VANILLA_LLAMA_DEFAULT_STRENGTH as LLAMA_DEFAULT_STRENGTH,
-    VANILLA_LLAMA_DEFAULT_VARIANT as LLAMA_DEFAULT_VARIANT,
-    VANILLA_LLAMA_STRENGTH_DATA_ID as LLAMA_STRENGTH_DATA_ID,
-    VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID,
     VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
     VANILLA_OCELOT_TRUSTING_DATA_ID as OCELOT_TRUSTING_DATA_ID,
     VANILLA_PRIMED_TNT_DEFAULT_FUSE as PRIMED_TNT_DEFAULT_FUSE,
@@ -6906,16 +6910,23 @@ fn debug_push_abstract_chested_horse_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    if let Some(has_chest) =
-        debug_entity_data_bool_present(entity, ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID)
-    {
+    let Some((chest_data_id, _)) =
+        vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    if let Some(has_chest) = debug_entity_data_bool_present(entity, chest_data_id) {
         fields.push(format!("ChestedHorse: {}", debug_snbt_bool(has_chest)));
     }
 }
 
 fn debug_push_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let variant = debug_entity_data_int_present(entity, HORSE_VARIANT_DATA_ID)
-        .unwrap_or(HORSE_DEFAULT_VARIANT);
+    let Some((variant_data_id, variant_default)) =
+        vanilla_entity_metadata_horse_variant_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let variant = debug_entity_data_int_present(entity, variant_data_id).unwrap_or(variant_default);
     fields.push(format!("Variant: {variant}"));
 }
 
@@ -6935,17 +6946,22 @@ fn debug_push_camel_additional_save_data(entity: &EntityState, fields: &mut Vec<
 }
 
 fn debug_push_llama_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let variant = debug_entity_data_int_present(entity, LLAMA_VARIANT_DATA_ID)
-        .map(debug_llama_variant_save_id)
-        .unwrap_or(LLAMA_DEFAULT_VARIANT);
-    let strength = debug_entity_data_int_present(entity, LLAMA_STRENGTH_DATA_ID)
-        .unwrap_or(LLAMA_DEFAULT_STRENGTH);
+    let Some(accessors) =
+        vanilla_entity_metadata_llama_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let variant = debug_entity_data_int_present(entity, accessors.variant_data_id)
+        .map(|variant| debug_llama_variant_save_id(variant, accessors.variant_default))
+        .unwrap_or(accessors.variant_default);
+    let strength = debug_entity_data_int_present(entity, accessors.strength_data_id)
+        .unwrap_or(accessors.strength_default);
     fields.push(format!("Variant: {variant}"));
     fields.push(format!("Strength: {strength}"));
 }
 
-fn debug_llama_variant_save_id(variant: i32) -> i32 {
-    variant.clamp(LLAMA_DEFAULT_VARIANT, LLAMA_MAX_VARIANT)
+fn debug_llama_variant_save_id(variant: i32, default: i32) -> i32 {
+    variant.clamp(default, LLAMA_MAX_VARIANT)
 }
 
 fn debug_push_trader_llama_additional_save_data(_fields: &mut Vec<String>) {}

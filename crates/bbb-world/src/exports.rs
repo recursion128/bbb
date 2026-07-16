@@ -4,6 +4,7 @@ pub use crate::entities::state::*;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
+pub use crate::entities::VanillaLlamaMetadataAccessors;
 pub use crate::entities::VanillaPandaMetadataAccessors;
 pub use crate::entities::VanillaShulkerMetadataAccessors;
 pub use crate::entities::VanillaTurtleMetadataAccessors;
@@ -25,6 +26,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
+    vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type,
     vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
@@ -35,8 +37,10 @@ pub use crate::entities::{
     vanilla_entity_metadata_ghast_charging_accessor_for_entity_type,
     vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type,
     vanilla_entity_metadata_goat_accessors_for_entity_type,
+    vanilla_entity_metadata_horse_variant_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_llama_accessors_for_entity_type,
     vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type,
     vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,

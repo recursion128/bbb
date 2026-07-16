@@ -136,11 +136,15 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
             baby: ageable_baby(data_values),
-            variant: horse_color_variant(data_values),
-            markings: horse_markings(data_values),
+            variant: horse_color_variant(entity_type_id, data_values),
+            markings: horse_markings(entity_type_id, data_values),
         },
-        VANILLA_ENTITY_TYPE_DONKEY_ID => donkey_model_kind(DonkeyModelFamily::Donkey, data_values),
-        VANILLA_ENTITY_TYPE_MULE_ID => donkey_model_kind(DonkeyModelFamily::Mule, data_values),
+        VANILLA_ENTITY_TYPE_DONKEY_ID => {
+            donkey_model_kind(entity_type_id, DonkeyModelFamily::Donkey, data_values)
+        }
+        VANILLA_ENTITY_TYPE_MULE_ID => {
+            donkey_model_kind(entity_type_id, DonkeyModelFamily::Mule, data_values)
+        }
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID => {
             undead_horse_model_kind(UndeadHorseModelFamily::Skeleton, data_values)
         }
@@ -155,9 +159,11 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             family: CamelModelFamily::CamelHusk,
             baby: false,
         },
-        VANILLA_ENTITY_TYPE_LLAMA_ID => llama_model_kind(LlamaModelFamily::Llama, data_values),
+        VANILLA_ENTITY_TYPE_LLAMA_ID => {
+            llama_model_kind(entity_type_id, LlamaModelFamily::Llama, data_values)
+        }
         VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
-            llama_model_kind(LlamaModelFamily::TraderLlama, data_values)
+            llama_model_kind(entity_type_id, LlamaModelFamily::TraderLlama, data_values)
         }
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),

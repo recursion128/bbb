@@ -38,10 +38,13 @@ use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_ghast_charging_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_horse_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_llama_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
@@ -130,15 +133,10 @@ use bbb_world::{
     VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID as PIG_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
 };
+#[cfg(test)]
 use bbb_world::{
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
-    VANILLA_ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST as ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST,
-    VANILLA_HORSE_COLOR_MASK as HORSE_COLOR_MASK,
-    VANILLA_HORSE_DEFAULT_VARIANT as HORSE_DEFAULT_VARIANT,
-    VANILLA_HORSE_MARKINGS_MASK as HORSE_MARKINGS_MASK,
-    VANILLA_HORSE_MARKINGS_SHIFT as HORSE_MARKINGS_SHIFT,
     VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID,
-    VANILLA_LLAMA_DEFAULT_VARIANT as LLAMA_DEFAULT_VARIANT,
     VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID,
 };
 use bbb_world::{
@@ -172,6 +170,11 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_GOAT_LEFT_HORN_DATA_ID as GOAT_LEFT_HORN_DATA_ID,
     VANILLA_GOAT_RIGHT_HORN_DATA_ID as GOAT_RIGHT_HORN_DATA_ID,
+};
+use bbb_world::{
+    VANILLA_HORSE_COLOR_MASK as HORSE_COLOR_MASK,
+    VANILLA_HORSE_MARKINGS_MASK as HORSE_MARKINGS_MASK,
+    VANILLA_HORSE_MARKINGS_SHIFT as HORSE_MARKINGS_SHIFT,
 };
 #[cfg(test)]
 use bbb_world::{

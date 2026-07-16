@@ -16744,3 +16744,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   default；native debug 删除固定 accessor/default aliases。
 - 既有 Wither debug 与 world 语义测试继续锁定行为；metadata generator reverse guard 扩展到
   native 生产路径。
+
+## 2026-07-16：批量推导 equine metadata accessors
+
+- `bbb-world` 现在从生成 schema 分别解析 Horse packed variant、AbstractChestedHorse chest
+  以及 Llama strength/variant 的继承 membership、serializer、wire id 与 typed defaults；
+  Donkey/Mule 与 Llama/TraderLlama 通过实际 class hierarchy 获得 inherited chest accessor。
+- native Horse/Llama 模型、Donkey/Mule/Llama chest 投影与 F3+I 保存投影删除固定
+  accessor/default aliases；既有 horse/llama 模型和 Horse/Donkey/Llama/TraderLlama debug
+  语义测试继续锁定行为，metadata generator reverse guard 覆盖完整 family 消费面。

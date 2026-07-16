@@ -1163,13 +1163,14 @@ pub(super) fn end_crystal_shows_bottom(
 }
 
 pub(super) fn donkey_model_kind(
+    entity_type_id: i32,
     family: DonkeyModelFamily,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
     EntityModelKind::Donkey {
         family,
         baby: ageable_baby(values),
-        has_chest: chested_horse_has_chest(values),
+        has_chest: chested_horse_has_chest(entity_type_id, values),
     }
 }
 
@@ -1183,15 +1184,15 @@ pub(super) fn undead_horse_model_kind(
     }
 }
 
-/// The living horse's coat color from synced `Horse.DATA_ID_TYPE_VARIANT` (INT, id 19): vanilla
+/// The living horse's coat color from synced `Horse.DATA_ID_TYPE_VARIANT`: vanilla
 /// `Variant.byId(typeVariant & 0xFF)`, where `byId` is `ByIdMap.continuous(WRAP)` so an out-of-range
 /// id wraps modulo the seven colors. The markings nibble (`(typeVariant & 0xFF00) >> 8`) is the
 /// deferred `HorseMarkingLayer`.
 pub(super) fn horse_color_variant(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> HorseColorVariant {
-    let color =
-        entity_data_int(values, HORSE_VARIANT_DATA_ID, HORSE_DEFAULT_VARIANT) & HORSE_COLOR_MASK;
+    let color = horse_type_variant(entity_type_id, values) & HORSE_COLOR_MASK;
     match color.rem_euclid(7) {
         0 => HorseColorVariant::White,
         1 => HorseColorVariant::Creamy,
@@ -1203,13 +1204,15 @@ pub(super) fn horse_color_variant(
     }
 }
 
-/// The living horse's white markings from synced `Horse.DATA_ID_TYPE_VARIANT` (INT, id 19): vanilla
+/// The living horse's white markings from synced `Horse.DATA_ID_TYPE_VARIANT`: vanilla
 /// `Markings.byId((typeVariant & 0xFF00) >> 8)`, where `byId` is `ByIdMap.continuous(WRAP)` so an
 /// out-of-range nibble wraps modulo the five markings. `Markings.NONE` draws no overlay.
-pub(super) fn horse_markings(values: &[bbb_protocol::packets::EntityDataValue]) -> HorseMarkings {
-    let markings = (entity_data_int(values, HORSE_VARIANT_DATA_ID, HORSE_DEFAULT_VARIANT)
-        & HORSE_MARKINGS_MASK)
-        >> HORSE_MARKINGS_SHIFT;
+pub(super) fn horse_markings(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> HorseMarkings {
+    let markings =
+        (horse_type_variant(entity_type_id, values) & HORSE_MARKINGS_MASK) >> HORSE_MARKINGS_SHIFT;
     match markings.rem_euclid(5) {
         0 => HorseMarkings::None,
         1 => HorseMarkings::White,
@@ -1219,20 +1222,31 @@ pub(super) fn horse_markings(values: &[bbb_protocol::packets::EntityDataValue]) 
     }
 }
 
+fn horse_type_variant(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> i32 {
+    vanilla_entity_metadata_horse_variant_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_int(values, data_id, default))
+        .unwrap_or_default()
+}
+
 pub(super) fn llama_model_kind(
+    entity_type_id: i32,
     family: LlamaModelFamily,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
     let baby = ageable_baby(values);
+    let variant = vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| {
+            entity_data_int(values, accessors.variant_data_id, accessors.variant_default)
+        })
+        .unwrap_or_default();
     EntityModelKind::Llama {
         family,
-        variant: LlamaVariant::from_vanilla_id(entity_data_int(
-            values,
-            LLAMA_VARIANT_DATA_ID,
-            LLAMA_DEFAULT_VARIANT,
-        )),
+        variant: LlamaVariant::from_vanilla_id(variant),
         baby,
-        has_chest: !baby && chested_horse_has_chest(values),
+        has_chest: !baby && chested_horse_has_chest(entity_type_id, values),
     }
 }
 
@@ -1637,12 +1651,12 @@ pub(super) fn cow_variant_from_registry_id(
         .and_then(CowModelVariant::for_resource_id)
 }
 
-pub(super) fn chested_horse_has_chest(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(
-        values,
-        ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
-        ABSTRACT_CHESTED_HORSE_DEFAULT_CHEST,
-    )
+pub(super) fn chested_horse_has_chest(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(entity_type_id)
+        .is_some_and(|(data_id, default)| entity_data_bool(values, data_id, default))
 }
 
 pub(super) fn zombie_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
