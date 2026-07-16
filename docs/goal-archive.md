@@ -17284,3 +17284,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   world render projection、native F3+I 与 world/native fixtures 不再导入独立固定常量。
 - 删除 `bbb-world` 的 data/default/mask 三个 facade 转发，schema 测试由 generated family
   schema 组装期望；generator 反向守卫覆盖 production 和 world/native fixtures。
+
+## 2026-07-16：统一 Sheep wool metadata 消费
+
+- 现有 accessor 查询扩展为同时返回 generated data id、typed default、sheared mask 与 color
+  mask；native model/F3+I 以及语义 fixtures 不再导入固定 metadata 常量。
+- 删除 `bbb-world` 的 Sheep data/default/mask facade 转发，schema 测试由 generated family
+  schema 组装期望；generator 反向守卫覆盖 production 和 native fixtures。

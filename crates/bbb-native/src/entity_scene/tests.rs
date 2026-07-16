@@ -21,7 +21,6 @@ use bbb_world::{
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
-    VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
@@ -74,6 +73,17 @@ fn snow_golem_pumpkin_accessor() -> (u8, i8, i8) {
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
     )
     .expect("generated SnowGolem pumpkin accessor must resolve")
+}
+
+fn sheep_wool_data(color_id: u8, sheared: bool) -> EntityDataValue {
+    let (data_id, _, sheared_mask, color_mask) =
+        bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_SHEEP_ID,
+        )
+        .expect("generated Sheep wool accessor must resolve");
+    assert_eq!(color_id & !color_mask, 0, "invalid Sheep wool color id");
+    let value = color_id | if sheared { sheared_mask as u8 } else { 0 };
+    protocol_byte_data(data_id, value as i8)
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -8572,13 +8582,7 @@ fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
 #[test]
 fn entity_model_kind_uses_vanilla_sheep_wool_metadata() {
     assert_eq!(
-        entity_model_kind(
-            VANILLA_ENTITY_TYPE_SHEEP_ID,
-            &[protocol_byte_data(
-                SHEEP_WOOL_DATA_ID,
-                (SHEEP_WOOL_SHEARED_FLAG | 14) as i8
-            )]
-        ),
+        entity_model_kind(VANILLA_ENTITY_TYPE_SHEEP_ID, &[sheep_wool_data(14, true)]),
         EntityModelKind::Sheep {
             baby: false,
             sheared: true,
@@ -8591,7 +8595,7 @@ fn entity_model_kind_uses_vanilla_sheep_wool_metadata() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SHEEP_ID,
             &[
-                protocol_byte_data(SHEEP_WOOL_DATA_ID, 15),
+                sheep_wool_data(15, false),
                 protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
             ]
         ),
@@ -8606,10 +8610,7 @@ fn entity_model_kind_uses_vanilla_sheep_wool_metadata() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SHEEP_ID,
-            &[
-                protocol_byte_data(SHEEP_WOOL_DATA_ID, 3),
-                protocol_byte_data(SHEEP_WOOL_DATA_ID, (SHEEP_WOOL_SHEARED_FLAG | 5) as i8),
-            ]
+            &[sheep_wool_data(3, false), sheep_wool_data(5, true),]
         ),
         EntityModelKind::Sheep {
             baby: false,
@@ -8624,7 +8625,7 @@ fn entity_model_kind_uses_vanilla_sheep_wool_metadata() {
             VANILLA_ENTITY_TYPE_SHEEP_ID,
             &[
                 protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
-                protocol_byte_data(SHEEP_WOOL_DATA_ID, 14),
+                sheep_wool_data(14, false),
             ]
         ),
         EntityModelKind::Sheep {
@@ -8644,7 +8645,7 @@ fn entity_model_kind_projects_sheep_jeb_custom_name_and_age() {
             VANILLA_ENTITY_TYPE_SHEEP_ID,
             &[
                 protocol_optional_component_data(ENTITY_CUSTOM_NAME_DATA_ID, Some("jeb_")),
-                protocol_byte_data(SHEEP_WOOL_DATA_ID, 0),
+                sheep_wool_data(0, false),
             ],
             12.5,
             0,
@@ -8708,10 +8709,7 @@ fn entity_model_instances_project_sheep_wool_metadata_from_world() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 111,
-        values: vec![protocol_byte_data(
-            SHEEP_WOOL_DATA_ID,
-            (SHEEP_WOOL_SHEARED_FLAG | 14) as i8,
-        )],
+        values: vec![sheep_wool_data(14, true)],
     }));
 
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
@@ -8787,7 +8785,7 @@ fn entity_model_instances_project_sheep_invisible_shared_flag_from_world() {
         id: 113,
         values: vec![
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
-            protocol_byte_data(SHEEP_WOOL_DATA_ID, 14),
+            sheep_wool_data(14, false),
         ],
     }));
 
@@ -8827,7 +8825,7 @@ fn entity_model_instances_project_spectator_visible_invisible_sheep_from_world()
         id: 113,
         values: vec![
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
-            protocol_byte_data(SHEEP_WOOL_DATA_ID, 14),
+            sheep_wool_data(14, false),
         ],
     }));
     world.apply_game_event(bbb_protocol::packets::GameEvent {
@@ -8855,7 +8853,7 @@ fn entity_model_instances_project_glowing_shared_flag_from_world() {
                 ENTITY_SHARED_FLAGS_DATA_ID,
                 ENTITY_SHARED_FLAG_INVISIBLE | ENTITY_SHARED_FLAG_GLOWING,
             ),
-            protocol_byte_data(SHEEP_WOOL_DATA_ID, 14),
+            sheep_wool_data(14, false),
         ],
     }));
     assert!(world.apply_set_player_team(SetPlayerTeam {

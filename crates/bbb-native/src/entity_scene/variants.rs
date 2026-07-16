@@ -615,13 +615,20 @@ pub(super) fn sheep_model_kind(
 ) -> EntityModelKind {
     let entity_accessors = vanilla_entity_metadata_entity_accessors()
         .expect("generated base Entity metadata accessors must resolve");
-    let wool = vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(entity_type_id)
-        .map(|(data_id, default)| entity_data_byte(values, data_id, default) as u8)
-        .unwrap_or_default();
+    let (wool, sheared_mask, color_mask) =
+        vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(entity_type_id)
+            .map(|(data_id, default, sheared_mask, color_mask)| {
+                (
+                    entity_data_byte(values, data_id, default) as u8,
+                    sheared_mask as u8,
+                    color_mask,
+                )
+            })
+            .unwrap_or_default();
     EntityModelKind::Sheep {
         baby: ageable_baby(values),
-        sheared: wool & SHEEP_WOOL_SHEARED_FLAG as u8 != 0,
-        wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
+        sheared: wool & sheared_mask != 0,
+        wool_color: SheepWoolColor::from_vanilla_id(wool & color_mask),
         jeb: entity_data_optional_component(values, entity_accessors.custom_name_data_id)
             .is_some_and(|name| name == "jeb_"),
         age_ticks,

@@ -1398,10 +1398,10 @@ pub fn vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
     }
 }
 
-/// Resolves the generated Sheep wool accessor and its typed default.
+/// Resolves the generated Sheep wool accessor, typed default, and named masks.
 pub fn vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(
     entity_type_id: i32,
-) -> Option<(u8, i8)> {
+) -> Option<(u8, i8, i8, u8)> {
     let accessor =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_WOOL_ID")?;
     match (
@@ -1413,7 +1413,12 @@ pub fn vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(
             "net.minecraft.world.entity.animal.sheep.Sheep",
             "BYTE",
             Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
+        ) => Some((
+            accessor.data_id,
+            default,
+            VANILLA_SHEEP_FLAG_SHEARED,
+            VANILLA_SHEEP_WOOL_COLOR_MASK,
+        )),
         _ => None,
     }
 }
@@ -5446,12 +5451,31 @@ mod tests {
     }
 
     #[test]
-    fn generated_sheep_wool_accessor_owns_membership_index_and_default() {
+    fn generated_sheep_wool_accessor_owns_membership_index_default_and_masks() {
+        let sheep = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Sheep);
+        let wool = sheep
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_WOOL_ID")
+            .expect("generated Sheep wool field");
+        let sheared = sheep
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == "isSheared")
+            .expect("generated Sheep sheared flag");
+        let VanillaEntityMetadataDefault::Byte(default) = wool.default else {
+            panic!("generated Sheep wool default must be BYTE");
+        };
         assert_eq!(
             vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_SHEEP_ID
             ),
-            Some((18, 0))
+            Some((
+                wool.data_id,
+                default,
+                sheared.mask,
+                VANILLA_SHEEP_WOOL_COLOR_MASK,
+            ))
         );
         assert_eq!(
             vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(
@@ -7386,10 +7410,18 @@ mod tests {
         assert_eq!(sheep.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(sheep.inherited_field_count, 18);
         assert_eq!(sheep.own_fields.len(), 1);
-        assert_eq!(VANILLA_SHEEP_WOOL_DATA_ID, 18);
-        assert_eq!(VANILLA_SHEEP_DEFAULT_WOOL, 0);
-        assert_eq!(VANILLA_SHEEP_FLAG_SHEARED, 16);
-        assert_eq!(VANILLA_SHEEP_WOOL_COLOR_MASK, 15);
+        assert_eq!(sheep.own_flags.len(), 1);
+        let (wool_data_id, wool_default, sheared_mask, _) =
+            vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SHEEP_ID,
+            )
+            .expect("generated Sheep wool accessor");
+        assert_eq!(wool_data_id, sheep.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Byte(wool_default),
+            sheep.own_fields[0].default
+        );
+        assert_eq!(sheared_mask, sheep.own_flags[0].mask);
         assert_eq!(VANILLA_HORSE_COLOR_MASK, 0xFF);
         assert_eq!(VANILLA_HORSE_MARKINGS_MASK, 0xFF00);
         assert_eq!(VANILLA_HORSE_MARKINGS_SHIFT, 8);

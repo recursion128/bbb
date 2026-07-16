@@ -157,8 +157,6 @@ use bbb_world::{
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
     VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
     VANILLA_OCELOT_TRUSTING_DATA_ID as OCELOT_TRUSTING_DATA_ID,
-    VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
-    VANILLA_SHEEP_WOOL_COLOR_MASK as SHEEP_WOOL_COLOR_MASK,
     VANILLA_TADPOLE_AGE_LOCKED_DATA_ID as TADPOLE_AGE_LOCKED_DATA_ID,
     VANILLA_ZOGLIN_BABY_DATA_ID as ZOGLIN_BABY_DATA_ID,
     VANILLA_ZOGLIN_DEFAULT_BABY as ZOGLIN_DEFAULT_BABY,
@@ -7466,7 +7464,7 @@ fn debug_push_shulker_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_sheep_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let Some((data_id, default)) =
+    let Some((data_id, default, sheared_mask, color_mask)) =
         vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(entity.entity_type_id)
     else {
         return;
@@ -7474,9 +7472,9 @@ fn debug_push_sheep_additional_save_data(entity: &EntityState, fields: &mut Vec<
     let wool = debug_entity_data_byte_present(entity, data_id).unwrap_or(default) as u8;
     fields.push(format!(
         "Sheared: {}",
-        debug_snbt_bool(wool & SHEEP_WOOL_SHEARED_FLAG as u8 != 0)
+        debug_snbt_bool(wool & sheared_mask as u8 != 0)
     ));
-    fields.push(format!("Color: {}b", wool & SHEEP_WOOL_COLOR_MASK));
+    fields.push(format!("Color: {}b", wool & color_mask));
 }
 
 fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

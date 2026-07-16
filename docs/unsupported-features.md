@@ -343,9 +343,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `DATA_PUMPKIN_ID` and `PUMPKIN_FLAG`; world model projection and world/native semantic fixtures
   must not restore a SnowGolem type predicate, fixed accessor/default/mask aliases or hand-written
   wire indices alongside accessor membership.
-  Sheep wool membership, wire index and typed default must remain derived from generated
-  `DATA_WOOL_ID`; native model/debug consumers must not restore fixed accessor/default aliases and
-  must continue using the generated color/sheared masks.
+  Sheep wool membership, wire index, typed default, color mask and sheared mask must remain derived
+  together from generated `DATA_WOOL_ID`/method evidence; native model/debug consumers and semantic
+  fixtures must not restore fixed accessor/default/mask aliases or hand-written wire indices.
   Rabbit variant membership, wire index and typed default must remain derived from generated
   `DATA_TYPE_ID`; native model/debug consumers must not restore fixed accessor/default aliases,
   and invalid variant ids must continue falling back through the generated default.

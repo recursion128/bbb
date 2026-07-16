@@ -148,8 +148,6 @@ const GENERATED_VANILLA_PANDA_HIDDEN_GENE_DATA_ID: u8 = 22;
 pub const VANILLA_PANDA_HIDDEN_GENE_DATA_ID: u8 = GENERATED_VANILLA_PANDA_HIDDEN_GENE_DATA_ID;
 const GENERATED_VANILLA_PANDA_FLAGS_DATA_ID: u8 = 23;
 pub const VANILLA_PANDA_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_PANDA_FLAGS_DATA_ID;
-const GENERATED_VANILLA_SHEEP_WOOL_DATA_ID: u8 = 18;
-pub const VANILLA_SHEEP_WOOL_DATA_ID: u8 = GENERATED_VANILLA_SHEEP_WOOL_DATA_ID;
 const GENERATED_VANILLA_SNIFFER_STATE_DATA_ID: u8 = 18;
 pub const VANILLA_SNIFFER_STATE_DATA_ID: u8 = GENERATED_VANILLA_SNIFFER_STATE_DATA_ID;
 const GENERATED_VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID: u8 = 19;
@@ -766,8 +764,6 @@ const GENERATED_VANILLA_PANDA_DEFAULT_HIDDEN_GENE: i8 = 0;
 pub const VANILLA_PANDA_DEFAULT_HIDDEN_GENE: i8 = GENERATED_VANILLA_PANDA_DEFAULT_HIDDEN_GENE;
 const GENERATED_VANILLA_PANDA_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_PANDA_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_PANDA_DEFAULT_FLAGS;
-const GENERATED_VANILLA_SHEEP_DEFAULT_WOOL: i8 = 0;
-pub const VANILLA_SHEEP_DEFAULT_WOOL: i8 = GENERATED_VANILLA_SHEEP_DEFAULT_WOOL;
 const GENERATED_VANILLA_SNIFFER_DEFAULT_STATE: i32 = 0;
 pub const VANILLA_SNIFFER_DEFAULT_STATE: i32 = GENERATED_VANILLA_SNIFFER_DEFAULT_STATE;
 const GENERATED_VANILLA_SNIFFER_DEFAULT_DROP_SEED_AT_TICK: i32 = 0;
@@ -24043,26 +24039,40 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_sheep_wool_does_not_restore_accessor_constants() {
+    fn sheep_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [native_scene, native_variants, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(source.contains("vanilla_entity_metadata_sheep_wool_accessor_for_entity_type"));
         }
-        for removed in ["SHEEP_WOOL_DATA_ID", "SHEEP_DEFAULT_WOOL"] {
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+        for removed in [
+            "SHEEP_WOOL_DATA_ID",
+            "SHEEP_DEFAULT_WOOL",
+            "SHEEP_FLAG_SHEARED",
+            "SHEEP_WOOL_SHEARED_FLAG",
+            "SHEEP_WOOL_COLOR_MASK",
+        ] {
+            for source in [
+                native_scene,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Sheep projection restored {removed}"
+                );
+            }
         }
     }
 

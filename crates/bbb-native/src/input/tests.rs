@@ -124,7 +124,6 @@ use bbb_world::{
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MOOSHROOM_TYPE_DATA_ID,
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
-    VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
 };
 use std::{
     collections::BTreeMap,
@@ -157,6 +156,20 @@ fn tamable_animal_flags_data(
 fn shulker_metadata_accessors() -> bbb_world::VanillaShulkerMetadataAccessors {
     vanilla_entity_metadata_shulker_accessors_for_entity_type(VANILLA_ENTITY_TYPE_SHULKER_ID)
         .expect("generated Shulker metadata accessors must resolve")
+}
+
+fn sheep_wool_data(color_id: u8, sheared: bool) -> ProtocolEntityDataValue {
+    let (data_id, _, sheared_mask, color_mask) =
+        vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(VANILLA_ENTITY_TYPE_SHEEP_ID)
+            .expect("generated Sheep wool accessor must resolve");
+    assert_eq!(color_id & !color_mask, 0, "invalid Sheep wool color id");
+    let value = color_id | if sheared { sheared_mask as u8 } else { 0 };
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(value as i8),
+    }
 }
 
 fn snow_golem_pumpkin_accessor() -> (u8, i8, i8) {
@@ -5345,11 +5358,7 @@ fn shift_f3_i_with_permission_copies_local_sheep_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: SHEEP_WOOL_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte((SHEEP_WOOL_SHEARED_FLAG | 14) as i8),
-            },
+            sheep_wool_data(14, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
