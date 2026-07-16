@@ -805,7 +805,7 @@ impl CamelSitState {
 }
 
 /// Vanilla `Camel.setupAnimationStates()` (client tick) projected purely from the synced
-/// `LAST_POSE_CHANGE_TICK` (id 20, a `Long`) and the world game time — no client-side
+/// `LAST_POSE_CHANGE_TICK` (`Long`) and the world game time — no client-side
 /// accumulator is needed because the camel's sit/stand timing is a deterministic function of
 /// those two values. Mirrors `Camel.getPoseTime()` (`gameTime - |lastPoseChangeTick|`) and the
 /// `isCamelSitting`/`isCamelVisuallySitting`/`isVisuallySittingDown`/`isInPoseTransition`
@@ -821,13 +821,17 @@ pub(super) fn camel_sit_state(
     values: &[bbb_protocol::packets::EntityDataValue],
     game_time: i64,
 ) -> CamelSitState {
-    if !bbb_world::vanilla_entity_metadata_type_is_camel(entity_type_id) {
+    let Some((last_pose_change_tick_data_id, last_pose_change_tick_default)) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            entity_type_id,
+        )
+    else {
         return CamelSitState::STOPPED;
-    }
+    };
     let last_pose_change_tick = entity_data_long(
         values,
-        CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-        CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
+        last_pose_change_tick_data_id,
+        last_pose_change_tick_default,
     );
     // Vanilla `Camel.getPoseTime()` and `isCamelSitting()`.
     let pose_time = game_time - last_pose_change_tick.abs();

@@ -80,6 +80,7 @@ use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
@@ -102,6 +103,8 @@ use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity
 use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
+#[cfg(test)]
+use bbb_world::VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
@@ -148,8 +151,6 @@ use bbb_world::{
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
     VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
     VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
-    VANILLA_CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK as CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK,
-    VANILLA_CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID as CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_CREAKING_HOME_POS_DATA_ID as CREAKING_HOME_POS_DATA_ID,
     VANILLA_DOLPHIN_DEFAULT_GOT_FISH as DOLPHIN_DEFAULT_GOT_FISH,
@@ -6923,9 +6924,15 @@ fn debug_push_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<
 fn debug_push_skeleton_horse_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_camel_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let last_pose_tick =
-        debug_entity_data_long_present(entity, CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID)
-            .unwrap_or(CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK);
+    let Some((last_pose_change_tick_data_id, last_pose_change_tick_default)) =
+        vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let last_pose_tick = debug_entity_data_long_present(entity, last_pose_change_tick_data_id)
+        .unwrap_or(last_pose_change_tick_default);
     fields.push(format!("LastPoseTick: {last_pose_tick}L"));
 }
 

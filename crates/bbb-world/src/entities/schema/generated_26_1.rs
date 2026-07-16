@@ -23505,6 +23505,22 @@ mod generated_catalog_guards {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
         let dimensions = include_str!("../dimensions.rs");
+        let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let sit_body = variants
+            .split("pub(super) fn camel_sit_state")
+            .nth(1)
+            .and_then(|source| source.split("pub(super) fn chicken_model_kind").next())
+            .expect("Camel sit projection source");
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        let debug_body = input
+            .split("fn debug_push_camel_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_llama_additional_save_data")
+                    .next()
+            })
+            .expect("Camel debug projection source");
         assert!(animations.contains("vanilla_entity_metadata_camel_dash_accessor_for_entity_type"));
         assert!(store.contains("camel_is_dashing(identity.entity_type_id, &metadata.data_values)"));
         assert_eq!(
@@ -23515,6 +23531,12 @@ mod generated_catalog_guards {
                 .count(),
             3
         );
+        assert!(sit_body.contains(
+            "vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type"
+        ));
+        assert!(debug_body.contains(
+            "vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type"
+        ));
         assert!(dimensions.contains("vanilla_is_baby(entity_type_id, data_values)"));
         for removed in ["CAMEL_DASH_DATA_ID", "CAMEL_DEFAULT_DASH"] {
             assert!(
@@ -23530,6 +23552,14 @@ mod generated_catalog_guards {
             assert!(
                 !dimensions.contains(removed),
                 "dimensions restored {removed}"
+            );
+            assert!(
+                !sit_body.contains(removed),
+                "native sit projection restored {removed}"
+            );
+            assert!(
+                !debug_body.contains(removed),
+                "native debug projection restored {removed}"
             );
         }
     }

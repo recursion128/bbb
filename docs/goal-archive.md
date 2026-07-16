@@ -16711,3 +16711,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   SNBT；schema membership 测试拒绝 Bat，metadata generator reverse guard 禁止生产路径恢复
   固定 Turtle aliases。entity coverage ledger 的 Turtle animation 格已绑定精确实现、测试和
   vanilla `TurtleModel.setupAnim` 证据。
+
+## 2026-07-16：补齐 Camel metadata accessor 的 native 消费路径
+
+- native sit/stand animation-state 投影与 F3+I `LastPoseTick` 保存投影现在从既有 generated
+  `LAST_POSE_CHANGE_TICK` accessor 解析 Camel membership、LONG wire id 与 typed default，
+  不再维护固定 accessor/default aliases 或单独的 type predicate。
+- 既有 sit/stand 时间窗和 debug SNBT 语义测试继续锁定行为；metadata generator reverse
+  guard 扩展到 native 两条生产路径，防止恢复平行事实源。
