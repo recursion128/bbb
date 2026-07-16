@@ -23,6 +23,7 @@ Usage:
 Environment:
   BBB_CARGO_TARGET_NAME   Target cache suffix, default: main
   CARGO_TARGET_DIR        Explicit target dir override
+  BBB_BATCH_GATE_TARGET_NAME  Batch-gate cache suffix, default: batch-gate
   BBB_USE_SCCACHE=1       Use sccache only if it is installed
 
 Examples:
@@ -306,6 +307,8 @@ run_batch_gate() {
   else
     batch_gate_command="scripts/cargo-dev.sh gate"
   fi
+  batch_target_name="${BBB_BATCH_GATE_TARGET_NAME:-batch-gate}"
+  batch_target_dir="$(target_dir_for_arg "$batch_target_name")"
 
   batch_root="$(mktemp -d "${TMPDIR:-/tmp}/bbb-batch-gate.XXXXXX")"
   batch_worktree="$batch_root/worktree"
@@ -343,6 +346,7 @@ run_batch_gate() {
   echo "batch-gate first-parent commits: $last_index"
   echo "batch-gate temporary worktree: $batch_worktree"
   echo "batch-gate logs: $batch_logs"
+  echo "batch-gate target: $batch_target_dir"
   echo "batch-gate authoritative command: $batch_gate_command"
   git -C "$repo_root" worktree add --detach --quiet "$batch_worktree" "$bad_commit"
 
@@ -364,16 +368,18 @@ run_batch_gate() {
       echo "subject: $subject"
       echo "command: $batch_gate_command"
       echo
-      if [ -n "${BBB_BATCH_GATE_COMMAND:-}" ]; then
-        (
-          cd "$batch_worktree"
+      (
+        cd "$batch_worktree"
+        export BBB_CARGO_TARGET_NAME="$batch_target_name"
+        export CARGO_TARGET_DIR="$batch_target_dir"
+        if [ -n "${BBB_BATCH_GATE_COMMAND:-}" ]; then
           export BBB_BATCH_GATE_COMMIT="$commit"
           export BBB_BATCH_GATE_WORKTREE="$batch_worktree"
           sh -c "$batch_gate_command"
-        )
-      else
-        (cd "$batch_worktree" && sh scripts/cargo-dev.sh gate)
-      fi
+        else
+          sh scripts/cargo-dev.sh gate
+        fi
+      )
     } >"$log_file" 2>&1 && gate_result=0 || gate_result=$?
     printf '%s\n' "$gate_result" >"$result_file"
     if [ "$gate_result" -eq 0 ]; then
@@ -476,7 +482,6 @@ case "$cmd" in
     run_sccache_eval "$@"
     ;;
   gate)
-    export CARGO_TARGET_DIR=/tmp/bbb-target-main
     scripts/docs-lint.sh
     cargo fmt --all --check
     scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests

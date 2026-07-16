@@ -45,7 +45,7 @@ class CargoDevBatchGateTests(unittest.TestCase):
         fake_gate.write_text(
             """#!/bin/sh
 set -eu
-printf '%s\\n' "$BBB_BATCH_GATE_COMMIT" >>"$BBB_TEST_GATE_TRACE"
+printf '%s\\t%s\\n' "$BBB_BATCH_GATE_COMMIT" "$CARGO_TARGET_DIR" >>"$BBB_TEST_GATE_TRACE"
 test "$(cat state.txt)" = good
 """,
             encoding="utf-8",
@@ -102,7 +102,11 @@ test "$(cat state.txt)" = good
 
             self.assertEqual(result.returncode, 0, result.stdout)
             self.assertIn("range tip passed; no bisection needed", result.stdout)
-            self.assertEqual(trace.read_text(encoding="utf-8").splitlines(), [commits[-1]])
+            checked = [
+                line.split("\t")
+                for line in trace.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(checked, [[commits[-1], "/tmp/bbb-target-batch-gate"]])
             self.assert_only_main_worktree_remains(repo)
 
     def test_failing_tip_bisects_first_bad_commit(self) -> None:
@@ -123,10 +127,18 @@ test "$(cat state.txt)" = good
 
             self.assertEqual(result.returncode, 1, result.stdout)
             self.assertIn(f"first bad commit: {first_bad} first bad", result.stdout)
-            checked = trace.read_text(encoding="utf-8").splitlines()
-            self.assertEqual(checked[0], tip)
-            self.assertIn(commits[0], checked)
-            self.assertIn(first_bad, checked)
+            checked = [
+                line.split("\t")
+                for line in trace.read_text(encoding="utf-8").splitlines()
+            ]
+            checked_commits = [commit for commit, _target in checked]
+            self.assertEqual(checked_commits[0], tip)
+            self.assertIn(commits[0], checked_commits)
+            self.assertIn(first_bad, checked_commits)
+            self.assertEqual(
+                {target for _commit, target in checked},
+                {"/tmp/bbb-target-batch-gate"},
+            )
             self.assert_only_main_worktree_remains(repo)
 
     def test_timing_commands_have_a_bash_fallback(self) -> None:

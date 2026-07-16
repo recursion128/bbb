@@ -134,8 +134,9 @@ The script defaults to `CARGO_TARGET_DIR=/tmp/bbb-target-main`. Set
 An explicit `CARGO_TARGET_DIR` still wins.
 
 `scripts/cargo-dev.sh gate` runs the authoritative merge gate defined in
-`goal.md` and always uses `/tmp/bbb-target-main`; it is a convenience wrapper,
-not a weaker test path.
+`goal.md`. A normal invocation uses `/tmp/bbb-target-main`; an explicit target
+selection is honored for isolated worktrees. It is a convenience wrapper, not a
+weaker test path.
 
 `scripts/cargo-dev.sh batch-gate <good>..<bad>` tests a committed first-parent
 range without checking out commits in the caller's worktree. It creates a
@@ -146,6 +147,10 @@ failure remains failing through `<bad>`); use a known-green `<good>` endpoint.
 The command returns 0 when the tip passes, 1 when it finds a failure or the
 baseline is already failing, and 2 for an invalid range or setup error. Per-
 commit logs are retained under a printed `/tmp/bbb-batch-gate-logs.*` path.
+Batch runs use the distinct `/tmp/bbb-target-batch-gate` cache by default
+(`BBB_BATCH_GATE_TARGET_NAME` changes the suffix). Keeping this cache separate
+prevents compile-time source paths such as `CARGO_MANIFEST_DIR` from a temporary
+worktree contaminating `/tmp/bbb-target-main` after that worktree is removed.
 
 `scripts/cargo-dev.sh timings-clean <target-suffix>` uses
 `/tmp/bbb-target-<target-suffix>` and refuses to run if that target already
