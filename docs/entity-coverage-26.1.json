@@ -7703,9 +7703,9 @@
           "status": "complete"
         },
         "client tick/movement": {
-          "evidence_ref": "client_tick_audit",
+          "evidence_ref": "turtle_server_authoritative_movement",
           "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement",
-          "status": "partial"
+          "status": "not-applicable"
         },
         "dimensions/collision/pick": {
           "evidence_ref": "turtle_dimensions_collision_pick",
@@ -8972,6 +8972,16 @@
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public EntityDimensions getDefaultDimensions",
         "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPickable()",
         "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPushable()"
+      ]
+    },
+    "turtle_server_authoritative_movement": {
+      "implementation": [],
+      "tests": [],
+      "vanilla": [
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public void aiStep()",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void travelInWater",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static class TurtleMoveControl",
+        "vanilla:net/minecraft/client/renderer/entity/TurtleRenderer.java#public void extractRenderState"
       ]
     }
   },

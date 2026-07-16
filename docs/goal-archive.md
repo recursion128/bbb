@@ -16805,3 +16805,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 新增两条 Turtle focused 语义测试，分别锁定 adult/baby/scale pick bounds 与生成 collision
   分类、存活/climbable pushability；其他 Turtle partial 格保持不变并继续按 vanilla notes
   中的不确定项审计。
+
+## 2026-07-16：Turtle client tick/movement classification
+
+- Turtle entity coverage 的 `client tick/movement` 格改为 not-applicable：Turtle 没有
+  client-only tick override，`aiStep`、`travelInWater`、MoveControl 与各 goal tick 都是
+  服务端权威行为；客户端只消费通用 transform/on-ground/in-water state 并投影 renderer。
+- 通用远端 transform/interpolation 与 Turtle model animation 分别留在独立 coverage 格，
+  不以本分类掩盖；model 格因 entity shadow radius 尚无消费面继续保持 partial。

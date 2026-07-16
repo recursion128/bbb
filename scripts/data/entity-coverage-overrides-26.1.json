@@ -135,6 +135,14 @@
         "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPushable()"
       ]
     },
+    "turtle_server_authoritative_movement": {
+      "vanilla": [
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public void aiStep()",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void travelInWater",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static class TurtleMoveControl",
+        "vanilla:net/minecraft/client/renderer/entity/TurtleRenderer.java#public void extractRenderState"
+      ]
+    },
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
@@ -244,6 +252,11 @@
       }
     },
     "minecraft:turtle": {
+      "client tick/movement": {
+        "status": "not-applicable",
+        "evidence_ref": "turtle_server_authoritative_movement",
+        "gap": "docs/unsupported-features.md#entity-coverage-matrix-client-tick-and-movement"
+      },
       "dimensions/collision/pick": {
         "status": "complete",
         "evidence_ref": "turtle_dimensions_collision_pick"
