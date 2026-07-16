@@ -59,6 +59,7 @@ pub use schema::VanillaCreeperMetadataAccessors;
 pub use schema::VanillaGoatMetadataAccessors;
 pub use schema::VanillaInteractionMetadataAccessors;
 pub use schema::VanillaShulkerMetadataAccessors;
+pub use schema::VanillaTurtleMetadataAccessors;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_camera_post_effect_id,
@@ -108,6 +109,7 @@ pub use schema::{
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
     vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type,
+    vanilla_entity_metadata_turtle_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_type_is_slime,

@@ -266,6 +266,14 @@ pub struct VanillaGoatMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaTurtleMetadataAccessors {
+    pub has_egg_data_id: u8,
+    pub has_egg_default: bool,
+    pub laying_egg_data_id: u8,
+    pub laying_egg_default: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaHangingEntityMetadataAccessor {
     pub direction_data_id: u8,
     pub direction_default: i32,
@@ -725,6 +733,46 @@ pub fn vanilla_entity_metadata_goat_accessors_for_entity_type(
             left_horn_default,
             right_horn_data_id: right_horn.data_id,
             right_horn_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves Turtle's generated egg-state accessors with typed defaults.
+pub fn vanilla_entity_metadata_turtle_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaTurtleMetadataAccessors> {
+    let has_egg = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "HAS_EGG")?;
+    let laying_egg =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "LAYING_EGG")?;
+    match (
+        (
+            has_egg.owner,
+            has_egg.serializer_name,
+            has_egg.typed_default,
+        ),
+        (
+            laying_egg.owner,
+            laying_egg.serializer_name,
+            laying_egg.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.turtle.Turtle",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(has_egg_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.turtle.Turtle",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(laying_egg_default)),
+            ),
+        ) => Some(VanillaTurtleMetadataAccessors {
+            has_egg_data_id: has_egg.data_id,
+            has_egg_default,
+            laying_egg_data_id: laying_egg.data_id,
+            laying_egg_default,
         }),
         _ => None,
     }
@@ -3688,6 +3736,27 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_COW_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_goat_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_turtle_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_turtle_accessors_for_entity_type(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TURTLE_ID
+            ),
+            Some(VanillaTurtleMetadataAccessors {
+                has_egg_data_id: VANILLA_TURTLE_HAS_EGG_DATA_ID,
+                has_egg_default: VANILLA_TURTLE_DEFAULT_HAS_EGG,
+                laying_egg_data_id: VANILLA_TURTLE_LAYING_EGG_DATA_ID,
+                laying_egg_default: VANILLA_TURTLE_DEFAULT_LAYING_EGG,
+            })
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_BAT_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_turtle_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

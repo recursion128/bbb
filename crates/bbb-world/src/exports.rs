@@ -5,6 +5,7 @@ pub use crate::entities::VanillaCreeperMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
 pub use crate::entities::VanillaShulkerMetadataAccessors;
+pub use crate::entities::VanillaTurtleMetadataAccessors;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
@@ -54,6 +55,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type,
     vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type,
+    vanilla_entity_metadata_turtle_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_type_is_slime,

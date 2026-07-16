@@ -16701,3 +16701,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   chunk/local-player spawn 的顺序、零 required unknown packet 和 dimension/chunk/player 状态。
 - 失败证据保留 packet/session timeline、world snapshot 与 server log 路径；fixture 与 live
   共用一个 evidence schema 和 assertion 实现。
+
+## 2026-07-16：批量推导 Turtle egg-state metadata accessors
+
+- `bbb-world` 现在从生成 schema 成组解析 Turtle 的 `HAS_EGG`/`LAYING_EGG` membership、
+  BOOLEAN wire id 与 typed defaults；native adult egg-belly、laying-egg leg animation 和
+  F3+I 保存投影共同消费这一 bundle，不再平行维护 accessor/default aliases。
+- 既有模型、动画与 debug 语义测试继续锁定 baby gating、front-leg amplitude 和 `has_egg`
+  SNBT；schema membership 测试拒绝 Bat，metadata generator reverse guard 禁止生产路径恢复
+  固定 Turtle aliases。entity coverage ledger 的 Turtle animation 格已绑定精确实现、测试和
+  vanilla `TurtleModel.setupAnim` 证据。

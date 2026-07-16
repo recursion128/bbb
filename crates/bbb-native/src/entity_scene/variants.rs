@@ -1072,26 +1072,37 @@ pub(super) fn world_can_have_weather(world: &WorldStore) -> bool {
 }
 
 /// Vanilla `TurtleRenderState.hasEgg = !isBaby() && Turtle.hasEgg()` (the synced `HAS_EGG`
-/// boolean, id 18). Only the adult turtle renders the `egg_belly` overlay shell, so the
-/// projection is gated to the turtle type and excludes babies (matching `extractRenderState`).
+/// boolean). Only the adult turtle renders the `egg_belly` overlay shell, so the projection is
+/// gated by the generated Turtle accessor bundle and excludes babies (matching
+/// `extractRenderState`).
 pub(super) fn turtle_has_egg(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
-        && !ageable_baby(values)
-        && entity_data_bool(values, TURTLE_HAS_EGG_DATA_ID, TURTLE_DEFAULT_HAS_EGG)
+    let Some(accessors) = vanilla_entity_metadata_turtle_accessors_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
+    !ageable_baby(values)
+        && entity_data_bool(values, accessors.has_egg_data_id, accessors.has_egg_default)
 }
 
 /// Vanilla `TurtleRenderState.isLayingEgg = Turtle.isLayingEgg()` (the synced `LAYING_EGG`
-/// boolean, id 19). The egg-laying front-leg amplitude lives in the shared `TurtleModel`, so —
-/// unlike `hasEgg` — babies are NOT excluded; the projection is only gated to the turtle type.
+/// boolean). The egg-laying front-leg amplitude lives in the shared `TurtleModel`, so — unlike
+/// `hasEgg` — babies are NOT excluded; the generated accessor bundle owns the type gate.
 pub(super) fn turtle_laying_egg(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
-        && entity_data_bool(values, TURTLE_LAYING_EGG_DATA_ID, TURTLE_DEFAULT_LAYING_EGG)
+    let Some(accessors) = vanilla_entity_metadata_turtle_accessors_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
+    entity_data_bool(
+        values,
+        accessors.laying_egg_data_id,
+        accessors.laying_egg_default,
+    )
 }
 
 /// Vanilla `EndCrystalRenderState.showsBottom = EndCrystal.showsBottom()` (the synced

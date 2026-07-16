@@ -7699,9 +7699,8 @@
       "constant_name": "TURTLE",
       "coverage": {
         "animation": {
-          "evidence_ref": "animation_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-animation",
-          "status": "partial"
+          "evidence_ref": "turtle_animation",
+          "status": "complete"
         },
         "client tick/movement": {
           "evidence_ref": "client_tick_audit",
@@ -8941,6 +8940,18 @@
       ],
       "vanilla": [
         "vanilla:net/minecraft/world/entity/Entity.java#saveWithoutId"
+      ]
+    },
+    "turtle_animation": {
+      "implementation": [
+        "crates/bbb-renderer/src/entity_models/model_layers/turtle.rs#fn apply_turtle_anim"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/entity_models/tests/turtle.rs#turtle_setup_anim_curves_match_vanilla",
+        "crates/bbb-renderer/src/entity_models/tests/turtle.rs#turtle_laying_egg_amplifies_front_legs"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/model/animal/turtle/TurtleModel.java#setupAnim"
       ]
     }
   },

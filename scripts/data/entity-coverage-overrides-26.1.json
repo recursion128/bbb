@@ -102,6 +102,18 @@
         "vanilla:net/minecraft/client/renderer/entity/EntityRenderers.java#register(EntityType"
       ]
     },
+    "turtle_animation": {
+      "implementation": [
+        "crates/bbb-renderer/src/entity_models/model_layers/turtle.rs#fn apply_turtle_anim"
+      ],
+      "tests": [
+        "crates/bbb-renderer/src/entity_models/tests/turtle.rs#turtle_setup_anim_curves_match_vanilla",
+        "crates/bbb-renderer/src/entity_models/tests/turtle.rs#turtle_laying_egg_amplifies_front_legs"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/model/animal/turtle/TurtleModel.java#setupAnim"
+      ]
+    },
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
@@ -208,6 +220,12 @@
         "status": "not-applicable",
         "evidence_ref": "noop_renderer",
         "gap": "docs/unsupported-features.md#entity-coverage-matrix-vanilla-noop-renderers"
+      }
+    },
+    "minecraft:turtle": {
+      "animation": {
+        "status": "complete",
+        "evidence_ref": "turtle_animation"
       }
     }
   }
