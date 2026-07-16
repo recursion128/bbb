@@ -32,6 +32,7 @@ pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
+    vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type,
     vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,

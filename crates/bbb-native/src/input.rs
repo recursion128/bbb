@@ -73,6 +73,7 @@ use bbb_protocol::{
     PROTOCOL_VERSION,
 };
 use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_horse_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_age_locked_accessor_for_entity_type;
@@ -187,10 +188,6 @@ use bbb_world::{
     CatSoundVariantIdentity, ChickenSoundVariantIdentity, CowSoundVariantIdentity,
     PigSoundVariantIdentity, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
     VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity, WolfSoundVariantIdentity,
-};
-use bbb_world::{
-    VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET as ABSTRACT_FISH_DEFAULT_FROM_BUCKET,
-    VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID as ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
 };
 pub(crate) use bundle::select_bundle_item;
 use commands::*;
@@ -7179,8 +7176,14 @@ fn debug_push_axolotl_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_abstract_fish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let from_bucket = debug_entity_data_bool_present(entity, ABSTRACT_FISH_FROM_BUCKET_DATA_ID)
-        .unwrap_or(ABSTRACT_FISH_DEFAULT_FROM_BUCKET);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let from_bucket = debug_entity_data_bool_present(entity, data_id).unwrap_or(default);
     fields.push(format!("FromBucket: {}", debug_snbt_bool(from_bucket)));
 }
 

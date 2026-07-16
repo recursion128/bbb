@@ -1644,6 +1644,25 @@ pub fn vanilla_entity_metadata_axolotl_from_bucket_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated inherited AbstractFish from-bucket accessor and its typed default.
+pub fn vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "FROM_BUCKET")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.fish.AbstractFish",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Fox variant accessor and its typed default.
 pub fn vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
     entity_type_id: i32,
@@ -5901,6 +5920,43 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_axolotl_from_bucket_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_abstract_fish_from_bucket_accessor_owns_membership_index_and_default() {
+        let fish = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
+        let from_bucket = fish
+            .own_fields
+            .iter()
+            .find(|field| field.name == "FROM_BUCKET")
+            .expect("generated AbstractFish from-bucket field");
+        let VanillaEntityMetadataDefault::Boolean(default) = from_bucket.default else {
+            panic!("generated AbstractFish from-bucket default must be BOOLEAN");
+        };
+        for entity_type_id in [
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COD_ID,
+            VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+            VANILLA_ENTITY_TYPE_SALMON_ID,
+            VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+            VANILLA_ENTITY_TYPE_TADPOLE_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                Some((from_bucket.data_id, default))
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_AXOLOTL_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type(-1),
             None
         );
     }

@@ -25563,6 +25563,28 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn abstract_fish_from_bucket_consumers_do_not_restore_accessor_constants() {
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [native_input, native_input_tests] {
+            assert!(source.contains(
+                "vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type"
+            ));
+            for removed in [
+                "ABSTRACT_FISH_FROM_BUCKET_DATA_ID",
+                "ABSTRACT_FISH_DEFAULT_FROM_BUCKET",
+                "VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID",
+                "VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "AbstractFish from-bucket projection restored {removed}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn mushroom_cow_variant_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");

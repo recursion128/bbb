@@ -287,6 +287,22 @@ fn axolotl_from_bucket_data(from_bucket: bool) -> ProtocolEntityDataValue {
     }
 }
 
+fn abstract_fish_from_bucket_data(
+    entity_type_id: i32,
+    from_bucket: bool,
+) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type(entity_type_id)
+            .expect("generated AbstractFish from-bucket accessor must resolve");
+    assert!(!default);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(from_bucket),
+    }
+}
+
 fn mushroom_cow_variant_data(variant: i32) -> ProtocolEntityDataValue {
     let (data_id, _) = vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
@@ -4515,11 +4531,7 @@ fn shift_f3_i_with_permission_copies_local_cod_save_nbt_to_clipboard() {
         id: 52,
         values: vec![
             mob_flags_data(&world, 52, true, true),
-            ProtocolEntityDataValue {
-                data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            abstract_fish_from_bucket_data(VANILLA_ENTITY_TYPE_COD_ID, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -4591,11 +4603,7 @@ fn shift_f3_i_with_permission_copies_local_pufferfish_save_nbt_to_clipboard() {
         id: 53,
         values: vec![
             mob_flags_data(&world, 53, true, true),
-            ProtocolEntityDataValue {
-                data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            abstract_fish_from_bucket_data(VANILLA_ENTITY_TYPE_PUFFERFISH_ID, true),
             pufferfish_puff_state_data(2),
         ],
     }));
@@ -4669,11 +4677,7 @@ fn shift_f3_i_with_permission_copies_local_salmon_save_nbt_to_clipboard() {
         id: 54,
         values: vec![
             mob_flags_data(&world, 54, true, true),
-            ProtocolEntityDataValue {
-                data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            abstract_fish_from_bucket_data(VANILLA_ENTITY_TYPE_SALMON_ID, true),
             salmon_variant_data(2),
         ],
     }));
@@ -4747,11 +4751,7 @@ fn shift_f3_i_with_permission_copies_local_tropical_fish_save_nbt_to_clipboard()
         id: 55,
         values: vec![
             mob_flags_data(&world, 55, true, true),
-            ProtocolEntityDataValue {
-                data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            abstract_fish_from_bucket_data(VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, true),
             tropical_fish_variant_data(0x0405_0001),
         ],
     }));

@@ -421,6 +421,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Axolotl from-bucket membership, wire index and typed default must likewise remain derived from
   generated `Axolotl.FROM_BUCKET`; native debug and semantic fixtures must not restore fixed
   accessor/default aliases or reuse AbstractFish's separately owned field.
+  AbstractFish-family from-bucket membership, inherited wire index and typed default must remain
+  derived from generated `AbstractFish.FROM_BUCKET`; native debug and semantic fixtures must not
+  restore fixed accessor/default aliases or reuse Axolotl's separately owned field.
   MushroomCow variant membership, wire index and typed default must remain derived from generated
   `MushroomCow.DATA_TYPE`; native model/debug consumers and semantic fixtures must not restore fixed
   accessor/default aliases, hand-written wire indices or a parallel serialized-name mapper, and
