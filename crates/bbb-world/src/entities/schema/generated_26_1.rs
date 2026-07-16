@@ -308,14 +308,8 @@ pub const VANILLA_ZOGLIN_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOGLIN_BABY_DATA_I
 const GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
 pub const VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 =
     GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
-const GENERATED_VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
-pub const VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID: u8 =
-    GENERATED_VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID;
 const GENERATED_VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = 16;
 pub const VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = GENERATED_VANILLA_RAIDER_CELEBRATING_DATA_ID;
-const GENERATED_VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
-pub const VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID: u8 =
-    GENERATED_VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID;
 const GENERATED_VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
 pub const VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 =
     GENERATED_VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID;
@@ -833,14 +827,8 @@ pub const VANILLA_ZOGLIN_DEFAULT_BABY: bool = GENERATED_VANILLA_ZOGLIN_DEFAULT_B
 const GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
 pub const VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool =
     GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION;
-const GENERATED_VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW: bool = false;
-pub const VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW: bool =
-    GENERATED_VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW;
 const GENERATED_VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = false;
 pub const VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = GENERATED_VANILLA_RAIDER_DEFAULT_CELEBRATING;
-const GENERATED_VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW: bool = false;
-pub const VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW: bool =
-    GENERATED_VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW;
 const GENERATED_VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING: i8 = 0;
 pub const VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING: i8 =
     GENERATED_VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING;
@@ -24807,11 +24795,13 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_crossbow_charging_does_not_restore_accessor_constants() {
+    fn crossbow_charging_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_hands = include_str!("../../../../bbb-native/src/entity_scene/hands.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         assert!(animations.contains(
             "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
         ));
@@ -24828,10 +24818,25 @@ mod generated_catalog_guards {
         ));
         assert!(native_hands
             .contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));
+        assert!(world_tests.contains(
+            "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
+        ));
+        assert!(world_tests
+            .contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));
+        assert!(native_scene_tests.contains(
+            "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
+        ));
+        assert!(native_scene_tests
+            .contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));
+        assert!(!world_tests.contains("id (18 vs 17)"));
+        assert!(!native_scene_tests.contains("BOOLEAN id 18"));
+        assert!(!native_scene_tests.contains("slot 18"));
         for removed in [
             "PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID",
+            "PILLAGER_CHARGING_CROSSBOW_DATA_ID",
             "PILLAGER_DEFAULT_CHARGING_CROSSBOW",
             "PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID",
+            "PIGLIN_CHARGING_CROSSBOW_DATA_ID",
             "PIGLIN_DEFAULT_CHARGING_CROSSBOW",
         ] {
             assert!(
@@ -24846,6 +24851,14 @@ mod generated_catalog_guards {
             assert!(
                 !native_hands.contains(removed),
                 "native hands restored {removed}"
+            );
+            assert!(
+                !world_tests.contains(removed),
+                "world fixtures restored {removed}"
+            );
+            assert!(
+                !native_scene_tests.contains(removed),
+                "native scene fixtures restored {removed}"
             );
         }
     }
@@ -24877,6 +24890,7 @@ mod generated_catalog_guards {
         assert!(
             native_input_tests.contains("vanilla_entity_metadata_baby_accessor_for_entity_type")
         );
+        assert!(!native_scene_tests.contains("DATA_IS_DANCING (data id"));
         for removed in [
             "PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID",
             "ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID",

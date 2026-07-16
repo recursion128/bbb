@@ -17420,3 +17420,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   AbstractPiglin/Piglin family schema 派生；native model/pose、F3+I 与 fixtures 保持 accessor 消费。
 - 删除三项 data/default 六个 facade 转发，保留下一切片所属的 charging-crossbow 字段；schema
   测试锁定 PiglinBrute 仅继承 immunity、不拥有 Piglin baby/dancing，generator 守卫覆盖 fixtures。
+
+## 2026-07-16：统一 charging-crossbow metadata 消费
+
+- Pillager 与 Piglin 的 charging-crossbow wire index/default 分别从各自 generated family schema
+  派生；world Piglin fixture 移除固定 slot，native fixtures 移除固定索引注释。
+- 删除两类 data/default 四个 facade 转发；generator 守卫覆盖 world/native fixtures，并锁定
+  PiglinBrute 不拥有普通 Piglin accessor，避免同名字段跨 owner 混用。

@@ -422,8 +422,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   consumers must not restore fixed aliases or project Piglin-only fields onto PiglinBrute.
   Pillager and Piglin charging-crossbow membership, wire indices and typed defaults must remain
   derived from generated `Pillager.IS_CHARGING_CROSSBOW` and
-  `Piglin.DATA_IS_CHARGING_CROSSBOW`; world animation and native hand-pose consumers must not restore fixed
-  accessor/default aliases or treat PiglinBrute as owning the regular Piglin accessor.
+  `Piglin.DATA_IS_CHARGING_CROSSBOW`; world animation/native hand-pose consumers and semantic
+  fixtures must not restore fixed accessor/default aliases, hand-written wire indices or treat
+  PiglinBrute as owning the regular Piglin accessor.
   CopperGolem weathering/animation-state membership, wire indices and typed defaults must remain
   derived as one bundle from generated `CopperGolem.DATA_WEATHER_STATE` and
   `CopperGolem.COPPER_GOLEM_STATE`; world animation, native render and F3+I save-debug consumers

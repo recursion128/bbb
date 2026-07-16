@@ -6189,6 +6189,27 @@ mod tests {
     #[test]
     fn generated_crossbow_and_dancing_accessors_separate_pillager_and_piglin_membership() {
         let piglin = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Piglin);
+        let pillager = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Pillager);
+        let pillager_charging = pillager
+            .own_fields
+            .iter()
+            .find(|field| field.name == "IS_CHARGING_CROSSBOW")
+            .expect("generated Pillager charging-crossbow field");
+        let piglin_charging = piglin
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_IS_CHARGING_CROSSBOW")
+            .expect("generated Piglin charging-crossbow field");
+        let VanillaEntityMetadataDefault::Boolean(pillager_charging_default) =
+            pillager_charging.default
+        else {
+            panic!("generated Pillager charging-crossbow default must be BOOLEAN");
+        };
+        let VanillaEntityMetadataDefault::Boolean(piglin_charging_default) =
+            piglin_charging.default
+        else {
+            panic!("generated Piglin charging-crossbow default must be BOOLEAN");
+        };
         let dancing = piglin
             .own_fields
             .iter()
@@ -6201,13 +6222,13 @@ mod tests {
             vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PILLAGER_ID
             ),
-            Some((17, false))
+            Some((pillager_charging.data_id, pillager_charging_default))
         );
         assert_eq!(
             vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PIGLIN_ID
             ),
-            Some((18, false))
+            Some((piglin_charging.data_id, piglin_charging_default))
         );
         assert_eq!(
             vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(
@@ -9062,7 +9083,12 @@ mod tests {
             .expect("generated Piglin dancing accessor");
         assert_eq!(immunity_data_id, abstract_piglin.own_fields[0].data_id);
         assert_eq!(baby_data_id, piglin.own_fields[0].data_id);
-        assert_eq!(VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID, 18);
+        let (charging_data_id, charging_default) =
+            vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            )
+            .expect("generated Piglin charging-crossbow accessor");
+        assert_eq!(charging_data_id, piglin.own_fields[1].data_id);
         assert_eq!(dancing_data_id, piglin.own_fields[2].data_id);
         assert_eq!(
             VanillaEntityMetadataDefault::Boolean(immunity_default),
@@ -9072,7 +9098,10 @@ mod tests {
             VanillaEntityMetadataDefault::Boolean(baby_default),
             piglin.own_fields[0].default
         );
-        assert!(!VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(charging_default),
+            piglin.own_fields[1].default
+        );
         assert_eq!(
             VanillaEntityMetadataDefault::Boolean(dancing_default),
             piglin.own_fields[2].default
@@ -9126,9 +9155,17 @@ mod tests {
         assert_eq!(pillager.inherited_field_count, 17);
         assert_eq!(pillager.own_fields.len(), 1);
         assert_eq!(VANILLA_RAIDER_CELEBRATING_DATA_ID, 16);
-        assert_eq!(VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID, 17);
+        let (charging_data_id, charging_default) =
+            vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            )
+            .expect("generated Pillager charging-crossbow accessor");
+        assert_eq!(charging_data_id, pillager.own_fields[0].data_id);
         assert!(!VANILLA_RAIDER_DEFAULT_CELEBRATING);
-        assert!(!VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(charging_default),
+            pillager.own_fields[0].default
+        );
         let spellcaster =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::SpellcasterIllager);
         assert_eq!(

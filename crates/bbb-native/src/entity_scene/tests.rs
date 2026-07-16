@@ -2472,15 +2472,15 @@ fn entity_model_instances_project_piglin_dancing() {
     // No flag → not dancing.
     assert!(!dancing(&world, 180));
 
-    // Piglin.DATA_IS_DANCING (data id 19) projects the dance for the regular piglin.
+    // Piglin.DATA_IS_DANCING projects the dance for the regular piglin.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 180,
         values: vec![protocol_bool_data(piglin_dancing_data_id(), true)],
     }));
     assert!(dancing(&world, 180));
 
-    // The same data id on a piglin brute does NOT project dancing (the brute never dances; that id
-    // is not even defined on it).
+    // The same encoded value on a piglin brute does NOT project dancing because the generated
+    // accessor is not defined on it.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 181,
         values: vec![protocol_bool_data(piglin_dancing_data_id(), true)],
@@ -2490,7 +2490,7 @@ fn entity_model_instances_project_piglin_dancing() {
 
 #[test]
 fn piglin_is_charging_crossbow_is_gated_to_the_regular_piglin() {
-    // Vanilla Piglin.DATA_IS_CHARGING_CROSSBOW (BOOLEAN id 18): getArmPose returns CROSSBOW_CHARGE
+    // Vanilla Piglin.DATA_IS_CHARGING_CROSSBOW (BOOLEAN): getArmPose returns CROSSBOW_CHARGE
     // (the pull-back draw) while true, suppressing CROSSBOW_HOLD. Only the regular piglin defines the
     // accessor, so the projection is type-gated.
     let (charging_data_id, charging_default) =
@@ -2516,10 +2516,10 @@ fn piglin_is_charging_crossbow_is_gated_to_the_regular_piglin() {
 
 #[test]
 fn entity_model_instances_project_piglin_crossbow_charge() {
-    // Vanilla Piglin.getArmPose → CROSSBOW_CHARGE while isChargingCrossbow() (BOOLEAN id 18): the
+    // Vanilla Piglin.getArmPose → CROSSBOW_CHARGE while isChargingCrossbow(): the
     // regular piglin draws its crossbow. Unlike CROSSBOW_HOLD this needs no held-item resolution (the
     // flag alone drives it), so it projects without an item runtime. Gated to the regular piglin: the
-    // brute never charges (and slot 18 is not even defined on it).
+    // brute never charges because the generated accessor is not defined on it.
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         190,

@@ -991,7 +991,11 @@ fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
 
 #[test]
 fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
-    const PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
+    let (charging_data_id, _) =
+        vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        )
+        .expect("generated Piglin charging-crossbow accessor must resolve");
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -1010,7 +1014,7 @@ fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 78,
             values: vec![ProtocolEntityDataValue {
-                data_id: PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
+                data_id: charging_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(charging),
             }],
@@ -1018,7 +1022,7 @@ fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
     };
 
     // The regular piglin draws its crossbow with the SAME `animateCrossbowCharge`, so it shares the
-    // pillager's `getTicksUsingItem` counter — only its synced flag's id (18 vs 17) differs.
+    // pillager's `getTicksUsingItem` counter — each class still owns its distinct generated flag.
     assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
     store.advance_entity_client_animations(2);
     assert_eq!(source(&store, 1.0).crossbow_charge_ticks, 0.0);
