@@ -17000,3 +17000,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native/world/net 的反向检查合并为一条跨 crate 语义消费者扫描，同时
   覆盖 production alias 反向检查；`bbb-protocol` 的数字 wire sample 仍由协议编解码
   evidence 独立审计。
+
+## 2026-07-16：锁定 protocol serializer wire sample 边界
+
+- 全仓剩余 18 个 numeric `serializer_id` 均位于
+  `bbb-protocol/src/packets/entities/tests.rs`：测试先写入 raw varint payload，再断言解码
+  结构保留对应 wire ordinal，因此这些数字是独立 decoder evidence，不是语义
+  消费者的平行事实源。
+- 该文件新增 `WIRE_SAMPLE_SERIALIZER_IDS` 标记；gameplay-id generator 扫描全部
+  crate Rust 源码，要求 numeric 字段仍恰为 18 个且全部位于该文件。新增、
+  删除或移动 wire sample 都会强制重新审计计数与边界。

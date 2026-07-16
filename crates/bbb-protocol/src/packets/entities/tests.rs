@@ -8,6 +8,9 @@ use crate::{
     },
 };
 
+// WIRE_SAMPLE_SERIALIZER_IDS: numeric `serializer_id` values in this file are intentional
+// decoder evidence for the raw varints written by these tests, not semantic consumer identities.
+
 #[test]
 fn decodes_entity_lifecycle_packets() {
     let uuid = Uuid::from_u128(0x12345678123456781234567812345678);
