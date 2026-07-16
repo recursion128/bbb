@@ -17864,3 +17864,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   type 查询 generated LivingEntity bundle、校验默认 health 1.0 并生成 Float metadata。
 - LivingEntity health 专项 reverse guard 纳入该 runtime-event 测试；31.9/32.0 block 边界、仅远端
   death tick 受 simulation distance gate 影响以及事件计数回归保持不变。
+
+## 2026-07-16：统一 native ItemFrame invisibility fixture accessor 消费
+
+- native ItemFrame border fixture 删除固定 Entity shared-flags wire id 0 与 invisible mask，改由
+  generated Entity bundle 提供 accessor/default/mask。
+- Entity reverse guard 纳入 `item_frames.rs`；visible frame border、invisible frame border clear、
+  deeper item offset 与世界 render-state invisible 投影回归保持不变。

@@ -383,10 +383,16 @@ mod tests {
     };
     use uuid::Uuid;
 
-    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-    const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
     const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
     const ITEM_FRAME_DATA_ROTATION_ID: u8 = 10;
+
+    fn entity_invisible_data() -> EntityDataValue {
+        let accessors = bbb_world::vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        assert_eq!(accessors.shared_flags_default, 0);
+        protocol_byte_data(accessors.shared_flags_data_id, accessors.invisible_mask)
+    }
+
     #[test]
     fn horizontal_and_vertical_facings_map_to_vanilla_rotations() {
         assert_eq!(frame_face_rotation(ItemFrameFacing::North), (0.0, 0.0));
@@ -447,10 +453,7 @@ mod tests {
 
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 700,
-            values: vec![protocol_byte_data(
-                ENTITY_SHARED_FLAGS_DATA_ID,
-                ENTITY_SHARED_FLAG_INVISIBLE,
-            )],
+            values: vec![entity_invisible_data()],
         }));
         let hidden = item_frame_models(
             &world,

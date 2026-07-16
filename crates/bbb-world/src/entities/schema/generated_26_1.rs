@@ -23407,6 +23407,7 @@ mod generated_catalog_guards {
         let small_mob_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
         let visibility_tests =
             include_str!("../tests/visibility_equipment_and_mount_projection.rs");
+        let item_frame_tests = include_str!("../../../../bbb-native/src/item_frames.rs");
         for source in [
             dimensions,
             animations,
@@ -23425,6 +23426,7 @@ mod generated_catalog_guards {
             aquatic_tests,
             small_mob_tests,
             visibility_tests,
+            item_frame_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [
