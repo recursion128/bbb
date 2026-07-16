@@ -17240,3 +17240,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   width/height/response bundle，不再引用固定 accessor aliases、裸 wire index 或手写 type id。
 - schema 语义测试以 generated constants 组装 expected bundle；generator 反向守卫扩展到
   lifecycle、crosshair 与 native input fixtures。
+
+## 2026-07-16：派生 AbstractBoat metadata fixtures
+
+- AbstractBoat paddle-left/paddle-right/bubble-time bundle 提升为公开 typed accessor；world
+  rowing/bubble/damage 与 native render-state fixtures 不再维护 11/12/13 wire index aliases。
+- schema expected bundle 改由 generated constants 组装；generator 反向守卫覆盖 production
+  animation 以及 world/native 语义 fixtures。

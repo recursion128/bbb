@@ -1,5 +1,10 @@
 use super::*;
 
+fn abstract_boat_metadata_accessors() -> VanillaAbstractBoatMetadataAccessors {
+    vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
+        .expect("generated AbstractBoat metadata accessors must resolve")
+}
+
 #[test]
 fn entity_model_sources_project_narrow_render_state_from_model_targets() {
     const AGEABLE_BABY_DATA_ID: u8 = 16;
@@ -82,9 +87,8 @@ fn entity_model_source_single_entity_matches_list_entry() {
 
 #[test]
 fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() {
-    const BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
-    const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
     const ADVANCE: f32 = std::f32::consts::PI / 8.0;
+    let accessors = abstract_boat_metadata_accessors();
 
     let assert_close = |actual: f32, expected: f32, label: &str| {
         assert!(
@@ -112,7 +116,7 @@ fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() 
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 20,
-        values: vec![protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true)],
+        values: vec![protocol_bool_data(accessors.paddle_left_data_id, true)],
     }));
 
     store.advance_entity_client_animations(1);
@@ -131,8 +135,8 @@ fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 20,
         values: vec![
-            protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true),
-            protocol_bool_data(BOAT_PADDLE_RIGHT_DATA_ID, true),
+            protocol_bool_data(accessors.paddle_left_data_id, true),
+            protocol_bool_data(accessors.paddle_right_data_id, true),
         ],
     }));
     store.advance_entity_client_animations(1);
@@ -152,7 +156,7 @@ fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
     const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
     const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
     const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
-    const BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
+    let boat_accessors = abstract_boat_metadata_accessors();
 
     let assert_close = |actual: f32, expected: f32, label: &str| {
         assert!(
@@ -200,7 +204,7 @@ fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 21,
-        values: vec![protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true)],
+        values: vec![protocol_bool_data(boat_accessors.paddle_left_data_id, true,)],
     }));
     let after_paddle_update = damage(&store, 0.5);
     assert_close(after_paddle_update.0, 8.5, "paddle update keeps hurt time");

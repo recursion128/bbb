@@ -2,7 +2,10 @@ use super::*;
 
 #[test]
 fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
-    const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
+    let accessors = vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    )
+    .expect("generated AbstractBoat metadata accessors must resolve");
 
     let assert_close = |actual: f32, expected: f32, label: &str| {
         assert!(
@@ -28,7 +31,7 @@ fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 22,
-        values: vec![protocol_int_data(BOAT_BUBBLE_TIME_DATA_ID, 60)],
+        values: vec![protocol_int_data(accessors.bubble_time_data_id, 60)],
     }));
     store.advance_entity_client_animations(1);
     let first_angle = 10.0 * (0.5_f32).sin() * 0.05;
@@ -45,7 +48,10 @@ fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 22,
-        values: vec![protocol_int_data(BOAT_BUBBLE_TIME_DATA_ID, 0)],
+        values: vec![protocol_int_data(
+            accessors.bubble_time_data_id,
+            accessors.bubble_time_default,
+        )],
     }));
     store.advance_entity_client_animations(1);
     assert_close(bubble(&store, 1.0), 0.0, "cleared bubble angle");

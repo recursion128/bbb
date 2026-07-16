@@ -456,13 +456,13 @@ pub struct VanillaItemFrameMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct VanillaAbstractBoatMetadataAccessors {
-    pub(crate) paddle_left_data_id: u8,
-    pub(crate) paddle_left_default: bool,
-    pub(crate) paddle_right_data_id: u8,
-    pub(crate) paddle_right_default: bool,
-    pub(crate) bubble_time_data_id: u8,
-    pub(crate) bubble_time_default: i32,
+pub struct VanillaAbstractBoatMetadataAccessors {
+    pub paddle_left_data_id: u8,
+    pub paddle_left_default: bool,
+    pub paddle_right_data_id: u8,
+    pub paddle_right_default: bool,
+    pub bubble_time_data_id: u8,
+    pub bubble_time_default: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -2148,7 +2148,7 @@ pub fn vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
 }
 
 /// Resolves the inherited AbstractBoat paddle and bubble-time accessors with typed defaults.
-pub(crate) fn vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
+pub fn vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
     entity_type_id: i32,
 ) -> Option<VanillaAbstractBoatMetadataAccessors> {
     let paddle_left =
@@ -6215,12 +6215,12 @@ mod tests {
     #[test]
     fn generated_abstract_boat_accessors_own_inherited_membership_indices_and_defaults() {
         let expected = VanillaAbstractBoatMetadataAccessors {
-            paddle_left_data_id: 11,
-            paddle_left_default: false,
-            paddle_right_data_id: 12,
-            paddle_right_default: false,
-            bubble_time_data_id: 13,
-            bubble_time_default: 0,
+            paddle_left_data_id: VANILLA_ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID,
+            paddle_left_default: VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT,
+            paddle_right_data_id: VANILLA_ABSTRACT_BOAT_PADDLE_RIGHT_DATA_ID,
+            paddle_right_default: VANILLA_ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT,
+            bubble_time_data_id: VANILLA_ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID,
+            bubble_time_default: VANILLA_ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME,
         };
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_OAK_BOAT_ID,

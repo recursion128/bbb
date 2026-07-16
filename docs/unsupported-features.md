@@ -319,7 +319,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   hand-written wire indices.
   AbstractBoat paddle and bubble-time membership, inherited wire indices and typed defaults must
   remain derived from generated `DATA_ID_PADDLE_LEFT`, `DATA_ID_PADDLE_RIGHT` and
-  `DATA_ID_BUBBLE_TIME`; world animation consumers must not restore fixed metadata aliases.
+  `DATA_ID_BUBBLE_TIME`; world/native animation consumers and their fixtures must not restore fixed
+  metadata aliases or hand-written wire indices.
   VehicleEntity hurt-time, hurt-direction and damage membership, inherited wire indices and typed
   defaults must remain derived from generated `DATA_ID_HURT`, `DATA_ID_HURTDIR` and
   `DATA_ID_DAMAGE`; vehicle animation and event dispatch must not restore fixed metadata aliases or

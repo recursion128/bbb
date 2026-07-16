@@ -23839,11 +23839,22 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_abstract_boat_accessors_do_not_restore_fixed_metadata_facts() {
+    fn abstract_boat_consumers_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
-        assert!(
-            animations.contains("vanilla_entity_metadata_abstract_boat_accessors_for_entity_type")
-        );
+        let visibility_tests =
+            include_str!("../tests/visibility_equipment_and_mount_projection.rs");
+        let vehicle_tests = include_str!("../tests/vehicle_and_block_entity_projection.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        for source in [
+            animations,
+            visibility_tests,
+            vehicle_tests,
+            native_scene_tests,
+        ] {
+            assert!(
+                source.contains("vanilla_entity_metadata_abstract_boat_accessors_for_entity_type")
+            );
+        }
         for removed in [
             "ABSTRACT_BOAT_PADDLE_LEFT_DATA_ID",
             "ABSTRACT_BOAT_DEFAULT_PADDLE_LEFT",
@@ -23851,11 +23862,21 @@ mod generated_catalog_guards {
             "ABSTRACT_BOAT_DEFAULT_PADDLE_RIGHT",
             "ABSTRACT_BOAT_BUBBLE_TIME_DATA_ID",
             "ABSTRACT_BOAT_DEFAULT_BUBBLE_TIME",
+            "BOAT_PADDLE_LEFT_DATA_ID",
+            "BOAT_PADDLE_RIGHT_DATA_ID",
+            "BOAT_BUBBLE_TIME_DATA_ID",
         ] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
+            for source in [
+                animations,
+                visibility_tests,
+                vehicle_tests,
+                native_scene_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "AbstractBoat projection restored {removed}"
+                );
+            }
         }
     }
 

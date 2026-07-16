@@ -46,6 +46,13 @@ fn armor_stand_metadata_accessors() -> bbb_world::VanillaArmorStandMetadataAcces
     .expect("generated ArmorStand metadata accessors must resolve")
 }
 
+fn abstract_boat_metadata_accessors() -> bbb_world::VanillaAbstractBoatMetadataAccessors {
+    bbb_world::vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    )
+    .expect("generated AbstractBoat metadata accessors must resolve")
+}
+
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
     let accessors = armor_stand_metadata_accessors();
     ArmorStandModelPose {
@@ -1546,10 +1553,8 @@ fn entity_model_instances_project_boat_rowing_and_damage_times() {
     const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
     const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
     const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
-    const BOAT_PADDLE_LEFT_DATA_ID: u8 = 11;
-    const BOAT_PADDLE_RIGHT_DATA_ID: u8 = 12;
-    const BOAT_BUBBLE_TIME_DATA_ID: u8 = 13;
     const ADVANCE: f32 = std::f32::consts::PI / 8.0;
+    let boat_accessors = abstract_boat_metadata_accessors();
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -1572,9 +1577,9 @@ fn entity_model_instances_project_boat_rowing_and_damage_times() {
             protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 10),
             protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, -1),
             protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
-            protocol_bool_data(BOAT_PADDLE_LEFT_DATA_ID, true),
-            protocol_bool_data(BOAT_PADDLE_RIGHT_DATA_ID, true),
-            protocol_int_data(BOAT_BUBBLE_TIME_DATA_ID, 60),
+            protocol_bool_data(boat_accessors.paddle_left_data_id, true),
+            protocol_bool_data(boat_accessors.paddle_right_data_id, true),
+            protocol_int_data(boat_accessors.bubble_time_data_id, 60),
         ],
     }));
 
