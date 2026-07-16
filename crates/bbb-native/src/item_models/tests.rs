@@ -16,8 +16,7 @@ use bbb_renderer::{
 };
 use bbb_world::{
     ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
-    PalettedContainerData, WorldDimension, VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID,
-    VANILLA_PRIMED_TNT_FUSE_DATA_ID,
+    PalettedContainerData, WorldDimension,
 };
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -228,12 +227,16 @@ fn world_with_tnt_minecart(entity_id: i32) -> WorldStore {
 }
 
 fn world_with_primed_tnt(entity_id: i32, fuse: i32, block_state: Option<i32>) -> WorldStore {
+    let accessors = bbb_world::vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TNT_ID,
+    )
+    .expect("generated PrimedTnt metadata accessors");
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(entity_id, VANILLA_ENTITY_TYPE_TNT_ID));
-    let mut values = vec![protocol_int_data(VANILLA_PRIMED_TNT_FUSE_DATA_ID, fuse)];
+    let mut values = vec![protocol_int_data(accessors.fuse_data_id, fuse)];
     if let Some(block_state) = block_state {
         values.push(protocol_block_state_data(
-            VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID,
+            accessors.block_state_data_id,
             block_state,
         ));
     }

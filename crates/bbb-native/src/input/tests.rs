@@ -12216,6 +12216,10 @@ fn shift_f3_i_with_permission_copies_local_chest_boat_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_primed_tnt_save_nbt_to_clipboard() {
+    let accessors = bbb_world::vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TNT_ID,
+    )
+    .expect("generated PrimedTnt metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -12237,7 +12241,7 @@ fn shift_f3_i_with_permission_copies_local_primed_tnt_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 61,
         values: vec![ProtocolEntityDataValue {
-            data_id: PRIMED_TNT_FUSE_DATA_ID,
+            data_id: accessors.fuse_data_id,
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(37),

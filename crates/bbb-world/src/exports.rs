@@ -186,6 +186,9 @@ pub use crate::entities::{
     VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM, VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
 pub use crate::entities::{
+    vanilla_entity_metadata_primed_tnt_accessors_for_entity_type, VanillaPrimedTntMetadataAccessors,
+};
+pub use crate::entities::{
     vanilla_entity_metadata_wolf_accessors_for_entity_type, VanillaWolfMetadataAccessors,
 };
 pub use crate::entities::{vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer};

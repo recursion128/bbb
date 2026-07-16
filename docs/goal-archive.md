@@ -17157,3 +17157,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   save-debug 不再维护固定 wire index/default/mask aliases。
 - world/native/input fixtures 同步复用 bundle；schema generator 的 Bee 反向守卫扩展到所有
   production consumers 与语义 fixtures，继续以 generated family schema 作为 flag mask 来源。
+
+## 2026-07-16：统一 PrimedTnt metadata accessor bundle 消费
+
+- 既有 PrimedTnt fuse/block-state typed bundle 提升为跨 crate integration surface；native
+  F3+I、item-model fixtures 与 world lifecycle/projection fixtures 不再消费固定 wire ids。
+- schema generator 的反向守卫扩展到所有 production consumers 与语义 fixtures；model、fuse
+  interpolation 和 smoke projection 的既有行为保持不变。

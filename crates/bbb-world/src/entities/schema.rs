@@ -426,11 +426,11 @@ pub(crate) struct VanillaVehicleMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct VanillaPrimedTntMetadataAccessors {
-    pub(crate) fuse_data_id: u8,
-    pub(crate) fuse_default: i32,
-    pub(crate) block_state_data_id: u8,
-    pub(crate) block_state_default: VanillaEntityMetadataDefault,
+pub struct VanillaPrimedTntMetadataAccessors {
+    pub fuse_data_id: u8,
+    pub fuse_default: i32,
+    pub block_state_data_id: u8,
+    pub block_state_default: VanillaEntityMetadataDefault,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2090,7 +2090,7 @@ pub(crate) fn vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_
 ///
 /// Requiring both owner fields makes their schema membership the single type gate shared by
 /// model, fuse interpolation, and client smoke projection.
-pub(crate) fn vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
+pub fn vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
     entity_type_id: i32,
 ) -> Option<VanillaPrimedTntMetadataAccessors> {
     let fuse = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FUSE_ID")?;

@@ -21906,18 +21906,51 @@ mod generated_catalog_guards {
 
     #[test]
     fn production_primed_tnt_projection_does_not_restore_fixed_accessors() {
-        let source = include_str!("../store.rs");
+        let store = include_str!("../store.rs");
+        let lifecycle_tests = include_str!("../tests/lifecycle_and_queries.rs");
+        let projection_tests = include_str!("../tests/vehicle_and_block_entity_projection.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let native_item_tests = include_str!("../../../../bbb-native/src/item_models/tests.rs");
         assert_eq!(
-            source
+            store
                 .matches("vanilla_entity_metadata_primed_tnt_accessors_for_entity_type")
                 .count(),
             4
         );
-        assert!(!source.contains("VANILLA_ENTITY_TYPE_TNT_ID"));
-        assert!(!source.contains("VANILLA_PRIMED_TNT_FUSE_DATA_ID"));
-        assert!(!source.contains("VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID"));
-        assert!(!source.contains("VANILLA_PRIMED_TNT_DEFAULT_FUSE"));
-        assert!(!source.contains("VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE"));
+        assert!(!store.contains("VANILLA_ENTITY_TYPE_TNT_ID"));
+        for source in [
+            lifecycle_tests,
+            projection_tests,
+            native_input,
+            native_input_tests,
+            native_item_tests,
+        ] {
+            assert!(source.contains("vanilla_entity_metadata_primed_tnt_accessors_for_entity_type"));
+        }
+        for source in [
+            store,
+            lifecycle_tests,
+            projection_tests,
+            native_input,
+            native_input_tests,
+            native_item_tests,
+        ] {
+            for removed in [
+                "VANILLA_PRIMED_TNT_FUSE_DATA_ID",
+                "VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID",
+                "VANILLA_PRIMED_TNT_DEFAULT_FUSE",
+                "VANILLA_PRIMED_TNT_DEFAULT_BLOCK_STATE",
+                "PRIMED_TNT_FUSE_DATA_ID",
+                "PRIMED_TNT_BLOCK_STATE_DATA_ID",
+                "PRIMED_TNT_DEFAULT_FUSE",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "PrimedTnt projection restored {removed}"
+                );
+            }
+        }
     }
 
     #[test]

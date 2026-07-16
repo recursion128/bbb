@@ -104,6 +104,7 @@ use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_
 use bbb_world::vanilla_entity_metadata_panda_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_primed_tnt_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_salmon_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
@@ -171,8 +172,6 @@ use bbb_world::{
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
     VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
     VANILLA_OCELOT_TRUSTING_DATA_ID as OCELOT_TRUSTING_DATA_ID,
-    VANILLA_PRIMED_TNT_DEFAULT_FUSE as PRIMED_TNT_DEFAULT_FUSE,
-    VANILLA_PRIMED_TNT_FUSE_DATA_ID as PRIMED_TNT_FUSE_DATA_ID,
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_COLOR_MASK as SHEEP_WOOL_COLOR_MASK,
     VANILLA_TADPOLE_AGE_LOCKED_DATA_ID as TADPOLE_AGE_LOCKED_DATA_ID,
@@ -6679,8 +6678,13 @@ fn debug_push_primed_tnt_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    let fuse = debug_entity_data_int_present(entity, PRIMED_TNT_FUSE_DATA_ID)
-        .unwrap_or(PRIMED_TNT_DEFAULT_FUSE) as i16;
+    let Some(accessors) =
+        vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let fuse = debug_entity_data_int_present(entity, accessors.fuse_data_id)
+        .unwrap_or(accessors.fuse_default) as i16;
     fields.push(format!("fuse: {fuse}s"));
     if let Some(block_state) = world.primed_tnt_block_state(entity.id) {
         fields.push(format!(
