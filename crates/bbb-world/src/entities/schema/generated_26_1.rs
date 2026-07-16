@@ -378,9 +378,6 @@ pub const VANILLA_SALMON_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_SALMON_VARIANT_
 const GENERATED_VANILLA_TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
 pub const VANILLA_TROPICAL_FISH_VARIANT_DATA_ID: u8 =
     GENERATED_VANILLA_TROPICAL_FISH_VARIANT_DATA_ID;
-const GENERATED_VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID: u8 = 17;
-pub const VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID: u8 =
-    GENERATED_VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID;
 const GENERATED_VANILLA_TADPOLE_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_TADPOLE_AGE_LOCKED_DATA_ID: u8 = GENERATED_VANILLA_TADPOLE_AGE_LOCKED_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
@@ -961,9 +958,6 @@ pub const VANILLA_SALMON_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_SALMON_DEFAULT
 const GENERATED_VANILLA_TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
 pub const VANILLA_TROPICAL_FISH_DEFAULT_VARIANT: i32 =
     GENERATED_VANILLA_TROPICAL_FISH_DEFAULT_VARIANT;
-const GENERATED_VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE: i32 = 0;
-pub const VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE: i32 =
-    GENERATED_VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE;
 const GENERATED_VANILLA_TADPOLE_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_TADPOLE_DEFAULT_AGE_LOCKED: bool = GENERATED_VANILLA_TADPOLE_DEFAULT_AGE_LOCKED;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
@@ -24105,12 +24099,23 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_pufferfish_puff_state_does_not_restore_accessor_constants() {
+    fn pufferfish_consumers_do_not_restore_accessor_constants() {
         let dimensions = include_str!("../dimensions.rs");
+        let world_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [dimensions, native_variants, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            dimensions,
+            world_tests,
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(source.contains(
                 "vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type"
             ));
@@ -24119,24 +24124,29 @@ mod generated_catalog_guards {
             "PUFFERFISH_PUFF_STATE_DATA_ID",
             "PUFFERFISH_DEFAULT_PUFF_STATE",
         ] {
-            assert!(
-                !dimensions.contains(removed),
-                "dimensions restored {removed}"
-            );
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                dimensions,
+                world_tests,
+                native_scene,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Pufferfish projection restored {removed}"
+                );
+            }
         }
         assert!(!dimensions.contains("entity_type_id == VANILLA_ENTITY_TYPE_PUFFERFISH_ID"));
+        let world_fixture = world_tests
+            .split("fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata")
+            .nth(1)
+            .and_then(|source| source.split("\n#[test]").next())
+            .expect("Pufferfish pick-bounds fixture source");
+        assert!(world_fixture.contains("VANILLA_ENTITY_TYPE_PUFFERFISH_ID"));
+        assert!(!world_fixture.contains("107"));
     }
 
     #[test]

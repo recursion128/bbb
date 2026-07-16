@@ -5520,11 +5520,20 @@ mod tests {
 
     #[test]
     fn generated_pufferfish_puff_state_accessor_owns_membership_index_and_default() {
+        let pufferfish = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Pufferfish);
+        let puff_state = pufferfish
+            .own_fields
+            .iter()
+            .find(|field| field.name == "PUFF_STATE")
+            .expect("generated Pufferfish puff-state field");
+        let VanillaEntityMetadataDefault::Int(default) = puff_state.default else {
+            panic!("generated Pufferfish puff-state default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PUFFERFISH_ID
             ),
-            Some((17, 0))
+            Some((puff_state.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(
@@ -8756,20 +8765,19 @@ mod tests {
             Some(VanillaEntityMetadataFamily::AbstractFish)
         );
         assert_eq!(pufferfish.inherited_field_count, 17);
+        assert_eq!(pufferfish.own_fields.len(), 1);
+        let (puff_state_data_id, puff_state_default) =
+            vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+            )
+            .expect("generated Pufferfish puff-state accessor");
+        assert_eq!(puff_state_data_id, pufferfish.own_fields[0].data_id);
         assert_eq!(
-            pufferfish.own_fields,
-            &[VanillaEntityMetadataFieldSchema {
-                name: "PUFF_STATE",
-                data_id: 17,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                default: VanillaEntityMetadataDefault::Int(0),
-            }]
+            VanillaEntityMetadataDefault::Int(puff_state_default),
+            pufferfish.own_fields[0].default
         );
         assert_eq!(VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID, 16);
         assert!(!VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET);
-        assert_eq!(VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID, 17);
-        assert_eq!(VANILLA_PUFFERFISH_DEFAULT_PUFF_STATE, 0);
         let tadpole = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Tadpole);
         assert_eq!(
             tadpole.parent,

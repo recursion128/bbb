@@ -351,8 +351,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases or hand-written wire indices, and invalid variant ids must continue
   falling back through the generated default.
   Pufferfish puff-state membership, wire index and typed default must remain derived from generated
-  `PUFF_STATE`; world bounds and native model/debug consumers must not restore fixed
-  accessor/default aliases or read the slot without generated Pufferfish membership.
+  `PUFF_STATE`; world bounds, native model/debug consumers and semantic fixtures must not restore
+  fixed accessor/default aliases, hand-written wire indices or read the slot without generated
+  Pufferfish membership.
   Slime size membership, inherited wire index and typed default must remain derived from generated
   `Slime.ID_SIZE`; world bounds/passenger attachment and native Slime/MagmaCube model/debug
   consumers must not restore fixed accessor/default aliases or parallel family predicates.

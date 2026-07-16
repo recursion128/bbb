@@ -17298,3 +17298,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   不再导入固定 wire index；production 注释也不再抄录该 index。
 - 删除 `bbb-world` 的 Rabbit data/default facade 转发，schema 测试由 generated family schema
   组装期望；generator 反向守卫覆盖 production 和 native fixtures，稀疏 id 回退保持不变。
+
+## 2026-07-16：统一 Pufferfish puff-state metadata 消费
+
+- world pick-bounds、native model/F3+I fixtures 统一按 Pufferfish entity type 解析 generated
+  `PUFF_STATE` accessor，移除固定 wire index 与 world fixture 的裸 entity type id。
+- 删除 `bbb-world` 的 Pufferfish data/default facade 转发，schema 测试由 generated family
+  schema 组装期望；generator 反向守卫覆盖 production 和 world/native fixtures。

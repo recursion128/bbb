@@ -18,7 +18,6 @@ use bbb_world::{
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
-    VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
@@ -91,6 +90,15 @@ fn rabbit_type_data(variant_id: i32) -> EntityDataValue {
     )
     .expect("generated Rabbit variant accessor must resolve");
     protocol_int_data(data_id, variant_id)
+}
+
+fn pufferfish_puff_state_data(puff_state: i32) -> EntityDataValue {
+    let (data_id, _) =
+        bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+        )
+        .expect("generated Pufferfish puff-state accessor must resolve");
+    protocol_int_data(data_id, puff_state)
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -7928,7 +7936,7 @@ fn entity_model_kind_uses_exact_model_for_silverfish() {
 #[test]
 fn entity_model_kind_projects_pufferfish_puff_state_from_data() {
     // The pufferfish was a placeholder render box; it now resolves to the real model and
-    // projects its synced `PUFF_STATE` (index 17, defaulting to 0 = deflated).
+    // projects its synced `PUFF_STATE` (whose generated default is deflated).
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_PUFFERFISH_ID, &[]),
         EntityModelKind::Pufferfish { puff_state: 0 }
@@ -7936,7 +7944,7 @@ fn entity_model_kind_projects_pufferfish_puff_state_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
-            &[protocol_int_data(PUFFERFISH_PUFF_STATE_DATA_ID, 2)]
+            &[pufferfish_puff_state_data(2)]
         ),
         EntityModelKind::Pufferfish { puff_state: 2 }
     );
