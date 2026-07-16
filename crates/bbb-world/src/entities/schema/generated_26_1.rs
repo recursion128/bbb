@@ -23149,6 +23149,52 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_zombie_nautilus_variant_accessor_does_not_restore_fixed_metadata_facts() {
+        let entity_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let variant_projection = variants
+            .split("pub(super) fn zombie_nautilus_model_variant")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("pub(super) fn zombie_nautilus_variant_from_registry_id")
+                    .next()
+            })
+            .expect("ZombieNautilus variant projection source");
+        let ready_projection = variants
+            .split("pub(super) fn apply_ready_zombie_nautilus_variant_presentation")
+            .nth(1)
+            .and_then(|source| source.split("fn entity_data_registry_holder_id").next())
+            .expect("ZombieNautilus ready-texture projection source");
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        let debug_projection = input
+            .split("fn debug_push_zombie_nautilus_additional_save_data")
+            .nth(1)
+            .and_then(|source| source.split("fn debug_dye_color_legacy_save_id").next())
+            .expect("ZombieNautilus debug projection source");
+        let variant_textures =
+            include_str!("../../../../bbb-native/src/entity_variant_textures.rs");
+        for source in [variant_projection, ready_projection, debug_projection] {
+            assert!(source.contains(
+                "vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type"
+            ));
+        }
+        for source in [entity_scene, variants, input, variant_textures] {
+            for removed in [
+                "VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID",
+                "ZOMBIE_NAUTILUS_VARIANT_DATA_ID",
+                "VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID",
+                "ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "ZombieNautilus projection restored {removed}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn production_companion_variant_accessors_do_not_restore_fixed_metadata_facts() {
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let cat_model = variants

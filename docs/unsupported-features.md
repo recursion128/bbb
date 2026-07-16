@@ -189,6 +189,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   defaults must remain derived together from generated `Zombie.DATA_BABY_ID`,
   `DATA_SPECIAL_TYPE_ID` and `DATA_DROWNED_CONVERSION_ID`; native model, renderer shake and F3+I
   save-debug consumers must not restore fixed Zombie accessor/default aliases.
+  ZombieNautilus variant membership, wire index and registry-resource virtual default must remain
+  derived from generated `ZombieNautilus.DATA_VARIANT_ID`; native model/ready-texture/F3+I
+  consumers and fixtures must not restore fixed accessor/default aliases. Session holder order and
+  typed variant payload decoding remain owned by the dynamic `RegistryAccess` work above.
   Goat and PolarBear specialized bounds must query that generated accessor instead of restoring
   fixed `AgeableMob.DATA_BABY_ID` aliases; their vanilla 0.55/0.5 age scales and Goat long-jump /
   PolarBear standing composition remain dimensions-owned behavior.

@@ -258,20 +258,25 @@ pub(super) fn zombie_nautilus_model_kind(
     }
 }
 
-/// Vanilla `ZombieNautilus.DATA_VARIANT_ID` (21, a `Holder<ZombieNautilusVariant>`): TamableAnimal adds
-/// flags(18) + owner(19) and AbstractNautilus adds DASH(20), so the variant lands at index 21.
-/// `ZombieNautilusVariants.bootstrap` registers TEMPERATE then WARM. Resolve the holder through the
-/// synchronized session registry when available, because even a two-entry registry can be reordered;
-/// fall back to the generated vanilla order only when there is no session registry. The registry
-/// element's `modelAndTexture` payload remains a separate RegistryAccess codec concern.
+/// Vanilla `ZombieNautilus.DATA_VARIANT_ID` carries a `Holder<ZombieNautilusVariant>` after the
+/// inherited TamableAnimal and AbstractNautilus accessors. Resolve its generated wire index and
+/// virtual default through the metadata schema, and resolve holder identity through the synchronized
+/// session registry when available because even a two-entry registry can be reordered. Fall back to
+/// the generated vanilla order only when there is no session registry. The registry element's
+/// `modelAndTexture` payload remains a separate RegistryAccess codec concern.
 pub(super) fn zombie_nautilus_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> ZombieNautilusModelVariant {
+    let (variant_data_id, variant_default_resource_id) =
+        vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        )
+        .expect("generated ZombieNautilus variant metadata accessor must resolve");
     values
         .iter()
         .rev()
-        .find(|value| value.data_id == ZOMBIE_NAUTILUS_VARIANT_DATA_ID)
+        .find(|value| value.data_id == variant_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
@@ -281,18 +286,20 @@ pub(super) fn zombie_nautilus_model_variant(
         })
         .map(|id| {
             if let Some(registries) = registries {
-                zombie_nautilus_variant_from_registry_id(registries, id)
-                    .unwrap_or_else(zombie_nautilus_default_model_variant)
+                zombie_nautilus_variant_from_registry_id(registries, id).unwrap_or_else(|| {
+                    zombie_nautilus_default_model_variant(variant_default_resource_id)
+                })
             } else {
-                ZombieNautilusModelVariant::for_vanilla_registry_id(id)
-                    .unwrap_or_else(zombie_nautilus_default_model_variant)
+                ZombieNautilusModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
+                    zombie_nautilus_default_model_variant(variant_default_resource_id)
+                })
             }
         })
-        .unwrap_or_else(zombie_nautilus_default_model_variant)
+        .unwrap_or_else(|| zombie_nautilus_default_model_variant(variant_default_resource_id))
 }
 
-fn zombie_nautilus_default_model_variant() -> ZombieNautilusModelVariant {
-    ZombieNautilusModelVariant::for_resource_id(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID)
+fn zombie_nautilus_default_model_variant(default_resource_id: &str) -> ZombieNautilusModelVariant {
+    ZombieNautilusModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla zombie nautilus default variant must map to a model")
 }
 
@@ -537,9 +544,11 @@ pub(super) fn apply_ready_zombie_nautilus_variant_presentation(
     if entity_type_id != VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID {
         return None;
     }
+    let (variant_data_id, _) =
+        vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(entity_type_id)?;
     let holder_id = entity_data_registry_holder_id(
         values,
-        ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+        variant_data_id,
         EntityDataRegistryHolder::ZombieNautilusVariant,
     )?;
     let registries = registries?;

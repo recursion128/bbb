@@ -17117,3 +17117,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   source 与 native F3+I 不再维护固定 wire index 或独立 virtual-default lookup。
 - world/native fixtures 同步复用该 bundle；schema generator 的 minecart 反向守卫扩展为拒绝
   display metadata 固定 aliases，同时保留 FurnaceMinecart fuel accessor 与生成 offset 表检查。
+
+## 2026-07-16：派生 ZombieNautilus variant metadata accessor
+
+- ZombieNautilus variant holder 的 metadata membership、serializer、wire index 与
+  registry-resource virtual default 统一由 generated schema accessor 提供；native model、
+  ready-texture 与 F3+I save-debug 不再维护固定 accessor/default aliases。
+- native scene/input/variant-texture fixtures 同步复用该 accessor；schema generator 新增跨
+  consumer 反向守卫，同时保留 session registry holder 重排与 typed presentation 解析行为。

@@ -4744,6 +4744,11 @@ fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let (zombie_nautilus_variant_data_id, _) =
+        vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        )
+        .expect("generated ZombieNautilus variant metadata accessor must resolve");
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
         "minecraft:zombie_nautilus_variant",
@@ -4787,7 +4792,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
                 value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
             },
             ProtocolEntityDataValue {
-                data_id: ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+                data_id: zombie_nautilus_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ZombieNautilusVariant,

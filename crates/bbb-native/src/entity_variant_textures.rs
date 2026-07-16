@@ -263,8 +263,9 @@ mod tests {
     };
     use bbb_renderer::{EntityModelKind, ZombieNautilusModelVariant};
     use bbb_world::{
+        vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type,
         COW_VARIANT_REGISTRY, VANILLA_CAT_VARIANT_DATA_ID, VANILLA_FROG_VARIANT_DATA_ID,
-        VANILLA_WOLF_VARIANT_DATA_ID, VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+        VANILLA_WOLF_VARIANT_DATA_ID,
     };
     use uuid::Uuid;
 
@@ -651,10 +652,15 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         });
+        let (zombie_nautilus_variant_data_id, _) =
+            vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+            )
+            .expect("generated ZombieNautilus variant metadata accessor must resolve");
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 75,
             values: vec![EntityDataValue {
-                data_id: VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+                data_id: zombie_nautilus_variant_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ZombieNautilusVariant,

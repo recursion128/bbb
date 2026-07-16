@@ -11580,8 +11580,12 @@ fn protocol_pig_variant_data(id: i32) -> EntityDataValue {
 
 fn protocol_zombie_nautilus_variant_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.ZOMBIE_NAUTILUS_VARIANT` is serializer id 32.
+    let (data_id, _) = vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+    )
+    .expect("generated ZombieNautilus variant metadata accessor must resolve");
     EntityDataValue {
-        data_id: ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+        data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::ZombieNautilusVariant,

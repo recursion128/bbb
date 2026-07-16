@@ -155,6 +155,7 @@ pub use schema::{
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,
     vanilla_entity_metadata_zombie_accessors_for_entity_type,
+    vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type,
     VanillaAbstractArrowMetadataAccessors, VanillaArmorStandMetadataAccessors,

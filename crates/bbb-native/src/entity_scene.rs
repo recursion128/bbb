@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
 use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
 use bbb_protocol::entity_types::*;
 use bbb_protocol::{
@@ -77,6 +78,7 @@ use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_villager_data_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type;
 #[cfg(test)]
 use bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type;
 #[cfg(test)]
@@ -223,12 +225,6 @@ use bbb_world::{
     VANILLA_WOLF_DEFAULT_ANGER_END_TIME as WOLF_DEFAULT_ANGER_END_TIME,
     VANILLA_WOLF_DEFAULT_COLLAR_COLOR as WOLF_DEFAULT_COLLAR_COLOR_ID,
 };
-use bbb_world::{
-    VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID as ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID as ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
-};
-
-use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
 
 trait EntityVariantRegistryLookup {
     fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str>;

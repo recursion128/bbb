@@ -2711,6 +2711,26 @@ pub fn vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
     }
 }
 
+/// Resolves ZombieNautilus's synchronized presentation holder and virtual resource default.
+pub fn vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, &'static str)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_VARIANT_ID")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.nautilus.ZombieNautilus",
+            "ZOMBIE_NAUTILUS_VARIANT",
+            Some(VanillaEntityMetadataDefault::RegistryHolderResource(default_resource_id)),
+        ) => Some((accessor.data_id, default_resource_id)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Mob flags accessor, typed default, and named bit masks.
 pub fn vanilla_entity_metadata_mob_accessors_for_entity_type(
     entity_type_id: i32,
@@ -6123,6 +6143,31 @@ mod tests {
         ] {
             assert_eq!(
                 vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_zombie_nautilus_variant_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID
+            ),
+            Some((
+                VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+                VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID,
+            ))
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+            VANILLA_ENTITY_TYPE_DROWNED_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
+                    entity_type_id
+                ),
                 None
             );
         }

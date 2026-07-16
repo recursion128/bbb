@@ -114,6 +114,7 @@ use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 #[cfg(test)]
 use bbb_world::VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID;
@@ -237,10 +238,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_WOLF_SOUND_VARIANT_DATA_ID as WOLF_SOUND_VARIANT_DATA_ID,
     VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID as ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID as ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
 };
 use tokio::sync::mpsc;
 use winit::{
@@ -7129,9 +7126,16 @@ fn debug_push_zombie_nautilus_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    let Some((variant_data_id, variant_default_resource_id)) =
+        vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
     let variant = debug_entity_data_registry_id_present(
         entity,
-        ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
+        variant_data_id,
         EntityDataRegistryHolder::ZombieNautilusVariant,
     )
     .and_then(|id| {
@@ -7140,7 +7144,7 @@ fn debug_push_zombie_nautilus_additional_save_data(
                 .map(ZombieNautilusModelVariant::resource_id)
         })
     })
-    .unwrap_or(ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID);
+    .unwrap_or(variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
 }
 
