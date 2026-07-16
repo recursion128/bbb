@@ -22396,6 +22396,8 @@ mod generated_catalog_guards {
         let visibility_fixture =
             include_str!("../tests/visibility_equipment_and_mount_projection.rs");
         let world_inventory_fixture = include_str!("../../client/inventory/tests.rs");
+        let world_inventory = include_str!("../../client/inventory.rs");
+        let world_inventory_slot_ops = include_str!("../../client/inventory/slot_ops.rs");
         let world_audio_fixture = include_str!("../../client/audio.rs");
         let native_inventory_fixture =
             include_str!("../../../../bbb-native/src/input/inventory/tests.rs");
@@ -22450,6 +22452,10 @@ mod generated_catalog_guards {
         );
         assert!(world_inventory_fixture
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(world_inventory.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(world_inventory_slot_ops
+            .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(world_inventory_slot_ops.contains("mount_entity_is_ageable_baby(entity_type_id"));
         let world_audio_baby_helper = world_audio_fixture
             .split("fn baby_entity_data")
             .nth(1)
@@ -22849,6 +22855,8 @@ mod generated_catalog_guards {
                 creature_bounds_fixture,
                 visibility_fixture,
                 world_inventory_fixture,
+                world_inventory,
+                world_inventory_slot_ops,
                 native_inventory_fixture,
                 native_input,
             ] {

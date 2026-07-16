@@ -43,8 +43,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::entities::{
     vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
+    vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_accessors_for_entity_type, EntityStore,
-    ATTACK_SWING_DURATION, VANILLA_AGEABLE_MOB_BABY_DATA_ID, VANILLA_AGEABLE_MOB_DEFAULT_BABY,
+    ATTACK_SWING_DURATION,
 };
 use crate::item_profiles::{
     clamp_vanilla_item_max_stack_size, ItemProfiles, VANILLA_DEFAULT_MAX_STACK_SIZE,

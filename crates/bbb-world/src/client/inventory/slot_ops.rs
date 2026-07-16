@@ -22,7 +22,7 @@ pub(super) fn mount_horse_saddle_slot_is_active(
     else {
         return false;
     };
-    !mount_entity_is_ageable_baby(data_values)
+    !mount_entity_is_ageable_baby(entity_type_id, data_values)
         && (entity_data_byte(
             data_values,
             accessors.flags_data_id,
@@ -50,7 +50,7 @@ pub(super) fn mount_nautilus_can_use_equipment_slots(
     else {
         return false;
     };
-    !mount_entity_is_ageable_baby(data_values)
+    !mount_entity_is_ageable_baby(entity_type_id, data_values)
         && (entity_data_byte(
             data_values,
             accessors.flags_data_id,
@@ -59,12 +59,13 @@ pub(super) fn mount_nautilus_can_use_equipment_slots(
             != 0
 }
 
-pub(super) fn mount_entity_is_ageable_baby(data_values: &[ProtocolEntityDataValue]) -> bool {
-    entity_data_bool(
-        data_values,
-        VANILLA_AGEABLE_MOB_BABY_DATA_ID,
-        VANILLA_AGEABLE_MOB_DEFAULT_BABY,
-    )
+pub(super) fn mount_entity_is_ageable_baby(
+    entity_type_id: i32,
+    data_values: &[ProtocolEntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+        .unwrap_or(false)
 }
 
 pub(super) fn entity_data_bool(

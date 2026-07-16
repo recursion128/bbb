@@ -18039,3 +18039,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Age，AgeLocked 继续独立处理。
 - baby reverse guard 精确检查 production 函数并全局禁止 `input.rs` 恢复旧别名；所有本地实体
   Shift+F3+I save NBT fixture 回归保持不变。
+
+## 2026-07-16：迁移 world mount visibility production baby accessor
+
+- `mount_entity_is_ageable_baby` 新增 `entity_type_id`，删除固定 AgeableMob baby wire id/default，
+  通过 generated nearest-baby accessor 读取；Horse saddle 与 Nautilus equipment 两条调用路径
+  均传入真实 mount type，无 accessor 仍按非 baby 处理。
+- baby reverse guard 纳入 world inventory production 与 slot ops；tame adult slot 可见、baby slot
+  suppression、llama/horse body kind 与 Nautilus armor slot 回归保持不变。
