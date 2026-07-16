@@ -415,6 +415,13 @@ fn turtle_metadata_accessors(
     accessors
 }
 
+fn farm_animal_variant_metadata_accessors(
+    entity_type_id: i32,
+) -> bbb_world::VanillaFarmAnimalVariantMetadataAccessors {
+    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(entity_type_id)
+        .expect("generated farm-animal variant metadata accessors must resolve")
+}
+
 fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
     let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
         .expect("generated nearest baby accessor must resolve");
@@ -5642,6 +5649,7 @@ fn shift_f3_i_with_permission_copies_local_sheep_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let farm_accessors = farm_animal_variant_metadata_accessors(VANILLA_ENTITY_TYPE_PIG_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
         "minecraft:pig_variant",
@@ -5683,7 +5691,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
             baby_data(VANILLA_ENTITY_TYPE_PIG_ID, true),
             age_locked_data(&world, 61, true),
             ProtocolEntityDataValue {
-                data_id: PIG_VARIANT_DATA_ID,
+                data_id: farm_accessors.variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::PigVariant,
@@ -5691,7 +5699,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
                 },
             },
             ProtocolEntityDataValue {
-                data_id: PIG_SOUND_VARIANT_DATA_ID,
+                data_id: farm_accessors.sound_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::PigSoundVariant,
@@ -5815,6 +5823,7 @@ fn local_pig_save_uses_generated_defaults() {
 fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let farm_accessors = farm_animal_variant_metadata_accessors(VANILLA_ENTITY_TYPE_CHICKEN_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
         "minecraft:chicken_variant",
@@ -5855,7 +5864,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
             baby_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, true),
             age_locked_data(&world, 62, true),
             ProtocolEntityDataValue {
-                data_id: CHICKEN_VARIANT_DATA_ID,
+                data_id: farm_accessors.variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ChickenVariant,
@@ -5863,7 +5872,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
                 },
             },
             ProtocolEntityDataValue {
-                data_id: CHICKEN_SOUND_VARIANT_DATA_ID,
+                data_id: farm_accessors.sound_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ChickenSoundVariant,
@@ -5952,6 +5961,7 @@ fn local_chicken_save_uses_generated_resource_defaults() {
 fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let farm_accessors = farm_animal_variant_metadata_accessors(VANILLA_ENTITY_TYPE_COW_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
         "minecraft:cow_variant",
@@ -5992,7 +6002,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
             baby_data(VANILLA_ENTITY_TYPE_COW_ID, true),
             age_locked_data(&world, 63, true),
             ProtocolEntityDataValue {
-                data_id: COW_VARIANT_DATA_ID,
+                data_id: farm_accessors.variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CowVariant,
@@ -6000,7 +6010,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
                 },
             },
             ProtocolEntityDataValue {
-                data_id: COW_SOUND_VARIANT_DATA_ID,
+                data_id: farm_accessors.sound_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CowSoundVariant,

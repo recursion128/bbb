@@ -337,6 +337,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Horse variant, AbstractChestedHorse chest and Llama strength/variant membership, wire indices and
   typed defaults must remain derived from their generated accessor bundles; native model/debug
   consumers and semantic fixtures must not restore fixed accessor/default aliases.
+  Chicken/Cow/Pig variant and sound-variant membership, wire indices and registry-resource virtual
+  defaults must remain derived together from the generated farm-animal bundle; world/native
+  consumers and semantic fixtures must not restore fixed accessor/default aliases.
   TamableAnimal sitting/tame/owner membership, inherited wire indices, typed defaults and two named
   masks must remain derived together from generated `TamableAnimal.DATA_FLAGS_ID`,
   `DATA_OWNERUUID_ID` and their `FLAG_*`; world/native presentation, mount inventory, native debug

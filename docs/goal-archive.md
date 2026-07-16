@@ -18195,3 +18195,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   AbstractChestedHorse chest 和 Llama strength/variant accessors 构造 metadata，删除 7 处固定 ID。
 - fixtures 校验 vanilla typed defaults `0/false/0/0`；equine reverse guard 扩展到 native input
   facade 与完整 tests，禁止 fixed accessor/default aliases 回流。
+
+## 2026-07-16：统一 farm-animal F3+I 与 death-sound fixtures
+
+- native Chicken/Cow/Pig F3+I fixtures 与 world Cow death-sound play fixture 统一通过 generated
+  farm-animal bundle 构造 variant/sound-variant holder metadata，删除 7 处固定 accessor ID。
+- dynamic registry holder order 与 NBT payload 保持不变；reverse guard 扩展到 native input 和
+  world play fixture，禁止六组 fixed variant/sound-variant aliases 回流。

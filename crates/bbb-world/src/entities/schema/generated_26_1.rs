@@ -24612,13 +24612,31 @@ mod generated_catalog_guards {
         }
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
-        for source in [native_scene, native_scene_tests] {
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let play_apply = include_str!("../../play_apply.rs");
+        for source in [
+            native_scene,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+            play_apply,
+        ] {
             assert!(source
                 .contains("vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type"));
             for removed in [
                 "CHICKEN_VARIANT_DATA_ID",
+                "CHICKEN_SOUND_VARIANT_DATA_ID",
                 "COW_VARIANT_DATA_ID",
+                "COW_SOUND_VARIANT_DATA_ID",
                 "PIG_VARIANT_DATA_ID",
+                "PIG_SOUND_VARIANT_DATA_ID",
+                "VANILLA_CHICKEN_VARIANT_DATA_ID",
+                "VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID",
+                "VANILLA_COW_VARIANT_DATA_ID",
+                "VANILLA_COW_SOUND_VARIANT_DATA_ID",
+                "VANILLA_PIG_VARIANT_DATA_ID",
+                "VANILLA_PIG_SOUND_VARIANT_DATA_ID",
             ] {
                 assert!(
                     !source.contains(removed),

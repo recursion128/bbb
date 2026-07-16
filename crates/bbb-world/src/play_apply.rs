@@ -1805,6 +1805,22 @@ mod tests {
         bool_entity_data(accessors.silent_data_id, value)
     }
 
+    fn cow_sound_variant_data(id: i32) -> EntityDataValue {
+        let accessors =
+            crate::entities::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_COW_ID,
+            )
+            .expect("generated Cow variant metadata accessors must resolve");
+        EntityDataValue {
+            data_id: accessors.sound_variant_data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+            value: EntityDataValueKind::RegistryId {
+                serializer: EntityDataRegistryHolder::CowSoundVariant,
+                id,
+            },
+        }
+    }
+
     fn cow_sound_variant_nbt() -> Vec<u8> {
         let mut out = vec![10];
         for field in ["ambient_sound", "hurt_sound", "death_sound", "step_sound"] {
@@ -2983,14 +2999,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 86,
-                values: vec![EntityDataValue {
-                    data_id: crate::entities::VANILLA_COW_SOUND_VARIANT_DATA_ID,
-                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
-                    value: EntityDataValueKind::RegistryId {
-                        serializer: EntityDataRegistryHolder::CowSoundVariant,
-                        id: 0,
-                    },
-                }],
+                values: vec![cow_sound_variant_data(0)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 86,
