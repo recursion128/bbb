@@ -17878,3 +17878,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   查询 generated nearest baby accessor 并校验默认 false；AbstractHorse tame accessor 继续独立解析。
 - baby projection reverse guard 纳入 native inventory tests；成人已驯服 Donkey 显示 saddle、baby
   隐藏 saddle/body equipment slots 且 storage slot 2 排首位的布局回归保持不变。
+
+## 2026-07-16：统一 native entity-scene body-layer baby fixtures
+
+- native entity-scene 的 Nautilus、Horse、Wolf body armor 与 Llama body decor fixtures 删除
+  4 处固定 AgeableMob baby wire id 16，按具体 entity type 查询 generated nearest baby accessor
+  并校验默认 false。
+- baby projection reverse guard 精确覆盖这 4 个连续 fixtures 及其 helper，不误宣称同一大文件的
+  其他历史 baby fixtures 已迁移；材质/染色/crackiness/foil 与 baby layer suppression 回归不变。

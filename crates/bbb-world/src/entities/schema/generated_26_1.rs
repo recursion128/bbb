@@ -22390,6 +22390,21 @@ mod generated_catalog_guards {
             include_str!("../tests/visibility_equipment_and_mount_projection.rs");
         let native_inventory_fixture =
             include_str!("../../../../bbb-native/src/input/inventory/tests.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let native_scene_baby_helper = native_scene_tests
+            .split("fn baby_data")
+            .nth(1)
+            .and_then(|source| source.split("fn llama_variant_data").next())
+            .expect("native scene baby helper source");
+        let native_scene_body_layer_fixtures = native_scene_tests
+            .split("fn entity_model_instances_project_nautilus_body_armor_render_state")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn entity_model_instances_project_armor_stand_flags_and_pose")
+                    .next()
+            })
+            .expect("native scene body-layer baby fixture source");
         let body = source
             .split("fn vanilla_is_baby")
             .nth(1)
@@ -22419,6 +22434,20 @@ mod generated_catalog_guards {
         );
         assert!(native_inventory_fixture
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(native_scene_baby_helper
+            .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert_eq!(
+            native_scene_body_layer_fixtures
+                .matches("baby_data(")
+                .count(),
+            4
+        );
+        for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+            assert!(
+                !native_scene_body_layer_fixtures.contains(removed),
+                "native scene body-layer baby fixtures restored {removed}"
+            );
+        }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,

@@ -52,6 +52,14 @@ fn chested_horse_chest_data(entity_type_id: i32, has_chest: bool) -> EntityDataV
     protocol_bool_data(data_id, has_chest)
 }
 
+fn baby_data(entity_type_id: i32, is_baby: bool) -> EntityDataValue {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+            .expect("generated nearest baby accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, is_baby)
+}
+
 fn llama_variant_data(entity_type_id: i32, variant: i32) -> EntityDataValue {
     let accessors = vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id)
         .expect("generated Llama metadata accessors must resolve");
@@ -6649,7 +6657,6 @@ fn entity_model_instances_project_nautilus_saddle_render_state() {
 fn entity_model_instances_project_nautilus_body_armor_render_state() {
     const IRON_NAUTILUS_ARMOR_ITEM_ID: i32 = 747;
     const NETHERITE_NAUTILUS_ARMOR_ITEM_ID: i32 = 748;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     let body_armor = |entity_id: i32, item_id: i32| SetEquipment {
         entity_id,
@@ -6696,7 +6703,7 @@ fn entity_model_instances_project_nautilus_body_armor_render_state() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 125,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_NAUTILUS_ID, true)],
     }));
 
     assert!(world.apply_set_equipment(body_armor(123, IRON_NAUTILUS_ARMOR_ITEM_ID)));
@@ -6722,7 +6729,6 @@ fn entity_model_instances_project_nautilus_body_armor_render_state() {
 fn entity_model_instances_project_horse_body_armor_render_state() {
     const LEATHER_HORSE_ARMOR_ITEM_ID: i32 = 749;
     const NETHERITE_HORSE_ARMOR_ITEM_ID: i32 = 750;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
     const LEATHER_DYE: i32 = 0x0033_66CC;
 
     let body_armor = |entity_id: i32, item_id: i32, dyed_color: Option<i32>| SetEquipment {
@@ -6781,7 +6787,7 @@ fn entity_model_instances_project_horse_body_armor_render_state() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 129,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_HORSE_ID, true)],
     }));
 
     assert!(world.apply_set_equipment(body_armor(
@@ -6820,7 +6826,6 @@ fn entity_model_instances_project_horse_body_armor_render_state() {
 #[test]
 fn entity_model_instances_project_wolf_body_armor_render_state() {
     const WOLF_ARMOR_ITEM_ID: i32 = 751;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
     const WOLF_ARMOR_DYE: i32 = 0x0033_66CC;
 
     let body_armor =
@@ -6881,7 +6886,7 @@ fn entity_model_instances_project_wolf_body_armor_render_state() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 131,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_WOLF_ID, true)],
     }));
 
     assert!(world.apply_set_equipment(body_armor(130, 24, None)));
@@ -6918,7 +6923,6 @@ fn entity_model_instances_project_wolf_body_armor_render_state() {
 fn entity_model_instances_project_llama_body_decor_render_state() {
     const WHITE_CARPET_ITEM_ID: i32 = 745;
     const BLACK_CARPET_ITEM_ID: i32 = 746;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     let body_item = |entity_id: i32, item_id: i32| SetEquipment {
         entity_id,
@@ -6962,7 +6966,7 @@ fn entity_model_instances_project_llama_body_decor_render_state() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 122,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_LLAMA_ID, true)],
     }));
 
     assert!(world.apply_set_equipment(body_item(120, WHITE_CARPET_ITEM_ID)));
