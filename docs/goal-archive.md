@@ -17291,3 +17291,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   mask；native model/F3+I 以及语义 fixtures 不再导入固定 metadata 常量。
 - 删除 `bbb-world` 的 Sheep data/default/mask facade 转发，schema 测试由 generated family
   schema 组装期望；generator 反向守卫覆盖 production 和 native fixtures。
+
+## 2026-07-16：统一 Rabbit variant metadata 消费
+
+- native model/F3+I fixtures 改为按 Rabbit entity type 解析 generated `DATA_TYPE_ID` accessor，
+  不再导入固定 wire index；production 注释也不再抄录该 index。
+- 删除 `bbb-world` 的 Rabbit data/default facade 转发，schema 测试由 generated family schema
+  组装期望；generator 反向守卫覆盖 production 和 native fixtures，稀疏 id 回退保持不变。

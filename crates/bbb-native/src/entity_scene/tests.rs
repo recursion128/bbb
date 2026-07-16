@@ -19,7 +19,6 @@ use bbb_world::{
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
-    VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
@@ -84,6 +83,14 @@ fn sheep_wool_data(color_id: u8, sheared: bool) -> EntityDataValue {
     assert_eq!(color_id & !color_mask, 0, "invalid Sheep wool color id");
     let value = color_id | if sheared { sheared_mask as u8 } else { 0 };
     protocol_byte_data(data_id, value as i8)
+}
+
+fn rabbit_type_data(variant_id: i32) -> EntityDataValue {
+    let (data_id, _) = bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_RABBIT_ID,
+    )
+    .expect("generated Rabbit variant accessor must resolve");
+    protocol_int_data(data_id, variant_id)
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -9855,7 +9862,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
         );
     }
     // The rabbit (adult and baby) renders through its dedicated `AdultRabbitModel` / `BabyRabbitModel`,
-    // textured by the `Rabbit.Variant` colour (`DATA_TYPE_ID`, 18) plus the Toast name override.
+    // textured by the `Rabbit.Variant` colour (`DATA_TYPE_ID`) plus the Toast name override.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_RABBIT_ID, &[]),
         EntityModelKind::Rabbit {
@@ -9875,7 +9882,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
             toast: false
         }
     );
-    // `DATA_TYPE_ID` (18, int) selects the colour via `Rabbit.Variant.byId` (sparse; EVIL = 99).
+    // `DATA_TYPE_ID` selects the colour via `Rabbit.Variant.byId` (sparse; EVIL = 99).
     for (id, variant) in [
         (0, RabbitModelVariant::Brown),
         (1, RabbitModelVariant::White),
@@ -9887,10 +9894,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
         (7, RabbitModelVariant::Brown),
     ] {
         assert_eq!(
-            entity_model_kind(
-                VANILLA_ENTITY_TYPE_RABBIT_ID,
-                &[protocol_int_data(RABBIT_TYPE_DATA_ID, id)]
-            ),
+            entity_model_kind(VANILLA_ENTITY_TYPE_RABBIT_ID, &[rabbit_type_data(id)]),
             EntityModelKind::Rabbit {
                 baby: false,
                 variant,

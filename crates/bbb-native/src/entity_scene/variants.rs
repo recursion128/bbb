@@ -49,7 +49,7 @@ pub(super) fn resolve_villager_profession(
 
 /// Vanilla `RabbitRenderer` picks `AdultRabbitModel` for an adult and `BabyRabbitModel` for a baby; both
 /// render through the dedicated [`EntityModelKind::Rabbit`] (`baby` selecting the body layout),
-/// textured by the `Rabbit.Variant` colour (`DATA_TYPE_ID`, 18) with the `Toast` custom-name override
+/// textured by the `Rabbit.Variant` colour (`DATA_TYPE_ID`) with the `Toast` custom-name override
 /// (`RabbitRenderer.checkMagicName(entity, "Toast")`).
 pub(super) fn rabbit_model_kind(
     entity_type_id: i32,

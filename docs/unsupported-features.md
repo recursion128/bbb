@@ -347,8 +347,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   together from generated `DATA_WOOL_ID`/method evidence; native model/debug consumers and semantic
   fixtures must not restore fixed accessor/default/mask aliases or hand-written wire indices.
   Rabbit variant membership, wire index and typed default must remain derived from generated
-  `DATA_TYPE_ID`; native model/debug consumers must not restore fixed accessor/default aliases,
-  and invalid variant ids must continue falling back through the generated default.
+  `DATA_TYPE_ID`; native model/debug consumers and semantic fixtures must not restore fixed
+  accessor/default aliases or hand-written wire indices, and invalid variant ids must continue
+  falling back through the generated default.
   Pufferfish puff-state membership, wire index and typed default must remain derived from generated
   `PUFF_STATE`; world bounds and native model/debug consumers must not restore fixed
   accessor/default aliases or read the slot without generated Pufferfish membership.

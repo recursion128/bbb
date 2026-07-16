@@ -5491,11 +5491,20 @@ mod tests {
 
     #[test]
     fn generated_rabbit_type_accessor_owns_membership_index_and_default() {
+        let rabbit = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Rabbit);
+        let variant = rabbit
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_TYPE_ID")
+            .expect("generated Rabbit variant field");
+        let VanillaEntityMetadataDefault::Int(default) = variant.default else {
+            panic!("generated Rabbit variant default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_RABBIT_ID
             ),
-            Some((18, 0))
+            Some((variant.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(
@@ -7716,8 +7725,16 @@ mod tests {
         assert_eq!(rabbit.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(rabbit.inherited_field_count, 18);
         assert_eq!(rabbit.own_fields.len(), 1);
-        assert_eq!(VANILLA_RABBIT_TYPE_DATA_ID, 18);
-        assert_eq!(VANILLA_RABBIT_DEFAULT_TYPE, 0);
+        let (variant_data_id, variant_default) =
+            vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_RABBIT_ID,
+            )
+            .expect("generated Rabbit variant accessor");
+        assert_eq!(variant_data_id, rabbit.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(variant_default),
+            rabbit.own_fields[0].default
+        );
         let abstract_villager =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractVillager);
         assert_eq!(

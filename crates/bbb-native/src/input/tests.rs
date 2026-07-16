@@ -123,7 +123,6 @@ use bbb_world::{
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MOOSHROOM_TYPE_DATA_ID,
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
-    VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
 };
 use std::{
     collections::BTreeMap,
@@ -169,6 +168,17 @@ fn sheep_wool_data(color_id: u8, sheared: bool) -> ProtocolEntityDataValue {
         serializer_id:
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(value as i8),
+    }
+}
+
+fn rabbit_type_data(variant_id: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) =
+        vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(VANILLA_ENTITY_TYPE_RABBIT_ID)
+            .expect("generated Rabbit variant accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(variant_id),
     }
 }
 
@@ -5176,11 +5186,7 @@ fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: RABBIT_TYPE_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(99),
-            },
+            rabbit_type_data(99),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
