@@ -7,7 +7,7 @@ use crate::entity_models::catalog::{
     FoxModelVariant, PandaModelVariant, ParrotModelVariant, RabbitModelVariant,
     SignModelAttachment, SignModelWood, WolfArmorCrackiness,
 };
-use crate::entity_models::decorated_pot_patterns::*;
+pub(in crate::entity_models) use crate::entity_models::decorated_pot_patterns::*;
 use crate::entity_models::temperature_animal_variants::{
     VANILLA_CHICKEN_VARIANT_TEXTURE_REFS, VANILLA_COW_VARIANT_TEXTURE_REFS,
     VANILLA_FROG_VARIANT_TEXTURE_REFS, VANILLA_PIG_VARIANT_TEXTURE_REFS,
@@ -3326,15 +3326,6 @@ pub(in crate::entity_models) fn conduit_texture_ref(
     }
 }
 
-/// A 16×16 `entity/decorated_pot/<name>` sprite (`Sheets.DECORATED_POT_MAPPER`), used here for
-/// the plain side. The generated decorated-pot pattern catalog owns the twenty-three sherd sheets.
-const fn decorated_pot_side_sheet_texture_ref(path: &'static str) -> EntityModelTextureRef {
-    EntityModelTextureRef {
-        path,
-        size: [16, 16],
-    }
-}
-
 /// Vanilla `Sheets.DECORATED_POT_BASE`
 /// (`DECORATED_POT_MAPPER.defaultNamespaceApply("decorated_pot_base")`), sized like the
 /// `DecoratedPotRenderer.createBaseLayer` 32×32 atlas.
@@ -3343,11 +3334,6 @@ pub(in crate::entity_models) const DECORATED_POT_BASE_TEXTURE_REF: EntityModelTe
         path: "textures/entity/decorated_pot/decorated_pot_base.png",
         size: [32, 32],
     };
-/// Vanilla `Sheets.DECORATED_POT_SIDE` — the undecorated side (also the `BLANK` pattern's asset,
-/// `DecoratedPotPatterns.bootstrap`'s `register(BLANK, "decorated_pot_side")`).
-pub(in crate::entity_models) const DECORATED_POT_SIDE_TEXTURE_REF: EntityModelTextureRef =
-    decorated_pot_side_sheet_texture_ref("textures/entity/decorated_pot/decorated_pot_side.png");
-
 pub(in crate::entity_models) const DECORATED_POT_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 25] = [
     DECORATED_POT_BASE_TEXTURE_REF,
     DECORATED_POT_SIDE_TEXTURE_REF,

@@ -17609,3 +17609,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - bootstrap generator 守卫按五族完整目录禁止 fixture 恢复具名 variant 或 adult/baby sound
   event 字面量，并要求五族统一消费全量迭代接口；同步 registry typed payload/server order
   测试保持独立。
+
+## 2026-07-16：统一 decorated-pot/banner pattern texture dimensions
+
+- bootstrap generator 现在也读取 `DecoratedPotPatterns.BLANK` 所引用官方
+  `decorated_pot_side.png` 的 IHDR；renderer 删除 side sheet 的手写 `[16, 16]` helper/constant，
+  plain-side fallback 与全局 atlas 继续消费同名 generated texture ref。
+- decorated-pot/banner generated guard 精确禁止各自模型 fixture 重写 generated pattern 尺寸，
+  并禁止 production 恢复 side 常量/helper；43 张 banner pattern 与 24 张 decorated-pot
+  pattern/blank sheet 的尺寸均由维护生成读取官方 PNG。

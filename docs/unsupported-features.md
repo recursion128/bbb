@@ -482,9 +482,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   or an Evoker/Vindicator entity-type table. Spellcaster casting and Pillager charging fixtures must
   likewise use their generated accessors instead of hand-written wire indices; generated guards
   must inspect those specific fixtures rather than rely on whole-file matches.
-  Source-generated presentation texture dimensions, including decorated-pot/banner
-  patterns and the listed entity variants, must come from the referenced official
-  PNG. Synchronized replacement payloads still belong to typed session
+  Source-generated cat/chicken/cow/pig/frog/wolf/zombie-nautilus presentation
+  texture dimensions must come from the referenced official PNG. Synchronized
+  replacement payloads still belong to typed session
   `RegistryAccess`, not fixed ordinal lookup.
   Keep enum-keyed debug presentation mappings in their generated semantic
   descriptors; native debug extraction must not rebuild ordinal-indexed color

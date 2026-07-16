@@ -157,6 +157,11 @@ pub(in crate::entity_models) const DECORATED_POT_SNORT_TEXTURE_REF: EntityModelT
         path: "textures/entity/decorated_pot/snort_pottery_pattern.png",
         size: [16, 16],
     };
+pub(in crate::entity_models) const DECORATED_POT_SIDE_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/decorated_pot/decorated_pot_side.png",
+        size: [16, 16],
+    };
 
 const VANILLA_DECORATED_POT_PATTERNS: &[VanillaDecoratedPotPattern] = &[
     VanillaDecoratedPotPattern {
@@ -327,7 +332,11 @@ mod tests {
         assert_eq!(VANILLA_DECORATED_POT_PATTERNS.len(), 23);
         let mut resources = HashSet::new();
         let mut items = HashSet::new();
-        let mut textures = HashSet::new();
+        let mut textures = HashSet::from([DECORATED_POT_SIDE_TEXTURE_REF.path]);
+        assert!(DECORATED_POT_SIDE_TEXTURE_REF
+            .size
+            .into_iter()
+            .all(|dimension| dimension > 0));
         for (index, entry) in VANILLA_DECORATED_POT_PATTERNS.iter().enumerate() {
             assert_eq!(entry.pattern as usize, index);
             assert!(resources.insert(entry.resource_id));
@@ -371,6 +380,12 @@ mod tests {
 
     #[test]
     fn production_sources_do_not_redeclare_decorated_pot_pattern_facts() {
+        let fixture = include_str!("tests/decorated_pot.rs")
+            .split("fn decorated_pot_model_keys_and_texture_refs_match_vanilla_selection")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("decorated-pot texture fixture");
+        assert!(!fixture.contains("DECORATED_POT_SIDE_TEXTURE_REF.size"));
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();
@@ -392,6 +407,8 @@ mod tests {
                 if source.contains("enum DecoratedPotPattern")
                     || source.contains("fn decorated_pot_pattern_for_sherd_item")
                     || source.contains("const DECORATED_POT_ANGLER_TEXTURE_REF")
+                    || source.contains("const DECORATED_POT_SIDE_TEXTURE_REF")
+                    || source.contains("fn decorated_pot_side_sheet_texture_ref")
                     || source.contains("_pottery_sherd\" => Some(DecoratedPotPattern::")
                 {
                     violations.push(display.to_string());

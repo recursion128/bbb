@@ -397,6 +397,12 @@ mod tests {
 
     #[test]
     fn production_sources_do_not_redeclare_banner_pattern_facts() {
+        let fixture = include_str!("tests/banner.rs")
+            .split("fn banner_model_keys_and_texture_refs_match_vanilla_selection")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("banner texture fixture");
+        assert!(!fixture.contains("BANNER_PATTERN_BASE_TEXTURE_REF.size"));
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();

@@ -167,7 +167,6 @@ fn decorated_pot_model_keys_and_texture_refs_match_vanilla_selection() {
         DECORATED_POT_SIDE_TEXTURE_REF.path,
         "textures/entity/decorated_pot/decorated_pot_side.png"
     );
-    assert_eq!(DECORATED_POT_SIDE_TEXTURE_REF.size, [16, 16]);
     // base + side + 23 patterns, all registered into the shared entity atlas.
     assert_eq!(decorated_pot_entity_texture_refs().len(), 25);
     for texture in decorated_pot_entity_texture_refs() {

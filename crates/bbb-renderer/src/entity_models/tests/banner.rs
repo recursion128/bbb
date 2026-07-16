@@ -236,7 +236,6 @@ fn banner_model_keys_and_texture_refs_match_vanilla_selection() {
         BANNER_PATTERN_BASE_TEXTURE_REF.path,
         "textures/entity/banner/base.png"
     );
-    assert_eq!(BANNER_PATTERN_BASE_TEXTURE_REF.size, [64, 64]);
     // banner_base + base + 42 patterns, all registered into the shared entity atlas.
     assert_eq!(banner_entity_texture_refs().len(), 44);
     for texture in banner_entity_texture_refs() {
