@@ -94,6 +94,7 @@ use bbb_world::vanilla_entity_metadata_horse_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_llama_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
@@ -154,8 +155,6 @@ use bbb_world::{
     VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
     VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
-    VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
-    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
@@ -234,6 +233,11 @@ use bbb_world::{
     VANILLA_GOAT_LEFT_HORN_DATA_ID as GOAT_LEFT_HORN_DATA_ID,
     VANILLA_GOAT_RIGHT_HORN_DATA_ID as GOAT_RIGHT_HORN_DATA_ID,
     VANILLA_GOAT_SCREAMING_DATA_ID as GOAT_SCREAMING_DATA_ID,
+};
+#[cfg(test)]
+use bbb_world::{
+    VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
+    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
 };
 use bbb_world::{
     VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
@@ -6830,12 +6834,17 @@ fn debug_push_mob_additional_save_data(
     fields: &mut Vec<String>,
 ) {
     debug_push_leash_additional_save_data(world, entity, fields);
-    if let Some(flags) = debug_entity_data_byte_present(entity, MOB_FLAGS_DATA_ID) {
+    let Some(accessors) =
+        vanilla_entity_metadata_mob_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    if let Some(flags) = debug_entity_data_byte_present(entity, accessors.flags_data_id) {
         fields.push(format!(
             "LeftHanded: {}",
-            debug_snbt_bool(flags & MOB_FLAG_LEFT_HANDED != 0)
+            debug_snbt_bool(flags & accessors.left_handed_mask != 0)
         ));
-        if flags & MOB_FLAG_NO_AI != 0 {
+        if flags & accessors.no_ai_mask != 0 {
             fields.push("NoAI: 1b".to_string());
         }
     }

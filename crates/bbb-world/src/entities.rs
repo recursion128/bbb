@@ -61,6 +61,7 @@ pub use schema::VanillaFarmAnimalVariantMetadataAccessors;
 pub use schema::VanillaGoatMetadataAccessors;
 pub use schema::VanillaInteractionMetadataAccessors;
 pub use schema::VanillaLlamaMetadataAccessors;
+pub use schema::VanillaMobMetadataAccessors;
 pub use schema::VanillaPandaMetadataAccessors;
 pub use schema::VanillaShulkerMetadataAccessors;
 pub use schema::VanillaTurtleMetadataAccessors;
@@ -99,6 +100,7 @@ pub use schema::{
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
     vanilla_entity_metadata_llama_accessors_for_entity_type,
+    vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type,
     vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,

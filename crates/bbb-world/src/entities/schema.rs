@@ -306,6 +306,15 @@ pub struct VanillaCompanionVariantMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaMobMetadataAccessors {
+    pub flags_data_id: u8,
+    pub flags_default: i8,
+    pub no_ai_mask: i8,
+    pub left_handed_mask: i8,
+    pub aggressive_mask: i8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaTurtleMetadataAccessors {
     pub has_egg_data_id: u8,
     pub has_egg_default: bool,
@@ -2412,6 +2421,41 @@ pub fn vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
         }),
         _ => None,
     }
+}
+
+/// Resolves the generated Mob flags accessor, typed default, and named bit masks.
+pub fn vanilla_entity_metadata_mob_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaMobMetadataAccessors> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_MOB_FLAGS_ID")?;
+    let flags_default = match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.Mob",
+            "BYTE",
+            Some(VanillaEntityMetadataDefault::Byte(default)),
+        ) => default,
+        _ => return None,
+    };
+    let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Mob);
+    let mask = |name| {
+        schema
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == name && flag.data_id == accessor.data_id)
+            .map(|flag| flag.mask)
+    };
+    Some(VanillaMobMetadataAccessors {
+        flags_data_id: accessor.data_id,
+        flags_default,
+        no_ai_mask: mask("MOB_FLAG_NO_AI")?,
+        left_handed_mask: mask("MOB_FLAG_LEFTHANDED")?,
+        aggressive_mask: mask("MOB_FLAG_AGGRESSIVE")?,
+    })
 }
 
 /// Resolves the generated Vex flags accessor and its typed default.
@@ -5383,6 +5427,36 @@ mod tests {
         ] {
             assert_eq!(
                 vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_mob_accessors_own_membership_index_default_and_masks() {
+        let expected = VanillaMobMetadataAccessors {
+            flags_data_id: VANILLA_MOB_FLAGS_DATA_ID,
+            flags_default: 0,
+            no_ai_mask: VANILLA_MOB_FLAG_NO_AI,
+            left_handed_mask: VANILLA_MOB_FLAG_LEFT_HANDED,
+            aggressive_mask: VANILLA_MOB_FLAG_AGGRESSIVE,
+        };
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id),
+                Some(expected)
+            );
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

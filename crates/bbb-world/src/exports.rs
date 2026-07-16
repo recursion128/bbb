@@ -7,6 +7,7 @@ pub use crate::entities::VanillaFarmAnimalVariantMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
 pub use crate::entities::VanillaLlamaMetadataAccessors;
+pub use crate::entities::VanillaMobMetadataAccessors;
 pub use crate::entities::VanillaPandaMetadataAccessors;
 pub use crate::entities::VanillaShulkerMetadataAccessors;
 pub use crate::entities::VanillaTurtleMetadataAccessors;
@@ -45,6 +46,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
     vanilla_entity_metadata_llama_accessors_for_entity_type,
+    vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type,
     vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,

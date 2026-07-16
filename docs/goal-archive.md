@@ -16771,3 +16771,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native model/ready-texture 与 F3+I 保存投影、world death-sound 选择删除四组固定
   accessor/default aliases；既有 Cat/Wolf 模型、动态 registry、debug default 和 adult/baby
   death-sound 语义测试继续锁定行为，metadata generator reverse guard 覆盖三条消费面。
+
+## 2026-07-16：批量推导 Mob metadata accessors
+
+- `bbb-world` 现在从生成 schema 解析 `Mob.DATA_MOB_FLAGS_ID` 的继承 membership、BYTE
+  serializer、typed default，以及 `NO_AI`、`LEFTHANDED`、`AGGRESSIVE` 三个命名 bit mask。
+- world 主手/攻击姿态投影与 native F3+I `LeftHanded`/`NoAI` 保存投影删除固定 id/default/
+  mask aliases；既有主手、renderer aggressive、piglin/illager arm pose 与 Creeper debug
+  语义测试继续锁定行为，metadata generator reverse guard 覆盖两条生产消费面。

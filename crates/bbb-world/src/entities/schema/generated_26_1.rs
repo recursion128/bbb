@@ -22920,6 +22920,37 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_mob_accessors_do_not_restore_fixed_metadata_facts() {
+        let store = include_str!("../store.rs");
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        let mob_debug = input
+            .split("fn debug_push_mob_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_leash_additional_save_data")
+                    .next()
+            })
+            .expect("Mob debug projection source");
+        for source in [store, mob_debug] {
+            assert!(source.contains("vanilla_entity_metadata_mob_accessors_for_entity_type"));
+            for removed in [
+                "VANILLA_MOB_FLAGS_DATA_ID",
+                "MOB_FLAGS_DATA_ID",
+                "MOB_FLAG_NO_AI",
+                "MOB_FLAG_LEFTHANDED",
+                "MOB_FLAG_LEFT_HANDED",
+                "MOB_FLAG_AGGRESSIVE",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Mob projection restored {removed}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn production_companion_variant_accessors_do_not_restore_fixed_metadata_facts() {
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let cat_model = variants

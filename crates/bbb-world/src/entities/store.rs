@@ -111,6 +111,7 @@ use crate::entities::renderer_catalog::{
     vanilla_entity_renderer_uses_mob_item_in_hand_layer,
 };
 use crate::entities::schema::{
+    vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
@@ -129,10 +130,9 @@ use crate::entities::schema::{
     VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
     VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK as LIVING_ENTITY_FLAG_SPIN_ATTACK,
     VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID,
-    VANILLA_MOB_FLAGS_DATA_ID, VANILLA_MOB_FLAG_AGGRESSIVE as MOB_FLAG_AGGRESSIVE,
-    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFTHANDED, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID,
-    VANILLA_PLAYER_ABSORPTION_DATA_ID, VANILLA_PLAYER_DEFAULT_ABSORPTION,
-    VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+    VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID, VANILLA_PLAYER_ABSORPTION_DATA_ID,
+    VANILLA_PLAYER_DEFAULT_ABSORPTION, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -746,9 +746,14 @@ impl EntityStore {
                 .is_some_and(|arm| arm == VANILLA_HUMANOID_ARM_LEFT_ID);
         }
         if vanilla_entity_renderer_uses_mob_item_in_hand_layer(entity_type_id) {
+            let Some(accessors) =
+                vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
+            else {
+                return false;
+            };
             return self
-                .metadata_byte(id, VANILLA_MOB_FLAGS_DATA_ID, 0)
-                .is_some_and(|flags| flags & MOB_FLAG_LEFTHANDED != 0);
+                .metadata_byte(id, accessors.flags_data_id, accessors.flags_default)
+                .is_some_and(|flags| flags & accessors.left_handed_mask != 0);
         }
         false
     }
@@ -1593,11 +1598,13 @@ impl EntityStore {
         let is_aggressive =
             (vanilla_entity_renderer_extracts_mob_aggressive(identity.entity_type_id)
                 || vanilla_entity_metadata_type_is_abstract_piglin(identity.entity_type_id))
-                && self
-                    .metadata_byte(id, VANILLA_MOB_FLAGS_DATA_ID, 0)
-                    .unwrap_or(0)
-                    & MOB_FLAG_AGGRESSIVE
-                    != 0;
+                && vanilla_entity_metadata_mob_accessors_for_entity_type(identity.entity_type_id)
+                    .is_some_and(|accessors| {
+                        self.metadata_byte(id, accessors.flags_data_id, accessors.flags_default)
+                            .unwrap_or(accessors.flags_default)
+                            & accessors.aggressive_mask
+                            != 0
+                    });
         // Vanilla EvokerRenderer / IllusionerRenderer copy
         // `state.isCastingSpell = entity.isCastingSpell()`. Intersect that renderer assignment
         // with the generated SpellcasterIllager accessor owner before reading the shared byte id;
