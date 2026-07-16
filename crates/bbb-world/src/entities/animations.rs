@@ -32,7 +32,7 @@ use super::schema::{
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
     vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
-    vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type,
     vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type,
     vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type,
@@ -53,9 +53,6 @@ use super::schema::{
     VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_IDLE_ID as COPPER_GOLEM_STATE_IDLE_ID,
-    VANILLA_PANDA_FLAG_ON_BACK as PANDA_FLAG_ON_BACK,
-    VANILLA_PANDA_FLAG_ROLLING as PANDA_FLAG_ROLLING,
-    VANILLA_PANDA_FLAG_SITTING as PANDA_FLAG_SITTING,
     VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
     VANILLA_SNIFFER_STATE_FEELING_HAPPY_ID as SNIFFER_STATE_FEELING_HAPPY_ID,
     VANILLA_SNIFFER_STATE_RISING_ID as SNIFFER_STATE_RISING_ID,
@@ -6257,14 +6254,20 @@ fn bee_is_rolling(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool 
 }
 
 fn panda_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (bool, bool, bool) {
-    let flags = vanilla_entity_metadata_panda_flags_accessor_for_entity_type(entity_type_id)
-        .map(|(data_id, default)| entity_data_byte(data_values, data_id, default))
-        .unwrap_or(0);
-    (
-        flags & PANDA_FLAG_SITTING != 0,
-        flags & PANDA_FLAG_ON_BACK != 0,
-        flags & PANDA_FLAG_ROLLING != 0,
-    )
+    vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| {
+            let flags = entity_data_byte(
+                data_values,
+                accessors.flags_data_id,
+                accessors.flags_default,
+            );
+            (
+                flags & accessors.sitting_mask != 0,
+                flags & accessors.on_back_mask != 0,
+                flags & accessors.rolling_mask != 0,
+            )
+        })
+        .unwrap_or_default()
 }
 
 fn equine_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (bool, bool, bool) {

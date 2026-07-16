@@ -22971,65 +22971,59 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_panda_flags_do_not_restore_accessor_constants() {
+    fn production_panda_bundle_does_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
-        assert!(animations.contains("vanilla_entity_metadata_panda_flags_accessor_for_entity_type"));
+        let world_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
-        assert!(
-            native_scene.contains("vanilla_entity_metadata_panda_flags_accessor_for_entity_type")
-        );
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
-        assert!(native_variants
-            .contains("vanilla_entity_metadata_panda_flags_accessor_for_entity_type"));
-        let model_body = native_variants
-            .split("pub(super) fn panda_model_kind")
-            .nth(1)
-            .and_then(|source| source.split("pub(super) fn feline_model_kind").next())
-            .expect("Panda model projection source");
-        let state_body = native_variants
-            .split("pub(super) fn panda_is_unhappy")
-            .nth(1)
-            .and_then(|source| source.split("pub(super) fn world_is_thundering").next())
-            .expect("Panda state projection source");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        let debug_body = native_input
-            .split("fn debug_push_panda_additional_save_data")
-            .nth(1)
-            .and_then(|source| source.split("fn debug_panda_gene_name").next())
-            .expect("Panda debug projection source");
-        for source in [model_body, state_body, debug_body] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            animations,
+            world_tests,
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(source.contains("vanilla_entity_metadata_panda_accessors_for_entity_type"));
-            for removed in [
-                "PANDA_UNHAPPY_COUNTER_DATA_ID",
-                "PANDA_SNEEZE_COUNTER_DATA_ID",
-                "PANDA_EAT_COUNTER_DATA_ID",
-                "PANDA_MAIN_GENE_DATA_ID",
-                "PANDA_HIDDEN_GENE_DATA_ID",
-                "PANDA_DEFAULT_UNHAPPY_COUNTER",
-                "PANDA_DEFAULT_SNEEZE_COUNTER",
-                "PANDA_DEFAULT_EAT_COUNTER",
-                "PANDA_DEFAULT_MAIN_GENE",
-                "PANDA_DEFAULT_HIDDEN_GENE",
+        }
+        for removed in [
+            "vanilla_entity_metadata_panda_flags_accessor_for_entity_type",
+            "PANDA_UNHAPPY_COUNTER_DATA_ID",
+            "PANDA_SNEEZE_COUNTER_DATA_ID",
+            "PANDA_EAT_COUNTER_DATA_ID",
+            "PANDA_MAIN_GENE_DATA_ID",
+            "PANDA_HIDDEN_GENE_DATA_ID",
+            "PANDA_DEFAULT_UNHAPPY_COUNTER",
+            "PANDA_DEFAULT_SNEEZE_COUNTER",
+            "PANDA_DEFAULT_EAT_COUNTER",
+            "PANDA_DEFAULT_MAIN_GENE",
+            "PANDA_DEFAULT_HIDDEN_GENE",
+            "PANDA_FLAGS_DATA_ID",
+            "PANDA_DEFAULT_FLAGS",
+            "PANDA_FLAG_",
+            "PANDA_SNEEZING_FLAG",
+            "PANDA_ROLLING_FLAG",
+            "PANDA_SITTING_FLAG",
+            "PANDA_ON_BACK_FLAG",
+        ] {
+            for source in [
+                animations,
+                world_tests,
+                native_scene,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
             ] {
                 assert!(
                     !source.contains(removed),
                     "Panda projection restored {removed}"
                 );
             }
-        }
-        for removed in ["PANDA_FLAGS_DATA_ID", "PANDA_DEFAULT_FLAGS"] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
         }
     }
 

@@ -279,6 +279,10 @@ pub struct VanillaPandaMetadataAccessors {
     pub hidden_gene_default: i8,
     pub flags_data_id: u8,
     pub flags_default: i8,
+    pub sneezing_mask: i8,
+    pub rolling_mask: i8,
+    pub sitting_mask: i8,
+    pub on_back_mask: i8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2789,20 +2793,34 @@ pub fn vanilla_entity_metadata_panda_accessors_for_entity_type(
                 "BYTE",
                 Some(VanillaEntityMetadataDefault::Byte(flags_default)),
             ),
-        ) => Some(VanillaPandaMetadataAccessors {
-            unhappy_counter_data_id: unhappy_counter.data_id,
-            unhappy_counter_default,
-            sneeze_counter_data_id: sneeze_counter.data_id,
-            sneeze_counter_default,
-            eat_counter_data_id: eat_counter.data_id,
-            eat_counter_default,
-            main_gene_data_id: main_gene.data_id,
-            main_gene_default,
-            hidden_gene_data_id: hidden_gene.data_id,
-            hidden_gene_default,
-            flags_data_id: flags.data_id,
-            flags_default,
-        }),
+        ) => {
+            let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Panda);
+            let mask = |name| {
+                schema
+                    .own_flags
+                    .iter()
+                    .find(|flag| flag.name == name && flag.data_id == flags.data_id)
+                    .map(|flag| flag.mask)
+            };
+            Some(VanillaPandaMetadataAccessors {
+                unhappy_counter_data_id: unhappy_counter.data_id,
+                unhappy_counter_default,
+                sneeze_counter_data_id: sneeze_counter.data_id,
+                sneeze_counter_default,
+                eat_counter_data_id: eat_counter.data_id,
+                eat_counter_default,
+                main_gene_data_id: main_gene.data_id,
+                main_gene_default,
+                hidden_gene_data_id: hidden_gene.data_id,
+                hidden_gene_default,
+                flags_data_id: flags.data_id,
+                flags_default,
+                sneezing_mask: mask("FLAG_SNEEZE")?,
+                rolling_mask: mask("FLAG_ROLL")?,
+                sitting_mask: mask("FLAG_SIT")?,
+                on_back_mask: mask("FLAG_ON_BACK")?,
+            })
+        }
         _ => None,
     }
 }
@@ -6385,7 +6403,7 @@ mod tests {
     }
 
     #[test]
-    fn generated_panda_accessors_own_membership_indices_and_defaults() {
+    fn generated_panda_accessors_own_membership_indices_defaults_and_masks() {
         assert_eq!(
             vanilla_entity_metadata_panda_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PANDA_ID),
             Some(VanillaPandaMetadataAccessors {
@@ -6401,6 +6419,10 @@ mod tests {
                 hidden_gene_default: VANILLA_PANDA_DEFAULT_HIDDEN_GENE,
                 flags_data_id: VANILLA_PANDA_FLAGS_DATA_ID,
                 flags_default: VANILLA_PANDA_DEFAULT_FLAGS,
+                sneezing_mask: VANILLA_PANDA_FLAG_SNEEZING,
+                rolling_mask: VANILLA_PANDA_FLAG_ROLLING,
+                sitting_mask: VANILLA_PANDA_FLAG_SITTING,
+                on_back_mask: VANILLA_PANDA_FLAG_ON_BACK,
             })
         );
         for entity_type_id in [VANILLA_ENTITY_TYPE_CHICKEN_ID, -1] {
@@ -6412,12 +6434,15 @@ mod tests {
     }
 
     #[test]
-    fn generated_panda_flags_accessor_owns_membership_index_and_default() {
+    fn generated_panda_flags_accessor_delegates_to_bundle() {
+        let accessors =
+            vanilla_entity_metadata_panda_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PANDA_ID)
+                .expect("generated Panda metadata accessors must resolve");
         assert_eq!(
             vanilla_entity_metadata_panda_flags_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PANDA_ID
             ),
-            Some((23, 0))
+            Some((accessors.flags_data_id, accessors.flags_default))
         );
         assert_eq!(
             vanilla_entity_metadata_panda_flags_accessor_for_entity_type(

@@ -42,6 +42,11 @@ fn bee_metadata_accessors() -> bbb_world::VanillaBeeMetadataAccessors {
         .expect("generated Bee metadata accessors")
 }
 
+fn panda_metadata_accessors() -> bbb_world::VanillaPandaMetadataAccessors {
+    vanilla_entity_metadata_panda_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PANDA_ID)
+        .expect("generated Panda metadata accessors must resolve")
+}
+
 #[test]
 fn entity_hand_projection_does_not_restore_component_id_aliases() {
     let source = include_str!("hands.rs");
@@ -4228,10 +4233,9 @@ fn entity_model_instances_project_piglin_admiring_a_loved_offhand_item() {
 
 #[test]
 fn entity_model_instances_project_panda_unhappy_and_sneezing() {
-    // Vanilla PandaRenderState: isUnhappy = getUnhappyCounter() > 0 (INT id 18); isSneezing =
-    // isSneezing() (DATA_ID_FLAGS byte id 23, bit 0x02); sneezeTime = getSneezeCounter() (INT id 19);
-    // isEating = EAT_COUNTER > 0 (INT id 20); isSitting = DATA_ID_FLAGS bit 0x08; isScared =
-    // worried-gene panda in a thundering level.
+    // Vanilla PandaRenderState projects unhappy/eat/sneeze counters and named flags from the Panda
+    // metadata family; worried-gene pandas additionally become scared in a thundering level.
+    let accessors = panda_metadata_accessors();
     let mut world = WorldStore::new();
     world.apply_login(&protocol_play_login(1));
     world.apply_add_entity(protocol_add_entity(
@@ -4267,12 +4271,15 @@ fn entity_model_instances_project_panda_unhappy_and_sneezing() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 190,
         values: vec![
-            protocol_int_data(PANDA_UNHAPPY_COUNTER_DATA_ID, 12),
-            protocol_int_data(PANDA_SNEEZE_COUNTER_DATA_ID, 9),
-            protocol_int_data(PANDA_EAT_COUNTER_DATA_ID, 4),
+            protocol_int_data(accessors.unhappy_counter_data_id, 12),
+            protocol_int_data(accessors.sneeze_counter_data_id, 9),
+            protocol_int_data(accessors.eat_counter_data_id, 4),
             protocol_byte_data(
-                bbb_world::VANILLA_PANDA_FLAGS_DATA_ID,
-                PANDA_SNEEZING_FLAG | PANDA_ROLLING_FLAG | PANDA_SITTING_FLAG | PANDA_ON_BACK_FLAG,
+                accessors.flags_data_id,
+                accessors.sneezing_mask
+                    | accessors.rolling_mask
+                    | accessors.sitting_mask
+                    | accessors.on_back_mask,
             ),
         ],
     }));
@@ -4300,8 +4307,8 @@ fn entity_model_instances_project_panda_unhappy_and_sneezing() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 190,
         values: vec![
-            protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 2),
-            protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 0),
+            protocol_byte_data(accessors.main_gene_data_id, 2),
+            protocol_byte_data(accessors.hidden_gene_data_id, 0),
         ],
     }));
     assert!(!panda(&world, 0.0).panda_scared);
@@ -4315,9 +4322,9 @@ fn entity_model_instances_project_panda_unhappy_and_sneezing() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 190,
         values: vec![
-            protocol_int_data(PANDA_UNHAPPY_COUNTER_DATA_ID, 0),
-            protocol_int_data(PANDA_EAT_COUNTER_DATA_ID, 0),
-            protocol_byte_data(bbb_world::VANILLA_PANDA_FLAGS_DATA_ID, 0),
+            protocol_int_data(accessors.unhappy_counter_data_id, 0),
+            protocol_int_data(accessors.eat_counter_data_id, 0),
+            protocol_byte_data(accessors.flags_data_id, 0),
         ],
     }));
     let calmed = panda(&world, 0.0);
@@ -9450,13 +9457,14 @@ fn entity_model_kind_uses_exact_models_for_polar_bears() {
 #[test]
 fn entity_model_kind_projects_panda_gene_variant_from_data() {
     // Vanilla `Panda.getVariant()` = `Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two
-    // synced gene bytes (21/22). A dominant main gene always shows.
+    // synced gene bytes. A dominant main gene always shows.
+    let accessors = panda_metadata_accessors();
     assert_eq!(
         panda_model_kind(
             VANILLA_ENTITY_TYPE_PANDA_ID,
             &[
-                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 6),
-                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 0),
+                protocol_byte_data(accessors.main_gene_data_id, 6),
+                protocol_byte_data(accessors.hidden_gene_data_id, 0),
             ]
         ),
         EntityModelKind::Panda {
@@ -9469,8 +9477,8 @@ fn entity_model_kind_projects_panda_gene_variant_from_data() {
         panda_model_kind(
             VANILLA_ENTITY_TYPE_PANDA_ID,
             &[
-                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 4),
-                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 4),
+                protocol_byte_data(accessors.main_gene_data_id, 4),
+                protocol_byte_data(accessors.hidden_gene_data_id, 4),
             ]
         ),
         EntityModelKind::Panda {
@@ -9483,8 +9491,8 @@ fn entity_model_kind_projects_panda_gene_variant_from_data() {
         panda_model_kind(
             VANILLA_ENTITY_TYPE_PANDA_ID,
             &[
-                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 4),
-                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 1),
+                protocol_byte_data(accessors.main_gene_data_id, 4),
+                protocol_byte_data(accessors.hidden_gene_data_id, 1),
             ]
         ),
         EntityModelKind::Panda {

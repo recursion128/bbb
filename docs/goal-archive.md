@@ -17194,3 +17194,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   与 F3+I save-debug 不再维护固定 wire index/default/slot/mask aliases。
 - world/native fixtures 同步复用 bundle；schema generator 的 Fox 反向守卫扩展到所有 production
   consumers 与语义 fixtures，继续以 generated family schema 作为 flag mask 来源。
+
+## 2026-07-16：统一 Panda metadata accessor bundle 消费
+
+- 既有 Panda counters/genes/flags typed bundle 扩展为同时携带四个 named masks；world
+  sit/on-back/roll animation、native sneeze/sit/model/debug 不再单独消费 flags helper 或固定
+  wire index/default/mask aliases。
+- world/native/input fixtures 同步复用 bundle；schema generator 的 Panda 反向守卫覆盖所有
+  production consumers 与语义 fixtures，继续以 generated family schema 作为 mask 来源。

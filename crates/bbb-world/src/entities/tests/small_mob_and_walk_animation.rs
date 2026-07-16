@@ -446,13 +446,11 @@ fn entity_model_sources_project_bee_roll_amount() {
 #[test]
 fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
     const AGEABLE_BABY_DATA_ID: u8 = 16;
-    // Vanilla `Panda.DATA_ID_FLAGS` id 23: roll=4, sitting=8, onBack=16.
-    const PANDA_FLAGS_DATA_ID: u8 = 23;
-    const PANDA_FLAG_ROLLING: i8 = 0x04;
-    const PANDA_FLAG_SITTING: i8 = 0x08;
-    const PANDA_FLAG_ON_BACK: i8 = 0x10;
+    let accessors =
+        vanilla_entity_metadata_panda_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PANDA_ID)
+            .expect("generated Panda metadata accessors must resolve");
     let panda_flags = |raw: i8| ProtocolEntityDataValue {
-        data_id: PANDA_FLAGS_DATA_ID,
+        data_id: accessors.flags_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(raw),
     };
@@ -491,7 +489,7 @@ fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 82,
         values: vec![panda_flags(
-            PANDA_FLAG_SITTING | PANDA_FLAG_ON_BACK | PANDA_FLAG_ROLLING
+            accessors.sitting_mask | accessors.on_back_mask | accessors.rolling_mask
         )],
     }));
     store.advance_entity_client_animations(1);
@@ -523,7 +521,7 @@ fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 83,
-        values: vec![panda_flags(PANDA_FLAG_ROLLING)],
+        values: vec![panda_flags(accessors.rolling_mask)],
     }));
     store.advance_entity_client_animations(1);
     let baby = source(&store, 83, 0.5);
@@ -538,7 +536,7 @@ fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 84,
-        values: vec![panda_flags(PANDA_FLAG_ROLLING)],
+        values: vec![panda_flags(accessors.rolling_mask)],
     }));
     store.advance_entity_client_animations(33);
     assert!(
@@ -549,7 +547,7 @@ fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
         id: 84,
         // Unrelated data sync must not resurrect the old stored flags byte after
         // vanilla `handleRoll` has locally called `roll(false)`.
-        values: vec![protocol_int_data(18, 1)],
+        values: vec![protocol_int_data(accessors.unhappy_counter_data_id, 1)],
     }));
     store.advance_entity_client_animations(1);
     assert_eq!(source(&store, 84, 0.5).panda_roll_time, 0.0);

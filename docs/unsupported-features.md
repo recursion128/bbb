@@ -291,9 +291,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Vex charging membership, wire index and default must remain derived from generated
   `Vex.DATA_FLAGS_ID`; world and native render projection must not restore a Vex type predicate or
   fixed accessor aliases.
-  Panda pose/sneeze membership, wire index and default must remain derived from generated
-  `Panda.DATA_ID_FLAGS`; world animation and native render projection must not restore fixed
-  accessor aliases.
+  Panda counter/gene/pose/sneeze membership, wire indices, typed defaults and four named masks must
+  remain derived together from generated `UNHAPPY_COUNTER`, `SNEEZE_COUNTER`, `EAT_COUNTER`,
+  `MAIN_GENE_ID`, `HIDDEN_GENE_ID`, `DATA_ID_FLAGS` and `FLAG_*`; world/native consumers and
+  fixtures must not restore fixed accessor/default aliases or hand-copied flag masks.
   AbstractHorse pose/tame/debug membership, wire index and default must remain derived from
   generated `AbstractHorse.DATA_ID_FLAGS`; animation, mount inventory and native debug consumers
   must not restore fixed accessor aliases.

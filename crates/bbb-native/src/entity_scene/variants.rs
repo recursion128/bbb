@@ -1079,14 +1079,18 @@ pub(super) fn panda_is_unhappy(
     )
 }
 
-/// Vanilla `PandaRenderState.isSneezing = Panda.isSneezing()` (the synced `DATA_ID_FLAGS` byte, id 23,
-/// bit `0x02`): the panda dips its head into a sneeze. Gated to the panda type.
+/// Vanilla `PandaRenderState.isSneezing = Panda.isSneezing()` reads the synced
+/// `DATA_ID_FLAGS` byte's named sneeze mask: the panda dips its head into a sneeze.
 pub(super) fn panda_is_sneezing(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    vanilla_entity_metadata_panda_flags_accessor_for_entity_type(entity_type_id).is_some_and(
-        |(data_id, default)| entity_data_byte(values, data_id, default) & PANDA_SNEEZING_FLAG != 0,
+    vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id).is_some_and(
+        |accessors| {
+            entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
+                & accessors.sneezing_mask
+                != 0
+        },
     )
 }
 
@@ -1124,14 +1128,18 @@ pub(super) fn panda_is_eating(
     )
 }
 
-/// Vanilla `PandaRenderState.isSitting = Panda.isSitting()` (the synced `DATA_ID_FLAGS` byte, id 23, bit
-/// `0x08`). `PandaHoldsItemLayer` renders only in this state.
+/// Vanilla `PandaRenderState.isSitting = Panda.isSitting()` reads the synced
+/// `DATA_ID_FLAGS` byte's named sitting mask. `PandaHoldsItemLayer` renders only in this state.
 pub(super) fn panda_is_sitting(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    vanilla_entity_metadata_panda_flags_accessor_for_entity_type(entity_type_id).is_some_and(
-        |(data_id, default)| entity_data_byte(values, data_id, default) & PANDA_SITTING_FLAG != 0,
+    vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id).is_some_and(
+        |accessors| {
+            entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
+                & accessors.sitting_mask
+                != 0
+        },
     )
 }
 

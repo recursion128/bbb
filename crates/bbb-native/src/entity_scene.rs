@@ -61,7 +61,6 @@ use bbb_world::vanilla_entity_metadata_living_entity_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_llama_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_accessors_for_entity_type;
-use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type;
@@ -171,23 +170,6 @@ use bbb_world::{
     VANILLA_HORSE_COLOR_MASK as HORSE_COLOR_MASK,
     VANILLA_HORSE_MARKINGS_MASK as HORSE_MARKINGS_MASK,
     VANILLA_HORSE_MARKINGS_SHIFT as HORSE_MARKINGS_SHIFT,
-};
-#[cfg(test)]
-use bbb_world::{
-    VANILLA_PANDA_EAT_COUNTER_DATA_ID as PANDA_EAT_COUNTER_DATA_ID,
-    VANILLA_PANDA_HIDDEN_GENE_DATA_ID as PANDA_HIDDEN_GENE_DATA_ID,
-    VANILLA_PANDA_MAIN_GENE_DATA_ID as PANDA_MAIN_GENE_DATA_ID,
-    VANILLA_PANDA_SNEEZE_COUNTER_DATA_ID as PANDA_SNEEZE_COUNTER_DATA_ID,
-    VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID as PANDA_UNHAPPY_COUNTER_DATA_ID,
-};
-#[cfg(test)]
-use bbb_world::{
-    VANILLA_PANDA_FLAG_ON_BACK as PANDA_ON_BACK_FLAG,
-    VANILLA_PANDA_FLAG_ROLLING as PANDA_ROLLING_FLAG,
-};
-use bbb_world::{
-    VANILLA_PANDA_FLAG_SITTING as PANDA_SITTING_FLAG,
-    VANILLA_PANDA_FLAG_SNEEZING as PANDA_SNEEZING_FLAG,
 };
 use bbb_world::{
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
