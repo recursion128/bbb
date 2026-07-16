@@ -364,27 +364,22 @@ mod tests {
     }
 
     #[test]
-    fn maps_sign_block_names_to_wood_and_form() {
-        assert_eq!(
-            sign_wood_and_form_for_block_name("minecraft:oak_sign"),
-            Some((SignWoodKind::Oak, SignBlockForm::Standing))
-        );
-        assert_eq!(
-            sign_wood_and_form_for_block_name("minecraft:pale_oak_wall_sign"),
-            Some((SignWoodKind::PaleOak, SignBlockForm::Wall))
-        );
-        assert_eq!(
-            sign_wood_and_form_for_block_name("minecraft:bamboo_hanging_sign"),
-            Some((SignWoodKind::Bamboo, SignBlockForm::HangingCeiling))
-        );
-        assert_eq!(
-            sign_wood_and_form_for_block_name("minecraft:crimson_wall_hanging_sign"),
-            Some((SignWoodKind::Crimson, SignBlockForm::HangingWall))
-        );
-        assert_eq!(
-            sign_wood_and_form_for_block_name("minecraft:dark_oak_hanging_sign"),
-            Some((SignWoodKind::DarkOak, SignBlockForm::HangingCeiling))
-        );
+    fn maps_every_generated_sign_wood_name_to_each_block_form() {
+        for wood in vanilla_sign_wood_kinds() {
+            for (suffix, form) in [
+                ("_sign", SignBlockForm::Standing),
+                ("_wall_sign", SignBlockForm::Wall),
+                ("_hanging_sign", SignBlockForm::HangingCeiling),
+                ("_wall_hanging_sign", SignBlockForm::HangingWall),
+            ] {
+                let block_name = format!("minecraft:{}{suffix}", wood.name());
+                assert_eq!(
+                    sign_wood_and_form_for_block_name(&block_name),
+                    Some((wood, form)),
+                    "failed to parse {block_name}"
+                );
+            }
+        }
         // Non-sign blocks and non-wood "sign" suffixes stay out.
         assert_eq!(sign_wood_and_form_for_block_name("minecraft:chest"), None);
         assert_eq!(

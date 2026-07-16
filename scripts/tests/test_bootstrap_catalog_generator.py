@@ -139,10 +139,19 @@ class BootstrapCatalogGeneratorTests(unittest.TestCase):
             "minecraft:angler_pottery_sherd",
             "minecraft:angler_pottery_pattern",
         )
+        blank_pot = GENERATOR.DecoratedPotPatternEntry(
+            "BLANK",
+            "minecraft:blank",
+            "BRICK",
+            "minecraft:brick",
+            "minecraft:decorated_pot_side",
+        )
         rendered_pot = GENERATOR.render_decorated_pot_patterns(
-            [pot], {pot.asset_id: (17, 19)}
+            [pot, blank_pot],
+            {pot.asset_id: (17, 19), blank_pot.asset_id: (23, 29)},
         )
         self.assertIn("size: [17, 19]", rendered_pot)
+        self.assertIn("size: [23, 29]", rendered_pot)
 
         banner = GENERATOR.BannerPatternEntry(
             "BASE",

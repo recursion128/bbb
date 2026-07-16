@@ -17643,3 +17643,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   extraction 两侧都消费共享常量。
 - owner 常量测试继续固定 vanilla 26.1 的故意 surface 偏移；新增守卫覆盖 6 个 input 函数与
   5 个 HUD/offset 函数，防止任一侧恢复平行坐标声明，同时不改变既有交互或呈现行为。
+
+## 2026-07-16：强化 sign wood generated catalog 消费
+
+- world block-name parser 回归从 5 个代表木种扩为 generated `vanilla_sign_wood_kinds()` 全
+  12 项 × standing/wall/hanging-ceiling/hanging-wall 四种 form，期望 wood/name/order 不再由
+  fixture 重述。
+- bootstrap generated guard 精确检查 block-name parser、full-catalog fixture 与 native
+  hanging-sign GUI background loader 的函数体；loader 必须逐项消费 generated name，且禁止恢复
+  `HANGING_SIGN_BACKGROUNDS` 或代表性 wood variant 表。
