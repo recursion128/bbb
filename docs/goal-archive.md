@@ -17972,3 +17972,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   继承 AgeableMob metadata。
 - baby reverse guard 覆盖完整连续 mount 区段；coat/marking/chest/variant、adult/baby model，
   以及 ZombieNautilus/CamelHusk renderer 忽略 baby state 的回归保持不变。
+
+## 2026-07-16：统一 native input aquatic debug-save baby fixtures
+
+- native input tests 新增按 entity type 查询 generated nearest-baby accessor、校验默认 false 并
+  构造 Boolean metadata 的通用 helper；Axolotl、Nautilus、Dolphin、Frog debug-save fixtures
+  删除 4 处全局 AgeableMob baby alias。
+- baby reverse guard 覆盖 helper 与四个精确测试函数；Shift+F3+I 权限/目标选择、剪贴板 NBT、
+  age lock 和各实体专有 variant/state 字段回归保持不变。

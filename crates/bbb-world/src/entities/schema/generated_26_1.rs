@@ -22398,6 +22398,7 @@ mod generated_catalog_guards {
         let native_inventory_fixture =
             include_str!("../../../../bbb-native/src/input/inventory/tests.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         let native_scene_baby_helper = native_scene_tests
             .split("fn baby_data")
             .nth(1)
@@ -22412,6 +22413,11 @@ mod generated_catalog_guards {
                     .next()
             })
             .expect("native scene body-layer baby fixture source");
+        let native_input_baby_helper = native_input_tests
+            .split("fn baby_data")
+            .nth(1)
+            .and_then(|source| source.split("fn sniffer_baby_data").next())
+            .expect("native input baby helper source");
         let body = source
             .split("fn vanilla_is_baby")
             .nth(1)
@@ -22443,6 +22449,9 @@ mod generated_catalog_guards {
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(native_scene_baby_helper
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(native_input_baby_helper
+            .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(native_input_baby_helper.contains("assert!(!default"));
         assert_eq!(
             native_scene_body_layer_fixtures
                 .matches("baby_data(")
@@ -22639,6 +22648,37 @@ mod generated_catalog_guards {
                 !native_scene_mount_fixtures.contains(removed),
                 "native scene mount baby fixtures restored {removed}"
             );
+        }
+        for (start, end) in [
+            (
+                "fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard",
+            ),
+            (
+                "fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard",
+            ),
+            (
+                "fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard",
+            ),
+            (
+                "fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard",
+                "fn local_frog_save_uses_generated_default",
+            ),
+        ] {
+            let fixture = native_input_tests
+                .split(start)
+                .nth(1)
+                .and_then(|source| source.split(end).next())
+                .expect("native input aquatic baby fixture source");
+            assert_eq!(fixture.matches("baby_data(").count(), 1);
+            for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+                assert!(
+                    !fixture.contains(removed),
+                    "native input aquatic baby fixture restored {removed}"
+                );
+            }
         }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
