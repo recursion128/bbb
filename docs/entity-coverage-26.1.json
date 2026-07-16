@@ -7735,9 +7735,8 @@
           "status": "partial"
         },
         "spawn/default": {
-          "evidence_ref": "generic_spawn",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-spawn-and-defaults",
-          "status": "partial"
+          "evidence_ref": "turtle_spawn_defaults",
+          "status": "complete"
         },
         "transform/interpolation": {
           "evidence_ref": "generic_transform",
@@ -9003,6 +9002,26 @@
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void travelInWater",
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static class TurtleMoveControl",
         "vanilla:net/minecraft/client/renderer/entity/TurtleRenderer.java#public void extractRenderState"
+      ]
+    },
+    "turtle_spawn_defaults": {
+      "implementation": [
+        "crates/bbb-world/src/entities.rs#pub fn apply_add_entity",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn apply_add_entity_components",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn attribute_value",
+        "crates/bbb-world/src/entities/store.rs#fn vanilla_default_attribute_base",
+        "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_metadata_turtle_accessors_for_entity_type"
+      ],
+      "tests": [
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#turtle_pairing_state_uses_generated_defaults_and_resets_on_readd",
+        "crates/bbb-world/src/entities/schema.rs#generated_turtle_accessors_own_membership_indices_and_defaults"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#private @Nullable Entity createEntityFromPacket",
+        "vanilla:net/minecraft/world/entity/Entity.java#public void recreateFromPacket",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void defineSynchedData",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public static AttributeSupplier.Builder createAttributes()",
+        "vanilla:net/minecraft/server/level/ServerEntity.java#public void sendPairingData"
       ]
     }
   },

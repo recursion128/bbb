@@ -412,6 +412,136 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
 }
 
 #[test]
+fn turtle_pairing_state_uses_generated_defaults_and_resets_on_readd() {
+    let entity_id = 199;
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        entity_id,
+        VANILLA_ENTITY_TYPE_TURTLE_ID,
+        73,
+    ));
+
+    let turtle =
+        vanilla_entity_metadata_turtle_accessors_for_entity_type(VANILLA_ENTITY_TYPE_TURTLE_ID)
+            .expect("generated Turtle accessors");
+    let living = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_TURTLE_ID,
+    )
+    .expect("generated LivingEntity accessors for Turtle");
+    let spawned = store.probe_entity(entity_id).unwrap();
+    assert_eq!(spawned.entity_type_id, VANILLA_ENTITY_TYPE_TURTLE_ID);
+    assert_eq!(spawned.data, 73, "AddEntity data stays diagnostic state");
+    assert!(spawned.data_values.is_empty());
+    assert!(spawned.attributes.is_empty());
+    assert_eq!(turtle.has_egg_default, false);
+    assert_eq!(turtle.laying_egg_default, false);
+    assert_eq!(living.health_default, 1.0);
+    assert_eq!(
+        store.entities.attribute_value(
+            entity_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        ),
+        Some(30.0)
+    );
+    assert_eq!(
+        store.entities.attribute_value(
+            entity_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+        ),
+        Some(0.25)
+    );
+    assert_eq!(
+        store.entities.attribute_base_value(
+            entity_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_STEP_HEIGHT_ID,
+        ),
+        Some(1.0)
+    );
+    assert_eq!(
+        store.entities.metadata_bool_for_entity(
+            entity_id,
+            turtle.has_egg_data_id,
+            turtle.has_egg_default,
+        ),
+        Some(false)
+    );
+    assert_eq!(
+        store.entities.metadata_bool_for_entity(
+            entity_id,
+            turtle.laying_egg_data_id,
+            turtle.laying_egg_default,
+        ),
+        Some(false)
+    );
+
+    // ServerEntity.sendPairingData bundles non-default synced data and any
+    // instantiated client-syncable attributes after AddEntity. A packet value
+    // overrides the same constructor supplier defaults retained above.
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: entity_id,
+        values: vec![
+            protocol_float_data(living.health_data_id, 30.0),
+            protocol_bool_data(turtle.has_egg_data_id, true),
+            protocol_bool_data(turtle.laying_egg_data_id, true),
+        ],
+    }));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id,
+        attributes: vec![
+            ProtocolAttributeSnapshot {
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+                base: 42.0,
+                modifiers: Vec::new(),
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+                base: 0.4,
+                modifiers: Vec::new(),
+            },
+            ProtocolAttributeSnapshot {
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_STEP_HEIGHT_ID,
+                base: 1.5,
+                modifiers: Vec::new(),
+            },
+        ],
+    }));
+    assert_eq!(store.probe_entity(entity_id).unwrap().attributes.len(), 3);
+    assert_eq!(
+        store.entities.attribute_value(
+            entity_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        ),
+        Some(42.0)
+    );
+
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        entity_id,
+        VANILLA_ENTITY_TYPE_TURTLE_ID,
+        0,
+    ));
+    let replaced = store.probe_entity(entity_id).unwrap();
+    assert_eq!(replaced.data, 0);
+    assert!(replaced.data_values.is_empty());
+    assert!(replaced.attributes.is_empty());
+    assert_eq!(
+        store.entities.attribute_value(
+            entity_id,
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
+        ),
+        Some(30.0)
+    );
+    assert_eq!(
+        store.entities.metadata_bool_for_entity(
+            entity_id,
+            turtle.has_egg_data_id,
+            turtle.has_egg_default,
+        ),
+        Some(false)
+    );
+    assert_eq!(store.entity_count(), 1);
+}
+
+#[test]
 fn rotate_head_lerps_living_entities_over_three_client_ticks() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

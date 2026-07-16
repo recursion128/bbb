@@ -165,6 +165,26 @@
         "vanilla:net/minecraft/server/level/ServerLevel.java#public void playSeededSound"
       ]
     },
+    "turtle_spawn_defaults": {
+      "implementation": [
+        "crates/bbb-world/src/entities.rs#pub fn apply_add_entity",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn apply_add_entity_components",
+        "crates/bbb-world/src/entities/store.rs#pub(crate) fn attribute_value",
+        "crates/bbb-world/src/entities/store.rs#fn vanilla_default_attribute_base",
+        "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_metadata_turtle_accessors_for_entity_type"
+      ],
+      "tests": [
+        "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#turtle_pairing_state_uses_generated_defaults_and_resets_on_readd",
+        "crates/bbb-world/src/entities/schema.rs#generated_turtle_accessors_own_membership_indices_and_defaults"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#private @Nullable Entity createEntityFromPacket",
+        "vanilla:net/minecraft/world/entity/Entity.java#public void recreateFromPacket",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void defineSynchedData",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public static AttributeSupplier.Builder createAttributes()",
+        "vanilla:net/minecraft/server/level/ServerEntity.java#public void sendPairingData"
+      ]
+    },
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
@@ -274,6 +294,10 @@
       }
     },
     "minecraft:turtle": {
+      "spawn/default": {
+        "status": "complete",
+        "evidence_ref": "turtle_spawn_defaults"
+      },
       "client tick/movement": {
         "status": "not-applicable",
         "evidence_ref": "turtle_server_authoritative_movement",

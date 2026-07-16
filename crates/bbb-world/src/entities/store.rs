@@ -7,6 +7,10 @@ use bbb_protocol::attribute_modifier_types::{
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
     VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
 };
+use bbb_protocol::attribute_types::{
+    VANILLA_ATTRIBUTE_MAX_HEALTH_ID, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
+    VANILLA_ATTRIBUTE_STEP_HEIGHT_ID,
+};
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
     VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
@@ -16,6 +20,7 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TURTLE_ID;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
@@ -1358,22 +1363,26 @@ impl EntityStore {
 
     pub(crate) fn attribute_value(&self, id: i32, attribute_id: i32) -> Option<f64> {
         let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
         attributes
             .attributes
             .iter()
             .find(|attribute| attribute.attribute_id == attribute_id)
             .map(vanilla_attribute_value)
+            .or_else(|| vanilla_default_attribute_base(identity.entity_type_id, attribute_id))
     }
 
     pub(crate) fn attribute_base_value(&self, id: i32, attribute_id: i32) -> Option<f64> {
         let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let attributes = self.ecs.get::<&EntityAttributes>(entity).ok()?;
         attributes
             .attributes
             .iter()
             .find(|attribute| attribute.attribute_id == attribute_id)
             .map(|attribute| attribute.base)
+            .or_else(|| vanilla_default_attribute_base(identity.entity_type_id, attribute_id))
     }
 
     pub(crate) fn attribute_has_modifier(
@@ -4212,6 +4221,22 @@ fn vanilla_attribute_value(attribute: &ProtocolAttributeSnapshot) -> f64 {
         }
     }
     result
+}
+
+/// Family defaults from vanilla `DefaultAttributes`/`createAttributes`, used
+/// until a `ClientboundUpdateAttributesPacket` overrides the local supplier.
+/// Keep each family arm tied to focused spawn/default coverage rather than
+/// treating the registry-wide `Attributes` defaults as entity-specific values.
+fn vanilla_default_attribute_base(entity_type_id: i32, attribute_id: i32) -> Option<f64> {
+    if entity_type_id != VANILLA_ENTITY_TYPE_TURTLE_ID {
+        return None;
+    }
+    match attribute_id {
+        VANILLA_ATTRIBUTE_MAX_HEALTH_ID => Some(30.0),
+        VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID => Some(0.25),
+        VANILLA_ATTRIBUTE_STEP_HEIGHT_ID => Some(1.0),
+        _ => None,
+    }
 }
 
 fn shulker_attach_face(

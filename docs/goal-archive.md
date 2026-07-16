@@ -16823,3 +16823,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - ambient、step、swim、hurt、death 与 lay-egg 的选择和参数由服务端 Turtle 行为决定并经
   sound packet 下发；客户端通用 sound holder、registry、position/entity、audio resolver
   链保持 packet 给出的 source、volume、pitch 与 seed，因此不在客户端重演服务端随机选择。
+
+## 2026-07-16：Turtle spawn/default coverage
+
+- Turtle entity coverage 的 `spawn/default` 格由 partial 改为 complete。AddEntity 创建与同 id
+  replacement 复用 canonical component reset；generated metadata schema 提供 adult、无蛋、非
+  laying 的 typed defaults，packet data 仅保留为诊断状态，不改变 Turtle 默认投影。
+- vanilla 客户端从 `DefaultAttributes` 的 Turtle supplier 读取 `max_health=30.0`、
+  `movement_speed=0.25`、`step_height=1.0`，服务端 pairing 只补已实例化的 syncable
+  attributes。bbb 的 attribute query 因此新增同一组 family fallback，attribute packet 可覆盖，
+  re-add 后恢复 constructor defaults；focused test 锁定三态。
