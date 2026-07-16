@@ -17224,3 +17224,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   presentation、mount inventory 与 F3+I save-debug 不再维护固定 accessor/default/mask aliases。
 - world/native/inventory fixtures 同步按实际 entity type 解析 bundle；schema generator 的
   TamableAnimal 反向守卫覆盖所有 production consumers 与相关语义 fixtures。
+
+## 2026-07-16：统一 ArmorStand metadata accessor bundle 消费
+
+- ArmorStand client flags bundle 扩展为同时携带 small/show-arms/no-baseplate/marker 四个
+  named masks；world dimensions/pickability、native model 与 F3+I save-debug 不再单独消费
+  固定 mask aliases。
+- world/native/crosshair fixtures 同步复用 bundle 的七个 accessor、typed defaults 与 named
+  masks，不再以 renderer preview pose 或手写 wire 数字作为 metadata truth；generator 反向
+  守卫覆盖这些语义 fixtures。

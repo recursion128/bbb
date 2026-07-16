@@ -23860,19 +23860,26 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_armor_stand_accessors_do_not_restore_fixed_metadata_facts() {
+    fn armor_stand_consumers_do_not_restore_fixed_metadata_facts() {
         let dimensions = include_str!("../dimensions.rs");
+        let dimensions_tests = include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");
         let projectiles = include_str!("../projectiles.rs");
-        let projectiles = projectiles.split("#[cfg(test)]\nmod tests").next().unwrap();
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let native_crosshair = include_str!("../../../../bbb-native/src/crosshair.rs");
         for source in [
             dimensions,
+            dimensions_tests,
             projectiles,
             native_scene,
             native_variants,
+            native_scene_tests,
             native_input,
+            native_input_tests,
+            native_crosshair,
         ] {
             assert!(
                 source.contains("vanilla_entity_metadata_armor_stand_accessors_for_entity_type")
@@ -23893,28 +23900,25 @@ mod generated_catalog_guards {
             "ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE",
             "ARMOR_STAND_DEFAULT_LEFT_LEG_POSE",
             "ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE",
+            "ARMOR_STAND_CLIENT_FLAG_",
             "DEFAULT_ARMOR_STAND_MODEL_POSE",
         ] {
-            assert!(
-                !dimensions.contains(removed),
-                "dimensions restored {removed}"
-            );
-            assert!(
-                !projectiles.contains(removed),
-                "projectiles restored {removed}"
-            );
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                dimensions,
+                dimensions_tests,
+                projectiles,
+                native_scene,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+                native_crosshair,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "ArmorStand projection restored {removed}"
+                );
+            }
         }
     }
 

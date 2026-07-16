@@ -35,10 +35,8 @@ use super::schema::{
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
-    vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
+    vanilla_entity_scale_sanitizer, VanillaArmorStandMetadataAccessors,
+    VanillaEntityScaleSanitizer, VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
 use super::{
     is_vanilla_boat_type, is_vanilla_minecart_type, vanilla_entity_type_is_squid,
@@ -1192,14 +1190,14 @@ fn armor_stand_pick_bounds(
     entity_type_id: i32,
     data_values: &[EntityDataValue],
 ) -> Option<EntityPickBoundsState> {
-    let flags = armor_stand_client_flags(entity_type_id, data_values)?;
-    if flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
+    let (accessors, flags) = armor_stand_client_flags(entity_type_id, data_values)?;
+    if flags & accessors.marker_mask != 0 {
         return None;
     }
     if entity_data_pose(data_values) == VANILLA_ENTITY_POSE_SLEEPING_ID {
         return Some(living_sleeping_pick_bounds());
     }
-    let scale = if flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0 {
+    let scale = if flags & accessors.small_mask != 0 {
         ARMOR_STAND_SMALL_SCALE
     } else {
         1.0
@@ -1211,18 +1209,24 @@ fn armor_stand_pick_bounds(
     ))
 }
 
-fn armor_stand_client_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> Option<i8> {
+fn armor_stand_client_flags(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> Option<(VanillaArmorStandMetadataAccessors, i8)> {
     let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(entity_type_id)?;
-    Some(entity_data_byte(
-        data_values,
-        accessors.client_flags_data_id,
-        accessors.client_flags_default,
+    Some((
+        accessors,
+        entity_data_byte(
+            data_values,
+            accessors.client_flags_data_id,
+            accessors.client_flags_default,
+        ),
     ))
 }
 
 fn armor_stand_is_marker(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
     armor_stand_client_flags(entity_type_id, data_values)
-        .is_some_and(|flags| flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0)
+        .is_some_and(|(accessors, flags)| flags & accessors.marker_mask != 0)
 }
 
 fn apply_living_scale(

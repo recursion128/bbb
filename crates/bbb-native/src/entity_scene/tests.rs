@@ -10,16 +10,9 @@ use bbb_protocol::packets::{
     SwingAnimationTypeSummary, TagNetworkPayload, TeamCollisionRule, TeamVisibility,
     UpdateAttributes, UpdateTags, Vec3d,
 };
-use bbb_renderer::DEFAULT_ARMOR_STAND_MODEL_POSE;
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
-    VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-    VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID as ARMOR_STAND_HEAD_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID as ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID as ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID, VANILLA_BAT_FLAGS_DATA_ID,
     VANILLA_BAT_FLAG_RESTING, VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
@@ -44,6 +37,25 @@ fn bee_metadata_accessors() -> bbb_world::VanillaBeeMetadataAccessors {
 fn panda_metadata_accessors() -> bbb_world::VanillaPandaMetadataAccessors {
     vanilla_entity_metadata_panda_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PANDA_ID)
         .expect("generated Panda metadata accessors must resolve")
+}
+
+fn armor_stand_metadata_accessors() -> bbb_world::VanillaArmorStandMetadataAccessors {
+    vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    )
+    .expect("generated ArmorStand metadata accessors must resolve")
+}
+
+fn armor_stand_default_model_pose() -> ArmorStandModelPose {
+    let accessors = armor_stand_metadata_accessors();
+    ArmorStandModelPose {
+        head: accessors.head_pose_default,
+        body: accessors.body_pose_default,
+        left_arm: accessors.left_arm_pose_default,
+        right_arm: accessors.right_arm_pose_default,
+        left_leg: accessors.left_leg_pose_default,
+        right_leg: accessors.right_leg_pose_default,
+    }
 }
 
 fn tamable_animal_flags_data(entity_type_id: i32, tame: bool, sitting: bool) -> EntityDataValue {
@@ -6831,26 +6843,27 @@ fn entity_model_instances_project_llama_body_decor_render_state() {
 #[test]
 fn entity_model_instances_project_armor_stand_flags_and_pose() {
     let mut world = WorldStore::new();
+    let accessors = armor_stand_metadata_accessors();
     world.apply_add_entity(protocol_add_entity(
         5,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
         [1.0, 64.0, -2.0],
     ));
-    let mut pose = DEFAULT_ARMOR_STAND_MODEL_POSE;
+    let mut pose = armor_stand_default_model_pose();
     pose.body = [0.0, 15.0, 0.0];
     pose.left_arm = [-30.0, 0.0, -20.0];
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 5,
         values: vec![
             protocol_byte_data(
-                ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-                ARMOR_STAND_CLIENT_FLAG_SMALL
-                    | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
-                    | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE
-                    | ARMOR_STAND_CLIENT_FLAG_MARKER,
+                accessors.client_flags_data_id,
+                accessors.small_mask
+                    | accessors.show_arms_mask
+                    | accessors.no_baseplate_mask
+                    | accessors.marker_mask,
             ),
-            protocol_rotations_data(ARMOR_STAND_BODY_POSE_DATA_ID, pose.body),
-            protocol_rotations_data(ARMOR_STAND_LEFT_ARM_POSE_DATA_ID, pose.left_arm),
+            protocol_rotations_data(accessors.body_pose_data_id, pose.body),
+            protocol_rotations_data(accessors.left_arm_pose_data_id, pose.left_arm),
         ],
     }));
 
@@ -7737,6 +7750,8 @@ fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
 
 #[test]
 fn entity_model_kind_uses_exact_model_for_armor_stands() {
+    let accessors = armor_stand_metadata_accessors();
+    let default_pose = armor_stand_default_model_pose();
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, &[]),
         EntityModelKind::ArmorStand {
@@ -7744,18 +7759,18 @@ fn entity_model_kind_uses_exact_model_for_armor_stands() {
             marker: false,
             show_arms: false,
             show_base_plate: true,
-            pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+            pose: default_pose,
         }
     );
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
             &[protocol_byte_data(
-                ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-                ARMOR_STAND_CLIENT_FLAG_SMALL
-                    | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
-                    | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE
-                    | ARMOR_STAND_CLIENT_FLAG_MARKER,
+                accessors.client_flags_data_id,
+                accessors.small_mask
+                    | accessors.show_arms_mask
+                    | accessors.no_baseplate_mask
+                    | accessors.marker_mask,
             )],
         ),
         EntityModelKind::ArmorStand {
@@ -7763,11 +7778,11 @@ fn entity_model_kind_uses_exact_model_for_armor_stands() {
             marker: true,
             show_arms: true,
             show_base_plate: false,
-            pose: DEFAULT_ARMOR_STAND_MODEL_POSE,
+            pose: default_pose,
         }
     );
 
-    let mut pose = DEFAULT_ARMOR_STAND_MODEL_POSE;
+    let mut pose = default_pose;
     pose.head = [1.0, 2.0, 3.0];
     pose.right_arm = [-20.0, 5.0, 10.0];
     pose.left_leg = [4.0, 5.0, 6.0];
@@ -7775,9 +7790,9 @@ fn entity_model_kind_uses_exact_model_for_armor_stands() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
             &[
-                protocol_rotations_data(ARMOR_STAND_HEAD_POSE_DATA_ID, pose.head),
-                protocol_rotations_data(ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID, pose.right_arm),
-                protocol_rotations_data(ARMOR_STAND_LEFT_LEG_POSE_DATA_ID, pose.left_leg),
+                protocol_rotations_data(accessors.head_pose_data_id, pose.head),
+                protocol_rotations_data(accessors.right_arm_pose_data_id, pose.right_arm),
+                protocol_rotations_data(accessors.left_leg_pose_data_id, pose.left_leg),
             ],
         ),
         EntityModelKind::ArmorStand {

@@ -564,6 +564,10 @@ pub struct VanillaAbstractMinecartMetadataAccessors {
 pub struct VanillaArmorStandMetadataAccessors {
     pub client_flags_data_id: u8,
     pub client_flags_default: i8,
+    pub small_mask: i8,
+    pub show_arms_mask: i8,
+    pub no_baseplate_mask: i8,
+    pub marker_mask: i8,
     pub head_pose_data_id: u8,
     pub head_pose_default: [f32; 3],
     pub body_pose_data_id: u8,
@@ -2653,9 +2657,21 @@ pub fn vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
     let (right_arm_pose_data_id, right_arm_pose_default) = rotations("DATA_RIGHT_ARM_POSE")?;
     let (left_leg_pose_data_id, left_leg_pose_default) = rotations("DATA_LEFT_LEG_POSE")?;
     let (right_leg_pose_data_id, right_leg_pose_default) = rotations("DATA_RIGHT_LEG_POSE")?;
+    let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ArmorStand);
+    let mask = |name| {
+        schema
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == name && flag.data_id == client_flags.data_id)
+            .map(|flag| flag.mask)
+    };
     Some(VanillaArmorStandMetadataAccessors {
         client_flags_data_id: client_flags.data_id,
         client_flags_default,
+        small_mask: mask("CLIENT_FLAG_SMALL")?,
+        show_arms_mask: mask("CLIENT_FLAG_SHOW_ARMS")?,
+        no_baseplate_mask: mask("CLIENT_FLAG_NO_BASEPLATE")?,
+        marker_mask: mask("CLIENT_FLAG_MARKER")?,
         head_pose_data_id,
         head_pose_default,
         body_pose_data_id,
@@ -6412,20 +6428,24 @@ mod tests {
                 VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
             ),
             Some(VanillaArmorStandMetadataAccessors {
-                client_flags_data_id: 15,
-                client_flags_default: 0,
-                head_pose_data_id: 16,
-                head_pose_default: [0.0, 0.0, 0.0],
-                body_pose_data_id: 17,
-                body_pose_default: [0.0, 0.0, 0.0],
-                left_arm_pose_data_id: 18,
-                left_arm_pose_default: [-10.0, 0.0, -10.0],
-                right_arm_pose_data_id: 19,
-                right_arm_pose_default: [-15.0, 0.0, 10.0],
-                left_leg_pose_data_id: 20,
-                left_leg_pose_default: [-1.0, 0.0, -1.0],
-                right_leg_pose_data_id: 21,
-                right_leg_pose_default: [1.0, 0.0, 1.0],
+                client_flags_data_id: VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+                client_flags_default: VANILLA_ARMOR_STAND_DEFAULT_CLIENT_FLAGS,
+                small_mask: VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL,
+                show_arms_mask: VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
+                no_baseplate_mask: VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+                marker_mask: VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER,
+                head_pose_data_id: VANILLA_ARMOR_STAND_HEAD_POSE_DATA_ID,
+                head_pose_default: VANILLA_ARMOR_STAND_DEFAULT_HEAD_POSE,
+                body_pose_data_id: VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID,
+                body_pose_default: VANILLA_ARMOR_STAND_DEFAULT_BODY_POSE,
+                left_arm_pose_data_id: VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
+                left_arm_pose_default: VANILLA_ARMOR_STAND_DEFAULT_LEFT_ARM_POSE,
+                right_arm_pose_data_id: VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
+                right_arm_pose_default: VANILLA_ARMOR_STAND_DEFAULT_RIGHT_ARM_POSE,
+                left_leg_pose_data_id: VANILLA_ARMOR_STAND_LEFT_LEG_POSE_DATA_ID,
+                left_leg_pose_default: VANILLA_ARMOR_STAND_DEFAULT_LEFT_LEG_POSE,
+                right_leg_pose_data_id: VANILLA_ARMOR_STAND_RIGHT_LEG_POSE_DATA_ID,
+                right_leg_pose_default: VANILLA_ARMOR_STAND_DEFAULT_RIGHT_LEG_POSE,
             })
         );
         assert_eq!(

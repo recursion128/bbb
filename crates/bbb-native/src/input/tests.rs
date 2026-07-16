@@ -115,9 +115,6 @@ use bbb_world::{
 };
 use bbb_world::{
     VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
-    VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
-    VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-    VANILLA_ARMOR_STAND_LEFT_ARM_POSE_DATA_ID as ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
     VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
@@ -12370,6 +12367,10 @@ fn shift_f3_i_with_permission_copies_local_shulker_bullet_save_nbt_to_clipboard(
 fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    )
+    .expect("generated ArmorStand metadata accessors must resolve");
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 58,
@@ -12395,16 +12396,16 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_INVISIBLE),
             },
             ProtocolEntityDataValue {
-                data_id: ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+                data_id: accessors.client_flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
-                    ARMOR_STAND_CLIENT_FLAG_SMALL
-                        | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
-                        | ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+                    accessors.small_mask
+                        | accessors.show_arms_mask
+                        | accessors.no_baseplate_mask,
                 ),
             },
             ProtocolEntityDataValue {
-                data_id: ARMOR_STAND_BODY_POSE_DATA_ID,
+                data_id: accessors.body_pose_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
                 value: EntityDataValueKind::Rotations {
                     x: 0.0,
@@ -12413,7 +12414,7 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
                 },
             },
             ProtocolEntityDataValue {
-                data_id: ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
+                data_id: accessors.left_arm_pose_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
                 value: EntityDataValueKind::Rotations {
                     x: -30.0,

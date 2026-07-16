@@ -1081,9 +1081,22 @@ fn advancing_entity_client_animations_in_batches_matches_single_ticks() {
 #[test]
 fn armor_stand_pick_bounds_follow_client_flags() {
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(26, 5));
-    store.apply_add_entity(protocol_add_entity_with_type(27, 5));
-    store.apply_add_entity(protocol_add_entity_with_type(28, 5));
+    let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    )
+    .expect("generated ArmorStand metadata accessors must resolve");
+    store.apply_add_entity(protocol_add_entity_with_type(
+        26,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        27,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        28,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    ));
 
     assert_eq!(
         store.probe_entity_pick_bounds(26),
@@ -1092,11 +1105,10 @@ fn armor_stand_pick_bounds_follow_client_flags() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 27,
-        // `ArmorStand.DATA_CLIENT_FLAGS` data id (15): the SMALL bit (1) halves the pick bounds.
         values: vec![ProtocolEntityDataValue {
-            data_id: 15,
+            data_id: accessors.client_flags_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(1),
+            value: EntityDataValueKind::Byte(accessors.small_mask),
         }],
     }));
     assert_eq!(
@@ -1110,11 +1122,10 @@ fn armor_stand_pick_bounds_follow_client_flags() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 28,
-        // `ArmorStand.DATA_CLIENT_FLAGS` data id (15): the MARKER bit (0x10) zeroes the pick bounds.
         values: vec![ProtocolEntityDataValue {
-            data_id: 15,
+            data_id: accessors.client_flags_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(16),
+            value: EntityDataValueKind::Byte(accessors.marker_mask),
         }],
     }));
     assert_eq!(store.probe_entity_pick_bounds(28), None);
@@ -1122,18 +1133,16 @@ fn armor_stand_pick_bounds_follow_client_flags() {
 
 #[test]
 fn armor_stand_marker_has_model_target_without_pick_target() {
-    const ARMOR_STAND_CLIENT_FLAGS_DATA_ID: u8 = 15;
-    const ARMOR_STAND_CLIENT_FLAG_MARKER: i8 = 16;
-
     let mut store = WorldStore::new();
+    let accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    )
+    .expect("generated ArmorStand metadata accessors must resolve");
     store.apply_add_entity(protocol_add_entity_with_type(
         28,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
     ));
-    let marker_flag = protocol_byte_data(
-        ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-        ARMOR_STAND_CLIENT_FLAG_MARKER,
-    );
+    let marker_flag = protocol_byte_data(accessors.client_flags_data_id, accessors.marker_mask);
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 28,
         values: vec![marker_flag.clone()],

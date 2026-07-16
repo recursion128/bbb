@@ -15,7 +15,6 @@ use super::schema::{
     vanilla_entity_metadata_type_is_hurting_projectile, vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_metadata_type_is_projectile, vanilla_entity_metadata_type_is_wind_charge,
     VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS as ABSTRACT_ARROW_FLAG_NO_PHYSICS,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_MARKER_FLAG,
 };
 use super::{
     EntityHurtingProjectile, EntityIdentity, EntityMount, EntityPickBoundsState,
@@ -358,7 +357,7 @@ impl EntityStore {
                     accessors.client_flags_default,
                 )
                 .unwrap_or(accessors.client_flags_default)
-                    & ARMOR_STAND_MARKER_FLAG
+                    & accessors.marker_mask
                     == 0
             })
     }
@@ -402,7 +401,6 @@ fn is_vanilla_wind_charge_type(entity_type_id: i32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entities::schema::VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID;
     use crate::WorldStore;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_EGG_ID,
@@ -482,6 +480,10 @@ mod tests {
     #[test]
     fn owner_collision_pickability_uses_generated_class_and_tag_membership() {
         let mut store = WorldStore::new();
+        let armor_stand_accessors = vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        )
+        .expect("generated ArmorStand metadata accessors must resolve");
         for (id, entity_type_id) in [
             (10, VANILLA_ENTITY_TYPE_COW_ID),
             (11, VANILLA_ENTITY_TYPE_OAK_BOAT_ID),
@@ -513,10 +515,10 @@ mod tests {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 15,
             values: vec![ProtocolEntityDataValue {
-                data_id: ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
+                data_id: armor_stand_accessors.client_flags_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ARMOR_STAND_MARKER_FLAG),
+                value: EntityDataValueKind::Byte(armor_stand_accessors.marker_mask),
             }],
         }));
         assert!(!store

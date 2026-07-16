@@ -1252,6 +1252,10 @@ mod tests {
     #[test]
     fn crosshair_target_skips_marker_armor_stand() {
         let mut world = WorldStore::new();
+        let accessors = bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+        )
+        .expect("generated ArmorStand metadata accessors must resolve");
         world.apply_add_entity(protocol_add_entity(
             12,
             VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
@@ -1259,11 +1263,10 @@ mod tests {
         ));
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 12,
-            // Vanilla `ArmorStand.DATA_CLIENT_FLAGS` data id (15) carrying the MARKER bit (0x10).
             values: vec![EntityDataValue {
-                data_id: 15,
+                data_id: accessors.client_flags_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(16),
+                value: EntityDataValueKind::Byte(accessors.marker_mask),
             }],
         }));
 

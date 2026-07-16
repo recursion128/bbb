@@ -1415,10 +1415,10 @@ pub(super) fn armor_stand_model_kind(
         accessors.client_flags_default,
     );
     EntityModelKind::ArmorStand {
-        small: flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0,
-        marker: flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0,
-        show_arms: flags & ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS != 0,
-        show_base_plate: flags & ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE == 0,
+        small: flags & accessors.small_mask != 0,
+        marker: flags & accessors.marker_mask != 0,
+        show_arms: flags & accessors.show_arms_mask != 0,
+        show_base_plate: flags & accessors.no_baseplate_mask == 0,
         pose: armor_stand_pose(values, accessors),
     }
 }

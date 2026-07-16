@@ -148,10 +148,6 @@ use bbb_world::{
     VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
     VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE as ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
@@ -6728,17 +6724,17 @@ fn debug_push_armor_stand_additional_save_data(entity: &EntityState, fields: &mu
     {
         fields.push(format!(
             "Small: {}",
-            debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_SMALL != 0)
+            debug_snbt_bool(client_flags & accessors.small_mask != 0)
         ));
         fields.push(format!(
             "ShowArms: {}",
-            debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS != 0)
+            debug_snbt_bool(client_flags & accessors.show_arms_mask != 0)
         ));
         fields.push(format!(
             "NoBasePlate: {}",
-            debug_snbt_bool(client_flags & ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE != 0)
+            debug_snbt_bool(client_flags & accessors.no_baseplate_mask != 0)
         ));
-        if client_flags & ARMOR_STAND_CLIENT_FLAG_MARKER != 0 {
+        if client_flags & accessors.marker_mask != 0 {
             fields.push("Marker: 1b".to_string());
         }
     }

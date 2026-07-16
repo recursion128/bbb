@@ -309,9 +309,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `Arrow.ID_EFFECT_COLOR`, `ThrownTrident.ID_LOYALTY` and `ThrownTrident.ID_FOIL`; animation,
   projectile lifecycle, pickup/particle, native render and debug consumers must not restore fixed
   accessor/default aliases or confuse sibling ownership.
-  ArmorStand client flags and six pose accessors, wire indices and typed defaults must remain
-  derived from the generated `ArmorStand` schema; world bounds/pickability and native model/debug
-  consumers must not restore fixed metadata aliases or use the renderer preview pose as wire truth.
+  ArmorStand client flags, four named masks and six pose accessors, wire indices and typed defaults
+  must remain derived together from the generated `ArmorStand` schema; world bounds/pickability,
+  native model/debug and their fixtures must not restore fixed metadata aliases, hand-copied masks
+  or use the renderer preview pose as wire truth.
   Interaction width, height and response membership, wire indices and typed defaults must remain
   derived from generated `DATA_WIDTH_ID`, `DATA_HEIGHT_ID` and `DATA_RESPONSE_ID`; world bounds and
   native debug consumers must not restore fixed metadata aliases.
