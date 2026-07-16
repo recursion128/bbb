@@ -18080,3 +18080,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   77 个 Shift+F3+I debug-save payload 删除固定 Mob wire id/masks。
 - 父模块删除仅供测试的旧常量导入；Mob reverse guard 纳入完整 `input.rs` 与 input tests，
   全实体本地 save NBT、循环 membership dispatch、NoAI/LeftHanded 省略规则回归保持不变。
+
+## 2026-07-16：统一 native input AgeLocked accessor 消费
+
+- world schema 新增沿 generated class hierarchy 查询最近 `AGE_LOCKED` BOOLEAN/default 的 typed
+  accessor，覆盖 `AgeableMob` 继承字段与 Tadpole 独立同语义字段，并公开给 native 消费。
+- native debug-save 以单一 helper 投影两条生产路径；input tests 通过 world 中目标 id 获取实际
+  entity type，39 个 payload 删除固定 AgeableMob/Tadpole wire id，统一校验 generated false
+  default。reverse guard 锁定 schema、生产 helper、调用计数并禁止旧别名回流。

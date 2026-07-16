@@ -3596,6 +3596,22 @@ pub fn vanilla_entity_metadata_baby_accessor_for_entity_type(
     }
 }
 
+/// Resolves the nearest generated boolean `AGE_LOCKED` accessor and its typed default.
+///
+/// Vanilla declares this field on `AgeableMob` and independently on `Tadpole`; walking the
+/// generated schema hierarchy preserves both owners without a parallel entity-type table.
+pub fn vanilla_entity_metadata_age_locked_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "AGE_LOCKED")?;
+    match (accessor.serializer_name, accessor.typed_default) {
+        ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
+            Some((accessor.data_id, default))
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the generated Zombie baby, special-type and drowned-conversion accessors and defaults.
 pub fn vanilla_entity_metadata_zombie_accessors_for_entity_type(
     entity_type_id: i32,
@@ -4625,6 +4641,18 @@ mod tests {
             vanilla_entity_metadata_baby_accessor_for_entity_type(-1),
             None
         );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID] {
+            assert_eq!(
+                vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id),
+                Some((17, false))
+            );
+        }
+        for entity_type_id in [VANILLA_ENTITY_TYPE_ZOMBIE_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_EVOKER_ID,
             VANILLA_ENTITY_TYPE_ILLUSIONER_ID,

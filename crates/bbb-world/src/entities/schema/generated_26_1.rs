@@ -22388,6 +22388,7 @@ mod generated_catalog_guards {
 
     #[test]
     fn production_baby_projection_does_not_restore_entity_type_membership() {
+        let schema = include_str!("../schema.rs");
         let source = include_str!("../dimensions.rs");
         let fixture = include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");
         let model_source_fixture = include_str!("../tests/vehicle_and_block_entity_projection.rs");
@@ -22426,6 +22427,11 @@ mod generated_catalog_guards {
             .nth(1)
             .and_then(|source| source.split("fn sniffer_baby_data").next())
             .expect("native input baby helper source");
+        let native_input_age_locked_helper = native_input_tests
+            .split("fn age_locked_data")
+            .nth(1)
+            .and_then(|source| source.split("fn mob_flags_data").next())
+            .expect("native input age-locked helper source");
         let body = source
             .split("fn vanilla_is_baby")
             .nth(1)
@@ -22549,6 +22555,45 @@ mod generated_catalog_guards {
         assert!(native_input_debug_save
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(native_input_debug_save.contains("entity.entity_type_id"));
+        let native_input_age_locked_debug_save = native_input
+            .split("fn debug_push_age_locked_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_animal_additional_save_data")
+                    .next()
+            })
+            .expect("native input age-locked debug-save source");
+        assert!(
+            schema.contains("pub fn vanilla_entity_metadata_age_locked_accessor_for_entity_type")
+        );
+        assert!(schema.contains(
+            "vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, \"AGE_LOCKED\")"
+        ));
+        assert!(native_input_age_locked_helper.contains("entity_type_id(entity_id)"));
+        assert!(native_input_age_locked_helper
+            .contains("vanilla_entity_metadata_age_locked_accessor_for_entity_type"));
+        assert!(native_input_age_locked_helper.contains("assert!(!default"));
+        assert!(native_input_age_locked_debug_save
+            .contains("vanilla_entity_metadata_age_locked_accessor_for_entity_type"));
+        assert!(native_input_age_locked_debug_save.contains("entity.entity_type_id"));
+        assert_eq!(
+            native_input_tests.matches("age_locked_data(&world").count(),
+            39
+        );
+        for removed in [
+            "AGEABLE_MOB_AGE_LOCKED_DATA_ID",
+            "TADPOLE_AGE_LOCKED_DATA_ID",
+        ] {
+            assert!(
+                !native_input.contains(removed),
+                "native input age-locked production restored {removed}"
+            );
+            assert!(
+                !native_input_tests.contains(removed),
+                "native input age-locked fixtures restored {removed}"
+            );
+        }
         assert_eq!(
             native_scene_body_layer_fixtures
                 .matches("baby_data(")

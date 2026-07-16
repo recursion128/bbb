@@ -320,6 +320,26 @@ fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
     }
 }
 
+fn age_locked_data(
+    world: &WorldStore,
+    entity_id: i32,
+    age_locked: bool,
+) -> ProtocolEntityDataValue {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("age-locked fixture entity must exist before metadata is constructed");
+    let (data_id, default) =
+        vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity_type_id)
+            .expect("generated nearest age-locked accessor must resolve");
+    assert!(!default, "vanilla age-locked default must be false");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(age_locked),
+    }
+}
+
 fn mob_flags_data(
     world: &WorldStore,
     entity_id: i32,
@@ -3920,11 +3940,7 @@ fn shift_f3_i_with_permission_copies_local_armadillo_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 50, true),
             armadillo_state_data(ARMADILLO_STATE_SCARED_ID),
         ],
     }));
@@ -4086,21 +4102,19 @@ fn shift_f3_i_with_permission_copies_local_bee_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 50, true),
             ProtocolEntityDataValue {
                 data_id: bee_accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     bee_accessors.has_nectar_mask | bee_accessors.has_stung_mask,
                 ),
             },
             ProtocolEntityDataValue {
                 data_id: bee_accessors.anger_end_time_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
                 value: EntityDataValueKind::Long(240),
             },
         ],
@@ -4624,11 +4638,7 @@ fn shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 50, true),
             ProtocolEntityDataValue {
                 data_id: TURTLE_HAS_EGG_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4708,11 +4718,7 @@ fn shift_f3_i_with_permission_copies_local_tadpole_save_nbt_to_clipboard() {
         id: 56,
         values: vec![
             mob_flags_data(&world, 56, true, true),
-            ProtocolEntityDataValue {
-                data_id: TADPOLE_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 56, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -4786,11 +4792,7 @@ fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 57, true, true),
             baby_data(VANILLA_ENTITY_TYPE_AXOLOTL_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 57, true),
             axolotl_variant_data(9),
             ProtocolEntityDataValue {
                 data_id: AXOLOTL_FROM_BUCKET_DATA_ID,
@@ -4870,11 +4872,7 @@ fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 88, true, true),
             baby_data(VANILLA_ENTITY_TYPE_NAUTILUS_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 88, true),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_NAUTILUS_ID, false, true),
         ],
     }));
@@ -4961,11 +4959,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
         id: 89,
         values: vec![
             mob_flags_data(&world, 89, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 89, true),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, false, true),
             ProtocolEntityDataValue {
                 data_id: zombie_nautilus_variant_data_id,
@@ -5075,11 +5069,7 @@ fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 66, true, true),
             baby_data(VANILLA_ENTITY_TYPE_DOLPHIN_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 66, true),
             ProtocolEntityDataValue {
                 data_id: accessors.got_fish_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -5175,11 +5165,7 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 67, true, true),
             baby_data(VANILLA_ENTITY_TYPE_FROG_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 67, true),
             ProtocolEntityDataValue {
                 data_id: frog_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
@@ -5281,11 +5267,7 @@ fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 58, true, true),
             baby_data(VANILLA_ENTITY_TYPE_RABBIT_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 58, true),
             rabbit_type_data(99),
         ],
     }));
@@ -5360,11 +5342,7 @@ fn shift_f3_i_with_permission_copies_local_ocelot_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 59, true, true),
             baby_data(VANILLA_ENTITY_TYPE_OCELOT_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 59, true),
             ProtocolEntityDataValue {
                 data_id: OCELOT_TRUSTING_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -5443,11 +5421,7 @@ fn shift_f3_i_with_permission_copies_local_sheep_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 60, true, true),
             baby_data(VANILLA_ENTITY_TYPE_SHEEP_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 60, true),
             sheep_wool_data(14, true),
         ],
     }));
@@ -5540,11 +5514,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 61, true, true),
             baby_data(VANILLA_ENTITY_TYPE_PIG_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 61, true),
             ProtocolEntityDataValue {
                 data_id: PIG_VARIANT_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID,
@@ -5716,11 +5686,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 62, true, true),
             baby_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 62, true),
             ProtocolEntityDataValue {
                 data_id: CHICKEN_VARIANT_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID,
@@ -5857,11 +5823,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 63, true, true),
             baby_data(VANILLA_ENTITY_TYPE_COW_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 63, true),
             ProtocolEntityDataValue {
                 data_id: COW_VARIANT_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
@@ -5987,11 +5949,7 @@ fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 64, true, true),
             baby_data(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 64, true),
             mushroom_cow_variant_data(1),
         ],
     }));
@@ -6066,11 +6024,7 @@ fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 65, true, true),
             baby_data(VANILLA_ENTITY_TYPE_GOAT_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 65, true),
             ProtocolEntityDataValue {
                 data_id: GOAT_SCREAMING_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -6165,11 +6119,7 @@ fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 68, true, true),
             baby_data(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 68, true),
             ProtocolEntityDataValue {
                 data_id: standing_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -6251,34 +6201,35 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 69, true, true),
             baby_data(VANILLA_ENTITY_TYPE_PANDA_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 69, true),
             ProtocolEntityDataValue {
                 data_id: accessors.unhappy_counter_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(12),
             },
             ProtocolEntityDataValue {
                 data_id: accessors.eat_counter_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(4),
             },
             ProtocolEntityDataValue {
                 data_id: accessors.main_gene_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(4),
             },
             ProtocolEntityDataValue {
                 data_id: accessors.hidden_gene_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(1),
             },
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     accessors.rolling_mask | accessors.sitting_mask | accessors.on_back_mask,
                 ),
@@ -6359,11 +6310,7 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 71, true, true),
             baby_data(VANILLA_ENTITY_TYPE_PARROT_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 71, true),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_PARROT_ID, false, true),
             parrot_variant_data(3),
         ],
@@ -6518,15 +6465,12 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 70, true, true),
             sniffer_baby_data(true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 70, true),
             sniffer_state_data(VANILLA_SNIFFER_STATE_DIGGING_ID),
             ProtocolEntityDataValue {
                 data_id: VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(1234),
             },
         ],
@@ -6604,11 +6548,7 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 72, true, true),
             baby_data(VANILLA_ENTITY_TYPE_STRIDER_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 72, true),
             ProtocolEntityDataValue {
                 data_id: STRIDER_BOOST_TIME_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
@@ -6692,11 +6632,7 @@ fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 73, true, true),
             baby_data(VANILLA_ENTITY_TYPE_HOGLIN_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 73, true),
             ProtocolEntityDataValue {
                 data_id: zombification_immunity_data_id(VANILLA_ENTITY_TYPE_HOGLIN_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -6776,21 +6712,19 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
         id: 76,
         values: vec![
             mob_flags_data(&world, 76, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 76, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     accessors.eating_mask | accessors.bred_mask | accessors.tame_mask,
                 ),
             },
             ProtocolEntityDataValue {
                 data_id: HORSE_VARIANT_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(4 | (2 << 8)),
             },
         ],
@@ -6879,11 +6813,7 @@ fn shift_f3_i_with_permission_copies_local_camel_family_save_nbt_to_clipboard() 
             id: 79,
             values: vec![
                 mob_flags_data(&world, 79, true, true),
-                ProtocolEntityDataValue {
-                    data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                    value: EntityDataValueKind::Boolean(true),
-                },
+                age_locked_data(&world, 79, true),
                 ProtocolEntityDataValue {
                     data_id: accessors.flags_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
@@ -6994,11 +6924,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
         id: 85,
         values: vec![
             mob_flags_data(&world, 85, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 85, true),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
             ProtocolEntityDataValue {
                 data_id: variant_accessors.variant_data_id,
@@ -7146,11 +7072,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
         id: 86,
         values: vec![
             mob_flags_data(&world, 86, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 86, true),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_WOLF_ID, false, true),
             ProtocolEntityDataValue {
                 data_id: accessors.collar_color_data_id,
@@ -7284,11 +7206,7 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
         id: 87,
         values: vec![
             mob_flags_data(&world, 87, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 87, true),
             ProtocolEntityDataValue {
                 data_id: accessors.type_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
@@ -7394,12 +7312,7 @@ fn debug_save_data_abstract_chested_horse_class_dispatch_uses_generated_membersh
         });
         let mut values = vec![
             mob_flags_data(&world, 81, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 81, true),
             ProtocolEntityDataValue {
                 data_id: horse_accessors.flags_data_id,
                 serializer_id:
@@ -7481,11 +7394,7 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
         id: 81,
         values: vec![
             mob_flags_data(&world, 81, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 81, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
@@ -7570,14 +7479,11 @@ fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
         id: 82,
         values: vec![
             mob_flags_data(&world, 82, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 82, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(accessors.bred_mask),
             },
         ],
@@ -7654,11 +7560,7 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
         id: 83,
         values: vec![
             mob_flags_data(&world, 83, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 83, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
@@ -7754,24 +7656,23 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
         id: 84,
         values: vec![
             mob_flags_data(&world, 84, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 84, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(accessors.tame_mask),
             },
             ProtocolEntityDataValue {
                 data_id: LLAMA_STRENGTH_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(4),
             },
             ProtocolEntityDataValue {
                 data_id: LLAMA_VARIANT_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(3),
             },
         ],
@@ -7849,14 +7750,11 @@ fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard(
         id: 77,
         values: vec![
             mob_flags_data(&world, 77, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 77, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(accessors.tame_mask),
             },
         ],
@@ -7933,14 +7831,11 @@ fn shift_f3_i_with_permission_copies_local_zombie_horse_save_nbt_to_clipboard() 
         id: 78,
         values: vec![
             mob_flags_data(&world, 78, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 78, true),
             ProtocolEntityDataValue {
                 data_id: accessors.flags_data_id,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(accessors.bred_mask),
             },
         ],
@@ -12791,11 +12686,7 @@ fn shift_f3_i_with_permission_copies_local_happy_ghast_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 50, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -13006,14 +12897,11 @@ fn shift_f3_i_with_permission_copies_local_glow_squid_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, true, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 50, true),
             ProtocolEntityDataValue {
                 data_id: glow_squid_dark_ticks_data_id(),
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(77),
             },
         ],
@@ -13089,11 +12977,7 @@ fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 51, true, true),
             baby_data(VANILLA_ENTITY_TYPE_SQUID_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 51, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -13547,11 +13431,7 @@ fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboar
         values: vec![
             mob_flags_data(&world, 52, true, true),
             baby_data(VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, true),
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            age_locked_data(&world, 52, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

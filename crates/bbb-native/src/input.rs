@@ -75,6 +75,7 @@ use bbb_protocol::{
 use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_horse_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_age_locked_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
@@ -141,7 +142,6 @@ use bbb_world::{
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos, EntityState,
     EntityVec3, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
     VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
-    VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
 };
 use bbb_world::{
     vanilla_painting_variant_resource_id,
@@ -151,7 +151,6 @@ use bbb_world::{
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
     VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
     VANILLA_OCELOT_TRUSTING_DATA_ID as OCELOT_TRUSTING_DATA_ID,
-    VANILLA_TADPOLE_AGE_LOCKED_DATA_ID as TADPOLE_AGE_LOCKED_DATA_ID,
     VANILLA_ZOGLIN_BABY_DATA_ID as ZOGLIN_BABY_DATA_ID,
     VANILLA_ZOGLIN_DEFAULT_BABY as ZOGLIN_DEFAULT_BABY,
 };
@@ -6824,8 +6823,16 @@ fn debug_push_ageable_mob_additional_save_data(entity: &EntityState, fields: &mu
             fields.push(format!("Age: {age}"));
         }
     }
-    if let Some(age_locked) = debug_entity_data_bool_present(entity, AGEABLE_MOB_AGE_LOCKED_DATA_ID)
-    {
+    debug_push_age_locked_additional_save_data(entity, fields);
+}
+
+fn debug_push_age_locked_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some((data_id, _default)) =
+        vanilla_entity_metadata_age_locked_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    if let Some(age_locked) = debug_entity_data_bool_present(entity, data_id) {
         fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
     }
 }
@@ -7765,9 +7772,7 @@ fn debug_salmon_variant_name(variant: i32) -> &'static str {
 fn debug_push_skeleton_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_tadpole_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    if let Some(age_locked) = debug_entity_data_bool_present(entity, TADPOLE_AGE_LOCKED_DATA_ID) {
-        fields.push(format!("AgeLocked: {}", debug_snbt_bool(age_locked)));
-    }
+    debug_push_age_locked_additional_save_data(entity, fields);
 }
 
 fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {

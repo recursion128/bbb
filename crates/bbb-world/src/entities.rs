@@ -93,6 +93,7 @@ pub use schema::{
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
+    vanilla_entity_metadata_age_locked_accessor_for_entity_type,
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,

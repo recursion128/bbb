@@ -158,7 +158,7 @@ Owner: `scripts/` + each generated catalog's semantic crate
   input debug-save fixtures and production AgeableMob save projection, world mount-inventory fixture
   and production visibility projection, world animal audio fixture coverage, and native entity-scene
   production model/baby and Mob aggressive fixtures, world combat-state Mob flag fixtures, and native
-  input debug-save Mob flag fixtures, plus
+  input debug-save Mob flag and AgeLocked fixtures/production projection, plus
   pose/shared-base fixtures outside
   movement/swim, combat-state, player-sleeping,
   creature pick-bounds projection, transient Breeze animation, aquatic Frog walk animation,
