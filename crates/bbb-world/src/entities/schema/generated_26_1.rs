@@ -22401,6 +22401,9 @@ mod generated_catalog_guards {
         let world_audio_fixture = include_str!("../../client/audio.rs");
         let native_inventory_fixture =
             include_str!("../../../../bbb-native/src/input/inventory/tests.rs");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
@@ -22506,6 +22509,29 @@ mod generated_catalog_guards {
         }
         assert!(native_inventory_fixture
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        let native_scene_production_helper = native_variants
+            .split("pub(super) fn ageable_baby")
+            .nth(1)
+            .and_then(|source| source.split("pub(super) fn armadillo_rolled_up").next())
+            .expect("native scene production baby helper source");
+        assert!(native_scene.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(native_scene_production_helper.contains("entity_type_id"));
+        assert!(native_scene_production_helper
+            .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert_eq!(
+            native_kind
+                .matches("ageable_baby(entity_type_id, data_values)")
+                .count(),
+            15
+        );
+        assert_eq!(
+            native_variants
+                .matches("ageable_baby(entity_type_id, values)")
+                .count(),
+            17
+        );
+        assert!(!native_kind.contains("ageable_baby(data_values)"));
+        assert!(!native_variants.contains("ageable_baby(values)"));
         assert!(native_scene_baby_helper
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(native_input_baby_helper
@@ -22858,6 +22884,9 @@ mod generated_catalog_guards {
                 world_inventory,
                 world_inventory_slot_ops,
                 native_inventory_fixture,
+                native_scene,
+                native_kind,
+                native_variants,
                 native_input,
             ] {
                 assert!(

@@ -42,6 +42,7 @@ use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
@@ -99,8 +100,6 @@ use bbb_world::{
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, VanillaArmorStandMetadataAccessors,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WolfVariantPresentation, WorldStore,
     ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
-    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
-    VANILLA_AGEABLE_MOB_DEFAULT_BABY as AGEABLE_MOB_DEFAULT_BABY,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION as AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID as AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
 };

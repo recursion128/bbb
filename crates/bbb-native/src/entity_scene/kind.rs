@@ -91,7 +91,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             },
         },
         VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityModelKind::Villager {
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         // Vanilla `WanderingTraderRenderer` is a plain `MobRenderer` with
         // `VillagerModel(ModelLayers.WANDERING_TRADER)`, not an `AgeableMobRenderer`.
@@ -129,25 +129,25 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID => mooshroom_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_PANDA_ID => panda_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer {
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_RAVAGER_ID => EntityModelKind::Ravager,
         VANILLA_ENTITY_TYPE_HOGLIN_ID => EntityModelKind::Hoglin {
             family: HoglinModelFamily::Hoglin,
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_ZOGLIN_ID => EntityModelKind::Hoglin {
             family: HoglinModelFamily::Zoglin,
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => EntityModelKind::PolarBear {
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_SHEEP_ID => {
             sheep_model_kind(entity_type_id, data_values, entity_age_ticks)
         }
         VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
             variant: horse_color_variant(entity_type_id, data_values),
             markings: horse_markings(entity_type_id, data_values),
         },
@@ -157,15 +157,17 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_MULE_ID => {
             donkey_model_kind(entity_type_id, DonkeyModelFamily::Mule, data_values)
         }
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID => {
-            undead_horse_model_kind(UndeadHorseModelFamily::Skeleton, data_values)
-        }
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID => undead_horse_model_kind(
+            entity_type_id,
+            UndeadHorseModelFamily::Skeleton,
+            data_values,
+        ),
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
-            undead_horse_model_kind(UndeadHorseModelFamily::Zombie, data_values)
+            undead_horse_model_kind(entity_type_id, UndeadHorseModelFamily::Zombie, data_values)
         }
         VANILLA_ENTITY_TYPE_CAMEL_ID => EntityModelKind::Camel {
             family: CamelModelFamily::Camel,
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID => EntityModelKind::Camel {
             family: CamelModelFamily::CamelHusk,
@@ -178,7 +180,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             llama_model_kind(entity_type_id, LlamaModelFamily::TraderLlama, data_values)
         }
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(entity_type_id, data_values),
-        VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(data_values),
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID => {
             zombie_nautilus_model_kind(data_values, variant_registries)
         }
@@ -245,7 +247,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID => boat(BoatModelFamily::Spruce, true),
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => EntityModelKind::Armadillo {
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
             rolled_up: armadillo_rolled_up(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
@@ -254,13 +256,13 @@ pub(super) fn entity_model_kind_with_time_and_registries(
                     .map(|(data_id, default)| entity_data_int(data_values, data_id, default))
                     .unwrap_or_default();
             EntityModelKind::Axolotl {
-                baby: ageable_baby(data_values),
+                baby: ageable_baby(entity_type_id, data_values),
                 variant: AxolotlModelVariant::from_id(variant),
             }
         }
         VANILLA_ENTITY_TYPE_BAT_ID => EntityModelKind::Bat,
         VANILLA_ENTITY_TYPE_BEE_ID => EntityModelKind::Bee {
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
             angry: bee_is_angry(entity_type_id, data_values, game_time),
             has_nectar: bee_has_nectar(entity_type_id, data_values),
         },
@@ -279,7 +281,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
                 .is_some_and(|(data_id, default)| entity_data_bool(data_values, data_id, default)),
         },
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => EntityModelKind::Dolphin {
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => EntityModelKind::Guardian { elder: true },
         VANILLA_ENTITY_TYPE_ENDERMITE_ID => EntityModelKind::Endermite,
@@ -303,7 +305,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => EntityModelKind::Squid {
             glow: true,
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_GUARDIAN_ID => EntityModelKind::Guardian { elder: false },
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
@@ -338,7 +340,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_SPIDER_ID => EntityModelKind::Spider,
         VANILLA_ENTITY_TYPE_SQUID_ID => EntityModelKind::Squid {
             glow: false,
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_STRIDER_ID => {
             let cold = vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
@@ -346,7 +348,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             )
             .is_some_and(|(data_id, default)| entity_data_bool(data_values, data_id, default));
             EntityModelKind::Strider {
-                baby: ageable_baby(data_values),
+                baby: ageable_baby(entity_type_id, data_values),
                 cold,
             }
         }
@@ -359,7 +361,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             tropical_fish_model_kind(entity_type_id, data_values)
         }
         VANILLA_ENTITY_TYPE_TURTLE_ID => EntityModelKind::Turtle {
-            baby: ageable_baby(data_values),
+            baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_VEX_ID => EntityModelKind::Vex {
             charging: vanilla_entity_metadata_vex_flags_accessor_for_entity_type(entity_type_id)

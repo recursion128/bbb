@@ -18047,3 +18047,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   均传入真实 mount type，无 accessor 仍按非 baby 处理。
 - baby reverse guard 纳入 world inventory production 与 slot ops；tame adult slot 可见、baby slot
   suppression、llama/horse body kind 与 Nautilus armor slot 回归保持不变。
+
+## 2026-07-16：迁移 native entity-scene production baby accessor
+
+- `ageable_baby` 删除固定 AgeableMob baby wire id/default，改为按真实 `entity_type_id` 查询
+  generated nearest-baby accessor；32 条 model-kind/render-state 调用全部传入当前实体类型，无
+  accessor 时按非 baby 处理。
+- Nautilus 与 undead-horse helper 补齐上游已持有的类型参数；baby reverse guard 覆盖生产
+  import、kind 分派、variant helper 和全部调用，adult/baby 模型、Turtle egg gate 与 mount
+  variant/chest 回归保持不变。

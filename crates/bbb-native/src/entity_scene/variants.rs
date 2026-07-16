@@ -61,7 +61,7 @@ pub(super) fn rabbit_model_kind(
         .map(|(data_id, default)| entity_data_int(values, data_id, default))
         .unwrap_or_default();
     EntityModelKind::Rabbit {
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         variant: RabbitModelVariant::from_id(variant_id),
         toast: entity_data_optional_component(values, entity_accessors.custom_name_data_id)
             .is_some_and(|name| name == "Toast"),
@@ -112,7 +112,7 @@ pub(super) fn panda_model_kind(
     let Some(accessors) = vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id)
     else {
         return EntityModelKind::Panda {
-            baby: ageable_baby(values),
+            baby: ageable_baby(entity_type_id, values),
             variant: PandaModelVariant::Normal,
         };
     };
@@ -127,7 +127,7 @@ pub(super) fn panda_model_kind(
         accessors.hidden_gene_default,
     ) as i32;
     EntityModelKind::Panda {
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         variant: PandaModelVariant::from_genes(main_gene, hidden_gene),
     }
 }
@@ -157,7 +157,7 @@ pub(super) fn feline_model_kind(
         });
     EntityModelKind::Feline {
         cat,
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         cat_variant: if cat {
             cat_model_variant(entity_type_id, values, registries)
         } else {
@@ -233,7 +233,7 @@ pub(super) fn fox_model_kind(
         .map(|accessors| entity_data_int(values, accessors.type_data_id, accessors.type_default))
         .unwrap_or_default();
     EntityModelKind::Fox {
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         variant: FoxModelVariant::from_id(variant),
     }
 }
@@ -243,10 +243,11 @@ pub(super) fn fox_model_kind(
 /// [`EntityModelKind::Nautilus`] (`baby` selecting the layout). The zombie nautilus reuses the same
 /// adult body — see [`zombie_nautilus_model_kind`].
 pub(super) fn nautilus_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
     EntityModelKind::Nautilus {
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
     }
 }
 
@@ -329,7 +330,7 @@ pub(super) fn chicken_model_kind(
 ) -> EntityModelKind {
     EntityModelKind::Chicken {
         variant: chicken_model_variant(entity_type_id, values, registries),
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
     }
 }
 
@@ -340,7 +341,7 @@ pub(super) fn pig_model_kind(
 ) -> EntityModelKind {
     EntityModelKind::Pig {
         variant: pig_model_variant(entity_type_id, values, registries),
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
     }
 }
 
@@ -351,7 +352,7 @@ pub(super) fn cow_model_kind(
 ) -> EntityModelKind {
     EntityModelKind::Cow {
         variant: cow_model_variant(entity_type_id, values, registries),
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
     }
 }
 
@@ -603,7 +604,7 @@ pub(super) fn mooshroom_model_kind(
             .map(|(data_id, default)| entity_data_int(values, data_id, default))
             .unwrap_or_default();
     EntityModelKind::Mooshroom {
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         variant: MooshroomVariant::from_vanilla_id(variant),
     }
 }
@@ -626,7 +627,7 @@ pub(super) fn sheep_model_kind(
             })
             .unwrap_or_default();
     EntityModelKind::Sheep {
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         sheared: wool & sheared_mask != 0,
         wool_color: SheepWoolColor::from_vanilla_id(wool & color_mask),
         jeb: entity_data_optional_component(values, entity_accessors.custom_name_data_id)
@@ -754,7 +755,7 @@ pub(super) fn wolf_model_kind(
                 != 0
         });
     EntityModelKind::Wolf {
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         tame,
         angry: wolf_is_angry(entity_type_id, values, game_time),
         collar_color: tame.then(|| {
@@ -1222,7 +1223,7 @@ pub(super) fn turtle_has_egg(
     else {
         return false;
     };
-    !ageable_baby(values)
+    !ageable_baby(entity_type_id, values)
         && entity_data_bool(values, accessors.has_egg_data_id, accessors.has_egg_default)
 }
 
@@ -1270,18 +1271,19 @@ pub(super) fn donkey_model_kind(
 ) -> EntityModelKind {
     EntityModelKind::Donkey {
         family,
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         has_chest: chested_horse_has_chest(entity_type_id, values),
     }
 }
 
 pub(super) fn undead_horse_model_kind(
+    entity_type_id: i32,
     family: UndeadHorseModelFamily,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
     EntityModelKind::UndeadHorse {
         family,
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
     }
 }
 
@@ -1337,7 +1339,7 @@ pub(super) fn llama_model_kind(
     family: LlamaModelFamily,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    let baby = ageable_baby(values);
+    let baby = ageable_baby(entity_type_id, values);
     let variant = vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id)
         .map(|accessors| {
             entity_data_int(values, accessors.variant_data_id, accessors.variant_default)
@@ -1357,7 +1359,7 @@ pub(super) fn goat_model_kind(
 ) -> EntityModelKind {
     let accessors = vanilla_entity_metadata_goat_accessors_for_entity_type(entity_type_id);
     EntityModelKind::Goat {
-        baby: ageable_baby(values),
+        baby: ageable_baby(entity_type_id, values),
         left_horn: accessors.is_none_or(|accessors| {
             entity_data_bool(
                 values,
@@ -1522,8 +1524,12 @@ pub(super) fn tropical_fish_model_kind(
     }
 }
 
-pub(super) fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, AGEABLE_MOB_BABY_DATA_ID, AGEABLE_MOB_DEFAULT_BABY)
+pub(super) fn ageable_baby(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+        .is_some_and(|(data_id, default)| entity_data_bool(values, data_id, default))
 }
 
 /// Vanilla `ArmadilloModel.setupAnim` `isHidingInShell` swap, projected from the synced
