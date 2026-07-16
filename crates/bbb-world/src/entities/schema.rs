@@ -1378,10 +1378,10 @@ pub fn vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
     }
 }
 
-/// Resolves the generated SnowGolem pumpkin accessor and its typed default.
+/// Resolves the generated SnowGolem pumpkin accessor, typed default, and named mask.
 pub fn vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
     entity_type_id: i32,
-) -> Option<(u8, i8)> {
+) -> Option<(u8, i8, i8)> {
     let accessor =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_PUMPKIN_ID")?;
     match (
@@ -1393,7 +1393,7 @@ pub fn vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
             "net.minecraft.world.entity.animal.golem.SnowGolem",
             "BYTE",
             Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
+        ) => Some((accessor.data_id, default, VANILLA_SNOW_GOLEM_PUMPKIN_FLAG)),
         _ => None,
     }
 }
@@ -5413,11 +5413,25 @@ mod tests {
 
     #[test]
     fn generated_snow_golem_pumpkin_accessor_owns_membership_index_and_default() {
+        let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::SnowGolem);
+        let field = schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_PUMPKIN_ID")
+            .expect("generated SnowGolem pumpkin field");
+        let flag = schema
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == "PUMPKIN_FLAG")
+            .expect("generated SnowGolem pumpkin flag");
+        let VanillaEntityMetadataDefault::Byte(default) = field.default else {
+            panic!("generated SnowGolem pumpkin default must be byte")
+        };
         assert_eq!(
             vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID
             ),
-            Some((16, 16))
+            Some((field.data_id, default, flag.mask))
         );
         assert_eq!(
             vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
@@ -8352,19 +8366,21 @@ mod tests {
         let snow_golem = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::SnowGolem);
         assert_eq!(snow_golem.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(snow_golem.inherited_field_count, 16);
+        let (pumpkin_data_id, pumpkin_default, pumpkin_mask) =
+            vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+            )
+            .expect("generated SnowGolem pumpkin accessor");
         assert_eq!(
             snow_golem.own_fields,
             &[VanillaEntityMetadataFieldSchema {
                 name: "DATA_PUMPKIN_ID",
-                data_id: 16,
+                data_id: pumpkin_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                default: VanillaEntityMetadataDefault::Byte(16),
+                default: VanillaEntityMetadataDefault::Byte(pumpkin_default),
             }]
         );
-        assert_eq!(VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID, 16);
-        assert_eq!(VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS, 16);
-        assert_eq!(VANILLA_SNOW_GOLEM_PUMPKIN_FLAG, 16);
         let iron_golem = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::IronGolem);
         assert_eq!(iron_golem.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(iron_golem.inherited_field_count, 16);
@@ -8376,8 +8392,8 @@ mod tests {
             snow_golem.own_flags,
             &[VanillaEntityMetadataFlagSchema {
                 name: "PUMPKIN_FLAG",
-                data_id: 16,
-                mask: 16,
+                data_id: pumpkin_data_id,
+                mask: pumpkin_mask,
             }]
         );
         let bat = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bat);

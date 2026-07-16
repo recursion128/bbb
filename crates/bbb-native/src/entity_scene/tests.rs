@@ -22,7 +22,7 @@ use bbb_world::{
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
-    VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+    VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
@@ -67,6 +67,13 @@ fn creeper_metadata_accessors() -> bbb_world::VanillaCreeperMetadataAccessors {
 fn shulker_metadata_accessors() -> bbb_world::VanillaShulkerMetadataAccessors {
     vanilla_entity_metadata_shulker_accessors_for_entity_type(VANILLA_ENTITY_TYPE_SHULKER_ID)
         .expect("generated Shulker metadata accessors must resolve")
+}
+
+fn snow_golem_pumpkin_accessor() -> (u8, i8, i8) {
+    bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    )
+    .expect("generated SnowGolem pumpkin accessor must resolve")
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -6205,6 +6212,7 @@ fn entity_model_instances_project_pig_saddle_render_state() {
 
 #[test]
 fn entity_model_instances_project_snow_golem_pumpkin_render_state() {
+    let (pumpkin_data_id, _pumpkin_default, _pumpkin_mask) = snow_golem_pumpkin_accessor();
     let pumpkin = |world: &WorldStore, id: i32| {
         entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
             .into_iter()
@@ -6228,14 +6236,14 @@ fn entity_model_instances_project_snow_golem_pumpkin_render_state() {
 
     assert!(
         pumpkin(&world, 111),
-        "SnowGolem.DATA_PUMPKIN_ID defaults to bit 16"
+        "SnowGolem.DATA_PUMPKIN_ID defaults to the generated pumpkin mask"
     );
     assert!(!pumpkin(&world, 112));
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 111,
         values: vec![EntityDataValue {
-            data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+            data_id: pumpkin_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(0),
         }],

@@ -148,7 +148,6 @@ use bbb_world::{
     VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
     VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
-    VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
     vanilla_painting_variant_resource_id,
@@ -7493,7 +7492,7 @@ fn debug_push_slime_additional_save_data(entity: &EntityState, fields: &mut Vec<
 }
 
 fn debug_push_snow_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let Some((data_id, default)) =
+    let Some((data_id, default, pumpkin_mask)) =
         vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(entity.entity_type_id)
     else {
         return;
@@ -7501,7 +7500,7 @@ fn debug_push_snow_golem_additional_save_data(entity: &EntityState, fields: &mut
     let flags = debug_entity_data_byte_present(entity, data_id).unwrap_or(default);
     fields.push(format!(
         "Pumpkin: {}",
-        debug_snbt_bool(flags & SNOW_GOLEM_PUMPKIN_FLAG != 0)
+        debug_snbt_bool(flags & pumpkin_mask != 0)
     ));
 }
 

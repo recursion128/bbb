@@ -550,6 +550,11 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
 
 #[test]
 fn entity_model_sources_project_snow_golem_pumpkin_flag() {
+    let (pumpkin_data_id, pumpkin_default, _pumpkin_mask) =
+        vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        )
+        .expect("generated SnowGolem pumpkin accessor must resolve");
     fn pumpkin(store: &WorldStore, entity_id: i32) -> bool {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -571,14 +576,14 @@ fn entity_model_sources_project_snow_golem_pumpkin_flag() {
 
     assert!(
         pumpkin(&store, 70),
-        "SnowGolem.defineSynchedData defaults DATA_PUMPKIN_ID to bit 16"
+        "SnowGolem.defineSynchedData defaults DATA_PUMPKIN_ID to the pumpkin mask"
     );
     assert!(!pumpkin(&store, 71));
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
         values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+            data_id: pumpkin_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(0),
         }],
@@ -588,9 +593,9 @@ fn entity_model_sources_project_snow_golem_pumpkin_flag() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
         values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
+            data_id: pumpkin_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(16),
+            value: EntityDataValueKind::Byte(pumpkin_default),
         }],
     }));
     assert!(pumpkin(&store, 70));

@@ -17277,3 +17277,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   attach-face/peek/color typed bundle，移除固定 wire index aliases 与测试裸 entity type id。
 - 删除 `bbb-world` 的六个 Shulker 固定 metadata 兼容常量；schema 期望直接由 generated
   Shulker family schema 组装，generator 反向守卫覆盖 production 和 world/native fixtures。
+
+## 2026-07-16：统一 SnowGolem pumpkin metadata 消费
+
+- 现有 accessor 查询扩展为同时返回 generated data id、typed default 与 `PUMPKIN_FLAG`；
+  world render projection、native F3+I 与 world/native fixtures 不再导入独立固定常量。
+- 删除 `bbb-world` 的 data/default/mask 三个 facade 转发，schema 测试由 generated family
+  schema 组装期望；generator 反向守卫覆盖 production 和 world/native fixtures。

@@ -323,8 +323,6 @@ pub const VANILLA_FISHING_HOOK_BITING_DATA_ID: u8 = GENERATED_VANILLA_FISHING_HO
 const GENERATED_VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID: u8 = 8;
 pub const VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID: u8 =
     GENERATED_VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID;
-const GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = 16;
-pub const VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID: u8 = GENERATED_VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID;
 const GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID;
 const GENERATED_VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
@@ -914,9 +912,6 @@ pub const VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY: i32 =
     GENERATED_VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY;
 const GENERATED_VANILLA_FISHING_HOOK_DEFAULT_BITING: bool = false;
 pub const VANILLA_FISHING_HOOK_DEFAULT_BITING: bool = GENERATED_VANILLA_FISHING_HOOK_DEFAULT_BITING;
-const GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 = 16;
-pub const VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS: i8 =
-    GENERATED_VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS;
 const GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS;
 const GENERATED_VANILLA_BAT_DEFAULT_FLAGS: i8 = 0;
@@ -24010,22 +24005,39 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_snow_golem_pumpkin_does_not_restore_accessor_constants() {
+    fn snow_golem_consumers_do_not_restore_accessor_constants() {
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/visibility_equipment_and_mount_projection.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [store, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            store,
+            world_tests,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(source
                 .contains("vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type"));
         }
         for removed in [
             "SNOW_GOLEM_PUMPKIN_DATA_ID",
             "SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS",
+            "SNOW_GOLEM_PUMPKIN_FLAG",
         ] {
-            assert!(!store.contains(removed), "store restored {removed}");
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                store,
+                world_tests,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "SnowGolem projection restored {removed}"
+                );
+            }
         }
         assert!(!store.contains("identity.entity_type_id == VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID"));
     }

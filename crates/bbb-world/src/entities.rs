@@ -472,10 +472,6 @@ pub use schema::{
     VANILLA_SNIFFER_STATE_SNIFFING_ID,
 };
 pub use schema::{
-    VANILLA_SNOW_GOLEM_DEFAULT_PUMPKIN_FLAGS, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
-    VANILLA_SNOW_GOLEM_PUMPKIN_FLAG,
-};
-pub use schema::{
     VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID, VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING,
 };
 pub use schema::{
@@ -1780,7 +1776,7 @@ entity_model_source_state! {
     #[serde(default)]
     pub iron_golem_offer_flower_tick: i32,
     /// Vanilla `SnowGolemRenderState.headBlock`: whether the snow golem has its carved pumpkin head
-    /// block. Projected from `SnowGolem.DATA_PUMPKIN_ID` byte bit 16, whose vanilla default is set.
+    /// block. Projected from the generated `SnowGolem.DATA_PUMPKIN_ID` byte mask and default.
     /// `false` for every non-snow-golem entity.
     #[serde(default)]
     pub snow_golem_pumpkin: bool,

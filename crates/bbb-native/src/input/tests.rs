@@ -125,7 +125,6 @@ use bbb_world::{
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
-    VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
 };
 use std::{
     collections::BTreeMap,
@@ -158,6 +157,13 @@ fn tamable_animal_flags_data(
 fn shulker_metadata_accessors() -> bbb_world::VanillaShulkerMetadataAccessors {
     vanilla_entity_metadata_shulker_accessors_for_entity_type(VANILLA_ENTITY_TYPE_SHULKER_ID)
         .expect("generated Shulker metadata accessors must resolve")
+}
+
+fn snow_golem_pumpkin_accessor() -> (u8, i8, i8) {
+    vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+    )
+    .expect("generated SnowGolem pumpkin accessor must resolve")
 }
 
 const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
@@ -3491,6 +3497,7 @@ fn shift_f3_i_with_permission_copies_local_slime_family_save_nbt_to_clipboard() 
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_snow_golem_save_nbt_to_clipboard() {
+    let (pumpkin_data_id, _pumpkin_default, _pumpkin_mask) = snow_golem_pumpkin_accessor();
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -3519,7 +3526,7 @@ fn shift_f3_i_with_permission_copies_local_snow_golem_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: SNOW_GOLEM_PUMPKIN_DATA_ID,
+                data_id: pumpkin_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(0),

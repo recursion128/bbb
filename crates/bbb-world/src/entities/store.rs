@@ -47,7 +47,6 @@ use super::schema::{
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     VanillaFireworkRocketMetadataAccessors, VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING,
-    VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
 };
 
@@ -1823,16 +1822,14 @@ impl EntityStore {
                 .unwrap_or(false);
         // Vanilla `SnowGolemRenderer.extractRenderState`: when `SnowGolem.hasPumpkin()` is true, the
         // renderer resolves `Blocks.CARVED_PUMPKIN.defaultBlockState()` into `state.headBlock`. The
-        // snow golem's synced byte defaults to 16, so a newly spawned golem shows the pumpkin until the
-        // server clears that bit.
+        // generated synced-byte default has the pumpkin mask set, so a newly spawned golem shows the
+        // pumpkin until the server clears that bit.
         let snow_golem_pumpkin =
             vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
                 identity.entity_type_id,
             )
-            .is_some_and(|(data_id, default)| {
-                self.metadata_byte(id, data_id, default).unwrap_or(default)
-                    & SNOW_GOLEM_PUMPKIN_FLAG
-                    != 0
+            .is_some_and(|(data_id, default, pumpkin_mask)| {
+                self.metadata_byte(id, data_id, default).unwrap_or(default) & pumpkin_mask != 0
             });
         // Vanilla `WitherBossRenderer.extractRenderState`: `state.invulnerableTicks =
         // invulnerableTicks > 0 ? invulnerableTicks - partialTicks : 0.0` (the synced `DATA_ID_INV`

@@ -340,8 +340,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   not restore fixed metadata aliases, hand-written wire indices, version-number entity aliases or
   reads without generated Shulker membership.
   SnowGolem pumpkin membership, wire index and typed default must remain derived from generated
-  `DATA_PUMPKIN_ID`; world model projection must not restore a SnowGolem type predicate alongside
-  accessor membership, and native debug must not restore fixed accessor/default aliases.
+  `DATA_PUMPKIN_ID` and `PUMPKIN_FLAG`; world model projection and world/native semantic fixtures
+  must not restore a SnowGolem type predicate, fixed accessor/default/mask aliases or hand-written
+  wire indices alongside accessor membership.
   Sheep wool membership, wire index and typed default must remain derived from generated
   `DATA_WOOL_ID`; native model/debug consumers must not restore fixed accessor/default aliases and
   must continue using the generated color/sheared masks.
