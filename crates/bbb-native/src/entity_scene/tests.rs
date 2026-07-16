@@ -13,8 +13,8 @@ use bbb_protocol::packets::{
 use bbb_world::{
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
-    VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID, VANILLA_BAT_FLAGS_DATA_ID,
-    VANILLA_BAT_FLAG_RESTING, VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
+    VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING,
+    VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
@@ -133,6 +133,14 @@ fn parrot_variant_data(variant: i32) -> EntityDataValue {
         VANILLA_ENTITY_TYPE_PARROT_ID,
     )
     .expect("generated Parrot variant accessor must resolve");
+    protocol_int_data(data_id, variant)
+}
+
+fn axolotl_variant_data(variant: i32) -> EntityDataValue {
+    let (data_id, _) = bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+    )
+    .expect("generated Axolotl variant accessor must resolve");
     protocol_int_data(data_id, variant)
 }
 
@@ -9110,8 +9118,8 @@ fn entity_model_kind_projects_axolotl_baby_from_data() {
     // The axolotl was a placeholder bounds box; it now resolves to the real `AdultAxolotlModel`
     // / `BabyAxolotlModel`, keyed off the synced `AgeableMob.DATA_BABY_ID` (index 16, default
     // adult), as in the vanilla `AgeableMobRenderer`, and textured by the `Axolotl.Variant`
-    // colour read from `DATA_VARIANT` (index 18). The body yaw, the procedural / keyframe
-    // swim-walk-idle animations, the play-dead pose, and the mirror-leg copy stay deferred.
+    // colour read from the generated `DATA_VARIANT` accessor. The body yaw, the procedural /
+    // keyframe swim-walk-idle animations, the play-dead pose, and the mirror-leg copy stay deferred.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_AXOLOTL_ID, &[]),
         EntityModelKind::Axolotl {
@@ -9129,7 +9137,7 @@ fn entity_model_kind_projects_axolotl_baby_from_data() {
             variant: AxolotlModelVariant::Lucy
         }
     );
-    // `DATA_VARIANT` (18, int) selects the colour via `Axolotl.Variant.byId`.
+    // `DATA_VARIANT` selects the colour via `Axolotl.Variant.byId`.
     for (id, variant) in [
         (-1, AxolotlModelVariant::Lucy),
         (0, AxolotlModelVariant::Lucy),
@@ -9140,10 +9148,7 @@ fn entity_model_kind_projects_axolotl_baby_from_data() {
         (5, AxolotlModelVariant::Lucy),
     ] {
         assert_eq!(
-            entity_model_kind(
-                VANILLA_ENTITY_TYPE_AXOLOTL_ID,
-                &[protocol_int_data(AXOLOTL_VARIANT_DATA_ID, id)]
-            ),
+            entity_model_kind(VANILLA_ENTITY_TYPE_AXOLOTL_ID, &[axolotl_variant_data(id)]),
             EntityModelKind::Axolotl {
                 baby: false,
                 variant

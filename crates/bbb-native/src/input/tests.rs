@@ -97,7 +97,6 @@ use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
     ChunkSection, ChunkState, ItemEquipmentSlot, LightData, LocalPlayerPoseState, PaletteDomain,
     PaletteKind, PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState, WorldStore,
-    VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID,
     VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
     VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
@@ -240,6 +239,18 @@ fn parrot_variant_data(variant: i32) -> ProtocolEntityDataValue {
         VANILLA_ENTITY_TYPE_PARROT_ID,
     )
     .expect("generated Parrot variant accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(variant),
+    }
+}
+
+fn axolotl_variant_data(variant: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+    )
+    .expect("generated Axolotl variant accessor must resolve");
     ProtocolEntityDataValue {
         data_id,
         serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
@@ -4700,11 +4711,7 @@ fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: AXOLOTL_VARIANT_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(9),
-            },
+            axolotl_variant_data(9),
             ProtocolEntityDataValue {
                 data_id: AXOLOTL_FROM_BUCKET_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,

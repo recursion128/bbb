@@ -5738,11 +5738,20 @@ mod tests {
 
     #[test]
     fn generated_axolotl_variant_accessor_owns_membership_index_and_default() {
+        let axolotl = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Axolotl);
+        let variant = axolotl
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_VARIANT")
+            .expect("generated Axolotl variant field");
+        let VanillaEntityMetadataDefault::Int(default) = variant.default else {
+            panic!("generated Axolotl variant default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_AXOLOTL_ID
             ),
-            Some((18, 0))
+            Some((variant.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(
@@ -7390,10 +7399,18 @@ mod tests {
         );
         assert_eq!(axolotl.inherited_field_count, 18);
         assert_eq!(axolotl.own_fields.len(), 3);
-        assert_eq!(VANILLA_AXOLOTL_VARIANT_DATA_ID, 18);
+        let (variant_data_id, variant_default) =
+            vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+            )
+            .expect("generated Axolotl variant accessor");
+        assert_eq!(variant_data_id, axolotl.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(variant_default),
+            axolotl.own_fields[0].default
+        );
         assert_eq!(VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID, 19);
         assert_eq!(VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID, 20);
-        assert_eq!(VANILLA_AXOLOTL_DEFAULT_VARIANT, 0);
         assert!(!VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD);
         assert!(!VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET);
         let bee = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bee);

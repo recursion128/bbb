@@ -374,8 +374,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   fixed accessor/default aliases, hand-written wire indices or a local ordinal bound, and ids must
   follow vanilla `ByIdMap` endpoint clamping.
   Axolotl variant membership, wire index and typed default must remain derived from generated
-  `Axolotl.DATA_VARIANT`; native model/debug consumers must not restore fixed accessor/default
-  aliases or a parallel save-id normalizer, and invalid ids must follow vanilla ZERO fallback.
+  `Axolotl.DATA_VARIANT`; native model/debug consumers and semantic fixtures must not restore fixed
+  accessor/default aliases, hand-written wire indices or a parallel save-id normalizer, and invalid
+  ids must follow vanilla ZERO fallback.
   MushroomCow variant membership, wire index and typed default must remain derived from generated
   `MushroomCow.DATA_TYPE`; native model/debug consumers must not restore fixed accessor/default
   aliases or a parallel serialized-name mapper, and invalid ids must follow vanilla CLAMP behavior.

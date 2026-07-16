@@ -93,8 +93,6 @@ pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 =
     GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID;
 const GENERATED_VANILLA_ARMADILLO_STATE_DATA_ID: u8 = 18;
 pub const VANILLA_ARMADILLO_STATE_DATA_ID: u8 = GENERATED_VANILLA_ARMADILLO_STATE_DATA_ID;
-const GENERATED_VANILLA_AXOLOTL_VARIANT_DATA_ID: u8 = 18;
-pub const VANILLA_AXOLOTL_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_VARIANT_DATA_ID;
 const GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
 pub const VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID;
 const GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
@@ -695,8 +693,6 @@ pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool =
     GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED;
 const GENERATED_VANILLA_ARMADILLO_DEFAULT_STATE: i32 = 0;
 pub const VANILLA_ARMADILLO_DEFAULT_STATE: i32 = GENERATED_VANILLA_ARMADILLO_DEFAULT_STATE;
-const GENERATED_VANILLA_AXOLOTL_DEFAULT_VARIANT: i32 = 0;
-pub const VANILLA_AXOLOTL_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_AXOLOTL_DEFAULT_VARIANT;
 const GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool = false;
 pub const VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool =
     GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD;
@@ -24355,11 +24351,19 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_axolotl_variant_does_not_restore_accessor_constants() {
+    fn axolotl_variant_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [native_scene, native_kind, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_kind,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(
                 source.contains("vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type")
             );
@@ -24369,18 +24373,18 @@ mod generated_catalog_guards {
             "AXOLOTL_DEFAULT_VARIANT",
             "debug_axolotl_variant_save_id",
         ] {
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_kind.contains(removed),
-                "native kind restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                native_scene,
+                native_kind,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Axolotl variant projection restored {removed}"
+                );
+            }
         }
     }
 

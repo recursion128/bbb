@@ -17342,3 +17342,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   accessor，移除固定 wire index；既有 `ByIdMap` 端点 `CLAMP` 投影保持不变。
 - 删除 `bbb-world` 的 Parrot data/default facade 转发，schema 期望由 generated Parrot family
   schema 组装；generator 反向守卫覆盖 production 和 native fixtures。
+
+## 2026-07-16：统一 Axolotl variant metadata 消费
+
+- native model/F3+I fixtures 统一按 Axolotl entity type 解析 generated `DATA_VARIANT`
+  accessor，移除固定 wire index；既有 `ByIdMap.ZERO` 无效 id 回退保持不变。
+- 删除 `bbb-world` 的 Axolotl variant data/default facade 转发，schema 期望由 generated
+  Axolotl family schema 组装；generator 反向守卫覆盖 production 和 native fixtures。
