@@ -466,7 +466,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   and fixtures must not restore representative tag members, while equipment/descending/falling-
   block state remains runtime instance behavior.
   Collision-debug pushability class dispatch must consume the generated nearest-`isPushable`
-  behavior; health/climbable/mount/pose/metadata checks remain runtime instance gates.
+  behavior; production and class-dispatch fixtures must not restore representative entity-type
+  tables, while health/climbable/mount/pose/metadata checks remain runtime instance gates.
   Collision-debug `canBeCollidedWith` dispatch must consume the generated nearest class behavior;
   Shulker health and HappyGhast age/health/other-entity/metadata checks remain instance gates.
   Ender-dragon sitting pose membership must consume the generated nearest `isSitting()` phase-class

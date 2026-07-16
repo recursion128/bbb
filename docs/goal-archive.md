@@ -17505,3 +17505,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   综合 supporting-block 用例动态选择 generated tag 成员，不再重述 tag 内容。
 - leather-boots、descending 与 FallingBlock 保持运行时实例分支；core-registry generator 的消费
   守卫扩展至 production 与两类 fixture，阻止固定 tag 成员回流。
+
+## 2026-07-16：统一 Collision-debug pushability dispatch 消费
+
+- 新增对 generated entity-type catalog 的全量 fresh-instance dispatch 比较，替代以少量
+  living/vehicle/never 类型代表最近 `isPushable` class 行为的验证方式，并覆盖 unknown id。
+- health、climbable、mount、Warden pose 与 Creaking metadata 仍由既有实例态测试负责；metadata
+  generator 守卫同时锁定 generated kind 消费、这些动态门和无代表 type 表的 fixture。

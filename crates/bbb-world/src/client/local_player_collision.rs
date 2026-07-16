@@ -4909,6 +4909,24 @@ mod tests {
     }
 
     #[test]
+    fn collision_debug_pushability_matches_generated_class_dispatch() {
+        let mut world = empty_world();
+        for entry in bbb_protocol::entity_types::VANILLA_ENTITY_TYPES {
+            let entity_id = 1_000 + entry.id;
+            add_collision_test_entity(&mut world, entity_id, entry.id, [0.5, 0.0, 0.5]);
+            let expected = vanilla_entity_metadata_type_pushability_kind(entry.id)
+                .is_some_and(|kind| kind != VanillaEntityPushabilityKind::Never);
+            assert_eq!(
+                world.debug_entity_is_pushable(entity_id, entry.id, [0.5, 0.0, 0.5]),
+                expected,
+                "entity type {}",
+                entry.resource_id
+            );
+        }
+        assert!(!world.debug_entity_is_pushable(i32::MAX, -1, [0.5, 0.0, 0.5]));
+    }
+
+    #[test]
     fn spectated_minecart_collision_expands_to_pushable_entities() {
         let mut world = empty_world();
         add_collision_test_entity(

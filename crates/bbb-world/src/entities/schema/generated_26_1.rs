@@ -22344,7 +22344,7 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_collision_debug_does_not_restore_pushability_type_membership() {
+    fn collision_debug_pushability_consumers_do_not_restore_type_membership() {
         let source = include_str!("../../client/local_player_collision.rs");
         let body = source
             .split("fn debug_entity_is_pushable")
@@ -22354,6 +22354,15 @@ mod generated_catalog_guards {
             .expect("collision debug pushability source");
         assert!(body.contains("vanilla_entity_metadata_type_pushability_kind"));
         assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        for required in [
+            "living_entity_health",
+            "debug_living_entity_on_climbable",
+            "mount(target_id)",
+            "pose(target_id)",
+            "vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type",
+        ] {
+            assert!(body.contains(required), "missing instance gate {required}");
+        }
         for removed in [
             "is_vanilla_abstract_horse_type",
             "is_vanilla_boat_type",
@@ -22362,6 +22371,15 @@ mod generated_catalog_guards {
         ] {
             assert!(!body.contains(removed), "restored {removed}");
         }
+        let fixture = source
+            .split("fn collision_debug_pushability_matches_generated_class_dispatch")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("collision debug pushability fixture source");
+        assert!(fixture.contains("VANILLA_ENTITY_TYPES"));
+        assert!(fixture.contains("vanilla_entity_metadata_type_pushability_kind"));
+        assert!(fixture.contains("VanillaEntityPushabilityKind::Never"));
+        assert!(!fixture.contains("VANILLA_ENTITY_TYPE_"));
     }
 
     #[test]
