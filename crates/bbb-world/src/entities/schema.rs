@@ -6007,29 +6007,55 @@ mod tests {
 
     #[test]
     fn generated_creaking_accessors_own_membership_indices_and_defaults() {
+        let creaking = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Creaking);
+        let field = |name| {
+            creaking
+                .own_fields
+                .iter()
+                .find(|field| field.name == name)
+                .unwrap_or_else(|| panic!("generated Creaking {name} field"))
+        };
+        let can_move = field("CAN_MOVE");
+        let active = field("IS_ACTIVE");
+        let tearing_down = field("IS_TEARING_DOWN");
+        let home_pos = field("HOME_POS");
+        let VanillaEntityMetadataDefault::Boolean(can_move_default) = can_move.default else {
+            panic!("generated Creaking can-move default must be BOOLEAN");
+        };
+        let VanillaEntityMetadataDefault::Boolean(active_default) = active.default else {
+            panic!("generated Creaking active default must be BOOLEAN");
+        };
+        let VanillaEntityMetadataDefault::Boolean(tearing_down_default) = tearing_down.default
+        else {
+            panic!("generated Creaking tearing-down default must be BOOLEAN");
+        };
+        assert_eq!(
+            home_pos.default,
+            VanillaEntityMetadataDefault::OptionalBlockPosNone
+        );
         assert_eq!(
             vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_CREAKING_ID
             ),
-            Some((16, true))
+            Some((can_move.data_id, can_move_default))
         );
         assert_eq!(
             vanilla_entity_metadata_creaking_active_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_CREAKING_ID
             ),
-            Some((17, false))
+            Some((active.data_id, active_default))
         );
         assert_eq!(
             vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_CREAKING_ID
             ),
-            Some((18, false))
+            Some((tearing_down.data_id, tearing_down_default))
         );
         assert_eq!(
             vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_CREAKING_ID
             ),
-            Some(19)
+            Some(home_pos.data_id)
         );
         for entity_type_id in [VANILLA_ENTITY_TYPE_WARDEN_ID, -1] {
             assert_eq!(
@@ -8891,13 +8917,45 @@ mod tests {
                 ),
             ]
         );
-        assert_eq!(VANILLA_CREAKING_CAN_MOVE_DATA_ID, 16);
-        assert_eq!(VANILLA_CREAKING_ACTIVE_DATA_ID, 17);
-        assert_eq!(VANILLA_CREAKING_TEARING_DOWN_DATA_ID, 18);
-        assert_eq!(VANILLA_CREAKING_HOME_POS_DATA_ID, 19);
-        assert!(VANILLA_CREAKING_DEFAULT_CAN_MOVE);
-        assert!(!VANILLA_CREAKING_DEFAULT_ACTIVE);
-        assert!(!VANILLA_CREAKING_DEFAULT_TEARING_DOWN);
+        let (can_move_data_id, can_move_default) =
+            vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID,
+            )
+            .expect("generated Creaking can-move accessor");
+        let (active_data_id, active_default) =
+            vanilla_entity_metadata_creaking_active_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID,
+            )
+            .expect("generated Creaking active accessor");
+        let (tearing_down_data_id, tearing_down_default) =
+            vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID,
+            )
+            .expect("generated Creaking tearing-down accessor");
+        let home_pos_data_id = vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+        )
+        .expect("generated Creaking home-position accessor");
+        for (data_id, default, field) in [
+            (can_move_data_id, can_move_default, &creaking.own_fields[0]),
+            (active_data_id, active_default, &creaking.own_fields[1]),
+            (
+                tearing_down_data_id,
+                tearing_down_default,
+                &creaking.own_fields[2],
+            ),
+        ] {
+            assert_eq!(data_id, field.data_id);
+            assert_eq!(
+                VanillaEntityMetadataDefault::Boolean(default),
+                field.default
+            );
+        }
+        assert_eq!(home_pos_data_id, creaking.own_fields[3].data_id);
+        assert_eq!(
+            creaking.own_fields[3].default,
+            VanillaEntityMetadataDefault::OptionalBlockPosNone
+        );
         let strider = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Strider);
         assert_eq!(
             strider.parent,

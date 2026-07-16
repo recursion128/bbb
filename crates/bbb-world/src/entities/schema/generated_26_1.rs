@@ -299,15 +299,6 @@ const GENERATED_VANILLA_GHAST_CHARGING_DATA_ID: u8 = 16;
 pub const VANILLA_GHAST_CHARGING_DATA_ID: u8 = GENERATED_VANILLA_GHAST_CHARGING_DATA_ID;
 const GENERATED_VANILLA_VEX_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_VEX_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_VEX_FLAGS_DATA_ID;
-const GENERATED_VANILLA_CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
-pub const VANILLA_CREAKING_CAN_MOVE_DATA_ID: u8 = GENERATED_VANILLA_CREAKING_CAN_MOVE_DATA_ID;
-const GENERATED_VANILLA_CREAKING_ACTIVE_DATA_ID: u8 = 17;
-pub const VANILLA_CREAKING_ACTIVE_DATA_ID: u8 = GENERATED_VANILLA_CREAKING_ACTIVE_DATA_ID;
-const GENERATED_VANILLA_CREAKING_TEARING_DOWN_DATA_ID: u8 = 18;
-pub const VANILLA_CREAKING_TEARING_DOWN_DATA_ID: u8 =
-    GENERATED_VANILLA_CREAKING_TEARING_DOWN_DATA_ID;
-const GENERATED_VANILLA_CREAKING_HOME_POS_DATA_ID: u8 = 19;
-pub const VANILLA_CREAKING_HOME_POS_DATA_ID: u8 = GENERATED_VANILLA_CREAKING_HOME_POS_DATA_ID;
 const GENERATED_VANILLA_STRIDER_BOOST_TIME_DATA_ID: u8 = 18;
 pub const VANILLA_STRIDER_BOOST_TIME_DATA_ID: u8 = GENERATED_VANILLA_STRIDER_BOOST_TIME_DATA_ID;
 const GENERATED_VANILLA_STRIDER_SUFFOCATING_DATA_ID: u8 = 19;
@@ -840,13 +831,6 @@ const GENERATED_VANILLA_GHAST_DEFAULT_CHARGING: bool = false;
 pub const VANILLA_GHAST_DEFAULT_CHARGING: bool = GENERATED_VANILLA_GHAST_DEFAULT_CHARGING;
 const GENERATED_VANILLA_VEX_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_VEX_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_VEX_DEFAULT_FLAGS;
-const GENERATED_VANILLA_CREAKING_DEFAULT_CAN_MOVE: bool = true;
-pub const VANILLA_CREAKING_DEFAULT_CAN_MOVE: bool = GENERATED_VANILLA_CREAKING_DEFAULT_CAN_MOVE;
-const GENERATED_VANILLA_CREAKING_DEFAULT_ACTIVE: bool = false;
-pub const VANILLA_CREAKING_DEFAULT_ACTIVE: bool = GENERATED_VANILLA_CREAKING_DEFAULT_ACTIVE;
-const GENERATED_VANILLA_CREAKING_DEFAULT_TEARING_DOWN: bool = false;
-pub const VANILLA_CREAKING_DEFAULT_TEARING_DOWN: bool =
-    GENERATED_VANILLA_CREAKING_DEFAULT_TEARING_DOWN;
 const GENERATED_VANILLA_STRIDER_DEFAULT_BOOST_TIME: i32 = 0;
 pub const VANILLA_STRIDER_DEFAULT_BOOST_TIME: i32 = GENERATED_VANILLA_STRIDER_DEFAULT_BOOST_TIME;
 const GENERATED_VANILLA_STRIDER_DEFAULT_SUFFOCATING: bool = false;
@@ -24755,13 +24739,16 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_creaking_animation_does_not_restore_accessor_constants() {
+    fn creaking_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
         let collision = include_str!("../../client/local_player_collision.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         assert!(animations
             .contains("vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type"));
         assert!(animations
@@ -24776,6 +24763,14 @@ mod generated_catalog_guards {
             .contains("vanilla_entity_metadata_creaking_active_accessor_for_entity_type"));
         assert!(native_input
             .contains("vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type"));
+        assert!(world_tests
+            .contains("vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type"));
+        assert!(world_tests
+            .contains("vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type"));
+        assert!(native_scene_tests
+            .contains("vanilla_entity_metadata_creaking_active_accessor_for_entity_type"));
+        assert!(native_input_tests
+            .contains("vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type"));
         for removed in [
             "CREAKING_CAN_MOVE_DATA_ID",
             "CREAKING_DEFAULT_CAN_MOVE",
@@ -24783,6 +24778,8 @@ mod generated_catalog_guards {
             "VANILLA_CREAKING_DEFAULT_CAN_MOVE",
             "CREAKING_IS_TEARING_DOWN_DATA_ID",
             "CREAKING_DEFAULT_TEARING_DOWN",
+            "VANILLA_CREAKING_TEARING_DOWN_DATA_ID",
+            "VANILLA_CREAKING_DEFAULT_TEARING_DOWN",
             "CREAKING_IS_ACTIVE_DATA_ID",
             "CREAKING_DEFAULT_ACTIVE",
             "VANILLA_CREAKING_ACTIVE_DATA_ID",
@@ -24807,6 +24804,18 @@ mod generated_catalog_guards {
             assert!(
                 !native_input.contains(removed),
                 "native input restored {removed}"
+            );
+            assert!(
+                !world_tests.contains(removed),
+                "world fixtures restored {removed}"
+            );
+            assert!(
+                !native_scene_tests.contains(removed),
+                "native scene fixtures restored {removed}"
+            );
+            assert!(
+                !native_input_tests.contains(removed),
+                "native input fixtures restored {removed}"
             );
         }
     }
