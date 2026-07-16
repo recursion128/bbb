@@ -22728,6 +22728,31 @@ mod generated_catalog_guards {
                 );
             }
         }
+        for (start, end, expected_count) in [
+            (
+                "fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard",
+                3,
+            ),
+            (
+                "fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard",
+                2,
+            ),
+        ] {
+            let fixtures = native_input_tests
+                .split(start)
+                .nth(1)
+                .and_then(|source| source.split(end).next())
+                .expect("native input specialized-animal baby fixture source");
+            assert_eq!(fixtures.matches("baby_data(").count(), expected_count);
+            for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+                assert!(
+                    !fixtures.contains(removed),
+                    "native input specialized-animal baby fixtures restored {removed}"
+                );
+            }
+        }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,
