@@ -22434,9 +22434,13 @@ mod generated_catalog_guards {
             .and_then(|source| source.split_once("\n}"))
             .map(|(body, _)| body)
             .expect("camel sit projection source");
-        assert!(body.contains("bbb_world::vanilla_entity_metadata_type_is_camel"));
+        assert!(body.contains(
+            "vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type"
+        ));
         assert!(!body.contains("VANILLA_ENTITY_TYPE_CAMEL_ID"));
         assert!(!body.contains("VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID"));
+        assert!(!body.contains("CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID"));
+        assert!(!body.contains("CAMEL_DEFAULT_LAST_POSE_CHANGE_TICK"));
         let entity_source = include_str!("../../entities.rs");
         let removed_lookup = ["fn is_vanilla_", "camel_type("].concat();
         assert!(!entity_source.contains(&removed_lookup));
