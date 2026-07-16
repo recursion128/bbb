@@ -18125,3 +18125,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `WitherBoss.DATA_ID_INV` accessor 构造 INT metadata，并校验 typed default 0。
 - Chicken 同 id 负例改为显式 collision helper；Wither reverse guard 纳入两份 fixtures，
   禁止固定 wire id alias 回流，生产 render/debug 投影保持由同一 accessor 驱动。
+
+## 2026-07-16：补齐 Sniffer seed-drop tick accessor
+
+- world schema 新增 Sniffer-only `DATA_DROP_SEED_AT_TICK` INT/default typed accessor，并公开给
+  native fixture；Armadillo 同 index 不会被误认成该字段。
+- native F3+I Sniffer fixture 删除固定 wire id，仍注入 client-visible metadata 并验证 vanilla
+  `saveWithoutId` 不保存 state/seed-drop 私有运行状态；reverse guard 禁止旧 alias 回流。

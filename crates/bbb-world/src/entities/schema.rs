@@ -1962,6 +1962,26 @@ pub fn vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
     }
 }
 
+/// Resolves Sniffer's generated seed-drop tick accessor and typed default.
+pub fn vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_DROP_SEED_AT_TICK")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.sniffer.Sniffer",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Armadillo animation-state accessor and its typed default.
 pub fn vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
     entity_type_id: i32,
@@ -6204,6 +6224,24 @@ mod tests {
             vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_sniffer_drop_seed_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SNIFFER_ID
+            ),
+            Some((19, 0))
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_ARMADILLO_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_type(
+                    entity_type_id
+                ),
+                None
+            );
+        }
     }
 
     #[test]

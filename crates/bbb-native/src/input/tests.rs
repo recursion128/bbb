@@ -93,12 +93,12 @@ use bbb_protocol::{
 use bbb_world::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
+    vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_type,
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
-    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
-    VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID, VANILLA_SNIFFER_STATE_DIGGING_ID,
+    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID, VANILLA_SNIFFER_STATE_DIGGING_ID,
 };
 use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
@@ -326,6 +326,25 @@ fn sniffer_state_data(state_id: i32) -> ProtocolEntityDataValue {
             serializer: EntityDataEnumSerializer::SnifferState,
             id: state_id,
         },
+    }
+}
+
+fn sniffer_drop_seed_at_tick_data(
+    world: &WorldStore,
+    entity_id: i32,
+    tick: i32,
+) -> ProtocolEntityDataValue {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("Sniffer fixture entity must exist before metadata is constructed");
+    let (data_id, default) =
+        vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_type(entity_type_id)
+            .expect("generated Sniffer drop-seed tick accessor must resolve");
+    assert_eq!(default, 0);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(tick),
     }
 }
 
@@ -6514,12 +6533,7 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
             sniffer_baby_data(true),
             age_locked_data(&world, 70, true),
             sniffer_state_data(VANILLA_SNIFFER_STATE_DIGGING_ID),
-            ProtocolEntityDataValue {
-                data_id: VANILLA_SNIFFER_DROP_SEED_AT_TICK_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(1234),
-            },
+            sniffer_drop_seed_at_tick_data(&world, 70, 1234),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

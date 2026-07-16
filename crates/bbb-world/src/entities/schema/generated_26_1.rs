@@ -26156,7 +26156,16 @@ mod generated_catalog_guards {
             .and_then(|source| source.split("#[test]").next())
             .expect("Sniffer F3+I fixture source");
         assert!(native_input_fixture.contains("sniffer_state_data("));
-        for removed in ["SNIFFER_STATE_DATA_ID", "SNIFFER_DEFAULT_STATE"] {
+        assert!(native_input_fixture.contains("sniffer_drop_seed_at_tick_data("));
+        assert!(native_input_tests.contains(
+            "vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_type"
+        ));
+        for removed in [
+            "SNIFFER_STATE_DATA_ID",
+            "SNIFFER_DEFAULT_STATE",
+            "SNIFFER_DROP_SEED_AT_TICK_DATA_ID",
+            "SNIFFER_DEFAULT_DROP_SEED_AT_TICK",
+        ] {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
@@ -26176,6 +26185,15 @@ mod generated_catalog_guards {
             assert!(
                 !native_input_fixture.contains(removed),
                 "native input fixture restored {removed}"
+            );
+        }
+        for removed in [
+            "SNIFFER_DROP_SEED_AT_TICK_DATA_ID",
+            "SNIFFER_DEFAULT_DROP_SEED_AT_TICK",
+        ] {
+            assert!(
+                !native_input_tests.contains(removed),
+                "native input tests restored {removed}"
             );
         }
     }
