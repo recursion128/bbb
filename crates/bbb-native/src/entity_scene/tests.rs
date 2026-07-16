@@ -11817,8 +11817,12 @@ fn protocol_frog_variant_data(id: i32) -> EntityDataValue {
 
 fn protocol_cat_variant_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.CAT_VARIANT` is serializer id 21.
+    let accessors = vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_CAT_ID,
+    )
+    .expect("generated Cat variant metadata accessors must resolve");
     EntityDataValue {
-        data_id: CAT_VARIANT_DATA_ID,
+        data_id: accessors.variant_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::CatVariant,
@@ -11829,8 +11833,12 @@ fn protocol_cat_variant_data(id: i32) -> EntityDataValue {
 
 fn protocol_wolf_variant_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.WOLF_VARIANT` is serializer id 25.
+    let accessors = vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+    )
+    .expect("generated Wolf variant metadata accessors must resolve");
     EntityDataValue {
-        data_id: WOLF_VARIANT_DATA_ID,
+        data_id: accessors.variant_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::WolfVariant,

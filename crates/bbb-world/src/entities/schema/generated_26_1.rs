@@ -23535,6 +23535,18 @@ mod generated_catalog_guards {
                 );
             }
         }
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        for source in [native_scene, native_scene_tests] {
+            assert!(source
+                .contains("vanilla_entity_metadata_companion_variant_accessors_for_entity_type"));
+            for removed in ["CAT_VARIANT_DATA_ID", "WOLF_VARIANT_DATA_ID"] {
+                assert!(
+                    !source.contains(removed),
+                    "companion fixture restored {removed}"
+                );
+            }
+        }
     }
 
     #[test]

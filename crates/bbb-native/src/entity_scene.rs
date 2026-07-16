@@ -87,8 +87,6 @@ use bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_e
 use bbb_world::WolfVariantAssetPresentation;
 use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
 #[cfg(test)]
-use bbb_world::VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID;
-#[cfg(test)]
 use bbb_world::VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID;
@@ -113,8 +111,6 @@ use bbb_world::VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING;
 use bbb_world::VANILLA_VILLAGER_DATA_DATA_ID as VILLAGER_DATA_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID;
 use bbb_world::{
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_type_illager_arm_pose_uses_celebrating, vanilla_entity_type_is_living,

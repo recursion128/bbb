@@ -17670,3 +17670,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - chicken/cow/pig registry-holder fixture helper 改为从各自 generated farm-animal accessor 取得
   variant wire id；entity-metadata generator 守卫覆盖 production 入口与整份 semantic fixture，
   禁止六个固定 equine/farm-animal id 别名回流。
+
+## 2026-07-16：统一 companion variant entity-scene fixture accessor 消费
+
+- Cat/Wolf registry-holder fixture helper 删除固定 metadata id 别名，按对应 entity type 查询
+  generated companion variant accessor，再构造动态 registry id payload。
+- companion metadata generator 守卫新增 production 入口与整份 entity-scene semantic fixture
+  检查，禁止 Cat/Wolf variant wire id 别名回流；custom session registry order 和 fallback
+  模型/纹理行为保持由既有端到端回归覆盖。
