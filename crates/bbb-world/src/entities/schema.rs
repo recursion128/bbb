@@ -4099,8 +4099,6 @@ mod tests {
                 );
             }
         }
-
-        assert_eq!(VANILLA_SLIME_SIZE_DATA_ID, 16);
     }
 
     #[test]
@@ -5549,13 +5547,22 @@ mod tests {
 
     #[test]
     fn generated_slime_size_accessor_owns_inherited_membership_index_and_default() {
+        let slime = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Slime);
+        let size = slime
+            .own_fields
+            .iter()
+            .find(|field| field.name == "ID_SIZE")
+            .expect("generated Slime size field");
+        let VanillaEntityMetadataDefault::Int(default) = size.default else {
+            panic!("generated Slime size default must be INT");
+        };
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_SLIME_ID,
             VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
         ] {
             assert_eq!(
                 vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id),
-                Some((16, 1)),
+                Some((size.data_id, default)),
                 "entity type {entity_type_id}"
             );
         }

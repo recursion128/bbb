@@ -17305,3 +17305,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `PUFF_STATE` accessor，移除固定 wire index 与 world fixture 的裸 entity type id。
 - 删除 `bbb-world` 的 Pufferfish data/default facade 转发，schema 测试由 generated family
   schema 组装期望；generator 反向守卫覆盖 production 和 world/native fixtures。
+
+## 2026-07-16：统一 Slime size metadata 消费
+
+- world pick-bounds、native Slime/MagmaCube model 与 F3+I fixtures 统一按实际 entity type
+  解析继承的 generated `Slime.ID_SIZE` accessor，移除固定 wire/entity type ids。
+- 删除 `bbb-world` 的 Slime data/default facade 转发，schema 期望由 generated Slime family
+  schema 组装；generator 反向守卫覆盖 production 和 world/native fixtures。

@@ -79,8 +79,6 @@ const GENERATED_VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
 pub const VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = GENERATED_VANILLA_BEE_ANGER_END_TIME_DATA_ID;
 const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
-const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
-pub const VANILLA_SLIME_SIZE_DATA_ID: u8 = GENERATED_VANILLA_SLIME_SIZE_DATA_ID;
 const GENERATED_VANILLA_ZOMBIE_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_ZOMBIE_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOMBIE_BABY_DATA_ID;
 const GENERATED_VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID: u8 = 17;
@@ -692,8 +690,6 @@ pub const VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = GENERATED_VANILLA_POLAR_BE
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 =
     GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION;
-const GENERATED_VANILLA_SLIME_DEFAULT_SIZE: i32 = 1;
-pub const VANILLA_SLIME_DEFAULT_SIZE: i32 = GENERATED_VANILLA_SLIME_DEFAULT_SIZE;
 const GENERATED_VANILLA_ZOMBIE_DEFAULT_BABY: bool = false;
 pub const VANILLA_ZOMBIE_DEFAULT_BABY: bool = GENERATED_VANILLA_ZOMBIE_DEFAULT_BABY;
 const GENERATED_VANILLA_ZOMBIE_DEFAULT_SPECIAL_TYPE: i32 = 0;
@@ -24150,33 +24146,51 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_slime_size_does_not_restore_accessor_constants() {
+    fn slime_consumers_do_not_restore_accessor_constants() {
         let dimensions = include_str!("../dimensions.rs");
+        let world_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [dimensions, native_scene, native_variants, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            dimensions,
+            world_tests,
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(source.contains("vanilla_entity_metadata_slime_size_accessor_for_entity_type"));
         }
         for removed in ["SLIME_SIZE_DATA_ID", "SLIME_DEFAULT_SIZE"] {
-            assert!(
-                !dimensions.contains(removed),
-                "dimensions restored {removed}"
-            );
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                dimensions,
+                world_tests,
+                native_scene,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Slime projection restored {removed}"
+                );
+            }
         }
         assert!(!dimensions.contains("vanilla_entity_metadata_type_is_slime"));
+        let world_fixture = world_tests
+            .split("fn slime_pick_bounds_scale_with_vanilla_size_metadata")
+            .nth(1)
+            .and_then(|source| source.split("\n#[test]").next())
+            .expect("Slime pick-bounds fixture source");
+        assert!(world_fixture.contains("VANILLA_ENTITY_TYPE_SLIME_ID"));
+        assert!(world_fixture.contains("VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID"));
+        assert!(!world_fixture.contains("117"));
+        assert!(!world_fixture.contains("80"));
     }
 
     #[test]

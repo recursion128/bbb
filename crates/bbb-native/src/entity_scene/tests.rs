@@ -19,7 +19,6 @@ use bbb_world::{
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
-    VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
@@ -99,6 +98,13 @@ fn pufferfish_puff_state_data(puff_state: i32) -> EntityDataValue {
         )
         .expect("generated Pufferfish puff-state accessor must resolve");
     protocol_int_data(data_id, puff_state)
+}
+
+fn slime_size_data(entity_type_id: i32, size: i32) -> EntityDataValue {
+    let (data_id, _) =
+        bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)
+            .expect("generated Slime size accessor must resolve");
+    protocol_int_data(data_id, size)
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -7477,11 +7483,11 @@ fn entity_model_instances_project_slime_and_magma_cube_size() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 117,
-        values: vec![protocol_int_data(SLIME_SIZE_DATA_ID, 4)],
+        values: vec![slime_size_data(VANILLA_ENTITY_TYPE_SLIME_ID, 4)],
     }));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 80,
-        values: vec![protocol_int_data(SLIME_SIZE_DATA_ID, 3)],
+        values: vec![slime_size_data(VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, 3)],
     }));
 
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
@@ -7863,7 +7869,7 @@ fn entity_model_kind_uses_exact_models_for_slime_and_magma_cube() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SLIME_ID,
-            &[protocol_int_data(SLIME_SIZE_DATA_ID, 4)]
+            &[slime_size_data(VANILLA_ENTITY_TYPE_SLIME_ID, 4)]
         ),
         EntityModelKind::Slime { size: 4 }
     );
@@ -7874,7 +7880,7 @@ fn entity_model_kind_uses_exact_models_for_slime_and_magma_cube() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-            &[protocol_int_data(SLIME_SIZE_DATA_ID, 3)]
+            &[slime_size_data(VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, 3)]
         ),
         EntityModelKind::MagmaCube { size: 3 }
     );

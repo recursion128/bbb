@@ -9,6 +9,12 @@ fn pufferfish_puff_state_data(puff_state: i32) -> ProtocolEntityDataValue {
     protocol_int_data(data_id, puff_state)
 }
 
+fn slime_size_data(entity_type_id: i32, size: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)
+        .expect("generated Slime size accessor must resolve");
+    protocol_int_data(data_id, size)
+}
+
 #[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
@@ -431,8 +437,14 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
 #[test]
 fn slime_pick_bounds_scale_with_vanilla_size_metadata() {
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(24, 117));
-    store.apply_add_entity(protocol_add_entity_with_type(25, 80));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        24,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SLIME_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        25,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+    ));
 
     assert_eq!(
         store.probe_entity_pick_bounds(24),
@@ -445,19 +457,17 @@ fn slime_pick_bounds_scale_with_vanilla_size_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 24,
-        values: vec![ProtocolEntityDataValue {
-            data_id: 16,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-            value: EntityDataValueKind::Int(4),
-        }],
+        values: vec![slime_size_data(
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SLIME_ID,
+            4,
+        )],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 25,
-        values: vec![ProtocolEntityDataValue {
-            data_id: 16,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-            value: EntityDataValueKind::Int(3),
-        }],
+        values: vec![slime_size_data(
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+            3,
+        )],
     }));
 
     assert_eq!(
