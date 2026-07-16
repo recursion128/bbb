@@ -5609,11 +5609,20 @@ mod tests {
 
     #[test]
     fn generated_salmon_variant_accessor_owns_membership_index_and_default() {
+        let salmon = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Salmon);
+        let variant = salmon
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_TYPE")
+            .expect("generated Salmon variant field");
+        let VanillaEntityMetadataDefault::Int(default) = variant.default else {
+            panic!("generated Salmon variant default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_SALMON_ID
             ),
-            Some((17, 1))
+            Some((variant.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(
@@ -7868,8 +7877,16 @@ mod tests {
         );
         assert_eq!(salmon.inherited_field_count, 17);
         assert_eq!(salmon.own_fields.len(), 1);
-        assert_eq!(VANILLA_SALMON_VARIANT_DATA_ID, 17);
-        assert_eq!(VANILLA_SALMON_DEFAULT_VARIANT, 1);
+        let (variant_data_id, variant_default) =
+            vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SALMON_ID,
+            )
+            .expect("generated Salmon variant accessor");
+        assert_eq!(variant_data_id, salmon.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(variant_default),
+            salmon.own_fields[0].default
+        );
         let tropical_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::TropicalFish);
         assert_eq!(

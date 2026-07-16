@@ -17,7 +17,6 @@ use bbb_world::{
     VANILLA_BAT_FLAG_RESTING, VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
-    VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
@@ -112,6 +111,14 @@ fn phantom_size_data(size: i32) -> EntityDataValue {
     )
     .expect("generated Phantom size accessor must resolve");
     protocol_int_data(data_id, size)
+}
+
+fn salmon_variant_data(variant: i32) -> EntityDataValue {
+    let (data_id, _) = bbb_world::vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_SALMON_ID,
+    )
+    .expect("generated Salmon variant accessor must resolve");
+    protocol_int_data(data_id, variant)
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -8254,8 +8261,8 @@ fn entity_model_kind_maps_cod_to_real_model() {
 #[test]
 fn entity_model_kind_projects_salmon_size_from_variant_data() {
     // The salmon was a placeholder render box; it now resolves to the real `SalmonModel`
-    // and projects its synced `DATA_TYPE` size variant (index 17, `Salmon.Variant` ids
-    // SMALL=0/MEDIUM=1/LARGE=2 clamped, defaulting to MEDIUM).
+    // and projects its synced `DATA_TYPE` size variant (`Salmon.Variant` ids
+    // SMALL=0/MEDIUM=1/LARGE=2 clamped, with a generated MEDIUM default).
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_SALMON_ID, &[]),
         EntityModelKind::Salmon {
@@ -8263,29 +8270,20 @@ fn entity_model_kind_projects_salmon_size_from_variant_data() {
         }
     );
     assert_eq!(
-        entity_model_kind(
-            VANILLA_ENTITY_TYPE_SALMON_ID,
-            &[protocol_int_data(SALMON_VARIANT_DATA_ID, 0)]
-        ),
+        entity_model_kind(VANILLA_ENTITY_TYPE_SALMON_ID, &[salmon_variant_data(0)]),
         EntityModelKind::Salmon {
             size: SalmonModelSize::Small,
         }
     );
     assert_eq!(
-        entity_model_kind(
-            VANILLA_ENTITY_TYPE_SALMON_ID,
-            &[protocol_int_data(SALMON_VARIANT_DATA_ID, 2)]
-        ),
+        entity_model_kind(VANILLA_ENTITY_TYPE_SALMON_ID, &[salmon_variant_data(2)]),
         EntityModelKind::Salmon {
             size: SalmonModelSize::Large,
         }
     );
     // Out-of-range ids clamp to the large body, matching `ByIdMap.continuous(CLAMP)`.
     assert_eq!(
-        entity_model_kind(
-            VANILLA_ENTITY_TYPE_SALMON_ID,
-            &[protocol_int_data(SALMON_VARIANT_DATA_ID, 9)]
-        ),
+        entity_model_kind(VANILLA_ENTITY_TYPE_SALMON_ID, &[salmon_variant_data(9)]),
         EntityModelKind::Salmon {
             size: SalmonModelSize::Large,
         }

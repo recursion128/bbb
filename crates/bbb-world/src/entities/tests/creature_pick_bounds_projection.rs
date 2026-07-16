@@ -23,6 +23,14 @@ fn phantom_size_data(size: i32) -> ProtocolEntityDataValue {
     protocol_int_data(data_id, size)
 }
 
+fn salmon_variant_data(variant: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SALMON_ID,
+    )
+    .expect("generated Salmon variant accessor must resolve");
+    protocol_int_data(data_id, variant)
+}
+
 #[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
     const ENDER_DRAGON_TYPE_ID: i32 = 43;
@@ -562,10 +570,11 @@ fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata() {
 #[test]
 fn salmon_pick_bounds_scale_with_vanilla_variant_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const SALMON_VARIANT_DATA_ID: u8 = 17;
-
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(27, 110));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        27,
+        bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SALMON_ID,
+    ));
 
     assert_eq!(
         store.probe_entity_pick_bounds(27),
@@ -574,11 +583,7 @@ fn salmon_pick_bounds_scale_with_vanilla_variant_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 27,
-        values: vec![ProtocolEntityDataValue {
-            data_id: SALMON_VARIANT_DATA_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-            value: EntityDataValueKind::Int(0),
-        }],
+        values: vec![salmon_variant_data(0)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(27),
@@ -591,11 +596,7 @@ fn salmon_pick_bounds_scale_with_vanilla_variant_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 27,
-        values: vec![ProtocolEntityDataValue {
-            data_id: SALMON_VARIANT_DATA_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-            value: EntityDataValueKind::Int(2),
-        }],
+        values: vec![salmon_variant_data(2)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(27),

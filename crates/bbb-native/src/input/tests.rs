@@ -107,7 +107,6 @@ use bbb_world::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
 use bbb_world::{
@@ -210,6 +209,18 @@ fn phantom_size_data(size: i32) -> ProtocolEntityDataValue {
         data_id,
         serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
         value: EntityDataValueKind::Int(size),
+    }
+}
+
+fn salmon_variant_data(variant: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_SALMON_ID,
+    )
+    .expect("generated Salmon variant accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(variant),
     }
 }
 
@@ -4328,11 +4339,7 @@ fn shift_f3_i_with_permission_copies_local_salmon_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: SALMON_VARIANT_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(2),
-            },
+            salmon_variant_data(2),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

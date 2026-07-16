@@ -363,8 +363,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   restore fixed accessor/default aliases, hand-written wire/entity type ids or confuse it with the
   same-named Slime accessor.
   Salmon variant membership, wire index and typed default must remain derived from generated
-  `Salmon.DATA_TYPE`; world bounds and native model/debug consumers must not restore fixed
-  accessor/default aliases or bypass the existing clamped variant mapping.
+  `Salmon.DATA_TYPE`; world bounds, native model/debug consumers and semantic fixtures must not
+  restore fixed accessor/default aliases, hand-written wire/entity type ids or bypass the existing
+  clamped variant mapping.
   TropicalFish packed-variant membership, wire index and typed default must remain derived from
   generated `TropicalFish.DATA_ID_TYPE_VARIANT`; native model/debug consumers must not restore
   fixed accessor/default aliases and must continue using generated mask/shift constants.

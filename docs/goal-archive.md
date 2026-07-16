@@ -17320,3 +17320,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 删除 `bbb-world` 的 Phantom data/default facade 转发，schema 期望由 generated Phantom
   family schema 组装；generator 反向守卫覆盖 production 和 world/native fixtures，并保持与
   同名 `Slime.ID_SIZE` accessor 的 owner 隔离。
+
+## 2026-07-16：统一 Salmon variant metadata 消费
+
+- world pick-bounds、native model/F3+I fixtures 统一按 Salmon entity type 解析 generated
+  `DATA_TYPE` accessor，移除固定 wire index 与 world fixture 的裸 entity type id。
+- 删除 `bbb-world` 的 Salmon data/default facade 转发，schema 期望由 generated Salmon family
+  schema 组装；generator 反向守卫覆盖 production 和 world/native fixtures，连续 id 的
+  `CLAMP` 映射保持不变。
