@@ -23459,6 +23459,7 @@ mod generated_catalog_guards {
             );
             for removed in [
                 "VANILLA_LIVING_ENTITY_HEALTH_DATA_ID",
+                "VANILLA_ENTITY_HEALTH_DATA_ID",
                 "LIVING_ENTITY_HEALTH_DATA_ID",
             ] {
                 assert!(

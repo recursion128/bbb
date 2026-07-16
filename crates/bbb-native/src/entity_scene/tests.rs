@@ -1279,8 +1279,6 @@ fn entity_model_instances_project_shulker_attach_face() {
 
 #[test]
 fn entity_model_instances_project_death_animation_time() {
-    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         82,
@@ -1298,7 +1296,10 @@ fn entity_model_instances_project_death_animation_time() {
     // LivingEntityRenderState.deathTime and driving the red overlay.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 82,
-        values: vec![protocol_float_data(VANILLA_ENTITY_HEALTH_DATA_ID, 0.0)],
+        values: vec![living_entity_health_data(
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            0.0,
+        )],
     }));
     world.advance_entity_client_animations(2);
     let dying = entity_model_instances_from_world_at_partial_tick(&world, None, 0.25);

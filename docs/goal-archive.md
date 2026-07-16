@@ -17728,3 +17728,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 删除父模块的 2 个固定 id 与 3 个 mask compatibility aliases，Entity generator 守卫把整个
   entity-scene parent/fixture 纳入已有完整 alias 禁止集；同一 bundle 的 freeze-shake fixture 也
   删除固定 ticks-frozen id 7。光照、隐身/光效、feline sprint、命名彩蛋与冻结抖动回归保持不变。
+
+## 2026-07-16：补齐 death-animation health fixture accessor 消费
+
+- Chicken death-animation fixture 删除局部 `VANILLA_ENTITY_HEALTH_DATA_ID = 9`，按 Chicken type
+  复用 generated LivingEntity health helper；death-time 2.25 与 red-overlay 行为保持不变。
+- LivingEntity health reverse guard 新增该历史别名拼写，和固定/`VANILLA_LIVING_*` alias 一并
+  禁止在整份 entity-scene fixture 回流。

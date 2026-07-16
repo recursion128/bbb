@@ -5102,7 +5102,7 @@ def render(result: ExtractionResult) -> str:
             '        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");',
             '        for source in [native_scene, native_scene_tests] {',
             '            assert!(source.contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type"));',
-            '            for removed in ["VANILLA_LIVING_ENTITY_HEALTH_DATA_ID", "LIVING_ENTITY_HEALTH_DATA_ID"] {',
+            '            for removed in ["VANILLA_LIVING_ENTITY_HEALTH_DATA_ID", "VANILLA_ENTITY_HEALTH_DATA_ID", "LIVING_ENTITY_HEALTH_DATA_ID"] {',
             '                assert!(!source.contains(removed), "LivingEntity health fixture restored {removed}");',
             "            }",
             "        }",
