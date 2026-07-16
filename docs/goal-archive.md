@@ -18223,3 +18223,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   作为 feline sibling 负例；native F3+I production 与 fixture 删除固定 wire id/default aliases。
 - generator reverse guard 覆盖 native input facade 与完整 tests，禁止 fixed accessor/default
   aliases 或平行 feline membership 回流。
+
+## 2026-07-16：统一 Zoglin baby metadata 消费
+
+- native F3+I production 与 fixture 改用既有 nearest generated `DATA_BABY_ID` resolver，删除
+  Zoglin 固定 wire id/default aliases；Zoglin 自有 owner 与 AgeableMob 不同索引边界保持不变。
+- generator reverse guard 覆盖 input facade 与完整 tests，entity-scene model-kind 继续共享同一
+  nearest-owner accessor。

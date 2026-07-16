@@ -138,8 +138,6 @@ use bbb_world::{
     vanilla_painting_variant_resource_id,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
-    VANILLA_ZOGLIN_BABY_DATA_ID as ZOGLIN_BABY_DATA_ID,
-    VANILLA_ZOGLIN_DEFAULT_BABY as ZOGLIN_DEFAULT_BABY,
 };
 use bbb_world::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
@@ -7814,8 +7812,12 @@ fn debug_push_zombie_additional_save_data(entity: &EntityState, fields: &mut Vec
 }
 
 fn debug_push_zoglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let is_baby =
-        debug_entity_data_bool_present(entity, ZOGLIN_BABY_DATA_ID).unwrap_or(ZOGLIN_DEFAULT_BABY);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_baby_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let is_baby = debug_entity_data_bool_present(entity, data_id).unwrap_or(default);
     fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
 }
 

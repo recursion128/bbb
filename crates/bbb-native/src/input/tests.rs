@@ -14058,11 +14058,7 @@ fn shift_f3_i_with_permission_copies_local_zoglin_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, false, true),
-            ProtocolEntityDataValue {
-                data_id: ZOGLIN_BABY_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            baby_data(VANILLA_ENTITY_TYPE_ZOGLIN_ID, true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
