@@ -17802,3 +17802,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Entity reverse guard 纳入整份 player pose fixture；LivingEntity guard 新增 sleeping-pos 专项检查，
   允许同文件尚待独立迁移的 health fixture。Player/Chicken/Boat gate 与 north-facing bed yaw 270°
   回归保持不变。
+
+## 2026-07-16：统一 creature pick-bounds pose fixture accessor 消费
+
+- Avatar/local-player、Warden、Camel/CamelHusk 与 Goat pick-bounds/body-anchor fixtures 删除固定
+  Entity pose wire id 6 和 standing/sleeping/swimming/crouching/dying/roaring/emerging/digging/
+  sitting/long-jumping ordinals，统一使用 generated Entity bundle 与 protocol pose catalog。
+- Entity reverse guard 纳入整份 creature pick-bounds 测试并禁止任意局部 `POSE_*` 常量和历史
+  `ENTITY_DATA_POSE_ID` 回流；各实体的 scale cap、Camel age/seat 曲线和 local-player sleeping
+  gate 回归保持不变。

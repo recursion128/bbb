@@ -1,5 +1,18 @@
 use super::*;
-use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_DIGGING_ID, VANILLA_ENTITY_POSE_DYING_ID,
+    VANILLA_ENTITY_POSE_EMERGING_ID, VANILLA_ENTITY_POSE_LONG_JUMPING_ID,
+    VANILLA_ENTITY_POSE_ROARING_ID, VANILLA_ENTITY_POSE_SITTING_ID,
+    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
+    VANILLA_ENTITY_POSE_SWIMMING_ID,
+};
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose_id)
+}
 
 fn pufferfish_puff_state_data(puff_state: i32) -> ProtocolEntityDataValue {
     let (data_id, _) = vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type(
@@ -869,11 +882,6 @@ fn living_pick_bounds_apply_vanilla_entity_specific_scale_caps() {
 #[test]
 fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_SLEEPING: i32 = 2;
-    const POSE_SWIMMING: i32 = 3;
-    const POSE_CROUCHING: i32 = 5;
-    const POSE_DYING: i32 = 7;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -884,7 +892,7 @@ fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_CROUCHING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(32),
@@ -910,7 +918,7 @@ fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SWIMMING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SWIMMING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(32),
@@ -923,7 +931,7 @@ fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SLEEPING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(32),
@@ -932,7 +940,7 @@ fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_DYING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_DYING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(32),
@@ -941,7 +949,7 @@ fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 33,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_CROUCHING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(33),
@@ -960,12 +968,7 @@ fn local_player_is_sleeping_true_for_sleeping_local_entity() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
-        values: vec![protocol_pose_data(
-            super::vanilla_entity_metadata_entity_accessors()
-                .expect("generated base Entity metadata accessors must resolve")
-                .pose_data_id,
-            VANILLA_ENTITY_POSE_SLEEPING_ID,
-        )],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID)],
     }));
 
     assert!(store.local_player_is_sleeping());
@@ -980,12 +983,7 @@ fn local_player_is_sleeping_false_without_local_id_or_entity() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
-        values: vec![protocol_pose_data(
-            super::vanilla_entity_metadata_entity_accessors()
-                .expect("generated base Entity metadata accessors must resolve")
-                .pose_data_id,
-            VANILLA_ENTITY_POSE_SLEEPING_ID,
-        )],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID)],
     }));
     assert!(!store.local_player_is_sleeping());
 
@@ -995,8 +993,6 @@ fn local_player_is_sleeping_false_without_local_id_or_entity() {
 
 #[test]
 fn local_player_is_sleeping_false_for_non_sleeping_pose() {
-    const POSE_STANDING: i32 = 0;
-
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(32));
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -1006,12 +1002,7 @@ fn local_player_is_sleeping_false_for_non_sleeping_pose() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
-        values: vec![protocol_pose_data(
-            super::vanilla_entity_metadata_entity_accessors()
-                .expect("generated base Entity metadata accessors must resolve")
-                .pose_data_id,
-            POSE_STANDING,
-        )],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
 
     assert!(!store.local_player_is_sleeping());
@@ -1020,10 +1011,6 @@ fn local_player_is_sleeping_false_for_non_sleeping_pose() {
 #[test]
 fn warden_pick_bounds_follow_vanilla_pose_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_ROARING: i32 = 11;
-    const POSE_EMERGING: i32 = 13;
-    const POSE_DIGGING: i32 = 14;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(34, 142));
@@ -1052,7 +1039,7 @@ fn warden_pick_bounds_follow_vanilla_pose_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 34,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_EMERGING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_EMERGING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(34),
@@ -1061,7 +1048,7 @@ fn warden_pick_bounds_follow_vanilla_pose_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 34,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_DIGGING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_DIGGING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(34),
@@ -1070,7 +1057,7 @@ fn warden_pick_bounds_follow_vanilla_pose_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 34,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_ROARING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_ROARING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(34),
@@ -1085,9 +1072,6 @@ fn warden_pick_bounds_follow_vanilla_pose_metadata() {
 #[test]
 fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_STANDING: i32 = 0;
-    const POSE_SITTING: i32 = 10;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -1106,7 +1090,7 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 43,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SITTING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(43),
@@ -1149,7 +1133,7 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 43,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(43),
@@ -1163,7 +1147,7 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 44,
         values: vec![
-            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            entity_pose_data(VANILLA_ENTITY_POSE_SITTING_ID),
             camel_baby_data(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, true),
         ],
     }));
@@ -1197,9 +1181,6 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
 #[test]
 fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_STANDING: i32 = 0;
-    const POSE_SITTING: i32 = 10;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -1240,7 +1221,7 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 45,
         values: vec![
-            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            entity_pose_data(VANILLA_ENTITY_POSE_SITTING_ID),
             camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, -100),
         ],
     }));
@@ -1266,7 +1247,7 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 45,
         values: vec![
-            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING),
+            entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID),
             camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, 200),
         ],
     }));
@@ -1294,7 +1275,7 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 45,
         values: vec![
-            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            entity_pose_data(VANILLA_ENTITY_POSE_SITTING_ID),
             camel_baby_data(VANILLA_ENTITY_TYPE_CAMEL_ID, true),
             camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, -100),
         ],
@@ -1318,7 +1299,7 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 46,
         values: vec![
-            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            entity_pose_data(VANILLA_ENTITY_POSE_SITTING_ID),
             camel_baby_data(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, true),
             camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, -100),
         ],
@@ -1339,9 +1320,6 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
 #[test]
 fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_STANDING: i32 = 0;
-    const POSE_LONG_JUMPING: i32 = 6;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(41, 62));
@@ -1353,7 +1331,7 @@ fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 41,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_LONG_JUMPING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_LONG_JUMPING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(41),
@@ -1396,7 +1374,7 @@ fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 41,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(41),

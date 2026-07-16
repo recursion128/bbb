@@ -23395,6 +23395,7 @@ mod generated_catalog_guards {
         let movement_tests = include_str!("../tests/movement_combat_and_swing_projection.rs");
         let combat_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
         let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
+        let creature_bounds_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
         for source in [
             dimensions,
             animations,
@@ -23408,6 +23409,7 @@ mod generated_catalog_guards {
             movement_tests,
             combat_tests,
             player_pose_tests,
+            creature_bounds_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [
@@ -23456,6 +23458,8 @@ mod generated_catalog_guards {
         assert!(!player_pose_tests.contains("const POSE_STANDING"));
         assert!(!player_pose_tests.contains("const POSE_SLEEPING"));
         assert!(!player_pose_tests.contains("const POSE_CROUCHING"));
+        assert!(!creature_bounds_tests.contains("ENTITY_DATA_POSE_ID"));
+        assert!(!creature_bounds_tests.contains("const POSE_"));
     }
 
     #[test]
