@@ -127,7 +127,8 @@ fn entity_events_update_world_and_world_counters() {
             id: 123,
             values: vec![EntityDataValue {
                 data_id: 0,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(0x20),
             }],
         },
@@ -803,7 +804,8 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
             id: 118,
             values: vec![EntityDataValue {
                 data_id: 11,
-                serializer_id: 1,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(0x0033_66cc),
             }],
         },
@@ -818,7 +820,8 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
             id: 119,
             values: vec![EntityDataValue {
                 data_id: 11,
-                serializer_id: 1,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(0),
             }],
         },
@@ -833,7 +836,8 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
             id: 120,
             values: vec![EntityDataValue {
                 data_id: 11,
-                serializer_id: 1,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(-1),
             }],
         },
@@ -848,7 +852,8 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
             id: 121,
             values: vec![EntityDataValue {
                 data_id: 11,
-                serializer_id: 1,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(0x0011_2233),
             }],
         },
@@ -1276,7 +1281,7 @@ fn snowball_hit_entity_event_emits_particle_state() {
             id: 79,
             values: vec![EntityDataValue {
                 data_id: 8,
-                serializer_id: 7,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(ItemStackSummary::empty()),
             }],
         },
@@ -1359,7 +1364,7 @@ fn thrown_egg_hit_entity_event_emits_particle_state() {
             id: 89,
             values: vec![EntityDataValue {
                 data_id: 8,
-                serializer_id: 7,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(ItemStackSummary::empty()),
             }],
         },

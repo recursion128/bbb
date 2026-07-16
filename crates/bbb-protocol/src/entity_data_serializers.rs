@@ -346,6 +346,51 @@ mod tests {
     }
 
     #[test]
+    fn native_runtime_tests_use_generated_serializer_ids() {
+        fn visit(path: &Path, violations: &mut Vec<String>) {
+            if path.is_dir() {
+                for entry in fs::read_dir(path).unwrap() {
+                    visit(&entry.unwrap().path(), violations);
+                }
+                return;
+            }
+            if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                return;
+            }
+            let source = fs::read_to_string(path).unwrap();
+            for line in source.lines() {
+                if line.contains("SERIALIZER_ID: i32 =") {
+                    violations.push(format!("{}: {line}", path.display()));
+                }
+                let numeric = line
+                    .trim()
+                    .strip_prefix("serializer_id:")
+                    .and_then(|value| value.strip_suffix(","))
+                    .is_some_and(|value| {
+                        value
+                            .trim()
+                            .chars()
+                            .all(|character| character.is_ascii_digit() || character == '_')
+                    });
+                if numeric {
+                    violations.push(format!("{}: {line}", path.display()));
+                }
+            }
+        }
+        let runtime = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("bbb-native/src/runtime");
+        let mut violations = Vec::new();
+        visit(&runtime, &mut violations);
+        assert!(
+            violations.is_empty(),
+            "native runtime tests restored serializer ids:\n{}",
+            violations.join("\n")
+        );
+    }
+
+    #[test]
     fn world_consumers_use_generated_serializer_ids() {
         fn visit(path: &Path, violations: &mut Vec<String>) {
             if path.is_dir() {

@@ -17287,7 +17287,8 @@ fn add_remote_supporting_block_test_entity(
 fn test_bool_data(data_id: u8, value: bool) -> bbb_protocol::packets::EntityDataValue {
     bbb_protocol::packets::EntityDataValue {
         data_id,
-        serializer_id: 8,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         value: bbb_protocol::packets::EntityDataValueKind::Boolean(value),
     }
 }
@@ -17295,7 +17296,8 @@ fn test_bool_data(data_id: u8, value: bool) -> bbb_protocol::packets::EntityData
 fn test_byte_data(data_id: u8, value: i8) -> bbb_protocol::packets::EntityDataValue {
     bbb_protocol::packets::EntityDataValue {
         data_id,
-        serializer_id: 0,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: bbb_protocol::packets::EntityDataValueKind::Byte(value),
     }
 }
@@ -17303,7 +17305,8 @@ fn test_byte_data(data_id: u8, value: i8) -> bbb_protocol::packets::EntityDataVa
 fn test_humanoid_arm_data(data_id: u8, arm_id: i32) -> bbb_protocol::packets::EntityDataValue {
     bbb_protocol::packets::EntityDataValue {
         data_id,
-        serializer_id: 42,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID,
         value: bbb_protocol::packets::EntityDataValueKind::HumanoidArm(arm_id),
     }
 }
@@ -17314,7 +17317,8 @@ fn test_item_stack_data(
 ) -> bbb_protocol::packets::EntityDataValue {
     bbb_protocol::packets::EntityDataValue {
         data_id,
-        serializer_id: 7,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
         value: bbb_protocol::packets::EntityDataValueKind::ItemStack(item),
     }
 }

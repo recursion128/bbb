@@ -16971,3 +16971,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - gameplay-id generator 的反向扫描由 entity test tree 扩大为整个
   `bbb-world/src`，拒绝 numeric `serializer_id` 与本地 serializer alias 在任一 world
   语义消费面回流。
+
+## 2026-07-16：统一 native runtime fixture serializer 身份
+
+- `bbb-native` runtime 主测试与 event integration 测试的 18 个 metadata
+  `serializer_id` 写入点，现按 Byte、Int、Float、ItemStack、Boolean 与
+  HumanoidArm 载荷类型直接消费 gameplay-id generator 生成的 typed constants。
+- gameplay-id generator 新增对整个 `bbb-native/src/runtime` 的递归反向扫描，
+  拒绝 numeric `serializer_id` 或本地 serializer alias 在主测试、event root 或
+  任一 event 子模块回流。

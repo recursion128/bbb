@@ -108,7 +108,8 @@ fn firework_item_entity_data(entity_id: i32, explosions_count: Option<usize>) ->
         id: entity_id,
         values: vec![EntityDataValue {
             data_id: 8,
-            serializer_id: 7,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(stack),
         }],
     }
@@ -129,7 +130,8 @@ fn firework_item_entity_data_with_explosions(
         id: entity_id,
         values: vec![EntityDataValue {
             data_id: 8,
-            serializer_id: 7,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(stack),
         }],
     }
