@@ -17,7 +17,6 @@ use bbb_world::{
     VANILLA_BAT_FLAG_RESTING, VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
-    VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
@@ -119,6 +118,15 @@ fn salmon_variant_data(variant: i32) -> EntityDataValue {
     )
     .expect("generated Salmon variant accessor must resolve");
     protocol_int_data(data_id, variant)
+}
+
+fn tropical_fish_variant_data(packed: i32) -> EntityDataValue {
+    let accessors =
+        bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        )
+        .expect("generated TropicalFish packed-variant accessor must resolve");
+    protocol_int_data(accessors.variant_data_id, packed)
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -8310,10 +8318,7 @@ fn entity_model_kind_projects_tropical_fish_shape_from_packed_variant() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-            &[protocol_int_data(
-                TROPICAL_FISH_VARIANT_DATA_ID,
-                0x0405_0001
-            )]
+            &[tropical_fish_variant_data(0x0405_0001)]
         ),
         EntityModelKind::TropicalFish {
             shape: TropicalFishModelShape::Large,
@@ -8329,7 +8334,7 @@ fn entity_model_kind_projects_tropical_fish_shape_from_packed_variant() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-            &[protocol_int_data(TROPICAL_FISH_VARIANT_DATA_ID, 0x0500)]
+            &[tropical_fish_variant_data(0x0500)]
         ),
         EntityModelKind::TropicalFish {
             shape: TropicalFishModelShape::Small,
@@ -8350,7 +8355,7 @@ fn entity_model_kind_projects_tropical_fish_base_color_from_packed_variant() {
     // bits (pattern color) must not bleed into the base color.
     let base_color_of = |packed: i32| match entity_model_kind(
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        &[protocol_int_data(TROPICAL_FISH_VARIANT_DATA_ID, packed)],
+        &[tropical_fish_variant_data(packed)],
     ) {
         EntityModelKind::TropicalFish { base_color, .. } => base_color,
         other => panic!("expected tropical fish, got {other:?}"),
@@ -8374,7 +8379,7 @@ fn entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packe
     // not bleed into either.
     let decode = |packed: i32| match entity_model_kind(
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-        &[protocol_int_data(TROPICAL_FISH_VARIANT_DATA_ID, packed)],
+        &[tropical_fish_variant_data(packed)],
     ) {
         EntityModelKind::TropicalFish {
             shape,

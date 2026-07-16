@@ -7782,14 +7782,13 @@ fn debug_push_tadpole_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_tropical_fish_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let Some((data_id, default)) =
-        vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
-            entity.entity_type_id,
-        )
-    else {
+    let Some(accessors) = vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
+        entity.entity_type_id,
+    ) else {
         return;
     };
-    let variant = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
+    let variant = debug_entity_data_int_present(entity, accessors.variant_data_id)
+        .unwrap_or(accessors.variant_default);
     fields.push(format!("Variant: {variant}"));
 }
 

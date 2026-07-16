@@ -1509,42 +1509,17 @@ pub(super) fn tropical_fish_model_kind(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    let packed =
+    let accessors =
         vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(entity_type_id)
-            .map(|(data_id, default)| entity_data_int(values, data_id, default))
-            .unwrap_or_default();
+            .expect("generated TropicalFish packed-variant accessor must resolve");
+    let packed = entity_data_int(values, accessors.variant_data_id, accessors.variant_default);
+    let pattern_id = accessors.pattern_id(packed);
     EntityModelKind::TropicalFish {
-        shape: tropical_fish_shape(packed),
-        base_color: tropical_fish_base_color(packed),
-        pattern: tropical_fish_pattern(packed),
-        pattern_color: tropical_fish_pattern_color(packed),
+        shape: TropicalFishModelShape::from_vanilla_pattern_id(pattern_id),
+        base_color: EntityDyeColor::from_vanilla_id(accessors.base_color_id(packed)),
+        pattern: TropicalFishPattern::from_vanilla_pattern_id(pattern_id),
+        pattern_color: EntityDyeColor::from_vanilla_id(accessors.pattern_color_id(packed)),
     }
-}
-
-fn tropical_fish_shape(packed: i32) -> TropicalFishModelShape {
-    TropicalFishModelShape::from_vanilla_pattern_id(packed & TROPICAL_FISH_PATTERN_MASK)
-}
-
-/// Vanilla `TropicalFish.getBaseColor(packedVariant) = DyeColor.byId(packedVariant >> 16 & 0xFF)`,
-/// projected into the renderer body tint (`TropicalFishRenderer.getModelTint = state.baseColor`).
-fn tropical_fish_base_color(packed: i32) -> EntityDyeColor {
-    EntityDyeColor::from_vanilla_id(
-        (packed >> TROPICAL_FISH_BASE_COLOR_SHIFT) & TROPICAL_FISH_BASE_COLOR_MASK,
-    )
-}
-
-/// Vanilla `TropicalFish.getPattern(packedVariant) = Pattern.byId(packedVariant & 0xFFFF)`, the
-/// `TropicalFishPatternLayer` overlay selector.
-fn tropical_fish_pattern(packed: i32) -> TropicalFishPattern {
-    TropicalFishPattern::from_vanilla_pattern_id(packed & TROPICAL_FISH_PATTERN_MASK)
-}
-
-/// Vanilla `TropicalFish.getPatternColor(packedVariant) = DyeColor.byId(packedVariant >> 24 &
-/// 0xFF)`, the `TropicalFishPatternLayer` tint (`state.patternColor`).
-fn tropical_fish_pattern_color(packed: i32) -> EntityDyeColor {
-    EntityDyeColor::from_vanilla_id(
-        (packed >> TROPICAL_FISH_PATTERN_COLOR_SHIFT) & TROPICAL_FISH_PATTERN_COLOR_MASK,
-    )
 }
 
 pub(super) fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {

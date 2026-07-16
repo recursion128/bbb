@@ -21,6 +21,7 @@ pub use crate::entities::VanillaPandaMetadataAccessors;
 pub use crate::entities::VanillaShulkerMetadataAccessors;
 pub use crate::entities::VanillaTamableAnimalMetadataAccessors;
 pub use crate::entities::VanillaThrownTridentMetadataAccessors;
+pub use crate::entities::VanillaTropicalFishVariantAccessors;
 pub use crate::entities::VanillaTurtleMetadataAccessors;
 pub use crate::entities::VanillaVehicleMetadataAccessors;
 pub use crate::entities::VanillaZombieMetadataAccessors;
@@ -432,12 +433,6 @@ pub use crate::entities::{
     VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS, VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING, VANILLA_TAMABLE_ANIMAL_FLAG_TAME,
     VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID,
-};
-pub use crate::entities::{
-    VANILLA_TROPICAL_FISH_BASE_COLOR_MASK, VANILLA_TROPICAL_FISH_BASE_COLOR_SHIFT,
-    VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, VANILLA_TROPICAL_FISH_PATTERN_COLOR_MASK,
-    VANILLA_TROPICAL_FISH_PATTERN_COLOR_SHIFT, VANILLA_TROPICAL_FISH_PATTERN_MASK,
-    VANILLA_TROPICAL_FISH_VARIANT_DATA_ID,
 };
 pub use crate::entities::{
     VANILLA_TURTLE_DEFAULT_HAS_EGG, VANILLA_TURTLE_DEFAULT_LAYING_EGG,

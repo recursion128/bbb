@@ -367,8 +367,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   restore fixed accessor/default aliases, hand-written wire/entity type ids or bypass the existing
   clamped variant mapping.
   TropicalFish packed-variant membership, wire index and typed default must remain derived from
-  generated `TropicalFish.DATA_ID_TYPE_VARIANT`; native model/debug consumers must not restore
-  fixed accessor/default aliases and must continue using generated mask/shift constants.
+  generated `TropicalFish.DATA_ID_TYPE_VARIANT`; native model/debug consumers and semantic fixtures
+  must not restore fixed accessor/default/mask/shift aliases or hand-written wire indices.
   Parrot variant membership, wire index and typed default must remain derived from generated
   `Parrot.DATA_VARIANT_ID`; native model/debug consumers must not restore fixed accessor/default
   aliases or a local ordinal bound, and ids must follow vanilla `ByIdMap` endpoint clamping.

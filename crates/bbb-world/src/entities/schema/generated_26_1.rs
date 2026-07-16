@@ -369,9 +369,6 @@ pub const VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 =
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
-const GENERATED_VANILLA_TROPICAL_FISH_VARIANT_DATA_ID: u8 = 17;
-pub const VANILLA_TROPICAL_FISH_VARIANT_DATA_ID: u8 =
-    GENERATED_VANILLA_TROPICAL_FISH_VARIANT_DATA_ID;
 const GENERATED_VANILLA_TADPOLE_AGE_LOCKED_DATA_ID: u8 = 17;
 pub const VANILLA_TADPOLE_AGE_LOCKED_DATA_ID: u8 = GENERATED_VANILLA_TADPOLE_AGE_LOCKED_DATA_ID;
 const GENERATED_VANILLA_VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
@@ -943,9 +940,6 @@ pub const VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING: i8 =
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
-const GENERATED_VANILLA_TROPICAL_FISH_DEFAULT_VARIANT: i32 = 0;
-pub const VANILLA_TROPICAL_FISH_DEFAULT_VARIANT: i32 =
-    GENERATED_VANILLA_TROPICAL_FISH_DEFAULT_VARIANT;
 const GENERATED_VANILLA_TADPOLE_DEFAULT_AGE_LOCKED: bool = false;
 pub const VANILLA_TADPOLE_DEFAULT_AGE_LOCKED: bool = GENERATED_VANILLA_TADPOLE_DEFAULT_AGE_LOCKED;
 const GENERATED_VANILLA_VEHICLE_DEFAULT_HURT_TIME: i32 = 0;
@@ -24282,12 +24276,20 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_tropical_fish_variant_does_not_restore_accessor_constants() {
+    fn tropical_fish_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [native_scene, native_variants, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(source.contains(
                 "vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type"
             ));
@@ -24296,23 +24298,25 @@ mod generated_catalog_guards {
         for removed in [
             "TROPICAL_FISH_VARIANT_DATA_ID",
             "TROPICAL_FISH_DEFAULT_VARIANT",
+            "TROPICAL_FISH_BASE_COLOR_MASK",
+            "TROPICAL_FISH_BASE_COLOR_SHIFT",
+            "TROPICAL_FISH_PATTERN_COLOR_MASK",
+            "TROPICAL_FISH_PATTERN_COLOR_SHIFT",
+            "TROPICAL_FISH_PATTERN_MASK",
         ] {
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_kind.contains(removed),
-                "native kind restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                native_scene,
+                native_kind,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "TropicalFish projection restored {removed}"
+                );
+            }
         }
     }
 

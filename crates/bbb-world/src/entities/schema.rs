@@ -387,6 +387,31 @@ pub struct VanillaWolfMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaTropicalFishVariantAccessors {
+    pub variant_data_id: u8,
+    pub variant_default: i32,
+    pub pattern_mask: i32,
+    pub base_color_mask: i32,
+    pub base_color_shift: i32,
+    pub pattern_color_mask: i32,
+    pub pattern_color_shift: i32,
+}
+
+impl VanillaTropicalFishVariantAccessors {
+    pub fn pattern_id(self, packed: i32) -> i32 {
+        packed & self.pattern_mask
+    }
+
+    pub fn base_color_id(self, packed: i32) -> i32 {
+        (packed >> self.base_color_shift) & self.base_color_mask
+    }
+
+    pub fn pattern_color_id(self, packed: i32) -> i32 {
+        (packed >> self.pattern_color_shift) & self.pattern_color_mask
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaMobMetadataAccessors {
     pub flags_data_id: u8,
     pub flags_default: i8,
@@ -1519,10 +1544,10 @@ pub fn vanilla_entity_metadata_salmon_variant_accessor_for_entity_type(
     }
 }
 
-/// Resolves the generated TropicalFish packed-variant accessor and its typed default.
+/// Resolves the generated TropicalFish packed-variant accessor and bit layout.
 pub fn vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
     entity_type_id: i32,
-) -> Option<(u8, i32)> {
+) -> Option<VanillaTropicalFishVariantAccessors> {
     let accessor =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_TYPE_VARIANT")?;
     match (
@@ -1534,7 +1559,15 @@ pub fn vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
             "net.minecraft.world.entity.animal.fish.TropicalFish",
             "INT",
             Some(VanillaEntityMetadataDefault::Int(default)),
-        ) => Some((accessor.data_id, default)),
+        ) => Some(VanillaTropicalFishVariantAccessors {
+            variant_data_id: accessor.data_id,
+            variant_default: default,
+            pattern_mask: VANILLA_TROPICAL_FISH_PATTERN_MASK,
+            base_color_mask: VANILLA_TROPICAL_FISH_BASE_COLOR_MASK,
+            base_color_shift: VANILLA_TROPICAL_FISH_BASE_COLOR_SHIFT,
+            pattern_color_mask: VANILLA_TROPICAL_FISH_PATTERN_COLOR_MASK,
+            pattern_color_shift: VANILLA_TROPICAL_FISH_PATTERN_COLOR_SHIFT,
+        }),
         _ => None,
     }
 }
@@ -5637,12 +5670,30 @@ mod tests {
     }
 
     #[test]
-    fn generated_tropical_fish_variant_accessor_owns_membership_index_and_default() {
+    fn generated_tropical_fish_variant_accessor_owns_membership_index_default_and_layout() {
+        let tropical_fish =
+            vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::TropicalFish);
+        let variant = tropical_fish
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_ID_TYPE_VARIANT")
+            .expect("generated TropicalFish packed-variant field");
+        let VanillaEntityMetadataDefault::Int(default) = variant.default else {
+            panic!("generated TropicalFish packed-variant default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID
             ),
-            Some((17, 0))
+            Some(VanillaTropicalFishVariantAccessors {
+                variant_data_id: variant.data_id,
+                variant_default: default,
+                pattern_mask: VANILLA_TROPICAL_FISH_PATTERN_MASK,
+                base_color_mask: VANILLA_TROPICAL_FISH_BASE_COLOR_MASK,
+                base_color_shift: VANILLA_TROPICAL_FISH_BASE_COLOR_SHIFT,
+                pattern_color_mask: VANILLA_TROPICAL_FISH_PATTERN_COLOR_MASK,
+                pattern_color_shift: VANILLA_TROPICAL_FISH_PATTERN_COLOR_SHIFT,
+            })
         );
         assert_eq!(
             vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
@@ -7468,11 +7519,6 @@ mod tests {
         assert_eq!(VANILLA_HORSE_COLOR_MASK, 0xFF);
         assert_eq!(VANILLA_HORSE_MARKINGS_MASK, 0xFF00);
         assert_eq!(VANILLA_HORSE_MARKINGS_SHIFT, 8);
-        assert_eq!(VANILLA_TROPICAL_FISH_BASE_COLOR_MASK, 0xFF);
-        assert_eq!(VANILLA_TROPICAL_FISH_BASE_COLOR_SHIFT, 16);
-        assert_eq!(VANILLA_TROPICAL_FISH_PATTERN_COLOR_MASK, 0xFF);
-        assert_eq!(VANILLA_TROPICAL_FISH_PATTERN_COLOR_SHIFT, 24);
-        assert_eq!(VANILLA_TROPICAL_FISH_PATTERN_MASK, 0xFFFF);
         let sniffer = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Sniffer);
         assert_eq!(
             sniffer.parent,
@@ -7895,8 +7941,18 @@ mod tests {
         );
         assert_eq!(tropical_fish.inherited_field_count, 17);
         assert_eq!(tropical_fish.own_fields.len(), 1);
-        assert_eq!(VANILLA_TROPICAL_FISH_VARIANT_DATA_ID, 17);
-        assert_eq!(VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, 0);
+        let accessors = vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
+        )
+        .expect("generated TropicalFish packed-variant accessor");
+        assert_eq!(
+            accessors.variant_data_id,
+            tropical_fish.own_fields[0].data_id
+        );
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(accessors.variant_default),
+            tropical_fish.own_fields[0].default
+        );
         assert_eq!(
             VANILLA_ENTITY_METADATA_DEFAULT_RESOLVER_EVIDENCE_26_1.len(),
             28

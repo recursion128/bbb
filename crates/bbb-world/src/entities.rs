@@ -77,6 +77,7 @@ pub use schema::VanillaPandaMetadataAccessors;
 pub use schema::VanillaShulkerMetadataAccessors;
 pub use schema::VanillaTamableAnimalMetadataAccessors;
 pub use schema::VanillaThrownTridentMetadataAccessors;
+pub use schema::VanillaTropicalFishVariantAccessors;
 pub use schema::VanillaTurtleMetadataAccessors;
 pub use schema::VanillaVehicleMetadataAccessors;
 pub use schema::VanillaZombieMetadataAccessors;
@@ -474,12 +475,6 @@ pub use schema::{
     VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS, VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING, VANILLA_TAMABLE_ANIMAL_FLAG_TAME,
     VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID,
-};
-pub use schema::{
-    VANILLA_TROPICAL_FISH_BASE_COLOR_MASK, VANILLA_TROPICAL_FISH_BASE_COLOR_SHIFT,
-    VANILLA_TROPICAL_FISH_DEFAULT_VARIANT, VANILLA_TROPICAL_FISH_PATTERN_COLOR_MASK,
-    VANILLA_TROPICAL_FISH_PATTERN_COLOR_SHIFT, VANILLA_TROPICAL_FISH_PATTERN_MASK,
-    VANILLA_TROPICAL_FISH_VARIANT_DATA_ID,
 };
 pub use schema::{
     VANILLA_TURTLE_DEFAULT_HAS_EGG, VANILLA_TURTLE_DEFAULT_LAYING_EGG,
