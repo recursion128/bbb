@@ -8081,7 +8081,7 @@ fn entity_model_kind_projects_bee_baby_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_BEE_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_BEE_ID, true)]
         ),
         EntityModelKind::Bee {
             baby: true,
@@ -8145,7 +8145,7 @@ fn entity_model_kind_projects_dolphin_baby_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_DOLPHIN_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_DOLPHIN_ID, true)]
         ),
         EntityModelKind::Dolphin { baby: true }
     );
@@ -8262,7 +8262,7 @@ fn entity_model_kind_projects_turtle_baby_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_TURTLE_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_TURTLE_ID, true)]
         ),
         EntityModelKind::Turtle { baby: true }
     );
@@ -8284,7 +8284,7 @@ fn entity_model_kind_projects_strider_baby_and_cold_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_STRIDER_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_STRIDER_ID, true)]
         ),
         EntityModelKind::Strider {
             baby: true,
@@ -8543,7 +8543,7 @@ fn entity_model_kind_projects_squid_glow_and_baby_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SQUID_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_SQUID_ID, true)]
         ),
         EntityModelKind::Squid {
             glow: false,
@@ -8553,7 +8553,7 @@ fn entity_model_kind_projects_squid_glow_and_baby_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, true)]
         ),
         EntityModelKind::Squid {
             glow: true,
@@ -8588,7 +8588,7 @@ fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_COW_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_COW_ID, true)]
         ),
         EntityModelKind::Cow {
             variant: CowModelVariant::Temperate,
@@ -8608,7 +8608,7 @@ fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SHEEP_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_SHEEP_ID, true)]
         ),
         EntityModelKind::Sheep {
             baby: true,
@@ -8631,7 +8631,7 @@ fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, true)]
         ),
         EntityModelKind::Mooshroom {
             baby: true,
@@ -8675,7 +8675,7 @@ fn entity_model_kind_uses_vanilla_sheep_wool_metadata() {
             VANILLA_ENTITY_TYPE_SHEEP_ID,
             &[
                 sheep_wool_data(15, false),
-                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                baby_data(VANILLA_ENTITY_TYPE_SHEEP_ID, true),
             ]
         ),
         EntityModelKind::Sheep {

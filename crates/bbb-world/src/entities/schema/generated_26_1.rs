@@ -22507,6 +22507,27 @@ mod generated_catalog_guards {
                 "native scene farm-variant baby fixtures restored {removed}"
             );
         }
+        let native_scene_base_animal_fixtures = native_scene_tests
+            .split("fn entity_model_kind_projects_bee_baby_from_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn entity_model_kind_projects_sheep_jeb_custom_name_and_age")
+                    .next()
+            })
+            .expect("native scene base-animal baby fixture source");
+        assert_eq!(
+            native_scene_base_animal_fixtures
+                .matches("baby_data(")
+                .count(),
+            10
+        );
+        for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+            assert!(
+                !native_scene_base_animal_fixtures.contains(removed),
+                "native scene base-animal baby fixtures restored {removed}"
+            );
+        }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,
