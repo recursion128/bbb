@@ -459,7 +459,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size
   table; production and fixtures must not restore fixed registry ranges or projectile-type tables.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class
-  behavior plus redirectable-projectile tag, with spectator/marker kept as per-instance gates.
+  behavior plus redirectable-projectile tag; production and fixtures must not restore representative
+  entity-type tables, while spectator/marker remain per-instance gates with generated metadata.
   Remote-entity powder-snow collision must consume the generated
   `powder_snow_walkable_mobs` entity-type tag rather than a parallel entity-type set.
   Collision-debug pushability class dispatch must consume the generated nearest-`isPushable`

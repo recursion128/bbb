@@ -22286,7 +22286,7 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_owner_collision_does_not_restore_pickable_type_membership() {
+    fn owner_collision_consumers_do_not_restore_pickable_type_membership() {
         let source = include_str!("../projectiles.rs");
         let body = source
             .split("fn entity_is_pickable_for_owner_collision")
@@ -22295,6 +22295,8 @@ mod generated_catalog_guards {
             .map(|(body, _)| body)
             .expect("owner collision pickability source");
         assert!(body.contains("vanilla_entity_metadata_type_is_pickable"));
+        assert!(body.contains("spectator_player_uuids"));
+        assert!(body.contains("vanilla_entity_metadata_armor_stand_accessors_for_entity_type"));
         for removed in [
             "vanilla_living_entity_type",
             "is_vanilla_boat_type",
@@ -22303,6 +22305,22 @@ mod generated_catalog_guards {
             "matches!",
         ] {
             assert!(!body.contains(removed), "restored {removed}");
+        }
+        let fixture = source
+            .split("fn owner_collision_pickability_uses_generated_class_and_tag_membership")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("owner collision pickability fixture source");
+        assert!(fixture.contains("VANILLA_ENTITY_TYPE_METADATA_26_1"));
+        assert!(fixture.contains("is_pickable_by_class"));
+        assert!(fixture.contains("redirectable_projectile"));
+        for removed in [
+            "VANILLA_ENTITY_TYPE_COW_ID",
+            "VANILLA_ENTITY_TYPE_OAK_BOAT_ID",
+            "VANILLA_ENTITY_TYPE_WIND_CHARGE_ID",
+            "VANILLA_ENTITY_TYPE_ARROW_ID",
+        ] {
+            assert!(!fixture.contains(removed), "fixture restored {removed}");
         }
     }
 

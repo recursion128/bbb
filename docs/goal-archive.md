@@ -17491,3 +17491,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - lifecycle bounds fixture 对 generated catalog 全量比较 `Builder.sized` dimensions，同时覆盖
   非成员与无效 id；metadata/core-registry 两个 generator 分别输出反向守卫，防止生产或 fixture
   恢复 projectile type/size 表。
+
+## 2026-07-16：统一 Projectile owner-collision pickability 消费
+
+- owner-collision fixture 删除 Cow/Boat/WindCharge/Arrow 代表性 type 表，改为逐项比较 generated
+  最近 `isPickable` class 行为与 redirectable-projectile tag，覆盖完整 entity-type catalog。
+- Player spectator 与 ArmorStand marker 继续作为实例态门禁，后者通过 generated accessor bundle
+  构造；metadata/core-registry 两个 generator 分别守住 production/query/fixture 消费边界。

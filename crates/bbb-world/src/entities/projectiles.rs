@@ -400,6 +400,7 @@ fn is_vanilla_wind_charge_type(entity_type_id: i32) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use super::super::schema::VANILLA_ENTITY_TYPE_METADATA_26_1;
     use super::*;
     use crate::WorldStore;
     use bbb_protocol::entity_types::{
@@ -488,36 +489,31 @@ mod tests {
             VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
         )
         .expect("generated ArmorStand metadata accessors must resolve");
-        for (id, entity_type_id) in [
-            (10, VANILLA_ENTITY_TYPE_COW_ID),
-            (11, VANILLA_ENTITY_TYPE_OAK_BOAT_ID),
-            (12, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID),
-            (13, VANILLA_ENTITY_TYPE_ARROW_ID),
-            (14, VANILLA_ENTITY_TYPE_PLAYER_ID),
-            (15, VANILLA_ENTITY_TYPE_ARMOR_STAND_ID),
-        ] {
-            store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
-        }
-
-        let mut spectator_players = HashSet::new();
-        for id in [10, 11, 12, 14, 15] {
-            assert!(
+        for (entry, metadata) in VANILLA_ENTITY_TYPES
+            .iter()
+            .zip(VANILLA_ENTITY_TYPE_METADATA_26_1)
+        {
+            let id = 1_000 + entry.id;
+            store.apply_add_entity(protocol_add_entity_with_type(id, entry.id));
+            assert_eq!(
                 store
                     .entities
-                    .entity_is_pickable_for_owner_collision(id, &spectator_players),
-                "entity {id}"
+                    .entity_is_pickable_for_owner_collision(id, &HashSet::new()),
+                metadata.is_pickable_by_class || entry.redirectable_projectile,
+                "entity type {}",
+                entry.resource_id
             );
         }
-        assert!(!store
-            .entities
-            .entity_is_pickable_for_owner_collision(13, &spectator_players));
 
-        spectator_players.insert(Uuid::from_u128(14));
+        let player_id = 1_000 + VANILLA_ENTITY_TYPE_PLAYER_ID;
+        let armor_stand_id = 1_000 + VANILLA_ENTITY_TYPE_ARMOR_STAND_ID;
+        let mut spectator_players = HashSet::new();
+        spectator_players.insert(Uuid::from_u128(player_id as u128));
         assert!(!store
             .entities
-            .entity_is_pickable_for_owner_collision(14, &spectator_players));
+            .entity_is_pickable_for_owner_collision(player_id, &spectator_players));
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-            id: 15,
+            id: armor_stand_id,
             values: vec![ProtocolEntityDataValue {
                 data_id: armor_stand_accessors.client_flags_data_id,
                 serializer_id:
@@ -527,7 +523,7 @@ mod tests {
         }));
         assert!(!store
             .entities
-            .entity_is_pickable_for_owner_collision(15, &spectator_players));
+            .entity_is_pickable_for_owner_collision(armor_stand_id, &spectator_players));
     }
 
     #[test]
