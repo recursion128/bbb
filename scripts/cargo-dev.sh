@@ -12,6 +12,7 @@ Usage:
   scripts/cargo-dev.sh timings-clean <target-suffix> [cargo test args...]
   scripts/cargo-dev.sh sccache-eval <run-suffix> [focused cargo test args...]
   scripts/cargo-dev.sh gate
+  scripts/cargo-dev.sh batch-gate <good-commit>..<bad-commit>
   scripts/cargo-dev.sh size
   scripts/cargo-dev.sh clean-target <target-suffix|/tmp/bbb-target-...>
   scripts/cargo-dev.sh env
@@ -37,6 +38,7 @@ Examples:
   scripts/cargo-dev.sh timings-clean clean-baseline-20260619 --workspace --timings
   scripts/cargo-dev.sh clean-target clean-baseline-20260619
   scripts/cargo-dev.sh gate
+  scripts/cargo-dev.sh batch-gate master..HEAD
 EOF
 }
 
@@ -103,6 +105,17 @@ require_sccache() {
 
 show_sccache_stats() {
   sccache --show-stats || true
+}
+
+run_timed_cargo() {
+  if [ -x /usr/bin/time ]; then
+    /usr/bin/time -p cargo "$@"
+  elif command -v bash >/dev/null 2>&1; then
+    bash -c 'time -p cargo "$@"' cargo "$@"
+  else
+    echo "timing requires /usr/bin/time or a bash shell with time support" >&2
+    exit 2
+  fi
 }
 
 copy_timing_report() {
@@ -180,7 +193,7 @@ EOF
   (
     export RUSTC_WRAPPER=sccache
     export CARGO_TARGET_DIR="$clean_target"
-    /usr/bin/time -p cargo test --workspace --timings --quiet
+    run_timed_cargo test --workspace --timings --quiet
   )
   du -sh "$clean_target"
   copy_timing_report "$clean_target" "sccache-clean-${run_suffix}"
@@ -192,7 +205,7 @@ EOF
   (
     export RUSTC_WRAPPER=sccache
     export CARGO_TARGET_DIR="$worker_target"
-    /usr/bin/time -p cargo test "$@"
+    run_timed_cargo test "$@"
   )
   du -sh "$worker_target"
   show_sccache_stats
@@ -202,7 +215,7 @@ EOF
   (
     unset RUSTC_WRAPPER
     export CARGO_TARGET_DIR="$nosccache_worker_target"
-    /usr/bin/time -p cargo test "$@"
+    run_timed_cargo test "$@"
   )
   du -sh "$nosccache_worker_target"
 
@@ -212,7 +225,7 @@ EOF
   (
     export RUSTC_WRAPPER=sccache
     export CARGO_TARGET_DIR=/tmp/bbb-target-main
-    /usr/bin/time -p cargo test "$@"
+    run_timed_cargo test "$@"
   )
   show_sccache_stats
 
@@ -228,6 +241,181 @@ Clean them after recording results with:
   scripts/cargo-dev.sh clean-target ${worker_target}
   scripts/cargo-dev.sh clean-target ${nosccache_worker_target}
 EOF
+}
+
+run_batch_gate() {
+  if [ "$#" -ne 1 ]; then
+    echo "batch-gate requires exactly one <good-commit>..<bad-commit> range" >&2
+    usage >&2
+    exit 2
+  fi
+
+  range="$1"
+  case "$range" in
+    *...*)
+      echo "batch-gate requires a two-dot range, not a symmetric three-dot range: $range" >&2
+      exit 2
+      ;;
+    *..*)
+      good_ref="${range%%..*}"
+      bad_ref="${range#*..}"
+      ;;
+    *)
+      echo "batch-gate range must have the form <good-commit>..<bad-commit>: $range" >&2
+      exit 2
+      ;;
+  esac
+  if [ -z "$good_ref" ] || [ -z "$bad_ref" ]; then
+    echo "batch-gate range endpoints must not be empty: $range" >&2
+    exit 2
+  fi
+
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "batch-gate must run inside a Git worktree" >&2
+    exit 2
+  }
+  good_commit="$(git rev-parse --verify "${good_ref}^{commit}" 2>/dev/null)" || {
+    echo "batch-gate cannot resolve good endpoint: $good_ref" >&2
+    exit 2
+  }
+  bad_commit="$(git rev-parse --verify "${bad_ref}^{commit}" 2>/dev/null)" || {
+    echo "batch-gate cannot resolve bad endpoint: $bad_ref" >&2
+    exit 2
+  }
+  if [ "$good_commit" = "$bad_commit" ]; then
+    echo "batch-gate endpoints resolve to the same commit: $good_commit" >&2
+    exit 2
+  fi
+  if ! git merge-base --is-ancestor "$good_commit" "$bad_commit"; then
+    echo "batch-gate good endpoint is not an ancestor of bad endpoint" >&2
+    echo "good: $good_commit" >&2
+    echo "bad:  $bad_commit" >&2
+    exit 2
+  fi
+  if ! git rev-list --first-parent "$bad_commit" | grep -Fx "$good_commit" >/dev/null; then
+    echo "batch-gate good endpoint is not on the bad endpoint's first-parent chain" >&2
+    echo "use a linear/first-parent range so 'first bad commit' is unambiguous" >&2
+    exit 2
+  fi
+  if [ -n "${BBB_BATCH_GATE_COMMAND:-}" ]; then
+    if [ "${BBB_BATCH_GATE_TEST_MODE:-0}" != "1" ]; then
+      echo "BBB_BATCH_GATE_COMMAND is reserved for isolated script tests" >&2
+      exit 2
+    fi
+    batch_gate_command="$BBB_BATCH_GATE_COMMAND"
+  else
+    batch_gate_command="scripts/cargo-dev.sh gate"
+  fi
+
+  batch_root="$(mktemp -d "${TMPDIR:-/tmp}/bbb-batch-gate.XXXXXX")"
+  batch_worktree="$batch_root/worktree"
+  batch_logs="${BBB_BATCH_GATE_LOG_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/bbb-batch-gate-logs.XXXXXX")}"
+  commits_file="$batch_root/commits"
+  results_dir="$batch_root/results"
+  case "$batch_logs" in
+    /*)
+      ;;
+    *)
+      rm -rf "$batch_root"
+      echo "BBB_BATCH_GATE_LOG_DIR must be an absolute path" >&2
+      exit 2
+      ;;
+  esac
+  mkdir -p "$batch_logs" "$results_dir"
+
+  cleanup_batch_gate() {
+    if [ -d "$batch_worktree" ]; then
+      git -C "$repo_root" worktree remove --force "$batch_worktree" >/dev/null 2>&1 || true
+    fi
+    rm -rf "$batch_root"
+  }
+  trap cleanup_batch_gate EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  printf '%s\n' "$good_commit" >"$commits_file"
+  git rev-list --first-parent --reverse "$good_commit..$bad_commit" >>"$commits_file"
+  commit_count="$(wc -l <"$commits_file" | tr -d ' ')"
+  last_index=$((commit_count - 1))
+
+  echo "batch-gate range: $good_commit..$bad_commit"
+  echo "batch-gate first-parent commits: $last_index"
+  echo "batch-gate temporary worktree: $batch_worktree"
+  echo "batch-gate logs: $batch_logs"
+  echo "batch-gate authoritative command: $batch_gate_command"
+  git -C "$repo_root" worktree add --detach --quiet "$batch_worktree" "$bad_commit"
+
+  gate_result=0
+  run_batch_gate_commit() {
+    commit="$1"
+    short_commit="$(git rev-parse --short=12 "$commit")"
+    result_file="$results_dir/$commit"
+    log_file="$batch_logs/$short_commit.log"
+    if [ -f "$result_file" ]; then
+      gate_result="$(cat "$result_file")"
+      return 0
+    fi
+
+    git -C "$batch_worktree" checkout --detach --quiet "$commit"
+    subject="$(git -C "$batch_worktree" log -1 --format=%s)"
+    {
+      echo "commit: $commit"
+      echo "subject: $subject"
+      echo "command: $batch_gate_command"
+      echo
+      if [ -n "${BBB_BATCH_GATE_COMMAND:-}" ]; then
+        (
+          cd "$batch_worktree"
+          export BBB_BATCH_GATE_COMMIT="$commit"
+          export BBB_BATCH_GATE_WORKTREE="$batch_worktree"
+          sh -c "$batch_gate_command"
+        )
+      else
+        (cd "$batch_worktree" && sh scripts/cargo-dev.sh gate)
+      fi
+    } >"$log_file" 2>&1 && gate_result=0 || gate_result=$?
+    printf '%s\n' "$gate_result" >"$result_file"
+    if [ "$gate_result" -eq 0 ]; then
+      echo "batch-gate: PASS $short_commit $subject (log: $log_file)"
+    else
+      echo "batch-gate: FAIL $short_commit $subject (exit $gate_result; log: $log_file)"
+    fi
+  }
+
+  tip_commit="$(sed -n "${commit_count}p" "$commits_file")"
+  run_batch_gate_commit "$tip_commit"
+  if [ "$gate_result" -eq 0 ]; then
+    echo "batch-gate: range tip passed; no bisection needed"
+    exit 0
+  fi
+
+  baseline_commit="$(sed -n '1p' "$commits_file")"
+  run_batch_gate_commit "$baseline_commit"
+  if [ "$gate_result" -ne 0 ]; then
+    echo "batch-gate: baseline commit also fails; cannot attribute a regression within the range" >&2
+    exit 1
+  fi
+
+  low=0
+  high="$last_index"
+  while [ $((high - low)) -gt 1 ]; do
+    middle=$(((low + high) / 2))
+    middle_line=$((middle + 1))
+    middle_commit="$(sed -n "${middle_line}p" "$commits_file")"
+    run_batch_gate_commit "$middle_commit"
+    if [ "$gate_result" -eq 0 ]; then
+      low="$middle"
+    else
+      high="$middle"
+    fi
+  done
+
+  first_bad_line=$((high + 1))
+  first_bad_commit="$(sed -n "${first_bad_line}p" "$commits_file")"
+  first_bad_subject="$(git -C "$repo_root" log -1 --format=%s "$first_bad_commit")"
+  echo "batch-gate: first bad commit: $first_bad_commit $first_bad_subject" >&2
+  exit 1
 }
 
 if [ "$#" -eq 0 ]; then
@@ -261,7 +449,7 @@ case "$cmd" in
     if [ "$#" -eq 0 ]; then
       set -- --workspace --timings
     fi
-    exec /usr/bin/time -p cargo test "$@"
+    run_timed_cargo test "$@"
     ;;
   timings-clean)
     if [ "$#" -lt 1 ]; then
@@ -282,7 +470,7 @@ case "$cmd" in
       set -- --workspace --timings
     fi
     echo "CARGO_TARGET_DIR=${CARGO_TARGET_DIR}"
-    exec /usr/bin/time -p cargo test "$@"
+    run_timed_cargo test "$@"
     ;;
   sccache-eval)
     run_sccache_eval "$@"
@@ -295,6 +483,9 @@ case "$cmd" in
     git diff --check
     RUSTFLAGS='-D warnings' cargo check --workspace
     RUSTFLAGS='-D warnings' cargo test --workspace
+    ;;
+  batch-gate)
+    run_batch_gate "$@"
     ;;
   size)
     found=0

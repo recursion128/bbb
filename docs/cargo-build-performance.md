@@ -122,6 +122,7 @@ BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
 scripts/cargo-dev.sh timings --workspace --timings
 scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings
 scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world command_tree --quiet
+scripts/cargo-dev.sh batch-gate master..HEAD
 scripts/cargo-dev.sh size
 scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD
 scripts/cargo-dev.sh sccache-status
@@ -132,9 +133,19 @@ The script defaults to `CARGO_TARGET_DIR=/tmp/bbb-target-main`. Set
 `/tmp/bbb-target-renderer`, `/tmp/bbb-target-world`, or `/tmp/bbb-target-net`.
 An explicit `CARGO_TARGET_DIR` still wins.
 
-`scripts/cargo-dev.sh gate` runs the same merge gate commands documented in
-this file and always uses `/tmp/bbb-target-main`; it is a convenience wrapper,
+`scripts/cargo-dev.sh gate` runs the authoritative merge gate defined in
+`goal.md` and always uses `/tmp/bbb-target-main`; it is a convenience wrapper,
 not a weaker test path.
+
+`scripts/cargo-dev.sh batch-gate <good>..<bad>` tests a committed first-parent
+range without checking out commits in the caller's worktree. It creates a
+temporary detached worktree and runs the authoritative gate once at `<bad>`.
+When the tip fails, it verifies `<good>` is green and then binary-searches the
+first-parent commits for the first failure. The range must be monotonic (a gate
+failure remains failing through `<bad>`); use a known-green `<good>` endpoint.
+The command returns 0 when the tip passes, 1 when it finds a failure or the
+baseline is already failing, and 2 for an invalid range or setup error. Per-
+commit logs are retained under a printed `/tmp/bbb-batch-gate-logs.*` path.
 
 `scripts/cargo-dev.sh timings-clean <target-suffix>` uses
 `/tmp/bbb-target-<target-suffix>` and refuses to run if that target already
@@ -177,6 +188,8 @@ Use these commands as the default local workflow:
   `scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings`
 - `sccache` evaluation:
   `scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world command_tree --quiet`
+- Batched commit-range gate:
+  `scripts/cargo-dev.sh batch-gate master..HEAD`
 - Target cache size:
   `scripts/cargo-dev.sh size`
 - Disposable target cleanup:
@@ -298,6 +311,69 @@ Record build-performance experiments in this shape:
   - Top timing entries.
   - Profile, dependency feature, or `sccache` changes being compared.
   - Any cache removed after measurement.
+
+## Linux Baseline and Linker Evaluation: 2026-07-16
+
+Environment:
+
+- Ubuntu Linux, kernel `6.8.0-124-generic`, `x86_64`.
+- `cargo 1.96.0-nightly (cbb9bb8bd 2026-03-13)`.
+- `rustc 1.96.0-nightly (bcf3d36c9 2026-03-19)`.
+- `sccache` was not installed on `PATH`.
+- `/usr/bin/ld.lld` was available as Ubuntu LLD 18.1.3; `mold` was not
+  installed. The lld runs used `RUSTFLAGS='-C link-arg=-fuse-ld=lld'`.
+- `cargo-nextest` was not installed. It was not downloaded or installed for
+  this measurement, so no nextest wall-time comparison is claimed.
+- Wall time came from Bash `time -p`. The host did not provide
+  `/usr/bin/time`; `scripts/cargo-dev.sh` now detects that condition and falls
+  back to the Bash timing keyword.
+
+Measured results (all tests passed):
+
+| Workload | Default linker | lld | Difference |
+| --- | ---: | ---: | ---: |
+| Clean full workspace | 125.19s | 124.84s; 126.97s report repeat | lld ranged from 0.3% faster to 1.4% slower |
+| Warm full workspace | 6.23s | 6.28s | lld 0.05s / 0.8% slower |
+| Warm focused `bbb-world command_tree` | 0.13s | 0.14s | lld 0.01s slower |
+| Cold worker focused `bbb-world command_tree` | 81.51s | 81.83s | lld 0.32s / 0.4% slower |
+
+Targets and reports:
+
+- Default clean full:
+  `CARGO_TARGET_DIR=/tmp/bbb-target-linux-default-clean-20260716 cargo test --workspace --timings --quiet`;
+  10G target; timing report copied to
+  `/tmp/bbb-cargo-timings/cargo-timing-linux-default-clean-20260716.html`.
+- lld clean full:
+  `RUSTFLAGS='-C link-arg=-fuse-ld=lld' CARGO_TARGET_DIR=/tmp/bbb-target-linux-lld-clean-report-20260716 cargo test --workspace --timings --quiet`;
+  126.97s and 10G target on the retained-report repeat; timing report copied to
+  `/tmp/bbb-cargo-timings/cargo-timing-linux-lld-clean-20260716.html`.
+- The default and lld cold-worker targets were 2.4G each. Warm runs reused the
+  matching clean target sequentially; no two Cargo commands shared a target
+  concurrently in the recorded measurements.
+- An earlier warm-focused attempt waited on a still-running same-target Cargo
+  process and was discarded. The table records the clean subsequent runs.
+- The five disposable measurement targets (including the lld clean-report
+  repeat) were removed after their sizes and
+  timing reports were recorded. Stable developer/worker caches were not
+  removed.
+
+Top default-linker clean timing entries were `bbb-world` test (83.7s),
+`bbb-item-model` test with `test-support` (57.8s), `bbb-native` test (40.3s),
+`bbb-renderer` test (36.6s), `bbb-world` library (26.7s), and
+`x11rb-protocol` (23.3s). This confirms that compile/codegen work, rather than
+the final linker choice, dominates this baseline.
+
+Conclusion:
+
+- lld did not produce a material win in any measured workload, so no linker
+  environment switch was added to `scripts/cargo-dev.sh` and no repository-
+  level linker configuration is justified. Keep the explicit `RUSTFLAGS` form
+  for future rechecks. `mold` remains unmeasured because it was unavailable.
+- nextest remains unadopted and unmeasured on this host. Re-evaluate it only
+  when already installed, using the warm full-workspace test workload; it is
+  not expected to change clean compilation cost.
+- Stable external targets remain the effective throughput control: a warm
+  focused test was 0.13s, while a new worker target took 81.51s.
 
 ## Baseline: 2026-06-18
 
