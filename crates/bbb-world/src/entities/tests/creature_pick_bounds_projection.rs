@@ -894,7 +894,9 @@ fn local_player_is_sleeping_true_for_sleeping_local_entity() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
         values: vec![protocol_pose_data(
-            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::vanilla_entity_metadata_entity_accessors()
+                .expect("generated base Entity metadata accessors must resolve")
+                .pose_data_id,
             VANILLA_ENTITY_POSE_SLEEPING_ID,
         )],
     }));
@@ -912,7 +914,9 @@ fn local_player_is_sleeping_false_without_local_id_or_entity() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
         values: vec![protocol_pose_data(
-            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::vanilla_entity_metadata_entity_accessors()
+                .expect("generated base Entity metadata accessors must resolve")
+                .pose_data_id,
             VANILLA_ENTITY_POSE_SLEEPING_ID,
         )],
     }));
@@ -936,7 +940,9 @@ fn local_player_is_sleeping_false_for_non_sleeping_pose() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 32,
         values: vec![protocol_pose_data(
-            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::vanilla_entity_metadata_entity_accessors()
+                .expect("generated base Entity metadata accessors must resolve")
+                .pose_data_id,
             POSE_STANDING,
         )],
     }));

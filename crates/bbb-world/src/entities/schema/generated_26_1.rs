@@ -22920,6 +22920,65 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_entity_accessors_do_not_restore_fixed_metadata_facts() {
+        let dimensions = include_str!("../dimensions.rs");
+        let animations = include_str!("../animations.rs");
+        let store = include_str!("../store.rs");
+        let local_player_movement = include_str!("../../client/local_player_movement.rs");
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let instance = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
+        for source in [
+            dimensions,
+            animations,
+            store,
+            local_player_movement,
+            input,
+            variants,
+            instance,
+        ] {
+            assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
+            for removed in [
+                "VANILLA_ENTITY_SHARED_FLAGS_DATA_ID",
+                "VANILLA_ENTITY_AIR_SUPPLY_DATA_ID",
+                "VANILLA_ENTITY_CUSTOM_NAME_DATA_ID",
+                "VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID",
+                "VANILLA_ENTITY_SILENT_DATA_ID",
+                "VANILLA_ENTITY_NO_GRAVITY_DATA_ID",
+                "VANILLA_ENTITY_POSE_DATA_ID",
+                "VANILLA_ENTITY_TICKS_FROZEN_DATA_ID",
+                "VANILLA_ENTITY_SHARED_FLAG_ON_FIRE",
+                "VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN",
+                "VANILLA_ENTITY_SHARED_FLAG_SPRINTING",
+                "VANILLA_ENTITY_SHARED_FLAG_SWIMMING",
+                "VANILLA_ENTITY_SHARED_FLAG_INVISIBLE",
+                "VANILLA_ENTITY_SHARED_FLAG_GLOWING",
+                "VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING",
+                "ENTITY_SHARED_FLAGS_DATA_ID",
+                "ENTITY_AIR_SUPPLY_DATA_ID",
+                "ENTITY_CUSTOM_NAME_DATA_ID",
+                "ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID",
+                "ENTITY_SILENT_DATA_ID",
+                "ENTITY_NO_GRAVITY_DATA_ID",
+                "ENTITY_POSE_DATA_ID",
+                "ENTITY_TICKS_FROZEN_DATA_ID",
+                "ENTITY_SHARED_FLAG_ON_FIRE",
+                "ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN",
+                "ENTITY_SHARED_FLAG_SPRINTING",
+                "ENTITY_SHARED_FLAG_SWIMMING",
+                "ENTITY_SHARED_FLAG_INVISIBLE",
+                "ENTITY_SHARED_FLAG_GLOWING",
+                "ENTITY_SHARED_FLAG_FALL_FLYING",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Entity projection restored {removed}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn production_living_entity_accessors_do_not_restore_fixed_metadata_facts() {
         let metadata = include_str!("../metadata.rs");
         let animations = include_str!("../animations.rs");

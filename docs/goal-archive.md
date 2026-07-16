@@ -16787,3 +16787,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - world metadata apply、动画目标与模型状态、native Wither/IronGolem/Wolf health 投影删除
   固定 id/default/mask aliases；既有 local using-hand、death、spin、sleeping、powered/crackiness/
   tail 语义测试继续锁定行为，metadata generator reverse guard 覆盖五条生产消费面。
+
+## 2026-07-16：批量推导 base Entity metadata accessors
+
+- `bbb-world` 现在从生成 schema 成组解析 Entity 的八个基础 metadata 字段、typed defaults，
+  以及 shared flags 的七个命名 bit mask；动态 max-air default 继续由既有语义常量提供。
+- world pose/dimensions、movement、animation、model/save 投影与 native F3+I、model variant、
+  visibility/light 投影删除固定 id/default/mask aliases；完整 `bbb-world` 测试及 focused native
+  debug/light/name/invisibility 测试继续锁定行为，metadata generator reverse guard 覆盖七条生产
+  消费面。

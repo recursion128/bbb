@@ -55,13 +55,15 @@ pub(super) fn rabbit_model_kind(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
+    let entity_accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
     let variant_id = vanilla_entity_metadata_rabbit_type_accessor_for_entity_type(entity_type_id)
         .map(|(data_id, default)| entity_data_int(values, data_id, default))
         .unwrap_or_default();
     EntityModelKind::Rabbit {
         baby: ageable_baby(values),
         variant: RabbitModelVariant::from_id(variant_id),
-        toast: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
+        toast: entity_data_optional_component(values, entity_accessors.custom_name_data_id)
             .is_some_and(|name| name == "Toast"),
     }
 }
@@ -594,6 +596,8 @@ pub(super) fn sheep_model_kind(
     values: &[bbb_protocol::packets::EntityDataValue],
     age_ticks: f32,
 ) -> EntityModelKind {
+    let entity_accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
     let wool = vanilla_entity_metadata_sheep_wool_accessor_for_entity_type(entity_type_id)
         .map(|(data_id, default)| entity_data_byte(values, data_id, default) as u8)
         .unwrap_or_default();
@@ -601,7 +605,7 @@ pub(super) fn sheep_model_kind(
         baby: ageable_baby(values),
         sheared: wool & SHEEP_WOOL_SHEARED_FLAG as u8 != 0,
         wool_color: SheepWoolColor::from_vanilla_id(wool & SHEEP_WOOL_COLOR_MASK),
-        jeb: entity_data_optional_component(values, ENTITY_CUSTOM_NAME_DATA_ID)
+        jeb: entity_data_optional_component(values, entity_accessors.custom_name_data_id)
             .is_some_and(|name| name == "jeb_"),
         age_ticks,
     }
@@ -791,7 +795,14 @@ pub(super) fn wolf_variant_from_registry_id(
 }
 
 pub(super) fn entity_invisible(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    (entity_data_byte(values, ENTITY_SHARED_FLAGS_DATA_ID, 0) & ENTITY_SHARED_FLAG_INVISIBLE) != 0
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    (entity_data_byte(
+        values,
+        accessors.shared_flags_data_id,
+        accessors.shared_flags_default,
+    ) & accessors.invisible_mask)
+        != 0
 }
 
 pub(super) fn wolf_is_angry(

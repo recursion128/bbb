@@ -1167,7 +1167,9 @@ fn entity_model_sources_gate_crouch_pose_on_the_player() {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
             values: vec![protocol_pose_data(
-                super::dimensions::ENTITY_DATA_POSE_ID,
+                super::vanilla_entity_metadata_entity_accessors()
+                    .expect("generated base Entity metadata accessors must resolve")
+                    .pose_data_id,
                 pose,
             )],
         })
@@ -1240,7 +1242,12 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         &mut store,
         76,
         vec![
-            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_CROUCHING),
+            protocol_pose_data(
+                super::vanilla_entity_metadata_entity_accessors()
+                    .expect("generated base Entity metadata accessors must resolve")
+                    .pose_data_id,
+                POSE_CROUCHING,
+            ),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
             protocol_byte_data(
                 VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
@@ -1254,7 +1261,12 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         &mut store,
         77,
         vec![
-            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_CROUCHING),
+            protocol_pose_data(
+                super::vanilla_entity_metadata_entity_accessors()
+                    .expect("generated base Entity metadata accessors must resolve")
+                    .pose_data_id,
+                POSE_CROUCHING,
+            ),
             protocol_byte_data(
                 VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
                 TAMABLE_ANIMAL_SITTING_FLAG,
@@ -1267,7 +1279,12 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         &mut store,
         78,
         vec![
-            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_CROUCHING),
+            protocol_pose_data(
+                super::vanilla_entity_metadata_entity_accessors()
+                    .expect("generated base Entity metadata accessors must resolve")
+                    .pose_data_id,
+                POSE_CROUCHING,
+            ),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_SPRINTING),
             protocol_byte_data(
                 VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID,
@@ -1281,7 +1298,12 @@ fn entity_model_sources_project_feline_crouch_sprint_and_cat_sitting() {
         &mut store,
         76,
         vec![
-            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_STANDING),
+            protocol_pose_data(
+                super::vanilla_entity_metadata_entity_accessors()
+                    .expect("generated base Entity metadata accessors must resolve")
+                    .pose_data_id,
+                POSE_STANDING,
+            ),
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, 0),
             protocol_byte_data(VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID, 0),
         ],

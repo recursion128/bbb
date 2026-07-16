@@ -67,12 +67,11 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_SNIFFING_ID as SNIFFER_STATE_SNIFFING_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_vehicle_entity_type,
+    is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type, vanilla_entity_type_is_squid,
     EntityTransform, EntityVec3, VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
     VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH as ABSTRACT_HORSE_FLAG_OPEN_MOUTH,
     VANILLA_ABSTRACT_HORSE_FLAG_STANDING as ABSTRACT_HORSE_FLAG_STANDING,
-    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID, VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING,
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
 };
 use bbb_protocol::entity_types::*;
@@ -6100,11 +6099,17 @@ fn sniffer_state_id(entity_type_id: i32, data_values: &[EntityDataValue]) -> Opt
     )
 }
 
-/// Vanilla `LivingEntity.isFallFlying()` = `Entity.getSharedFlag(7)`, where
-/// `Entity.DATA_SHARED_FLAGS_ID` is metadata id `0`.
+/// Vanilla `LivingEntity.isFallFlying()` reads the generated base Entity shared-flags accessor and
+/// its named fall-flying mask.
 pub(crate) fn entity_is_fall_flying(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, VANILLA_ENTITY_SHARED_FLAGS_DATA_ID, 0) as u8
-        & VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING as u8
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    entity_data_byte(
+        data_values,
+        accessors.shared_flags_data_id,
+        accessors.shared_flags_default,
+    ) as u8
+        & accessors.fall_flying_mask as u8
         != 0
 }
 

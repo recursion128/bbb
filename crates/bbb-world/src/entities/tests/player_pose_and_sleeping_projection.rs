@@ -59,7 +59,9 @@ fn entity_model_sources_project_elytra_animation_state() {
     assert!(crouching.apply_set_entity_data(ProtocolSetEntityData {
         id: 76,
         values: vec![protocol_pose_data(
-            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::vanilla_entity_metadata_entity_accessors()
+                .expect("generated base Entity metadata accessors must resolve")
+                .pose_data_id,
             POSE_CROUCHING
         )],
     }));
@@ -566,7 +568,9 @@ fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
             values: vec![protocol_pose_data(
-                super::dimensions::ENTITY_DATA_POSE_ID,
+                super::vanilla_entity_metadata_entity_accessors()
+                    .expect("generated base Entity metadata accessors must resolve")
+                    .pose_data_id,
                 pose,
             )],
         })
@@ -635,7 +639,12 @@ fn entity_model_sources_resolve_sleeping_bed_orientation() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 92,
         values: vec![
-            protocol_pose_data(super::dimensions::ENTITY_DATA_POSE_ID, POSE_SLEEPING),
+            protocol_pose_data(
+                super::vanilla_entity_metadata_entity_accessors()
+                    .expect("generated base Entity metadata accessors must resolve")
+                    .pose_data_id,
+                POSE_SLEEPING,
+            ),
             ProtocolEntityDataValue {
                 data_id: SLEEPING_POS_DATA_ID,
                 serializer_id: OPTIONAL_BLOCK_POS_SERIALIZER_ID,

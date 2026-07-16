@@ -146,11 +146,8 @@ Owner: `bbb-protocol`
 Owner: `scripts/` + each generated catalog's semantic crate
 
 - Complete the remaining cross-crate registry/ordinal/serializer-id and entity
-  renderer-class/event-dispatch membership discovery audit. Prioritize the remaining
-  base Entity fields that still expose direct generated aliases to
-  production consumers; migrate
-  each homogeneous family through schema-owned accessors and generator-emitted
-  reverse guards. The 155 explicit
+  renderer-class/event-dispatch membership discovery audit. Migrate each homogeneous
+  family through schema-owned accessors and generator-emitted reverse guards. The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression
   plus `AbstractFelineModel` / `AbstractHorseRenderer` hierarchy memberships and the

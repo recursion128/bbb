@@ -21,6 +21,7 @@ use super::local_player_collision::{
     LocalPlayerBounds, LocalPlayerCollisionContext, COLLISION_EPSILON,
 };
 use super::local_player_fluid::local_player_fluid_contact;
+use crate::entities::vanilla_entity_metadata_entity_accessors;
 use crate::{block_name_is_trapdoor, BlockPos, BlockProbe, WorldStore};
 
 mod fluid;
@@ -866,25 +867,29 @@ fn local_player_update_powder_snow_freezing(world: &mut WorldStore, pose: LocalP
     if next_ticks == current_ticks {
         return;
     }
+    let Some(accessors) = vanilla_entity_metadata_entity_accessors() else {
+        return;
+    };
 
-    let _ =
-        world
-            .entities
-            .with_metadata_mut(local_player_id, |metadata| {
-                if let Some(value) = metadata.data_values.iter_mut().find(|value| {
-                    value.data_id == crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID
-                }) {
-                    value.serializer_id = VANILLA_ENTITY_DATA_SERIALIZER_INT_ID;
-                    value.value = ProtocolEntityDataValueKind::Int(next_ticks);
-                } else {
-                    metadata.data_values.push(ProtocolEntityDataValue {
-                        data_id: crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                        value: ProtocolEntityDataValueKind::Int(next_ticks),
-                    });
-                }
-                metadata.data_values.sort_by_key(|value| value.data_id);
-            });
+    let _ = world
+        .entities
+        .with_metadata_mut(local_player_id, |metadata| {
+            if let Some(value) = metadata
+                .data_values
+                .iter_mut()
+                .find(|value| value.data_id == accessors.ticks_frozen_data_id)
+            {
+                value.serializer_id = VANILLA_ENTITY_DATA_SERIALIZER_INT_ID;
+                value.value = ProtocolEntityDataValueKind::Int(next_ticks);
+            } else {
+                metadata.data_values.push(ProtocolEntityDataValue {
+                    data_id: accessors.ticks_frozen_data_id,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    value: ProtocolEntityDataValueKind::Int(next_ticks),
+                });
+            }
+            metadata.data_values.sort_by_key(|value| value.data_id);
+        });
 }
 
 fn local_player_inside_powder_snow(world: &WorldStore, pose: LocalPlayerPoseState) -> bool {

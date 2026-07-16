@@ -85,6 +85,7 @@ use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_t
 use bbb_world::vanilla_entity_metadata_companion_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_entity_accessors;
 use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
@@ -145,15 +146,6 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE as ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
-    VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
-    VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID as ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING,
-    VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
-    VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
     VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
@@ -4564,6 +4556,7 @@ fn debug_local_entity_pretty_snbt(
     item_runtime: Option<&NativeItemRuntime>,
     entity: &EntityState,
 ) -> Option<String> {
+    let accessors = vanilla_entity_metadata_entity_accessors()?;
     let mut fields = Vec::new();
     if let Some(motion) = debug_snbt_vec3d("Motion", entity.delta_movement) {
         fields.push(motion);
@@ -4571,36 +4564,39 @@ fn debug_local_entity_pretty_snbt(
     if let Some(rotation) = debug_snbt_rotation(entity.y_rot, entity.x_rot) {
         fields.push(rotation);
     }
-    if let Some(air) = debug_entity_data_int_present(entity, ENTITY_AIR_SUPPLY_DATA_ID) {
+    if let Some(air) = debug_entity_data_int_present(entity, accessors.air_supply_data_id) {
         fields.push(format!("Air: {}s", air as i16));
     }
     if let Some(on_ground) = entity.on_ground {
         fields.push(format!("OnGround: {}b", if on_ground { 1 } else { 0 }));
     }
     if let Some(custom_name) =
-        debug_entity_data_optional_component_present(entity, ENTITY_CUSTOM_NAME_DATA_ID)
+        debug_entity_data_optional_component_present(entity, accessors.custom_name_data_id)
     {
         fields.push(format!("CustomName: {}", debug_snbt_string(custom_name)));
     }
-    if debug_entity_data_bool_present(entity, ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID)
+    if debug_entity_data_bool_present(entity, accessors.custom_name_visible_data_id)
         .is_some_and(|visible| visible)
     {
         fields.push("CustomNameVisible: 1b".to_string());
     }
-    if debug_entity_data_bool_present(entity, ENTITY_SILENT_DATA_ID).is_some_and(|silent| silent) {
+    if debug_entity_data_bool_present(entity, accessors.silent_data_id).is_some_and(|silent| silent)
+    {
         fields.push("Silent: 1b".to_string());
     }
-    if debug_entity_data_bool_present(entity, ENTITY_NO_GRAVITY_DATA_ID)
+    if debug_entity_data_bool_present(entity, accessors.no_gravity_data_id)
         .is_some_and(|no_gravity| no_gravity)
     {
         fields.push("NoGravity: 1b".to_string());
     }
-    if debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID)
-        .is_some_and(|flags| flags & ENTITY_SHARED_FLAG_GLOWING != 0)
+    if debug_entity_data_byte_present(entity, accessors.shared_flags_data_id)
+        .is_some_and(|flags| flags & accessors.glowing_mask != 0)
     {
         fields.push("Glowing: 1b".to_string());
     }
-    if let Some(ticks_frozen) = debug_entity_data_int_present(entity, ENTITY_TICKS_FROZEN_DATA_ID) {
+    if let Some(ticks_frozen) =
+        debug_entity_data_int_present(entity, accessors.ticks_frozen_data_id)
+    {
         if ticks_frozen > 0 {
             fields.push(format!("TicksFrozen: {ticks_frozen}"));
         }
@@ -6588,6 +6584,9 @@ fn debug_push_item_frame_additional_save_data(
     item_runtime: Option<&NativeItemRuntime>,
     fields: &mut Vec<String>,
 ) {
+    let Some(entity_accessors) = vanilla_entity_metadata_entity_accessors() else {
+        return;
+    };
     let Some(accessors) =
         vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity.entity_type_id)
     else {
@@ -6636,10 +6635,12 @@ fn debug_push_item_frame_additional_save_data(
         fields.push(format!("ItemRotation: {}b", rotation.rem_euclid(8) as i8));
     }
     fields.push(format!("Facing: {facing}b"));
-    if let Some(flags) = debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID) {
+    if let Some(flags) =
+        debug_entity_data_byte_present(entity, entity_accessors.shared_flags_data_id)
+    {
         fields.push(format!(
             "Invisible: {}",
-            debug_snbt_bool(flags & ENTITY_SHARED_FLAG_INVISIBLE != 0)
+            debug_snbt_bool(flags & entity_accessors.invisible_mask != 0)
         ));
     }
 }
@@ -6741,16 +6742,20 @@ fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: 
 }
 
 fn debug_push_armor_stand_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some(entity_accessors) = vanilla_entity_metadata_entity_accessors() else {
+        return;
+    };
     let Some(accessors) =
         vanilla_entity_metadata_armor_stand_accessors_for_entity_type(entity.entity_type_id)
     else {
         return;
     };
-    if let Some(shared_flags) = debug_entity_data_byte_present(entity, ENTITY_SHARED_FLAGS_DATA_ID)
+    if let Some(shared_flags) =
+        debug_entity_data_byte_present(entity, entity_accessors.shared_flags_data_id)
     {
         fields.push(format!(
             "Invisible: {}",
-            debug_snbt_bool(shared_flags & ENTITY_SHARED_FLAG_INVISIBLE != 0)
+            debug_snbt_bool(shared_flags & entity_accessors.invisible_mask != 0)
         ));
     }
     if let Some(client_flags) =

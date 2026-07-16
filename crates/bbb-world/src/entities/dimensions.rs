@@ -17,11 +17,11 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 
 use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_renderer;
-pub(crate) use super::schema::VANILLA_ENTITY_POSE_DATA_ID as ENTITY_DATA_POSE_ID;
 use super::schema::{
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
+    vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
@@ -1180,15 +1180,17 @@ fn is_warden_fixed_pose(entity_type_id: i32, data_values: &[EntityDataValue]) ->
 }
 
 pub(crate) fn entity_data_pose(data_values: &[EntityDataValue]) -> i32 {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
     data_values
         .iter()
-        .find(|value| value.data_id == ENTITY_DATA_POSE_ID)
+        .find(|value| value.data_id == accessors.pose_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Pose(value) => Some(*value),
             _ => None,
         })
         .filter(|value| (0..=17).contains(value))
-        .unwrap_or(0)
+        .unwrap_or(accessors.pose_default)
 }
 
 fn entity_data_int(data_values: &[EntityDataValue], data_id: u8, fallback: i32) -> i32 {

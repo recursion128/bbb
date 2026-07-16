@@ -314,6 +314,31 @@ pub struct VanillaMobMetadataAccessors {
     pub aggressive_mask: i8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaEntityMetadataAccessors {
+    pub shared_flags_data_id: u8,
+    pub shared_flags_default: i8,
+    pub on_fire_mask: i8,
+    pub shift_key_down_mask: i8,
+    pub sprinting_mask: i8,
+    pub swimming_mask: i8,
+    pub invisible_mask: i8,
+    pub glowing_mask: i8,
+    pub fall_flying_mask: i8,
+    pub air_supply_data_id: u8,
+    pub custom_name_data_id: u8,
+    pub custom_name_visible_data_id: u8,
+    pub custom_name_visible_default: bool,
+    pub silent_data_id: u8,
+    pub silent_default: bool,
+    pub no_gravity_data_id: u8,
+    pub no_gravity_default: bool,
+    pub pose_data_id: u8,
+    pub pose_default: i32,
+    pub ticks_frozen_data_id: u8,
+    pub ticks_frozen_default: i32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VanillaLivingEntityMetadataAccessors {
     pub flags_data_id: u8,
@@ -2467,6 +2492,93 @@ pub fn vanilla_entity_metadata_mob_accessors_for_entity_type(
         no_ai_mask: mask("MOB_FLAG_NO_AI")?,
         left_handed_mask: mask("MOB_FLAG_LEFTHANDED")?,
         aggressive_mask: mask("MOB_FLAG_AGGRESSIVE")?,
+    })
+}
+
+/// Resolves the generated base Entity fields, typed defaults, and shared flag masks.
+pub fn vanilla_entity_metadata_entity_accessors() -> Option<VanillaEntityMetadataAccessors> {
+    let accessor = |java_name| {
+        VANILLA_ENTITY_METADATA_ACCESSORS_26_1.iter().find(|entry| {
+            entry.owner == "net.minecraft.world.entity.Entity" && entry.java_name == java_name
+        })
+    };
+    let shared_flags = accessor("DATA_SHARED_FLAGS_ID")?;
+    let air_supply = accessor("DATA_AIR_SUPPLY_ID")?;
+    let custom_name = accessor("DATA_CUSTOM_NAME")?;
+    let custom_name_visible = accessor("DATA_CUSTOM_NAME_VISIBLE")?;
+    let silent = accessor("DATA_SILENT")?;
+    let no_gravity = accessor("DATA_NO_GRAVITY")?;
+    let pose = accessor("DATA_POSE")?;
+    let ticks_frozen = accessor("DATA_TICKS_FROZEN")?;
+    let (
+        shared_flags_default,
+        custom_name_visible_default,
+        silent_default,
+        no_gravity_default,
+        pose_default,
+        ticks_frozen_default,
+    ) = match (
+        (shared_flags.serializer_name, shared_flags.typed_default),
+        (air_supply.serializer_name, air_supply.typed_default),
+        (custom_name.serializer_name, custom_name.typed_default),
+        (
+            custom_name_visible.serializer_name,
+            custom_name_visible.typed_default,
+        ),
+        (silent.serializer_name, silent.typed_default),
+        (no_gravity.serializer_name, no_gravity.typed_default),
+        (pose.serializer_name, pose.typed_default),
+        (ticks_frozen.serializer_name, ticks_frozen.typed_default),
+    ) {
+        (
+            ("BYTE", Some(VanillaEntityMetadataDefault::Byte(shared_flags_default))),
+            ("INT", Some(VanillaEntityMetadataDefault::MaxAirSupply)),
+            ("OPTIONAL_COMPONENT", Some(VanillaEntityMetadataDefault::OptionalComponentNone)),
+            ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(custom_name_visible_default))),
+            ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(silent_default))),
+            ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(no_gravity_default))),
+            ("POSE", Some(VanillaEntityMetadataDefault::Pose(pose_default))),
+            ("INT", Some(VanillaEntityMetadataDefault::Int(ticks_frozen_default))),
+        ) => (
+            shared_flags_default,
+            custom_name_visible_default,
+            silent_default,
+            no_gravity_default,
+            pose_default,
+            ticks_frozen_default,
+        ),
+        _ => return None,
+    };
+    let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Entity);
+    let mask = |name| {
+        schema
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == name && flag.data_id == shared_flags.data_id)
+            .map(|flag| flag.mask)
+    };
+    Some(VanillaEntityMetadataAccessors {
+        shared_flags_data_id: shared_flags.data_id,
+        shared_flags_default,
+        on_fire_mask: mask("FLAG_ONFIRE")?,
+        shift_key_down_mask: mask("FLAG_SHIFT_KEY_DOWN")?,
+        sprinting_mask: mask("FLAG_SPRINTING")?,
+        swimming_mask: mask("FLAG_SWIMMING")?,
+        invisible_mask: mask("FLAG_INVISIBLE")?,
+        glowing_mask: mask("FLAG_GLOWING")?,
+        fall_flying_mask: mask("FLAG_FALL_FLYING")?,
+        air_supply_data_id: air_supply.data_id,
+        custom_name_data_id: custom_name.data_id,
+        custom_name_visible_data_id: custom_name_visible.data_id,
+        custom_name_visible_default,
+        silent_data_id: silent.data_id,
+        silent_default,
+        no_gravity_data_id: no_gravity.data_id,
+        no_gravity_default,
+        pose_data_id: pose.data_id,
+        pose_default,
+        ticks_frozen_data_id: ticks_frozen.data_id,
+        ticks_frozen_default,
     })
 }
 
@@ -5567,6 +5679,36 @@ mod tests {
                 None
             );
         }
+    }
+
+    #[test]
+    fn generated_entity_accessors_own_indices_defaults_and_masks() {
+        assert_eq!(
+            vanilla_entity_metadata_entity_accessors(),
+            Some(VanillaEntityMetadataAccessors {
+                shared_flags_data_id: VANILLA_ENTITY_SHARED_FLAGS_DATA_ID,
+                shared_flags_default: 0,
+                on_fire_mask: VANILLA_ENTITY_SHARED_FLAG_ON_FIRE,
+                shift_key_down_mask: VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN,
+                sprinting_mask: VANILLA_ENTITY_SHARED_FLAG_SPRINTING,
+                swimming_mask: VANILLA_ENTITY_SHARED_FLAG_SWIMMING,
+                invisible_mask: VANILLA_ENTITY_SHARED_FLAG_INVISIBLE,
+                glowing_mask: VANILLA_ENTITY_SHARED_FLAG_GLOWING,
+                fall_flying_mask: VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING,
+                air_supply_data_id: VANILLA_ENTITY_AIR_SUPPLY_DATA_ID,
+                custom_name_data_id: VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
+                custom_name_visible_data_id: VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
+                custom_name_visible_default: false,
+                silent_data_id: VANILLA_ENTITY_SILENT_DATA_ID,
+                silent_default: false,
+                no_gravity_data_id: VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
+                no_gravity_default: false,
+                pose_data_id: VANILLA_ENTITY_POSE_DATA_ID,
+                pose_default: 0,
+                ticks_frozen_data_id: VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+                ticks_frozen_default: 0,
+            })
+        );
     }
 
     #[test]

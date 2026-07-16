@@ -988,8 +988,13 @@ pub(super) fn entity_light_coords(
     data_values: &[bbb_protocol::packets::EntityDataValue],
     light: bbb_world::TerrainLight,
 ) -> u32 {
-    let on_fire = (entity_data_byte(data_values, ENTITY_SHARED_FLAGS_DATA_ID, 0)
-        & ENTITY_SHARED_FLAG_ON_FIRE)
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    let on_fire = (entity_data_byte(
+        data_values,
+        accessors.shared_flags_data_id,
+        accessors.shared_flags_default,
+    ) & accessors.on_fire_mask)
         != 0;
     let mut block = if on_fire {
         15

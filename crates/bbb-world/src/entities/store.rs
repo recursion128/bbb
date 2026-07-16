@@ -65,8 +65,6 @@ use super::{
     ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
-    VANILLA_ENTITY_AIR_SUPPLY_DATA_ID, VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SILENT_DATA_ID, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
     VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
@@ -93,7 +91,7 @@ use crate::entities::dimensions::{
     vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat,
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
-    vanilla_render_scale, ENTITY_DATA_POSE_ID,
+    vanilla_render_scale,
 };
 use crate::entities::dragon::{
     ender_dragon_parent_pick_target, ender_dragon_part_parent_id,
@@ -111,6 +109,7 @@ use crate::entities::renderer_catalog::{
     vanilla_entity_renderer_uses_mob_item_in_hand_layer,
 };
 use crate::entities::schema::{
+    vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_living,
@@ -118,12 +117,6 @@ use crate::entities::schema::{
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
     VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK,
-    VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING,
-    VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
-    VANILLA_ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN as ENTITY_SHARED_FLAG_DESCENDING,
-    VANILLA_ENTITY_SHARED_FLAG_SPRINTING as ENTITY_SHARED_FLAG_SPRINTING,
     VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID, VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID,
     VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, VANILLA_HUMANOID_ARM_LEFT_ID,
     VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID,
@@ -549,15 +542,26 @@ impl EntityStore {
     }
 
     pub(crate) fn is_silent(&self, id: i32) -> Option<bool> {
-        self.metadata_bool(id, VANILLA_ENTITY_SILENT_DATA_ID, false)
+        let accessors = vanilla_entity_metadata_entity_accessors()?;
+        self.metadata_bool(id, accessors.silent_data_id, accessors.silent_default)
     }
 
     pub(crate) fn no_gravity(&self, id: i32) -> Option<bool> {
-        self.metadata_bool(id, VANILLA_ENTITY_NO_GRAVITY_DATA_ID, false)
+        let accessors = vanilla_entity_metadata_entity_accessors()?;
+        self.metadata_bool(
+            id,
+            accessors.no_gravity_data_id,
+            accessors.no_gravity_default,
+        )
     }
 
     pub(crate) fn ticks_frozen(&self, id: i32) -> Option<i32> {
-        self.metadata_int(id, VANILLA_ENTITY_TICKS_FROZEN_DATA_ID, 0)
+        let accessors = vanilla_entity_metadata_entity_accessors()?;
+        self.metadata_int(
+            id,
+            accessors.ticks_frozen_data_id,
+            accessors.ticks_frozen_default,
+        )
     }
 
     /// Vanilla `Entity.isFullyFrozen()` = `getTicksFrozen() >=
@@ -572,9 +576,10 @@ impl EntityStore {
     /// defaulting to the define-time `getMaxAirSupply()` (300, Entity.java:312)
     /// while the server has not synced a non-default value.
     pub(crate) fn air_supply(&self, id: i32) -> Option<i32> {
+        let accessors = vanilla_entity_metadata_entity_accessors()?;
         self.metadata_int(
             id,
-            VANILLA_ENTITY_AIR_SUPPLY_DATA_ID,
+            accessors.air_supply_data_id,
             VANILLA_MAX_AIR_SUPPLY_TICKS,
         )
     }
@@ -606,8 +611,13 @@ impl EntityStore {
     }
 
     pub(crate) fn is_descending(&self, id: i32) -> Option<bool> {
+        let accessors = vanilla_entity_metadata_entity_accessors()?;
         Some(
-            self.metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)? & ENTITY_SHARED_FLAG_DESCENDING
+            self.metadata_byte(
+                id,
+                accessors.shared_flags_data_id,
+                accessors.shared_flags_default,
+            )? & accessors.shift_key_down_mask
                 != 0,
         )
     }
@@ -765,6 +775,7 @@ impl EntityStore {
     /// head-offset translate: the eye height resolved with the synced pose stripped
     /// so the dimensions fall back to standing rather than `SLEEPING_DIMENSIONS`.
     pub(crate) fn standing_eye_height(&self, id: i32) -> Option<f32> {
+        let accessors = vanilla_entity_metadata_entity_accessors()?;
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
@@ -773,7 +784,7 @@ impl EntityStore {
         let standing_data: Vec<_> = metadata
             .data_values
             .iter()
-            .filter(|value| value.data_id != ENTITY_DATA_POSE_ID)
+            .filter(|value| value.data_id != accessors.pose_data_id)
             .cloned()
             .collect();
         vanilla_eye_height_for_entity_data(
@@ -1465,6 +1476,7 @@ impl EntityStore {
             mount,
             minecart_lerp,
         ) = query.get()?;
+        let entity_accessors = vanilla_entity_metadata_entity_accessors()?;
         let armor_item = |slot: ProtocolEquipmentSlot| -> Option<&ItemStackSummary> {
             equipment
                 .as_ref()?
@@ -1584,14 +1596,22 @@ impl EntityStore {
         // the non-spectator / no-friendly-team-override branch, so the world aggregation can clear it
         // for spectator viewers.
         let invisible_to_player = self
-            .metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
-            .unwrap_or(0)
-            & ENTITY_SHARED_FLAG_INVISIBLE
+            .metadata_byte(
+                id,
+                entity_accessors.shared_flags_data_id,
+                entity_accessors.shared_flags_default,
+            )
+            .unwrap_or(entity_accessors.shared_flags_default)
+            & entity_accessors.invisible_mask
             != 0;
         let appears_glowing = self
-            .metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
-            .unwrap_or(0)
-            & ENTITY_SHARED_FLAG_GLOWING
+            .metadata_byte(
+                id,
+                entity_accessors.shared_flags_data_id,
+                entity_accessors.shared_flags_default,
+            )
+            .unwrap_or(entity_accessors.shared_flags_default)
+            & entity_accessors.glowing_mask
             != 0;
         // Vanilla renderer `extractRenderState` assignments project `Mob.isAggressive()` for the
         // zombie/zombie-villager/zombified-piglin, skeleton, and illager paths. PiglinRenderer
@@ -1698,9 +1718,13 @@ impl EntityStore {
             && entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
         let feline_is_sprinting = is_feline
             && self
-                .metadata_byte(id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
-                .unwrap_or(0)
-                & ENTITY_SHARED_FLAG_SPRINTING
+                .metadata_byte(
+                    id,
+                    entity_accessors.shared_flags_data_id,
+                    entity_accessors.shared_flags_default,
+                )
+                .unwrap_or(entity_accessors.shared_flags_default)
+                & entity_accessors.sprinting_mask
                 != 0;
         let feline_is_sitting = vanilla_is_cat(identity.entity_type_id)
             && vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(
@@ -1792,7 +1816,7 @@ impl EntityStore {
         let is_upside_down = vanilla_living_entity_type(identity.entity_type_id)
             && identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID
             && self
-                .metadata_optional_component(id, VANILLA_ENTITY_CUSTOM_NAME_DATA_ID)
+                .metadata_optional_component(id, entity_accessors.custom_name_data_id)
                 .is_some_and(|name| {
                     vanilla_living_entity_renderer_name_is_upside_down(name.as_str())
                 });
@@ -2853,6 +2877,8 @@ impl EntityStore {
     /// Drives the 3D item-frame render (vanilla `ItemFrameRenderer`).
     pub(crate) fn item_frame_render_states(&self) -> Vec<ItemFrameRenderState> {
         let mut frames = Vec::new();
+        let entity_accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
         for id in &self.order {
             let Some(entity) = self.by_protocol_id.get(id).copied() else {
                 continue;
@@ -2879,9 +2905,13 @@ impl EntityStore {
                 rotation: item_frame_rotation(accessors, &metadata.data_values),
                 glow: identity.entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
                 invisible: self
-                    .metadata_byte(identity.id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
-                    .unwrap_or(0)
-                    & ENTITY_SHARED_FLAG_INVISIBLE
+                    .metadata_byte(
+                        identity.id,
+                        entity_accessors.shared_flags_data_id,
+                        entity_accessors.shared_flags_default,
+                    )
+                    .unwrap_or(entity_accessors.shared_flags_default)
+                    & entity_accessors.invisible_mask
                     != 0,
                 item: item_frame_item(accessors, &metadata.data_values).cloned(),
                 map_id: item_frame_map_id(accessors, &metadata.data_values),

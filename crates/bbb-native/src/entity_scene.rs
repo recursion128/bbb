@@ -40,6 +40,7 @@ use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_companion_variant_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_entity_accessors;
 use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_ghast_charging_accessor_for_entity_type;
@@ -77,7 +78,15 @@ use bbb_world::VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 #[cfg(test)]
+use bbb_world::VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID;
+#[cfg(test)]
 use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
+#[cfg(test)]
+use bbb_world::VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE;
+#[cfg(test)]
+use bbb_world::VANILLA_ENTITY_SHARED_FLAG_ON_FIRE as ENTITY_SHARED_FLAG_ON_FIRE;
 #[cfg(test)]
 use bbb_world::VANILLA_GHAST_CHARGING_DATA_ID as GHAST_IS_CHARGING_DATA_ID;
 #[cfg(test)]
@@ -119,10 +128,6 @@ use bbb_world::{
     VANILLA_ARROW_EFFECT_COLOR_DATA_ID as ARROW_EFFECT_COLOR_DATA_ID,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION as AVATAR_PLAYER_DEFAULT_MODEL_CUSTOMIZATION,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID as AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
-    VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
-    VANILLA_ENTITY_SHARED_FLAG_ON_FIRE as ENTITY_SHARED_FLAG_ON_FIRE,
     VANILLA_TRIDENT_DEFAULT_FOIL as TRIDENT_DEFAULT_FOIL,
     VANILLA_TRIDENT_FOIL_DATA_ID as TRIDENT_FOIL_DATA_ID,
 };

@@ -1262,14 +1262,18 @@ fn entity_model_sources_project_cat_lying_on_sleeping_player() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 95,
         values: vec![protocol_pose_data(
-            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::vanilla_entity_metadata_entity_accessors()
+                .expect("generated base Entity metadata accessors must resolve")
+                .pose_data_id,
             POSE_SLEEPING,
         )],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 96,
         values: vec![protocol_pose_data(
-            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::vanilla_entity_metadata_entity_accessors()
+                .expect("generated base Entity metadata accessors must resolve")
+                .pose_data_id,
             POSE_SLEEPING,
         )],
     }));
@@ -1290,7 +1294,9 @@ fn entity_model_sources_project_cat_lying_on_sleeping_player() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 95,
         values: vec![protocol_pose_data(
-            super::dimensions::ENTITY_DATA_POSE_ID,
+            super::vanilla_entity_metadata_entity_accessors()
+                .expect("generated base Entity metadata accessors must resolve")
+                .pose_data_id,
             POSE_STANDING,
         )],
     }));
