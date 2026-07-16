@@ -5,6 +5,7 @@ pub use crate::entities::VanillaCompanionVariantMetadataAccessors;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
 pub use crate::entities::VanillaFarmAnimalVariantMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
+pub use crate::entities::VanillaHappyGhastMetadataAccessors;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
 pub use crate::entities::VanillaLivingEntityMetadataAccessors;
 pub use crate::entities::VanillaLlamaMetadataAccessors;
@@ -47,6 +48,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_ghast_charging_accessor_for_entity_type,
     vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type,
     vanilla_entity_metadata_goat_accessors_for_entity_type,
+    vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
     vanilla_entity_metadata_horse_variant_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,

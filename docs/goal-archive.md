@@ -17076,3 +17076,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - entity/native/input/collision semantic fixtures 同步改从生成 accessor 取得 identity；schema
   generator 的跨 crate 反向守卫扩展到四个 consumer surface，拒绝旧 Creaking aliases 或
   平行 type gate 回流。
+
+## 2026-07-16：派生 Ghast family metadata accessor bundle
+
+- HappyGhast 的 leash-holder/stays-still 两项 collision metadata 由生成 schema 组合为 typed
+  accessor bundle；world `canBeCollidedWith` 投影与测试同时消费该 bundle，并从 generic baby
+  accessor 取得继承的 AgeableMob identity。
+- native Ghast charging fixture 改为复用既有生成 accessor；schema generator 的跨 crate
+  反向守卫现同时扫描 native scene/kind 与 world collision，拒绝 Ghast/HappyGhast 固定 aliases
+  回流。

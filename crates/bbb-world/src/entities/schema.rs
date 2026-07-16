@@ -477,6 +477,14 @@ pub struct VanillaCreeperMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaHappyGhastMetadataAccessors {
+    pub is_leash_holder_data_id: u8,
+    pub is_leash_holder_default: bool,
+    pub stays_still_data_id: u8,
+    pub stays_still_default: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -743,6 +751,47 @@ pub fn vanilla_entity_metadata_ghast_charging_accessor_for_entity_type(
             "BOOLEAN",
             Some(VanillaEntityMetadataDefault::Boolean(default)),
         ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves the generated HappyGhast collision-state accessors and typed defaults.
+pub fn vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaHappyGhastMetadataAccessors> {
+    let leash_holder =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IS_LEASH_HOLDER")?;
+    let stays_still =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "STAYS_STILL")?;
+    match (
+        (
+            leash_holder.owner,
+            leash_holder.serializer_name,
+            leash_holder.typed_default,
+        ),
+        (
+            stays_still.owner,
+            stays_still.serializer_name,
+            stays_still.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.happyghast.HappyGhast",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(is_leash_holder_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.happyghast.HappyGhast",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(stays_still_default)),
+            ),
+        ) => Some(VanillaHappyGhastMetadataAccessors {
+            is_leash_holder_data_id: leash_holder.data_id,
+            is_leash_holder_default,
+            stays_still_data_id: stays_still.data_id,
+            stays_still_default,
+        }),
         _ => None,
     }
 }
@@ -4343,6 +4392,27 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_ghast_charging_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_happy_ghast_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+            ),
+            Some(VanillaHappyGhastMetadataAccessors {
+                is_leash_holder_data_id: 18,
+                is_leash_holder_default: false,
+                stays_still_data_id: 19,
+                stays_still_default: false,
+            })
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_GHAST_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

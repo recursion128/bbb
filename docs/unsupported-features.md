@@ -206,8 +206,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   model and debug consumers must not restore fixed accessor/default aliases or a parallel crystal
   type gate. EnderDragon's nearby-crystal search remains a separate runtime-instance type check.
   Ghast charging texture membership, wire index and typed default must remain derived from
-  generated `Ghast.DATA_IS_CHARGING`; native model projection must not restore fixed
-  accessor/default aliases or read a same-named boolean from another entity family.
+  generated `Ghast.DATA_IS_CHARGING`; HappyGhast leash-holder/stays-still plus inherited baby
+  collision state must use generated accessors for `IS_LEASH_HOLDER`, `STAYS_STILL`, and
+  `AgeableMob.DATA_BABY_ID`. Native model and world collision consumers/fixtures must not restore
+  fixed accessor/default aliases or read same-index booleans from another entity family.
   GlowSquid dark-ticks light/debug membership, wire index and typed default must remain derived
   from generated `GlowSquid.DATA_DARK_TICKS_REMAINING`; native consumers must not restore fixed
   accessor/default aliases or a separate GlowSquid type gate for renderer light projection.

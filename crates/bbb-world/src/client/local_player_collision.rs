@@ -8,15 +8,13 @@ use bbb_protocol::entity_types::{
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 
 use super::local_player::LocalPlayerPoseState;
-#[cfg(test)]
-use crate::entities::VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID;
 use crate::entities::{
     is_vanilla_boat_type, is_vanilla_minecart_type,
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
+    vanilla_entity_metadata_happy_ghast_accessors_for_entity_type,
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_pushability_kind,
     vanilla_living_entity_type, EntitySupportingBlock, VanillaEntityCollidabilityKind,
-    VanillaEntityPushabilityKind, VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
-    VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
+    VanillaEntityPushabilityKind,
 };
 use crate::terrain::{
     block_name_has_empty_collision_shape, block_name_is_air, block_name_is_amethyst_cluster,
@@ -705,14 +703,18 @@ impl WorldStore {
                 .entities
                 .mount(target_id)
                 .is_some_and(|mount| !mount.passengers.is_empty());
-        let stays_still = self
-            .entities
-            .metadata_bool_for_entity(
-                target_id,
-                VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
-                VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
-            )
-            .unwrap_or(VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL);
+        let stays_still = vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(
+            target_type,
+        )
+        .is_some_and(|accessors| {
+            self.entities
+                .metadata_bool_for_entity(
+                    target_id,
+                    accessors.stays_still_data_id,
+                    accessors.stays_still_default,
+                )
+                .unwrap_or(accessors.stays_still_default)
+        });
         player_is_above || happy_ghast_vehicle_pair || stays_still
     }
 
@@ -4810,6 +4812,16 @@ mod tests {
     #[test]
     fn happy_ghast_collision_requires_adult_alive_and_player_above_or_stays_still() {
         let mut world = empty_world();
+        let accessors = vanilla_entity_metadata_happy_ghast_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        )
+        .expect("generated HappyGhast collision accessors");
+        let (baby_data_id, baby_default) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+            )
+            .expect("generated HappyGhast baby accessor");
+        assert!(!baby_default);
         world.set_local_player_pose(LocalPlayerPoseState {
             position: bbb_protocol::packets::Vec3d {
                 x: 0.5,
@@ -4848,7 +4860,7 @@ mod tests {
             world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
                 id: 20,
                 values: vec![bbb_protocol::packets::EntityDataValue {
-                    data_id: VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID,
+                    data_id: accessors.is_leash_holder_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
                 }],
@@ -4860,7 +4872,7 @@ mod tests {
             world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
                 id: 20,
                 values: vec![bbb_protocol::packets::EntityDataValue {
-                    data_id: VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
+                    data_id: accessors.stays_still_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
                 }],
@@ -4872,7 +4884,7 @@ mod tests {
             world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
                 id: 20,
                 values: vec![bbb_protocol::packets::EntityDataValue {
-                    data_id: 16,
+                    data_id: baby_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
                 }],

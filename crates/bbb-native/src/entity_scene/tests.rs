@@ -7803,7 +7803,7 @@ fn entity_model_kind_uses_exact_model_for_ghast() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_GHAST_ID,
-            &[protocol_bool_data(GHAST_IS_CHARGING_DATA_ID, true)]
+            &[protocol_bool_data(ghast_charging_data_id(), true)]
         ),
         EntityModelKind::Ghast { charging: true }
     );
@@ -11391,6 +11391,16 @@ fn creaking_active_data_id() -> u8 {
             VANILLA_ENTITY_TYPE_CREAKING_ID,
         )
         .expect("generated Creaking active accessor");
+    assert!(!default);
+    data_id
+}
+
+fn ghast_charging_data_id() -> u8 {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_ghast_charging_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_GHAST_ID,
+        )
+        .expect("generated Ghast charging accessor");
     assert!(!default);
     data_id
 }

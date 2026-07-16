@@ -22006,22 +22006,39 @@ mod generated_catalog_guards {
     #[test]
     fn production_ghast_charging_uses_generated_accessor() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let collision = include_str!("../../client/local_player_collision.rs");
         let body = source
             .split("VANILLA_ENTITY_TYPE_GHAST_ID")
             .nth(1)
             .and_then(|source| source.split("VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID").next())
             .expect("Ghast model projection source");
         assert!(body.contains("vanilla_entity_metadata_ghast_charging_accessor_for_entity_type"));
+        assert!(collision.contains("vanilla_entity_metadata_happy_ghast_accessors_for_entity_type"));
+        assert!(collision.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         for removed in [
             "GHAST_IS_CHARGING_DATA_ID",
             "GHAST_DEFAULT_CHARGING",
             "VANILLA_GHAST_CHARGING_DATA_ID",
             "VANILLA_GHAST_DEFAULT_CHARGING",
+            "HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID",
+            "HAPPY_GHAST_DEFAULT_IS_LEASH_HOLDER",
+            "HAPPY_GHAST_STAYS_STILL_DATA_ID",
+            "HAPPY_GHAST_DEFAULT_STAYS_STILL",
+            "VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID",
+            "VANILLA_HAPPY_GHAST_DEFAULT_IS_LEASH_HOLDER",
+            "VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID",
+            "VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL",
         ] {
             assert!(
                 !body.contains(removed),
                 "Ghast projection restored {removed}"
             );
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(!collision.contains(removed), "collision restored {removed}");
         }
     }
 
