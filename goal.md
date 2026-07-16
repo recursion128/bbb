@@ -403,6 +403,9 @@ metadata match。
    取值仅允许 `complete`、`partial`、`deferred`、`not-applicable`；`complete` 必须
    引用权威实现与 semantic test，后三者必须链接 `docs/unsupported-features.md` 的
    具体原因与 vanilla 证据；共同 parent/family 实现只引用一次，不为 157 行复制证明。
+   当前入口为 `docs/entity-coverage-26.1.json`；分类输入与共享证据在
+   `scripts/data/entity-coverage-overrides-26.1.json`，通过
+   `scripts/generate-entity-coverage.py` 更新或检查。
 2. **继承 schema 与默认值**：先完成 Entity→LivingEntity→Mob/Animal/Monster/Vehicle/
    Projectile/Display 等父链 metadata index、serializer、默认值、flag mask 和 dimensions
    schema，再登记子类差异；测试锁定继承偏移、同 index 不同 family serializer、spawn

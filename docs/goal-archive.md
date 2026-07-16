@@ -16677,3 +16677,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   accessor/default aliases。
 - 既有语义测试继续锁定 dangerous texture 与 SNBT；schema membership 测试拒绝
   SmallFireball，metadata generator reverse guard 禁止恢复平行事实源。
+
+## 2026-07-16：建立 entity coverage matrix foundation
+
+- 新增由 `VANILLA_ENTITY_TYPES` 权威 catalog 驱动的 157 行、十格 entity coverage
+  ledger；生成器从 checked-in Rust catalog 派生 ID/顺序，overrides 只保存共享分类、
+  evidence set 与 catalog audit fingerprint，不维护第二份实体 ID 表。
+- 初始审计只把固定 metadata/schema 状态面绑定到全 catalog 实现和语义测试；通用
+  spawn/transform 实现不足以证明 family defaults 或 interpolation，相关格与其余 family
+  差异均保守保持 partial。AreaEffectCloud、Interaction、Marker 的模型格按 vanilla
+  `NoopRenderer` 注册标记为 not-applicable。结构测试锁定 157 项完整性、十格 schema、
+  complete 证据要求及 catalog 增项必须重新审计。

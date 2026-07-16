@@ -1142,6 +1142,65 @@ back into a todo. Do not delete these.
 
 ## Entity models and animation
 
+### Entity coverage matrix spawn and defaults
+
+- Audit every fixed entity family for `ClientPacketListener.createEntityFromPacket`
+  recreation, add-packet `data`, constructor/client defaults, and replacement
+  semantics beyond the generic canonical identity and transform insertion.
+
+### Entity coverage matrix transform and interpolation
+
+- Complete vanilla remote `moveOrInterpolateTo`, teleport, head/body rotation,
+  distance-based interpolation, and family-specific transform exceptions beyond
+  the authoritative packet state already retained by the world store.
+
+### Entity coverage matrix client tick and movement
+
+- Audit every fixed entity family for the subclass ticks, locally controlled
+  movement, remote interpolation, projectile motion/trails, and client-only
+  timers that the multiplayer client actually advances. Keep AI, pathfinding,
+  authoritative combat, drops, spawning, and server RNG outside the client
+  implementation.
+
+### Entity coverage matrix dimensions collision and pick
+
+- Close the remaining family-specific pose/dimension changes, collision
+  exceptions, multipart hit targets, scale caps, and pickability rules against
+  the generated entity type and metadata catalogs.
+
+### Entity coverage matrix model texture and layers
+
+- Audit every non-noop vanilla renderer registration for exact model family,
+  texture/variant, shadow/culling, held-item/equipment, emissive, overlay, and
+  attachment layers. A generic cuboid or missing-texture fallback remains
+  partial.
+
+### Entity coverage matrix animation
+
+- Close every applicable keyframe/procedural animation, render-state partial
+  interpolation, baby transform, and family-specific client animation counter.
+  Unobservable random starting phases require a narrow evidence-backed
+  not-applicable decision rather than a fabricated seed.
+
+### Entity coverage matrix equipment passenger and leash
+
+- Audit equipment slot applicability and presentation, passenger attachment and
+  controlling-passenger rules, vehicle recovery, and leash state/presentation
+  for every applicable family.
+
+### Entity coverage matrix events particles and audio
+
+- Complete the reverse audit from every client-side entity event override and
+  listener special case to canonical state plus applicable animation, particle,
+  and audio side effects.
+
+### Entity coverage matrix save and debug
+
+- Close family-specific Shift-local F3+I projections using only synced,
+  spawn/equipment/component, and client-owned state. Server-private inventory,
+  targets, timers, RNG, AI, and authoritative save fields must remain absent or
+  carry a narrow vanilla-backed not-applicable decision.
+
 - **Entity-event subclass dispatch audit.** Enumerate every vanilla 26.1
   client-side `handleEntityEvent(byte)` override and the listener-special cases,
   map each applicable event id to bbb's animation/particle/audio/presentation
@@ -1266,6 +1325,12 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
   mutation. Bundle assembly itself remains a connection-runtime todo above.
 
 ## Entity models and layers
+
+### Entity coverage matrix vanilla noop renderers
+
+- Area-effect-cloud, marker, and interaction have no model/texture/layer
+  presentation: vanilla registers each with `NoopRenderer`. Their other
+  observable cells remain independently classified.
 
 - **Chicken head look.** `ChickenModel` never animates the head.
 - **Freezing white overlay.** The creeper is the only vanilla
