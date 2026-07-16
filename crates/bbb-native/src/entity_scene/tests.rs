@@ -15,7 +15,6 @@ use bbb_world::{
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
     VANILLA_BAT_FLAGS_DATA_ID, VANILLA_BAT_FLAG_RESTING,
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
-    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
@@ -141,6 +140,15 @@ fn axolotl_variant_data(variant: i32) -> EntityDataValue {
         VANILLA_ENTITY_TYPE_AXOLOTL_ID,
     )
     .expect("generated Axolotl variant accessor must resolve");
+    protocol_int_data(data_id, variant)
+}
+
+fn mushroom_cow_variant_data(variant: i32) -> EntityDataValue {
+    let (data_id, _) =
+        bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        )
+        .expect("generated MushroomCow variant accessor must resolve");
     protocol_int_data(data_id, variant)
 }
 
@@ -8602,8 +8610,8 @@ fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
             variant: MooshroomVariant::Red,
         }
     );
-    // The synced `MushroomCow.DATA_TYPE` (index 18) selects the brown coat (id 1; `ByIdMap` CLAMP
-    // folds out-of-range ids to the nearest endpoint).
+    // The generated synced `MushroomCow.DATA_TYPE` accessor selects the brown coat (id 1;
+    // `ByIdMap` CLAMP folds out-of-range ids to the nearest endpoint).
     for (id, variant) in [
         (-1, MooshroomVariant::Red),
         (1, MooshroomVariant::Brown),
@@ -8612,7 +8620,7 @@ fn entity_model_kind_uses_exact_models_for_base_cow_and_sheep() {
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-                &[protocol_int_data(MUSHROOM_COW_TYPE_DATA_ID, id)]
+                &[mushroom_cow_variant_data(id)]
             ),
             EntityModelKind::Mooshroom {
                 baby: false,

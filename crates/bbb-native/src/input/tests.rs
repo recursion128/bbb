@@ -115,7 +115,6 @@ use bbb_world::{
     VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
-    VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MOOSHROOM_TYPE_DATA_ID,
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
 };
 use std::{
@@ -251,6 +250,18 @@ fn axolotl_variant_data(variant: i32) -> ProtocolEntityDataValue {
         VANILLA_ENTITY_TYPE_AXOLOTL_ID,
     )
     .expect("generated Axolotl variant accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(variant),
+    }
+}
+
+fn mushroom_cow_variant_data(variant: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+    )
+    .expect("generated MushroomCow variant accessor must resolve");
     ProtocolEntityDataValue {
         data_id,
         serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
@@ -5996,11 +6007,7 @@ fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
-            ProtocolEntityDataValue {
-                data_id: MOOSHROOM_TYPE_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(1),
-            },
+            mushroom_cow_variant_data(1),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

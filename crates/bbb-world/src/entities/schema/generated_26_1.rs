@@ -202,8 +202,6 @@ const GENERATED_VANILLA_COW_VARIANT_DATA_ID: u8 = 18;
 pub const VANILLA_COW_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_COW_VARIANT_DATA_ID;
 const GENERATED_VANILLA_COW_SOUND_VARIANT_DATA_ID: u8 = 19;
 pub const VANILLA_COW_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_COW_SOUND_VARIANT_DATA_ID;
-const GENERATED_VANILLA_MUSHROOM_COW_TYPE_DATA_ID: u8 = 18;
-pub const VANILLA_MUSHROOM_COW_TYPE_DATA_ID: u8 = GENERATED_VANILLA_MUSHROOM_COW_TYPE_DATA_ID;
 const GENERATED_VANILLA_PIG_BOOST_TIME_DATA_ID: u8 = 18;
 pub const VANILLA_PIG_BOOST_TIME_DATA_ID: u8 = GENERATED_VANILLA_PIG_BOOST_TIME_DATA_ID;
 const GENERATED_VANILLA_PIG_VARIANT_DATA_ID: u8 = 19;
@@ -805,8 +803,6 @@ pub const VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID: &str =
 const GENERATED_VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
 pub const VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
-const GENERATED_VANILLA_MUSHROOM_COW_DEFAULT_TYPE: i32 = 0;
-pub const VANILLA_MUSHROOM_COW_DEFAULT_TYPE: i32 = GENERATED_VANILLA_MUSHROOM_COW_DEFAULT_TYPE;
 const GENERATED_VANILLA_PIG_DEFAULT_BOOST_TIME: i32 = 0;
 pub const VANILLA_PIG_DEFAULT_BOOST_TIME: i32 = GENERATED_VANILLA_PIG_DEFAULT_BOOST_TIME;
 const GENERATED_VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:temperate";
@@ -24389,12 +24385,20 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_mushroom_cow_variant_does_not_restore_accessor_constants() {
+    fn mushroom_cow_variant_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [native_scene, native_variants, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(source
                 .contains("vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type"));
         }
@@ -24406,22 +24410,19 @@ mod generated_catalog_guards {
             "MOOSHROOM_DEFAULT_TYPE_ID",
             "debug_mooshroom_variant_name",
         ] {
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_kind.contains(removed),
-                "native kind restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                native_scene,
+                native_kind,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "MushroomCow variant projection restored {removed}"
+                );
+            }
         }
     }
 

@@ -5767,11 +5767,20 @@ mod tests {
 
     #[test]
     fn generated_mushroom_cow_variant_accessor_owns_membership_index_and_default() {
+        let mushroom_cow = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::MushroomCow);
+        let variant = mushroom_cow
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_TYPE")
+            .expect("generated MushroomCow variant field");
+        let VanillaEntityMetadataDefault::Int(default) = variant.default else {
+            panic!("generated MushroomCow variant default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_MOOSHROOM_ID
             ),
-            Some((18, 0))
+            Some((variant.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
@@ -7734,11 +7743,15 @@ mod tests {
         );
         assert_eq!(mushroom_cow.inherited_field_count, 18);
         assert_eq!(mushroom_cow.own_fields.len(), 1);
-        assert_eq!(VANILLA_MUSHROOM_COW_TYPE_DATA_ID, 18);
-        assert_eq!(VANILLA_MUSHROOM_COW_DEFAULT_TYPE, 0);
+        let (variant_data_id, variant_default) =
+            vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+            )
+            .expect("generated MushroomCow variant accessor");
+        assert_eq!(variant_data_id, mushroom_cow.own_fields[0].data_id);
         assert_eq!(
-            mushroom_cow.own_fields[0].default,
-            VanillaEntityMetadataDefault::Int(0)
+            VanillaEntityMetadataDefault::Int(variant_default),
+            mushroom_cow.own_fields[0].default
         );
         let pig = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Pig);
         assert_eq!(pig.parent, Some(VanillaEntityMetadataFamily::AgeableMob));

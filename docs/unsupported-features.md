@@ -378,8 +378,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases, hand-written wire indices or a parallel save-id normalizer, and invalid
   ids must follow vanilla ZERO fallback.
   MushroomCow variant membership, wire index and typed default must remain derived from generated
-  `MushroomCow.DATA_TYPE`; native model/debug consumers must not restore fixed accessor/default
-  aliases or a parallel serialized-name mapper, and invalid ids must follow vanilla CLAMP behavior.
+  `MushroomCow.DATA_TYPE`; native model/debug consumers and semantic fixtures must not restore fixed
+  accessor/default aliases, hand-written wire indices or a parallel serialized-name mapper, and
+  invalid ids must follow vanilla CLAMP behavior.
   Bogged sheared membership, wire index and typed default must remain derived from generated
   `Bogged.DATA_SHEARED`; native model/debug consumers must not restore fixed accessor/default
   aliases or read the boolean slot without generated Bogged membership.

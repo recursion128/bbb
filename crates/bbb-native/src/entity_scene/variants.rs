@@ -593,7 +593,7 @@ fn entity_data_registry_holder_id(
 /// `MOOSHROOM_BABY` to `BabyCowModel.createBodyLayer()`), so it maps to the dedicated
 /// [`EntityModelKind::Mooshroom`] (`baby` selecting the layout) — the real cow body instead of the
 /// generic quadruped stand-in. The red/brown body texture and adult-only mushroom block-model layer are
-/// projected from the synced `MushroomCow.DATA_TYPE` (index 18).
+/// projected from the generated synced `MushroomCow.DATA_TYPE` accessor.
 pub(super) fn mooshroom_model_kind(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
