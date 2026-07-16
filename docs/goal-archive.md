@@ -17526,3 +17526,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   坐姿查询和全 catalog fixture 直接消费该行为，并显式覆盖 `DragonHoverPhase` 的直接 true override。
 - 删除四项 sitting/hover phase-id 公开别名与精确 ID 断言；unknown id 保持 fail-closed，metadata
   generator 守卫禁止 production 与 fixture 恢复 phase-id 代表表。
+
+## 2026-07-16：统一 HoglinBase attack-animation graph 消费
+
+- world 回归改为遍历 generated 157 项 entity-type catalog，逐项比较 event-4 初始化与下一 tick
+  递减是否符合 `HoglinBase` interface graph；删除 Hoglin/Zoglin/Chicken 代表 type fixture。
+- schema 仅保留 unknown-id fail-closed 边界；metadata generator 守卫锁定 event/tick 两处 production
+  graph 查询与全 catalog fixture，并禁止恢复 Hoglin/Zoglin type 常量表。

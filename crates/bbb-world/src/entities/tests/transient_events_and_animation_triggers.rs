@@ -1,4 +1,5 @@
 use super::*;
+use crate::entities::schema::vanilla_entity_metadata_type_is_hoglin_base;
 use crate::entities::{
     VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID,
@@ -1159,54 +1160,41 @@ fn axolotl_playing_dead_flag_drives_the_eased_factor() {
 }
 
 #[test]
-fn hoglin_and_zoglin_attack_event_drives_the_headbutt_timer() {
-    let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(
-        78,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID,
-    ));
-    store.apply_add_entity(protocol_add_entity_with_type(
-        79,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-    ));
-    store.apply_add_entity(protocol_add_entity_with_type(
-        80,
-        VANILLA_ENTITY_TYPE_CHICKEN_ID,
-    ));
+fn hoglin_attack_event_and_tick_match_generated_interface_graph() {
+    // Vanilla HoglinBase implementors handle event 4 by setting the raw attack timer to 10, then
+    // decrement it in aiStep. Compare both dispatch sites over the complete generated type catalog.
+    for entry in VANILLA_ENTITY_TYPES {
+        let entity_id = 1_000 + entry.id;
+        let mut store = WorldStore::new();
+        store.apply_add_entity(protocol_add_entity_with_type(entity_id, entry.id));
+        let attack_tick = |store: &WorldStore| {
+            store
+                .probe_entity(entity_id)
+                .expect("catalog entity state")
+                .client_animations
+                .hoglin_attack_animation_tick()
+        };
 
-    let attack_tick = |store: &WorldStore, id: i32| {
-        store
-            .entity_model_sources_at_partial_tick(0.0)
-            .into_iter()
-            .find(|source| source.entity_id == id)
-            .unwrap()
-            .hoglin_attack_animation_tick
-    };
-
-    // Vanilla Hoglin/Zoglin.handleEntityEvent: event 4 sets attackAnimationRemainingTicks to 10 (the
-    // RAW int, decremented each tick — no partial lerp). Both the hoglin and the zoglin headbutt.
-    for id in [78, 79] {
-        assert_eq!(attack_tick(&store, id), 0);
+        assert_eq!(attack_tick(&store), 0, "{} initial", entry.resource_id);
         assert!(store.apply_entity_event(ProtocolEntityEvent {
-            entity_id: id,
+            entity_id,
             event_id: 4,
         }));
-        assert_eq!(attack_tick(&store, id), 10);
+        let expected = vanilla_entity_metadata_type_is_hoglin_base(entry.id);
+        assert_eq!(
+            attack_tick(&store),
+            if expected { 10 } else { 0 },
+            "{} event dispatch",
+            entry.resource_id
+        );
+        store.advance_entity_client_animations(1);
+        assert_eq!(
+            attack_tick(&store),
+            if expected { 9 } else { 0 },
+            "{} tick dispatch",
+            entry.resource_id
+        );
     }
-    store.advance_entity_client_animations(1);
-    assert_eq!(attack_tick(&store, 78), 9);
-    assert_eq!(attack_tick(&store, 79), 9);
-    store.advance_entity_client_animations(9);
-    assert_eq!(attack_tick(&store, 78), 0);
-    assert_eq!(attack_tick(&store, 79), 0);
-
-    // The attack event on a non-hoglin never starts the headbutt timer.
-    assert!(store.apply_entity_event(ProtocolEntityEvent {
-        entity_id: 80,
-        event_id: 4,
-    }));
-    store.advance_entity_client_animations(1);
-    assert_eq!(attack_tick(&store, 80), 0);
 }
 
 #[test]

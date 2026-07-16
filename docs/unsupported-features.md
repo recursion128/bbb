@@ -475,7 +475,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   behavior, including `DragonHoverPhase`'s direct override; production and the full registered-phase
   fixture must not restore a parallel phase-id table or sitting-phase aliases.
   Hoglin/Zoglin shared attack-animation event and tick membership must remain derived from the
-  generated `HoglinBase` interface graph rather than parallel entity-type tables.
+  generated `HoglinBase` interface graph; production and the full entity-catalog fixture must not
+  restore parallel entity-type tables.
   Illager celebrating-arm-pose membership must combine the generated Raider `IS_CELEBRATING`
   accessor with the nearest generated `getArmPose` class behavior rather than fixed metadata aliases
   or an Evoker/Vindicator entity-type table. Spellcaster casting and Pillager charging fixtures must
