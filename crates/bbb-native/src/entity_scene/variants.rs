@@ -1374,14 +1374,22 @@ pub(super) fn ageable_baby(values: &[bbb_protocol::packets::EntityDataValue]) ->
 }
 
 /// Vanilla `ArmadilloModel.setupAnim` `isHidingInShell` swap, projected from the synced
-/// `Armadillo.ARMADILLO_STATE` (data id 18, the `ArmadilloState` enum; SCARED = ordinal 2).
+/// `Armadillo.ARMADILLO_STATE` (the `ArmadilloState` enum; SCARED uses the generated ordinal).
 /// Only the steady SCARED state is server-derivable: it hides the body in the shell for every
 /// `inStateTicks`, whereas ROLLING/UNROLLING gate the hide on the un-synced `inStateTicks`, so
 /// they stay deferred (treated as not rolled up). Defaults to IDLE (not rolled up).
-pub(super) fn armadillo_rolled_up(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+pub(super) fn armadillo_rolled_up(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
     values
         .iter()
-        .find(|value| value.data_id == ARMADILLO_STATE_DATA_ID)
+        .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::EnumId {
                 serializer: EntityDataEnumSerializer::ArmadilloState,
@@ -1389,7 +1397,8 @@ pub(super) fn armadillo_rolled_up(values: &[bbb_protocol::packets::EntityDataVal
             } => Some(*id),
             _ => None,
         })
-        .is_some_and(|id| id == ARMADILLO_STATE_SCARED_ID)
+        .unwrap_or(default)
+        == ARMADILLO_STATE_SCARED_ID
 }
 
 pub(super) fn chicken_model_variant(

@@ -32,6 +32,7 @@ use bbb_renderer::{
 };
 #[cfg(test)]
 use bbb_renderer::{EntityDynamicPlayerSkinStatus, EntityPlayerSkinModel};
+use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
@@ -54,6 +55,9 @@ use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
 use bbb_world::WolfVariantAssetPresentation;
 #[cfg(test)]
 use bbb_world::VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID;
+use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 #[cfg(test)]
@@ -120,10 +124,6 @@ use bbb_world::{
     VANILLA_HORSE_VARIANT_DATA_ID as HORSE_VARIANT_DATA_ID,
     VANILLA_LLAMA_DEFAULT_VARIANT as LLAMA_DEFAULT_VARIANT,
     VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
-    VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
 };
 use bbb_world::{
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,

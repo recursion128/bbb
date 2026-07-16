@@ -343,8 +343,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases or duplicate the generated `Sniffer.State` ordinals. Sniffer baby
   bounds must use the generated inherited baby accessor rather than a fixed AgeableMob slot.
   Armadillo animation-state membership, wire index and typed default must remain derived from
-  generated `Armadillo.ARMADILLO_STATE`; metadata and event consumers must not restore fixed
-  accessor/default aliases or duplicate the generated `ArmadilloState` ordinals.
+  generated `Armadillo.ARMADILLO_STATE`; world metadata/event and native model/debug consumers
+  must not restore fixed accessor/default aliases or duplicate the generated `ArmadilloState`
+  ordinals.
   Warden client-anger membership, wire index and typed default must remain derived from generated
   `Warden.CLIENT_ANGER_LEVEL`; heartbeat consumers must carry entity type and must not restore fixed
   accessor/default aliases or read another family's slot 16 as anger.

@@ -23556,10 +23556,36 @@ mod generated_catalog_guards {
                 .count(),
             3
         );
+        let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        assert!(native_variants
+            .contains("vanilla_entity_metadata_armadillo_state_accessor_for_entity_type"));
+        let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        assert!(native_kind.contains("armadillo_rolled_up(entity_type_id, data_values)"));
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let debug_body = native_input
+            .split("fn debug_push_armadillo_additional_save_data")
+            .nth(1)
+            .and_then(|source| source.split("fn debug_armadillo_state_name").next())
+            .expect("armadillo debug projection source");
+        assert!(
+            debug_body.contains("vanilla_entity_metadata_armadillo_state_accessor_for_entity_type")
+        );
         for removed in ["ARMADILLO_STATE_DATA_ID", "ARMADILLO_DEFAULT_STATE"] {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
+            );
+            assert!(
+                !native_variants.contains(removed),
+                "native variants restored {removed}"
+            );
+            assert!(
+                !native_kind.contains(removed),
+                "native kind restored {removed}"
+            );
+            assert!(
+                !debug_body.contains(removed),
+                "native debug restored {removed}"
             );
         }
     }

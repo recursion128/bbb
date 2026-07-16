@@ -74,6 +74,7 @@ use bbb_protocol::{
 };
 use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
@@ -184,8 +185,6 @@ use bbb_world::{
     VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
 };
 use bbb_world::{
-    VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
-    VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
     VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID,
     VANILLA_ARMADILLO_STATE_UNROLLING_ID as ARMADILLO_STATE_UNROLLING_ID,
@@ -7109,12 +7108,17 @@ fn debug_dye_color_legacy_save_id(color: i32) -> i32 {
 }
 
 fn debug_push_armadillo_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     let state_id = debug_entity_data_enum_id_present(
         entity,
-        ARMADILLO_STATE_DATA_ID,
+        data_id,
         EntityDataEnumSerializer::ArmadilloState,
     )
-    .unwrap_or(ARMADILLO_DEFAULT_STATE);
+    .unwrap_or(default);
     fields.push(format!(
         "state: {}",
         debug_snbt_string(debug_armadillo_state_name(state_id))

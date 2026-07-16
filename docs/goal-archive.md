@@ -16637,3 +16637,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   当前 session 的动态 `minecraft:painting_variant` registry 解析，不把虚拟默认误作固定 id。
 - world metadata projection 与 native debug SNBT 删除固定 accessor alias，并按实体 type 拒绝
   其它 family 对槽 9 的复用；语义测试与生成器 reverse guard 锁定该边界。
+
+## 2026-07-16：补齐 Armadillo metadata accessor 的 native 消费路径
+
+- native Armadillo 模型的 steady-SCARED shell 显隐与 F3+I `state` 保存投影现在携带
+  entity type，并从既有 generated `ARMADILLO_STATE` accessor 解析 membership、wire id 与
+  IDLE typed default；状态名称与 SCARED 判定继续消费生成 ordinal。
+- `entity_scene` 与 debug 生产路径删除固定 accessor/default aliases；既有 model/SNBT 语义
+  测试继续锁定行为，metadata generator reverse guard 扩展到 world/native 全路径。

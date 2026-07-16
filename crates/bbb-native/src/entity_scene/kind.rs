@@ -224,7 +224,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => EntityModelKind::Armadillo {
             baby: ageable_baby(data_values),
-            rolled_up: armadillo_rolled_up(data_values),
+            rolled_up: armadillo_rolled_up(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_AXOLOTL_ID => {
             let variant =
