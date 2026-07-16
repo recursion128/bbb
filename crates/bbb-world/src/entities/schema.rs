@@ -298,6 +298,14 @@ pub struct VanillaFarmAnimalVariantMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaCompanionVariantMetadataAccessors {
+    pub variant_data_id: u8,
+    pub variant_default_resource_id: &'static str,
+    pub sound_variant_data_id: u8,
+    pub sound_variant_default_resource_id: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaTurtleMetadataAccessors {
     pub has_egg_data_id: u8,
     pub has_egg_default: bool,
@@ -2345,6 +2353,67 @@ pub fn vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
     }
 }
 
+/// Resolves Cat/Wolf synchronized presentation and sound holders with virtual defaults.
+pub fn vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaCompanionVariantMetadataAccessors> {
+    let variant =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_VARIANT_ID")?;
+    let sound_variant =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SOUND_VARIANT_ID")?;
+    match (
+        (
+            variant.owner,
+            variant.serializer_name,
+            variant.typed_default,
+        ),
+        (
+            sound_variant.owner,
+            sound_variant.serializer_name,
+            sound_variant.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.feline.Cat",
+                "CAT_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    variant_default_resource_id,
+                )),
+            ),
+            (
+                "net.minecraft.world.entity.animal.feline.Cat",
+                "CAT_SOUND_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    sound_variant_default_resource_id,
+                )),
+            ),
+        )
+        | (
+            (
+                "net.minecraft.world.entity.animal.wolf.Wolf",
+                "WOLF_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    variant_default_resource_id,
+                )),
+            ),
+            (
+                "net.minecraft.world.entity.animal.wolf.Wolf",
+                "WOLF_SOUND_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    sound_variant_default_resource_id,
+                )),
+            ),
+        ) => Some(VanillaCompanionVariantMetadataAccessors {
+            variant_data_id: variant.data_id,
+            variant_default_resource_id,
+            sound_variant_data_id: sound_variant.data_id,
+            sound_variant_default_resource_id,
+        }),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Vex flags accessor and its typed default.
 pub fn vanilla_entity_metadata_vex_flags_accessor_for_entity_type(
     entity_type_id: i32,
@@ -2885,13 +2954,13 @@ mod tests {
         VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
         VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
-        VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
-        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
@@ -5273,6 +5342,47 @@ mod tests {
                 vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
                     entity_type_id
                 ),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_companion_variant_accessors_own_membership_indices_and_defaults() {
+        for (entity_type_id, expected) in [
+            (
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                VanillaCompanionVariantMetadataAccessors {
+                    variant_data_id: VANILLA_CAT_VARIANT_DATA_ID,
+                    variant_default_resource_id: VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID,
+                    sound_variant_data_id: VANILLA_CAT_SOUND_VARIANT_DATA_ID,
+                    sound_variant_default_resource_id:
+                        VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                },
+            ),
+            (
+                VANILLA_ENTITY_TYPE_WOLF_ID,
+                VanillaCompanionVariantMetadataAccessors {
+                    variant_data_id: VANILLA_WOLF_VARIANT_DATA_ID,
+                    variant_default_resource_id: VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID,
+                    sound_variant_data_id: VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
+                    sound_variant_default_resource_id:
+                        VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                },
+            ),
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id),
+                Some(expected)
+            );
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_OCELOT_ID,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

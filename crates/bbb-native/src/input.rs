@@ -82,6 +82,7 @@ use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_companion_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
@@ -196,8 +197,9 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_CAT_COLLAR_COLOR_DATA_ID as CAT_COLLAR_COLOR_DATA_ID,
     VANILLA_CAT_DEFAULT_COLLAR_COLOR as CAT_DEFAULT_COLLAR_COLOR_ID,
-    VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID as CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
-    VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID as CAT_DEFAULT_VARIANT_RESOURCE_ID,
+};
+#[cfg(test)]
+use bbb_world::{
     VANILLA_CAT_SOUND_VARIANT_DATA_ID as CAT_SOUND_VARIANT_DATA_ID,
     VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID,
 };
@@ -238,8 +240,9 @@ use bbb_world::{
     VANILLA_WOLF_COLLAR_COLOR_DATA_ID as WOLF_COLLAR_COLOR_DATA_ID,
     VANILLA_WOLF_DEFAULT_ANGER_END_TIME as WOLF_DEFAULT_ANGER_END_TIME,
     VANILLA_WOLF_DEFAULT_COLLAR_COLOR as WOLF_DEFAULT_COLLAR_COLOR_ID,
-    VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID as WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
-    VANILLA_WOLF_DEFAULT_VARIANT_RESOURCE_ID as WOLF_DEFAULT_VARIANT_RESOURCE_ID,
+};
+#[cfg(test)]
+use bbb_world::{
     VANILLA_WOLF_SOUND_VARIANT_DATA_ID as WOLF_SOUND_VARIANT_DATA_ID,
     VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID,
 };
@@ -6988,9 +6991,14 @@ fn debug_push_cat_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    let Some(accessors) =
+        vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     let variant = debug_entity_data_registry_id_present(
         entity,
-        CAT_VARIANT_DATA_ID,
+        accessors.variant_data_id,
         EntityDataRegistryHolder::CatVariant,
     )
     .and_then(|id| {
@@ -6998,10 +7006,10 @@ fn debug_push_cat_additional_save_data(
             CatModelVariant::for_vanilla_registry_id(id).map(CatModelVariant::resource_id)
         })
     })
-    .unwrap_or(CAT_DEFAULT_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.variant_default_resource_id);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
-        CAT_SOUND_VARIANT_DATA_ID,
+        accessors.sound_variant_data_id,
         EntityDataRegistryHolder::CatSoundVariant,
     )
     .and_then(|id| {
@@ -7010,7 +7018,7 @@ fn debug_push_cat_additional_save_data(
                 .map(CatSoundVariantIdentity::resource_id)
         })
     })
-    .unwrap_or(CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.sound_variant_default_resource_id);
     let collar_color = debug_entity_data_int_present(entity, CAT_COLLAR_COLOR_DATA_ID)
         .map(debug_dye_color_legacy_save_id)
         .unwrap_or(CAT_DEFAULT_COLLAR_COLOR_ID);
@@ -7064,12 +7072,17 @@ fn debug_push_wolf_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    let Some(accessors) =
+        vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     let collar_color = debug_entity_data_int_present(entity, WOLF_COLLAR_COLOR_DATA_ID)
         .map(debug_dye_color_legacy_save_id)
         .unwrap_or(WOLF_DEFAULT_COLLAR_COLOR_ID);
     let variant = debug_entity_data_registry_id_present(
         entity,
-        WOLF_VARIANT_DATA_ID,
+        accessors.variant_data_id,
         EntityDataRegistryHolder::WolfVariant,
     )
     .and_then(|id| {
@@ -7077,12 +7090,12 @@ fn debug_push_wolf_additional_save_data(
             WolfModelVariant::for_vanilla_registry_id(id).map(WolfModelVariant::resource_id)
         })
     })
-    .unwrap_or(WOLF_DEFAULT_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.variant_default_resource_id);
     let anger_end_time = debug_entity_data_long_present(entity, WOLF_ANGER_END_TIME_DATA_ID)
         .unwrap_or(WOLF_DEFAULT_ANGER_END_TIME);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
-        WOLF_SOUND_VARIANT_DATA_ID,
+        accessors.sound_variant_data_id,
         EntityDataRegistryHolder::WolfSoundVariant,
     )
     .and_then(|id| {
@@ -7091,7 +7104,7 @@ fn debug_push_wolf_additional_save_data(
                 .map(WolfSoundVariantIdentity::resource_id)
         })
     })
-    .unwrap_or(WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.sound_variant_default_resource_id);
     fields.push(format!("CollarColor: {collar_color}b"));
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!("anger_end_time: {anger_end_time}L"));

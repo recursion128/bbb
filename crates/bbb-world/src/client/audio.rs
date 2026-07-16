@@ -18,17 +18,17 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::entities::{
+    vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
     ChickenSoundVariantIdentity, CowSoundVariantIdentity, PigSoundVariantIdentity,
     VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
-    VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_CAT_SOUND_VARIANT_DATA_ID,
-    VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
 };
 #[cfg(test)]
 use crate::entities::{
-    VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID, VANILLA_COW_SOUND_VARIANT_DATA_ID,
-    VANILLA_PIG_SOUND_VARIANT_DATA_ID,
+    VANILLA_CAT_SOUND_VARIANT_DATA_ID, VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
+    VANILLA_COW_SOUND_VARIANT_DATA_ID, VANILLA_PIG_SOUND_VARIANT_DATA_ID,
+    VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
 };
 use crate::registries::{
     DamageTypeEffects, RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY,
@@ -590,12 +590,16 @@ impl WorldStore {
             VANILLA_ENTITY_TYPE_BOGGED_ID => (direct_sound_holder(BOGGED_DEATH_SOUND_EVENT), 1.0),
             VANILLA_ENTITY_TYPE_CAT_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
                 let sound = self.sound_variant_death_sound(
                     entity_id,
                     CAT_SOUND_VARIANT_REGISTRY,
-                    VANILLA_CAT_SOUND_VARIANT_DATA_ID,
+                    accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::CatSoundVariant,
-                    VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    accessors.sound_variant_default_resource_id,
                     CatSoundVariantIdentity::for_vanilla_registry_id,
                     CatSoundVariantIdentity::for_resource_id,
                     CatSoundVariantIdentity::builtin_death_sound_event,
@@ -662,12 +666,16 @@ impl WorldStore {
             }
             VANILLA_ENTITY_TYPE_WOLF_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
                 let sound = self.sound_variant_death_sound(
                     entity_id,
                     WOLF_SOUND_VARIANT_REGISTRY,
-                    VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
+                    accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::WolfSoundVariant,
-                    VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    accessors.sound_variant_default_resource_id,
                     WolfSoundVariantIdentity::for_vanilla_registry_id,
                     WolfSoundVariantIdentity::for_resource_id,
                     WolfSoundVariantIdentity::builtin_death_sound_event,

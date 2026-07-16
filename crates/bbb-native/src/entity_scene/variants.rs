@@ -152,7 +152,7 @@ pub(super) fn feline_model_kind(
         cat,
         baby: ageable_baby(values),
         cat_variant: if cat {
-            cat_model_variant(values, registries)
+            cat_model_variant(entity_type_id, values, registries)
         } else {
             CatModelVariant::Black
         },
@@ -167,13 +167,19 @@ pub(super) fn feline_model_kind(
 }
 
 pub(super) fn cat_model_variant(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> CatModelVariant {
+    let Some(accessors) =
+        vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)
+    else {
+        return CatModelVariant::Black;
+    };
     values
         .iter()
         .rev()
-        .find(|value| value.data_id == CAT_VARIANT_DATA_ID)
+        .find(|value| value.data_id == accessors.variant_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::CatVariant,
@@ -183,12 +189,21 @@ pub(super) fn cat_model_variant(
         })
         .map(|id| {
             if let Some(registries) = registries {
-                cat_variant_from_registry_id(registries, id).unwrap_or(CatModelVariant::Black)
+                cat_variant_from_registry_id(registries, id).unwrap_or_else(|| {
+                    cat_default_model_variant(accessors.variant_default_resource_id)
+                })
             } else {
-                CatModelVariant::for_vanilla_registry_id(id).unwrap_or(CatModelVariant::Black)
+                CatModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
+                    cat_default_model_variant(accessors.variant_default_resource_id)
+                })
             }
         })
-        .unwrap_or(CatModelVariant::Black)
+        .unwrap_or_else(|| cat_default_model_variant(accessors.variant_default_resource_id))
+}
+
+fn cat_default_model_variant(default_resource_id: &str) -> CatModelVariant {
+    CatModelVariant::for_resource_id(default_resource_id)
+        .expect("generated vanilla cat default variant must map to a model")
 }
 
 pub(super) fn cat_variant_from_registry_id(
@@ -425,9 +440,11 @@ pub(super) fn ready_cat_variant_texture(
     if entity_type_id != VANILLA_ENTITY_TYPE_CAT_ID {
         return None;
     }
+    let accessors =
+        vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)?;
     let holder_id = entity_data_registry_holder_id(
         values,
-        CAT_VARIANT_DATA_ID,
+        accessors.variant_data_id,
         EntityDataRegistryHolder::CatVariant,
     )?;
     let registries = registries?;
@@ -480,9 +497,11 @@ pub(super) fn ready_wolf_variant_texture(
     if entity_type_id != VANILLA_ENTITY_TYPE_WOLF_ID {
         return None;
     }
+    let accessors =
+        vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)?;
     let holder_id = entity_data_registry_holder_id(
         values,
-        WOLF_VARIANT_DATA_ID,
+        accessors.variant_data_id,
         EntityDataRegistryHolder::WolfVariant,
     )?;
     let registries = registries?;
@@ -714,7 +733,7 @@ pub(super) fn wolf_model_kind(
                 WOLF_DEFAULT_COLLAR_COLOR_ID,
             ))
         }),
-        variant: wolf_model_variant(values, registries),
+        variant: wolf_model_variant(entity_type_id, values, registries),
     }
 }
 
@@ -723,13 +742,19 @@ pub(super) fn wolf_model_kind(
 /// server sent, falling back to the static vanilla registration order, and to `Pale` (the vanilla
 /// `WolfVariants.DEFAULT`) when no holder is present.
 pub(super) fn wolf_model_variant(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> WolfModelVariant {
+    let Some(accessors) =
+        vanilla_entity_metadata_companion_variant_accessors_for_entity_type(entity_type_id)
+    else {
+        return WolfModelVariant::Pale;
+    };
     values
         .iter()
         .rev()
-        .find(|value| value.data_id == WOLF_VARIANT_DATA_ID)
+        .find(|value| value.data_id == accessors.variant_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::WolfVariant,
@@ -739,12 +764,21 @@ pub(super) fn wolf_model_variant(
         })
         .map(|id| {
             if let Some(registries) = registries {
-                wolf_variant_from_registry_id(registries, id).unwrap_or(WolfModelVariant::Pale)
+                wolf_variant_from_registry_id(registries, id).unwrap_or_else(|| {
+                    wolf_default_model_variant(accessors.variant_default_resource_id)
+                })
             } else {
-                WolfModelVariant::for_vanilla_registry_id(id).unwrap_or(WolfModelVariant::Pale)
+                WolfModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
+                    wolf_default_model_variant(accessors.variant_default_resource_id)
+                })
             }
         })
-        .unwrap_or(WolfModelVariant::Pale)
+        .unwrap_or_else(|| wolf_default_model_variant(accessors.variant_default_resource_id))
+}
+
+fn wolf_default_model_variant(default_resource_id: &str) -> WolfModelVariant {
+    WolfModelVariant::for_resource_id(default_resource_id)
+        .expect("generated vanilla wolf default variant must map to a model")
 }
 
 pub(super) fn wolf_variant_from_registry_id(

@@ -146,10 +146,9 @@ Owner: `bbb-protocol`
 Owner: `scripts/` + each generated catalog's semantic crate
 
 - Complete the remaining cross-crate registry/ordinal/serializer-id and entity
-  renderer-class/event-dispatch membership discovery audit. Prioritize the base
-  Entity/LivingEntity/Mob fields and the remaining Cat/Wolf synchronized
-  variant/audio families that still expose direct generated aliases to production
-  consumers; migrate
+  renderer-class/event-dispatch membership discovery audit. Prioritize the remaining
+  base Entity/LivingEntity/Mob fields that still expose direct generated aliases to
+  production consumers; migrate
   each homogeneous family through schema-owned accessors and generator-emitted
   reverse guards. The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar

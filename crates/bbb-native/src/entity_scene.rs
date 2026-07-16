@@ -39,6 +39,7 @@ use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_companion_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_ghast_charging_accessor_for_entity_type;
@@ -71,6 +72,8 @@ use bbb_world::VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as PIGLIN
 use bbb_world::VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID;
 use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
 #[cfg(test)]
+use bbb_world::VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID;
+#[cfg(test)]
 use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
@@ -87,6 +90,8 @@ use bbb_world::VANILLA_STRIDER_SUFFOCATING_DATA_ID as STRIDER_SUFFOCATING_DATA_I
 use bbb_world::VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING;
 #[cfg(test)]
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID as ZOMBIE_VILLAGER_CONVERTING_DATA_ID;
 use bbb_world::{
@@ -137,7 +142,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_CAT_COLLAR_COLOR_DATA_ID as CAT_COLLAR_COLOR_DATA_ID,
     VANILLA_CAT_DEFAULT_COLLAR_COLOR as CAT_DEFAULT_COLLAR_COLOR_ID,
-    VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
@@ -227,7 +231,6 @@ use bbb_world::{
     VANILLA_WOLF_COLLAR_COLOR_DATA_ID as WOLF_COLLAR_COLOR_DATA_ID,
     VANILLA_WOLF_DEFAULT_ANGER_END_TIME as WOLF_DEFAULT_ANGER_END_TIME,
     VANILLA_WOLF_DEFAULT_COLLAR_COLOR as WOLF_DEFAULT_COLLAR_COLOR_ID,
-    VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID as ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID,

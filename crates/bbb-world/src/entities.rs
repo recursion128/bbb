@@ -55,6 +55,7 @@ pub use renderer_catalog::{
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_is_noop,
     vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,
 };
+pub use schema::VanillaCompanionVariantMetadataAccessors;
 pub use schema::VanillaCreeperMetadataAccessors;
 pub use schema::VanillaFarmAnimalVariantMetadataAccessors;
 pub use schema::VanillaGoatMetadataAccessors;
@@ -82,6 +83,7 @@ pub use schema::{
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
     vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type,
+    vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,

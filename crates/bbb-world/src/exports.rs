@@ -1,6 +1,7 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
+pub use crate::entities::VanillaCompanionVariantMetadataAccessors;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
 pub use crate::entities::VanillaFarmAnimalVariantMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
@@ -28,6 +29,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
     vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type,
+    vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,

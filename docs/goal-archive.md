@@ -16762,3 +16762,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native model/ready-texture 与 F3+I 保存投影、world death-sound 选择删除六组固定
   accessor/default aliases；既有 Chicken/Cow/Pig 模型、动态 registry、debug default 和
   adult/baby death-sound 语义测试继续锁定行为，metadata generator reverse guard 覆盖三条消费面。
+
+## 2026-07-16：批量推导 companion variant metadata accessors
+
+- `bbb-world` 现在从生成 schema 成组解析 Cat/Wolf 的 variant 与 sound-variant holder
+  membership、各自 serializer、wire id 和 registry-resource virtual defaults；两类动态
+  `RegistryAccess` holder 顺序与 fixed vanilla fallback 继续共用同一 bundle。
+- native model/ready-texture 与 F3+I 保存投影、world death-sound 选择删除四组固定
+  accessor/default aliases；既有 Cat/Wolf 模型、动态 registry、debug default 和 adult/baby
+  death-sound 语义测试继续锁定行为，metadata generator reverse guard 覆盖三条消费面。
