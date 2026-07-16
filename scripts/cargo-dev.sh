@@ -14,6 +14,7 @@ Usage:
   scripts/cargo-dev.sh timings-clean <target-suffix> [cargo test args...]
   scripts/cargo-dev.sh sccache-eval <run-suffix> [focused cargo test args...]
   scripts/cargo-dev.sh gate
+  scripts/cargo-dev.sh gate-scripts-tests-status
   scripts/cargo-dev.sh batch-gate <good-commit>..<bad-commit>
   scripts/cargo-dev.sh size
   scripts/cargo-dev.sh prune [--force]
@@ -28,6 +29,7 @@ Environment:
   CARGO_TARGET_DIR        Explicit target dir override
   BBB_BATCH_GATE_TARGET_NAME  Batch-gate cache suffix, default: batch-gate
   BBB_PRUNE_TARGET_ROOT   Prune scan root, default: /tmp (used by tests)
+  BBB_GATE_FULL=1         Run every gate step regardless of changed paths
   BBB_USE_SCCACHE=1       Use sccache only if it is installed
 
 Examples:
@@ -382,17 +384,58 @@ run_gate_step() {
   fi
 }
 
+# The scripts python suite only validates scripts/; skip it when the slice
+# under gate did not touch scripts/. A dirty tree is gated against HEAD; a
+# clean tree (batch-gate bisecting a commit) is gated against its parent.
+gate_scripts_tests_status() {
+  if [ "${BBB_GATE_FULL:-0}" = "1" ]; then
+    echo "run: BBB_GATE_FULL=1"
+    return 0
+  fi
+  if ! git rev-parse --verify --quiet HEAD >/dev/null 2>&1; then
+    echo "run: no HEAD commit to diff against"
+    return 0
+  fi
+  if [ -n "$(git status --porcelain | head -n 1)" ]; then
+    changed="$(
+      git diff --name-only HEAD
+      git ls-files --others --exclude-standard
+    )"
+    scope="working tree vs HEAD"
+  else
+    if ! git rev-parse --verify --quiet 'HEAD^' >/dev/null 2>&1; then
+      echo "run: clean tree without a parent commit"
+      return 0
+    fi
+    changed="$(git diff --name-only 'HEAD^' HEAD)"
+    scope="HEAD vs HEAD^"
+  fi
+  if printf '%s\n' "$changed" | grep -q '^scripts/'; then
+    echo "run: scripts/ changed ($scope)"
+  else
+    echo "skip: no scripts/ change ($scope)"
+  fi
+}
+
 run_gate() {
   gate_start=$(date +%s)
   run_gate_step "docs-lint" scripts/docs-lint.sh
   run_gate_step "cargo fmt --all --check" cargo fmt --all --check
-  run_gate_step "scripts python tests" \
-    scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests
+  scripts_tests_status="$(gate_scripts_tests_status)"
+  case "$scripts_tests_status" in
+    run:*)
+      run_gate_step "scripts python tests" \
+        scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests
+      ;;
+    *)
+      gate_step_index=$((gate_step_index + 1))
+      echo "== [$gate_step_index/$gate_step_total] scripts python tests =="
+      echo "   skipped: ${scripts_tests_status#skip: } (BBB_GATE_FULL=1 forces)"
+      ;;
+  esac
   run_gate_step "git diff --check" git diff --check
-  run_gate_step "cargo check --workspace (-D warnings)" \
-    env RUSTFLAGS='-D warnings' cargo check --workspace
-  run_gate_step "cargo test --workspace (-D warnings)" \
-    env RUSTFLAGS='-D warnings' cargo test --workspace
+  run_gate_step "cargo check --workspace" cargo check --workspace
+  run_gate_step "cargo test --workspace" cargo test --workspace
   gate_end=$(date +%s)
   echo "gate: all $gate_step_total steps passed in $((gate_end - gate_start))s"
 }
@@ -642,6 +685,9 @@ case "$cmd" in
     ;;
   gate)
     run_gate
+    ;;
+  gate-scripts-tests-status)
+    gate_scripts_tests_status
     ;;
   batch-gate)
     run_batch_gate "$@"

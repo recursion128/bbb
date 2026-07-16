@@ -148,6 +148,109 @@ test "$(cat state.txt)" = good
         self.assertIn("run_timed_cargo test", script)
 
 
+class CargoDevGateScriptsTestsStatusTests(unittest.TestCase):
+    def run_git(self, repo: Path, *args: str) -> str:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return result.stdout.strip()
+
+    def make_repo(self, root: Path) -> Path:
+        repo = root / "repo"
+        repo.mkdir()
+        (repo / "scripts").mkdir()
+        self.run_git(repo, "init", "-q")
+        self.run_git(repo, "config", "user.name", "Cargo Dev Test")
+        self.run_git(repo, "config", "user.email", "cargo-dev-test@example.invalid")
+        (repo / "src.txt").write_text("src\n", encoding="utf-8")
+        (repo / "scripts" / "tool.py").write_text("# tool\n", encoding="utf-8")
+        self.run_git(repo, "add", ".")
+        self.run_git(repo, "commit", "-q", "-m", "root commit")
+        return repo
+
+    def status(self, repo: Path, *, full: bool = False) -> str:
+        env = os.environ.copy()
+        env.pop("BBB_GATE_FULL", None)
+        if full:
+            env["BBB_GATE_FULL"] = "1"
+        result = subprocess.run(
+            [str(CARGO_DEV), "gate-scripts-tests-status"],
+            cwd=repo,
+            env=env,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        return result.stdout.strip()
+
+    def test_dirty_tree_without_scripts_change_skips(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "src.txt").write_text("changed\n", encoding="utf-8")
+            self.assertEqual(
+                self.status(repo), "skip: no scripts/ change (working tree vs HEAD)"
+            )
+
+    def test_dirty_tree_with_tracked_scripts_change_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "scripts" / "tool.py").write_text("# changed\n", encoding="utf-8")
+            self.assertEqual(
+                self.status(repo), "run: scripts/ changed (working tree vs HEAD)"
+            )
+
+    def test_dirty_tree_with_untracked_scripts_file_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "scripts" / "new.py").write_text("# new\n", encoding="utf-8")
+            self.assertEqual(
+                self.status(repo), "run: scripts/ changed (working tree vs HEAD)"
+            )
+
+    def test_clean_tree_head_without_scripts_change_skips(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "src.txt").write_text("changed\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "non-scripts slice")
+            self.assertEqual(
+                self.status(repo), "skip: no scripts/ change (HEAD vs HEAD^)"
+            )
+
+    def test_clean_tree_head_with_scripts_change_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "scripts" / "tool.py").write_text("# changed\n", encoding="utf-8")
+            self.run_git(repo, "commit", "-q", "-am", "scripts slice")
+            self.assertEqual(
+                self.status(repo), "run: scripts/ changed (HEAD vs HEAD^)"
+            )
+
+    def test_clean_tree_without_parent_commit_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            self.assertEqual(
+                self.status(repo), "run: clean tree without a parent commit"
+            )
+
+    def test_gate_full_forces_run(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self.make_repo(Path(directory))
+            (repo / "src.txt").write_text("changed\n", encoding="utf-8")
+            self.assertEqual(self.status(repo, full=True), "run: BBB_GATE_FULL=1")
+
+    def test_gate_cargo_steps_do_not_toggle_rustflags(self) -> None:
+        script = CARGO_DEV.read_text(encoding="utf-8")
+        self.assertNotIn("RUSTFLAGS='-D warnings'", script)
+        self.assertIn('run_gate_step "cargo check --workspace" cargo check --workspace', script)
+        self.assertIn('run_gate_step "cargo test --workspace" cargo test --workspace', script)
+
+
 class CargoDevPruneTests(unittest.TestCase):
     def run_git(self, repo: Path, *args: str) -> str:
         result = subprocess.run(

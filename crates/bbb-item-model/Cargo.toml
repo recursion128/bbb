@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[lints]
+workspace = true
+
 [features]
 # Exposes the `NativeItemRuntime` test constructors (`empty_for_test`,
 # `for_test_with_registry_and_equipment_assets`) to downstream crates' tests

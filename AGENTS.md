@@ -192,6 +192,9 @@ Every worker prompt should include:
 The authoritative pre-commit gate is defined in `goal.md` under "提交前门禁".
 Do not copy the command list into other files; point at `goal.md` instead.
 `scripts/cargo-dev.sh gate` runs exactly that gate against `/tmp/bbb-target-main`.
+deny-warnings is baked into the workspace lints table; never set
+`RUSTFLAGS='-D warnings'` manually — toggling `RUSTFLAGS` invalidates the whole
+shared target cache in both directions (see `docs/cargo-build-performance.md`).
 Developers may optionally run `scripts/install-hooks.sh` to install the seconds-only local
 pre-commit checks; it is never installed automatically and does not replace the full gate.
 

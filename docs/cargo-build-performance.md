@@ -442,6 +442,44 @@ Conclusion:
   next use; clean them with `scripts/cargo-dev.sh prune --force` if disk
   pressure matters more than one rebuild per domain.
 
+## deny-warnings Moved from RUSTFLAGS to Workspace Lints: 2026-07-16
+
+Environment: same Linux host and toolchain as the 2026-07-16 linker baseline.
+
+Problem: the gate ran `RUSTFLAGS='-D warnings'` while daily focused tests ran
+without `RUSTFLAGS`, and both used `/tmp/bbb-target-main`. Cargo hashes
+`RUSTFLAGS` into unit fingerprints, so every focused-test → gate → focused-test
+transition invalidated the whole cache in both directions.
+
+Measured on `/tmp/bbb-target-main` (cache left in the `-D warnings` state by
+the previous gate):
+
+| Command | Wall time | CPU time |
+| --- | ---: | ---: |
+| `RUSTFLAGS='-D warnings' cargo check --workspace` (matching state) | 0.16s | — |
+| `cargo check --workspace` (flag removed, full re-check) | 29.0s | 5m30s |
+
+The `cargo test` side of the same toggle is larger because it redoes codegen
+and linking. Each slice paid this twice (gate direction and back).
+
+Adopted fix:
+
+- `[workspace.lints.rust] warnings = "deny"` in the root `Cargo.toml`, with
+  `[lints] workspace = true` in every crate manifest.
+- The gate now runs plain `cargo check --workspace` / `cargo test --workspace`
+  with no `RUSTFLAGS`, so gate and focused tests share one warm cache state.
+- Do not set `RUSTFLAGS='-D warnings'` manually anymore; it reintroduces the
+  thrash. Denied warnings now also fail focused tests immediately, which
+  surfaces lint breakage before the gate instead of at gate time.
+- One-time costs: the manifest change rebuilt the ten workspace crates once
+  (16.5s check side), and each stable target rebuilds once on first use after
+  the change.
+
+The gate also skips the scripts python suite (185 tests, 6.7s) when the change
+under gate does not touch `scripts/`; `BBB_GATE_FULL=1` forces every step. A
+dirty tree is diffed against `HEAD`; a clean tree (batch-gate bisection) is
+diffed against the commit's parent.
+
 ## Baseline: 2026-06-18
 
 Environment:

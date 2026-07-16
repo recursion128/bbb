@@ -101,17 +101,22 @@
 
 ## 提交前门禁
 
+统一入口 `scripts/cargo-dev.sh gate`，等价于：
+
 - `scripts/docs-lint.sh`
 - `cargo fmt --all --check`
 - `scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests`
+  （仅当被门禁的改动触及 `scripts/`；`BBB_GATE_FULL=1` 强制全跑）
 - `git diff --check`
-- `RUSTFLAGS='-D warnings' CARGO_TARGET_DIR=/tmp/bbb-target-main cargo check --workspace`
-- `RUSTFLAGS='-D warnings' CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`
+- `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo check --workspace`
+- `CARGO_TARGET_DIR=/tmp/bbb-target-main cargo test --workspace`
 
-单条 `-D warnings` workspace 命令覆盖全部 crate（含 control/net/protocol/
-audio），2026-07-05 起取代原"workspace 无 -D + 六个 crate 逐个 -D"的九条
-命令组合。`cargo check` 一条不可省：test 构建把 test-only 用法算作使用，
-只跑 `cargo test` 会漏掉非测试（交付 bin）构建的 unused/dead-code lint。
+deny-warnings 自 2026-07-16 起由根 Cargo.toml 的 `[workspace.lints.rust]
+warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹；禁止再
+手工设置 `RUSTFLAGS='-D warnings'`——它会双向作废 `/tmp/bbb-target-*` 缓存，
+每次切换代价是整仓重编（实测见 `docs/cargo-build-performance.md`）。
+`cargo check` 一条不可省：test 构建把 test-only 用法算作使用，只跑
+`cargo test` 会漏掉非测试（交付 bin）构建的 unused/dead-code lint。
 纯文档/memory slice 只需 `git diff --check`。
 
 ## Slice 工作流（每轮）
@@ -136,7 +141,14 @@ audio），2026-07-05 起取代原"workspace 无 -D + 六个 crate 逐个 -D"的
    4. 更新账本条目；已完成描述写入 `docs/goal-archive.md`（不是本文件）；
       本文件对应队列项划掉或改写其剩余部分；
    5. 过门禁，独立提交（英文祈使句单行 message，沿用仓库风格）。
-5. **队列维护**：队列消化顺序见"客户端差异优先级"首行；当前命名 milestone
+      连续同族机械 slice 可用下方批量门禁模式替代逐个完整 gate。
+5. **批量门禁**（仅限连续 ≤5 个同族机械 slice：同一派生/迁移模板、低风险、
+   focused test 覆盖全部改动面）：每个 slice 过 `scripts/docs-lint.sh` +
+   `cargo fmt --all --check` + focused tests + `git diff --check` 后即提交；
+   批次结束、换族或本轮收尾前运行一次完整 gate。完整 gate 失败时用
+   `scripts/cargo-dev.sh batch-gate <last-green>..HEAD` 定位首个坏提交并
+   fix-forward 提交修复；完整 gate 通过前不得开始下一批或结束本轮。
+6. **队列维护**：队列消化顺序见"客户端差异优先级"首行；当前命名 milestone
    无可执行项时顺延下一条，垂直依赖只前移能恢复该 milestone/playable 场景的最小
    slice；结转项只在重启判据满足后入队；新发现工作按优先级插队并在账本立条目。
 
