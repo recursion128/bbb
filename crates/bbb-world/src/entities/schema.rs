@@ -6188,6 +6188,15 @@ mod tests {
 
     #[test]
     fn generated_crossbow_and_dancing_accessors_separate_pillager_and_piglin_membership() {
+        let piglin = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Piglin);
+        let dancing = piglin
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_IS_DANCING")
+            .expect("generated Piglin dancing field");
+        let VanillaEntityMetadataDefault::Boolean(dancing_default) = dancing.default else {
+            panic!("generated Piglin dancing default must be BOOLEAN");
+        };
         assert_eq!(
             vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PILLAGER_ID
@@ -6204,7 +6213,7 @@ mod tests {
             vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PIGLIN_ID
             ),
-            Some((19, false))
+            Some((dancing.data_id, dancing_default))
         );
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
@@ -9038,25 +9047,47 @@ mod tests {
         );
         assert_eq!(piglin.inherited_field_count, 17);
         assert_eq!(piglin.own_fields.len(), 3);
-        assert_eq!(VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID, 16);
-        assert_eq!(VANILLA_PIGLIN_BABY_DATA_ID, 17);
+        let (immunity_data_id, immunity_default) =
+            vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            )
+            .expect("generated AbstractPiglin immunity accessor");
+        let (baby_data_id, baby_default) =
+            vanilla_entity_metadata_baby_accessor_for_entity_type(VANILLA_ENTITY_TYPE_PIGLIN_ID)
+                .expect("generated Piglin baby accessor");
+        let (dancing_data_id, dancing_default) =
+            vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            )
+            .expect("generated Piglin dancing accessor");
+        assert_eq!(immunity_data_id, abstract_piglin.own_fields[0].data_id);
+        assert_eq!(baby_data_id, piglin.own_fields[0].data_id);
         assert_eq!(VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID, 18);
-        assert_eq!(VANILLA_PIGLIN_DANCING_DATA_ID, 19);
-        assert!(!VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION);
-        assert!(!VANILLA_PIGLIN_DEFAULT_BABY);
+        assert_eq!(dancing_data_id, piglin.own_fields[2].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(immunity_default),
+            abstract_piglin.own_fields[0].default
+        );
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(baby_default),
+            piglin.own_fields[0].default
+        );
         assert!(!VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW);
-        assert!(!VANILLA_PIGLIN_DEFAULT_DANCING);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(dancing_default),
+            piglin.own_fields[2].default
+        );
         assert_eq!(
             vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PIGLIN_ID
             ),
-            Some((16, false))
+            Some((immunity_data_id, immunity_default))
         );
         assert_eq!(
             vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
             ),
-            Some((16, false))
+            Some((immunity_data_id, immunity_default))
         );
         assert_eq!(
             vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
@@ -9072,6 +9103,18 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(-1),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_baby_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID
+            ),
             None
         );
         let raider = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Raider);

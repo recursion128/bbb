@@ -308,16 +308,9 @@ pub const VANILLA_ZOGLIN_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOGLIN_BABY_DATA_I
 const GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
 pub const VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 =
     GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
-const GENERATED_VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 16;
-pub const VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 =
-    GENERATED_VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
-const GENERATED_VANILLA_PIGLIN_BABY_DATA_ID: u8 = 17;
-pub const VANILLA_PIGLIN_BABY_DATA_ID: u8 = GENERATED_VANILLA_PIGLIN_BABY_DATA_ID;
 const GENERATED_VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID: u8 = 18;
 pub const VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID: u8 =
     GENERATED_VANILLA_PIGLIN_CHARGING_CROSSBOW_DATA_ID;
-const GENERATED_VANILLA_PIGLIN_DANCING_DATA_ID: u8 = 19;
-pub const VANILLA_PIGLIN_DANCING_DATA_ID: u8 = GENERATED_VANILLA_PIGLIN_DANCING_DATA_ID;
 const GENERATED_VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = 16;
 pub const VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = GENERATED_VANILLA_RAIDER_CELEBRATING_DATA_ID;
 const GENERATED_VANILLA_PILLAGER_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
@@ -840,16 +833,9 @@ pub const VANILLA_ZOGLIN_DEFAULT_BABY: bool = GENERATED_VANILLA_ZOGLIN_DEFAULT_B
 const GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
 pub const VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool =
     GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION;
-const GENERATED_VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
-pub const VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool =
-    GENERATED_VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION;
-const GENERATED_VANILLA_PIGLIN_DEFAULT_BABY: bool = false;
-pub const VANILLA_PIGLIN_DEFAULT_BABY: bool = GENERATED_VANILLA_PIGLIN_DEFAULT_BABY;
 const GENERATED_VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW: bool = false;
 pub const VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW: bool =
     GENERATED_VANILLA_PIGLIN_DEFAULT_CHARGING_CROSSBOW;
-const GENERATED_VANILLA_PIGLIN_DEFAULT_DANCING: bool = false;
-pub const VANILLA_PIGLIN_DEFAULT_DANCING: bool = GENERATED_VANILLA_PIGLIN_DEFAULT_DANCING;
 const GENERATED_VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = false;
 pub const VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = GENERATED_VANILLA_RAIDER_DEFAULT_CELEBRATING;
 const GENERATED_VANILLA_PILLAGER_DEFAULT_CHARGING_CROSSBOW: bool = false;
@@ -24865,11 +24851,13 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_piglin_metadata_does_not_restore_accessor_constants() {
+    fn piglin_metadata_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         assert!(native_variants
             .contains("vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type"));
         assert!(native_variants.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
@@ -24877,6 +24865,18 @@ mod generated_catalog_guards {
         assert!(native_input
             .contains("vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type"));
         assert!(native_input.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(native_scene_tests
+            .contains("vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type"));
+        assert!(
+            native_scene_tests.contains("vanilla_entity_metadata_baby_accessor_for_entity_type")
+        );
+        assert!(native_scene_tests
+            .contains("vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type"));
+        assert!(native_input_tests
+            .contains("vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type"));
+        assert!(
+            native_input_tests.contains("vanilla_entity_metadata_baby_accessor_for_entity_type")
+        );
         for removed in [
             "PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID",
             "ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID",
@@ -24884,6 +24884,7 @@ mod generated_catalog_guards {
             "PIGLIN_BABY_DATA_ID",
             "PIGLIN_DEFAULT_BABY",
             "PIGLIN_IS_DANCING_DATA_ID",
+            "PIGLIN_DANCING_DATA_ID",
             "PIGLIN_DEFAULT_DANCING",
         ] {
             assert!(
@@ -24901,6 +24902,14 @@ mod generated_catalog_guards {
             assert!(
                 !native_input.contains(removed),
                 "native input restored {removed}"
+            );
+            assert!(
+                !native_scene_tests.contains(removed),
+                "native scene fixtures restored {removed}"
+            );
+            assert!(
+                !native_input_tests.contains(removed),
+                "native input fixtures restored {removed}"
             );
         }
     }

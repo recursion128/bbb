@@ -17413,3 +17413,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Creaking family schema 派生；动画、碰撞、native model、F3+I 及其 fixtures 保持窄 accessor。
 - 删除 `bbb-world` 的 4 个 data 与 3 个 boolean default facade 转发；generator 反向守卫覆盖
   world/native/input fixtures，并补齐实际 tearing-down facade 名称的禁止恢复检查。
+
+## 2026-07-16：统一 AbstractPiglin/Piglin metadata 消费
+
+- zombification immunity、baby 与 dancing 的 wire index/default 分别由 generated
+  AbstractPiglin/Piglin family schema 派生；native model/pose、F3+I 与 fixtures 保持 accessor 消费。
+- 删除三项 data/default 六个 facade 转发，保留下一切片所属的 charging-crossbow 字段；schema
+  测试锁定 PiglinBrute 仅继承 immunity、不拥有 Piglin baby/dancing，generator 守卫覆盖 fixtures。
