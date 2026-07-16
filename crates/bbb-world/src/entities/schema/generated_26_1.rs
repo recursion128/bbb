@@ -22753,6 +22753,29 @@ mod generated_catalog_guards {
                 );
             }
         }
+        for (start, end) in [
+            (
+                "fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_interaction_save_nbt_to_clipboard",
+            ),
+            (
+                "fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard",
+            ),
+        ] {
+            let fixture = native_input_tests
+                .split(start)
+                .nth(1)
+                .and_then(|source| source.split(end).next())
+                .expect("native input late baby fixture source");
+            assert_eq!(fixture.matches("baby_data(").count(), 1);
+        }
+        for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+            assert!(
+                !native_input_tests.contains(removed),
+                "native input baby fixtures restored {removed}"
+            );
+        }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,

@@ -18001,3 +18001,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   AgeableMob baby alias，按实际 entity type 复用 generated nearest-baby helper。
 - baby reverse guard 覆盖两段连续测试；age lock、Panda genes、Parrot variant/sitting、Strider
   boost/cold 与 Hoglin zombification immunity 的本地 save NBT 回归保持不变。
+
+## 2026-07-16：完成 native input debug-save baby fixture 迁移
+
+- Squid 与 WanderingTrader 的 Shift+F3+I debug-save fixtures 删除最后 2 处全局 AgeableMob
+  baby alias，按实际 entity type 复用 generated nearest-baby helper；`input/tests.rs` 的 19 处
+  baby fixture 固定别名至此全部迁移。
+- baby reverse guard 精确覆盖两项测试并整文件禁止旧别名回流；age lock、Squid/WanderingTrader
+  本地 save NBT 以及权限/剪贴板行为回归保持不变。

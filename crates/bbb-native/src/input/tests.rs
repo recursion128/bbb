@@ -13341,11 +13341,7 @@ fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            baby_data(VANILLA_ENTITY_TYPE_SQUID_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -13827,11 +13823,7 @@ fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboar
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
-            ProtocolEntityDataValue {
-                data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            baby_data(VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
