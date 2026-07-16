@@ -180,6 +180,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Spellcaster render-state projection must intersect generated renderer assignment with the
   generated `SpellcasterIllager.DATA_SPELL_CASTING_ID` accessor; it must not restore a fixed byte
   slot/default or substitute a parallel Evoker/Illusioner type predicate.
+  Villager unhappy render-state projection must intersect generated renderer assignment with the
+  generated `AbstractVillager.DATA_UNHAPPY_COUNTER` accessor; it must not restore a fixed int
+  slot/default or confuse Panda's separate `UNHAPPY_COUNTER` with AbstractVillager membership.
   Spectator camera post-effect selection must remain generated from
   `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
   projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This

@@ -22,6 +22,7 @@ use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
+    vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
@@ -109,13 +110,11 @@ use crate::entities::renderer_catalog::{
     vanilla_entity_renderer_uses_mob_item_in_hand_layer,
 };
 use crate::entities::schema::{
-    vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_item_frame,
     vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
-    VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
-    VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID, VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION,
-    VANILLA_AVATAR_MAIN_HAND_DATA_ID, VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
+    VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
+    VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
     VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK,
     VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
     VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
@@ -1617,19 +1616,12 @@ impl EntityStore {
         // AbstractVillager accessor owner rather than treating the shared field spelling as one type.
         let villager_unhappy =
             vanilla_entity_renderer_extracts_unhappy_counter(identity.entity_type_id)
-                && vanilla_entity_metadata_accessor_for_entity_type(
+                && vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type(
                     identity.entity_type_id,
-                    "DATA_UNHAPPY_COUNTER",
                 )
-                .is_some()
-                && self
-                    .metadata_int(
-                        id,
-                        VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-                        VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER,
-                    )
-                    .unwrap_or(VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER)
-                    > 0;
+                .is_some_and(|(data_id, default)| {
+                    self.metadata_int(id, data_id, default).unwrap_or(default) > 0
+                });
         // Vanilla `EndermanModel.setupAnim`: a carried block (`!carriedBlock.isEmpty()`,
         // the synced `DATA_CARRY_STATE`) poses both arms forward, and `isCreepy` (the
         // synced `DATA_CREEPY`) drops the head / raises the hat. Only the enderman defines
