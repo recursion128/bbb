@@ -16889,3 +16889,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - item registry generator 的反向测试按 item-model、native hand、decorated-pot semantic group
   分别校验，避免跨组 fixture 误判；dialog pot-decorations 与 6 条 decorated-pot focused tests
   锁定四面顺序、空面归一化、canonical 编码和 block presentation 行为。
+
+## 2026-07-16：统一 component hover-item 空栈身份
+
+- `bbb-protocol` Component `show_item` hover payload 对 `ItemStack.isEmpty` 的 `Items.AIR`
+  拒绝判定，现消费生成的 `VANILLA_ITEM_AIR_ID` 与 canonical resource 谓词，不再手写
+  `minecraft:air`；未知 built-in item、count 和 component-patch 校验顺序保持不变。
+- item registry generator 新增 protocol codec semantic group 反向测试；既有 malformed
+  hover-event focused test 同时锁定 bare `air` namespace normalization 与空物品拒绝行为。

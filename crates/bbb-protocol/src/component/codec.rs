@@ -3,7 +3,10 @@ use url::Url;
 use crate::{
     data_component_types::vanilla_data_component_type_for_resource_id,
     entity_types::vanilla_entity_type_for_resource_id,
-    item_types::vanilla_item_type_for_resource_id,
+    item_types::{
+        vanilla_item_resource_id_matches_type, vanilla_item_type_for_resource_id,
+        VANILLA_ITEM_AIR_ID,
+    },
     nbt_summary::{NbtSummaryEntry, NbtSummaryValue},
     packets::normalize_resource_location,
 };
@@ -650,7 +653,9 @@ fn validate_hover_item(entries: &[NbtSummaryEntry], what: &str) -> Result<(), St
     let raw_id = required_string(entries, "id", what)?;
     let resource_id = normalize_resource_location(raw_id.to_string())
         .map_err(|_| format!("{what} field id is not a valid item identifier: {raw_id}"))?;
-    if resource_id == "minecraft:air" || vanilla_item_type_for_resource_id(&resource_id).is_none() {
+    if vanilla_item_resource_id_matches_type(&resource_id, VANILLA_ITEM_AIR_ID)
+        || vanilla_item_type_for_resource_id(&resource_id).is_none()
+    {
         return Err(format!(
             "{what} field id is not a non-empty built-in item: {raw_id}"
         ));

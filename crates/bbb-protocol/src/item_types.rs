@@ -7691,10 +7691,14 @@ mod tests {
         ];
         assert_no_resource_literals(&pot_sources, &[VANILLA_ITEM_BRICK_ID]);
 
+        let protocol_sources = [include_str!("component/codec.rs")];
+        assert_no_resource_literals(&protocol_sources, &[VANILLA_ITEM_AIR_ID]);
+
         assert!(item_model_sources
             .iter()
             .chain(native_sources.iter())
             .chain(pot_sources.iter())
+            .chain(protocol_sources.iter())
             .any(|source| source.contains("vanilla_item_resource_id_matches_type")));
     }
 }
