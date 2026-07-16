@@ -18139,3 +18139,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   registry-holder accessor 构造 metadata，保留 active session holder-order 解析。
 - ItemFrame slot-9 负例改为显式 collision helper；同一 world fixture 的四个 entity type 数字
   同步替换为 protocol catalog 常量，reverse guard 纳入两份 fixtures 并禁止固定 id 回流。
+
+## 2026-07-16：统一 native ItemFrame local-save fixture
+
+- native F3+I ItemFrame fixture 从 world 中目标 entity type 解析 generated accessor bundle，
+  direction/item/rotation 三个 metadata 字段删除固定 wire id，并校验 direction/rotation default。
+- item-stack debug probe 复用同一 bundle 的 item id；block-attached reverse guard 纳入完整 input
+  tests，禁止 HangingEntity/ItemFrame 固定 accessor/default aliases 回流。

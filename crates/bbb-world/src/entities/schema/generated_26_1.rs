@@ -22257,6 +22257,10 @@ mod generated_catalog_guards {
         let native_item_frames = include_str!("../../../../bbb-native/src/item_frames.rs");
         assert!(native_item_frames
             .contains("vanilla_entity_metadata_item_frame_accessors_for_entity_type"));
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        assert!(native_input_tests.contains("fn item_frame_metadata_accessors("));
+        assert!(native_input_tests
+            .contains("vanilla_entity_metadata_item_frame_accessors_for_entity_type"));
         for removed in [
             "HANGING_DATA_DIRECTION_ID",
             "HANGING_ENTITY_DIRECTION_DATA_ID",
@@ -22282,6 +22286,10 @@ mod generated_catalog_guards {
             assert!(
                 !native_item_frames.contains(removed),
                 "native ItemFrame fixture restored {removed}"
+            );
+            assert!(
+                !native_input_tests.contains(removed),
+                "native input ItemFrame fixture restored {removed}"
             );
         }
     }

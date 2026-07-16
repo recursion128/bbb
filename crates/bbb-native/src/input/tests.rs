@@ -96,9 +96,6 @@ use bbb_world::{
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type,
     vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_type,
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
-    VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
-    VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
-    VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
     VANILLA_SNIFFER_STATE_DIGGING_ID,
 };
 use bbb_world::{
@@ -370,6 +367,20 @@ fn painting_variant_data(
             },
         ),
     }
+}
+
+fn item_frame_metadata_accessors(
+    world: &WorldStore,
+    entity_id: i32,
+) -> bbb_world::VanillaItemFrameMetadataAccessors {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("ItemFrame fixture entity must exist before metadata is constructed");
+    let accessors = vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity_type_id)
+        .expect("generated ItemFrame metadata accessors must resolve");
+    assert_eq!(accessors.direction_default, 3);
+    assert_eq!(accessors.rotation_default, 0);
+    accessors
 }
 
 fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
@@ -11632,21 +11643,22 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         y_head_rot: 0.0,
         data: 3,
     });
+    let item_frame_accessors = item_frame_metadata_accessors(&world, 63);
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 63,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: HANGING_ENTITY_DIRECTION_DATA_ID,
+                data_id: item_frame_accessors.direction_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
-                value: EntityDataValueKind::Direction(3),
+                value: EntityDataValueKind::Direction(item_frame_accessors.direction_default),
             },
             ProtocolEntityDataValue {
-                data_id: ITEM_FRAME_ROTATION_DATA_ID,
+                data_id: item_frame_accessors.rotation_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(11),
             },
             ProtocolEntityDataValue {
-                data_id: ITEM_FRAME_ITEM_DATA_ID,
+                data_id: item_frame_accessors.item_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
                     item_id: Some(0),
@@ -11726,7 +11738,9 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
 
     let entity = world.probe_entity(63).unwrap();
     assert_eq!(item_runtime.item_resource_id(0), Some("minecraft:diamond"));
-    assert!(debug_entity_data_item_stack_present(&entity, ITEM_FRAME_ITEM_DATA_ID).is_some());
+    assert!(
+        debug_entity_data_item_stack_present(&entity, item_frame_accessors.item_data_id).is_some()
+    );
     let snbt = debug_local_entity_pretty_snbt(&world, Some(&item_runtime), &entity).unwrap();
     assert!(
         snbt.contains(

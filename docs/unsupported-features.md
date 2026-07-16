@@ -256,9 +256,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   HangingEntity direction membership, inherited wire index and typed default must remain derived
   from generated `DATA_DIRECTION`; ItemFrame item/rotation membership, wire indices and rotation
   default must remain derived together from generated `DATA_ITEM`/`DATA_ROTATION`. World bounds,
-  center and render-state projection plus native ItemFrame/Painting debug consumers and map-frame
-  fixtures must not restore fixed accessor/default aliases. Missing direction metadata must continue
-  falling back to the add-entity packet `data`, matching vanilla recreation behavior.
+  center and render-state projection plus native ItemFrame/Painting debug consumers, local-save and
+  map-frame fixtures must not restore fixed accessor/default aliases. Missing direction metadata
+  must continue falling back to the add-entity packet `data`, matching vanilla recreation behavior.
   Painting variant metadata membership and wire index must remain derived from generated
   `DATA_PAINTING_VARIANT_ID`, including validation of its registry-any virtual default. World
   metadata projection, native debug and semantic fixtures must not restore a fixed accessor alias
