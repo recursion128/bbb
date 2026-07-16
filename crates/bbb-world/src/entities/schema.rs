@@ -5854,11 +5854,20 @@ mod tests {
 
     #[test]
     fn generated_axolotl_playing_dead_accessor_owns_membership_index_and_default() {
+        let axolotl = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Axolotl);
+        let playing_dead = axolotl
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_PLAYING_DEAD")
+            .expect("generated Axolotl playing-dead field");
+        let VanillaEntityMetadataDefault::Boolean(default) = playing_dead.default else {
+            panic!("generated Axolotl playing-dead default must be BOOLEAN");
+        };
         assert_eq!(
             vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_AXOLOTL_ID
             ),
-            Some((19, false))
+            Some((playing_dead.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
@@ -7444,9 +7453,17 @@ mod tests {
             VanillaEntityMetadataDefault::Int(variant_default),
             axolotl.own_fields[0].default
         );
-        assert_eq!(VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID, 19);
+        let (playing_dead_data_id, playing_dead_default) =
+            vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+            )
+            .expect("generated Axolotl playing-dead accessor");
+        assert_eq!(playing_dead_data_id, axolotl.own_fields[1].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(playing_dead_default),
+            axolotl.own_fields[1].default
+        );
         assert_eq!(VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID, 20);
-        assert!(!VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD);
         assert!(!VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET);
         let bee = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bee);
         assert_eq!(bee.parent, Some(VanillaEntityMetadataFamily::AgeableMob));

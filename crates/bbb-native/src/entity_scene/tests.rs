@@ -167,6 +167,15 @@ fn allay_dancing_data(dancing: bool) -> EntityDataValue {
     protocol_bool_data(data_id, dancing)
 }
 
+fn axolotl_playing_dead_data(playing_dead: bool) -> EntityDataValue {
+    let (data_id, _) =
+        bbb_world::vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+        )
+        .expect("generated Axolotl playing-dead accessor must resolve");
+    protocol_bool_data(data_id, playing_dead)
+}
+
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
     let accessors = armor_stand_metadata_accessors();
     ArmorStandModelPose {
@@ -922,8 +931,6 @@ fn entity_model_instances_project_armadillo_peek_seconds_from_world() {
 
 #[test]
 fn entity_model_instances_project_axolotl_play_dead_from_world() {
-    const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         95,
@@ -946,7 +953,7 @@ fn entity_model_instances_project_axolotl_play_dead_from_world() {
     // (`AdultAxolotlModel.setupPlayDeadAnimation` limp-on-its-side pose).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 95,
-        values: vec![protocol_bool_data(AXOLOTL_PLAYING_DEAD_DATA_ID, true)],
+        values: vec![axolotl_playing_dead_data(true)],
     }));
     world.advance_entity_client_animations(3);
     let factor = play_dead(&world).expect("the play-dead axolotl projects an instance");

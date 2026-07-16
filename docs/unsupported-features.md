@@ -390,8 +390,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases, hand-written wire indices or read another entity family's slot 16 as
   the dancing flag.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
-  `Axolotl.DATA_PLAYING_DEAD`; world animation consumers must not restore fixed accessor/default
-  aliases or read another entity family's slot 19 as the playing-dead flag.
+  `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
+  fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19
+  as the playing-dead flag.
   Camel dash and pose-tick membership, wire indices and typed defaults must remain derived from
   generated `Camel.DASH` and `Camel.LAST_POSE_CHANGE_TICK`, including inherited CamelHusk
   membership; world animation/dimensions consumers must not restore fixed accessor/default aliases

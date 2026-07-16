@@ -27,6 +27,18 @@ fn allay_dancing_data(dancing: bool) -> ProtocolEntityDataValue {
     }
 }
 
+fn axolotl_playing_dead_data(playing_dead: bool) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+    )
+    .expect("generated Axolotl playing-dead accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(playing_dead),
+    }
+}
+
 #[test]
 fn tracks_entity_transient_events() {
     let mut store = WorldStore::new();
@@ -1078,8 +1090,6 @@ fn player_using_item_flag_drives_the_shared_use_item_tick_counter() {
 
 #[test]
 fn axolotl_playing_dead_flag_drives_the_eased_factor() {
-    const AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         92,
@@ -1097,11 +1107,7 @@ fn axolotl_playing_dead_flag_drives_the_eased_factor() {
     let set_playing_dead = |store: &mut WorldStore, dead: bool| {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 92,
-            values: vec![ProtocolEntityDataValue {
-                data_id: AXOLOTL_PLAYING_DEAD_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(dead),
-            }],
+            values: vec![axolotl_playing_dead_data(dead)],
         }));
     };
 

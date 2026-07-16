@@ -91,8 +91,6 @@ pub const VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID: u8 =
     GENERATED_VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID;
 const GENERATED_VANILLA_ARMADILLO_STATE_DATA_ID: u8 = 18;
 pub const VANILLA_ARMADILLO_STATE_DATA_ID: u8 = GENERATED_VANILLA_ARMADILLO_STATE_DATA_ID;
-const GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = 19;
-pub const VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_PLAYING_DEAD_DATA_ID;
 const GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = 20;
 pub const VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID: u8 = GENERATED_VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID;
 const GENERATED_VANILLA_DOLPHIN_GOT_FISH_DATA_ID: u8 = 18;
@@ -685,9 +683,6 @@ pub const VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED: bool =
     GENERATED_VANILLA_AGEABLE_MOB_DEFAULT_AGE_LOCKED;
 const GENERATED_VANILLA_ARMADILLO_DEFAULT_STATE: i32 = 0;
 pub const VANILLA_ARMADILLO_DEFAULT_STATE: i32 = GENERATED_VANILLA_ARMADILLO_DEFAULT_STATE;
-const GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool = false;
-pub const VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD: bool =
-    GENERATED_VANILLA_AXOLOTL_DEFAULT_PLAYING_DEAD;
 const GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET: bool = GENERATED_VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET;
 const GENERATED_VANILLA_DOLPHIN_DEFAULT_GOT_FISH: bool = false;
@@ -24488,22 +24483,29 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_axolotl_playing_dead_does_not_restore_accessor_constants() {
+    fn axolotl_playing_dead_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         assert!(animations
             .contains("vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type"));
         assert!(store
             .contains("axolotl_is_playing_dead(identity.entity_type_id, &metadata.data_values)"));
+        for source in [world_tests, native_scene_tests] {
+            assert!(source
+                .contains("vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type"));
+        }
         for removed in [
             "AXOLOTL_PLAYING_DEAD_DATA_ID",
             "AXOLOTL_DEFAULT_PLAYING_DEAD",
         ] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
-            assert!(!store.contains(removed), "store restored {removed}");
+            for source in [animations, store, world_tests, native_scene_tests] {
+                assert!(
+                    !source.contains(removed),
+                    "Axolotl playing-dead projection restored {removed}"
+                );
+            }
         }
     }
 
