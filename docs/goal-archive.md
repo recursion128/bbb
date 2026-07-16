@@ -17519,3 +17519,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Never/Always/Alive/HappyGhast 四类最近 `canBeCollidedWith` 行为与 unknown id。
 - Shulker health 及 HappyGhast age/health/source-entity/vehicle/metadata 保持实例态 owner；metadata
   generator 守卫锁定 production 动态门与无代表 type 表的 class-dispatch fixture。
+
+## 2026-07-16：统一 EnderDragon sitting phase-class 消费
+
+- generated phase catalog 逐项保存 11 个注册阶段的字段名、实现类与最近 `isSitting()` 结果；world
+  坐姿查询和全 catalog fixture 直接消费该行为，并显式覆盖 `DragonHoverPhase` 的直接 true override。
+- 删除四项 sitting/hover phase-id 公开别名与精确 ID 断言；unknown id 保持 fail-closed，metadata
+  generator 守卫禁止 production 与 fixture 恢复 phase-id 代表表。

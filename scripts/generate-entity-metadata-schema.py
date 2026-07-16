@@ -1273,22 +1273,6 @@ STATIC_FACTORY_ORDINAL_ID_ALIASES = {
         "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
         "HOLDING_PATTERN",
     ),
-    "VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID": (
-        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
-        "SITTING_FLAMING",
-    ),
-    "VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID": (
-        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
-        "SITTING_SCANNING",
-    ),
-    "VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID": (
-        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
-        "SITTING_ATTACKING",
-    ),
-    "VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID": (
-        "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
-        "HOVERING",
-    ),
 }
 
 
@@ -3266,17 +3250,33 @@ def render(result: ExtractionResult) -> str:
         "net.minecraft.world.entity.boss.enderdragon.phases.EnderDragonPhase",
     )
     ender_dragon_sitting_cache: dict[str, bool] = {}
-    ender_dragon_sitting_phase_ids = sorted(
-        ordinal
-        for ordinal, implementation_class in ender_dragon_phase_registrations.values()
-        if class_zero_argument_boolean_method(
-            result,
-            class_map,
+    ender_dragon_phase_catalog = sorted(
+        (
+            ordinal,
+            java_field_name,
             implementation_class,
-            "isSitting",
-            ender_dragon_sitting_cache,
+            class_zero_argument_boolean_method(
+                result,
+                class_map,
+                implementation_class,
+                "isSitting",
+                ender_dragon_sitting_cache,
+            ),
         )
+        for java_field_name, (
+            ordinal,
+            implementation_class,
+        ) in ender_dragon_phase_registrations.items()
     )
+    if [item[0] for item in ender_dragon_phase_catalog] != list(
+        range(len(ender_dragon_phase_catalog))
+    ):
+        raise ExtractionError("EnderDragonPhase: phase registrations are not contiguous")
+    ender_dragon_sitting_phase_ids = [
+        ordinal
+        for ordinal, _, _, is_sitting in ender_dragon_phase_catalog
+        if is_sitting
+    ]
     if not ender_dragon_sitting_phase_ids:
         raise ExtractionError("EnderDragonPhase: no sitting phase implementations")
     if len(ender_dragon_sitting_phase_ids) == len(ender_dragon_phase_registrations):
@@ -3471,13 +3471,29 @@ def render(result: ExtractionResult) -> str:
         lines.append(f"pub const {public_name}: i32 = GENERATED_{public_name};")
     lines.append("")
 
-    sitting_phase_patterns = " | ".join(
-        str(phase_id) for phase_id in ender_dragon_sitting_phase_ids
+    lines.append(
+        "pub(crate) const VANILLA_ENDER_DRAGON_PHASES_26_1: &[VanillaEnderDragonPhaseCatalogEntry] = &["
     )
+    for ordinal, java_field_name, implementation_class, is_sitting in ender_dragon_phase_catalog:
+        lines.extend(
+            [
+                "    VanillaEnderDragonPhaseCatalogEntry {",
+                f"        phase_id: {ordinal},",
+                f"        java_field_name: {rust_string(java_field_name)},",
+                f"        implementation_class: {rust_string(implementation_class)},",
+                f"        is_sitting: {str(is_sitting).lower()},",
+                "    },",
+            ]
+        )
     lines.extend(
         [
-            "pub const fn vanilla_ender_dragon_phase_is_sitting(phase_id: i32) -> bool {",
-            f"    matches!(phase_id, {sitting_phase_patterns})",
+            "];",
+            "",
+            "pub fn vanilla_ender_dragon_phase_is_sitting(phase_id: i32) -> bool {",
+            "    usize::try_from(phase_id)",
+            "        .ok()",
+            "        .and_then(|phase_id| VANILLA_ENDER_DRAGON_PHASES_26_1.get(phase_id))",
+            "        .is_some_and(|phase| phase.is_sitting)",
             "}",
             "",
         ]
@@ -3763,20 +3779,36 @@ def render(result: ExtractionResult) -> str:
             "mod generated_catalog_guards {",
             "    #[test]",
             "    fn ender_dragon_sitting_phase_membership_matches_registered_classes() {",
-            "        let actual = (0..",
-            f"            {len(ender_dragon_phase_registrations)}",
-            "        )",
-            "            .filter(|phase_id| super::vanilla_ender_dragon_phase_is_sitting(*phase_id))",
-            "            .collect::<Vec<_>>();",
-            f"        assert_eq!(actual, vec!{ender_dragon_sitting_phase_ids!r});",
+            "        for phase in super::VANILLA_ENDER_DRAGON_PHASES_26_1 {",
+            "            assert_eq!(",
+            "                super::vanilla_ender_dragon_phase_is_sitting(phase.phase_id),",
+            "                phase.is_sitting,",
+            '                "{} ({})",',
+            "                phase.java_field_name,",
+            "                phase.implementation_class",
+            "            );",
+            "        }",
+            "        let hover = super::VANILLA_ENDER_DRAGON_PHASES_26_1",
+            "            .iter()",
+            '            .find(|phase| phase.implementation_class.ends_with(".DragonHoverPhase"))',
+            '            .expect("generated DragonHoverPhase registration");',
+            '        assert!(hover.is_sitting, "DragonHoverPhase directly overrides isSitting");',
             "        assert!(!super::vanilla_ender_dragon_phase_is_sitting(-1));",
-            f"        assert!(!super::vanilla_ender_dragon_phase_is_sitting({len(ender_dragon_phase_registrations)}));",
+            "        assert!(!super::vanilla_ender_dragon_phase_is_sitting(",
+            "            super::VANILLA_ENDER_DRAGON_PHASES_26_1.len() as i32",
+            "        ));",
             "    }",
             "",
             "    #[test]",
-            "    fn production_dragon_animation_does_not_restore_sitting_phase_membership() {",
+            "    fn dragon_animation_consumers_do_not_restore_sitting_phase_membership() {",
             '        let source = include_str!("../dragon.rs");',
             '        assert!(source.contains("vanilla_ender_dragon_phase_is_sitting(self.phase_id)"));',
+            '        let fixture = source',
+            '            .split("fn dragon_sitting_pose_matches_generated_phase_class_behavior")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split("}").next())',
+            '            .expect("dragon sitting-pose fixture source");',
+            '        assert!(fixture.contains("VANILLA_ENDER_DRAGON_PHASES_26_1"));',
             '        assert!(!source.contains("ENDER_DRAGON_SITTING_PHASE_IDS"));',
             '        assert!(!source.contains("VANILLA_ENDER_DRAGON_PHASE_SITTING_"));',
             '        assert!(!source.contains("VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID"));',

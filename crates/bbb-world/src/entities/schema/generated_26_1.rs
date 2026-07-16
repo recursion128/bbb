@@ -557,21 +557,90 @@ pub const VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID: i32 =
 const GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID: i32 = 0;
 pub const VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID: i32 =
     GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID;
-const GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID: i32 = 5;
-pub const VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID: i32 =
-    GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID;
-const GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID: i32 = 6;
-pub const VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID: i32 =
-    GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID;
-const GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID: i32 = 7;
-pub const VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID: i32 =
-    GENERATED_VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID;
-const GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID: i32 = 10;
-pub const VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID: i32 =
-    GENERATED_VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID;
 
-pub const fn vanilla_ender_dragon_phase_is_sitting(phase_id: i32) -> bool {
-    matches!(phase_id, 5 | 6 | 7 | 10)
+pub(crate) const VANILLA_ENDER_DRAGON_PHASES_26_1: &[VanillaEnderDragonPhaseCatalogEntry] = &[
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 0,
+        java_field_name: "HOLDING_PATTERN",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonHoldingPatternPhase",
+        is_sitting: false,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 1,
+        java_field_name: "STRAFE_PLAYER",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonStrafePlayerPhase",
+        is_sitting: false,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 2,
+        java_field_name: "LANDING_APPROACH",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonLandingApproachPhase",
+        is_sitting: false,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 3,
+        java_field_name: "LANDING",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonLandingPhase",
+        is_sitting: false,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 4,
+        java_field_name: "TAKEOFF",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonTakeoffPhase",
+        is_sitting: false,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 5,
+        java_field_name: "SITTING_FLAMING",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonSittingFlamingPhase",
+        is_sitting: true,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 6,
+        java_field_name: "SITTING_SCANNING",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonSittingScanningPhase",
+        is_sitting: true,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 7,
+        java_field_name: "SITTING_ATTACKING",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonSittingAttackingPhase",
+        is_sitting: true,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 8,
+        java_field_name: "CHARGING_PLAYER",
+        implementation_class:
+            "net.minecraft.world.entity.boss.enderdragon.phases.DragonChargePlayerPhase",
+        is_sitting: false,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 9,
+        java_field_name: "DYING",
+        implementation_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonDeathPhase",
+        is_sitting: false,
+    },
+    VanillaEnderDragonPhaseCatalogEntry {
+        phase_id: 10,
+        java_field_name: "HOVERING",
+        implementation_class: "net.minecraft.world.entity.boss.enderdragon.phases.DragonHoverPhase",
+        is_sitting: true,
+    },
+];
+
+pub fn vanilla_ender_dragon_phase_is_sitting(phase_id: i32) -> bool {
+    usize::try_from(phase_id)
+        .ok()
+        .and_then(|phase_id| VANILLA_ENDER_DRAGON_PHASES_26_1.get(phase_id))
+        .is_some_and(|phase| phase.is_sitting)
 }
 
 const GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = true;
@@ -21633,18 +21702,39 @@ pub(super) const fn generated_entity_metadata_schema(
 mod generated_catalog_guards {
     #[test]
     fn ender_dragon_sitting_phase_membership_matches_registered_classes() {
-        let actual = (0..11)
-            .filter(|phase_id| super::vanilla_ender_dragon_phase_is_sitting(*phase_id))
-            .collect::<Vec<_>>();
-        assert_eq!(actual, vec![5, 6, 7, 10]);
+        for phase in super::VANILLA_ENDER_DRAGON_PHASES_26_1 {
+            assert_eq!(
+                super::vanilla_ender_dragon_phase_is_sitting(phase.phase_id),
+                phase.is_sitting,
+                "{} ({})",
+                phase.java_field_name,
+                phase.implementation_class
+            );
+        }
+        let hover = super::VANILLA_ENDER_DRAGON_PHASES_26_1
+            .iter()
+            .find(|phase| phase.implementation_class.ends_with(".DragonHoverPhase"))
+            .expect("generated DragonHoverPhase registration");
+        assert!(
+            hover.is_sitting,
+            "DragonHoverPhase directly overrides isSitting"
+        );
         assert!(!super::vanilla_ender_dragon_phase_is_sitting(-1));
-        assert!(!super::vanilla_ender_dragon_phase_is_sitting(11));
+        assert!(!super::vanilla_ender_dragon_phase_is_sitting(
+            super::VANILLA_ENDER_DRAGON_PHASES_26_1.len() as i32
+        ));
     }
 
     #[test]
-    fn production_dragon_animation_does_not_restore_sitting_phase_membership() {
+    fn dragon_animation_consumers_do_not_restore_sitting_phase_membership() {
         let source = include_str!("../dragon.rs");
         assert!(source.contains("vanilla_ender_dragon_phase_is_sitting(self.phase_id)"));
+        let fixture = source
+            .split("fn dragon_sitting_pose_matches_generated_phase_class_behavior")
+            .nth(1)
+            .and_then(|source| source.split("}").next())
+            .expect("dragon sitting-pose fixture source");
+        assert!(fixture.contains("VANILLA_ENDER_DRAGON_PHASES_26_1"));
         assert!(!source.contains("ENDER_DRAGON_SITTING_PHASE_IDS"));
         assert!(!source.contains("VANILLA_ENDER_DRAGON_PHASE_SITTING_"));
         assert!(!source.contains("VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID"));

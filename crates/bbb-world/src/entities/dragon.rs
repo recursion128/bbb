@@ -381,6 +381,7 @@ fn wrap_degrees(value: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::schema::VANILLA_ENDER_DRAGON_PHASES_26_1;
 
     #[test]
     fn dragon_flight_history_interpolates_like_vanilla() {
@@ -409,5 +410,41 @@ mod tests {
                 y_rot: 190.0,
             }
         );
+    }
+
+    #[test]
+    fn dragon_sitting_pose_matches_generated_phase_class_behavior() {
+        for phase in VANILLA_ENDER_DRAGON_PHASES_26_1 {
+            let animation = EnderDragonAnimationState {
+                phase_id: phase.phase_id,
+                ..EnderDragonAnimationState::default()
+            };
+            assert_eq!(
+                animation.is_sitting(),
+                phase.is_sitting,
+                "{} ({})",
+                phase.java_field_name,
+                phase.implementation_class
+            );
+        }
+
+        let hover = VANILLA_ENDER_DRAGON_PHASES_26_1
+            .iter()
+            .find(|phase| phase.implementation_class.ends_with(".DragonHoverPhase"))
+            .expect("generated DragonHoverPhase registration");
+        assert!(
+            hover.is_sitting,
+            "DragonHoverPhase directly overrides isSitting"
+        );
+        assert!(!EnderDragonAnimationState {
+            phase_id: -1,
+            ..EnderDragonAnimationState::default()
+        }
+        .is_sitting());
+        assert!(!EnderDragonAnimationState {
+            phase_id: VANILLA_ENDER_DRAGON_PHASES_26_1.len() as i32,
+            ..EnderDragonAnimationState::default()
+        }
+        .is_sitting());
     }
 }

@@ -166,6 +166,14 @@ pub struct VanillaEntityMetadataClassCatalogEntry {
     pub own_accessor_count: u16,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct VanillaEnderDragonPhaseCatalogEntry {
+    pub phase_id: i32,
+    pub java_field_name: &'static str,
+    pub implementation_class: &'static str,
+    pub is_sitting: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VanillaEntityMetadataAccessorCatalogEntry {
     pub owner: &'static str,
@@ -8708,10 +8716,6 @@ mod tests {
             ender_dragon.own_fields[0].default
         );
         assert_eq!(VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID, 0);
-        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID, 5);
-        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID, 6);
-        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID, 7);
-        assert_eq!(VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID, 10);
         let painting = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Painting);
         assert_eq!(
             painting.parent,

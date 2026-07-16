@@ -472,7 +472,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   production and class-dispatch fixtures must not restore representative entity-type tables, while
   Shulker health and HappyGhast age/health/other-entity/metadata checks remain instance gates.
   Ender-dragon sitting pose membership must consume the generated nearest `isSitting()` phase-class
-  behavior, including `DragonHoverPhase`'s direct override, rather than a parallel phase-id table.
+  behavior, including `DragonHoverPhase`'s direct override; production and the full registered-phase
+  fixture must not restore a parallel phase-id table or sitting-phase aliases.
   Hoglin/Zoglin shared attack-animation event and tick membership must remain derived from the
   generated `HoglinBase` interface graph rather than parallel entity-type tables.
   Illager celebrating-arm-pose membership must combine the generated Raider `IS_CELEBRATING`

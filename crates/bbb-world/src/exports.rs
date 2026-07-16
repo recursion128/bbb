@@ -25,6 +25,7 @@ pub use crate::entities::VanillaTropicalFishVariantAccessors;
 pub use crate::entities::VanillaTurtleMetadataAccessors;
 pub use crate::entities::VanillaVehicleMetadataAccessors;
 pub use crate::entities::VanillaZombieMetadataAccessors;
+pub use crate::entities::VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED;
 pub use crate::entities::{
@@ -307,11 +308,6 @@ pub use crate::entities::{
     VANILLA_ENDERMAN_CARRY_STATE_DATA_ID, VANILLA_ENDERMAN_CREEPY_DATA_ID,
     VANILLA_ENDERMAN_DEFAULT_CARRY_STATE, VANILLA_ENDERMAN_DEFAULT_CREEPY,
     VANILLA_ENDERMAN_DEFAULT_STARED_AT, VANILLA_ENDERMAN_STARED_AT_DATA_ID,
-};
-pub use crate::entities::{
-    VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID, VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID,
-    VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID, VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID,
-    VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID,
 };
 pub use crate::entities::{
     VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID,
