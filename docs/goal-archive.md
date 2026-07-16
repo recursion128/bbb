@@ -17172,3 +17172,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   index/default aliases 或独立 FireworkRocket membership gate。
 - world/native fixtures 同步复用 bundle；schema generator 新增跨 production consumers 与语义
   fixtures 的反向守卫，既有 item codec、attachment suppression 与 particle behavior 保持不变。
+
+## 2026-07-16：派生 Dolphin metadata accessor bundle
+
+- Dolphin got-fish 与 moistness 两项 metadata identity 组合为 typed bundle；native F3+I
+  save-debug 与 fixture 不再维护固定 wire index/default aliases。
+- schema generator 新增 production/input-fixture 反向守卫；本片只机械化 metadata 来源，未混入
+  Dolphin movement、AI 或其他行为变更。

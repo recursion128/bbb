@@ -277,6 +277,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   must remain derived together from generated `Bee.DATA_FLAGS_ID`, `FLAG_ROLL`, `FLAG_HAS_STUNG`,
   `FLAG_HAS_NECTAR` and `DATA_ANGER_END_TIME`; world/native consumers and fixtures must not restore
   a Bee type predicate, fixed accessor/default aliases or hand-copied flag masks.
+  Dolphin got-fish/moistness debug membership, wire indices and typed defaults must remain derived
+  together from generated `Dolphin.GOT_FISH` and `MOISTNESS_LEVEL`; native F3+I and its fixture must
+  not restore fixed accessor/default aliases or read same-index metadata from another family.
   Fox pose/debug membership plus flags wire index and default must remain derived from generated
   `Fox.DATA_FLAGS_ID`; world and native debug consumers must not restore a Fox type predicate or
   fixed accessor aliases.

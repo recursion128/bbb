@@ -218,6 +218,9 @@ pub use schema::{
     vanilla_entity_metadata_cat_accessors_for_entity_type, VanillaCatMetadataAccessors,
 };
 pub use schema::{
+    vanilla_entity_metadata_dolphin_accessors_for_entity_type, VanillaDolphinMetadataAccessors,
+};
+pub use schema::{
     vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,

@@ -22856,6 +22856,26 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_dolphin_debug_does_not_restore_fixed_metadata_facts() {
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [native_input, native_input_tests] {
+            assert!(source.contains("vanilla_entity_metadata_dolphin_accessors_for_entity_type"));
+            for removed in [
+                "DOLPHIN_GOT_FISH_DATA_ID",
+                "DOLPHIN_DEFAULT_GOT_FISH",
+                "DOLPHIN_MOISTNESS_DATA_ID",
+                "DOLPHIN_DEFAULT_MOISTNESS",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Dolphin projection restored {removed}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn production_fox_flags_do_not_restore_type_or_accessor_constants() {
         let store = include_str!("../store.rs");
         let animations = include_str!("../animations.rs");

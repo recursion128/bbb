@@ -327,6 +327,14 @@ pub struct VanillaBeeMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaDolphinMetadataAccessors {
+    pub got_fish_data_id: u8,
+    pub got_fish_default: bool,
+    pub moistness_data_id: u8,
+    pub moistness_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaWolfMetadataAccessors {
     pub interested_data_id: u8,
     pub interested_default: bool,
@@ -1176,6 +1184,46 @@ pub fn vanilla_entity_metadata_bee_flags_accessor_for_entity_type(
 ) -> Option<(u8, i8)> {
     vanilla_entity_metadata_bee_accessors_for_entity_type(entity_type_id)
         .map(|accessors| (accessors.flags_data_id, accessors.flags_default))
+}
+
+/// Resolves Dolphin's generated got-fish and moistness accessors.
+pub fn vanilla_entity_metadata_dolphin_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaDolphinMetadataAccessors> {
+    let got_fish = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "GOT_FISH")?;
+    let moistness =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "MOISTNESS_LEVEL")?;
+    match (
+        (
+            got_fish.owner,
+            got_fish.serializer_name,
+            got_fish.typed_default,
+        ),
+        (
+            moistness.owner,
+            moistness.serializer_name,
+            moistness.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.dolphin.Dolphin",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(got_fish_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.dolphin.Dolphin",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(moistness_default)),
+            ),
+        ) => Some(VanillaDolphinMetadataAccessors {
+            got_fish_data_id: got_fish.data_id,
+            got_fish_default,
+            moistness_data_id: moistness.data_id,
+            moistness_default,
+        }),
+        _ => None,
+    }
 }
 
 /// Resolves the generated Fox flags accessor and its typed default.
@@ -5075,6 +5123,28 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_CHICKEN_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_bee_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_dolphin_accessors_own_membership_indices_and_defaults() {
+        let expected = VanillaDolphinMetadataAccessors {
+            got_fish_data_id: VANILLA_DOLPHIN_GOT_FISH_DATA_ID,
+            got_fish_default: VANILLA_DOLPHIN_DEFAULT_GOT_FISH,
+            moistness_data_id: VANILLA_DOLPHIN_MOISTNESS_DATA_ID,
+            moistness_default: VANILLA_DOLPHIN_DEFAULT_MOISTNESS,
+        };
+        assert_eq!(
+            vanilla_entity_metadata_dolphin_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID
+            ),
+            Some(expected)
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_CHICKEN_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_dolphin_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

@@ -4878,6 +4878,10 @@ fn local_zombie_nautilus_save_uses_generated_default() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
+    let accessors = bbb_world::vanilla_entity_metadata_dolphin_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+    )
+    .expect("generated Dolphin metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -4915,12 +4919,12 @@ fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: DOLPHIN_GOT_FISH_DATA_ID,
+                data_id: accessors.got_fish_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: DOLPHIN_MOISTNESS_DATA_ID,
+                data_id: accessors.moistness_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(1234),
             },

@@ -140,6 +140,7 @@ use bbb_world::VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_
 #[cfg(test)]
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 use bbb_world::{
+    vanilla_entity_metadata_dolphin_accessors_for_entity_type,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
@@ -163,10 +164,6 @@ use bbb_world::{
     VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET as AXOLOTL_DEFAULT_FROM_BUCKET,
     VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID as AXOLOTL_FROM_BUCKET_DATA_ID,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
-    VANILLA_DOLPHIN_DEFAULT_GOT_FISH as DOLPHIN_DEFAULT_GOT_FISH,
-    VANILLA_DOLPHIN_DEFAULT_MOISTNESS as DOLPHIN_DEFAULT_MOISTNESS,
-    VANILLA_DOLPHIN_GOT_FISH_DATA_ID as DOLPHIN_GOT_FISH_DATA_ID,
-    VANILLA_DOLPHIN_MOISTNESS_DATA_ID as DOLPHIN_MOISTNESS_DATA_ID,
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
     VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
     VANILLA_OCELOT_TRUSTING_DATA_ID as OCELOT_TRUSTING_DATA_ID,
@@ -7347,10 +7344,15 @@ fn debug_push_goat_additional_save_data(entity: &EntityState, fields: &mut Vec<S
 }
 
 fn debug_push_dolphin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let got_fish = debug_entity_data_bool_present(entity, DOLPHIN_GOT_FISH_DATA_ID)
-        .unwrap_or(DOLPHIN_DEFAULT_GOT_FISH);
-    let moistness = debug_entity_data_int_present(entity, DOLPHIN_MOISTNESS_DATA_ID)
-        .unwrap_or(DOLPHIN_DEFAULT_MOISTNESS);
+    let Some(accessors) =
+        vanilla_entity_metadata_dolphin_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let got_fish = debug_entity_data_bool_present(entity, accessors.got_fish_data_id)
+        .unwrap_or(accessors.got_fish_default);
+    let moistness = debug_entity_data_int_present(entity, accessors.moistness_data_id)
+        .unwrap_or(accessors.moistness_default);
     fields.push(format!("GotFish: {}", debug_snbt_bool(got_fish)));
     fields.push(format!("Moistness: {moistness}"));
 }
