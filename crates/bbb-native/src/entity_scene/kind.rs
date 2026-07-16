@@ -360,11 +360,10 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_WARDEN_ID => EntityModelKind::Warden,
         VANILLA_ENTITY_TYPE_WITHER_ID => EntityModelKind::Wither,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID => EntityModelKind::WitherSkull {
-            dangerous: entity_data_bool(
-                data_values,
-                WITHER_SKULL_DANGEROUS_DATA_ID,
-                WITHER_SKULL_DEFAULT_DANGEROUS,
-            ),
+            dangerous: vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type(
+                entity_type_id,
+            )
+            .is_some_and(|(data_id, default)| entity_data_bool(data_values, data_id, default)),
         },
         _ => placeholder("todo_unknown_entity_type_bounds", 0.75, 0.75, 0.75),
     }

@@ -99,10 +99,13 @@ use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 #[cfg(test)]
 use bbb_world::VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
+#[cfg(test)]
+use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 use bbb_world::{
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
@@ -273,7 +276,6 @@ use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTa
 use crate::entity_scene::PIGLIN_BABY_DATA_ID;
 #[cfg(test)]
 use crate::entity_scene::{END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_SHOW_BOTTOM_DATA_ID};
-use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_protocol::potion_types::vanilla_potion;
@@ -6719,8 +6721,11 @@ fn debug_push_primed_tnt_additional_save_data(
 }
 
 fn debug_push_wither_skull_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let dangerous = debug_entity_data_bool_present(entity, WITHER_SKULL_DANGEROUS_DATA_ID)
-        .unwrap_or(WITHER_SKULL_DEFAULT_DANGEROUS);
+    let dangerous = vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type(
+        entity.entity_type_id,
+    )
+    .map(|(data_id, default)| debug_entity_data_bool_present(entity, data_id).unwrap_or(default))
+    .unwrap_or_default();
     fields.push(format!("dangerous: {}", debug_snbt_bool(dangerous)));
 }
 

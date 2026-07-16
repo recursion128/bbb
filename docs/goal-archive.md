@@ -16669,3 +16669,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   保存投影消费完整 bundle。
 - 模型与 debug 生产路径删除固定 accessor/default aliases；既有语义测试继续锁定 horn 模型
   显隐与三项 SNBT，schema membership 测试拒绝 Cow，生成器 reverse guard 禁止恢复平行事实源。
+
+## 2026-07-16：统一推导 WitherSkull dangerous metadata accessor
+
+- native WitherSkull 模型 texture 状态与 F3+I 保存投影现在从生成 schema 的
+  `WitherSkull.DATA_DANGEROUS` 解析 membership、BOOLEAN wire id 8 与 default false，不再固定
+  accessor/default aliases。
+- 既有语义测试继续锁定 dangerous texture 与 SNBT；schema membership 测试拒绝
+  SmallFireball，metadata generator reverse guard 禁止恢复平行事实源。

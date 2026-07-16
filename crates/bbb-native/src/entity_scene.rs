@@ -54,6 +54,7 @@ use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
 #[cfg(test)]
 use bbb_world::WolfVariantAssetPresentation;
 #[cfg(test)]
@@ -74,6 +75,8 @@ use bbb_world::VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as HOGLIN_IMMUNE_T
 #[cfg(test)]
 use bbb_world::VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID as SKELETON_STRAY_CONVERSION_DATA_ID;
 use bbb_world::VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING;
+#[cfg(test)]
+use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID as ZOMBIE_VILLAGER_CONVERTING_DATA_ID;
 use bbb_world::{
@@ -230,10 +233,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_VILLAGER_DATA_DATA_ID as VILLAGER_DATA_DATA_ID,
     VANILLA_ZOMBIE_VILLAGER_DATA_DATA_ID as ZOMBIE_VILLAGER_DATA_DATA_ID,
-};
-pub(crate) use bbb_world::{
-    VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID,
-    VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS as WITHER_SKULL_DEFAULT_DANGEROUS,
 };
 use bbb_world::{
     VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,

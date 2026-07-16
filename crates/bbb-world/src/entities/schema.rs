@@ -730,6 +730,26 @@ pub fn vanilla_entity_metadata_goat_accessors_for_entity_type(
     }
 }
 
+/// Resolves the generated WitherSkull dangerous accessor and its typed default.
+pub fn vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_DANGEROUS")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited hanging-entity direction accessor and its typed default.
 pub fn vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3668,6 +3688,27 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_COW_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_goat_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_wither_skull_dangerous_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_WITHER_SKULL_ID
+            ),
+            Some((8, false))
+        );
+        for entity_type_id in [
+            bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type(
+                    entity_type_id
+                ),
                 None
             );
         }
