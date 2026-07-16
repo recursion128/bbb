@@ -172,8 +172,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Native presentation metadata fixtures across item models, entity scenes, variant textures,
   item frames, and crosshair projection must consume the generated entity-data serializer
   constants rather than numeric fields or local aliases.
-  World entity semantic fixtures must follow the same rule across the root test module and every
-  `entities/tests/` submodule; protocol wire samples remain separately owned evidence.
+  All `bbb-world` semantic consumers must follow the same rule across inline tests and test
+  submodules; protocol wire samples remain separately owned evidence.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Goat and PolarBear specialized bounds must query that generated accessor instead of restoring

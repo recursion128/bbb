@@ -4651,7 +4651,7 @@ mod tests {
                 id: 53,
                 values: vec![bbb_protocol::packets::EntityDataValue {
                     data_id: 0,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Byte(1 << 1),
                 }],
             })
@@ -4849,7 +4849,7 @@ mod tests {
                 id: 20,
                 values: vec![bbb_protocol::packets::EntityDataValue {
                     data_id: VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID,
-                    serializer_id: 8,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
                 }],
             })
@@ -4861,7 +4861,7 @@ mod tests {
                 id: 20,
                 values: vec![bbb_protocol::packets::EntityDataValue {
                     data_id: VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
-                    serializer_id: 8,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
                 }],
             })
@@ -4873,7 +4873,7 @@ mod tests {
                 id: 20,
                 values: vec![bbb_protocol::packets::EntityDataValue {
                     data_id: 16,
-                    serializer_id: 8,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
                 }],
             })
@@ -5022,7 +5022,7 @@ mod tests {
                 id: 41,
                 values: vec![bbb_protocol::packets::EntityDataValue {
                     data_id: 6,
-                    serializer_id: 20,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Pose(
                         VANILLA_ENTITY_POSE_DIGGING_ID,
                     ),
@@ -5040,7 +5040,7 @@ mod tests {
                 id: 42,
                 values: vec![bbb_protocol::packets::EntityDataValue {
                     data_id: VANILLA_CREAKING_CAN_MOVE_DATA_ID,
-                    serializer_id: 8,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(false),
                 }],
             })

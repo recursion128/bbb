@@ -272,10 +272,10 @@ mod tests {
         .expect("generated ItemFrame accessors")
     }
 
-    fn datum(data_id: u8, value: EntityDataValueKind) -> EntityDataValue {
+    fn datum(data_id: u8, serializer_id: i32, value: EntityDataValueKind) -> EntityDataValue {
         EntityDataValue {
             data_id,
-            serializer_id: 0,
+            serializer_id,
             value,
         }
     }
@@ -301,6 +301,7 @@ mod tests {
                 accessors,
                 &[datum(
                     accessors.rotation_data_id,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                     EntityDataValueKind::Int(5)
                 )]
             ),
@@ -312,6 +313,7 @@ mod tests {
                 accessors,
                 &[datum(
                     accessors.rotation_data_id,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                     EntityDataValueKind::Int(11)
                 )]
             ),
@@ -331,6 +333,7 @@ mod tests {
                 0,
                 &[datum(
                     accessors.direction_data_id,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
                     EntityDataValueKind::Direction(3)
                 )]
             ),
@@ -348,6 +351,7 @@ mod tests {
                 accessors,
                 &[datum(
                     accessors.item_data_id,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                     EntityDataValueKind::ItemStack(item(Some(1), 1, false))
                 )]
             ),
@@ -359,6 +363,7 @@ mod tests {
                 accessors,
                 &[datum(
                     accessors.item_data_id,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                     EntityDataValueKind::ItemStack(ItemStackSummary::empty())
                 )]
             ),
@@ -375,6 +380,7 @@ mod tests {
                 accessors,
                 &[datum(
                     accessors.item_data_id,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                     EntityDataValueKind::ItemStack(item(Some(2), 1, true))
                 )]
             ),
@@ -385,6 +391,7 @@ mod tests {
                 accessors,
                 &[datum(
                     accessors.item_data_id,
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                     EntityDataValueKind::ItemStack(item(Some(2), 1, false))
                 )]
             ),

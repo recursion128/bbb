@@ -1893,7 +1893,7 @@ mod tests {
                 id: 123,
                 values: vec![bbb_protocol::packets::EntityDataValue {
                     data_id: 4,
-                    serializer_id: 8,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
                 }],
             })
@@ -2015,7 +2015,7 @@ mod tests {
                 if baby {
                     values.push(EntityDataValue {
                         data_id: crate::entities::VANILLA_AGEABLE_MOB_BABY_DATA_ID,
-                        serializer_id: 8,
+                        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                         value: EntityDataValueKind::Boolean(true),
                     });
                 }
@@ -2059,7 +2059,7 @@ mod tests {
             if baby {
                 values.push(EntityDataValue {
                     data_id: crate::entities::VANILLA_AGEABLE_MOB_BABY_DATA_ID,
-                    serializer_id: 8,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: EntityDataValueKind::Boolean(true),
                 });
             }

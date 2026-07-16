@@ -9004,7 +9004,8 @@ fn protocol_add_entity_with_type(id: i32, entity_type_id: i32) -> ProtocolAddEnt
 fn protocol_byte_data(data_id: u8, value: i8) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 0,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(value),
     }
 }
@@ -9012,7 +9013,8 @@ fn protocol_byte_data(data_id: u8, value: i8) -> ProtocolEntityDataValue {
 fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 8,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         value: EntityDataValueKind::Boolean(value),
     }
 }

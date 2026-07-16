@@ -346,7 +346,7 @@ mod tests {
     }
 
     #[test]
-    fn world_entity_tests_use_generated_serializer_ids() {
+    fn world_consumers_use_generated_serializer_ids() {
         fn visit(path: &Path, violations: &mut Vec<String>) {
             if path.is_dir() {
                 for entry in fs::read_dir(path).unwrap() {
@@ -377,16 +377,15 @@ mod tests {
                 }
             }
         }
-        let entities = Path::new(env!("CARGO_MANIFEST_DIR"))
+        let world = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
-            .join("bbb-world/src/entities");
+            .join("bbb-world/src");
         let mut violations = Vec::new();
-        visit(&entities.join("tests.rs"), &mut violations);
-        visit(&entities.join("tests"), &mut violations);
+        visit(&world, &mut violations);
         assert!(
             violations.is_empty(),
-            "world entity tests restored serializer ids:\n{}",
+            "world consumers restored serializer ids:\n{}",
             violations.join("\n")
         );
     }

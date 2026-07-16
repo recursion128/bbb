@@ -518,7 +518,8 @@ mod tests {
             id: 15,
             values: vec![ProtocolEntityDataValue {
                 data_id: ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ARMOR_STAND_MARKER_FLAG),
             }],
         }));
@@ -785,7 +786,7 @@ mod tests {
             id: 30,
             values: vec![ProtocolEntityDataValue {
                 data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             }],
         }));
@@ -794,12 +795,12 @@ mod tests {
             values: vec![
                 ProtocolEntityDataValue {
                     data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_NO_PHYSICS),
                 },
                 ProtocolEntityDataValue {
                     data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-                    serializer_id: 8,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: EntityDataValueKind::Boolean(true),
                 },
             ],
@@ -827,7 +828,7 @@ mod tests {
             id: 30,
             values: vec![ProtocolEntityDataValue {
                 data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(false),
             }],
         }));

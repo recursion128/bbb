@@ -16959,3 +16959,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 生成测试递归扫描 `entities/tests.rs` 与整个 `entities/tests/` 目录，拒绝
   numeric `serializer_id` 或本地 serializer alias 回流；协议 wire sample 仍保持独立 evidence
   owner，未纳入该语义 fixture 扫描。
+
+## 2026-07-16：统一其余 world fixture serializer 身份
+
+- `bbb-world` client audio/inventory/local-player movement/collision、level/play apply、projectile
+  与 block-attached dimension 测试的 34 个 metadata serializer 消费点，现全部
+  直接消费 gameplay-id generator 生成的 typed constants；`local_player` 的四个局部
+  Int/Float alias 已删除。
+- item-frame dimension 测试的通用 `datum` helper 原固定 BYTE id `0`，却承载
+  Int、Direction 与 ItemStack；现改为七个调用点显式传入对应生成身份。
+- gameplay-id generator 的反向扫描由 entity test tree 扩大为整个
+  `bbb-world/src`，拒绝 numeric `serializer_id` 与本地 serializer alias 在任一 world
+  语义消费面回流。

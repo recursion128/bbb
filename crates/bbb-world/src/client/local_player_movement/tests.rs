@@ -5057,7 +5057,8 @@ fn apply_no_gravity(world: &mut WorldStore, entity_id: i32, no_gravity: bool) ->
         id: entity_id,
         values: vec![ProtocolEntityDataValue {
             data_id: crate::entities::VANILLA_ENTITY_NO_GRAVITY_DATA_ID,
-            serializer_id: 8,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: ProtocolEntityDataValueKind::Boolean(no_gravity),
         }],
     })
@@ -5068,7 +5069,8 @@ fn apply_ticks_frozen(world: &mut WorldStore, entity_id: i32, ticks_frozen: i32)
         id: entity_id,
         values: vec![ProtocolEntityDataValue {
             data_id: crate::entities::VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-            serializer_id: 1,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: ProtocolEntityDataValueKind::Int(ticks_frozen),
         }],
     })

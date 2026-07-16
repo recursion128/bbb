@@ -1731,7 +1731,6 @@ mod tests {
         // wire serializer 1). The define-time default is `getMaxAirSupply()` =
         // 300 (Entity.java:312,2725-2727).
         const VANILLA_ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
-        const INT_SERIALIZER_ID: i32 = 1;
 
         // No local player at all: the full (hidden-row) supply.
         let world = WorldStore::new();
@@ -1746,7 +1745,7 @@ mod tests {
             &mut world,
             7,
             VANILLA_ENTITY_AIR_SUPPLY_DATA_ID,
-            INT_SERIALIZER_ID,
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             bbb_protocol::packets::EntityDataValueKind::Int(150),
         ));
         assert_eq!(world.local_player_air_supply(), 150);
@@ -1762,7 +1761,6 @@ mod tests {
         // first own accessor DATA_PLAYER_ABSORPTION_ID=17 (Player.java:134;
         // FLOAT, wire serializer 3). Define-time default 0.0F (Player.java:224).
         const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
-        const FLOAT_SERIALIZER_ID: i32 = 3;
 
         let world = WorldStore::new();
         assert_eq!(world.local_player_absorption(), 0.0);
@@ -1774,7 +1772,7 @@ mod tests {
             &mut world,
             7,
             VANILLA_PLAYER_ABSORPTION_DATA_ID,
-            FLOAT_SERIALIZER_ID,
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
             bbb_protocol::packets::EntityDataValueKind::Float(8.0),
         ));
         assert_eq!(world.local_player_absorption(), 8.0);
@@ -1787,7 +1785,6 @@ mod tests {
         // DATA_LIVING_ENTITY_FLAGS=8 → id 9 (LivingEntity.java:178-179; FLOAT,
         // wire serializer 3), define-time default 1.0F (LivingEntity.java:314).
         const VANILLA_LIVING_ENTITY_HEALTH_DATA_ID: u8 = 9;
-        const FLOAT_SERIALIZER_ID: i32 = 3;
         // `minecraft:max_health` is `BuiltInRegistries.ATTRIBUTE` registration
         // index 19 (Attributes.java field order, MAX_HEALTH at :58-60).
         const VANILLA_ATTRIBUTE_MAX_HEALTH_ID: i32 = 19;
@@ -1830,7 +1827,7 @@ mod tests {
             &mut world,
             30,
             VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
-            FLOAT_SERIALIZER_ID,
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
             bbb_protocol::packets::EntityDataValueKind::Float(7.0),
         ));
         assert!(
@@ -1912,7 +1909,6 @@ mod tests {
         // Vanilla `isFullyFrozen()` = `getTicksFrozen() >= 140`.
         // `DATA_TICKS_FROZEN_ID` is `Entity` id 7 (INT, wire serializer 1).
         const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
-        const INT_SERIALIZER_ID: i32 = 1;
 
         assert!(!WorldStore::new().local_player_is_fully_frozen());
         let mut world = spawned_player_world();
@@ -1923,7 +1919,7 @@ mod tests {
             &mut world,
             7,
             VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-            INT_SERIALIZER_ID,
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             bbb_protocol::packets::EntityDataValueKind::Int(139),
         ));
         assert!(!world.local_player_is_fully_frozen());
@@ -1933,7 +1929,7 @@ mod tests {
             &mut world,
             7,
             VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-            INT_SERIALIZER_ID,
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             bbb_protocol::packets::EntityDataValueKind::Int(140),
         ));
         assert!(world.local_player_is_fully_frozen());

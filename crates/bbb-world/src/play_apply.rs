@@ -1774,7 +1774,8 @@ mod tests {
     fn item_stack_entity_data(item: ItemStackSummary) -> EntityDataValue {
         EntityDataValue {
             data_id: crate::entities::VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-            serializer_id: 7,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(item),
         }
     }
@@ -1782,7 +1783,8 @@ mod tests {
     fn int_entity_data(data_id: u8, value: i32) -> EntityDataValue {
         EntityDataValue {
             data_id,
-            serializer_id: 1,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(value),
         }
     }
@@ -1790,7 +1792,8 @@ mod tests {
     fn bool_entity_data(data_id: u8, value: bool) -> EntityDataValue {
         EntityDataValue {
             data_id,
-            serializer_id: 8,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(value),
         }
     }

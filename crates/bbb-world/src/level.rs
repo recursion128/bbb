@@ -2000,7 +2000,8 @@ mod tests {
     fn entity_byte_data(data_id: u8, value: i8) -> ProtocolEntityDataValue {
         ProtocolEntityDataValue {
             data_id,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(value),
         }
     }
