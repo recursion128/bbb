@@ -23394,6 +23394,7 @@ mod generated_catalog_guards {
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let movement_tests = include_str!("../tests/movement_combat_and_swing_projection.rs");
         let combat_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
         for source in [
             dimensions,
             animations,
@@ -23406,6 +23407,7 @@ mod generated_catalog_guards {
             native_scene_tests,
             movement_tests,
             combat_tests,
+            player_pose_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [
@@ -23451,6 +23453,9 @@ mod generated_catalog_guards {
         assert!(!movement_tests.contains("const POSE_SWIMMING"));
         assert!(!combat_tests.contains("const POSE_STANDING"));
         assert!(!combat_tests.contains("const POSE_CROUCHING"));
+        assert!(!player_pose_tests.contains("const POSE_STANDING"));
+        assert!(!player_pose_tests.contains("const POSE_SLEEPING"));
+        assert!(!player_pose_tests.contains("const POSE_CROUCHING"));
     }
 
     #[test]
@@ -23494,6 +23499,10 @@ mod generated_catalog_guards {
                 );
             }
         }
+        let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
+        assert!(player_pose_tests
+            .contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type"));
+        assert!(!player_pose_tests.contains("SLEEPING_POS_DATA_ID"));
     }
 
     #[test]

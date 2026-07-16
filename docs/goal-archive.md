@@ -17793,3 +17793,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Entity bundle 和 protocol pose catalog。
 - reverse guard 将整个 combat-state 测试模块纳入 Entity 固定别名禁集，并额外禁止局部 pose
   ordinal；Chicken 非 player/feline gate、Cat/Ocelot owner 差异与 140-tick fully-frozen 阈值不变。
+
+## 2026-07-16：统一 player pose/sleeping base fixture accessor 消费
+
+- player pose/sleeping 测试的 crouching/sleeping pose、fall-flying shared flag、Dinnerbone/Grumm
+  custom name 与 sleeping block position 删除固定 wire id/mask/ordinal，分别使用 generated Entity、
+  LivingEntity bundle 和 protocol pose catalog。
+- Entity reverse guard 纳入整份 player pose fixture；LivingEntity guard 新增 sleeping-pos 专项检查，
+  允许同文件尚待独立迁移的 health fixture。Player/Chicken/Boat gate 与 north-facing bed yaw 270°
+  回归保持不变。

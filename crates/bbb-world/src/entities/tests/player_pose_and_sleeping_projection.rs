@@ -1,10 +1,47 @@
 use super::*;
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
+    VANILLA_ENTITY_POSE_STANDING_ID,
+};
+
+fn entity_metadata_accessors() -> VanillaEntityMetadataAccessors {
+    vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve")
+}
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = entity_metadata_accessors();
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose_id)
+}
+
+fn entity_shared_flags_data(flags: i8) -> ProtocolEntityDataValue {
+    protocol_byte_data(entity_metadata_accessors().shared_flags_data_id, flags)
+}
+
+fn entity_custom_name_data(name: Option<&str>) -> ProtocolEntityDataValue {
+    ProtocolEntityDataValue {
+        data_id: entity_metadata_accessors().custom_name_data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
+        value: EntityDataValueKind::OptionalComponent(name.map(str::to_string)),
+    }
+}
+
+fn living_sleeping_pos_data(
+    entity_type_id: i32,
+    pos: Option<ProtocolBlockPos>,
+) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated LivingEntity metadata accessors must resolve");
+    ProtocolEntityDataValue {
+        data_id: accessors.sleeping_pos_data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+        value: EntityDataValueKind::OptionalBlockPos(pos),
+    }
+}
 
 #[test]
 fn entity_model_sources_project_elytra_animation_state() {
-    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-    const ENTITY_FLAG_FALL_FLYING: i8 = 0x80_u8 as i8;
-    const POSE_CROUCHING: i32 = 5;
     const EPSILON: f32 = 1.0e-6;
     const DEFAULT_X: f32 = std::f32::consts::PI / 12.0;
     const DEFAULT_Y: f32 = 0.0;
@@ -58,12 +95,7 @@ fn entity_model_sources_project_elytra_animation_state() {
     let mut crouching = add_player();
     assert!(crouching.apply_set_entity_data(ProtocolSetEntityData {
         id: 76,
-        values: vec![protocol_pose_data(
-            super::vanilla_entity_metadata_entity_accessors()
-                .expect("generated base Entity metadata accessors must resolve")
-                .pose_data_id,
-            POSE_CROUCHING
-        )],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID)],
     }));
     crouching.advance_entity_client_animations(1);
     let (x, y, z) = elytra(&crouching, 76, 1.0);
@@ -91,11 +123,9 @@ fn entity_model_sources_project_elytra_animation_state() {
     let mut fall_flying = add_player();
     assert!(fall_flying.apply_set_entity_data(ProtocolSetEntityData {
         id: 76,
-        values: vec![ProtocolEntityDataValue {
-            data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(ENTITY_FLAG_FALL_FLYING),
-        }],
+        values: vec![entity_shared_flags_data(
+            entity_metadata_accessors().fall_flying_mask,
+        )],
     }));
     assert!(
         fall_flying.apply_set_entity_motion(ProtocolSetEntityMotion {
@@ -141,11 +171,9 @@ fn entity_model_sources_project_elytra_animation_state() {
     ));
     assert!(boat.apply_set_entity_data(ProtocolSetEntityData {
         id: 77,
-        values: vec![ProtocolEntityDataValue {
-            data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(ENTITY_FLAG_FALL_FLYING),
-        }],
+        values: vec![entity_shared_flags_data(
+            entity_metadata_accessors().fall_flying_mask,
+        )],
     }));
     boat.advance_entity_client_animations(1);
     assert_eq!(elytra(&boat, 77, 1.0), (DEFAULT_X, DEFAULT_Y, DEFAULT_Z));
@@ -226,8 +254,6 @@ fn entity_model_sources_project_player_cape_cloak_state() {
 
 #[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
-    const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
-
     let source = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -238,11 +264,7 @@ fn entity_model_sources_project_dinnerbone_upside_down() {
     let set_custom_name = |store: &mut WorldStore, id: i32, name: Option<&str>| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
-                value: EntityDataValueKind::OptionalComponent(name.map(str::to_string)),
-            }],
+            values: vec![entity_custom_name_data(name)],
         })
     };
 
@@ -553,9 +575,6 @@ fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_i
 
 #[test]
 fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
-    const POSE_STANDING: i32 = 0;
-    const POSE_SLEEPING: i32 = 2;
-
     let source = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -566,12 +585,7 @@ fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
     let set_pose = |store: &mut WorldStore, id: i32, pose: i32| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![protocol_pose_data(
-                super::vanilla_entity_metadata_entity_accessors()
-                    .expect("generated base Entity metadata accessors must resolve")
-                    .pose_data_id,
-                pose,
-            )],
+            values: vec![entity_pose_data(pose)],
         })
     };
 
@@ -585,14 +599,14 @@ fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
 
     // Vanilla Pose.SLEEPING marks the entity sleeping; with no bed resolved the bed
     // yaw/offset stay at the no-bed fallback (the renderer uses the body yaw).
-    assert!(set_pose(&mut store, 90, POSE_SLEEPING));
+    assert!(set_pose(&mut store, 90, VANILLA_ENTITY_POSE_SLEEPING_ID));
     let asleep = source(&store, 90);
     assert!(asleep.is_sleeping);
     assert_eq!(asleep.sleeping_bed_yaw, None);
     assert_eq!(asleep.sleeping_bed_offset, [0.0, 0.0]);
 
     // Standing again clears it.
-    assert!(set_pose(&mut store, 90, POSE_STANDING));
+    assert!(set_pose(&mut store, 90, VANILLA_ENTITY_POSE_STANDING_ID));
     assert!(!source(&store, 90).is_sleeping);
 
     // A non-living entity (boat) with a SLEEPING pose never sleeps: only
@@ -601,15 +615,12 @@ fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
         91,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     ));
-    assert!(set_pose(&mut store, 91, POSE_SLEEPING));
+    assert!(set_pose(&mut store, 91, VANILLA_ENTITY_POSE_SLEEPING_ID));
     assert!(!source(&store, 91).is_sleeping);
 }
 
 #[test]
 fn entity_model_sources_resolve_sleeping_bed_orientation() {
-    const POSE_SLEEPING: i32 = 2;
-    const SLEEPING_POS_DATA_ID: u8 = 14;
-
     let mut store = WorldStore::with_dimension(crate::WorldDimension {
         min_y: 0,
         height: 16,
@@ -637,21 +648,11 @@ fn entity_model_sources_resolve_sleeping_bed_orientation() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 92,
         values: vec![
-            protocol_pose_data(
-                super::vanilla_entity_metadata_entity_accessors()
-                    .expect("generated base Entity metadata accessors must resolve")
-                    .pose_data_id,
-                POSE_SLEEPING,
+            entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID),
+            living_sleeping_pos_data(
+                VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                Some(ProtocolBlockPos { x: 2, y: 1, z: 2 }),
             ),
-            ProtocolEntityDataValue {
-                data_id: SLEEPING_POS_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
-                value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
-                    x: 2,
-                    y: 1,
-                    z: 2,
-                })),
-            },
         ],
     }));
 
