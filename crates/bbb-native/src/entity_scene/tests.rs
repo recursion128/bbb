@@ -9766,7 +9766,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_WOLF_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_WOLF_ID, true)]
         ),
         EntityModelKind::Wolf {
             baby: true,
@@ -9875,7 +9875,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_CAT_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_CAT_ID, true)]
         ),
         EntityModelKind::Feline {
             cat: true,
@@ -9887,7 +9887,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_OCELOT_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_OCELOT_ID, true)]
         ),
         EntityModelKind::Feline {
             cat: false,
@@ -9899,7 +9899,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_FOX_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_FOX_ID, true)]
         ),
         EntityModelKind::Fox {
             baby: true,
@@ -9940,7 +9940,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_RABBIT_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_RABBIT_ID, true)]
         ),
         EntityModelKind::Rabbit {
             baby: true,

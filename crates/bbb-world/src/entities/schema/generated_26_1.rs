@@ -22586,6 +22586,27 @@ mod generated_catalog_guards {
                 "native scene villager baby fixtures restored {removed}"
             );
         }
+        let native_scene_companion_animal_fixtures = native_scene_tests
+            .split("fn entity_model_kind_uses_exact_models_for_wolves")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn entity_model_kind_projects_wolf_variant_from_registry_and_fallback")
+                    .next()
+            })
+            .expect("native scene companion-animal baby fixture source");
+        assert_eq!(
+            native_scene_companion_animal_fixtures
+                .matches("baby_data(")
+                .count(),
+            5
+        );
+        for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+            assert!(
+                !native_scene_companion_animal_fixtures.contains(removed),
+                "native scene companion-animal baby fixtures restored {removed}"
+            );
+        }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,

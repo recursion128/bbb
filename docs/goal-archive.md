@@ -17947,3 +17947,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   WanderingTrader renderer 不以 baby state 切换 model。
 - baby reverse guard 精确覆盖该测试；Villager adult/baby 与 WanderingTrader 忽略 baby metadata
   的模型选择回归保持不变。
+
+## 2026-07-16：统一 native companion-animal baby fixtures
+
+- Wolf、Cat、Ocelot、Fox 与 Rabbit model-kind fixtures 删除 5 处全局 AgeableMob baby alias，
+  按各自实际 entity type 查询 generated nearest-baby helper；vanilla 五个 renderer 均继承
+  `AgeableMobRenderer`。
+- baby reverse guard 精确覆盖该测试；tame/angry/collar、feline/fox/rabbit variant、Toast name
+  override 与 adult/baby model 选择回归保持不变。
