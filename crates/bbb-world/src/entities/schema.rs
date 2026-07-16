@@ -266,6 +266,22 @@ pub struct VanillaGoatMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaPandaMetadataAccessors {
+    pub unhappy_counter_data_id: u8,
+    pub unhappy_counter_default: i32,
+    pub sneeze_counter_data_id: u8,
+    pub sneeze_counter_default: i32,
+    pub eat_counter_data_id: u8,
+    pub eat_counter_default: i32,
+    pub main_gene_data_id: u8,
+    pub main_gene_default: i8,
+    pub hidden_gene_data_id: u8,
+    pub hidden_gene_default: i8,
+    pub flags_data_id: u8,
+    pub flags_default: i8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaTurtleMetadataAccessors {
     pub has_egg_data_id: u8,
     pub has_egg_default: bool,
@@ -2035,24 +2051,104 @@ pub fn vanilla_entity_metadata_creeper_accessors_for_entity_type(
     }
 }
 
+/// Resolves Panda's generated counters, genes, and flags with typed defaults.
+pub fn vanilla_entity_metadata_panda_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaPandaMetadataAccessors> {
+    let unhappy_counter =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "UNHAPPY_COUNTER")?;
+    let sneeze_counter =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "SNEEZE_COUNTER")?;
+    let eat_counter =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "EAT_COUNTER")?;
+    let main_gene =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "MAIN_GENE_ID")?;
+    let hidden_gene =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "HIDDEN_GENE_ID")?;
+    let flags = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_FLAGS")?;
+    match (
+        (
+            unhappy_counter.owner,
+            unhappy_counter.serializer_name,
+            unhappy_counter.typed_default,
+        ),
+        (
+            sneeze_counter.owner,
+            sneeze_counter.serializer_name,
+            sneeze_counter.typed_default,
+        ),
+        (
+            eat_counter.owner,
+            eat_counter.serializer_name,
+            eat_counter.typed_default,
+        ),
+        (
+            main_gene.owner,
+            main_gene.serializer_name,
+            main_gene.typed_default,
+        ),
+        (
+            hidden_gene.owner,
+            hidden_gene.serializer_name,
+            hidden_gene.typed_default,
+        ),
+        (flags.owner, flags.serializer_name, flags.typed_default),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.panda.Panda",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(unhappy_counter_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.panda.Panda",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(sneeze_counter_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.panda.Panda",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(eat_counter_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.panda.Panda",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(main_gene_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.panda.Panda",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(hidden_gene_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.panda.Panda",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(flags_default)),
+            ),
+        ) => Some(VanillaPandaMetadataAccessors {
+            unhappy_counter_data_id: unhappy_counter.data_id,
+            unhappy_counter_default,
+            sneeze_counter_data_id: sneeze_counter.data_id,
+            sneeze_counter_default,
+            eat_counter_data_id: eat_counter.data_id,
+            eat_counter_default,
+            main_gene_data_id: main_gene.data_id,
+            main_gene_default,
+            hidden_gene_data_id: hidden_gene.data_id,
+            hidden_gene_default,
+            flags_data_id: flags.data_id,
+            flags_default,
+        }),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Panda flags accessor and its typed default.
 pub fn vanilla_entity_metadata_panda_flags_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i8)> {
-    let accessor =
-        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_FLAGS")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
-        (
-            "net.minecraft.world.entity.animal.panda.Panda",
-            "BYTE",
-            Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+    vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.flags_data_id, accessors.flags_default))
 }
 
 /// Resolves the generated AbstractHorse flags accessor and its typed default.
@@ -4822,6 +4918,33 @@ mod tests {
             vanilla_entity_metadata_creeper_accessors_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_panda_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_panda_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PANDA_ID),
+            Some(VanillaPandaMetadataAccessors {
+                unhappy_counter_data_id: VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID,
+                unhappy_counter_default: VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER,
+                sneeze_counter_data_id: VANILLA_PANDA_SNEEZE_COUNTER_DATA_ID,
+                sneeze_counter_default: VANILLA_PANDA_DEFAULT_SNEEZE_COUNTER,
+                eat_counter_data_id: VANILLA_PANDA_EAT_COUNTER_DATA_ID,
+                eat_counter_default: VANILLA_PANDA_DEFAULT_EAT_COUNTER,
+                main_gene_data_id: VANILLA_PANDA_MAIN_GENE_DATA_ID,
+                main_gene_default: VANILLA_PANDA_DEFAULT_MAIN_GENE,
+                hidden_gene_data_id: VANILLA_PANDA_HIDDEN_GENE_DATA_ID,
+                hidden_gene_default: VANILLA_PANDA_DEFAULT_HIDDEN_GENE,
+                flags_data_id: VANILLA_PANDA_FLAGS_DATA_ID,
+                flags_default: VANILLA_PANDA_DEFAULT_FLAGS,
+            })
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_CHICKEN_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]

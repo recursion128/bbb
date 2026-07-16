@@ -16727,3 +16727,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   default；模型路径删除固定 accessor/default aliases。
 - 既有 warm/cold 模型和 shaking 语义测试继续锁定行为；metadata generator reverse guard
   同时覆盖两条生产路径。
+
+## 2026-07-16：批量推导 Panda metadata accessors
+
+- `bbb-world` 现在从生成 schema 成组解析 Panda 的 unhappy/sneeze/eat counters、main/hidden
+  genes 与 flags 的 membership、serializer、wire id 和 typed defaults；既有 flags 窄 helper
+  委托这一 bundle，避免维护第二条解析路径。
+- native gene-driven model、unhappy/sneeze/eating/scared render state 与 F3+I gene 保存投影删除
+  固定 accessor/default aliases；既有模型、动画和 debug 语义测试继续锁定行为，metadata
+  generator reverse guard 覆盖完整 family 消费面。

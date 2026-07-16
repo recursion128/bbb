@@ -58,6 +58,7 @@ pub use renderer_catalog::{
 pub use schema::VanillaCreeperMetadataAccessors;
 pub use schema::VanillaGoatMetadataAccessors;
 pub use schema::VanillaInteractionMetadataAccessors;
+pub use schema::VanillaPandaMetadataAccessors;
 pub use schema::VanillaShulkerMetadataAccessors;
 pub use schema::VanillaTurtleMetadataAccessors;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
@@ -91,6 +92,7 @@ pub use schema::{
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
     vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type,
+    vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_parrot_variant_accessor_for_entity_type,
     vanilla_entity_metadata_phantom_size_accessor_for_entity_type,

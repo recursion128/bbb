@@ -4,6 +4,7 @@ pub use crate::entities::state::*;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
+pub use crate::entities::VanillaPandaMetadataAccessors;
 pub use crate::entities::VanillaShulkerMetadataAccessors;
 pub use crate::entities::VanillaTurtleMetadataAccessors;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
@@ -37,6 +38,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
     vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type,
+    vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_parrot_variant_accessor_for_entity_type,
     vanilla_entity_metadata_phantom_size_accessor_for_entity_type,

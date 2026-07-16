@@ -9410,10 +9410,13 @@ fn entity_model_kind_projects_panda_gene_variant_from_data() {
     // Vanilla `Panda.getVariant()` = `Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two
     // synced gene bytes (21/22). A dominant main gene always shows.
     assert_eq!(
-        panda_model_kind(&[
-            protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 6),
-            protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 0),
-        ]),
+        panda_model_kind(
+            VANILLA_ENTITY_TYPE_PANDA_ID,
+            &[
+                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 6),
+                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 0),
+            ]
+        ),
         EntityModelKind::Panda {
             baby: false,
             variant: PandaModelVariant::Aggressive
@@ -9421,10 +9424,13 @@ fn entity_model_kind_projects_panda_gene_variant_from_data() {
     );
     // A recessive main gene (BROWN=4) shows only when both genes match.
     assert_eq!(
-        panda_model_kind(&[
-            protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 4),
-            protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 4),
-        ]),
+        panda_model_kind(
+            VANILLA_ENTITY_TYPE_PANDA_ID,
+            &[
+                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 4),
+                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 4),
+            ]
+        ),
         EntityModelKind::Panda {
             baby: false,
             variant: PandaModelVariant::Brown
@@ -9432,10 +9438,13 @@ fn entity_model_kind_projects_panda_gene_variant_from_data() {
     );
     // An unmatched recessive main gene falls back to NORMAL.
     assert_eq!(
-        panda_model_kind(&[
-            protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 4),
-            protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 1),
-        ]),
+        panda_model_kind(
+            VANILLA_ENTITY_TYPE_PANDA_ID,
+            &[
+                protocol_byte_data(PANDA_MAIN_GENE_DATA_ID, 4),
+                protocol_byte_data(PANDA_HIDDEN_GENE_DATA_ID, 1),
+            ]
+        ),
         EntityModelKind::Panda {
             baby: false,
             variant: PandaModelVariant::Normal

@@ -43,6 +43,7 @@ use bbb_world::vanilla_entity_metadata_ghast_charging_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_panda_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
@@ -172,15 +173,9 @@ use bbb_world::{
     VANILLA_GOAT_LEFT_HORN_DATA_ID as GOAT_LEFT_HORN_DATA_ID,
     VANILLA_GOAT_RIGHT_HORN_DATA_ID as GOAT_RIGHT_HORN_DATA_ID,
 };
+#[cfg(test)]
 use bbb_world::{
-    VANILLA_PANDA_DEFAULT_EAT_COUNTER as PANDA_DEFAULT_EAT_COUNTER,
-    VANILLA_PANDA_DEFAULT_HIDDEN_GENE as PANDA_DEFAULT_HIDDEN_GENE,
-    VANILLA_PANDA_DEFAULT_MAIN_GENE as PANDA_DEFAULT_MAIN_GENE,
-    VANILLA_PANDA_DEFAULT_SNEEZE_COUNTER as PANDA_DEFAULT_SNEEZE_COUNTER,
-    VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER as PANDA_DEFAULT_UNHAPPY_COUNTER,
     VANILLA_PANDA_EAT_COUNTER_DATA_ID as PANDA_EAT_COUNTER_DATA_ID,
-    VANILLA_PANDA_FLAG_SITTING as PANDA_SITTING_FLAG,
-    VANILLA_PANDA_FLAG_SNEEZING as PANDA_SNEEZING_FLAG,
     VANILLA_PANDA_HIDDEN_GENE_DATA_ID as PANDA_HIDDEN_GENE_DATA_ID,
     VANILLA_PANDA_MAIN_GENE_DATA_ID as PANDA_MAIN_GENE_DATA_ID,
     VANILLA_PANDA_SNEEZE_COUNTER_DATA_ID as PANDA_SNEEZE_COUNTER_DATA_ID,
@@ -190,6 +185,10 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_PANDA_FLAG_ON_BACK as PANDA_ON_BACK_FLAG,
     VANILLA_PANDA_FLAG_ROLLING as PANDA_ROLLING_FLAG,
+};
+use bbb_world::{
+    VANILLA_PANDA_FLAG_SITTING as PANDA_SITTING_FLAG,
+    VANILLA_PANDA_FLAG_SNEEZING as PANDA_SNEEZING_FLAG,
 };
 pub(crate) use bbb_world::{
     VANILLA_PIGLIN_BABY_DATA_ID as PIGLIN_BABY_DATA_ID,

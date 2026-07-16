@@ -102,14 +102,28 @@ pub(super) fn parrot_model_kind(
 /// Vanilla `PandaRenderer` (an `AgeableMobRenderer`) picks `PandaModel` for an adult and `BabyPandaModel`
 /// for a baby; both render through the dedicated [`EntityModelKind::Panda`] (`baby` selecting the
 /// layout, `variant` selecting the gene-driven texture). The displayed gene is
-/// `Panda.Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two synced gene bytes (21/22).
+/// `Panda.Gene.getVariantFromGenes(mainGene, hiddenGene)` off the two synced gene bytes.
 pub(super) fn panda_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    let main_gene =
-        entity_data_byte(values, PANDA_MAIN_GENE_DATA_ID, PANDA_DEFAULT_MAIN_GENE) as i32;
-    let hidden_gene =
-        entity_data_byte(values, PANDA_HIDDEN_GENE_DATA_ID, PANDA_DEFAULT_HIDDEN_GENE) as i32;
+    let Some(accessors) = vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id)
+    else {
+        return EntityModelKind::Panda {
+            baby: ageable_baby(values),
+            variant: PandaModelVariant::Normal,
+        };
+    };
+    let main_gene = entity_data_byte(
+        values,
+        accessors.main_gene_data_id,
+        accessors.main_gene_default,
+    ) as i32;
+    let hidden_gene = entity_data_byte(
+        values,
+        accessors.hidden_gene_data_id,
+        accessors.hidden_gene_default,
+    ) as i32;
     EntityModelKind::Panda {
         baby: ageable_baby(values),
         variant: PandaModelVariant::from_genes(main_gene, hidden_gene),
@@ -969,18 +983,21 @@ pub(super) fn piglin_is_dancing(
         && entity_data_bool(values, PIGLIN_IS_DANCING_DATA_ID, PIGLIN_DEFAULT_DANCING)
 }
 
-/// Vanilla `PandaRenderState.isUnhappy = Panda.getUnhappyCounter() > 0` (the synced `UNHAPPY_COUNTER`
-/// int, id 18): the panda shakes its head and paddles its front legs. Gated to the panda type.
+/// Vanilla `PandaRenderState.isUnhappy = Panda.getUnhappyCounter() > 0` (the synced
+/// `UNHAPPY_COUNTER` int): the panda shakes its head and paddles its front legs.
 pub(super) fn panda_is_unhappy(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
-        && entity_data_int(
-            values,
-            PANDA_UNHAPPY_COUNTER_DATA_ID,
-            PANDA_DEFAULT_UNHAPPY_COUNTER,
-        ) > 0
+    vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id).is_some_and(
+        |accessors| {
+            entity_data_int(
+                values,
+                accessors.unhappy_counter_data_id,
+                accessors.unhappy_counter_default,
+            ) > 0
+        },
+    )
 }
 
 /// Vanilla `PandaRenderState.isSneezing = Panda.isSneezing()` (the synced `DATA_ID_FLAGS` byte, id 23,
@@ -994,31 +1011,38 @@ pub(super) fn panda_is_sneezing(
     )
 }
 
-/// Vanilla `PandaRenderState.sneezeTime = Panda.getSneezeCounter()` (the synced `SNEEZE_COUNTER` int, id
-/// 19): the 0..20 ramp that drives the sneeze head dip. `0` for a non-panda or a panda not sneezing.
+/// Vanilla `PandaRenderState.sneezeTime = Panda.getSneezeCounter()` (the synced `SNEEZE_COUNTER`
+/// int): the 0..20 ramp that drives the sneeze head dip. `0` for a non-panda or a panda not sneezing.
 pub(super) fn panda_sneeze_time(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> i32 {
-    if entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID {
-        entity_data_int(
-            values,
-            PANDA_SNEEZE_COUNTER_DATA_ID,
-            PANDA_DEFAULT_SNEEZE_COUNTER,
-        )
-    } else {
-        0
-    }
+    vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| {
+            entity_data_int(
+                values,
+                accessors.sneeze_counter_data_id,
+                accessors.sneeze_counter_default,
+            )
+        })
+        .unwrap_or_default()
 }
 
-/// Vanilla `PandaRenderState.isEating = Panda.isEating()` (the synced `EAT_COUNTER` int, id 20, `> 0`).
+/// Vanilla `PandaRenderState.isEating = Panda.isEating()` (the synced `EAT_COUNTER` int, `> 0`).
 /// The held-item layer uses this only to bob the item while the sitting gate is active.
 pub(super) fn panda_is_eating(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_PANDA_ID
-        && entity_data_int(values, PANDA_EAT_COUNTER_DATA_ID, PANDA_DEFAULT_EAT_COUNTER) > 0
+    vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id).is_some_and(
+        |accessors| {
+            entity_data_int(
+                values,
+                accessors.eat_counter_data_id,
+                accessors.eat_counter_default,
+            ) > 0
+        },
+    )
 }
 
 /// Vanilla `PandaRenderState.isSitting = Panda.isSitting()` (the synced `DATA_ID_FLAGS` byte, id 23, bit
@@ -1040,13 +1064,23 @@ pub(super) fn panda_is_scared(
     values: &[bbb_protocol::packets::EntityDataValue],
     world: &WorldStore,
 ) -> bool {
-    if entity_type_id != VANILLA_ENTITY_TYPE_PANDA_ID || !world_is_thundering(world) {
+    let Some(accessors) = vanilla_entity_metadata_panda_accessors_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
+    if !world_is_thundering(world) {
         return false;
     }
-    let main_gene =
-        entity_data_byte(values, PANDA_MAIN_GENE_DATA_ID, PANDA_DEFAULT_MAIN_GENE) as i32;
-    let hidden_gene =
-        entity_data_byte(values, PANDA_HIDDEN_GENE_DATA_ID, PANDA_DEFAULT_HIDDEN_GENE) as i32;
+    let main_gene = entity_data_byte(
+        values,
+        accessors.main_gene_data_id,
+        accessors.main_gene_default,
+    ) as i32;
+    let hidden_gene = entity_data_byte(
+        values,
+        accessors.hidden_gene_data_id,
+        accessors.hidden_gene_default,
+    ) as i32;
     PandaModelVariant::from_genes(main_gene, hidden_gene) == PandaModelVariant::Worried
 }
 

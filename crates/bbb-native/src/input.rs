@@ -90,6 +90,7 @@ use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_panda_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_rabbit_type_accessor_for_entity_type;
@@ -169,10 +170,6 @@ use bbb_world::{
     VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID,
     VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
     VANILLA_OCELOT_TRUSTING_DATA_ID as OCELOT_TRUSTING_DATA_ID,
-    VANILLA_PANDA_DEFAULT_HIDDEN_GENE as PANDA_DEFAULT_HIDDEN_GENE,
-    VANILLA_PANDA_DEFAULT_MAIN_GENE as PANDA_DEFAULT_MAIN_GENE,
-    VANILLA_PANDA_HIDDEN_GENE_DATA_ID as PANDA_HIDDEN_GENE_DATA_ID,
-    VANILLA_PANDA_MAIN_GENE_DATA_ID as PANDA_MAIN_GENE_DATA_ID,
     VANILLA_PRIMED_TNT_DEFAULT_FUSE as PRIMED_TNT_DEFAULT_FUSE,
     VANILLA_PRIMED_TNT_FUSE_DATA_ID as PRIMED_TNT_FUSE_DATA_ID,
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
@@ -7333,12 +7330,17 @@ fn debug_push_frog_additional_save_data(
 }
 
 fn debug_push_panda_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let main_gene = debug_entity_data_byte_present(entity, PANDA_MAIN_GENE_DATA_ID)
+    let Some(accessors) =
+        vanilla_entity_metadata_panda_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let main_gene = debug_entity_data_byte_present(entity, accessors.main_gene_data_id)
         .map(i32::from)
-        .unwrap_or(i32::from(PANDA_DEFAULT_MAIN_GENE));
-    let hidden_gene = debug_entity_data_byte_present(entity, PANDA_HIDDEN_GENE_DATA_ID)
+        .unwrap_or(i32::from(accessors.main_gene_default));
+    let hidden_gene = debug_entity_data_byte_present(entity, accessors.hidden_gene_data_id)
         .map(i32::from)
-        .unwrap_or(i32::from(PANDA_DEFAULT_HIDDEN_GENE));
+        .unwrap_or(i32::from(accessors.hidden_gene_default));
     fields.push(format!(
         "MainGene: {}",
         debug_snbt_string(debug_panda_gene_name(main_gene))
