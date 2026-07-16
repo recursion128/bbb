@@ -178,6 +178,9 @@ Every worker prompt should include:
 - Do not delete assigned Cargo target caches after every slice. Clean them
   periodically or when measuring a clean build, reclaiming disk, or abandoning a
   disposable one-off target.
+- For periodic cleanup of stale slice caches, use `scripts/cargo-dev.sh prune`
+  (dry-run by default; `--force` deletes). Its keep-list is documented in
+  `docs/cargo-build-performance.md` under "Periodic Cleanup".
 - Repo-local `target` directories should still not be generated or committed.
 - Main agent should remove completed worker worktrees and temporary branches
   after integration.

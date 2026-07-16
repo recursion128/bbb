@@ -119,11 +119,13 @@ focused development:
 scripts/cargo-dev.sh test -p bbb-world <filter>
 scripts/cargo-dev.sh fast-test -p bbb-world <filter>
 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh test -p bbb-world <filter>
+scripts/cargo-dev.sh check -p bbb-world
 scripts/cargo-dev.sh timings --workspace --timings
 scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings
 scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world command_tree --quiet
 scripts/cargo-dev.sh batch-gate master..HEAD
 scripts/cargo-dev.sh size
+scripts/cargo-dev.sh prune
 scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD
 scripts/cargo-dev.sh sccache-status
 ```
@@ -197,6 +199,10 @@ Use these commands as the default local workflow:
   `scripts/cargo-dev.sh batch-gate master..HEAD`
 - Target cache size:
   `scripts/cargo-dev.sh size`
+- Stale target cleanup preview:
+  `scripts/cargo-dev.sh prune`
+- Stale target cleanup:
+  `scripts/cargo-dev.sh prune --force`
 - Disposable target cleanup:
   `scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD`
 - Final merge gate:
@@ -267,10 +273,23 @@ Use cache size, not slice boundaries, to decide cleanup:
 
 ```sh
 scripts/cargo-dev.sh size
+scripts/cargo-dev.sh prune
 ```
 
+`scripts/cargo-dev.sh prune` is the single entry point for stale-cache
+cleanup. It scans `/tmp/bbb-target-*`, prints a keep/delete classification
+with sizes, and deletes nothing without `--force`. The keep-list covers the
+long-lived caches (`main`, `batch-gate`, `playable`) and the stable
+per-domain caches (`world`, `renderer`, `net`, `native`, `protocol`, `pack`,
+`control`, `audio`, `item-model`, `render-types`); every other target is
+treated as a disposable slice cache. The list lives in
+`scripts/cargo-dev.sh` (`PRUNE_KEEP_LIST`) and must stay in sync with this
+section. `prune --force` also removes a repo-local `target/` directory,
+which repo policy keeps out of normal agent work.
+
 Remove disposable clean baselines after their numbers and timing report paths
-are recorded:
+are recorded; they are never on the keep-list, so prune covers them too, and
+`clean-target` remains available for deleting one specific target:
 
 ```sh
 scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD
@@ -283,10 +302,10 @@ intentionally disposable:
 scripts/worker-worktree.sh cleanup world --remove-target
 ```
 
-Clean long-lived targets such as `main`, `world`, `net`, and `renderer` only
-when disk pressure is real, when changing Rust toolchains or build profiles, or
-when a dependency feature experiment has made the cache misleadingly large.
-Expect the next focused or full test on that target to rebuild.
+Clean keep-list targets such as `main`, `world`, `net`, and `renderer` only
+when disk pressure is real, when changing Rust toolchains or build profiles,
+or when a dependency feature experiment has made the cache misleadingly
+large. Expect the next focused or full test on that target to rebuild.
 
 ## Baseline Template
 
@@ -379,6 +398,49 @@ Conclusion:
   not expected to change clean compilation cost.
 - Stable external targets remain the effective throughput control: a warm
   focused test was 0.13s, while a new worker target took 81.51s.
+
+## dev `debug = 1` Evaluation and Adoption: 2026-07-16
+
+Environment:
+
+- Same Linux host and toolchain as the 2026-07-16 linker baseline above.
+- The measurement used the `CARGO_PROFILE_DEV_DEBUG=1` environment override
+  so `Cargo.toml` stayed unchanged until the adoption decision; the
+  comparison row is the same-day default-linker clean baseline (125.19s,
+  10G target).
+
+Measured results (all tests passed):
+
+| Workload | dev debug = 2 | dev debug = 1 | Difference |
+| --- | ---: | ---: | ---: |
+| Clean full workspace | 125.19s, 10G target | 104.03s, 6.5G target | 17% faster, 35% smaller |
+| Warm focused `bbb-world command_tree` | 0.13s | 0.13s | no change |
+
+Commands and artifacts:
+
+- debug=1 clean:
+  `CARGO_PROFILE_DEV_DEBUG=1 CARGO_TARGET_DIR=/tmp/bbb-target-debug1-eval cargo test --workspace --timings --quiet`;
+  timing report copied to
+  `/tmp/bbb-cargo-timings/cargo-timing-debug1-clean-20260716.html`.
+- The first focused run on the fresh eval target rebuilt the `-p bbb-world`
+  unit set once (67.56s) because its feature unification differs from the
+  `--workspace` build; that cost exists on any fresh target, is unrelated to
+  the debug level, and did not repeat (0.13s on both reruns).
+- The disposable eval target was removed after recording. `main` was cleaned
+  before the post-adoption gate because a profile change invalidates its
+  cached fingerprints (see "Periodic Cleanup").
+
+Conclusion:
+
+- Adopted: `[profile.dev] debug = 1` cuts clean target size by ~35% and clean
+  wall time by ~17% with no warm focused regression. Test backtraces keep
+  line numbers; variable-level debugger inspection is the accepted
+  trade-off.
+- `[profile.fast-test] debug = 1` was removed as redundant (it inherits
+  `dev`).
+- Per-domain caches keep old-profile artifacts as dead weight until their
+  next use; clean them with `scripts/cargo-dev.sh prune --force` if disk
+  pressure matters more than one rebuild per domain.
 
 ## Baseline: 2026-06-18
 

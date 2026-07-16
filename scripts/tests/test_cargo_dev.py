@@ -148,5 +148,120 @@ test "$(cat state.txt)" = good
         self.assertIn("run_timed_cargo test", script)
 
 
+class CargoDevPruneTests(unittest.TestCase):
+    def run_git(self, repo: Path, *args: str) -> str:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return result.stdout.strip()
+
+    def make_repo(self, root: Path) -> Path:
+        repo = root / "repo"
+        repo.mkdir()
+        self.run_git(repo, "init", "-q")
+        self.run_git(repo, "config", "user.name", "Cargo Dev Test")
+        self.run_git(repo, "config", "user.email", "cargo-dev-test@example.invalid")
+        return repo
+
+    def make_target(self, root: Path, name: str) -> Path:
+        target = root / f"bbb-target-{name}"
+        target.mkdir()
+        (target / "blob").write_text("x", encoding="utf-8")
+        return target
+
+    def run_prune(
+        self, repo: Path, root: Path, *args: str
+    ) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env["BBB_PRUNE_TARGET_ROOT"] = str(root)
+        return subprocess.run(
+            [str(CARGO_DEV), "prune", *args],
+            cwd=repo,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+    def test_prune_dry_run_classifies_without_deleting(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = self.make_repo(root)
+            keep_main = self.make_target(root, "main")
+            keep_world = self.make_target(root, "world")
+            stale = self.make_target(root, "old-slice")
+            repo_target = repo / "target"
+            repo_target.mkdir()
+
+            result = self.run_prune(repo, root)
+
+            self.assertEqual(result.returncode, 0, result.stdout)
+            lines = result.stdout.splitlines()
+            self.assertTrue(
+                any("keep" in line and "bbb-target-main" in line for line in lines),
+                result.stdout,
+            )
+            self.assertTrue(
+                any("keep" in line and "bbb-target-world" in line for line in lines),
+                result.stdout,
+            )
+            self.assertTrue(
+                any(
+                    "delete" in line and "bbb-target-old-slice" in line
+                    for line in lines
+                ),
+                result.stdout,
+            )
+            self.assertTrue(
+                any("delete" in line and str(repo_target) in line for line in lines),
+                result.stdout,
+            )
+            self.assertIn("dry-run", result.stdout)
+            for path in (keep_main, keep_world, stale, repo_target):
+                self.assertTrue(path.exists(), path)
+
+    def test_prune_force_deletes_only_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = self.make_repo(root)
+            keep_main = self.make_target(root, "main")
+            keep_batch_gate = self.make_target(root, "batch-gate")
+            stale = self.make_target(root, "wt-renderer")
+            repo_target = repo / "target"
+            repo_target.mkdir()
+
+            result = self.run_prune(repo, root, "--force")
+
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn("prune: removed 2 directories", result.stdout)
+            self.assertTrue(keep_main.exists())
+            self.assertTrue(keep_batch_gate.exists())
+            self.assertFalse(stale.exists())
+            self.assertFalse(repo_target.exists())
+
+    def test_prune_rejects_relative_target_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo = self.make_repo(root)
+            env = os.environ.copy()
+            env["BBB_PRUNE_TARGET_ROOT"] = "relative/path"
+            result = subprocess.run(
+                [str(CARGO_DEV), "prune"],
+                cwd=repo,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+
+            self.assertEqual(result.returncode, 2, result.stdout)
+            self.assertIn("must be an absolute path", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

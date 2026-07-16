@@ -8,12 +8,15 @@ Usage:
   scripts/cargo-dev.sh default [cargo test args...]
   scripts/cargo-dev.sh test [cargo test args...]
   scripts/cargo-dev.sh fast-test [cargo test args...]
+  scripts/cargo-dev.sh check [cargo check args...]
+  scripts/cargo-dev.sh fmt [cargo fmt args...]
   scripts/cargo-dev.sh timings [cargo test args...]
   scripts/cargo-dev.sh timings-clean <target-suffix> [cargo test args...]
   scripts/cargo-dev.sh sccache-eval <run-suffix> [focused cargo test args...]
   scripts/cargo-dev.sh gate
   scripts/cargo-dev.sh batch-gate <good-commit>..<bad-commit>
   scripts/cargo-dev.sh size
+  scripts/cargo-dev.sh prune [--force]
   scripts/cargo-dev.sh clean-target <target-suffix|/tmp/bbb-target-...>
   scripts/cargo-dev.sh env
   scripts/cargo-dev.sh sccache-status
@@ -24,6 +27,7 @@ Environment:
   BBB_CARGO_TARGET_NAME   Target cache suffix, default: main
   CARGO_TARGET_DIR        Explicit target dir override
   BBB_BATCH_GATE_TARGET_NAME  Batch-gate cache suffix, default: batch-gate
+  BBB_PRUNE_TARGET_ROOT   Prune scan root, default: /tmp (used by tests)
   BBB_USE_SCCACHE=1       Use sccache only if it is installed
 
 Examples:
@@ -32,12 +36,15 @@ Examples:
   scripts/cargo-dev.sh test -p bbb-world command_tree
   scripts/cargo-dev.sh fast-test -p bbb-world command_tree
   BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh focused -p bbb-world command_tree
+  scripts/cargo-dev.sh check -p bbb-world
   scripts/cargo-dev.sh timings --workspace --timings
   BBB_USE_SCCACHE=1 scripts/cargo-dev.sh timings-clean sccache-clean-20260619 --workspace --timings
   scripts/cargo-dev.sh sccache-eval 20260619 -p bbb-world command_tree --quiet
   BBB_USE_SCCACHE=1 BBB_CARGO_TARGET_NAME=world scripts/cargo-dev.sh focused -p bbb-world command_tree
   scripts/cargo-dev.sh timings-clean clean-baseline-20260619 --workspace --timings
   scripts/cargo-dev.sh clean-target clean-baseline-20260619
+  scripts/cargo-dev.sh prune
+  scripts/cargo-dev.sh prune --force
   scripts/cargo-dev.sh gate
   scripts/cargo-dev.sh batch-gate master..HEAD
 EOF
@@ -242,6 +249,152 @@ Clean them after recording results with:
   scripts/cargo-dev.sh clean-target ${worker_target}
   scripts/cargo-dev.sh clean-target ${nosccache_worker_target}
 EOF
+}
+
+# Stable long-lived caches that prune never deletes. Keep in sync with the
+# keep-list documented in docs/cargo-build-performance.md "Periodic Cleanup".
+PRUNE_KEEP_LIST="main batch-gate playable world renderer net native protocol pack control audio item-model render-types"
+
+is_prune_keep() {
+  name="$1"
+  for keep in $PRUNE_KEEP_LIST; do
+    if [ "$name" = "$keep" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+prune_safe_dir() {
+  root="$1"
+  dir="$2"
+  case "$dir" in
+    "$root"/bbb-target-*)
+      ;;
+    *)
+      echo "refusing to remove path outside $root/bbb-target-*: $dir" >&2
+      exit 2
+      ;;
+  esac
+}
+
+run_prune() {
+  force=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --force|-f)
+        force=1
+        ;;
+      *)
+        echo "unknown prune option: $1" >&2
+        usage >&2
+        exit 2
+        ;;
+    esac
+    shift
+  done
+
+  prune_root="${BBB_PRUNE_TARGET_ROOT:-/tmp}"
+  case "$prune_root" in
+    /*)
+      ;;
+    *)
+      echo "BBB_PRUNE_TARGET_ROOT must be an absolute path: $prune_root" >&2
+      exit 2
+      ;;
+  esac
+  if [ ! -d "$prune_root" ]; then
+    echo "prune target root not found: $prune_root" >&2
+    exit 2
+  fi
+
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "prune must run inside a Git worktree" >&2
+    exit 2
+  }
+
+  delete_list=""
+  delete_count=0
+  found=0
+  for dir in "$prune_root"/bbb-target-*; do
+    [ -d "$dir" ] || continue
+    found=1
+    name="${dir##*/bbb-target-}"
+    size="$(du -sh "$dir" 2>/dev/null | cut -f1)"
+    if is_prune_keep "$name"; then
+      printf 'keep   %-8s %s\n' "$size" "$dir"
+    else
+      printf 'delete %-8s %s\n' "$size" "$dir"
+      delete_list="$delete_list $dir"
+      delete_count=$((delete_count + 1))
+    fi
+  done
+  if [ "$found" = "0" ]; then
+    echo "no bbb-target-* directories found under $prune_root"
+  fi
+
+  repo_target="$repo_root/target"
+  if [ -d "$repo_target" ]; then
+    size="$(du -sh "$repo_target" 2>/dev/null | cut -f1)"
+    printf 'delete %-8s %s (repo-local target; ignored by git)\n' "$size" "$repo_target"
+    delete_list="$delete_list $repo_target"
+    delete_count=$((delete_count + 1))
+  fi
+
+  if [ "$delete_count" = "0" ]; then
+    echo "prune: nothing to delete"
+    exit 0
+  fi
+
+  if [ "$force" = "0" ]; then
+    echo
+    echo "prune: dry-run; $delete_count directories would be deleted"
+    echo "rerun with --force to delete them"
+    exit 0
+  fi
+
+  for dir in $delete_list; do
+    if [ "$dir" != "$repo_target" ]; then
+      prune_safe_dir "$prune_root" "$dir"
+    fi
+    rm -rf "$dir"
+    echo "removed $dir"
+  done
+  echo "prune: removed $delete_count directories"
+}
+
+gate_step_total=6
+gate_step_index=0
+
+run_gate_step() {
+  label="$1"
+  shift
+  gate_step_index=$((gate_step_index + 1))
+  echo "== [$gate_step_index/$gate_step_total] $label =="
+  step_start=$(date +%s)
+  if "$@"; then
+    step_end=$(date +%s)
+    echo "   $label: $((step_end - step_start))s"
+  else
+    status=$?
+    echo "gate step failed: $label (exit $status)" >&2
+    exit "$status"
+  fi
+}
+
+run_gate() {
+  gate_start=$(date +%s)
+  run_gate_step "docs-lint" scripts/docs-lint.sh
+  run_gate_step "cargo fmt --all --check" cargo fmt --all --check
+  run_gate_step "scripts python tests" \
+    scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests
+  run_gate_step "git diff --check" git diff --check
+  run_gate_step "cargo check --workspace (-D warnings)" \
+    env RUSTFLAGS='-D warnings' cargo check --workspace
+  run_gate_step "cargo test --workspace (-D warnings)" \
+    env RUSTFLAGS='-D warnings' cargo test --workspace
+  gate_end=$(date +%s)
+  echo "gate: all $gate_step_total steps passed in $((gate_end - gate_start))s"
 }
 
 run_batch_gate() {
@@ -451,6 +604,12 @@ case "$cmd" in
   fast-test)
     exec cargo test --profile fast-test "$@"
     ;;
+  check)
+    exec cargo check "$@"
+    ;;
+  fmt)
+    exec cargo fmt --all "$@"
+    ;;
   timings)
     if [ "$#" -eq 0 ]; then
       set -- --workspace --timings
@@ -482,12 +641,7 @@ case "$cmd" in
     run_sccache_eval "$@"
     ;;
   gate)
-    scripts/docs-lint.sh
-    cargo fmt --all --check
-    scripts/vanilla-source-tools.sh python -m unittest discover -s scripts/tests
-    git diff --check
-    RUSTFLAGS='-D warnings' cargo check --workspace
-    RUSTFLAGS='-D warnings' cargo test --workspace
+    run_gate
     ;;
   batch-gate)
     run_batch_gate "$@"
@@ -503,6 +657,9 @@ case "$cmd" in
     if [ "$found" = "0" ]; then
       echo "no /tmp/bbb-target-* directories found"
     fi
+    ;;
+  prune)
+    run_prune "$@"
     ;;
   clean-target)
     if [ "$#" -ne 1 ]; then
