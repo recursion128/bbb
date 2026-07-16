@@ -140,11 +140,12 @@ use bbb_world::VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_
 #[cfg(test)]
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 use bbb_world::{
+    vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos, EntityState,
     EntityVec3, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
-    VanillaArmorStandMetadataAccessors, WorldStore,
+    VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
     VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
     VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
     VANILLA_ABSTRACT_HORSE_FLAG_TAME as ABSTRACT_HORSE_FLAG_TAME,
@@ -166,9 +167,6 @@ use bbb_world::{
     VANILLA_DOLPHIN_DEFAULT_MOISTNESS as DOLPHIN_DEFAULT_MOISTNESS,
     VANILLA_DOLPHIN_GOT_FISH_DATA_ID as DOLPHIN_GOT_FISH_DATA_ID,
     VANILLA_DOLPHIN_MOISTNESS_DATA_ID as DOLPHIN_MOISTNESS_DATA_ID,
-    VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID as FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
-    VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID as FIREWORK_ROCKET_ITEM_DATA_ID,
-    VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID as FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
     VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
     VANILLA_OCELOT_TRUSTING_DATA_ID as OCELOT_TRUSTING_DATA_ID,
@@ -5160,12 +5158,17 @@ fn debug_push_firework_rocket_additional_save_data(
     item_runtime: Option<&NativeItemRuntime>,
     fields: &mut Vec<String>,
 ) {
+    let Some(accessors) =
+        vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     debug_push_projectile_additional_save_data(entity, fields);
     fields.push(format!(
         "Life: {}",
         entity.client_animations.age_ticks.min(i32::MAX as u32)
     ));
-    if debug_entity_data_item_stack_present(entity, FIREWORK_ROCKET_ITEM_DATA_ID).is_some() {
+    if debug_entity_data_item_stack_present(entity, accessors.item_data_id).is_some() {
         let trim_material_keys = crate::item_models::world_trim_material_keys(world);
         let trim_pattern_keys = crate::item_models::world_trim_pattern_keys(world);
         let painting_variant_keys = crate::item_models::world_painting_variant_keys(world);
@@ -5178,6 +5181,7 @@ fn debug_push_firework_rocket_additional_save_data(
             "FireworksItem: {}",
             debug_firework_rocket_item_stack(
                 entity,
+                accessors,
                 PersistentSnbtContext {
                     item_runtime,
                     trim_material_keys: trim_material_keys.as_deref(),
@@ -5193,7 +5197,7 @@ fn debug_push_firework_rocket_additional_save_data(
         ));
     }
     if let Some(shot_at_angle) =
-        debug_entity_data_bool_present(entity, FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID)
+        debug_entity_data_bool_present(entity, accessors.shot_at_angle_data_id)
     {
         fields.push(format!("ShotAtAngle: {}", debug_snbt_bool(shot_at_angle)));
     }
@@ -5201,9 +5205,10 @@ fn debug_push_firework_rocket_additional_save_data(
 
 fn debug_firework_rocket_item_stack(
     entity: &EntityState,
+    accessors: VanillaFireworkRocketMetadataAccessors,
     context: PersistentSnbtContext<'_>,
 ) -> String {
-    let stack = debug_entity_data_item_stack_present(entity, FIREWORK_ROCKET_ITEM_DATA_ID);
+    let stack = debug_entity_data_item_stack_present(entity, accessors.item_data_id);
     let resource_id = stack
         .and_then(|stack| stack.item_id)
         .and_then(|item_id| {
@@ -5211,19 +5216,14 @@ fn debug_firework_rocket_item_stack(
                 .item_runtime
                 .and_then(|runtime| runtime.item_resource_id(item_id))
         })
-        .unwrap_or(FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID);
+        .unwrap_or(accessors.item_default_resource_id);
     stack
         .and_then(|stack| {
             debug_item_stack_snbt_with_context(resource_id, stack.count, Some(stack), context)
         })
         .unwrap_or_else(|| {
-            debug_item_stack_snbt_with_context(
-                FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
-                1,
-                None,
-                context,
-            )
-            .expect("default firework item stack is valid")
+            debug_item_stack_snbt_with_context(accessors.item_default_resource_id, 1, None, context)
+                .expect("default firework item stack is valid")
         })
 }
 

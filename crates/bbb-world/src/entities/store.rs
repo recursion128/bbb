@@ -33,6 +33,7 @@ use super::schema::{
     vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
+    vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
@@ -44,7 +45,8 @@ use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
-    VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
+    VanillaFireworkRocketMetadataAccessors, VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING,
+    VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_FACEPLANTED as FOX_FLAG_FACEPLANTED,
     VANILLA_FOX_FLAG_POUNCING as FOX_FLAG_POUNCING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
     VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
@@ -69,13 +71,13 @@ use super::{
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
     VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+    VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -119,9 +121,7 @@ use crate::entities::schema::{
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
-    VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK,
-    VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID, VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID,
-    VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, VANILLA_HUMANOID_ARM_LEFT_ID,
+    VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK, VANILLA_HUMANOID_ARM_LEFT_ID,
     VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID,
     VANILLA_PLAYER_ABSORPTION_DATA_ID, VANILLA_PLAYER_DEFAULT_ABSORPTION,
     VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
@@ -3089,19 +3089,21 @@ impl EntityStore {
             let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
                 continue;
             };
-            if identity.entity_type_id != VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID {
+            let Some(accessors) = vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+                identity.entity_type_id,
+            ) else {
                 continue;
-            }
+            };
             let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
                 continue;
             };
             let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
                 continue;
             };
-            if firework_rocket_attached_to_entity(&metadata.data_values) {
+            if firework_rocket_attached_to_entity(&metadata.data_values, accessors) {
                 continue;
             }
-            let Some(stack) = firework_rocket_render_stack(&metadata.data_values) else {
+            let Some(stack) = firework_rocket_render_stack(&metadata.data_values, accessors) else {
                 continue;
             };
             items.push(FireworkRocketItemState {
@@ -3109,7 +3111,7 @@ impl EntityStore {
                 position: transform.position,
                 light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
                 stack: stack.clone(),
-                shot_at_angle: firework_rocket_shot_at_angle(&metadata.data_values),
+                shot_at_angle: firework_rocket_shot_at_angle(&metadata.data_values, accessors),
             });
         }
         items
@@ -3121,15 +3123,17 @@ impl EntityStore {
     ) -> Option<FireworkRocketExplosionParticleState> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
-        if identity.entity_type_id != VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID {
-            return None;
-        }
+        let accessors = vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+            identity.entity_type_id,
+        )?;
         let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
         let stack = self
             .ecs
             .get::<&EntityMetadata>(entity)
             .ok()
-            .and_then(|metadata| firework_rocket_render_stack(&metadata.data_values).cloned());
+            .and_then(|metadata| {
+                firework_rocket_render_stack(&metadata.data_values, accessors).cloned()
+            });
         let has_explosions = stack
             .as_ref()
             .is_some_and(firework_rocket_stack_has_explosions);
@@ -4182,7 +4186,9 @@ fn append_client_tick_particle_triggers(
     client_animations: EntityClientAnimationState,
     triggers: EntityClientTickParticleTriggers,
 ) {
-    if identity.entity_type_id == VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID {
+    if vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(identity.entity_type_id)
+        .is_some()
+    {
         pending_firework_rocket_trail_particles.push(FireworkRocketTrailParticleState {
             entity_id: identity.id,
             position: transform.position,
@@ -4341,8 +4347,9 @@ fn item_entity_render_stack(
 
 fn firework_rocket_render_stack(
     data_values: &[bbb_protocol::packets::EntityDataValue],
+    accessors: VanillaFireworkRocketMetadataAccessors,
 ) -> Option<&bbb_protocol::packets::ItemStackSummary> {
-    metadata_item_stack(data_values, VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID)
+    metadata_item_stack(data_values, accessors.item_data_id)
         .filter(|stack| stack.item_id.is_some() && stack.count > 0)
 }
 
@@ -4376,9 +4383,10 @@ fn metadata_item_stack(
 
 fn firework_rocket_attached_to_entity(
     data_values: &[bbb_protocol::packets::EntityDataValue],
+    accessors: VanillaFireworkRocketMetadataAccessors,
 ) -> bool {
     data_values.iter().any(|value| {
-        value.data_id == VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID
+        value.data_id == accessors.attached_to_target_data_id
             && matches!(
                 &value.value,
                 EntityDataValueKind::OptionalUnsignedInt(Some(_))
@@ -4386,9 +4394,12 @@ fn firework_rocket_attached_to_entity(
     })
 }
 
-fn firework_rocket_shot_at_angle(data_values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
+fn firework_rocket_shot_at_angle(
+    data_values: &[bbb_protocol::packets::EntityDataValue],
+    accessors: VanillaFireworkRocketMetadataAccessors,
+) -> bool {
     data_values.iter().any(|value| {
-        value.data_id == VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID
+        value.data_id == accessors.shot_at_angle_data_id
             && matches!(&value.value, EntityDataValueKind::Boolean(true))
     })
 }

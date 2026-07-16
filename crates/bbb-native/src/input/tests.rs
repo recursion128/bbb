@@ -8966,6 +8966,10 @@ fn local_projectile_save_tracks_spawn_owner_first_tick_and_default_item_stack() 
 
 #[test]
 fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life() {
+    let accessors = bbb_world::vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    )
+    .expect("generated FireworkRocket metadata accessors");
     let registry: ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": ["minecraft:firework_rocket"],
         "protocol_ids": {"minecraft:firework_rocket": 42}
@@ -9021,7 +9025,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
         id: 91,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: FIREWORK_ROCKET_ITEM_DATA_ID,
+                data_id: accessors.item_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
                     item_id: Some(42),
@@ -9030,7 +9034,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
                 }),
             },
             ProtocolEntityDataValue {
-                data_id: FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
+                data_id: accessors.shot_at_angle_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
@@ -9054,7 +9058,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 91,
         values: vec![ProtocolEntityDataValue {
-            data_id: FIREWORK_ROCKET_ITEM_DATA_ID,
+            data_id: accessors.item_data_id,
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {

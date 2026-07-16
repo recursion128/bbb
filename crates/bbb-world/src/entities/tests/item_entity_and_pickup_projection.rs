@@ -1,8 +1,16 @@
 use super::*;
 
+fn firework_metadata_accessors() -> VanillaFireworkRocketMetadataAccessors {
+    vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    )
+    .expect("generated FireworkRocket metadata accessors")
+}
+
 fn firework_item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataValue {
+    let accessors = firework_metadata_accessors();
     let mut value = item_stack_entity_data(item);
-    value.data_id = VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID;
+    value.data_id = accessors.item_data_id;
     value
 }
 
@@ -142,6 +150,7 @@ fn item_stacks_for_entity_types_collects_thrown_item_projectiles() {
 
 #[test]
 fn firework_rocket_item_states_project_item_stack_pose_and_attachment_gate() {
+    let accessors = firework_metadata_accessors();
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         70,
@@ -168,18 +177,15 @@ fn firework_rocket_item_states_project_item_stack_pose_and_attachment_gate() {
         id: 71,
         values: vec![
             firework_item_stack_entity_data(item_stack(901, 1)),
-            protocol_bool_data(VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, true),
+            protocol_bool_data(accessors.shot_at_angle_data_id, true),
         ],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 72,
         values: vec![
             firework_item_stack_entity_data(item_stack(902, 1)),
-            protocol_optional_unsigned_int_data(
-                VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID,
-                Some(5)
-            ),
-            protocol_bool_data(VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, true),
+            protocol_optional_unsigned_int_data(accessors.attached_to_target_data_id, Some(5)),
+            protocol_bool_data(accessors.shot_at_angle_data_id, true),
         ],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {

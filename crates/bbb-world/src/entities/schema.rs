@@ -434,6 +434,16 @@ pub struct VanillaPrimedTntMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaFireworkRocketMetadataAccessors {
+    pub item_data_id: u8,
+    pub item_default_resource_id: &'static str,
+    pub attached_to_target_data_id: u8,
+    pub attached_to_target_default: Option<i32>,
+    pub shot_at_angle_data_id: u8,
+    pub shot_at_angle_default: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct VanillaGuardianMetadataAccessors {
     pub(crate) moving_data_id: u8,
     pub(crate) moving_default: bool,
@@ -2120,6 +2130,59 @@ pub fn vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(
             fuse_default,
             block_state_data_id: block_state.data_id,
             block_state_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves FireworkRocket's generated item, attachment, and shot-angle accessors.
+pub fn vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaFireworkRocketMetadataAccessors> {
+    let item =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_FIREWORKS_ITEM")?;
+    let attached_to_target = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_ATTACHED_TO_TARGET",
+    )?;
+    let shot_at_angle =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SHOT_AT_ANGLE")?;
+    match (
+        (item.owner, item.serializer_name, item.typed_default),
+        (
+            attached_to_target.owner,
+            attached_to_target.serializer_name,
+            attached_to_target.typed_default,
+        ),
+        (
+            shot_at_angle.owner,
+            shot_at_angle.serializer_name,
+            shot_at_angle.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.projectile.FireworkRocketEntity",
+                "ITEM_STACK",
+                Some(VanillaEntityMetadataDefault::ItemStackDefaultItem(item_default_resource_id)),
+            ),
+            (
+                "net.minecraft.world.entity.projectile.FireworkRocketEntity",
+                "OPTIONAL_UNSIGNED_INT",
+                Some(VanillaEntityMetadataDefault::OptionalUnsignedIntNone),
+            ),
+            (
+                "net.minecraft.world.entity.projectile.FireworkRocketEntity",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(shot_at_angle_default)),
+            ),
+        ) => Some(VanillaFireworkRocketMetadataAccessors {
+            item_data_id: item.data_id,
+            item_default_resource_id,
+            attached_to_target_data_id: attached_to_target.data_id,
+            attached_to_target_default: None,
+            shot_at_angle_data_id: shot_at_angle.data_id,
+            shot_at_angle_default,
         }),
         _ => None,
     }
@@ -5964,6 +6027,30 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_TNT_MINECART_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_primed_tnt_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_firework_rocket_accessors_own_membership_indices_and_defaults() {
+        let expected = VanillaFireworkRocketMetadataAccessors {
+            item_data_id: VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID,
+            item_default_resource_id: VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
+            attached_to_target_data_id: VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID,
+            attached_to_target_default: None,
+            shot_at_angle_data_id: VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
+            shot_at_angle_default: VANILLA_FIREWORK_ROCKET_DEFAULT_SHOT_AT_ANGLE,
+        };
+        assert_eq!(
+            vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID
+            ),
+            Some(expected)
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_TNT_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

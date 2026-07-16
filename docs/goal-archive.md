@@ -17164,3 +17164,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   F3+I、item-model fixtures 与 world lifecycle/projection fixtures 不再消费固定 wire ids。
 - schema generator 的反向守卫扩展到所有 production consumers 与语义 fixtures；model、fuse
   interpolation 和 smoke projection 的既有行为保持不变。
+
+## 2026-07-16：派生 FireworkRocket metadata accessor bundle
+
+- FireworkRocket item-stack、optional attached-target 与 shot-at-angle 三项 metadata identity
+  组合为 typed bundle；world item/trail/explosion projection 与 native F3+I 不再维护固定 wire
+  index/default aliases 或独立 FireworkRocket membership gate。
+- world/native fixtures 同步复用 bundle；schema generator 新增跨 production consumers 与语义
+  fixtures 的反向守卫，既有 item codec、attachment suppression 与 particle behavior 保持不变。

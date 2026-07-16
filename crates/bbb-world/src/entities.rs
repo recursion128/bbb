@@ -227,6 +227,10 @@ pub use schema::{
     VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM, VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
 pub use schema::{
+    vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
+    VanillaFireworkRocketMetadataAccessors,
+};
+pub use schema::{
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type, VanillaPrimedTntMetadataAccessors,
 };
 pub use schema::{
