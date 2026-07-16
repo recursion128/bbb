@@ -17661,3 +17661,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 同一守卫锁定 native `EntityVariantRenderContext` adapter、7-registry texture synchronization
   与五个 ready/apply presentation consumer 的完整委托链；已有 custom server-order、资源上传及
   model/texture 原子切换端到端回归继续覆盖运行时行为，fixed order 只保留无 session 时的身份 fallback。
+
+## 2026-07-16：统一 equine/farm-animal entity-scene fixture accessor 消费
+
+- native entity-scene 的 Horse、Donkey/Mule、Llama/TraderLlama 模型夹具删除固定 metadata id
+  别名，按具体 entity type 查询 generated Horse variant、AbstractChestedHorse chest 与 Llama
+  accessor，并同时校验生成的 typed default。
+- chicken/cow/pig registry-holder fixture helper 改为从各自 generated farm-animal accessor 取得
+  variant wire id；entity-metadata generator 守卫覆盖 production 入口与整份 semantic fixture，
+  禁止六个固定 equine/farm-animal id 别名回流。

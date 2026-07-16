@@ -148,6 +148,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
 - Complete the remaining cross-crate ordinal/serializer-id and entity
   renderer-class/event-dispatch membership discovery audit.
   Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
+  Continue the fixed metadata-id fixture-alias pass across `bbb-native` entity-scene/input tests
+  and `bbb-world` entity test submodules; migrate only families whose exact inherited accessor is
+  already owned by the generated schema, without substituting a same-index accessor from another
+  class.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression

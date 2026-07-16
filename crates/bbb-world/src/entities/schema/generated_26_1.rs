@@ -23217,6 +23217,26 @@ mod generated_catalog_guards {
                 );
             }
         }
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        for source in [native_scene, native_scene_tests] {
+            assert!(
+                source.contains("vanilla_entity_metadata_horse_variant_accessor_for_entity_type")
+            );
+            assert!(source
+                .contains("vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type"));
+            assert!(source.contains("vanilla_entity_metadata_llama_accessors_for_entity_type"));
+            for removed in [
+                "ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID",
+                "HORSE_VARIANT_DATA_ID",
+                "LLAMA_VARIANT_DATA_ID",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "equine fixture restored {removed}"
+                );
+            }
+        }
     }
 
     #[test]
@@ -23591,6 +23611,22 @@ mod generated_catalog_guards {
                 assert!(
                     !source.contains(removed),
                     "farm-animal projection restored {removed}"
+                );
+            }
+        }
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        for source in [native_scene, native_scene_tests] {
+            assert!(source
+                .contains("vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type"));
+            for removed in [
+                "CHICKEN_VARIANT_DATA_ID",
+                "COW_VARIANT_DATA_ID",
+                "PIG_VARIANT_DATA_ID",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "farm-animal fixture restored {removed}"
                 );
             }
         }

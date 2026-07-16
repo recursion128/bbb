@@ -35,6 +35,30 @@ fn armor_stand_metadata_accessors() -> bbb_world::VanillaArmorStandMetadataAcces
     .expect("generated ArmorStand metadata accessors must resolve")
 }
 
+fn horse_variant_data(packed_variant: i32) -> EntityDataValue {
+    let (data_id, default) = vanilla_entity_metadata_horse_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    )
+    .expect("generated Horse variant accessor must resolve");
+    assert_eq!(default, 0);
+    protocol_int_data(data_id, packed_variant)
+}
+
+fn chested_horse_chest_data(entity_type_id: i32, has_chest: bool) -> EntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(entity_type_id)
+            .expect("generated AbstractChestedHorse chest accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, has_chest)
+}
+
+fn llama_variant_data(entity_type_id: i32, variant: i32) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id)
+        .expect("generated Llama metadata accessors must resolve");
+    assert_eq!(accessors.variant_default, 0);
+    protocol_int_data(accessors.variant_data_id, variant)
+}
+
 fn abstract_boat_metadata_accessors() -> bbb_world::VanillaAbstractBoatMetadataAccessors {
     bbb_world::vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
@@ -10915,7 +10939,7 @@ fn entity_model_kind_uses_exact_models_for_horses() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_HORSE_ID,
-            &[protocol_int_data(HORSE_VARIANT_DATA_ID, 4 | (2 << 8))]
+            &[horse_variant_data(4 | (2 << 8))]
         ),
         EntityModelKind::Horse {
             baby: false,
@@ -10936,7 +10960,7 @@ fn entity_model_kind_uses_exact_models_for_horses() {
             VANILLA_ENTITY_TYPE_DONKEY_ID,
             &[
                 protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
-                protocol_bool_data(ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, true),
+                chested_horse_chest_data(VANILLA_ENTITY_TYPE_DONKEY_ID, true),
             ]
         ),
         EntityModelKind::Donkey {
@@ -10948,10 +10972,7 @@ fn entity_model_kind_uses_exact_models_for_horses() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_MULE_ID,
-            &[protocol_bool_data(
-                ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
-                true
-            )]
+            &[chested_horse_chest_data(VANILLA_ENTITY_TYPE_MULE_ID, true)]
         ),
         EntityModelKind::Donkey {
             family: DonkeyModelFamily::Mule,
@@ -11125,8 +11146,8 @@ fn entity_model_kind_uses_exact_models_for_llamas() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_LLAMA_ID,
             &[
-                protocol_int_data(LLAMA_VARIANT_DATA_ID, 2),
-                protocol_bool_data(ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, true),
+                llama_variant_data(VANILLA_ENTITY_TYPE_LLAMA_ID, 2),
+                chested_horse_chest_data(VANILLA_ENTITY_TYPE_LLAMA_ID, true),
             ]
         ),
         EntityModelKind::Llama {
@@ -11141,8 +11162,8 @@ fn entity_model_kind_uses_exact_models_for_llamas() {
             VANILLA_ENTITY_TYPE_LLAMA_ID,
             &[
                 protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
-                protocol_bool_data(ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID, true),
-                protocol_int_data(LLAMA_VARIANT_DATA_ID, 3),
+                chested_horse_chest_data(VANILLA_ENTITY_TYPE_LLAMA_ID, true),
+                llama_variant_data(VANILLA_ENTITY_TYPE_LLAMA_ID, 3),
             ]
         ),
         EntityModelKind::Llama {
@@ -11155,7 +11176,7 @@ fn entity_model_kind_uses_exact_models_for_llamas() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-            &[protocol_int_data(LLAMA_VARIANT_DATA_ID, 99)]
+            &[llama_variant_data(VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, 99)]
         ),
         EntityModelKind::Llama {
             family: LlamaModelFamily::TraderLlama,
@@ -11167,7 +11188,7 @@ fn entity_model_kind_uses_exact_models_for_llamas() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-            &[protocol_int_data(LLAMA_VARIANT_DATA_ID, -1)]
+            &[llama_variant_data(VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, -1)]
         ),
         EntityModelKind::Llama {
             family: LlamaModelFamily::TraderLlama,
@@ -11597,8 +11618,12 @@ fn protocol_optional_block_pos_data(
 }
 
 fn protocol_chicken_variant_data(id: i32) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    )
+    .expect("generated Chicken variant metadata accessors must resolve");
     EntityDataValue {
-        data_id: CHICKEN_VARIANT_DATA_ID,
+        data_id: accessors.variant_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::ChickenVariant,
@@ -11720,8 +11745,12 @@ fn protocol_villager_data(
 }
 
 fn protocol_cow_variant_data(id: i32) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_COW_ID,
+    )
+    .expect("generated Cow variant metadata accessors must resolve");
     EntityDataValue {
-        data_id: COW_VARIANT_DATA_ID,
+        data_id: accessors.variant_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::CowVariant,
@@ -11731,8 +11760,12 @@ fn protocol_cow_variant_data(id: i32) -> EntityDataValue {
 }
 
 fn protocol_pig_variant_data(id: i32) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_PIG_ID,
+    )
+    .expect("generated Pig variant metadata accessors must resolve");
     EntityDataValue {
-        data_id: PIG_VARIANT_DATA_ID,
+        data_id: accessors.variant_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::PigVariant,
