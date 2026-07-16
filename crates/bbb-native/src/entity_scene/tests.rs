@@ -552,7 +552,7 @@ fn entity_model_instances_project_chicken_adult_and_baby_models() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 27,
-        values: vec![protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, true)],
     }));
 
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
@@ -2252,7 +2252,7 @@ fn entity_model_instances_project_turtle_has_egg() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 141,
         values: vec![
-            protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            baby_data(VANILLA_ENTITY_TYPE_TURTLE_ID, true),
             protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true),
         ],
     }));
@@ -4579,10 +4579,10 @@ fn entity_model_instances_project_goat_ramming_head_tilt() {
         VANILLA_ENTITY_TYPE_GOAT_ID,
         [2.0, 64.0, -5.0],
     ));
-    // Make 201 a baby goat (AgeableMob.DATA_BABY_ID id 16).
+    // Make 201 a baby goat through the generated inherited accessor.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 201,
-        values: vec![protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_GOAT_ID, true)],
     }));
 
     let ramming = |world: &WorldStore, id: i32| {
@@ -4661,7 +4661,7 @@ fn entity_model_instances_project_turtle_laying_egg() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 151,
         values: vec![
-            protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            baby_data(VANILLA_ENTITY_TYPE_TURTLE_ID, true),
             protocol_bool_data(TURTLE_LAYING_EGG_DATA_ID, true),
         ],
     }));

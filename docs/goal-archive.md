@@ -17901,3 +17901,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   generated ItemFrame bundle，并校验 rotation 默认 0 后构造 ItemStack/Int metadata。
 - block-attached reverse guard 纳入 `item_frames.rs`；地图数据到达前 item fallback、完整 map surface、
   rotation mod-four 与 frame-visible decoration sprites 回归保持不变。
+
+## 2026-07-16：统一 native early-animal baby fixtures
+
+- native entity-scene 的 Chicken model、Turtle has-egg/laying-egg 与 Goat ramming fixtures 删除
+  4 处全局 AgeableMob baby alias，分别按 Chicken/Turtle/Goat type 调用 generated nearest-baby
+  helper。
+- baby reverse guard 精确截取四个测试函数；Chicken adult/baby model、Turtle baby egg suppression
+  与 Goat baby ramming head-tilt gate 回归保持不变。
