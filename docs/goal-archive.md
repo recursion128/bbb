@@ -17541,3 +17541,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Spellcaster casting fixture 删除本地 wire index；Pillager charging 与 non-baby fixtures 清理固定
   slot/数值并消费 accessor。移除 Raider/Spellcaster 固定 data-id/default 公开别名，generator 守卫
   分别检查这些具体 fixture。
+
+## 2026-07-16：统一 debug save-data class dispatch 消费
+
+- Camel、Guardian 与 Slime 三族 F3+I fixture 摒弃各自 base/subclass type pair，改为遍历完整
+  entity-type catalog 并由 generated class membership 选择成员；Camel/CamelHusk 共享同一条继承
+  save chain 验证。
+- metadata generator 守卫锁定 production 与三组端到端 fixture 的 membership query，禁止六个
+  具体成员常量回流为 dispatch 或 fixture 表。
