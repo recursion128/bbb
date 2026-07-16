@@ -10204,7 +10204,7 @@ fn entity_model_instances_project_cat_variants_from_world_registry_order() {
         id: 42,
         values: vec![
             protocol_cat_variant_data(2),
-            protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+            baby_data(VANILLA_ENTITY_TYPE_CAT_ID, true),
         ],
     }));
 

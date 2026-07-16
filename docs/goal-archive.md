@@ -17955,3 +17955,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `AgeableMobRenderer`。
 - baby reverse guard 精确覆盖该测试；tame/angry/collar、feline/fox/rabbit variant、Toast name
   override 与 adult/baby model 选择回归保持不变。
+
+## 2026-07-16：统一 native Cat registry-order baby fixture
+
+- Cat world registry-order fixture 删除 1 处全局 AgeableMob baby alias，按 Cat type 查询
+  generated nearest-baby helper；vanilla `CatRenderer` 以 `state.isBaby` 传给 variant asset
+  selection。
+- baby reverse guard 精确覆盖该测试；服务器 cat-variant holder 顺序、unknown fallback 与
+  adult/baby instance texture variant 投影回归保持不变。
