@@ -17931,3 +17931,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   全局 AgeableMob baby alias，按每次调用的实际 entity type 查询 generated nearest-baby helper。
 - baby reverse guard 精确覆盖这段连续 fixtures；horn、family、roll state、variant 与 adult/baby
   model 组合投影回归保持不变。
+
+## 2026-07-16：统一 native PolarBear/Panda baby fixtures
+
+- PolarBear 与 Panda model-kind fixtures 删除 2 处全局 AgeableMob baby alias，分别按
+  PolarBear/Panda type 查询 generated nearest-baby helper；与 vanilla 两个 renderer 读取
+  `state.isBaby` 选择 baby texture/model 的行为一致。
+- baby reverse guard 精确覆盖该测试；PolarBear/Panda adult/baby model 与 Panda 默认 gene
+  variant 回归保持不变。

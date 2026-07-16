@@ -9529,7 +9529,7 @@ fn entity_model_kind_uses_exact_models_for_polar_bears() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, true)]
         ),
         EntityModelKind::PolarBear { baby: true }
     );
@@ -9545,7 +9545,7 @@ fn entity_model_kind_uses_exact_models_for_polar_bears() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_PANDA_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_PANDA_ID, true)]
         ),
         EntityModelKind::Panda {
             baby: true,
