@@ -883,10 +883,14 @@ pub(super) fn entity_shaking(
         return true;
     }
     if bbb_world::vanilla_entity_renderer_extracts_zombie_underwater_converting(entity_type_id)
-        && entity_data_bool(
-            data_values,
-            ZOMBIE_DROWNED_CONVERSION_DATA_ID,
-            ZOMBIE_DEFAULT_DROWNED_CONVERSION,
+        && vanilla_entity_metadata_zombie_accessors_for_entity_type(entity_type_id).is_some_and(
+            |accessors| {
+                entity_data_bool(
+                    data_values,
+                    accessors.drowned_conversion_data_id,
+                    accessors.drowned_conversion_default,
+                )
+            },
         )
     {
         return true;

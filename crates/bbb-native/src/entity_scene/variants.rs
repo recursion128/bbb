@@ -1736,8 +1736,13 @@ pub(super) fn chested_horse_has_chest(
         .is_some_and(|(data_id, default)| entity_data_bool(values, data_id, default))
 }
 
-pub(super) fn zombie_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, ZOMBIE_BABY_DATA_ID, ZOMBIE_DEFAULT_BABY)
+pub(super) fn zombie_baby(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    vanilla_entity_metadata_zombie_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| entity_data_bool(values, accessors.baby_data_id, accessors.baby_default))
+        .unwrap_or_default()
 }
 
 pub(super) fn piglin_baby(

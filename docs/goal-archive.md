@@ -17101,3 +17101,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   native texture/foil 与相关 semantic fixtures 不再维护固定 wire index/default。
 - schema generator 的跨 crate 反向守卫扩展到 projectile lifecycle、world pickup/particle、
   native scene/kind/entity-data/input，拒绝 AbstractArrow/Arrow/ThrownTrident 固定 aliases 回流。
+
+## 2026-07-16：派生 Zombie family metadata accessor bundle
+
+- Zombie baby/special-type/drowned-conversion 三项 metadata identity 组合为 typed bundle；Zombie、
+  Husk、Drowned、ZombieVillager 与 ZombifiedPiglin 通过生成继承链取得同一 owner，native model、
+  conversion shake 和 F3+I save-debug 不再维护固定 wire index/default。
+- world/native/input fixtures 同步复用 Zombie bundle 及既有 ZombieVillager converting/villager-data
+  resolver；schema generator 新增跨 native surface 反向守卫，拒绝固定 Zombie aliases 回流。

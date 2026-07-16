@@ -72,6 +72,7 @@ pub use schema::VanillaPandaMetadataAccessors;
 pub use schema::VanillaShulkerMetadataAccessors;
 pub use schema::VanillaThrownTridentMetadataAccessors;
 pub use schema::VanillaTurtleMetadataAccessors;
+pub use schema::VanillaZombieMetadataAccessors;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_camera_post_effect_id,
@@ -151,6 +152,7 @@ pub use schema::{
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,
+    vanilla_entity_metadata_zombie_accessors_for_entity_type,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type,
     VanillaAbstractArrowMetadataAccessors, VanillaArmorStandMetadataAccessors,

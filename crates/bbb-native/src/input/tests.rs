@@ -8390,13 +8390,13 @@ fn shift_f3_i_with_permission_copies_local_nonconverting_skeleton_family_save_nb
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard() {
-    const ZOMBIE_BABY_DATA_ID: u8 = 16;
-
     for (entity_type_id, entity_type) in [
         (VANILLA_ENTITY_TYPE_ZOMBIE_ID, "minecraft:zombie"),
         (VANILLA_ENTITY_TYPE_HUSK_ID, "minecraft:husk"),
         (VANILLA_ENTITY_TYPE_DROWNED_ID, "minecraft:drowned"),
     ] {
+        let accessors = vanilla_entity_metadata_zombie_accessors_for_entity_type(entity_type_id)
+            .expect("generated Zombie metadata accessors");
         let mut input = ClientInputState::new(true);
         let mut world = world_with_debug_player(false);
         grant_debug_recreate_nbt_permission(&mut world);
@@ -8424,7 +8424,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard()
                     value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
                 },
                 ProtocolEntityDataValue {
-                    data_id: ZOMBIE_BABY_DATA_ID,
+                    data_id: accessors.baby_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: EntityDataValueKind::Boolean(true),
                 },
@@ -8477,8 +8477,10 @@ fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard()
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_zombified_piglin_save_nbt_to_clipboard() {
-    const ZOMBIE_BABY_DATA_ID: u8 = 16;
-
+    let accessors = vanilla_entity_metadata_zombie_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+    )
+    .expect("generated ZombifiedPiglin inherited Zombie metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -8506,7 +8508,7 @@ fn shift_f3_i_with_permission_copies_local_zombified_piglin_save_nbt_to_clipboar
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: ZOMBIE_BABY_DATA_ID,
+                data_id: accessors.baby_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },

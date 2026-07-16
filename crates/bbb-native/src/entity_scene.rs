@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
+use bbb_protocol::entity_types::*;
 use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
@@ -71,7 +73,12 @@ use bbb_world::vanilla_entity_metadata_thrown_trident_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
+#[cfg(test)]
+use bbb_world::vanilla_entity_metadata_villager_data_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
+#[cfg(test)]
+use bbb_world::vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type;
 #[cfg(test)]
 use bbb_world::WolfVariantAssetPresentation;
 #[cfg(test)]
@@ -101,11 +108,11 @@ use bbb_world::VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID as SKELETON_STRAY_CONVE
 use bbb_world::VANILLA_STRIDER_SUFFOCATING_DATA_ID as STRIDER_SUFFOCATING_DATA_ID;
 use bbb_world::VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING;
 #[cfg(test)]
+use bbb_world::VANILLA_VILLAGER_DATA_DATA_ID as VILLAGER_DATA_DATA_ID;
+#[cfg(test)]
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_WOLF_VARIANT_DATA_ID as WOLF_VARIANT_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_ZOMBIE_VILLAGER_CONVERTING_DATA_ID as ZOMBIE_VILLAGER_CONVERTING_DATA_ID;
 use bbb_world::{
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_type_illager_arm_pose_uses_celebrating, vanilla_entity_type_is_living,
@@ -210,11 +217,6 @@ use bbb_world::{
     VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
     VANILLA_TURTLE_LAYING_EGG_DATA_ID as TURTLE_LAYING_EGG_DATA_ID,
 };
-#[cfg(test)]
-use bbb_world::{
-    VANILLA_VILLAGER_DATA_DATA_ID as VILLAGER_DATA_DATA_ID,
-    VANILLA_ZOMBIE_VILLAGER_DATA_DATA_ID as ZOMBIE_VILLAGER_DATA_DATA_ID,
-};
 use bbb_world::{
     VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
     VANILLA_WOLF_COLLAR_COLOR_DATA_ID as WOLF_COLLAR_COLOR_DATA_ID,
@@ -225,17 +227,6 @@ use bbb_world::{
     VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID as ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID as ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
 };
-// Vanilla `Zombie.DATA_DROWNED_CONVERSION_ID`: `Entity` 0..=7, `LivingEntity` 8..=14,
-// `Mob` 15, then Zombie baby/special-type/drowned-conversion at 16..=18.
-use bbb_world::{
-    VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
-    VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
-    VANILLA_ZOMBIE_DEFAULT_DROWNED_CONVERSION as ZOMBIE_DEFAULT_DROWNED_CONVERSION,
-    VANILLA_ZOMBIE_DROWNED_CONVERSION_DATA_ID as ZOMBIE_DROWNED_CONVERSION_DATA_ID,
-};
-
-use bbb_item_model::{default_player_skin_for_profile_id, NativeItemRuntime};
-use bbb_protocol::entity_types::*;
 
 use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
 

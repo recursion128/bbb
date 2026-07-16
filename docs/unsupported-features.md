@@ -185,6 +185,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   assertions in `bbb-protocol/src/packets/entities/tests.rs`, identified by its wire-sample marker.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
+  Zombie baby/special-type/drowned-conversion membership, inherited wire indices and typed
+  defaults must remain derived together from generated `Zombie.DATA_BABY_ID`,
+  `DATA_SPECIAL_TYPE_ID` and `DATA_DROWNED_CONVERSION_ID`; native model, renderer shake and F3+I
+  save-debug consumers must not restore fixed Zombie accessor/default aliases.
   Goat and PolarBear specialized bounds must query that generated accessor instead of restoring
   fixed `AgeableMob.DATA_BABY_ID` aliases; their vanilla 0.55/0.5 age scales and Goat long-jump /
   PolarBear standing composition remain dimensions-owned behavior.

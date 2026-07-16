@@ -452,6 +452,16 @@ pub struct VanillaThrownTridentMetadataAccessors {
     pub foil_default: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaZombieMetadataAccessors {
+    pub baby_data_id: u8,
+    pub baby_default: bool,
+    pub special_type_data_id: u8,
+    pub special_type_default: i32,
+    pub drowned_conversion_data_id: u8,
+    pub drowned_conversion_default: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VanillaArmorStandMetadataAccessors {
     pub client_flags_data_id: u8,
@@ -2995,6 +3005,58 @@ pub fn vanilla_entity_metadata_baby_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Zombie baby, special-type and drowned-conversion accessors and defaults.
+pub fn vanilla_entity_metadata_zombie_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaZombieMetadataAccessors> {
+    let baby = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_BABY_ID")?;
+    let special_type =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SPECIAL_TYPE_ID")?;
+    let drowned_conversion = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_DROWNED_CONVERSION_ID",
+    )?;
+    match (
+        (baby.owner, baby.serializer_name, baby.typed_default),
+        (
+            special_type.owner,
+            special_type.serializer_name,
+            special_type.typed_default,
+        ),
+        (
+            drowned_conversion.owner,
+            drowned_conversion.serializer_name,
+            drowned_conversion.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.monster.zombie.Zombie",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(baby_default)),
+            ),
+            (
+                "net.minecraft.world.entity.monster.zombie.Zombie",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(special_type_default)),
+            ),
+            (
+                "net.minecraft.world.entity.monster.zombie.Zombie",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(drowned_conversion_default)),
+            ),
+        ) => Some(VanillaZombieMetadataAccessors {
+            baby_data_id: baby.data_id,
+            baby_default,
+            special_type_data_id: special_type.data_id,
+            special_type_default,
+            drowned_conversion_data_id: drowned_conversion.data_id,
+            drowned_conversion_default,
+        }),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Piglin dancing accessor and its typed default.
 pub fn vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(
     entity_type_id: i32,
@@ -3398,15 +3460,16 @@ mod tests {
         VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
         VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_CREAKING_ID,
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
-        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
-        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
-        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
-        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
+        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GHAST_ID,
+        VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
         VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
         VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
@@ -3434,7 +3497,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
         VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
 
     use super::*;
@@ -5429,6 +5492,41 @@ mod tests {
             vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_zombie_accessors_own_inherited_membership_indices_and_defaults() {
+        let expected = VanillaZombieMetadataAccessors {
+            baby_data_id: 16,
+            baby_default: false,
+            special_type_data_id: 17,
+            special_type_default: 0,
+            drowned_conversion_data_id: 18,
+            drowned_conversion_default: false,
+        };
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_HUSK_ID,
+            VANILLA_ENTITY_TYPE_DROWNED_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_zombie_accessors_for_entity_type(entity_type_id),
+                Some(expected),
+                "entity type {entity_type_id}"
+            );
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+            VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_zombie_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]

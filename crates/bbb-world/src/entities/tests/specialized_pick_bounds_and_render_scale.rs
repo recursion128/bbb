@@ -94,7 +94,6 @@ fn turtle_pick_bounds_compose_adult_baby_and_scale_dimensions() {
 fn baby_pick_bounds_follow_vanilla_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
-    const ZOMBIE_BABY_DATA_ID: u8 = 16;
     let mut store = WorldStore::new();
     let (piglin_baby_data_id, piglin_baby_default) =
         super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(
@@ -102,6 +101,11 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         )
         .expect("generated Piglin baby accessor");
     assert!(!piglin_baby_default);
+    let zombie_accessors = super::schema::vanilla_entity_metadata_zombie_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    )
+    .expect("generated Zombie metadata accessors");
+    assert!(!zombie_accessors.baby_default);
     store.apply_add_entity(protocol_add_entity_with_type(34, 100));
     store.apply_add_entity(protocol_add_entity_with_type(35, 26));
     store.apply_add_entity(protocol_add_entity_with_type(36, 139));
@@ -199,7 +203,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 37,
-        values: vec![protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)],
+        values: vec![protocol_bool_data(zombie_accessors.baby_data_id, true)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(37),

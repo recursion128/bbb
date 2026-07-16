@@ -1200,7 +1200,7 @@ fn entity_model_instances_shake_zombie_family_while_converting() {
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 84,
-        values: vec![protocol_bool_data(ZOMBIE_VILLAGER_CONVERTING_DATA_ID, true,)],
+        values: vec![protocol_zombie_villager_converting_data(true)],
     }));
     assert_eq!(
         body_rot(&world, 84),
@@ -1210,10 +1210,17 @@ fn entity_model_instances_shake_zombie_family_while_converting() {
 
     // AbstractZombieRenderer.isShaking ORs in DATA_DROWNED_CONVERSION_ID (18) for the
     // registered Zombie, Husk, and Drowned renderers.
-    for id in [84, 86, 87] {
+    for (id, entity_type_id) in [
+        (84, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+        (86, VANILLA_ENTITY_TYPE_HUSK_ID),
+        (87, VANILLA_ENTITY_TYPE_DROWNED_ID),
+    ] {
         assert!(world.apply_set_entity_data(SetEntityData {
             id,
-            values: vec![protocol_bool_data(ZOMBIE_DROWNED_CONVERSION_DATA_ID, true)],
+            values: vec![protocol_zombie_drowned_conversion_data(
+                entity_type_id,
+                true
+            )],
         }));
         assert!((body_rot(&world, id) - shake).abs() < 1e-6);
     }
@@ -1222,14 +1229,17 @@ fn entity_model_instances_shake_zombie_family_while_converting() {
     // Zombie.DATA_DROWNED_CONVERSION_ID does not affect its shake projection.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 85,
-        values: vec![protocol_bool_data(ZOMBIE_DROWNED_CONVERSION_DATA_ID, true)],
+        values: vec![protocol_zombie_drowned_conversion_data(
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+            true,
+        )],
     }));
     assert_eq!(body_rot(&world, 85), 0.0);
 
     // ZombieVillagerRenderer independently ORs in DATA_CONVERTING_ID (19).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 85,
-        values: vec![protocol_bool_data(ZOMBIE_VILLAGER_CONVERTING_DATA_ID, true)],
+        values: vec![protocol_zombie_villager_converting_data(true)],
     }));
     assert!((body_rot(&world, 85) - shake).abs() < 1e-6);
 }
@@ -7561,7 +7571,10 @@ fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-            &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            &[protocol_zombie_baby_data(
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                true
+            )]
         ),
         EntityModelKind::Zombie { baby: true }
     );
@@ -7579,7 +7592,7 @@ fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_HUSK_ID,
-            &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            &[protocol_zombie_baby_data(VANILLA_ENTITY_TYPE_HUSK_ID, true)]
         ),
         EntityModelKind::ZombieVariant {
             family: ZombieVariantModelFamily::Husk,
@@ -7596,7 +7609,10 @@ fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_DROWNED_ID,
-            &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            &[protocol_zombie_baby_data(
+                VANILLA_ENTITY_TYPE_DROWNED_ID,
+                true
+            )]
         ),
         EntityModelKind::ZombieVariant {
             family: ZombieVariantModelFamily::Drowned,
@@ -7613,7 +7629,10 @@ fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
-            &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            &[protocol_zombie_baby_data(
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                true,
+            )]
         ),
         EntityModelKind::ZombieVariant {
             family: ZombieVariantModelFamily::ZombieVillager,
@@ -7654,7 +7673,10 @@ fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
-            &[protocol_bool_data(ZOMBIE_BABY_DATA_ID, true)]
+            &[protocol_zombie_baby_data(
+                VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+                true,
+            )]
         ),
         EntityModelKind::Piglin {
             family: PiglinModelFamily::ZombifiedPiglin,
@@ -9523,7 +9545,10 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
         villager_model_data(
             VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
             &[protocol_villager_data(
-                ZOMBIE_VILLAGER_DATA_DATA_ID,
+                vanilla_entity_metadata_villager_data_accessor_for_entity_type(
+                    VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+                )
+                .expect("generated ZombieVillager villager-data accessor"),
                 4,
                 11,
                 2
@@ -11433,6 +11458,31 @@ fn protocol_armadillo_state_data(id: i32) -> EntityDataValue {
             id,
         },
     }
+}
+
+fn protocol_zombie_baby_data(entity_type_id: i32, baby: bool) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_zombie_accessors_for_entity_type(entity_type_id)
+        .expect("generated Zombie metadata accessors");
+    protocol_bool_data(accessors.baby_data_id, baby)
+}
+
+fn protocol_zombie_drowned_conversion_data(
+    entity_type_id: i32,
+    converting: bool,
+) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_zombie_accessors_for_entity_type(entity_type_id)
+        .expect("generated Zombie metadata accessors");
+    protocol_bool_data(accessors.drowned_conversion_data_id, converting)
+}
+
+fn protocol_zombie_villager_converting_data(converting: bool) -> EntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        )
+        .expect("generated ZombieVillager converting accessor");
+    assert!(!default);
+    protocol_bool_data(data_id, converting)
 }
 
 fn protocol_abstract_arrow_in_ground_data(entity_type_id: i32, in_ground: bool) -> EntityDataValue {

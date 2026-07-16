@@ -16,6 +16,7 @@ pub use crate::entities::VanillaPandaMetadataAccessors;
 pub use crate::entities::VanillaShulkerMetadataAccessors;
 pub use crate::entities::VanillaThrownTridentMetadataAccessors;
 pub use crate::entities::VanillaTurtleMetadataAccessors;
+pub use crate::entities::VanillaZombieMetadataAccessors;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
@@ -95,6 +96,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,
+    vanilla_entity_metadata_zombie_accessors_for_entity_type,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type,
     vanilla_entity_renderer_extracts_sheep_head_eat,

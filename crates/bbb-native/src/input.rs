@@ -112,6 +112,7 @@ use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity
 use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 #[cfg(test)]
 use bbb_world::VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID;
@@ -177,8 +178,6 @@ use bbb_world::{
     VANILLA_TADPOLE_AGE_LOCKED_DATA_ID as TADPOLE_AGE_LOCKED_DATA_ID,
     VANILLA_ZOGLIN_BABY_DATA_ID as ZOGLIN_BABY_DATA_ID,
     VANILLA_ZOGLIN_DEFAULT_BABY as ZOGLIN_DEFAULT_BABY,
-    VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
-    VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
 };
 use bbb_world::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
@@ -7836,8 +7835,13 @@ fn debug_push_wither_additional_save_data(entity: &EntityState, fields: &mut Vec
 fn debug_push_wandering_trader_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_zombie_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let is_baby =
-        debug_entity_data_bool_present(entity, ZOMBIE_BABY_DATA_ID).unwrap_or(ZOMBIE_DEFAULT_BABY);
+    let Some(accessors) =
+        vanilla_entity_metadata_zombie_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let is_baby = debug_entity_data_bool_present(entity, accessors.baby_data_id)
+        .unwrap_or(accessors.baby_default);
     fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
 }
 
