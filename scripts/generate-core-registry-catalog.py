@@ -31,6 +31,7 @@ from core_registry_catalog_extractor import (
     data_component_type_entries,
     entity_type_entries,
     particle_type_entries,
+    vec3_constant,
 )
 from vanilla_java_source import parse_source
 from vanilla_tag_source import load_tag_resources, resolve_tag_values
@@ -49,6 +50,7 @@ DEFAULT_DATA_COMPONENT_TYPES_OUTPUT = (
 DEFAULT_PARTICLE_TYPES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/particle_types.rs"
 DAMAGE_TYPES_SOURCE = Path("net/minecraft/world/damagesource/DamageTypes.java")
 ENTITY_TYPES_SOURCE = Path("net/minecraft/world/entity/EntityType.java")
+AVATAR_SOURCE = Path("net/minecraft/world/entity/Avatar.java")
 ENTITY_TYPE_TAGS_DIRECTORY = Path("data/minecraft/tags/entity_type")
 BLOCK_ENTITY_TYPES_SOURCE = Path(
     "net/minecraft/world/level/block/entity/BlockEntityType.java"
@@ -220,6 +222,7 @@ def render_entity_types(
         "    pub height: f32,",
         "    pub eye_height: Option<f32>,",
         "    pub passenger_attachments: &'static [[f32; 3]],",
+        "    pub vehicle_attachment: [f32; 3],",
         "    pub in_arrows_tag: bool,",
         "    pub redirectable_projectile: bool,",
         "    pub powder_snow_walkable: bool,",
@@ -251,6 +254,9 @@ def render_entity_types(
                     "[" + ", ".join(repr(value) for value in point) + "]"
                     for point in entry.passenger_attachments
                 )
+                + "],",
+                "        vehicle_attachment: ["
+                + ", ".join(repr(value) for value in entry.vehicle_attachment)
                 + "],",
                 f"        in_arrows_tag: {str(entry.resource_id in arrows).lower()},",
                 f"        redirectable_projectile: {str(entry.resource_id in redirectable_projectiles).lower()},",
@@ -322,6 +328,12 @@ def render_entity_types(
             "    (!points.is_empty()).then_some(points)",
             "}",
             "",
+            "pub fn vanilla_entity_type_vehicle_attachment(",
+            "    entity_type_id: i32,",
+            ") -> Option<[f32; 3]> {",
+            "    Some(vanilla_entity_type(entity_type_id)?.vehicle_attachment)",
+            "}",
+            "",
             "pub fn vanilla_entity_type_can_equip_saddle(entity_type_id: i32) -> bool {",
             "    vanilla_entity_type(entity_type_id)",
             "        .map(|entry| entry.can_equip_saddle)",
@@ -375,6 +387,7 @@ def render_entity_types(
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.eye_height.is_some()).count(), 101);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.width >= 0.0 && entry.height >= 0.0).count(), 157);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| !entry.passenger_attachments.is_empty()).count(), 57);",
+            "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.vehicle_attachment != [0.0; 3]).count(), 24);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.in_arrows_tag).count(), 2);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.redirectable_projectile).count(), 3);",
             "        assert_eq!(VANILLA_ENTITY_TYPES.iter().filter(|entry| entry.powder_snow_walkable).count(), 4);",
@@ -486,6 +499,10 @@ def render_entity_types(
             "        assert_eq!(vanilla_entity_type_passenger_attachments(VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID).unwrap().len(), 4);",
             "        assert_eq!(vanilla_entity_type_passenger_attachments(VANILLA_ENTITY_TYPE_ARROW_ID), None);",
             "        assert_eq!(vanilla_entity_type_passenger_attachments(-1), None);",
+            "        assert_eq!(vanilla_entity_type_vehicle_attachment(VANILLA_ENTITY_TYPE_PLAYER_ID), Some([0.0, 0.6, 0.0]));",
+            "        assert_eq!(vanilla_entity_type_vehicle_attachment(VANILLA_ENTITY_TYPE_ZOMBIE_ID), Some([0.0, 0.7, 0.0]));",
+            "        assert_eq!(vanilla_entity_type_vehicle_attachment(VANILLA_ENTITY_TYPE_TURTLE_ID), Some([0.0; 3]));",
+            "        assert_eq!(vanilla_entity_type_vehicle_attachment(-1), None);",
             "    }",
             "",
             "    #[test]",
@@ -1133,7 +1150,15 @@ def generated_files(
 
     damage_types_source = parse(DAMAGE_TYPES_SOURCE)
     entity_types_source = parse(ENTITY_TYPES_SOURCE)
-    entity_types = entity_type_entries(entity_types_source)
+    avatar_source = parse(AVATAR_SOURCE)
+    entity_types = entity_type_entries(
+        entity_types_source,
+        named_vec3_constants={
+            "Avatar.DEFAULT_VEHICLE_ATTACHMENT": vec3_constant(
+                avatar_source, "DEFAULT_VEHICLE_ATTACHMENT"
+            )
+        },
+    )
     entity_type_resources = {entry.resource_id for entry in entity_types}
     entity_type_tags = load_tag_resources(source_root, ENTITY_TYPE_TAGS_DIRECTORY)
     arrows = frozenset(

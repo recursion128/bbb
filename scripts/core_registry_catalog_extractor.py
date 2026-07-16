@@ -31,6 +31,7 @@ class EntityTypeEntry:
     height: float
     eye_height: float | None
     passenger_attachments: tuple[tuple[float, float, float], ...]
+    vehicle_attachment: tuple[float, float, float]
 
 
 @dataclass(frozen=True)
@@ -273,9 +274,43 @@ def _damage_type_effect(
     return effects[0] if effects else "hurt"
 
 
+def vec3_constant(source: JavaSource, field_name: str) -> tuple[float, float, float]:
+    matches = [
+        field
+        for field in source.fields
+        if field.name == field_name and field.type_spelling.replace(" ", "").endswith("Vec3")
+    ]
+    if len(matches) != 1 or matches[0].initializer is None:
+        raise CoreRegistryExtractionError(
+            f"{source.relative_path}: expected one initialized Vec3 field {field_name}"
+        )
+    expression = matches[0].initializer
+    type_node = expression.node.child_by_field_name("type")
+    arguments_node = expression.node.child_by_field_name("arguments")
+    if (
+        expression.node.type != "object_creation_expression"
+        or type_node is None
+        or source.text(type_node).replace(" ", "").split(".")[-1] != "Vec3"
+        or arguments_node is None
+        or len(arguments_node.named_children) != 3
+    ):
+        _fail(source, expression, f"{field_name} is not new Vec3(x, y, z)")
+    return tuple(
+        _float_literal(
+            source,
+            source.expression(component),
+            f"{field_name} coordinate",
+        )
+        for component in arguments_node.named_children
+    )
+
+
 def entity_type_entries(
-    source: JavaSource, expected_count: int = 157
+    source: JavaSource,
+    expected_count: int = 157,
+    named_vec3_constants: dict[str, tuple[float, float, float]] | None = None,
 ) -> list[EntityTypeEntry]:
+    named_vec3_constants = named_vec3_constants or {}
     op_only_constants = _constant_set_members(source, "OP_ONLY_CUSTOM_DATA")
     entries: list[EntityTypeEntry] = []
     for field in _fields_with_type(source, ("EntityType<",)):
@@ -348,6 +383,44 @@ def entity_type_entries(
                 )
             else:
                 _fail(source, source.expression(call.node), "mixed passenger attachment overload")
+        vehicle_attachment_calls = _calls_in_expression(
+            source, field.initializer, "vehicleAttachment"
+        )
+        riding_offset_calls = _calls_in_expression(source, field.initializer, "ridingOffset")
+        if len(vehicle_attachment_calls) > 1 or len(riding_offset_calls) > 1:
+            _fail(source, field.initializer, "entity builder has multiple vehicle attachments")
+        if vehicle_attachment_calls and riding_offset_calls:
+            _fail(
+                source,
+                field.initializer,
+                "entity builder mixes vehicleAttachment and ridingOffset",
+            )
+        vehicle_attachment = (0.0, 0.0, 0.0)
+        if riding_offset_calls:
+            call = riding_offset_calls[0]
+            if len(call.arguments) != 1:
+                _fail(source, source.expression(call.node), "ridingOffset expects one argument")
+            vehicle_attachment = (
+                0.0,
+                -_float_literal(source, call.arguments[0], "ridingOffset"),
+                0.0,
+            )
+        elif vehicle_attachment_calls:
+            call = vehicle_attachment_calls[0]
+            if len(call.arguments) != 1:
+                _fail(
+                    source,
+                    source.expression(call.node),
+                    "vehicleAttachment expects one argument",
+                )
+            argument = call.arguments[0]
+            vehicle_attachment = named_vec3_constants.get(argument.canonical)
+            if vehicle_attachment is None:
+                _fail(
+                    source,
+                    argument,
+                    "vehicleAttachment is not a resolved named Vec3 constant",
+                )
         entries.append(
             EntityTypeEntry(
                 field.name,
@@ -359,6 +432,7 @@ def entity_type_entries(
                 height,
                 eye_height,
                 tuple(passenger_attachments),
+                vehicle_attachment,
             )
         )
     if len(entries) != expected_count:

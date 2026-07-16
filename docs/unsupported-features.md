@@ -1188,6 +1188,9 @@ back into a todo. Do not delete these.
 - Audit equipment slot applicability and presentation, passenger attachment and
   controlling-passenger rules, vehicle recovery, and leash state/presentation
   for every applicable family.
+- Add leash render-state extraction and leash geometry submission for linkable mobs,
+  including Turtle packets forced by server state; retaining `SetEntityLink` state
+  without the visible rope does not close the presentation gap.
 
 ### Entity coverage matrix events particles and audio
 

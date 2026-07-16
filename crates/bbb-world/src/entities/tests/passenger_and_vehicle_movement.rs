@@ -132,6 +132,129 @@ fn debug_passenger_vehicle_targets_follow_vanilla_boat_attachment_slab() {
 }
 
 #[test]
+fn turtle_passengers_render_at_adult_baby_scale_and_vehicle_attachments() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type_y_rot(
+        10,
+        VANILLA_ENTITY_TYPE_TURTLE_ID,
+        90.0,
+    ));
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: 20.0,
+            y: 80.0,
+            z: 9.0,
+        },
+        ..protocol_add_entity_with_type(20, VANILLA_ENTITY_TYPE_COW_ID)
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![20],
+    }));
+
+    let passenger_position = |store: &WorldStore, passenger_id: i32| {
+        store
+            .entity_model_source_at_partial_tick(passenger_id, 0.0)
+            .expect("Turtle passenger model source")
+            .position
+    };
+    assert_entity_vec3_close(
+        passenger_position(&store, 20),
+        EntityVec3 {
+            x: 1.25,
+            y: 64.55625,
+            z: -2.0,
+        },
+    );
+
+    let (baby_data_id, baby_default) =
+        super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_TURTLE_ID,
+        )
+        .expect("generated Turtle baby accessor");
+    assert!(!baby_default);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 10,
+        values: vec![protocol_bool_data(baby_data_id, true)],
+    }));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 10,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_entity_vec3_close(
+        passenger_position(&store, 20),
+        EntityVec3 {
+            x: 1.15,
+            y: 64.24,
+            z: -2.0,
+        },
+    );
+    assert_entity_vec3_close(
+        store
+            .entity_debug_passenger_vehicle_target(20)
+            .expect("baby Turtle passenger attachment target")
+            .position,
+        EntityVec3 {
+            x: 1.15,
+            y: 64.24,
+            z: -2.0,
+        },
+    );
+
+    store.apply_add_entity(ProtocolAddEntity {
+        position: ProtocolVec3d {
+            x: -12.0,
+            y: 40.0,
+            z: 3.0,
+        },
+        ..protocol_add_entity_with_type(21, VANILLA_ENTITY_TYPE_PLAYER_ID)
+    });
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![21],
+    }));
+    assert_entity_vec3_close(
+        passenger_position(&store, 21),
+        EntityVec3 {
+            x: 1.15,
+            y: 63.64,
+            z: -2.0,
+        },
+    );
+
+    store.apply_add_entity(protocol_add_entity_with_type(
+        22,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    let (zombie_baby_data_id, zombie_baby_default) =
+        super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        )
+        .expect("generated Zombie baby accessor");
+    assert!(!zombie_baby_default);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 22,
+        values: vec![protocol_bool_data(zombie_baby_data_id, true)],
+    }));
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 10,
+        passenger_ids: vec![22],
+    }));
+    assert_entity_vec3_close(
+        passenger_position(&store, 22),
+        EntityVec3 {
+            x: 1.15,
+            y: 64.0525,
+            z: -2.0,
+        },
+    );
+}
+
+#[test]
 fn tracks_local_player_passenger_without_entity() {
     let mut store = WorldStore::new();
     store.apply_login(&protocol_play_login(99));

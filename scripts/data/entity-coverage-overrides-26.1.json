@@ -185,6 +185,30 @@
         "vanilla:net/minecraft/server/level/ServerEntity.java#public void sendPairingData"
       ]
     },
+    "turtle_equipment_passenger_leash": {
+      "implementation": [
+        "crates/bbb-protocol/src/entity_types.rs#pub fn vanilla_entity_type_vehicle_attachment",
+        "crates/bbb-world/src/entities/dimensions.rs#pub(crate) fn vanilla_passenger_position_for_entity_data",
+        "crates/bbb-world/src/entities/store.rs#fn turtle_passenger_render_position",
+        "crates/bbb-world/src/entities/passengers.rs#pub fn apply_set_passengers",
+        "crates/bbb-world/src/entities/renderer_catalog.rs#fn vanilla_entity_renderer_uses_mob_item_in_hand_layer",
+        "crates/bbb-world/src/entities/updates.rs#pub fn apply_set_entity_link"
+      ],
+      "tests": [
+        "crates/bbb-protocol/src/entity_types.rs#passenger_attachments_come_from_generated_builder_metadata",
+        "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#turtle_passengers_render_at_adult_baby_scale_and_vehicle_attachments",
+        "crates/bbb-world/src/entities/renderer_catalog.rs#generated_mob_item_in_hand_membership_matches_renderer_layers",
+        "crates/bbb-world/src/entities/schema.rs#generated_class_graph_resolves_leashable_capability"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/world/entity/EntityType.java#public static final EntityType<Turtle> TURTLE",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static final EntityDimensions BABY_DIMENSIONS",
+        "vanilla:net/minecraft/world/entity/Entity.java#protected void positionRider",
+        "vanilla:net/minecraft/world/entity/LivingEntity.java#public Vec3 getPassengerRidingPosition",
+        "vanilla:net/minecraft/world/entity/Avatar.java#public static final Vec3 DEFAULT_VEHICLE_ATTACHMENT",
+        "vanilla:net/minecraft/client/renderer/entity/EntityRenderer.java#public void extractRenderState"
+      ]
+    },
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
@@ -314,6 +338,11 @@
       "animation": {
         "status": "complete",
         "evidence_ref": "turtle_animation"
+      },
+      "equipment/passenger/leash": {
+        "status": "partial",
+        "evidence_ref": "turtle_equipment_passenger_leash",
+        "gap": "docs/unsupported-features.md#entity-coverage-matrix-equipment-passenger-and-leash"
       }
     }
   }

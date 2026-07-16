@@ -34,6 +34,7 @@ use super::schema::{
     vanilla_entity_metadata_type_boat_ride_height_multiplier,
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
+    vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
@@ -69,6 +70,16 @@ const HORSE_BABY_SCALE: f32 = 0.7;
 const DEFAULT_AGEABLE_BABY_SCALE: f32 = 0.5;
 const VANILLA_SCALE_MIN: f64 = 0.0625;
 const VANILLA_SCALE_MAX: f64 = 16.0;
+// Vanilla 26.1 baby humanoid-monster dimensions replace the EntityType VEHICLE attachment.
+// The common shape uses 0.1875Y; `ZombieVillager` uses 0.125Y. These dimensions have width 0.49
+// before the SCALE attribute and are selected through the generated baby/converting accessors.
+const HUMANOID_MONSTER_BABY_WIDTH: f32 = 0.49;
+const HUMANOID_MONSTER_BABY_VEHICLE_Y: f32 = 0.1875;
+const ZOMBIE_VILLAGER_BABY_VEHICLE_Y: f32 = 0.125;
+// Vanilla `Spider.getVehicleAttachmentPoint` and `CaveSpider.getVehicleAttachmentPoint` use these
+// offsets when the vehicle is no wider than the passenger.
+const SPIDER_VEHICLE_ATTACHMENT_Y: f32 = 0.3125;
+const CAVE_SPIDER_VEHICLE_ATTACHMENT_Y: f32 = 0.21875;
 const SNIFFER_DIGGING_HEIGHT_OFFSET: f32 = 0.4;
 const WIND_CHARGE_BOUNDS_SIZE: f32 = 0.3125;
 const WIND_CHARGE_BOUNDS_Y_OFFSET: f32 = -0.15;
@@ -396,10 +407,89 @@ pub(crate) fn vanilla_passenger_vehicle_debug_target_for_entity_data(
     passenger_bounds: EntityPickBoundsState,
     game_time: i64,
 ) -> Option<(EntityVec3, EntityPickBoundsState)> {
+    let position = vanilla_passenger_riding_position_for_entity_data(
+        vehicle_entity_type_id,
+        vehicle_position,
+        vehicle_y_rot,
+        vehicle_bounds,
+        vehicle_data_values,
+        vehicle_attributes,
+        vehicle_client_animations,
+        vehicle_passengers,
+        passenger_id,
+        passenger_entity_type_id,
+        game_time,
+    )?;
+    let half_width = 0.5 * bounds_width(vehicle_bounds).min(bounds_width(passenger_bounds));
+    Some((
+        position,
+        EntityPickBoundsState::from_base_size(
+            half_width * 2.0,
+            ENTITY_PASSENGER_VEHICLE_BOX_HEIGHT,
+            0.0,
+        ),
+    ))
+}
+
+pub(crate) fn vanilla_passenger_position_for_entity_data(
+    vehicle_entity_type_id: i32,
+    vehicle_position: EntityVec3,
+    vehicle_y_rot: f32,
+    vehicle_bounds: EntityPickBoundsState,
+    vehicle_data_values: &[EntityDataValue],
+    vehicle_attributes: &[AttributeSnapshot],
+    vehicle_client_animations: Option<EntityClientAnimationState>,
+    vehicle_passengers: &[i32],
+    passenger_id: i32,
+    passenger_entity_type_id: i32,
+    passenger_y_rot: f32,
+    passenger_bounds: EntityPickBoundsState,
+    passenger_data_values: &[EntityDataValue],
+    game_time: i64,
+) -> Option<EntityVec3> {
+    let riding_position = vanilla_passenger_riding_position_for_entity_data(
+        vehicle_entity_type_id,
+        vehicle_position,
+        vehicle_y_rot,
+        vehicle_bounds,
+        vehicle_data_values,
+        vehicle_attributes,
+        vehicle_client_animations,
+        vehicle_passengers,
+        passenger_id,
+        passenger_entity_type_id,
+        game_time,
+    )?;
+    let vehicle_attachment = vanilla_vehicle_attachment_point(
+        passenger_entity_type_id,
+        passenger_y_rot,
+        vehicle_bounds,
+        passenger_bounds,
+        passenger_data_values,
+    );
+    Some(EntityVec3 {
+        x: riding_position.x - vehicle_attachment[0],
+        y: riding_position.y - vehicle_attachment[1],
+        z: riding_position.z - vehicle_attachment[2],
+    })
+}
+
+fn vanilla_passenger_riding_position_for_entity_data(
+    vehicle_entity_type_id: i32,
+    vehicle_position: EntityVec3,
+    vehicle_y_rot: f32,
+    vehicle_bounds: EntityPickBoundsState,
+    vehicle_data_values: &[EntityDataValue],
+    vehicle_attributes: &[AttributeSnapshot],
+    vehicle_client_animations: Option<EntityClientAnimationState>,
+    vehicle_passengers: &[i32],
+    passenger_id: i32,
+    passenger_entity_type_id: i32,
+    game_time: i64,
+) -> Option<EntityVec3> {
     let passenger_index = vehicle_passengers
         .iter()
         .position(|id| *id == passenger_id)?;
-    let half_width = 0.5 * bounds_width(vehicle_bounds).min(bounds_width(passenger_bounds));
     let attachment = vanilla_passenger_attachment_point(
         vehicle_entity_type_id,
         vehicle_y_rot,
@@ -412,18 +502,11 @@ pub(crate) fn vanilla_passenger_vehicle_debug_target_for_entity_data(
         passenger_entity_type_id,
         game_time,
     );
-    Some((
-        EntityVec3 {
-            x: vehicle_position.x + attachment[0],
-            y: vehicle_position.y + attachment[1],
-            z: vehicle_position.z + attachment[2],
-        },
-        EntityPickBoundsState::from_base_size(
-            half_width * 2.0,
-            ENTITY_PASSENGER_VEHICLE_BOX_HEIGHT,
-            0.0,
-        ),
-    ))
+    Some(EntityVec3 {
+        x: vehicle_position.x + attachment[0],
+        y: vehicle_position.y + attachment[1],
+        z: vehicle_position.z + attachment[2],
+    })
 }
 
 fn bounds_height(bounds: EntityPickBoundsState) -> f32 {
@@ -482,6 +565,25 @@ fn vanilla_passenger_attachment_point(
         return [0.0, 0.0, 0.0];
     }
 
+    if vehicle_entity_type_id == VANILLA_ENTITY_TYPE_TURTLE_ID
+        && vanilla_is_baby(vehicle_entity_type_id, vehicle_data_values)
+    {
+        let base_bounds = vanilla_pick_bounds_for_type(vehicle_entity_type_id)
+            .expect("generated Turtle dimensions must resolve");
+        let points = vanilla_entity_type_passenger_attachments(vehicle_entity_type_id)
+            .expect("generated Turtle passenger attachment must resolve");
+        let point = points[passenger_index.min(points.len() - 1)];
+        let xz_scale = scale_axis(bounds_width(vehicle_bounds), bounds_width(base_bounds));
+        return rotated_y(
+            [
+                point[0] * xz_scale,
+                bounds_height(vehicle_bounds),
+                point[2] * xz_scale,
+            ],
+            vehicle_y_rot,
+        );
+    }
+
     let mut point = vanilla_default_passenger_attachment_point(
         vehicle_entity_type_id,
         vehicle_bounds,
@@ -521,6 +623,78 @@ fn vanilla_passenger_attachment_point(
     }
 
     rotated_y(point, vehicle_y_rot)
+}
+
+fn vanilla_vehicle_attachment_point(
+    entity_type_id: i32,
+    y_rot: f32,
+    vehicle_bounds: EntityPickBoundsState,
+    bounds: EntityPickBoundsState,
+    data_values: &[EntityDataValue],
+) -> [f64; 3] {
+    if is_living_sleeping(entity_type_id, data_values) {
+        return [0.0; 3];
+    }
+    if (entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID
+        || entity_type_id == VANILLA_ENTITY_TYPE_MANNEQUIN_ID)
+        && matches!(
+            entity_data_pose(data_values),
+            VANILLA_ENTITY_POSE_FALL_FLYING_ID
+                | VANILLA_ENTITY_POSE_SWIMMING_ID
+                | VANILLA_ENTITY_POSE_SPIN_ATTACK_ID
+                | VANILLA_ENTITY_POSE_DYING_ID
+        )
+    {
+        return [0.0; 3];
+    }
+
+    let vehicle_width = bounds_width(vehicle_bounds);
+    let passenger_width = bounds_width(bounds);
+    if vehicle_width <= passenger_width {
+        let spider_y = match entity_type_id {
+            VANILLA_ENTITY_TYPE_SPIDER_ID => Some(SPIDER_VEHICLE_ATTACHMENT_Y),
+            VANILLA_ENTITY_TYPE_CAVE_SPIDER_ID => Some(CAVE_SPIDER_VEHICLE_ATTACHMENT_Y),
+            _ => None,
+        };
+        if let Some(y) = spider_y {
+            let base_bounds = vanilla_pick_bounds_for_type(entity_type_id).unwrap_or(bounds);
+            let scale = scale_axis(passenger_width, bounds_width(base_bounds));
+            return rotated_y([0.0, y * scale, 0.0], y_rot);
+        }
+    }
+
+    let baby_bounds = baby_pick_bounds(entity_type_id, data_values);
+    let base_vehicle_attachment = vanilla_entity_type_vehicle_attachment(entity_type_id);
+    if baby_bounds.is_some_and(|baby_bounds| {
+        (bounds_width(baby_bounds) - HUMANOID_MONSTER_BABY_WIDTH).abs() <= f32::EPSILON
+    }) && base_vehicle_attachment.is_some_and(|point| point != [0.0; 3])
+    {
+        let y = if vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .is_some()
+        {
+            ZOMBIE_VILLAGER_BABY_VEHICLE_Y
+        } else {
+            HUMANOID_MONSTER_BABY_VEHICLE_Y
+        };
+        let scale = scale_axis(passenger_width, HUMANOID_MONSTER_BABY_WIDTH);
+        return rotated_y([0.0, y * scale, 0.0], y_rot);
+    }
+
+    let Some(mut point) = vanilla_entity_type_vehicle_attachment(entity_type_id) else {
+        return [0.0; 3];
+    };
+    if point == [0.0; 3] {
+        return [0.0; 3];
+    }
+
+    let base_bounds = vanilla_pick_bounds_for_type(entity_type_id).unwrap_or(bounds);
+    let scale = scale_axis(bounds_width(bounds), bounds_width(base_bounds));
+    point[0] *= scale;
+    point[1] *= scale;
+    point[2] *= scale;
+    rotated_y(point, y_rot)
 }
 
 fn boat_passenger_attachment_point(

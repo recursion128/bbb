@@ -95,6 +95,7 @@ use crate::entities::dimensions::{
     vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
     vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat,
     vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_passenger_position_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale,
 };
@@ -1439,6 +1440,63 @@ impl EntityStore {
         ))
     }
 
+    fn turtle_passenger_render_position(
+        &self,
+        passenger_id: i32,
+        vehicle_id: i32,
+    ) -> Option<super::EntityVec3> {
+        let passenger_bounds = self.pick_bounds(passenger_id)?;
+        let passenger_entity = self.by_protocol_id.get(&passenger_id).copied()?;
+        let mut passenger_query = self
+            .ecs
+            .query_one::<(&EntityIdentity, &EntityTransform, &EntityMetadata)>(passenger_entity)
+            .ok()?;
+        let (passenger_identity, passenger_transform, passenger_metadata) =
+            passenger_query.get()?;
+
+        let vehicle_bounds = self.pick_bounds(vehicle_id)?;
+        let vehicle_entity = self.by_protocol_id.get(&vehicle_id).copied()?;
+        let mut vehicle_query = self
+            .ecs
+            .query_one::<(
+                &EntityIdentity,
+                &EntityTransform,
+                &EntityMount,
+                &EntityMetadata,
+                &EntityAttributes,
+                Option<&EntityClientAnimations>,
+            )>(vehicle_entity)
+            .ok()?;
+        let (
+            vehicle_identity,
+            vehicle_transform,
+            vehicle_mount,
+            vehicle_metadata,
+            vehicle_attributes,
+            vehicle_client_animations,
+        ) = vehicle_query.get()?;
+        if vehicle_identity.entity_type_id != VANILLA_ENTITY_TYPE_TURTLE_ID {
+            return None;
+        }
+
+        vanilla_passenger_position_for_entity_data(
+            vehicle_identity.entity_type_id,
+            vehicle_transform.position,
+            vehicle_transform.y_rot,
+            vehicle_bounds,
+            &vehicle_metadata.data_values,
+            &vehicle_attributes.attributes,
+            vehicle_client_animations.map(|animations| animations.animations),
+            &vehicle_mount.passengers,
+            passenger_id,
+            passenger_identity.entity_type_id,
+            passenger_transform.y_rot,
+            passenger_bounds,
+            &passenger_metadata.data_values,
+            0,
+        )
+    }
+
     pub(crate) fn model_source(
         &self,
         id: i32,
@@ -1931,6 +1989,13 @@ impl EntityStore {
                 source_y_rot = render_step.y_rot;
                 source_x_rot = render_step.x_rot;
             }
+        }
+        if let Some(passenger_position) = mount
+            .as_ref()
+            .and_then(|mount| mount.vehicle_id)
+            .and_then(|vehicle_id| self.turtle_passenger_render_position(id, vehicle_id))
+        {
+            source_position = passenger_position;
         }
         if let Some(offset) = minecart_improvements_enabled
             .then_some(())

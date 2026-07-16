@@ -20,6 +20,7 @@ from core_registry_catalog_extractor import (  # noqa: E402
     data_component_type_entries,
     entity_type_entries,
     particle_type_entries,
+    vec3_constant,
 )
 from vanilla_java_source import parse_source  # noqa: E402
 
@@ -175,16 +176,21 @@ public interface DamageTypes {
 package fixture;
 public class EntityType {
   public static final EntityType<One> ONE = register(
-      "one", Builder.of(One::new).sized(1, 1).eyeHeight(1.25F).passengerAttachments(0.5F));
+      "one", Builder.of(One::new).sized(1, 1).eyeHeight(1.25F).passengerAttachments(0.5F).ridingOffset(-0.25F));
   public static final EntityType<Two> TWO = register(
       "two", Builder.of(Two::new)
-          .sized(0.6F, 1.8F).passengerAttachments(new Vec3(0.25, 1.0, -0.5)).notInPeaceful().noSave());
+          .sized(0.6F, 1.8F).passengerAttachments(new Vec3(0.25, 1.0, -0.5))
+          .vehicleAttachment(Avatar.DEFAULT_VEHICLE_ATTACHMENT).notInPeaceful().noSave());
   private static final Set<EntityType<?>> OP_ONLY_CUSTOM_DATA = Set.of(TWO);
   private static String fake = ".notInPeaceful() register(\\\"fake\\\")";
 }
 """,
         )
-        entries = entity_type_entries(source, expected_count=2)
+        entries = entity_type_entries(
+            source,
+            expected_count=2,
+            named_vec3_constants={"Avatar.DEFAULT_VEHICLE_ATTACHMENT": (0.0, 0.6, 0.0)},
+        )
         self.assertEqual([entry.resource_id for entry in entries], ["minecraft:one", "minecraft:two"])
         self.assertEqual([entry.allowed_in_peaceful for entry in entries], [True, False])
         self.assertEqual([entry.only_op_can_set_nbt for entry in entries], [False, True])
@@ -194,6 +200,25 @@ public class EntityType {
         self.assertEqual(
             [entry.passenger_attachments for entry in entries],
             [((0.0, 0.5, 0.0),), ((0.25, 1.0, -0.5),)],
+        )
+        self.assertEqual(
+            [entry.vehicle_attachment for entry in entries],
+            [(0.0, 0.25, 0.0), (0.0, 0.6, 0.0)],
+        )
+
+    def test_vec3_constant_comes_from_literal_constructor(self) -> None:
+        source = parse_source(
+            "fixture/Avatar.java",
+            b"""
+package fixture;
+public abstract class Avatar {
+  public static final Vec3 DEFAULT_VEHICLE_ATTACHMENT = new Vec3(0.0, 0.6, -0.125F);
+}
+""",
+        )
+        self.assertEqual(
+            vec3_constant(source, "DEFAULT_VEHICLE_ATTACHMENT"),
+            (0.0, 0.6, -0.125),
         )
 
     def test_entity_eye_height_rejects_non_literal_builder_values(self) -> None:

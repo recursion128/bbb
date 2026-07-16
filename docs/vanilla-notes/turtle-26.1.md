@@ -268,10 +268,8 @@ catalog/accessor，不能把本文列出的 registry ordinal 或 metadata wire i
   这些由服务端决定，客户端只接收可观察结果。
   来源：`net/minecraft/world/entity/animal/turtle/Turtle.java`，`registerGoals`、各
   `Turtle*Goal`、`checkTurtleSpawnRules`、`ageBoundaryReached`、`thunderHit`。
-- 需实现时二次确认：bbb 的 shadow pipeline 是否已经组合 baby `0.83F`；entity
-  passenger attachment 是否已进入客户端 probe/collision surface；F3+I 本地 fallback
-  对不可观测 `home_pos` 的产品判据；Turtle entity sounds 的 generic packet/runtime
-  覆盖是否足以把 audio cell 标 complete。
+- 需实现时二次确认：bbb 的 shadow pipeline 是否已经组合 baby `0.83F`；F3+I 本地
+  fallback 对不可观测 `home_pos` 的产品判据。
 - 需实现时二次确认：level event `2001` 的现有 generic destroy-block effect 是否同时
   保持 block break sound 公式与 block-state-driven particles；不要因为 `2012` 已有
   focused test 就推断 `2001` 的 Turtle 路径也已有等价 evidence。

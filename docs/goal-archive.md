@@ -16833,3 +16833,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `movement_speed=0.25`、`step_height=1.0`，服务端 pairing 只补已实例化的 syncable
   attributes。bbb 的 attribute query 因此新增同一组 family fallback，attribute packet 可覆盖，
   re-add 后恢复 constructor defaults；focused test 锁定三态。
+
+## 2026-07-16：Turtle passenger attachment projection
+
+- Turtle 作为 vehicle 时，乘客 model source 现在使用生成 catalog 的 adult attachment，并按
+  `Turtle.BABY_DIMENSIONS` 的先替换 attachment、再缩放顺序投影 baby/scale/yaw；不再停留在
+  仅供 debug hitbox 使用的 attachment slab。乘客自身的 `VEHICLE` attachment 也由 vanilla
+  `EntityType` builder 机械生成，另外覆盖 Avatar pose、baby zombie/piglin 与 Spider family
+  的 vanilla dimensions/宽度例外。
+- `TurtleRenderer` 无手持装备 layer，Turtle 也不是玩家控制载具；但 Turtle 仍通过 `Mob`
+  实现 `Leashable`。bbb 当前虽保留 `SetEntityLink` canonical state，尚未生成 vanilla
+  `EntityRenderer.extractRenderState` 的 leash state/rope geometry，因此
+  `equipment/passenger/leash` 格继续保持 partial，剩余工作只指向可见 leash presentation。
