@@ -5951,13 +5951,34 @@ mod tests {
 
     #[test]
     fn generated_cat_accessors_own_membership_indices_and_defaults() {
+        let cat = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Cat);
+        let field = |name| {
+            cat.own_fields
+                .iter()
+                .find(|field| field.name == name)
+                .unwrap_or_else(|| panic!("generated Cat {name} field"))
+        };
+        let lying = field("IS_LYING");
+        let relax_state_one = field("RELAX_STATE_ONE");
+        let collar_color = field("DATA_COLLAR_COLOR");
+        let VanillaEntityMetadataDefault::Boolean(lying_default) = lying.default else {
+            panic!("generated Cat lying default must be BOOLEAN");
+        };
+        let VanillaEntityMetadataDefault::Boolean(relax_state_one_default) =
+            relax_state_one.default
+        else {
+            panic!("generated Cat relax-state-one default must be BOOLEAN");
+        };
+        let VanillaEntityMetadataDefault::Int(collar_color_default) = collar_color.default else {
+            panic!("generated Cat collar-color default must be INT");
+        };
         let expected = VanillaCatMetadataAccessors {
-            lying_data_id: VANILLA_CAT_IS_LYING_DATA_ID,
-            lying_default: VANILLA_CAT_DEFAULT_IS_LYING,
-            relax_state_one_data_id: VANILLA_CAT_RELAX_STATE_ONE_DATA_ID,
-            relax_state_one_default: VANILLA_CAT_DEFAULT_RELAX_STATE_ONE,
-            collar_color_data_id: VANILLA_CAT_COLLAR_COLOR_DATA_ID,
-            collar_color_default: VANILLA_CAT_DEFAULT_COLLAR_COLOR,
+            lying_data_id: lying.data_id,
+            lying_default,
+            relax_state_one_data_id: relax_state_one.data_id,
+            relax_state_one_default,
+            collar_color_data_id: collar_color.data_id,
+            collar_color_default,
         };
         assert_eq!(
             vanilla_entity_metadata_cat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID),
@@ -7732,14 +7753,26 @@ mod tests {
         assert_eq!(cat.inherited_field_count, 20);
         assert_eq!(cat.own_fields.len(), 5);
         assert_eq!(VANILLA_CAT_VARIANT_DATA_ID, 20);
-        assert_eq!(VANILLA_CAT_IS_LYING_DATA_ID, 21);
-        assert_eq!(VANILLA_CAT_RELAX_STATE_ONE_DATA_ID, 22);
-        assert_eq!(VANILLA_CAT_COLLAR_COLOR_DATA_ID, 23);
+        let accessors =
+            vanilla_entity_metadata_cat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID)
+                .expect("generated Cat metadata accessors");
+        assert_eq!(accessors.lying_data_id, cat.own_fields[1].data_id);
+        assert_eq!(accessors.relax_state_one_data_id, cat.own_fields[2].data_id);
+        assert_eq!(accessors.collar_color_data_id, cat.own_fields[3].data_id);
         assert_eq!(VANILLA_CAT_SOUND_VARIANT_DATA_ID, 24);
         assert_eq!(VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID, "minecraft:black");
-        assert!(!VANILLA_CAT_DEFAULT_IS_LYING);
-        assert!(!VANILLA_CAT_DEFAULT_RELAX_STATE_ONE);
-        assert_eq!(VANILLA_CAT_DEFAULT_COLLAR_COLOR, 14);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(accessors.lying_default),
+            cat.own_fields[1].default
+        );
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(accessors.relax_state_one_default),
+            cat.own_fields[2].default
+        );
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(accessors.collar_color_default),
+            cat.own_fields[3].default
+        );
         assert_eq!(
             VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
             "minecraft:classic"

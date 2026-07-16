@@ -164,12 +164,6 @@ const GENERATED_VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = 19;
 pub const VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID: u8 = GENERATED_VANILLA_TAMABLE_ANIMAL_OWNER_DATA_ID;
 const GENERATED_VANILLA_CAT_VARIANT_DATA_ID: u8 = 20;
 pub const VANILLA_CAT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_CAT_VARIANT_DATA_ID;
-const GENERATED_VANILLA_CAT_IS_LYING_DATA_ID: u8 = 21;
-pub const VANILLA_CAT_IS_LYING_DATA_ID: u8 = GENERATED_VANILLA_CAT_IS_LYING_DATA_ID;
-const GENERATED_VANILLA_CAT_RELAX_STATE_ONE_DATA_ID: u8 = 22;
-pub const VANILLA_CAT_RELAX_STATE_ONE_DATA_ID: u8 = GENERATED_VANILLA_CAT_RELAX_STATE_ONE_DATA_ID;
-const GENERATED_VANILLA_CAT_COLLAR_COLOR_DATA_ID: u8 = 23;
-pub const VANILLA_CAT_COLLAR_COLOR_DATA_ID: u8 = GENERATED_VANILLA_CAT_COLLAR_COLOR_DATA_ID;
 const GENERATED_VANILLA_CAT_SOUND_VARIANT_DATA_ID: u8 = 24;
 pub const VANILLA_CAT_SOUND_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_CAT_SOUND_VARIANT_DATA_ID;
 const GENERATED_VANILLA_WOLF_VARIANT_DATA_ID: u8 = 23;
@@ -739,12 +733,6 @@ pub const VANILLA_TAMABLE_ANIMAL_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_TAMABLE_A
 const GENERATED_VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:black";
 pub const VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_CAT_DEFAULT_VARIANT_RESOURCE_ID;
-const GENERATED_VANILLA_CAT_DEFAULT_IS_LYING: bool = false;
-pub const VANILLA_CAT_DEFAULT_IS_LYING: bool = GENERATED_VANILLA_CAT_DEFAULT_IS_LYING;
-const GENERATED_VANILLA_CAT_DEFAULT_RELAX_STATE_ONE: bool = false;
-pub const VANILLA_CAT_DEFAULT_RELAX_STATE_ONE: bool = GENERATED_VANILLA_CAT_DEFAULT_RELAX_STATE_ONE;
-const GENERATED_VANILLA_CAT_DEFAULT_COLLAR_COLOR: i32 = 14;
-pub const VANILLA_CAT_DEFAULT_COLLAR_COLOR: i32 = GENERATED_VANILLA_CAT_DEFAULT_COLLAR_COLOR;
 const GENERATED_VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str = "minecraft:classic";
 pub const VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID;
@@ -24691,18 +24679,21 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_cat_accessors_do_not_restore_fixed_metadata_facts() {
+    fn cat_accessor_consumers_do_not_restore_fixed_metadata_facts() {
         let entities = include_str!("../../entities.rs");
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
         let entity_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let feline_model = variants
             .split("pub(super) fn feline_model_kind")
             .nth(1)
             .and_then(|source| source.split("pub(super) fn fox_model_kind").next())
             .expect("Cat model projection source");
         let input = include_str!("../../../../bbb-native/src/input.rs");
+        let input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         let cat_debug = input
             .split("fn debug_push_cat_additional_save_data")
             .nth(1)
@@ -24727,16 +24718,25 @@ mod generated_catalog_guards {
         assert!(
             store.contains("cat_relax_state_one(identity.entity_type_id, &metadata.data_values)")
         );
-        for source in [feline_model, cat_debug] {
+        for source in [
+            feline_model,
+            cat_debug,
+            world_tests,
+            native_scene_tests,
+            input_tests,
+        ] {
             assert!(source.contains("vanilla_entity_metadata_cat_accessors_for_entity_type"));
         }
         for source in [
             sleeping_player_body,
             animations,
             store,
+            world_tests,
             entity_scene,
             variants,
+            native_scene_tests,
             input,
+            input_tests,
         ] {
             for removed in [
                 "CAT_IS_LYING_DATA_ID",

@@ -17399,3 +17399,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   family schema 组装为 typed bundle；world/native/F3+I production 与 fixtures 继续消费该 bundle。
 - 删除 `bbb-world` 对三项 data/default 六个独立 facade 常量的转发；generator 反向守卫扩展到
   world/native/F3+I fixtures，variant 与 sound-variant 的独立生成字段保持不变。
+
+## 2026-07-16：统一 Cat 成组 metadata 消费
+
+- lying、relax-state-one 与 collar-color 的 wire index/default 统一由 generated Cat family
+  schema 组装为 typed bundle；world animation/sleeping-player 与 native/F3+I 路径继续消费它。
+- 删除 `bbb-world` 对三项 data/default 六个独立 facade 常量的转发；generator 反向守卫扩展到
+  world/native/F3+I fixtures，variant 与 sound-variant 的独立生成字段保持不变。
