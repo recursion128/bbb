@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from core_registry_catalog_extractor import entity_type_entries
+from core_registry_catalog_extractor import entity_type_entries, vec3_constant
 from entity_renderer_catalog_extractor import (
     extract_entity_renderer_registrations,
     extract_living_entity_upside_down_names,
@@ -24,6 +24,7 @@ DEFAULT_OUTPUT = (
     / "crates/bbb-world/src/entities/renderer_catalog/generated_26_1.rs"
 )
 ENTITY_TYPE_SOURCE = Path("net/minecraft/world/entity/EntityType.java")
+AVATAR_SOURCE = Path("net/minecraft/world/entity/Avatar.java")
 ENTITY_RENDERERS_SOURCE = Path(
     "net/minecraft/client/renderer/entity/EntityRenderers.java"
 )
@@ -49,7 +50,15 @@ def render(source_root: Path) -> str:
             relative_path.as_posix(), (source_root / relative_path).read_bytes()
         )
 
-    entity_types = entity_type_entries(parse(ENTITY_TYPE_SOURCE))
+    avatar = parse(AVATAR_SOURCE)
+    entity_types = entity_type_entries(
+        parse(ENTITY_TYPE_SOURCE),
+        named_vec3_constants={
+            "Avatar.DEFAULT_VEHICLE_ATTACHMENT": vec3_constant(
+                avatar, "DEFAULT_VEHICLE_ATTACHMENT"
+            )
+        },
+    )
     entity_renderers = parse(ENTITY_RENDERERS_SOURCE)
     renderer_sources = [
         parse(path.relative_to(source_root))
@@ -241,6 +250,24 @@ def render(source_root: Path) -> str:
             '            "VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID",',
             '            "VANILLA_ENTITY_TYPE_SNOWBALL_ID",',
             '            "VANILLA_ENTITY_TYPE_SPLASH_POTION_ID",',
+            '        ] {',
+            '            assert!(!kinds.contains(removed), "restored {removed}");',
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_model_selection_does_not_restore_non_model_pass_type_membership() {",
+            '        let kinds = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
+            '        assert!(kinds.contains("vanilla_entity_renderer_uses_native_non_model_pass"));',
+            '        for removed in [',
+            '            "VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID",',
+            '            "VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID",',
+            '            "VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID",',
+            '            "VANILLA_ENTITY_TYPE_ITEM_FRAME_ID",',
+            '            "VANILLA_ENTITY_TYPE_ITEM_ID",',
+            '            "VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID",',
+            '            "VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID",',
+            '            "VANILLA_ENTITY_TYPE_TNT_ID",',
             '        ] {',
             '            assert!(!kinds.contains(removed), "restored {removed}");',
             "        }",

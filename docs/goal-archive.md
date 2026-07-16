@@ -17010,3 +17010,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 该文件新增 `WIRE_SAMPLE_SERIALIZER_IDS` 标记；gameplay-id generator 扫描全部
   crate Rust 源码，要求 numeric 字段仍恰为 18 个且全部位于该文件。新增、
   删除或移动 wire sample 都会强制重新审计计数与边界。
+
+## 2026-07-16：统一专用 native pass 的 renderer membership
+
+- entity-model scene 对 FallingBlock、FireworkRocket、Glow/normal ItemFrame、Item、
+  LightningBolt、OminousItemSpawner 与 primed TNT 的抑制，不再维护 8 项 entity-type
+  分支；它现在按 source-generated `EntityRenderers` provider catalog 中的 7 个 renderer
+  class 归类，继续由现有 block/item/frame/firework/weather 专用 pass 负责可见提交。
+- renderer catalog focused test 锁定 8 项注册结果；generator 输出跨 crate 反向门禁，拒绝
+  `entity_scene/kind.rs` 恢复这些 entity-type 常量。renderer generator 同时补齐
+  `Avatar.DEFAULT_VEHICLE_ATTACHMENT` 的权威常量解析，使依赖完整 `EntityType` catalog 的
+  生成过程可在当前 26.1 vanilla source 上重放。

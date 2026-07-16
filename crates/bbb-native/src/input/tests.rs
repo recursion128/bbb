@@ -11879,7 +11879,7 @@ fn debug_boat_save_memberships_use_the_world_generated_catalog() {
 }
 
 #[test]
-fn minecart_and_item_frame_dispatch_use_the_world_generated_catalog() {
+fn minecart_and_item_frame_dispatch_use_generated_catalogs() {
     for entry in bbb_world::VANILLA_ENTITY_TYPE_METADATA_26_1 {
         assert_eq!(
             bbb_world::vanilla_entity_type_is_minecart(entry.entity_type_id),
@@ -11902,9 +11902,7 @@ fn minecart_and_item_frame_dispatch_use_the_world_generated_catalog() {
         .contains("_ if bbb_world::vanilla_entity_type_is_item_frame(entity.entity_type_id)"));
     let kind_source = include_str!("../entity_scene/kind.rs");
     assert!(kind_source.contains("_ if bbb_world::vanilla_entity_type_is_minecart(entity_type_id)"));
-    assert!(
-        kind_source.contains("_ if bbb_world::vanilla_entity_type_is_item_frame(entity_type_id)")
-    );
+    assert!(kind_source.contains("vanilla_entity_renderer_uses_native_non_model_pass"));
 }
 
 #[test]

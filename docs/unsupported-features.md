@@ -158,7 +158,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   must likewise remain renderer-generated; native billboard/model suppression must not restore a
   parallel entity-type/scale table. `LivingEntityRenderer.isUpsideDownName` membership must remain
   renderer-generated and shared by player-profile and non-player custom-name projection. Continue
-  migrating renderer-class-derived model/pose memberships through that owner. Zombie underwater
+  migrating renderer-class-derived model/pose memberships through that owner. Native entity-model
+  suppression for `FallingBlockRenderer`, `FireworkEntityRenderer`, `ItemFrameRenderer`,
+  `ItemEntityRenderer`, `LightningBoltRenderer`, `OminousItemSpawnerRenderer`, and `TntRenderer`
+  must remain derived from generated provider registrations rather than an entity-type switch.
+  Zombie underwater
   conversion shaking must remain derived from the registered renderer hierarchy's
   `extractRenderState` assignment rather than a Zombie/Husk/Drowned type switch. Emit every new
   generated-catalog consumer guard or migrated generated-catalog consumer guard

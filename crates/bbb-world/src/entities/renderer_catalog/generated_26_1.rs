@@ -2298,4 +2298,22 @@ mod generated_catalog_guards {
             assert!(!kinds.contains(removed), "restored {removed}");
         }
     }
+
+    #[test]
+    fn native_model_selection_does_not_restore_non_model_pass_type_membership() {
+        let kinds = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        assert!(kinds.contains("vanilla_entity_renderer_uses_native_non_model_pass"));
+        for removed in [
+            "VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID",
+            "VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID",
+            "VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID",
+            "VANILLA_ENTITY_TYPE_ITEM_FRAME_ID",
+            "VANILLA_ENTITY_TYPE_ITEM_ID",
+            "VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID",
+            "VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID",
+            "VANILLA_ENTITY_TYPE_TNT_ID",
+        ] {
+            assert!(!kinds.contains(removed), "restored {removed}");
+        }
+    }
 }

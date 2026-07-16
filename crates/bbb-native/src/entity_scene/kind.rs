@@ -38,6 +38,12 @@ pub(super) fn entity_model_kind_with_time_and_registries(
     if bbb_world::vanilla_entity_renderer_thrown_item_scale(entity_type_id).is_some() {
         return EntityModelKind::NoRender;
     }
+    // Vanilla block/item/frame/firework/lightning renderers submit through dedicated native passes,
+    // not the entity-model mesh. Resolve their membership from generated `EntityRenderers`
+    // registrations so this scene does not retain a parallel entity-type list.
+    if bbb_world::vanilla_entity_renderer_uses_native_non_model_pass(entity_type_id) {
+        return EntityModelKind::NoRender;
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -278,8 +284,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID => {
             entity_type_bounds_placeholder("experience_orb_entity_type_bounds", 0.5, 0.5)
         }
-        VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID => EntityModelKind::NoRender,
-        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID => {
             entity_type_bounds_placeholder("fishing_bobber_entity_type_bounds", 0.25, 0.25)
         }
@@ -293,30 +297,19 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
-        // Item frames render via the 3D item-model pass (border + framed item, native `item_frames`),
-        // not the entity-model scene.
-        _ if bbb_world::vanilla_entity_type_is_item_frame(entity_type_id) => {
-            EntityModelKind::NoRender
-        }
         VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => EntityModelKind::Squid {
             glow: true,
             baby: ageable_baby(data_values),
         },
         VANILLA_ENTITY_TYPE_GUARDIAN_ID => EntityModelKind::Guardian { elder: false },
-        // Dropped item entities render through the item-model / item-billboard passes, not the
-        // entity-model scene (`ItemEntityRenderer` submits ItemStackRenderState clusters).
-        VANILLA_ENTITY_TYPE_ITEM_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
         }
         VANILLA_ENTITY_TYPE_LEASH_KNOT_ID => EntityModelKind::LeashKnot,
-        // Lightning bolts render as custom `RenderTypes.lightning()` geometry on the weather target.
-        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID => EntityModelKind::LlamaSpit,
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID => EntityModelKind::MagmaCube {
             size: slime_size(entity_type_id, data_values),
         },
-        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_PAINTING_ID => placeholder("todo_painting_bounds", 1.0, 1.0, 0.0625),
         VANILLA_ENTITY_TYPE_PARROT_ID => parrot_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_PHANTOM_ID => EntityModelKind::Phantom {
@@ -357,7 +350,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_TEXT_DISPLAY_ID => {
             placeholder("todo_text_display_bounds", 1.0, 0.5, 0.0625)
         }
-        VANILLA_ENTITY_TYPE_TNT_ID => EntityModelKind::NoRender,
         VANILLA_ENTITY_TYPE_TRIDENT_ID => EntityModelKind::Trident,
         VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID => {
             tropical_fish_model_kind(entity_type_id, data_values)

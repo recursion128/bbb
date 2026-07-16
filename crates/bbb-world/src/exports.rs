@@ -86,6 +86,7 @@ pub use crate::entities::{
     vanilla_entity_renderer_extracts_zombie_underwater_converting,
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_is_noop,
     vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,
+    vanilla_entity_renderer_uses_native_non_model_pass,
     vanilla_entity_type_illager_arm_pose_uses_celebrating, vanilla_entity_type_is_abstract_piglin,
     vanilla_entity_type_is_boat, vanilla_entity_type_is_chest_boat,
     vanilla_entity_type_is_hurting_projectile, vanilla_entity_type_is_item_frame,
