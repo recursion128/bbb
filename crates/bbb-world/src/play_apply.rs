@@ -1798,6 +1798,13 @@ mod tests {
         }
     }
 
+    fn silent_entity_data(value: bool) -> EntityDataValue {
+        let accessors = crate::entities::vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        assert!(!accessors.silent_default);
+        bool_entity_data(accessors.silent_data_id, value)
+    }
+
     fn cow_sound_variant_nbt() -> Vec<u8> {
         let mut out = vec![10];
         for field in ["ambient_sound", "hurt_sound", "death_sound", "step_sound"] {
@@ -2550,10 +2557,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 73,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 73,
@@ -2644,10 +2648,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 76,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 74,
@@ -2724,10 +2725,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 78,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::AddEntity(add_entity(
                 79,
@@ -2802,10 +2800,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 80,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 80,
@@ -2875,10 +2870,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 82,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 82,
@@ -2974,10 +2966,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 85,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 85,
@@ -3093,10 +3082,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 88,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 88,
@@ -3182,10 +3168,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 91,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 91,
@@ -3286,10 +3269,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 95,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 95,
@@ -3409,10 +3389,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 99,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 99,
@@ -3547,10 +3524,7 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 104,
-                values: vec![bool_entity_data(
-                    crate::entities::VANILLA_ENTITY_SILENT_DATA_ID,
-                    true,
-                )],
+                values: vec![silent_entity_data(true)],
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 104,

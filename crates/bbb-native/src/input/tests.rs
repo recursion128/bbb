@@ -92,6 +92,7 @@ use bbb_protocol::{
 };
 use bbb_world::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
+    vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
@@ -104,15 +105,6 @@ use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
     ChunkSection, ChunkState, ItemEquipmentSlot, LightData, LocalPlayerPoseState, PaletteDomain,
     PaletteKind, PalettedContainerData, RegistryPacketEntry, SignBlockEntityTextState, WorldStore,
-    VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
-    VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
-    VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID as ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING,
-    VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
-    VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
 };
 use std::{
     collections::BTreeMap,
@@ -122,7 +114,37 @@ use std::{
 use uuid::Uuid;
 
 const TEST_SADDLE_ITEM_ID: i32 = 8_903;
-const VANILLA_ENTITY_DATA_POSE_ID: u8 = 6;
+
+fn entity_metadata_accessors() -> bbb_world::VanillaEntityMetadataAccessors {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert_eq!(accessors.shared_flags_default, 0);
+    assert!(!accessors.custom_name_visible_default);
+    assert!(!accessors.silent_default);
+    assert!(!accessors.no_gravity_default);
+    assert_eq!(accessors.ticks_frozen_default, 0);
+    accessors
+}
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = entity_metadata_accessors();
+    ProtocolEntityDataValue {
+        data_id: accessors.pose_data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+        value: EntityDataValueKind::Pose(pose_id),
+    }
+}
+
+fn entity_invisible_data() -> ProtocolEntityDataValue {
+    let accessors = entity_metadata_accessors();
+    ProtocolEntityDataValue {
+        data_id: accessors.shared_flags_data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(accessors.invisible_mask),
+    }
+}
 
 fn tamable_animal_flags_data(
     entity_type_id: i32,
@@ -1018,12 +1040,7 @@ fn world_with_sleeping_local_player(player_id: i32) -> WorldStore {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: player_id,
-        values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_ENTITY_DATA_POSE_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
-            value: EntityDataValueKind::Pose(VANILLA_ENTITY_POSE_SLEEPING_ID),
-        }],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID)],
     }));
     world
 }
@@ -3310,6 +3327,7 @@ fn shift_f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback()
 #[test]
 fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
     let accessors = creeper_metadata_accessors();
+    let entity_accessors = entity_metadata_accessors();
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -3336,37 +3354,37 @@ fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: ENTITY_SHARED_FLAGS_DATA_ID,
+                data_id: entity_accessors.shared_flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_GLOWING),
+                value: EntityDataValueKind::Byte(entity_accessors.glowing_mask),
             },
             ProtocolEntityDataValue {
-                data_id: ENTITY_AIR_SUPPLY_DATA_ID,
+                data_id: entity_accessors.air_supply_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(123),
             },
             ProtocolEntityDataValue {
-                data_id: ENTITY_CUSTOM_NAME_DATA_ID,
+                data_id: entity_accessors.custom_name_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
                 value: EntityDataValueKind::OptionalComponent(Some("Bob \"Prime\"".to_string())),
             },
             ProtocolEntityDataValue {
-                data_id: ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
+                data_id: entity_accessors.custom_name_visible_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ENTITY_SILENT_DATA_ID,
+                data_id: entity_accessors.silent_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ENTITY_NO_GRAVITY_DATA_ID,
+                data_id: entity_accessors.no_gravity_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ENTITY_TICKS_FROZEN_DATA_ID,
+                data_id: entity_accessors.ticks_frozen_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(42),
             },
@@ -11591,11 +11609,7 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                     },
                 }),
             },
-            ProtocolEntityDataValue {
-                data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_INVISIBLE),
-            },
+            entity_invisible_data(),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -12221,11 +12235,7 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 58,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_INVISIBLE),
-            },
+            entity_invisible_data(),
             ProtocolEntityDataValue {
                 data_id: accessors.client_flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,

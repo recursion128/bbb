@@ -18088,3 +18088,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native debug-save 以单一 helper 投影两条生产路径；input tests 通过 world 中目标 id 获取实际
   entity type，39 个 payload 删除固定 AgeableMob/Tadpole wire id，统一校验 generated false
   default。reverse guard 锁定 schema、生产 helper、调用计数并禁止旧别名回流。
+
+## 2026-07-16：统一 base Entity silent/input fixtures
+
+- world play-apply tests 新增 generated base Entity silent helper，11 个实体事件静音 fixture 删除
+  固定 wire id，并校验 vanilla false default。
+- native input tests 统一通过 `VanillaEntityMetadataAccessors` 构造 sleeping pose 与两处
+  invisibility payload；Creeper debug-save 的 shared flags/air/name/visibility/silent/no-gravity/
+  frozen 字段删除 7 个固定 id/mask。Entity reverse guard 纳入两份整文件和精确调用计数。

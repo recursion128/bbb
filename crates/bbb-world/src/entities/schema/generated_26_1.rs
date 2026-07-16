@@ -23904,7 +23904,9 @@ mod generated_catalog_guards {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
         let local_player_movement = include_str!("../../client/local_player_movement.rs");
+        let play_apply = include_str!("../../play_apply.rs");
         let input = include_str!("../../../../bbb-native/src/input.rs");
+        let input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let instance = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
@@ -23924,7 +23926,9 @@ mod generated_catalog_guards {
             animations,
             store,
             local_player_movement,
+            play_apply,
             input,
+            input_tests,
             variants,
             instance,
             native_scene,
@@ -23995,6 +23999,17 @@ mod generated_catalog_guards {
         assert!(!small_mob_tests.contains("protocol_pose_data(6"));
         assert!(!small_mob_tests.contains("const POSE_"));
         assert!(!native_scene_tests.contains("const POSE_"));
+        assert_eq!(play_apply.matches("silent_entity_data(true)").count(), 11);
+        assert!(play_apply.contains("accessors.silent_data_id"));
+        assert!(play_apply.contains("assert!(!accessors.silent_default)"));
+        assert_eq!(input_tests.matches("entity_pose_data(").count(), 2);
+        assert_eq!(input_tests.matches("entity_invisible_data()").count(), 3);
+        assert!(input_tests.contains("entity_accessors.air_supply_data_id"));
+        assert!(input_tests.contains("entity_accessors.custom_name_data_id"));
+        assert!(input_tests.contains("entity_accessors.custom_name_visible_data_id"));
+        assert!(input_tests.contains("entity_accessors.silent_data_id"));
+        assert!(input_tests.contains("entity_accessors.no_gravity_data_id"));
+        assert!(input_tests.contains("entity_accessors.ticks_frozen_data_id"));
     }
 
     #[test]

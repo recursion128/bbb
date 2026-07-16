@@ -163,7 +163,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   movement/swim, combat-state, player-sleeping,
   creature pick-bounds projection, transient Breeze animation, aquatic Frog walk animation,
   small-mob animation, visibility/equipment shared-flags coverage, and native ItemFrame invisibility
-  and entity-scene pose coverage; migrate only families whose exact inherited accessor is already
+  and entity-scene pose coverage, plus native input base save/pose/invisibility and world play-apply
+  silent-event fixtures; migrate only families whose exact inherited accessor is already
   owned by the generated schema, without substituting a same-index accessor from another class.
   Living health fixtures in combat-state, player-pose, small-mob animation, and native runtime-event
   coverage already use the generated inherited accessor/default and remain guarded against fixed
