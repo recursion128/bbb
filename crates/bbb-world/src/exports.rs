@@ -26,6 +26,7 @@ pub use crate::entities::VanillaTurtleMetadataAccessors;
 pub use crate::entities::VanillaVehicleMetadataAccessors;
 pub use crate::entities::VanillaZombieMetadataAccessors;
 pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
+pub use crate::entities::VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED;
 pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
@@ -349,10 +350,6 @@ pub use crate::entities::{
     VANILLA_INTERACTION_DEFAULT_HEIGHT, VANILLA_INTERACTION_DEFAULT_RESPONSE,
     VANILLA_INTERACTION_DEFAULT_WIDTH, VANILLA_INTERACTION_HEIGHT_DATA_ID,
     VANILLA_INTERACTION_RESPONSE_DATA_ID, VANILLA_INTERACTION_WIDTH_DATA_ID,
-};
-pub use crate::entities::{
-    VANILLA_IRON_GOLEM_DEFAULT_FLAGS, VANILLA_IRON_GOLEM_FLAGS_DATA_ID,
-    VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED,
 };
 pub use crate::entities::{VANILLA_OCELOT_DEFAULT_TRUSTING, VANILLA_OCELOT_TRUSTING_DATA_ID};
 pub use crate::entities::{

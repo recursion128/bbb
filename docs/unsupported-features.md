@@ -452,7 +452,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   entity type, must not restore fixed accessor/default aliases or hand-written wire indices, and
   must not mix in center-head `DATA_TARGET_A`.
   IronGolem player-created debug membership, wire index and default must remain derived from
-  generated `IronGolem.DATA_FLAGS_ID`; native debug must not restore fixed accessor aliases.
+  generated `IronGolem.DATA_FLAGS_ID`; native debug production/fixtures must not restore fixed
+  accessor/default aliases or hand-written wire indices, while the generated player-created mask
+  remains the semantic flag owner.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class

@@ -98,7 +98,6 @@ use bbb_world::{
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
-    VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
@@ -337,6 +336,19 @@ fn armadillo_state_data(state_id: i32) -> ProtocolEntityDataValue {
             serializer: EntityDataEnumSerializer::ArmadilloState,
             id: state_id,
         },
+    }
+}
+
+fn iron_golem_flags_data(flags: i8) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+    )
+    .expect("generated IronGolem flags accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(flags),
     }
 }
 
@@ -13499,12 +13511,7 @@ fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard() {
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
-            ProtocolEntityDataValue {
-                data_id: IRON_GOLEM_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(IRON_GOLEM_PLAYER_CREATED_FLAG),
-            },
+            iron_golem_flags_data(IRON_GOLEM_PLAYER_CREATED_FLAG),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

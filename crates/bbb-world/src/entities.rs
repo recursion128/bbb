@@ -81,6 +81,7 @@ pub use schema::VanillaTropicalFishVariantAccessors;
 pub use schema::VanillaTurtleMetadataAccessors;
 pub use schema::VanillaVehicleMetadataAccessors;
 pub use schema::VanillaZombieMetadataAccessors;
+pub use schema::VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_camera_post_effect_id,
@@ -389,10 +390,6 @@ pub use schema::{
     VANILLA_INTERACTION_DEFAULT_HEIGHT, VANILLA_INTERACTION_DEFAULT_RESPONSE,
     VANILLA_INTERACTION_DEFAULT_WIDTH, VANILLA_INTERACTION_HEIGHT_DATA_ID,
     VANILLA_INTERACTION_RESPONSE_DATA_ID, VANILLA_INTERACTION_WIDTH_DATA_ID,
-};
-pub use schema::{
-    VANILLA_IRON_GOLEM_DEFAULT_FLAGS, VANILLA_IRON_GOLEM_FLAGS_DATA_ID,
-    VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED,
 };
 pub use schema::{VANILLA_OCELOT_DEFAULT_TRUSTING, VANILLA_OCELOT_TRUSTING_DATA_ID};
 pub use schema::{

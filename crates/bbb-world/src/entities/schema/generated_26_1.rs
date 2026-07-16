@@ -271,8 +271,6 @@ pub const VANILLA_FISHING_HOOK_BITING_DATA_ID: u8 = GENERATED_VANILLA_FISHING_HO
 const GENERATED_VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID: u8 = 8;
 pub const VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID: u8 =
     GENERATED_VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID;
-const GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
-pub const VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID;
 const GENERATED_VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_BAT_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_BAT_FLAGS_DATA_ID;
 const GENERATED_VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID: u8 = 16;
@@ -773,8 +771,6 @@ pub const VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY: i32 =
     GENERATED_VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY;
 const GENERATED_VANILLA_FISHING_HOOK_DEFAULT_BITING: bool = false;
 pub const VANILLA_FISHING_HOOK_DEFAULT_BITING: bool = GENERATED_VANILLA_FISHING_HOOK_DEFAULT_BITING;
-const GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
-pub const VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS;
 const GENERATED_VANILLA_BAT_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_BAT_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_BAT_DEFAULT_FLAGS;
 const GENERATED_VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION: bool = false;
@@ -23834,14 +23830,25 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_iron_golem_flags_do_not_restore_accessor_constants() {
+    fn iron_golem_flags_consumers_do_not_restore_accessor_constants() {
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         assert!(native_input
             .contains("vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type"));
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let fixture = native_input_tests
+            .split("fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("IronGolem F3+I fixture source");
+        assert!(fixture.contains("iron_golem_flags_data("));
         for removed in ["IRON_GOLEM_FLAGS_DATA_ID", "IRON_GOLEM_DEFAULT_FLAGS"] {
             assert!(
                 !native_input.contains(removed),
                 "native input restored {removed}"
+            );
+            assert!(
+                !fixture.contains(removed),
+                "native input fixture restored {removed}"
             );
         }
     }

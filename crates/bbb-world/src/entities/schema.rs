@@ -5447,11 +5447,20 @@ mod tests {
 
     #[test]
     fn generated_iron_golem_flags_accessor_owns_membership_index_and_default() {
+        let iron_golem = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::IronGolem);
+        let flags = iron_golem
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_FLAGS_ID")
+            .expect("generated IronGolem flags field");
+        let VanillaEntityMetadataDefault::Byte(flags_default) = flags.default else {
+            panic!("generated IronGolem flags default must be BYTE");
+        };
         assert_eq!(
             vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_IRON_GOLEM_ID
             ),
-            Some((16, 0))
+            Some((flags.data_id, flags_default))
         );
         assert_eq!(
             vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
@@ -8917,8 +8926,16 @@ mod tests {
         assert_eq!(iron_golem.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(iron_golem.inherited_field_count, 16);
         assert_eq!(iron_golem.own_fields.len(), 1);
-        assert_eq!(VANILLA_IRON_GOLEM_FLAGS_DATA_ID, 16);
-        assert_eq!(VANILLA_IRON_GOLEM_DEFAULT_FLAGS, 0);
+        let (flags_data_id, flags_default) =
+            vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+            )
+            .expect("generated IronGolem flags accessor");
+        assert_eq!(flags_data_id, iron_golem.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Byte(flags_default),
+            iron_golem.own_fields[0].default
+        );
         assert_eq!(VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED, 1);
         assert_eq!(
             snow_golem.own_flags,

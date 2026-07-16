@@ -17475,3 +17475,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 删除 B/C data/default 四个 facade，保留 center-head A 与 invulnerable-ticks facade；world
   fixture 消费 typed bundle，native scene fixture 通过 generated catalog accessor 构造 B 字段，
   generator 反向守卫覆盖 production/fixtures。
+
+## 2026-07-16：统一 IronGolem player-created metadata 消费
+
+- F3+I `PlayerCreated` 的 membership、wire index 与 typed default 统一由 generated
+  `IronGolem.DATA_FLAGS_ID` accessor 提供；production 与 native fixture 共享该入口。
+- 删除 flags data/default 两个 facade，保留 generated player-created mask；schema 测试由生成
+  field 自证，generator 反向守卫覆盖 production/fixture。
