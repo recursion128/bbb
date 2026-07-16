@@ -5580,11 +5580,20 @@ mod tests {
 
     #[test]
     fn generated_phantom_size_accessor_owns_membership_index_and_default() {
+        let phantom = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Phantom);
+        let size = phantom
+            .own_fields
+            .iter()
+            .find(|field| field.name == "ID_SIZE")
+            .expect("generated Phantom size field");
+        let VanillaEntityMetadataDefault::Int(default) = size.default else {
+            panic!("generated Phantom size default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_phantom_size_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PHANTOM_ID
             ),
-            Some((16, 0))
+            Some((size.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_phantom_size_accessor_for_entity_type(
@@ -8488,18 +8497,17 @@ mod tests {
         let phantom = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Phantom);
         assert_eq!(phantom.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(phantom.inherited_field_count, 16);
+        assert_eq!(phantom.own_fields.len(), 1);
+        let (size_data_id, size_default) =
+            vanilla_entity_metadata_phantom_size_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PHANTOM_ID,
+            )
+            .expect("generated Phantom size accessor");
+        assert_eq!(size_data_id, phantom.own_fields[0].data_id);
         assert_eq!(
-            phantom.own_fields,
-            &[VanillaEntityMetadataFieldSchema {
-                name: "ID_SIZE",
-                data_id: 16,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                default: VanillaEntityMetadataDefault::Int(0),
-            }]
+            VanillaEntityMetadataDefault::Int(size_default),
+            phantom.own_fields[0].default
         );
-        assert_eq!(VANILLA_PHANTOM_SIZE_DATA_ID, 16);
-        assert_eq!(VANILLA_PHANTOM_DEFAULT_SIZE, 0);
         let bogged = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Bogged);
         assert_eq!(bogged.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(bogged.inherited_field_count, 16);

@@ -107,7 +107,6 @@ use bbb_world::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
@@ -195,6 +194,18 @@ fn pufferfish_puff_state_data(puff_state: i32) -> ProtocolEntityDataValue {
 fn slime_size_data(entity_type_id: i32, size: i32) -> ProtocolEntityDataValue {
     let (data_id, _) = vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)
         .expect("generated Slime size accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(size),
+    }
+}
+
+fn phantom_size_data(size: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_phantom_size_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_PHANTOM_ID,
+    )
+    .expect("generated Phantom size accessor must resolve");
     ProtocolEntityDataValue {
         data_id,
         serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
@@ -13487,12 +13498,7 @@ fn shift_f3_i_with_permission_copies_local_phantom_save_nbt_to_clipboard() {
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
-            ProtocolEntityDataValue {
-                data_id: PHANTOM_SIZE_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(5),
-            },
+            phantom_size_data(5),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

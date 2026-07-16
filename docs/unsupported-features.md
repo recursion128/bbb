@@ -359,8 +359,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   consumers and semantic fixtures must not restore fixed accessor/default aliases, hand-written
   wire/entity type ids or parallel family predicates.
   Phantom size membership, wire index and typed default must remain derived from generated
-  `Phantom.ID_SIZE`; world bounds and native model/debug consumers must not restore fixed
-  accessor/default aliases or confuse it with the same-named Slime accessor.
+  `Phantom.ID_SIZE`; world bounds, native model/debug consumers and semantic fixtures must not
+  restore fixed accessor/default aliases, hand-written wire/entity type ids or confuse it with the
+  same-named Slime accessor.
   Salmon variant membership, wire index and typed default must remain derived from generated
   `Salmon.DATA_TYPE`; world bounds and native model/debug consumers must not restore fixed
   accessor/default aliases or bypass the existing clamped variant mapping.

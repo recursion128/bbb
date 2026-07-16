@@ -17,7 +17,6 @@ use bbb_world::{
     VANILLA_BAT_FLAG_RESTING, VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
-    VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
@@ -104,6 +103,14 @@ fn slime_size_data(entity_type_id: i32, size: i32) -> EntityDataValue {
     let (data_id, _) =
         bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type(entity_type_id)
             .expect("generated Slime size accessor must resolve");
+    protocol_int_data(data_id, size)
+}
+
+fn phantom_size_data(size: i32) -> EntityDataValue {
+    let (data_id, _) = bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_PHANTOM_ID,
+    )
+    .expect("generated Phantom size accessor must resolve");
     protocol_int_data(data_id, size)
 }
 
@@ -8504,16 +8511,13 @@ fn entity_model_kind_projects_squid_glow_and_baby_from_data() {
 #[test]
 fn entity_model_kind_projects_phantom_size_from_data() {
     // The phantom was a placeholder render box; it now resolves to the real model and
-    // projects its synced `ID_SIZE` (index 16, defaulting to 0).
+    // projects its synced `ID_SIZE` and generated default.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_PHANTOM_ID, &[]),
         EntityModelKind::Phantom { size: 0 }
     );
     assert_eq!(
-        entity_model_kind(
-            VANILLA_ENTITY_TYPE_PHANTOM_ID,
-            &[protocol_int_data(PHANTOM_SIZE_DATA_ID, 5)]
-        ),
+        entity_model_kind(VANILLA_ENTITY_TYPE_PHANTOM_ID, &[phantom_size_data(5)]),
         EntityModelKind::Phantom { size: 5 }
     );
 }

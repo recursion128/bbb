@@ -321,8 +321,6 @@ const GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_IRON_GOLEM_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_IRON_GOLEM_FLAGS_DATA_ID;
 const GENERATED_VANILLA_BAT_FLAGS_DATA_ID: u8 = 16;
 pub const VANILLA_BAT_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_BAT_FLAGS_DATA_ID;
-const GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID: u8 = 16;
-pub const VANILLA_PHANTOM_SIZE_DATA_ID: u8 = GENERATED_VANILLA_PHANTOM_SIZE_DATA_ID;
 const GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID: u8 = 16;
 pub const VANILLA_BOGGED_SHEARED_DATA_ID: u8 = GENERATED_VANILLA_BOGGED_SHEARED_DATA_ID;
 const GENERATED_VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID: u8 = 16;
@@ -901,8 +899,6 @@ const GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_IRON_GOLEM_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_IRON_GOLEM_DEFAULT_FLAGS;
 const GENERATED_VANILLA_BAT_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_BAT_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_BAT_DEFAULT_FLAGS;
-const GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE: i32 = 0;
-pub const VANILLA_PHANTOM_DEFAULT_SIZE: i32 = GENERATED_VANILLA_PHANTOM_DEFAULT_SIZE;
 const GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED: bool = false;
 pub const VANILLA_BOGGED_DEFAULT_SHEARED: bool = GENERATED_VANILLA_BOGGED_DEFAULT_SHEARED;
 const GENERATED_VANILLA_SKELETON_DEFAULT_STRAY_CONVERSION: bool = false;
@@ -24194,35 +24190,51 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_phantom_size_does_not_restore_accessor_constants() {
+    fn phantom_consumers_do_not_restore_accessor_constants() {
         let dimensions = include_str!("../dimensions.rs");
+        let world_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [dimensions, native_scene, native_variants, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            dimensions,
+            world_tests,
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(
                 source.contains("vanilla_entity_metadata_phantom_size_accessor_for_entity_type")
             );
         }
         for removed in ["PHANTOM_SIZE_DATA_ID", "PHANTOM_DEFAULT_SIZE"] {
-            assert!(
-                !dimensions.contains(removed),
-                "dimensions restored {removed}"
-            );
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                dimensions,
+                world_tests,
+                native_scene,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Phantom projection restored {removed}"
+                );
+            }
         }
         assert!(!dimensions.contains("entity_type_id == VANILLA_ENTITY_TYPE_PHANTOM_ID"));
+        let world_fixture = world_tests
+            .split("fn phantom_pick_bounds_scale_with_vanilla_size_metadata")
+            .nth(1)
+            .and_then(|source| source.split("\n#[test]").next())
+            .expect("Phantom pick-bounds fixture source");
+        assert!(world_fixture.contains("VANILLA_ENTITY_TYPE_PHANTOM_ID"));
+        assert!(!world_fixture.contains("99"));
     }
 
     #[test]
