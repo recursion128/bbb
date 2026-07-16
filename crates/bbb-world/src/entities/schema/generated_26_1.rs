@@ -56,10 +56,6 @@ const GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID: u8 = 18;
 pub const VANILLA_CREEPER_IGNITED_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID;
 const GENERATED_VANILLA_WITHER_TARGET_A_DATA_ID: u8 = 16;
 pub const VANILLA_WITHER_TARGET_A_DATA_ID: u8 = GENERATED_VANILLA_WITHER_TARGET_A_DATA_ID;
-const GENERATED_VANILLA_WITHER_TARGET_B_DATA_ID: u8 = 17;
-pub const VANILLA_WITHER_TARGET_B_DATA_ID: u8 = GENERATED_VANILLA_WITHER_TARGET_B_DATA_ID;
-const GENERATED_VANILLA_WITHER_TARGET_C_DATA_ID: u8 = 18;
-pub const VANILLA_WITHER_TARGET_C_DATA_ID: u8 = GENERATED_VANILLA_WITHER_TARGET_C_DATA_ID;
 const GENERATED_VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID: u8 = 19;
 pub const VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID: u8 =
     GENERATED_VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID;
@@ -590,10 +586,6 @@ const GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED: bool = false;
 pub const VANILLA_CREEPER_DEFAULT_IGNITED: bool = GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED;
 const GENERATED_VANILLA_WITHER_DEFAULT_TARGET_A: i32 = 0;
 pub const VANILLA_WITHER_DEFAULT_TARGET_A: i32 = GENERATED_VANILLA_WITHER_DEFAULT_TARGET_A;
-const GENERATED_VANILLA_WITHER_DEFAULT_TARGET_B: i32 = 0;
-pub const VANILLA_WITHER_DEFAULT_TARGET_B: i32 = GENERATED_VANILLA_WITHER_DEFAULT_TARGET_B;
-const GENERATED_VANILLA_WITHER_DEFAULT_TARGET_C: i32 = 0;
-pub const VANILLA_WITHER_DEFAULT_TARGET_C: i32 = GENERATED_VANILLA_WITHER_DEFAULT_TARGET_C;
 const GENERATED_VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS: i32 = 0;
 pub const VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS: i32 =
     GENERATED_VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS;
@@ -22592,6 +22584,11 @@ mod generated_catalog_guards {
         let animations = include_str!("../animations.rs");
         assert!(animations
             .contains("vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type"));
+        let world_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        assert!(world_tests.contains("fn wither_side_head_target_data("));
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        assert!(native_scene_tests.contains("fn protocol_wither_target_b_data("));
+        assert!(native_scene_tests.contains("vanilla_entity_metadata_accessor_for_entity_type"));
         for removed in [
             "WITHER_TARGET_B_DATA_ID",
             "WITHER_TARGET_C_DATA_ID",
@@ -22601,6 +22598,14 @@ mod generated_catalog_guards {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
+            );
+            assert!(
+                !world_tests.contains(removed),
+                "world fixtures restored {removed}"
+            );
+            assert!(
+                !native_scene_tests.contains(removed),
+                "native scene fixtures restored {removed}"
             );
         }
     }

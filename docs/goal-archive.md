@@ -17466,3 +17466,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   入口，sitting membership 继续由 generated phase-class 关系判定。
 - 删除 phase data/default 两个 facade，保留 generated phase ordinal 与 sitting helper；world
   pick-bounds、native crosshair fixtures 改由 accessor 构造，generator 反向守卫覆盖全部消费面。
+
+## 2026-07-16：统一 Wither side-head metadata 消费
+
+- side-head B/C 的 membership、wire indices 与 typed defaults 统一由 generated
+  `WitherBoss.DATA_TARGET_B/C` bundle 提供；world tick 路径持续携带 entity type，且不混入
+  center-head A。
+- 删除 B/C data/default 四个 facade，保留 center-head A 与 invulnerable-ticks facade；world
+  fixture 消费 typed bundle，native scene fixture 通过 generated catalog accessor 构造 B 字段，
+  generator 反向守卫覆盖 production/fixtures。

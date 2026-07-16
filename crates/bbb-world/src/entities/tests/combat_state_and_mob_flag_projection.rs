@@ -1,5 +1,17 @@
 use super::*;
 
+fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEntityDataValue> {
+    let accessors =
+        crate::entities::schema::vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_WITHER_ID,
+        )
+        .expect("generated WitherBoss side-head target accessors must resolve");
+    vec![
+        protocol_int_data(accessors.target_b_data_id, target_b),
+        protocol_int_data(accessors.target_c_data_id, target_c),
+    ]
+}
+
 #[test]
 fn entity_model_sources_project_death_animation_counter() {
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
@@ -949,9 +961,7 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
 
 #[test]
 fn entity_model_sources_project_wither_side_head_tracking() {
-    // Vanilla WitherBoss.DATA_TARGET_B/C (17/18): side-head target entity ids.
-    const VANILLA_WITHER_TARGET_B_DATA_ID: u8 = 17;
-    const VANILLA_WITHER_TARGET_C_DATA_ID: u8 = 18;
+    // Vanilla WitherBoss.DATA_TARGET_B/C: side-head target entity ids.
 
     let add_at = |id, entity_type_id, position: [f64; 3], y_rot| ProtocolAddEntity {
         id,
@@ -1040,10 +1050,7 @@ fn entity_model_sources_project_wither_side_head_tracking() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 80,
-        values: vec![
-            protocol_int_data(VANILLA_WITHER_TARGET_B_DATA_ID, 81),
-            protocol_int_data(VANILLA_WITHER_TARGET_C_DATA_ID, 82),
-        ],
+        values: wither_side_head_target_data(81, 82),
     }));
 
     assert_eq!(heads(&store, 80, 0.5), ([0.0; 2], [0.0; 2]));
@@ -1071,10 +1078,7 @@ fn entity_model_sources_project_wither_side_head_tracking() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 80,
-        values: vec![
-            protocol_int_data(VANILLA_WITHER_TARGET_B_DATA_ID, 0),
-            protocol_int_data(VANILLA_WITHER_TARGET_C_DATA_ID, 0),
-        ],
+        values: wither_side_head_target_data(0, 0),
     }));
     store.advance_entity_client_animations(1);
     let (x_rots, y_rots) = heads(&store, 80, 0.0);

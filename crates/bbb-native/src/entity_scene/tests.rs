@@ -5609,8 +5609,7 @@ fn entity_model_instances_project_powered_wither_from_world() {
 
 #[test]
 fn entity_model_instances_project_wither_side_head_rotations() {
-    // Vanilla WitherBoss.DATA_TARGET_B (17): the first side-head target id.
-    const VANILLA_WITHER_TARGET_B_DATA_ID: u8 = 17;
+    // Vanilla WitherBoss.DATA_TARGET_B: the first side-head target id.
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -5638,7 +5637,7 @@ fn entity_model_instances_project_wither_side_head_rotations() {
     }));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 145,
-        values: vec![protocol_int_data(VANILLA_WITHER_TARGET_B_DATA_ID, 26)],
+        values: vec![protocol_wither_target_b_data(26)],
     }));
     world.advance_entity_client_animations(1);
 
@@ -5650,6 +5649,19 @@ fn entity_model_instances_project_wither_side_head_rotations() {
     assert!(wither.render_state.wither_x_head_rots[0].abs() < 1.0e-5);
     assert_eq!(wither.render_state.wither_x_head_rots[1], 0.0);
     assert_eq!(wither.render_state.wither_y_head_rots, [-10.0, 0.0]);
+}
+
+fn protocol_wither_target_b_data(target_id: i32) -> EntityDataValue {
+    let accessor = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_WITHER_ID,
+        "DATA_TARGET_B",
+    )
+    .expect("generated WitherBoss target-B accessor must resolve");
+    assert_eq!(
+        accessor.owner,
+        "net.minecraft.world.entity.boss.wither.WitherBoss"
+    );
+    protocol_int_data(accessor.data_id, target_id)
 }
 
 #[test]

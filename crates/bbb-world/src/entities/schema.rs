@@ -5063,16 +5063,34 @@ mod tests {
 
     #[test]
     fn generated_wither_side_head_accessors_own_membership_indices_and_defaults() {
+        let wither = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::WitherBoss);
+        let target_b = wither
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_TARGET_B")
+            .expect("generated WitherBoss target-B field");
+        let target_c = wither
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_TARGET_C")
+            .expect("generated WitherBoss target-C field");
+        let VanillaEntityMetadataDefault::Int(target_b_default) = target_b.default else {
+            panic!("generated WitherBoss target-B default must be INT");
+        };
+        let VanillaEntityMetadataDefault::Int(target_c_default) = target_c.default else {
+            panic!("generated WitherBoss target-C default must be INT");
+        };
+        let expected = VanillaWitherSideHeadTargetMetadataAccessors {
+            target_b_data_id: target_b.data_id,
+            target_b_default,
+            target_c_data_id: target_c.data_id,
+            target_c_default,
+        };
         assert_eq!(
             vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
                 VANILLA_ENTITY_TYPE_WITHER_ID
             ),
-            Some(VanillaWitherSideHeadTargetMetadataAccessors {
-                target_b_data_id: 17,
-                target_b_default: 0,
-                target_c_data_id: 18,
-                target_c_default: 0,
-            })
+            Some(expected)
         );
         assert_eq!(
             vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
@@ -7592,13 +7610,23 @@ mod tests {
         assert_eq!(wither.inherited_field_count, 16);
         assert_eq!(wither.own_fields.len(), 4);
         assert_eq!(VANILLA_WITHER_TARGET_A_DATA_ID, 16);
-        assert_eq!(VANILLA_WITHER_TARGET_B_DATA_ID, 17);
-        assert_eq!(VANILLA_WITHER_TARGET_C_DATA_ID, 18);
         assert_eq!(VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID, 19);
         assert_eq!(VANILLA_WITHER_DEFAULT_TARGET_A, 0);
-        assert_eq!(VANILLA_WITHER_DEFAULT_TARGET_B, 0);
-        assert_eq!(VANILLA_WITHER_DEFAULT_TARGET_C, 0);
         assert_eq!(VANILLA_WITHER_DEFAULT_INVULNERABLE_TICKS, 0);
+        let side_heads = vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_WITHER_ID,
+        )
+        .expect("generated WitherBoss side-head target accessors");
+        assert_eq!(side_heads.target_b_data_id, wither.own_fields[1].data_id);
+        assert_eq!(side_heads.target_c_data_id, wither.own_fields[2].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(side_heads.target_b_default),
+            wither.own_fields[1].default
+        );
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(side_heads.target_c_default),
+            wither.own_fields[2].default
+        );
         let enderman = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::EnderMan);
         assert_eq!(enderman.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(enderman.inherited_field_count, 16);
