@@ -17834,3 +17834,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   protocol pose catalog。
 - Entity reverse guard 纳入整份 small-mob 测试并禁止固定 pose 写入和局部 `POSE_*` 常量回流；
   Frog/Warden one-shot、Cat sleeping-player 探测及 Camel walk gate 回归保持不变。
+
+## 2026-07-16：统一 Living health fixture accessor 消费
+
+- combat-state、player-pose 与 small-mob fixtures 删除 5 处固定 LivingEntity health wire id 9，
+  按 Chicken/EnderDragon/Cow type 查询 generated LivingEntity bundle，校验默认 health 1.0 并
+  生成 Float metadata。
+- LivingEntity reverse guard 纳入三份世界测试并禁止旧 health 别名回流；死亡计时、simulation-
+  distance tick gate、non-living negative gate 和 dead-passenger walk-stop 回归保持不变。

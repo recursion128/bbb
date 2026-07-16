@@ -23482,6 +23482,9 @@ mod generated_catalog_guards {
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let combat_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
+        let small_mob_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
         for source in [
             metadata,
             animations,
@@ -23497,6 +23500,7 @@ mod generated_catalog_guards {
             for removed in [
                 "VANILLA_LIVING_ENTITY_FLAGS_DATA_ID",
                 "VANILLA_LIVING_ENTITY_HEALTH_DATA_ID",
+                "VANILLA_ENTITY_HEALTH_DATA_ID",
                 "VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID",
                 "VANILLA_LIVING_ENTITY_FLAG_IS_USING",
                 "VANILLA_LIVING_ENTITY_FLAG_OFF_HAND",
@@ -23514,9 +23518,20 @@ mod generated_catalog_guards {
                 );
             }
         }
-        let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
-        assert!(player_pose_tests
-            .contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type"));
+        for source in [combat_tests, player_pose_tests, small_mob_tests] {
+            assert!(
+                source.contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type")
+            );
+            for removed in [
+                "VANILLA_LIVING_ENTITY_HEALTH_DATA_ID",
+                "VANILLA_ENTITY_HEALTH_DATA_ID",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "LivingEntity health fixture restored {removed}"
+                );
+            }
+        }
         assert!(!player_pose_tests.contains("SLEEPING_POS_DATA_ID"));
     }
 

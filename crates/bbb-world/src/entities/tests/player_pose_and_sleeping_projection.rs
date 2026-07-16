@@ -15,6 +15,13 @@ fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
     protocol_pose_data(accessors.pose_data_id, pose_id)
 }
 
+fn living_health_data(entity_type_id: i32, health: f32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated LivingEntity metadata accessors must resolve");
+    assert_eq!(accessors.health_default, 1.0);
+    protocol_float_data(accessors.health_data_id, health)
+}
+
 fn entity_shared_flags_data(flags: i8) -> ProtocolEntityDataValue {
     protocol_byte_data(entity_metadata_accessors().shared_flags_data_id, flags)
 }
@@ -722,13 +729,7 @@ fn entity_model_sources_project_scale_attribute() {
 
 #[test]
 fn death_animation_gates_on_living_entity_health() {
-    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-
-    let zero_health = vec![ProtocolEntityDataValue {
-        data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-        value: EntityDataValueKind::Float(0.0),
-    }];
+    let zero_health = vec![living_health_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, 0.0)];
 
     // A non-living entity (item) is not a LivingEntity, so a stray float at the
     // health id never starts the death animation.

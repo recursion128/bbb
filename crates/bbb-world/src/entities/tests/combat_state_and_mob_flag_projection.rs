@@ -24,6 +24,13 @@ fn entity_ticks_frozen_data(ticks: i32) -> ProtocolEntityDataValue {
     protocol_int_data(accessors.ticks_frozen_data_id, ticks)
 }
 
+fn living_health_data(entity_type_id: i32, health: f32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated LivingEntity metadata accessors must resolve");
+    assert_eq!(accessors.health_default, 1.0);
+    protocol_float_data(accessors.health_data_id, health)
+}
+
 fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEntityDataValue> {
     let accessors =
         crate::entities::schema::vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
@@ -38,8 +45,6 @@ fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEnt
 
 #[test]
 fn entity_model_sources_project_death_animation_counter() {
-    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-
     let source = |store: &WorldStore, partial: f32| {
         store
             .entity_model_sources_at_partial_tick(partial)
@@ -50,11 +55,7 @@ fn entity_model_sources_project_death_animation_counter() {
     let set_health = |store: &mut WorldStore, health: f32| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id: 60,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-                value: EntityDataValueKind::Float(health),
-            }],
+            values: vec![living_health_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, health)],
         })
     };
 
@@ -100,8 +101,6 @@ fn entity_model_sources_project_death_animation_counter() {
 
 #[test]
 fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
-    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-
     let mut store = WorldStore::new();
     let mut login = protocol_play_login(99);
     login.simulation_distance = 2;
@@ -129,11 +128,7 @@ fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
         });
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-                value: EntityDataValueKind::Float(0.0),
-            }],
+            values: vec![living_health_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, 0.0)],
         }));
     }
     assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id: 63, yaw: 0.0 }));
@@ -176,8 +171,6 @@ fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
 
 #[test]
 fn entity_model_sources_project_ender_dragon_death_time() {
-    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-
     let source = |store: &WorldStore, partial: f32| {
         let position = store.entities.transform(61).unwrap().position;
         store
@@ -201,11 +194,10 @@ fn entity_model_sources_project_ender_dragon_death_time() {
     let set_health = |store: &mut WorldStore, health: f32| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id: 61,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-                value: EntityDataValueKind::Float(health),
-            }],
+            values: vec![living_health_data(
+                VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+                health,
+            )],
         })
     };
 

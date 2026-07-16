@@ -14,6 +14,13 @@ fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
     protocol_pose_data(accessors.pose_data_id, pose_id)
 }
 
+fn living_health_data(entity_type_id: i32, health: f32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated LivingEntity metadata accessors must resolve");
+    assert_eq!(accessors.health_default, 1.0);
+    protocol_float_data(accessors.health_data_id, health)
+}
+
 fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
     let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
         .expect("generated nearest baby accessor must resolve");
@@ -1477,8 +1484,6 @@ fn entity_model_sources_walk_animation_scales_position_for_babies() {
 
 #[test]
 fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
-    const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-
     let walk = |store: &WorldStore, id: i32| -> (bool, f32, f32, f32) {
         let source = store
             .entity_model_sources_at_partial_tick(1.0)
@@ -1561,11 +1566,7 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 72,
-        values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
-            value: EntityDataValueKind::Float(0.0),
-        }],
+        values: vec![living_health_data(VANILLA_ENTITY_TYPE_COW_ID, 0.0)],
     }));
     move_one_step(&mut store, 72, 0.0, 0.5);
     assert_eq!(walk(&store, 72), (false, 0.0, 0.0, 0.0));
