@@ -17987,3 +17987,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   alias，按实际 entity type 复用 generated nearest-baby helper。
 - baby reverse guard 覆盖四个连续测试；age lock、Rabbit variant、Ocelot trusting、Sheep wool
   与 Pig registry/sound variant 的本地 save NBT 回归保持不变。
+
+## 2026-07-16：统一 native input farm debug-save baby fixtures
+
+- Chicken、Cow、Mooshroom、Goat 的 Shift+F3+I debug-save fixtures 删除 4 处全局 AgeableMob
+  baby alias，按实际 entity type 复用 generated nearest-baby helper。
+- baby reverse guard 逐函数覆盖四项测试；age lock、farm registry/sound variant、Mooshroom
+  variant 与 Goat screaming/horns 的本地 save NBT 回归保持不变。

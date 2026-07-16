@@ -22697,6 +22697,37 @@ mod generated_catalog_guards {
                 "native input early-animal baby fixtures restored {removed}"
             );
         }
+        for (start, end) in [
+            (
+                "fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard",
+                "fn local_chicken_save_uses_generated_resource_defaults",
+            ),
+            (
+                "fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard",
+                "fn local_cow_branch_save_uses_generated_defaults",
+            ),
+            (
+                "fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard",
+            ),
+            (
+                "fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard",
+                "fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard",
+            ),
+        ] {
+            let fixture = native_input_tests
+                .split(start)
+                .nth(1)
+                .and_then(|source| source.split(end).next())
+                .expect("native input farm baby fixture source");
+            assert_eq!(fixture.matches("baby_data(").count(), 1);
+            for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+                assert!(
+                    !fixture.contains(removed),
+                    "native input farm baby fixture restored {removed}"
+                );
+            }
+        }
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,
