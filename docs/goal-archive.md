@@ -17635,3 +17635,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   高度偏移与 x/z 扫描顺序仍由同一端到端回归覆盖。
 - gameplay-id generated guard 精确检查 native production 只通过 `vanilla_heightmap_type(kind_id)`
   投影颜色，并要求 full-catalog fixture 消费 descriptor、禁止恢复手写颜色数组。
+
+## 2026-07-16：强化 Loom/Stonecutter layout owner 消费
+
+- `input::inventory::layout` 新增 source-level consumer guard，逐函数锁定 Loom/Stonecutter
+  pattern/recipe grid、click/drag/sprite/item scroller 几何在 input hit testing 与 runtime HUD
+  extraction 两侧都消费共享常量。
+- owner 常量测试继续固定 vanilla 26.1 的故意 surface 偏移；新增守卫覆盖 6 个 input 函数与
+  5 个 HUD/offset 函数，防止任一侧恢复平行坐标声明，同时不改变既有交互或呈现行为。

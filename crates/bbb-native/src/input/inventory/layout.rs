@@ -1298,4 +1298,138 @@ mod tests {
             39
         );
     }
+
+    #[test]
+    fn loom_and_stonecutter_consumers_share_layout_owner() {
+        fn function<'a>(source: &'a str, name: &str) -> &'a str {
+            let marker = format!("fn {name}(");
+            source
+                .split(marker.as_str())
+                .nth(1)
+                .and_then(|source| source.split("\nfn ").next())
+                .unwrap_or_else(|| panic!("missing {name} consumer"))
+        }
+
+        fn assert_consumes(source: &str, name: &str, constants: &[&str]) {
+            let body = function(source, name);
+            for constant in constants {
+                assert!(
+                    body.contains(constant),
+                    "{name} stopped consuming shared {constant}"
+                );
+            }
+        }
+
+        let input = include_str!("../inventory.rs");
+        for (name, constants) in [
+            (
+                "loom_click_target_at_position",
+                &[
+                    "LOOM_PATTERN_BUTTON_X",
+                    "LOOM_PATTERN_BUTTON_Y",
+                    "LOOM_PATTERN_BUTTON_COLUMNS",
+                    "LOOM_PATTERN_BUTTON_ROWS",
+                    "LOOM_PATTERN_BUTTON_SIZE",
+                ][..],
+            ),
+            (
+                "loom_scroller_at_position",
+                &[
+                    "LOOM_SCROLLER_X",
+                    "LOOM_SCROLLER_CLICK_Y",
+                    "LOOM_SCROLLER_WIDTH",
+                    "LOOM_SCROLLER_FULL_HEIGHT",
+                ][..],
+            ),
+            (
+                "update_loom_pattern_scroll_from_cursor",
+                &[
+                    "LOOM_SCROLLER_DRAG_Y",
+                    "LOOM_SCROLLER_HEIGHT",
+                    "LOOM_SCROLLER_FULL_HEIGHT",
+                ][..],
+            ),
+            (
+                "stonecutter_recipe_button_at_position",
+                &[
+                    "STONECUTTER_RECIPE_BUTTON_X",
+                    "STONECUTTER_RECIPE_BUTTON_Y",
+                    "STONECUTTER_RECIPE_BUTTON_COLUMNS",
+                    "STONECUTTER_RECIPE_BUTTON_ROWS",
+                    "STONECUTTER_RECIPE_BUTTON_WIDTH",
+                    "STONECUTTER_RECIPE_BUTTON_HEIGHT",
+                ][..],
+            ),
+            (
+                "stonecutter_scroller_at_position",
+                &[
+                    "STONECUTTER_SCROLLER_X",
+                    "STONECUTTER_SCROLLER_CLICK_Y",
+                    "STONECUTTER_SCROLLER_WIDTH",
+                    "STONECUTTER_SCROLLER_FULL_HEIGHT",
+                ][..],
+            ),
+            (
+                "update_stonecutter_recipe_scroll_from_cursor",
+                &[
+                    "STONECUTTER_SCROLLER_DRAG_Y",
+                    "STONECUTTER_SCROLLER_HEIGHT",
+                    "STONECUTTER_SCROLLER_FULL_HEIGHT",
+                ][..],
+            ),
+        ] {
+            assert_consumes(input, name, constants);
+        }
+
+        let runtime = include_str!("../../runtime.rs");
+        for (name, constants) in [
+            (
+                "push_loom_state_layers",
+                &[
+                    "LOOM_PATTERN_BUTTON_X",
+                    "LOOM_PATTERN_BUTTON_Y",
+                    "LOOM_PATTERN_BUTTON_COLUMNS",
+                    "LOOM_PATTERN_BUTTON_ROWS",
+                    "LOOM_PATTERN_BUTTON_SIZE",
+                    "LOOM_SCROLLER_X",
+                    "LOOM_SCROLLER_Y",
+                    "LOOM_SCROLLER_WIDTH",
+                    "LOOM_SCROLLER_HEIGHT",
+                ][..],
+            ),
+            ("loom_scroller_offset", &["LOOM_SCROLLER_MAX_OFFSET"][..]),
+            (
+                "stonecutter_visible_recipe_option_stacks",
+                &[
+                    "STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT",
+                    "STONECUTTER_RECIPE_BUTTON_X",
+                    "STONECUTTER_RECIPE_ITEM_Y",
+                    "STONECUTTER_RECIPE_BUTTON_COLUMNS",
+                    "STONECUTTER_RECIPE_BUTTON_WIDTH",
+                    "STONECUTTER_RECIPE_BUTTON_HEIGHT",
+                ][..],
+            ),
+            (
+                "push_stonecutter_recipe_layers",
+                &[
+                    "STONECUTTER_VISIBLE_RECIPE_BUTTON_COUNT",
+                    "STONECUTTER_RECIPE_BUTTON_X",
+                    "STONECUTTER_RECIPE_BUTTON_SPRITE_Y",
+                    "STONECUTTER_RECIPE_BUTTON_COLUMNS",
+                    "STONECUTTER_RECIPE_BUTTON_WIDTH",
+                    "STONECUTTER_RECIPE_BUTTON_HEIGHT",
+                    "STONECUTTER_SCROLLER_X",
+                    "STONECUTTER_SCROLLER_Y",
+                    "STONECUTTER_SCROLLER_WIDTH",
+                    "STONECUTTER_SCROLLER_HEIGHT",
+                ][..],
+            ),
+            (
+                "stonecutter_scroller_offset",
+                &["STONECUTTER_SCROLLER_MAX_OFFSET"][..],
+            ),
+        ] {
+            assert_consumes(runtime, name, constants);
+        }
+    }
 }

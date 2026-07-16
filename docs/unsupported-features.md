@@ -484,8 +484,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
   must inspect those specific fixtures rather than rely on whole-file matches.
   Synchronized animal-variant replacement payloads still belong to typed session
   `RegistryAccess`, not fixed ordinal lookup.
-  Keep fixed menu geometry shared by input hit testing and HUD extraction
-  in one native layout owner instead of parallel coordinate declarations.
   Keep sign wood kind/name/order derived from `WoodType` registrations; block-name parsing and
   hanging-sign GUI background loading must consume that world catalog instead of restoring a
   native wood/resource table.
