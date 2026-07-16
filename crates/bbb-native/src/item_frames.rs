@@ -373,6 +373,10 @@ mod tests {
     use super::*;
     use crate::map_textures::map_color_rgba8;
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID;
+    use bbb_protocol::entity_data_serializers::{
+        VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+    };
     use bbb_protocol::packets::{
         AddEntity, DataComponentPatchSummary, EntityDataValue, EntityDataValueKind,
         ItemStackSummary, MapColorPatch, MapItemData, SetEntityData, Vec3d,
@@ -797,7 +801,7 @@ mod tests {
     fn protocol_byte_data(data_id: u8, value: i8) -> EntityDataValue {
         EntityDataValue {
             data_id,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(value),
         }
     }
@@ -805,7 +809,7 @@ mod tests {
     fn protocol_int_data(data_id: u8, value: i32) -> EntityDataValue {
         EntityDataValue {
             data_id,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(value),
         }
     }
@@ -813,7 +817,7 @@ mod tests {
     fn protocol_item_data(item: ItemStackSummary) -> EntityDataValue {
         EntityDataValue {
             data_id: ITEM_FRAME_DATA_ITEM_ID,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(item),
         }
     }

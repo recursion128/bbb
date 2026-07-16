@@ -1050,6 +1050,10 @@ fn look_direction_from_crosshair_ray(ray: CrosshairRay) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::entity_data_serializers::{
+        VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    };
     use bbb_protocol::packets::{
         AddEntity, AttackRangeSummary, EntityDataValue, EntityDataValueKind, EntityPositionSync,
         ItemStackSummary, PlayerAbilities, SetEntityData, SetPlayerInventory,
@@ -1258,7 +1262,7 @@ mod tests {
             // Vanilla `ArmorStand.DATA_CLIENT_FLAGS` data id (15) carrying the MARKER bit (0x10).
             values: vec![EntityDataValue {
                 data_id: 15,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(16),
             }],
         }));
@@ -1282,12 +1286,12 @@ mod tests {
             values: vec![
                 EntityDataValue {
                     data_id: 8,
-                    serializer_id: 3,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                     value: EntityDataValueKind::Float(2.0),
                 },
                 EntityDataValue {
                     data_id: 9,
-                    serializer_id: 3,
+                    serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                     value: EntityDataValueKind::Float(1.25),
                 },
             ],
@@ -1367,7 +1371,7 @@ mod tests {
             id: 130,
             values: vec![EntityDataValue {
                 data_id: ENDER_DRAGON_PHASE_DATA_ID,
-                serializer_id: 1,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(ENDER_DRAGON_HOLDING_PATTERN_PHASE_ID),
             }],
         }));

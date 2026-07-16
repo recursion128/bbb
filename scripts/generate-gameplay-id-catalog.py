@@ -1467,7 +1467,7 @@ def render_entity_data_serializers(entries: list[EntityDataSerializerEntry]) -> 
             "",
             "    #[test]",
             "    fn native_presentation_tests_use_generated_serializer_ids() {",
-            '        for source in [include_str!("../../bbb-native/src/item_models/tests.rs"), include_str!("../../bbb-native/src/entity_scene/tests.rs")] {',
+            '        for source in [include_str!("../../bbb-native/src/item_models/tests.rs"), include_str!("../../bbb-native/src/entity_scene/tests.rs"), include_str!("../../bbb-native/src/entity_variant_textures.rs"), include_str!("../../bbb-native/src/item_frames.rs"), include_str!("../../bbb-native/src/crosshair.rs")] {',
             "            let aliases = source.lines().filter(|line| line.contains(\"SERIALIZER_ID: i32 =\")).collect::<Vec<_>>();",
             "            let numeric_fields = source.lines().filter(|line| {",
             '                line.trim().strip_prefix("serializer_id:")',

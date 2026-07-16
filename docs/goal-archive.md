@@ -16937,3 +16937,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   现消费生成的 BOOLEAN id；254 个 entity-scene focused tests 通过。
 - gameplay-id generator 的 presentation fixture 反向测试现同时覆盖 item-model 与
   entity-scene，拒绝 numeric `serializer_id` 和本地 serializer alias 回流。
+
+## 2026-07-16：统一其余 native presentation fixture serializer 身份
+
+- `bbb-native` variant texture、item-frame 与 crosshair 测试的 11 个 metadata
+  `serializer_id` 写入点，现直接消费 `EntityDataSerializers.java` 注册顺序生成的
+  Byte、Int、Float、ItemStack 以及 Cat/Frog/Wolf/ZombieNautilus variant typed constants。
+- 审计同时修正 item-frame fixture 中原以 BYTE id `0` 搭配 Int 与 ItemStack 载荷的
+  两处错配；vanilla 26.1 对应 serializer 分别为 INT 与 ITEM_STACK。
+- gameplay-id generator 的 presentation fixture 反向测试现扩展至上述三个 inline
+  test module，拒绝 numeric `serializer_id` 与本地 serializer alias 回流。

@@ -319,6 +319,9 @@ mod tests {
         for source in [
             include_str!("../../bbb-native/src/item_models/tests.rs"),
             include_str!("../../bbb-native/src/entity_scene/tests.rs"),
+            include_str!("../../bbb-native/src/entity_variant_textures.rs"),
+            include_str!("../../bbb-native/src/item_frames.rs"),
+            include_str!("../../bbb-native/src/crosshair.rs"),
         ] {
             let aliases = source
                 .lines()

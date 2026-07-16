@@ -169,7 +169,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generator reject those bridges from production sources.
   Native test setup must also consume generated entity-type constants rather than
   restoring version-number aliases for catalog ids.
-  Native presentation metadata fixtures must consume the generated entity-data serializer
+  Native presentation metadata fixtures across item models, entity scenes, variant textures,
+  item frames, and crosshair projection must consume the generated entity-data serializer
   constants rather than numeric fields or local aliases.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.

@@ -246,6 +246,12 @@ mod tests {
 
     use super::*;
     use bbb_protocol::{
+        entity_data_serializers::{
+            VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
+            VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
+        },
         entity_types::{
             VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
             VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
@@ -409,7 +415,7 @@ mod tests {
             id: 73,
             values: vec![EntityDataValue {
                 data_id: VANILLA_CAT_VARIANT_DATA_ID,
-                serializer_id: 21,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatVariant,
                     id: 0,
@@ -482,7 +488,7 @@ mod tests {
             id: 74,
             values: vec![EntityDataValue {
                 data_id: VANILLA_FROG_VARIANT_DATA_ID,
-                serializer_id: 27,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::FrogVariant,
                     id: 0,
@@ -580,7 +586,7 @@ mod tests {
             id: 76,
             values: vec![EntityDataValue {
                 data_id: VANILLA_WOLF_VARIANT_DATA_ID,
-                serializer_id: 25,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfVariant,
                     id: 0,
@@ -649,7 +655,7 @@ mod tests {
             id: 75,
             values: vec![EntityDataValue {
                 data_id: VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
-                serializer_id: 32,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
                     id: 0,
