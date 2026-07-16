@@ -22254,6 +22254,9 @@ mod generated_catalog_guards {
             .expect("painting debug source");
         assert!(painting_debug_body
             .contains("vanilla_entity_metadata_hanging_direction_accessor_for_entity_type"));
+        let native_item_frames = include_str!("../../../../bbb-native/src/item_frames.rs");
+        assert!(native_item_frames
+            .contains("vanilla_entity_metadata_item_frame_accessors_for_entity_type"));
         for removed in [
             "HANGING_DATA_DIRECTION_ID",
             "HANGING_ENTITY_DIRECTION_DATA_ID",
@@ -22275,6 +22278,10 @@ mod generated_catalog_guards {
             assert!(
                 !painting_debug_body.contains(removed),
                 "painting debug restored {removed}"
+            );
+            assert!(
+                !native_item_frames.contains(removed),
+                "native ItemFrame fixture restored {removed}"
             );
         }
     }

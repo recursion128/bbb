@@ -383,14 +383,20 @@ mod tests {
     };
     use uuid::Uuid;
 
-    const ITEM_FRAME_DATA_ITEM_ID: u8 = 9;
-    const ITEM_FRAME_DATA_ROTATION_ID: u8 = 10;
-
     fn entity_invisible_data() -> EntityDataValue {
         let accessors = bbb_world::vanilla_entity_metadata_entity_accessors()
             .expect("generated base Entity metadata accessors must resolve");
         assert_eq!(accessors.shared_flags_default, 0);
         protocol_byte_data(accessors.shared_flags_data_id, accessors.invisible_mask)
+    }
+
+    fn item_frame_metadata_accessors() -> bbb_world::VanillaItemFrameMetadataAccessors {
+        let accessors = bbb_world::vanilla_entity_metadata_item_frame_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+        )
+        .expect("generated ItemFrame metadata accessors must resolve");
+        assert_eq!(accessors.rotation_default, 0);
+        accessors
     }
 
     #[test]
@@ -512,7 +518,7 @@ mod tests {
             id: 711,
             values: vec![
                 protocol_item_data(map_stack(42, 7)),
-                protocol_int_data(ITEM_FRAME_DATA_ROTATION_ID, 5),
+                protocol_int_data(item_frame_metadata_accessors().rotation_data_id, 5),
             ],
         }));
         let packed_grass_high = (1 << 2) | 2;
@@ -819,7 +825,7 @@ mod tests {
 
     fn protocol_item_data(item: ItemStackSummary) -> EntityDataValue {
         EntityDataValue {
-            data_id: ITEM_FRAME_DATA_ITEM_ID,
+            data_id: item_frame_metadata_accessors().item_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(item),
         }

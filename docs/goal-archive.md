@@ -17894,3 +17894,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   sleeping 局部 ordinal，统一使用 generated Entity bundle 与 protocol pose catalog。
 - Entity reverse guard 全局禁止 `entity_scene/tests.rs` 恢复 `ENTITY_DATA_POSE_ID` 或局部 `POSE_*`
   常量；Camel 曲线、Player/Living render state、Cat/Ocelot/Chicken gate 回归保持不变。
+
+## 2026-07-16：统一 native ItemFrame item/rotation fixture accessor 消费
+
+- native map-frame fixtures 删除固定 ItemFrame item wire id 9 与 rotation wire id 10，统一查询
+  generated ItemFrame bundle，并校验 rotation 默认 0 后构造 ItemStack/Int metadata。
+- block-attached reverse guard 纳入 `item_frames.rs`；地图数据到达前 item fallback、完整 map surface、
+  rotation mod-four 与 frame-visible decoration sprites 回归保持不变。
