@@ -17,7 +17,7 @@ use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_rendere
 use super::schema::{
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_boat_accessors_for_entity_type,
-    vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
@@ -63,10 +63,7 @@ use super::schema::{
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type, vanilla_entity_type_is_squid,
-    EntityTransform, EntityVec3, VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
-    VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH as ABSTRACT_HORSE_FLAG_OPEN_MOUTH,
-    VANILLA_ABSTRACT_HORSE_FLAG_STANDING as ABSTRACT_HORSE_FLAG_STANDING,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    EntityTransform, EntityVec3, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
 };
 use bbb_protocol::entity_types::*;
 
@@ -6271,15 +6268,20 @@ fn panda_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (bo
 }
 
 fn equine_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (bool, bool, bool) {
-    let flags =
-        vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(entity_type_id)
-            .map(|(data_id, default)| entity_data_byte(data_values, data_id, default))
-            .unwrap_or(0);
-    (
-        flags & ABSTRACT_HORSE_FLAG_EATING != 0,
-        flags & ABSTRACT_HORSE_FLAG_STANDING != 0,
-        flags & ABSTRACT_HORSE_FLAG_OPEN_MOUTH != 0,
-    )
+    vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| {
+            let flags = entity_data_byte(
+                data_values,
+                accessors.flags_data_id,
+                accessors.flags_default,
+            );
+            (
+                flags & accessors.eating_mask != 0,
+                flags & accessors.standing_mask != 0,
+                flags & accessors.open_mouth_mask != 0,
+            )
+        })
+        .unwrap_or_default()
 }
 
 /// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`. The generated accessor

@@ -17202,3 +17202,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   wire index/default/mask aliases。
 - world/native/input fixtures 同步复用 bundle；schema generator 的 Panda 反向守卫覆盖所有
   production consumers 与语义 fixtures，继续以 generated family schema 作为 mask 来源。
+
+## 2026-07-16：派生 AbstractHorse metadata accessor bundle
+
+- AbstractHorse flags accessor、typed default 与 tame/bred/eating/standing/open-mouth 五个 named
+  masks 组合为 typed bundle；既有 flags 窄 helper 委托该 bundle，world animation、mount
+  inventory 与 native F3+I 不再维护固定 wire index/default/mask aliases。
+- world inventory/animation 与八个 equine F3+I fixtures 同步复用 bundle；schema generator 的
+  AbstractHorse 反向守卫覆盖所有 production consumers 与语义 fixtures。

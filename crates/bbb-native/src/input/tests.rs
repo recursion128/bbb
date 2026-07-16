@@ -114,7 +114,6 @@ use bbb_world::{
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID as ABSTRACT_HORSE_FLAGS_DATA_ID,
     VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
     VANILLA_ARMOR_STAND_BODY_POSE_DATA_ID as ARMOR_STAND_BODY_POSE_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAGS_DATA_ID as ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
@@ -150,6 +149,13 @@ use uuid::Uuid;
 const TEST_SADDLE_ITEM_ID: i32 = 8_903;
 const VANILLA_ENTITY_DATA_POSE_ID: u8 = 6;
 const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
+
+fn abstract_horse_metadata_accessors(
+    entity_type_id: i32,
+) -> bbb_world::VanillaAbstractHorseMetadataAccessors {
+    vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
+        .expect("generated AbstractHorse metadata accessors must resolve")
+}
 
 fn piglin_immunity_data_id(entity_type_id: i32) -> u8 {
     let (data_id, default) =
@@ -6755,6 +6761,7 @@ fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_HORSE_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 76,
@@ -6785,12 +6792,10 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
-                    ABSTRACT_HORSE_FLAG_EATING
-                        | ABSTRACT_HORSE_FLAG_BRED
-                        | ABSTRACT_HORSE_FLAG_TAME,
+                    accessors.eating_mask | accessors.bred_mask | accessors.tame_mask,
                 ),
             },
             ProtocolEntityDataValue {
@@ -6851,6 +6856,7 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_camel_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_CAMEL_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 79,
@@ -6881,9 +6887,9 @@ fn shift_f3_i_with_permission_copies_local_camel_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_TAME),
+                value: EntityDataValueKind::Byte(accessors.tame_mask),
             },
             ProtocolEntityDataValue {
                 data_id: CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
@@ -7462,6 +7468,7 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_DONKEY_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 81,
@@ -7492,11 +7499,9 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(
-                    ABSTRACT_HORSE_FLAG_EATING | ABSTRACT_HORSE_FLAG_TAME,
-                ),
+                value: EntityDataValueKind::Byte(accessors.eating_mask | accessors.tame_mask),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -7556,6 +7561,7 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_MULE_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 82,
@@ -7586,9 +7592,9 @@ fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_BRED),
+                value: EntityDataValueKind::Byte(accessors.bred_mask),
             },
         ],
     }));
@@ -7643,6 +7649,7 @@ fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_LLAMA_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 83,
@@ -7673,11 +7680,9 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(
-                    ABSTRACT_HORSE_FLAG_BRED | ABSTRACT_HORSE_FLAG_TAME,
-                ),
+                value: EntityDataValueKind::Byte(accessors.bred_mask | accessors.tame_mask),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
@@ -7748,6 +7753,7 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 84,
@@ -7778,9 +7784,9 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_TAME),
+                value: EntityDataValueKind::Byte(accessors.tame_mask),
             },
             ProtocolEntityDataValue {
                 data_id: LLAMA_STRENGTH_DATA_ID,
@@ -7846,6 +7852,7 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
 fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 77,
@@ -7876,9 +7883,9 @@ fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard(
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_TAME),
+                value: EntityDataValueKind::Byte(accessors.tame_mask),
             },
         ],
     }));
@@ -7933,6 +7940,7 @@ fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard(
 fn shift_f3_i_with_permission_copies_local_zombie_horse_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors = abstract_horse_metadata_accessors(VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID);
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 78,
@@ -7963,9 +7971,9 @@ fn shift_f3_i_with_permission_copies_local_zombie_horse_save_nbt_to_clipboard() 
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_BRED),
+                value: EntityDataValueKind::Byte(accessors.bred_mask),
             },
         ],
     }));

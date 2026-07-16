@@ -286,6 +286,17 @@ pub struct VanillaPandaMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaAbstractHorseMetadataAccessors {
+    pub flags_data_id: u8,
+    pub flags_default: i8,
+    pub tame_mask: i8,
+    pub bred_mask: i8,
+    pub eating_mask: i8,
+    pub standing_mask: i8,
+    pub open_mouth_mask: i8,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaLlamaMetadataAccessors {
     pub strength_data_id: u8,
     pub strength_default: i32,
@@ -2833,10 +2844,10 @@ pub fn vanilla_entity_metadata_panda_flags_accessor_for_entity_type(
         .map(|accessors| (accessors.flags_data_id, accessors.flags_default))
 }
 
-/// Resolves the generated AbstractHorse flags accessor and its typed default.
-pub fn vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
+/// Resolves AbstractHorse's generated flags accessor, typed default, and named masks.
+pub fn vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
     entity_type_id: i32,
-) -> Option<(u8, i8)> {
+) -> Option<VanillaAbstractHorseMetadataAccessors> {
     let accessor =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_FLAGS")?;
     match (
@@ -2847,10 +2858,36 @@ pub fn vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
         (
             "net.minecraft.world.entity.animal.equine.AbstractHorse",
             "BYTE",
-            Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
+            Some(VanillaEntityMetadataDefault::Byte(flags_default)),
+        ) => {
+            let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractHorse);
+            let mask = |name| {
+                schema
+                    .own_flags
+                    .iter()
+                    .find(|flag| flag.name == name && flag.data_id == accessor.data_id)
+                    .map(|flag| flag.mask)
+            };
+            Some(VanillaAbstractHorseMetadataAccessors {
+                flags_data_id: accessor.data_id,
+                flags_default,
+                tame_mask: mask("FLAG_TAME")?,
+                bred_mask: mask("FLAG_BRED")?,
+                eating_mask: mask("FLAG_EATING")?,
+                standing_mask: mask("FLAG_STANDING")?,
+                open_mouth_mask: mask("FLAG_OPEN_MOUTH")?,
+            })
+        }
         _ => None,
     }
+}
+
+/// Resolves the generated AbstractHorse flags accessor and its typed default.
+pub fn vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i8)> {
+    vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.flags_data_id, accessors.flags_default))
 }
 
 /// Resolves Horse's generated packed color/markings accessor and its typed default.
@@ -6457,25 +6494,34 @@ mod tests {
     }
 
     #[test]
-    fn generated_abstract_horse_flags_accessor_owns_membership_index_and_default() {
+    fn generated_abstract_horse_accessors_own_membership_index_default_and_masks() {
+        let expected = VanillaAbstractHorseMetadataAccessors {
+            flags_data_id: VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
+            flags_default: VANILLA_ABSTRACT_HORSE_DEFAULT_FLAGS,
+            tame_mask: VANILLA_ABSTRACT_HORSE_FLAG_TAME,
+            bred_mask: VANILLA_ABSTRACT_HORSE_FLAG_BRED,
+            eating_mask: VANILLA_ABSTRACT_HORSE_FLAG_EATING,
+            standing_mask: VANILLA_ABSTRACT_HORSE_FLAG_STANDING,
+            open_mouth_mask: VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH,
+        };
         for entity_type_id in [VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_CAMEL_ID] {
             assert_eq!(
-                vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
-                    entity_type_id
-                ),
-                Some((18, 0))
+                vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id),
+                Some(expected)
             );
         }
         assert_eq!(
             vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
-                VANILLA_ENTITY_TYPE_CHICKEN_ID
+                VANILLA_ENTITY_TYPE_HORSE_ID
             ),
-            None
+            Some((expected.flags_data_id, expected.flags_default))
         );
-        assert_eq!(
-            vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(-1),
-            None
-        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_CHICKEN_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use super::*;
 use crate::entities::{
-    VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-    VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+    VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+    VANILLA_ENTITY_TYPE_NAUTILUS_ID,
     VANILLA_TAMABLE_ANIMAL_FLAGS_DATA_ID as VANILLA_TAMABLE_ANIMAL_TAME_FLAGS_DATA_ID,
 };
 use bbb_protocol::packets::{
@@ -330,12 +330,16 @@ fn mount_equipment_visibility_follows_vanilla_horse_type_tags() {
 
 #[test]
 fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
+    let horse_accessors = vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_DONKEY_ID,
+    )
+    .expect("generated AbstractHorse metadata accessors must resolve");
     assert_eq!(
         mount_visibility_for_entity(
             VANILLA_ENTITY_TYPE_DONKEY_ID,
             vec![protocol_byte_data(
-                VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
-                VANILLA_ABSTRACT_HORSE_TAME_FLAG,
+                horse_accessors.flags_data_id,
+                horse_accessors.tame_mask,
             )],
         ),
         Some(MountEquipmentSlotVisibility {
@@ -348,10 +352,7 @@ fn mount_equipment_visibility_uses_tame_and_baby_entity_data() {
             VANILLA_ENTITY_TYPE_DONKEY_ID,
             vec![
                 protocol_bool_data(VANILLA_AGEABLE_MOB_BABY_DATA_ID, true),
-                protocol_byte_data(
-                    VANILLA_ABSTRACT_HORSE_FLAGS_DATA_ID,
-                    VANILLA_ABSTRACT_HORSE_TAME_FLAG,
-                ),
+                protocol_byte_data(horse_accessors.flags_data_id, horse_accessors.tame_mask,),
             ],
         ),
         Some(MountEquipmentSlotVisibility {

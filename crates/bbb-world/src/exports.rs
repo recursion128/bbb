@@ -2,6 +2,7 @@ pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
 pub use crate::entities::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type;
+pub use crate::entities::VanillaAbstractHorseMetadataAccessors;
 pub use crate::entities::VanillaAbstractMinecartMetadataAccessors;
 pub use crate::entities::VanillaArrowMetadataAccessors;
 pub use crate::entities::VanillaCompanionVariantMetadataAccessors;
@@ -24,6 +25,7 @@ pub use crate::entities::VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE;
 pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
+    vanilla_entity_metadata_abstract_horse_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
     vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,

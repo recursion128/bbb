@@ -23028,29 +23028,48 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_abstract_horse_flags_do_not_restore_accessor_constants() {
+    fn production_abstract_horse_bundle_does_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
+        let world_tests = include_str!("../tests/visibility_equipment_and_mount_projection.rs");
         let inventory = include_str!("../../client/inventory.rs");
         let slot_ops = include_str!("../../client/inventory/slot_ops.rs");
+        let inventory_tests = include_str!("../../client/inventory/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [animations, inventory, slot_ops, native_input] {
-            assert!(source
-                .contains("vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type"));
-        }
-        for removed in [
-            "ABSTRACT_HORSE_FLAGS_DATA_ID",
-            "ABSTRACT_HORSE_DEFAULT_FLAGS",
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            animations,
+            world_tests,
+            inventory,
+            slot_ops,
+            inventory_tests,
+            native_input,
+            native_input_tests,
         ] {
             assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
+                source.contains("vanilla_entity_metadata_abstract_horse_accessors_for_entity_type")
             );
-            assert!(!inventory.contains(removed), "inventory restored {removed}");
-            assert!(!slot_ops.contains(removed), "slot ops restored {removed}");
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+        }
+        for removed in [
+            "vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type",
+            "ABSTRACT_HORSE_FLAGS_DATA_ID",
+            "ABSTRACT_HORSE_DEFAULT_FLAGS",
+            "ABSTRACT_HORSE_FLAG_",
+            "ABSTRACT_HORSE_TAME_FLAG",
+        ] {
+            for source in [
+                animations,
+                world_tests,
+                inventory,
+                slot_ops,
+                inventory_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "AbstractHorse projection restored {removed}"
+                );
+            }
         }
     }
 

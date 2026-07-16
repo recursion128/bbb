@@ -727,10 +727,10 @@ fn entity_model_sources_project_equine_tail_counter() {
 
 #[test]
 fn entity_model_sources_project_equine_pose_animations_from_flags() {
-    const ABSTRACT_HORSE_FLAGS_DATA_ID: u8 = 18;
-    const FLAG_EATING: i8 = 0x10;
-    const FLAG_STANDING: i8 = 0x20;
-    const FLAG_OPEN_MOUTH: i8 = 0x40;
+    let accessors = vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_HORSE_ID,
+    )
+    .expect("generated AbstractHorse metadata accessors must resolve");
 
     let assert_close = |actual: f32, expected: f32, label: &str| {
         assert!(
@@ -761,8 +761,8 @@ fn entity_model_sources_project_equine_pose_animations_from_flags() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 68,
         values: vec![protocol_byte_data(
-            ABSTRACT_HORSE_FLAGS_DATA_ID,
-            FLAG_EATING | FLAG_OPEN_MOUTH,
+            accessors.flags_data_id,
+            accessors.eating_mask | accessors.open_mouth_mask,
         )],
     }));
     assert_eq!(pose(&store, 1.0), (0.0, 0.0, 0.0));
@@ -775,8 +775,8 @@ fn entity_model_sources_project_equine_pose_animations_from_flags() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 68,
         values: vec![protocol_byte_data(
-            ABSTRACT_HORSE_FLAGS_DATA_ID,
-            FLAG_STANDING | FLAG_OPEN_MOUTH,
+            accessors.flags_data_id,
+            accessors.standing_mask | accessors.open_mouth_mask,
         )],
     }));
     store.advance_entity_client_animations(1);
@@ -790,7 +790,7 @@ fn entity_model_sources_project_equine_pose_animations_from_flags() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 68,
-        values: vec![protocol_byte_data(ABSTRACT_HORSE_FLAGS_DATA_ID, 0)],
+        values: vec![protocol_byte_data(accessors.flags_data_id, 0)],
     }));
     store.advance_entity_client_animations(1);
     assert_close(pose(&store, 1.0).1, 0.17374, "stand cubic falloff");

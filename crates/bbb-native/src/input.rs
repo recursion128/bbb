@@ -73,7 +73,7 @@ use bbb_protocol::{
     PROTOCOL_VERSION,
 };
 use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
-use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_abstract_horse_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
@@ -147,9 +147,6 @@ use bbb_world::{
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos, EntityState,
     EntityVec3, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
     VanillaArmorStandMetadataAccessors, VanillaFireworkRocketMetadataAccessors, WorldStore,
-    VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
-    VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
-    VANILLA_ABSTRACT_HORSE_FLAG_TAME as ABSTRACT_HORSE_FLAG_TAME,
     VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
     VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
@@ -6861,25 +6858,23 @@ fn debug_push_animal_additional_save_data(_fields: &mut Vec<String>) {}
 fn debug_push_allay_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_abstract_horse_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let Some((flags_data_id, _)) =
-        vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type(
-            entity.entity_type_id,
-        )
+    let Some(accessors) =
+        vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity.entity_type_id)
     else {
         return;
     };
-    if let Some(flags) = debug_entity_data_byte_present(entity, flags_data_id) {
+    if let Some(flags) = debug_entity_data_byte_present(entity, accessors.flags_data_id) {
         fields.push(format!(
             "EatingHaystack: {}",
-            debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_EATING != 0)
+            debug_snbt_bool(flags & accessors.eating_mask != 0)
         ));
         fields.push(format!(
             "Bred: {}",
-            debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_BRED != 0)
+            debug_snbt_bool(flags & accessors.bred_mask != 0)
         ));
         fields.push(format!(
             "Tame: {}",
-            debug_snbt_bool(flags & ABSTRACT_HORSE_FLAG_TAME != 0)
+            debug_snbt_bool(flags & accessors.tame_mask != 0)
         ));
     }
 }

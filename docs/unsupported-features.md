@@ -295,9 +295,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   remain derived together from generated `UNHAPPY_COUNTER`, `SNEEZE_COUNTER`, `EAT_COUNTER`,
   `MAIN_GENE_ID`, `HIDDEN_GENE_ID`, `DATA_ID_FLAGS` and `FLAG_*`; world/native consumers and
   fixtures must not restore fixed accessor/default aliases or hand-copied flag masks.
-  AbstractHorse pose/tame/debug membership, wire index and default must remain derived from
-  generated `AbstractHorse.DATA_ID_FLAGS`; animation, mount inventory and native debug consumers
-  must not restore fixed accessor aliases.
+  AbstractHorse pose/tame/bred/debug membership, wire index, typed default and five named masks must
+  remain derived together from generated `AbstractHorse.DATA_ID_FLAGS` and `FLAG_*`; animation,
+  mount inventory, native debug and their fixtures must not restore fixed accessor/default aliases
+  or hand-copied flag masks.
   TamableAnimal sitting/tame membership, inherited wire index and default must remain derived from
   generated `TamableAnimal.DATA_FLAGS_ID`; world/native presentation, mount inventory and native
   debug consumers must not restore fixed accessor aliases.
