@@ -24028,6 +24028,7 @@ mod generated_catalog_guards {
         let store = include_str!("../store.rs");
         let input = include_str!("../../../../bbb-native/src/input.rs");
         let combat_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let mob_debug = input
             .split("fn debug_push_mob_additional_save_data")
             .nth(1)
@@ -24037,7 +24038,7 @@ mod generated_catalog_guards {
                     .next()
             })
             .expect("Mob debug projection source");
-        for source in [store, mob_debug, combat_tests] {
+        for source in [store, mob_debug, combat_tests, native_scene_tests] {
             assert!(source.contains("vanilla_entity_metadata_mob_accessors_for_entity_type"));
             for removed in [
                 "VANILLA_MOB_FLAGS_DATA_ID",

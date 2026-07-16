@@ -18064,3 +18064,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   left-handed/aggressive bit 同步改读 generated named masks。
 - ArmorStand/Boat 的 data-id 碰撞负例保留为显式 Mob payload 注入；Mob reverse guard 纳入整份
   combat-state fixture，renderer extractor、direct item-in-hand layer 与非消费类型回归保持不变。
+
+## 2026-07-16：统一 native entity-scene Mob aggressive fixtures
+
+- entity-scene tests 新增按实际 entity type 查询 `VanillaMobMetadataAccessors`、校验默认值并
+  使用 generated aggressive mask 构造 metadata 的 helper；Zombie/Pillager/Evoker/Drowned、
+  Piglin/Brute/ZombifiedPiglin 五项测试删除 12 处固定 Mob wire id/mask。
+- Mob reverse guard 纳入整份 native scene tests；held-out arm、Illager attacking、Drowned
+  trident、Piglin melee/dancing/admiring precedence 回归保持不变。

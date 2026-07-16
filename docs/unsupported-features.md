@@ -157,7 +157,7 @@ Owner: `scripts/` + each generated catalog's semantic crate
   native companion-animal model-kind, native Cat registry-order, native mount model-kind, and native
   input debug-save fixtures and production AgeableMob save projection, world mount-inventory fixture
   and production visibility projection, world animal audio fixture coverage, and native entity-scene
-  production model projection, and world combat-state Mob flag fixtures, plus
+  production model/baby and Mob aggressive fixtures, and world combat-state Mob flag fixtures, plus
   pose/shared-base fixtures outside
   movement/swim, combat-state, player-sleeping,
   creature pick-bounds projection, transient Breeze animation, aquatic Frog walk animation,

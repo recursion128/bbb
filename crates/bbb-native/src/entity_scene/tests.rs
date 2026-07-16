@@ -64,6 +64,14 @@ fn baby_data(entity_type_id: i32, is_baby: bool) -> EntityDataValue {
     protocol_bool_data(data_id, is_baby)
 }
 
+fn mob_aggressive_data(entity_type_id: i32) -> EntityDataValue {
+    let accessors =
+        bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
+            .expect("generated inherited Mob metadata accessors must resolve");
+    assert_eq!(accessors.flags_default, 0);
+    protocol_byte_data(accessors.flags_data_id, accessors.aggressive_mask)
+}
+
 fn llama_variant_data(entity_type_id: i32, variant: i32) -> EntityDataValue {
     let accessors = vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id)
         .expect("generated Llama metadata accessors must resolve");
@@ -1953,10 +1961,6 @@ fn entity_model_instance_projects_boat_underwater_from_source() {
 
 #[test]
 fn entity_model_instances_project_aggressive_for_zombie_family() {
-    // Vanilla Mob.DATA_MOB_FLAGS_ID (15) and the aggressive bit (4).
-    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
-    const MOB_FLAG_AGGRESSIVE: i8 = 4;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         90,
@@ -1976,14 +1980,11 @@ fn entity_model_instances_project_aggressive_for_zombie_family() {
     // A calm zombie projects is_aggressive = false.
     assert!(!aggressive(&world, 90));
 
-    // Setting Mob.isAggressive (DATA_MOB_FLAGS_ID & 4) projects through to the held-out
+    // Setting Mob.isAggressive through the generated accessor/mask projects through to the held-out
     // arm render state.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 90,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_AGGRESSIVE,
-        )],
+        values: vec![mob_aggressive_data(VANILLA_ENTITY_TYPE_ZOMBIE_ID)],
     }));
     assert!(aggressive(&world, 90));
 }
@@ -1993,9 +1994,6 @@ fn entity_model_instances_project_aggressive_for_pillager_attacking_pose() {
     // Vanilla `Pillager.getArmPose`: after crossbow charge/hold checks, an aggressive pillager returns
     // `ATTACKING`. Shared `IllagerRenderer.extractRenderState` still copies `isAggressive` for the
     // evoker, although the evoker arm-pose resolver ignores that field.
-    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
-    const MOB_FLAG_AGGRESSIVE: i8 = 4;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         91,
@@ -2020,19 +2018,13 @@ fn entity_model_instances_project_aggressive_for_pillager_attacking_pose() {
     assert!(!aggressive(&world, 91));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 91,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_AGGRESSIVE,
-        )],
+        values: vec![mob_aggressive_data(VANILLA_ENTITY_TYPE_PILLAGER_ID)],
     }));
     assert!(aggressive(&world, 91));
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 92,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_AGGRESSIVE,
-        )],
+        values: vec![mob_aggressive_data(VANILLA_ENTITY_TYPE_EVOKER_ID)],
     }));
     assert!(aggressive(&world, 92));
 }
@@ -2608,9 +2600,6 @@ fn entity_model_instances_drowned_throw_trident_needs_a_resolved_held_item() {
     // The THROW_TRIDENT pose needs the held item resolved through the item registry to confirm a
     // trident; without an item runtime it can never raise the trident, so the projection defaults off
     // even for an aggressive drowned.
-    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
-    const MOB_FLAG_AGGRESSIVE: i8 = 4;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         230,
@@ -2620,10 +2609,7 @@ fn entity_model_instances_drowned_throw_trident_needs_a_resolved_held_item() {
     // Aggressive (so only the missing item runtime, not the flag, gates the pose off).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 230,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_AGGRESSIVE
-        )],
+        values: vec![mob_aggressive_data(VANILLA_ENTITY_TYPE_DROWNED_ID)],
     }));
     let throwing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
         .into_iter()
@@ -4188,11 +4174,9 @@ fn entity_model_instances_project_player_off_hand_item_pose() {
 #[test]
 fn entity_model_instances_project_piglin_melee_attack_pose() {
     // Vanilla Piglin/PiglinBrute.getArmPose ATTACKING_WITH_MELEE_WEAPON: aggressive (Mob.isAggressive,
-    // DATA_MOB_FLAGS_ID 15 bit 4) AND isHoldingMeleeWeapon (main-hand item with DataComponents.TOOL,
-    // wire type 28). Gated to the regular piglin + brute (the zombified piglin uses its renderer
-    // zombie-arm pose); the regular piglin is also suppressed while DANCING (higher priority).
-    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
-    const MOB_FLAG_AGGRESSIVE: i8 = 4;
+    // resolved through the generated Mob accessor/mask) AND isHoldingMeleeWeapon (main-hand item with
+    // DataComponents.TOOL, wire type 28). Gated to the regular piglin + brute (the zombified piglin
+    // uses its renderer zombie-arm pose); the regular piglin is also suppressed while DANCING.
     // Any item id resolves the same way — only the TOOL component drives the pose, not the item type.
     const MELEE_ITEM_ID: i32 = 700;
 
@@ -4211,12 +4195,9 @@ fn entity_model_instances_project_piglin_melee_attack_pose() {
             },
         }],
     };
-    let set_aggressive = |id: i32| SetEntityData {
+    let set_aggressive = |id: i32, entity_type_id: i32| SetEntityData {
         id,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_AGGRESSIVE,
-        )],
+        values: vec![mob_aggressive_data(entity_type_id)],
     };
     let attacking = |world: &WorldStore, id: i32| {
         entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
@@ -4236,7 +4217,7 @@ fn entity_model_instances_project_piglin_melee_attack_pose() {
     ] {
         world.apply_add_entity(protocol_add_entity(id, type_id, [1.0, 64.0, -6.0]));
         assert!(world.apply_set_equipment(tool_main_hand(id)));
-        assert!(world.apply_set_entity_data(set_aggressive(id)));
+        assert!(world.apply_set_entity_data(set_aggressive(id, type_id)));
     }
     // The piglin and the brute raise/swing the melee weapon; the zombified piglin uses zombie arms.
     assert!(attacking(&world, 210));
@@ -4249,7 +4230,7 @@ fn entity_model_instances_project_piglin_melee_attack_pose() {
         VANILLA_ENTITY_TYPE_PIGLIN_ID,
         [2.0, 64.0, -6.0],
     ));
-    assert!(world.apply_set_entity_data(set_aggressive(213)));
+    assert!(world.apply_set_entity_data(set_aggressive(213, VANILLA_ENTITY_TYPE_PIGLIN_ID,)));
     assert!(!attacking(&world, 213));
 
     // A non-aggressive piglin holding a tool does not attack.
@@ -4271,7 +4252,7 @@ fn entity_model_instances_project_piglin_melee_attack_pose() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 215,
         values: vec![
-            protocol_byte_data(VANILLA_MOB_FLAGS_DATA_ID, MOB_FLAG_AGGRESSIVE),
+            mob_aggressive_data(VANILLA_ENTITY_TYPE_PIGLIN_ID),
             protocol_bool_data(piglin_dancing_data_id(), true),
         ],
     }));
@@ -4283,8 +4264,6 @@ fn entity_model_instances_project_piglin_admiring_a_loved_offhand_item() {
     // Vanilla Piglin.getArmPose ADMIRING_ITEM = PiglinAi.isLovedItem(getOffhandItem()) =
     // offhand.is(ItemTags.PIGLIN_LOVED). Gated to the regular piglin (the brute has no admire branch);
     // higher priority than ATTACKING/CROSSBOW (suppresses them), below DANCING.
-    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
-    const MOB_FLAG_AGGRESSIVE: i8 = 4;
     const LOVED_ITEM_ID: i32 = 800; // stand-in for a `minecraft:piglin_loved` item (e.g. gold_ingot).
     const PLAIN_ITEM_ID: i32 = 801; // not in the tag.
     const TOOL_ITEM_ID: i32 = 802; // a melee weapon (TOOL component) for the suppression check.
@@ -4379,10 +4358,7 @@ fn entity_model_instances_project_piglin_admiring_a_loved_offhand_item() {
     assert!(world.apply_set_equipment(equip(224, EquipmentSlot::OffHand, LOVED_ITEM_ID, false)));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 224,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_AGGRESSIVE
-        )],
+        values: vec![mob_aggressive_data(VANILLA_ENTITY_TYPE_PIGLIN_ID)],
     }));
     let attacking_224 = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
         .into_iter()
