@@ -303,9 +303,8 @@ const MANNEQUIN_DEFAULT_MODEL_CUSTOMIZATION: i8 = PlayerModelPartVisibility::ALL
 /// Vanilla `Raider.IS_CELEBRATING` data id (16): the boolean set while a raider celebrates a raid
 /// victory, the first `Raider` accessor after `Mob.DATA_MOB_FLAGS_ID` (15). The evoker and vindicator
 /// `getArmPose` return `CELEBRATING` while it is true (when not casting / not aggressive).
-// Vanilla Shulker.DATA_COLOR_ID (18, BYTE): after Mob.DATA_MOB_FLAGS_ID (15) and the two `Shulker`
-// accessors DATA_ATTACH_FACE_ID (16) / DATA_PEEK_ID (17). `getColor()` returns the dye for 0..=15
-// and `null` (the default, byte 16) otherwise.
+// Vanilla Shulker.DATA_COLOR_ID (BYTE): `getColor()` returns the dye for 0..=15
+// and `null` for the generated default otherwise.
 /// Vanilla `Camel.SITDOWN_DURATION_TICKS` (40 ticks = 2.0 s `CAMEL_SIT`): the sit-down
 /// window, after which `CAMEL_SIT_POSE` takes over.
 const CAMEL_SITDOWN_DURATION_TICKS: i64 = 40;

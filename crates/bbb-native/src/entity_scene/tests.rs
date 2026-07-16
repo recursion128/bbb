@@ -22,7 +22,6 @@ use bbb_world::{
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
-    VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID, VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
     VANILLA_TROPICAL_FISH_VARIANT_DATA_ID as TROPICAL_FISH_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
@@ -63,6 +62,11 @@ fn creeper_metadata_accessors() -> bbb_world::VanillaCreeperMetadataAccessors {
         VANILLA_ENTITY_TYPE_CREEPER_ID,
     )
     .expect("generated Creeper metadata accessors must resolve")
+}
+
+fn shulker_metadata_accessors() -> bbb_world::VanillaShulkerMetadataAccessors {
+    vanilla_entity_metadata_shulker_accessors_for_entity_type(VANILLA_ENTITY_TYPE_SHULKER_ID)
+        .expect("generated Shulker metadata accessors must resolve")
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -1030,11 +1034,10 @@ fn entity_model_instances_project_polar_bear_standing_scale() {
 
 #[test]
 fn entity_model_instances_project_shulker_peek() {
-    // Vanilla Shulker.DATA_PEEK_ID (17, BYTE), a 0..=100 percentage; the client peek state
+    let accessors = shulker_metadata_accessors();
+    // Vanilla Shulker.DATA_PEEK_ID (BYTE), a 0..=100 percentage; the client peek state
     // advances 0.05/tick toward raw·0.01 and the render state reads the partial-tick lerp
     // `Shulker.getClientPeekAmount` (`Mth.lerp(partialTick, currentPeekAmountO, current)`).
-    const VANILLA_SHULKER_PEEK_DATA_ID: u8 = 17;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         82,
@@ -1064,7 +1067,7 @@ fn entity_model_instances_project_shulker_peek() {
     // 0.05 from 0. At partial-tick 0.5 the render state lerps `0 + 0.5·(0.05 − 0) = 0.025`.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 82,
-        values: vec![protocol_byte_data(VANILLA_SHULKER_PEEK_DATA_ID, 100)],
+        values: vec![protocol_byte_data(accessors.peek_data_id, 100)],
     }));
     world.advance_entity_client_animations(1);
     assert!((peek(&world, 82, 0.5) - 0.025).abs() < 1.0e-6);
@@ -1074,9 +1077,9 @@ fn entity_model_instances_project_shulker_peek() {
 
 #[test]
 fn entity_model_instances_project_shulker_attach_face() {
-    // Vanilla Shulker.DATA_ATTACH_FACE_ID (16, DIRECTION) feeds
+    let accessors = shulker_metadata_accessors();
+    // Vanilla Shulker.DATA_ATTACH_FACE_ID (DIRECTION) feeds
     // `ShulkerRenderState.attachFace`, whose default is `Direction.DOWN`.
-    const VANILLA_SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
     const DIRECTION_NORTH: i32 = 2;
     const DIRECTION_NEGATIVE_ONE: i32 = -1;
 
@@ -1107,7 +1110,7 @@ fn entity_model_instances_project_shulker_attach_face() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 82,
         values: vec![protocol_direction_data(
-            VANILLA_SHULKER_ATTACH_FACE_DATA_ID,
+            accessors.attach_face_data_id,
             DIRECTION_NORTH,
         )],
     }));
@@ -1117,7 +1120,7 @@ fn entity_model_instances_project_shulker_attach_face() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 82,
         values: vec![protocol_direction_data(
-            VANILLA_SHULKER_ATTACH_FACE_DATA_ID,
+            accessors.attach_face_data_id,
             DIRECTION_NEGATIVE_ONE,
         )],
     }));
@@ -9156,19 +9159,23 @@ fn entity_model_kind_maps_parrot_to_real_model() {
 
 #[test]
 fn entity_model_kind_maps_shulker_to_real_model() {
+    let accessors = shulker_metadata_accessors();
     // The shulker resolves to the real `ShulkerModel` at its closed rest pose, textured by the
-    // dye colour read from `DATA_COLOR_ID` (18). With no synced colour it defaults to the
+    // dye colour read from `DATA_COLOR_ID`. With no synced colour it defaults to the
     // uncolored texture (`None`). The peek open/close, head look, and attach-face rotation stay
     // deferred entity-side state.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_SHULKER_ID, &[]),
         EntityModelKind::Shulker { color: None }
     );
-    // Byte 16 (the vanilla default) is the uncolored shulker; 0..=15 select a dye.
+    // The generated vanilla default is the uncolored shulker; 0..=15 select a dye.
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SHULKER_ID,
-            &[protocol_byte_data(SHULKER_COLOR_DATA_ID, 16)]
+            &[protocol_byte_data(
+                accessors.color_data_id,
+                accessors.color_default,
+            )]
         ),
         EntityModelKind::Shulker { color: None }
     );
@@ -9181,7 +9188,7 @@ fn entity_model_kind_maps_shulker_to_real_model() {
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_SHULKER_ID,
-                &[protocol_byte_data(SHULKER_COLOR_DATA_ID, id)]
+                &[protocol_byte_data(accessors.color_data_id, id)]
             ),
             EntityModelKind::Shulker { color: Some(color) }
         );

@@ -81,12 +81,6 @@ const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
 pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
 const GENERATED_VANILLA_SLIME_SIZE_DATA_ID: u8 = 16;
 pub const VANILLA_SLIME_SIZE_DATA_ID: u8 = GENERATED_VANILLA_SLIME_SIZE_DATA_ID;
-const GENERATED_VANILLA_SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
-pub const VANILLA_SHULKER_ATTACH_FACE_DATA_ID: u8 = GENERATED_VANILLA_SHULKER_ATTACH_FACE_DATA_ID;
-const GENERATED_VANILLA_SHULKER_PEEK_DATA_ID: u8 = 17;
-pub const VANILLA_SHULKER_PEEK_DATA_ID: u8 = GENERATED_VANILLA_SHULKER_PEEK_DATA_ID;
-const GENERATED_VANILLA_SHULKER_COLOR_DATA_ID: u8 = 18;
-pub const VANILLA_SHULKER_COLOR_DATA_ID: u8 = GENERATED_VANILLA_SHULKER_COLOR_DATA_ID;
 const GENERATED_VANILLA_ZOMBIE_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_ZOMBIE_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOMBIE_BABY_DATA_ID;
 const GENERATED_VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID: u8 = 17;
@@ -709,13 +703,6 @@ pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 =
     GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION;
 const GENERATED_VANILLA_SLIME_DEFAULT_SIZE: i32 = 1;
 pub const VANILLA_SLIME_DEFAULT_SIZE: i32 = GENERATED_VANILLA_SLIME_DEFAULT_SIZE;
-const GENERATED_VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID: i32 = 0;
-pub const VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID: i32 =
-    GENERATED_VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID;
-const GENERATED_VANILLA_SHULKER_DEFAULT_PEEK: i8 = 0;
-pub const VANILLA_SHULKER_DEFAULT_PEEK: i8 = GENERATED_VANILLA_SHULKER_DEFAULT_PEEK;
-const GENERATED_VANILLA_SHULKER_DEFAULT_COLOR: i8 = 16;
-pub const VANILLA_SHULKER_DEFAULT_COLOR: i8 = GENERATED_VANILLA_SHULKER_DEFAULT_COLOR;
 const GENERATED_VANILLA_ZOMBIE_DEFAULT_BABY: bool = false;
 pub const VANILLA_ZOMBIE_DEFAULT_BABY: bool = GENERATED_VANILLA_ZOMBIE_DEFAULT_BABY;
 const GENERATED_VANILLA_ZOMBIE_DEFAULT_SPECIAL_TYPE: i32 = 0;
@@ -23730,20 +23717,28 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_shulker_accessors_do_not_restore_fixed_metadata_facts() {
+    fn shulker_consumers_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
         let dimensions = include_str!("../dimensions.rs");
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests.rs");
+        let world_bounds_tests =
+            include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         for source in [
             animations,
             dimensions,
             store,
+            world_tests,
             native_scene,
             native_variants,
+            native_scene_tests,
             native_input,
+            native_input_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_shulker_accessors_for_entity_type"));
         }
@@ -23755,28 +23750,25 @@ mod generated_catalog_guards {
             "SHULKER_DEFAULT_PEEK",
             "SHULKER_COLOR_DATA_ID",
             "SHULKER_DEFAULT_COLOR",
+            "SHULKER_TYPE_ID",
         ] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
-            assert!(
-                !dimensions.contains(removed),
-                "dimensions restored {removed}"
-            );
-            assert!(!store.contains(removed), "store restored {removed}");
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                animations,
+                dimensions,
+                store,
+                world_tests,
+                world_bounds_tests,
+                native_scene,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Shulker projection restored {removed}"
+                );
+            }
         }
     }
 

@@ -4096,7 +4096,6 @@ mod tests {
         }
 
         assert_eq!(VANILLA_SLIME_SIZE_DATA_ID, 16);
-        assert_eq!(VANILLA_SHULKER_ATTACH_FACE_DATA_ID, 16);
     }
 
     #[test]
@@ -6413,17 +6412,43 @@ mod tests {
 
     #[test]
     fn generated_shulker_accessors_own_membership_indices_and_defaults() {
+        let shulker_schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Shulker);
+        let attach_face = shulker_schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_ATTACH_FACE_ID")
+            .expect("generated Shulker attach-face field");
+        let peek = shulker_schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_PEEK_ID")
+            .expect("generated Shulker peek field");
+        let color = shulker_schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_COLOR_ID")
+            .expect("generated Shulker color field");
+        let VanillaEntityMetadataDefault::Direction(attach_face_default) = attach_face.default
+        else {
+            panic!("generated Shulker attach-face default must be direction")
+        };
+        let VanillaEntityMetadataDefault::Byte(peek_default) = peek.default else {
+            panic!("generated Shulker peek default must be byte")
+        };
+        let VanillaEntityMetadataDefault::Byte(color_default) = color.default else {
+            panic!("generated Shulker color default must be byte")
+        };
         assert_eq!(
             vanilla_entity_metadata_shulker_accessors_for_entity_type(
                 VANILLA_ENTITY_TYPE_SHULKER_ID
             ),
             Some(VanillaShulkerMetadataAccessors {
-                attach_face_data_id: 16,
-                attach_face_default: 0,
-                peek_data_id: 17,
-                peek_default: 0,
-                color_data_id: 18,
-                color_default: 16,
+                attach_face_data_id: attach_face.data_id,
+                attach_face_default,
+                peek_data_id: peek.data_id,
+                peek_default,
+                color_data_id: color.data_id,
+                color_default,
             })
         );
         assert_eq!(
@@ -8760,7 +8785,6 @@ mod tests {
             VANILLA_ARMOR_STAND_DEFAULT_LEFT_ARM_POSE,
             [-10.0, 0.0, -10.0]
         );
-        assert_eq!(VANILLA_SHULKER_DEFAULT_ATTACH_FACE_ID, 0);
         assert_eq!(VANILLA_HANGING_ENTITY_DEFAULT_DIRECTION_ID, 3);
     }
 }

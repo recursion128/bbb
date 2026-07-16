@@ -707,7 +707,10 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
 #[test]
 fn shulker_pick_bounds_follow_attach_face_and_peek_metadata() {
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(82, SHULKER_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        82,
+        VANILLA_ENTITY_TYPE_SHULKER_ID,
+    ));
 
     assert_pick_bounds_close(
         store.probe_entity_pick_bounds(82),
@@ -740,7 +743,10 @@ fn shulker_pick_bounds_follow_attach_face_and_peek_metadata() {
         (86, DIRECTION_WEST),
         (87, DIRECTION_EAST),
     ] {
-        store.apply_add_entity(protocol_add_entity_with_type(id, SHULKER_TYPE_ID));
+        store.apply_add_entity(protocol_add_entity_with_type(
+            id,
+            VANILLA_ENTITY_TYPE_SHULKER_ID,
+        ));
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,
             values: vec![
@@ -756,7 +762,10 @@ fn shulker_pick_bounds_follow_attach_face_and_peek_metadata() {
     }
 
     // Vanilla `Direction.BY_ID` uses positive-modulo wrap, so -1 wraps to EAST.
-    store.apply_add_entity(protocol_add_entity_with_type(88, SHULKER_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        88,
+        VANILLA_ENTITY_TYPE_SHULKER_ID,
+    ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 88,
         values: vec![shulker_attach_face_data(-1), shulker_peek_data(100)],
@@ -771,7 +780,10 @@ fn shulker_pick_bounds_follow_attach_face_and_peek_metadata() {
 #[test]
 fn shulker_peek_pick_bounds_advance_toward_metadata_target() {
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(88, SHULKER_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        88,
+        VANILLA_ENTITY_TYPE_SHULKER_ID,
+    ));
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 88,
@@ -829,7 +841,10 @@ fn shulker_pick_bounds_apply_vanilla_scale_cap() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
 
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(89, SHULKER_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        89,
+        VANILLA_ENTITY_TYPE_SHULKER_ID,
+    ));
 
     assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
         entity_id: 89,

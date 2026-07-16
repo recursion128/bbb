@@ -17270,3 +17270,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   moving/attack-target typed bundle，不再维护固定 wire index aliases。
 - schema expected bundle 改由 generated Guardian family schema 组装；generator 反向守卫扩展到 world
   production consumers 与语义 fixtures，既有水中动画和 beam target 行为保持不变。
+
+## 2026-07-16：统一 Shulker metadata accessor 消费
+
+- world bounds/animation fixtures 与 native model/F3+I fixtures 统一按 Shulker entity type 解析
+  attach-face/peek/color typed bundle，移除固定 wire index aliases 与测试裸 entity type id。
+- 删除 `bbb-world` 的六个 Shulker 固定 metadata 兼容常量；schema 期望直接由 generated
+  Shulker family schema 组装，generator 反向守卫覆盖 production 和 world/native fixtures。

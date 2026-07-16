@@ -69,9 +69,6 @@ fn minecart_step(
     }
 }
 
-const SHULKER_TYPE_ID: i32 = 112;
-const SHULKER_ATTACH_FACE_DATA_ID: u8 = 16;
-const SHULKER_PEEK_DATA_ID: u8 = 17;
 const DIRECTION_DOWN: i32 = 0;
 const DIRECTION_UP: i32 = 1;
 const DIRECTION_NORTH: i32 = 2;
@@ -137,17 +134,24 @@ fn wind_charge_pick_bounds() -> EntityPickBoundsState {
     }
 }
 
+fn shulker_metadata_accessors() -> VanillaShulkerMetadataAccessors {
+    vanilla_entity_metadata_shulker_accessors_for_entity_type(VANILLA_ENTITY_TYPE_SHULKER_ID)
+        .expect("generated Shulker metadata accessors must resolve")
+}
+
 fn shulker_attach_face_data(direction_id: i32) -> ProtocolEntityDataValue {
+    let accessors = shulker_metadata_accessors();
     ProtocolEntityDataValue {
-        data_id: SHULKER_ATTACH_FACE_DATA_ID,
+        data_id: accessors.attach_face_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
         value: EntityDataValueKind::Direction(direction_id),
     }
 }
 
 fn shulker_peek_data(raw_peek: i8) -> ProtocolEntityDataValue {
+    let accessors = shulker_metadata_accessors();
     ProtocolEntityDataValue {
-        data_id: SHULKER_PEEK_DATA_ID,
+        data_id: accessors.peek_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(raw_peek),
     }

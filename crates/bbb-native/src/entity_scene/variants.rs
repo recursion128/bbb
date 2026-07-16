@@ -68,9 +68,9 @@ pub(super) fn rabbit_model_kind(
     }
 }
 
-/// Vanilla `Shulker.getColor()` reads `DATA_COLOR_ID` (18, byte): `0..=15` map to the dye,
-/// everything else (the default byte 16) is `null`, which `ShulkerRenderer.getTextureLocation`
-/// renders with the uncolored `shulker.png`.
+/// Vanilla `Shulker.getColor()` reads byte `DATA_COLOR_ID`: `0..=15` map to the dye,
+/// everything else (including the generated default) is `null`, which
+/// `ShulkerRenderer.getTextureLocation` renders with the uncolored `shulker.png`.
 pub(super) fn shulker_model_kind(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],

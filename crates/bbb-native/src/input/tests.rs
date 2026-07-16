@@ -125,9 +125,6 @@ use bbb_world::{
     VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
     VANILLA_RABBIT_TYPE_DATA_ID as RABBIT_TYPE_DATA_ID,
     VANILLA_SHEEP_WOOL_DATA_ID as SHEEP_WOOL_DATA_ID,
-    VANILLA_SHULKER_ATTACH_FACE_DATA_ID as SHULKER_ATTACH_FACE_DATA_ID,
-    VANILLA_SHULKER_COLOR_DATA_ID as SHULKER_COLOR_DATA_ID,
-    VANILLA_SHULKER_PEEK_DATA_ID as SHULKER_PEEK_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID as SNOW_GOLEM_PUMPKIN_DATA_ID,
 };
 use std::{
@@ -157,6 +154,12 @@ fn tamable_animal_flags_data(
         value: EntityDataValueKind::Byte(flags),
     }
 }
+
+fn shulker_metadata_accessors() -> bbb_world::VanillaShulkerMetadataAccessors {
+    vanilla_entity_metadata_shulker_accessors_for_entity_type(VANILLA_ENTITY_TYPE_SHULKER_ID)
+        .expect("generated Shulker metadata accessors must resolve")
+}
+
 const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 
 fn abstract_horse_metadata_accessors(
@@ -3313,6 +3316,7 @@ fn shift_f3_i_with_permission_copies_local_creaking_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
+    let accessors = shulker_metadata_accessors();
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -3340,17 +3344,17 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: SHULKER_ATTACH_FACE_DATA_ID,
+                data_id: accessors.attach_face_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
                 value: EntityDataValueKind::Direction(5),
             },
             ProtocolEntityDataValue {
-                data_id: SHULKER_PEEK_DATA_ID,
+                data_id: accessors.peek_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(30),
             },
             ProtocolEntityDataValue {
-                data_id: SHULKER_COLOR_DATA_ID,
+                data_id: accessors.color_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(11),
             },
