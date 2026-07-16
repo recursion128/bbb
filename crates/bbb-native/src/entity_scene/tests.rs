@@ -8949,7 +8949,7 @@ fn entity_model_kind_uses_exact_models_for_goats() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_GOAT_ID,
             &[
-                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                baby_data(VANILLA_ENTITY_TYPE_GOAT_ID, true),
                 protocol_bool_data(GOAT_LEFT_HORN_DATA_ID, false),
                 protocol_bool_data(GOAT_RIGHT_HORN_DATA_ID, true),
             ]
@@ -8988,7 +8988,7 @@ fn entity_model_kind_uses_exact_models_for_hoglins_and_zoglins() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_HOGLIN_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_HOGLIN_ID, true)]
         ),
         EntityModelKind::Hoglin {
             family: HoglinModelFamily::Hoglin,
@@ -9005,7 +9005,7 @@ fn entity_model_kind_uses_exact_models_for_hoglins_and_zoglins() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ZOGLIN_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_ZOGLIN_ID, true)]
         ),
         EntityModelKind::Hoglin {
             family: HoglinModelFamily::Zoglin,
@@ -9035,7 +9035,7 @@ fn entity_model_kind_maps_sniffer_to_real_model() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_SNIFFER_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_SNIFFER_ID, true)]
         ),
         EntityModelKind::Sniffer { baby: true }
     );
@@ -9071,7 +9071,7 @@ fn entity_model_kind_projects_armadillo_baby_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ARMADILLO_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_ARMADILLO_ID, true)]
         ),
         EntityModelKind::Armadillo {
             baby: true,
@@ -9118,7 +9118,7 @@ fn entity_model_kind_projects_armadillo_rolled_up_from_state() {
         entity_model_kind(
             VANILLA_ENTITY_TYPE_ARMADILLO_ID,
             &[
-                protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true),
+                baby_data(VANILLA_ENTITY_TYPE_ARMADILLO_ID, true),
                 protocol_armadillo_state_data(ARMADILLO_STATE_SCARED_ID),
             ]
         ),
@@ -9146,7 +9146,7 @@ fn entity_model_kind_projects_axolotl_baby_from_data() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_AXOLOTL_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_AXOLOTL_ID, true)]
         ),
         EntityModelKind::Axolotl {
             baby: true,

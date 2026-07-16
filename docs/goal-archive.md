@@ -17924,3 +17924,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   nearest-baby helper。
 - baby reverse guard 精确覆盖这段连续 fixtures；adult/baby model、Strider cold、Squid glow、
   farm variant 与 Sheep wool metadata 投影回归保持不变。
+
+## 2026-07-16：统一 native specialized-animal baby fixtures
+
+- Goat、Hoglin、Zoglin、Sniffer、Armadillo 与 Axolotl 的 model-kind fixtures 共删除 7 处
+  全局 AgeableMob baby alias，按每次调用的实际 entity type 查询 generated nearest-baby helper。
+- baby reverse guard 精确覆盖这段连续 fixtures；horn、family、roll state、variant 与 adult/baby
+  model 组合投影回归保持不变。
