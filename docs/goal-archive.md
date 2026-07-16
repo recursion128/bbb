@@ -18160,3 +18160,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   accessor 构造 fueled metadata，删除固定 wire id。
 - minecart display reverse guard 纳入完整 vehicle/block-entity tests，禁止 fuel accessor/default
   alias 回流；lit furnace block-state 语义回归保持不变。
+
+## 2026-07-16：统一 EndCrystal metadata fixtures
+
+- world beam、native entity-scene 与 F3+I fixtures 统一通过 generated EndCrystal bundle 构造
+  optional beam target/show-bottom metadata，删除 entity-scene/input 的 test-only 固定 id re-export。
+- Bat 同 id 负例改为显式 collision helper；reverse guard 覆盖三份 fixtures 与两个 native
+  facade，锁定 membership、wire indices 和 show-bottom default，nearest-crystal 逻辑保持独立。

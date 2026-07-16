@@ -23,6 +23,26 @@ fn guardian_metadata_accessors() -> VanillaGuardianMetadataAccessors {
         .expect("generated Guardian metadata accessors must resolve")
 }
 
+fn end_crystal_beam_target_data(target: Option<ProtocolBlockPos>) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_end_crystal_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    )
+    .expect("generated EndCrystal metadata accessors must resolve");
+    assert!(accessors.show_bottom_default);
+    ProtocolEntityDataValue {
+        data_id: accessors.beam_target_data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
+        value: EntityDataValueKind::OptionalBlockPos(target),
+    }
+}
+
+/// Deliberately sends the EndCrystal beam field to a Bat to cover data-id/type gating.
+fn end_crystal_beam_target_collision_data(
+    target: Option<ProtocolBlockPos>,
+) -> ProtocolEntityDataValue {
+    end_crystal_beam_target_data(target)
+}
+
 #[test]
 fn entity_model_sources_project_creeper_swelling_fuse() {
     let accessors = creeper_metadata_accessors();
@@ -574,11 +594,6 @@ fn entity_model_sources_project_end_crystal_beam_target() {
         y_head_rot: 0.0,
         data: 0,
     };
-    let beam_target = |target: Option<ProtocolBlockPos>| ProtocolEntityDataValue {
-        data_id: VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID,
-        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
-        value: EntityDataValueKind::OptionalBlockPos(target),
-    };
     let beam = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -595,7 +610,7 @@ fn entity_model_sources_project_end_crystal_beam_target() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 180,
-        values: vec![beam_target(Some(ProtocolBlockPos {
+        values: vec![end_crystal_beam_target_data(Some(ProtocolBlockPos {
             x: 14,
             y: 67,
             z: -10,
@@ -605,18 +620,20 @@ fn entity_model_sources_project_end_crystal_beam_target() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 180,
-        values: vec![beam_target(None)],
+        values: vec![end_crystal_beam_target_data(None)],
     }));
     assert!(beam(&store, 180).is_none());
 
     // The same data id on a non-crystal is ignored.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 181,
-        values: vec![beam_target(Some(ProtocolBlockPos {
-            x: 14,
-            y: 67,
-            z: -10,
-        }))],
+        values: vec![end_crystal_beam_target_collision_data(Some(
+            ProtocolBlockPos {
+                x: 14,
+                y: 67,
+                z: -10,
+            },
+        ))],
     }));
     assert!(beam(&store, 181).is_none());
 }

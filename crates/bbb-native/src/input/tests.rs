@@ -383,6 +383,19 @@ fn item_frame_metadata_accessors(
     accessors
 }
 
+fn end_crystal_metadata_accessors(
+    world: &WorldStore,
+    entity_id: i32,
+) -> bbb_world::VanillaEndCrystalMetadataAccessors {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("EndCrystal fixture entity must exist before metadata is constructed");
+    let accessors = vanilla_entity_metadata_end_crystal_accessors_for_entity_type(entity_type_id)
+        .expect("generated EndCrystal metadata accessors must resolve");
+    assert!(accessors.show_bottom_default);
+    accessors
+}
+
 fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
     let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
         .expect("generated nearest baby accessor must resolve");
@@ -8616,11 +8629,12 @@ fn shift_f3_i_with_permission_copies_local_end_crystal_save_nbt_to_clipboard() {
         y_head_rot: 0.0,
         data: 0,
     });
+    let end_crystal_accessors = end_crystal_metadata_accessors(&world, 50);
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: END_CRYSTAL_BEAM_TARGET_DATA_ID,
+                data_id: end_crystal_accessors.beam_target_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
                 value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
                     x: 1,
@@ -8629,7 +8643,7 @@ fn shift_f3_i_with_permission_copies_local_end_crystal_save_nbt_to_clipboard() {
                 })),
             },
             ProtocolEntityDataValue {
-                data_id: END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
+                data_id: end_crystal_accessors.show_bottom_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(false),
             },

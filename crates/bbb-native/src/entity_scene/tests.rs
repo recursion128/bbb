@@ -101,6 +101,32 @@ fn vex_flags_collision_data(flags: i8) -> EntityDataValue {
     vex_flags_data(flags)
 }
 
+fn end_crystal_metadata_accessors() -> bbb_world::VanillaEndCrystalMetadataAccessors {
+    bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    )
+    .expect("generated EndCrystal metadata accessors must resolve")
+}
+
+fn end_crystal_show_bottom_data(show_bottom: bool) -> EntityDataValue {
+    let accessors = end_crystal_metadata_accessors();
+    assert!(accessors.show_bottom_default);
+    protocol_bool_data(accessors.show_bottom_data_id, show_bottom)
+}
+
+fn end_crystal_beam_target_data(
+    target: Option<bbb_protocol::packets::BlockPos>,
+) -> EntityDataValue {
+    protocol_optional_block_pos_data(end_crystal_metadata_accessors().beam_target_data_id, target)
+}
+
+/// Deliberately sends the EndCrystal beam field to a Bat to cover data-id/type gating.
+fn end_crystal_beam_target_collision_data(
+    target: Option<bbb_protocol::packets::BlockPos>,
+) -> EntityDataValue {
+    end_crystal_beam_target_data(target)
+}
+
 fn mob_aggressive_data(entity_type_id: i32) -> EntityDataValue {
     let accessors =
         bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
@@ -4695,7 +4721,7 @@ fn entity_model_instances_project_turtle_laying_egg() {
 
 #[test]
 fn entity_model_instances_project_end_crystal_shows_bottom() {
-    // Vanilla EndCrystal.DATA_SHOW_BOTTOM (BOOLEAN id 9, default true) and
+    // Vanilla EndCrystal.DATA_SHOW_BOTTOM (BOOLEAN, default true) and
     // EndCrystalRenderState.showsBottom = entity.showsBottom().
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -4725,14 +4751,14 @@ fn entity_model_instances_project_end_crystal_shows_bottom() {
     // Clearing DATA_SHOW_BOTTOM hides the base slab.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 160,
-        values: vec![protocol_bool_data(END_CRYSTAL_SHOW_BOTTOM_DATA_ID, false)],
+        values: vec![end_crystal_show_bottom_data(false)],
     }));
     assert!(!shows_bottom(&world, 160));
 
     // Re-setting it shows the base again.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 160,
-        values: vec![protocol_bool_data(END_CRYSTAL_SHOW_BOTTOM_DATA_ID, true)],
+        values: vec![end_crystal_show_bottom_data(true)],
     }));
     assert!(shows_bottom(&world, 160));
 
@@ -4742,7 +4768,7 @@ fn entity_model_instances_project_end_crystal_shows_bottom() {
 
 #[test]
 fn entity_model_instances_project_end_crystal_beam_target() {
-    // Vanilla EndCrystal.DATA_BEAM_TARGET (OPTIONAL_BLOCK_POS id 8) projects as
+    // Vanilla EndCrystal.DATA_BEAM_TARGET (OPTIONAL_BLOCK_POS) projects as
     // EndCrystalRenderState.beamOffset = target block center - crystal position.
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -4769,36 +4795,31 @@ fn entity_model_instances_project_end_crystal_beam_target() {
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 162,
-        values: vec![protocol_optional_block_pos_data(
-            END_CRYSTAL_BEAM_TARGET_DATA_ID,
-            Some(bbb_protocol::packets::BlockPos {
+        values: vec![end_crystal_beam_target_data(Some(
+            bbb_protocol::packets::BlockPos {
                 x: 14,
                 y: 67,
                 z: -10,
-            }),
-        )],
+            },
+        ))],
     }));
     assert_eq!(beam(&world, 162).unwrap().beam_offset, [4.5, 3.5, -6.5]);
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 162,
-        values: vec![protocol_optional_block_pos_data(
-            END_CRYSTAL_BEAM_TARGET_DATA_ID,
-            None,
-        )],
+        values: vec![end_crystal_beam_target_data(None)],
     }));
     assert!(beam(&world, 162).is_none());
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 163,
-        values: vec![protocol_optional_block_pos_data(
-            END_CRYSTAL_BEAM_TARGET_DATA_ID,
-            Some(bbb_protocol::packets::BlockPos {
+        values: vec![end_crystal_beam_target_collision_data(Some(
+            bbb_protocol::packets::BlockPos {
                 x: 14,
                 y: 67,
                 z: -10,
-            }),
-        )],
+            },
+        ))],
     }));
     assert!(beam(&world, 163).is_none());
 }

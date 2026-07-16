@@ -199,8 +199,6 @@ pub(crate) mod text_edit;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
-#[cfg(test)]
-use crate::entity_scene::{END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_SHOW_BOTTOM_DATA_ID};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
 use bbb_protocol::potion_types::vanilla_potion;

@@ -21985,6 +21985,38 @@ mod generated_catalog_guards {
         assert!(!debug_body.contains("END_CRYSTAL_BEAM_TARGET_DATA_ID"));
         assert!(!debug_body.contains("END_CRYSTAL_SHOW_BOTTOM_DATA_ID"));
         assert!(!debug_body.contains("END_CRYSTAL_DEFAULT_SHOW_BOTTOM"));
+        let world_tests = include_str!("../tests/aquatic_and_beam_creature_animation.rs");
+        assert!(world_tests.contains("fn end_crystal_beam_target_data("));
+        assert!(world_tests.contains("fn end_crystal_beam_target_collision_data("));
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        assert!(native_scene_tests.contains("fn end_crystal_metadata_accessors("));
+        assert!(native_scene_tests.contains("fn end_crystal_beam_target_collision_data("));
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        assert!(native_input_tests.contains("fn end_crystal_metadata_accessors("));
+        for source in [world_tests, native_scene_tests, input, native_input_tests] {
+            assert!(
+                source.contains("vanilla_entity_metadata_end_crystal_accessors_for_entity_type")
+            );
+        }
+        for source in [
+            world_tests,
+            native_scene,
+            native_scene_tests,
+            input,
+            native_input_tests,
+        ] {
+            for removed in [
+                "END_CRYSTAL_BEAM_TARGET_DATA_ID",
+                "END_CRYSTAL_SHOW_BOTTOM_DATA_ID",
+                "END_CRYSTAL_DEFAULT_SHOW_BOTTOM",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "EndCrystal consumer restored {removed}"
+                );
+            }
+        }
     }
 
     #[test]

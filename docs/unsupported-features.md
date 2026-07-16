@@ -237,8 +237,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   slot/default or confuse Panda's separate `UNHAPPY_COUNTER` with AbstractVillager membership.
   EndCrystal beam-target/show-bottom membership, wire indices and typed defaults must remain
   derived together from generated `DATA_BEAM_TARGET` and `DATA_SHOW_BOTTOM`; world beam, native
-  model and debug consumers must not restore fixed accessor/default aliases or a parallel crystal
-  type gate. EnderDragon's nearby-crystal search remains a separate runtime-instance type check.
+  model/debug consumers and semantic fixtures must not restore fixed accessor/default aliases or a
+  parallel crystal type gate. EnderDragon's nearby-crystal search remains a separate runtime-instance
+  type check.
   Ghast charging texture membership, wire index and typed default must remain derived from
   generated `Ghast.DATA_IS_CHARGING`; HappyGhast leash-holder/stays-still plus inherited baby
   collision state must use generated accessors for `IS_LEASH_HOLDER`, `STAYS_STILL`, and
