@@ -146,8 +146,7 @@ Owner: `bbb-protocol`
 Owner: `scripts/` + each generated catalog's semantic crate
 
 - Complete the remaining cross-crate ordinal/serializer-id and entity
-  renderer-class/event-dispatch membership discovery audit, plus registry-identity consumers
-  in `bbb-pack` that still reconstruct generated item facts.
+  renderer-class/event-dispatch membership discovery audit.
   Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar

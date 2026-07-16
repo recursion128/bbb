@@ -388,8 +388,12 @@ impl ItemRegistryCatalog {
             let crafting_remainder =
                 crafting_remainder_for_declaration(expression, &source.item_id_constants)
                     .with_context(source_context)?;
-            let mining_profile = mining_profile_for_declaration(expression, block_tags)
-                .with_context(source_context)?;
+            let mining_profile = mining_profile_for_declaration(
+                expression,
+                block_tags,
+                &block_resources_by_constant,
+            )
+            .with_context(source_context)?;
             if let Some(durability) =
                 durability_for_declaration(expression).with_context(source_context)?
             {
@@ -1689,6 +1693,7 @@ fn crafting_remainder_for_declaration(
 fn mining_profile_for_declaration(
     expression: &GeneratedJavaExpression,
     block_tags: Option<&TagCatalog>,
+    block_resources_by_constant: &BTreeMap<String, String>,
 ) -> Result<Option<ItemMiningProfile>> {
     let Some(block_tags) = block_tags else {
         return Ok(None);
@@ -1715,7 +1720,13 @@ fn mining_profile_for_declaration(
 
     if expression.call("sword").is_some() {
         let mut rules = Vec::new();
-        push_direct_rule(&mut rules, ["minecraft:cobweb"], Some(15_000), Some(true));
+        push_direct_block_rule(
+            &mut rules,
+            block_resources_by_constant,
+            ["COBWEB"],
+            Some(15_000),
+            Some(true),
+        )?;
         push_tag_rule(
             &mut rules,
             block_tags,
@@ -1735,7 +1746,13 @@ fn mining_profile_for_declaration(
 
     if qualified_call(expression, "createToolProperties", "ShearsItem").is_some() {
         let mut rules = Vec::new();
-        push_direct_rule(&mut rules, ["minecraft:cobweb"], Some(15_000), Some(true));
+        push_direct_block_rule(
+            &mut rules,
+            block_resources_by_constant,
+            ["COBWEB"],
+            Some(15_000),
+            Some(true),
+        )?;
         push_tag_rule(
             &mut rules,
             block_tags,
@@ -1744,12 +1761,13 @@ fn mining_profile_for_declaration(
             None,
         );
         push_tag_rule(&mut rules, block_tags, "minecraft:wool", Some(5_000), None);
-        push_direct_rule(
+        push_direct_block_rule(
             &mut rules,
-            ["minecraft:vine", "minecraft:glow_lichen"],
+            block_resources_by_constant,
+            ["VINE", "GLOW_LICHEN"],
             Some(2_000),
             None,
-        );
+        )?;
         return Ok(non_empty_mining_profile(rules));
     }
 
@@ -1823,17 +1841,28 @@ fn push_tag_rule(
     });
 }
 
-fn push_direct_rule<const N: usize>(
+fn push_direct_block_rule<const N: usize>(
     rules: &mut Vec<ItemMiningRule>,
-    block_names: [&str; N],
+    block_resources_by_constant: &BTreeMap<String, String>,
+    block_constants: [&str; N],
     mining_speed_thousandths: Option<u32>,
     correct_for_drops: Option<bool>,
-) {
+) -> Result<()> {
+    let block_names = block_constants
+        .into_iter()
+        .map(|constant| {
+            block_resources_by_constant
+                .get(constant)
+                .cloned()
+                .with_context(|| format!("unknown generated Blocks.{constant} mining rule"))
+        })
+        .collect::<Result<Vec<_>>>()?;
     rules.push(ItemMiningRule {
-        block_names: block_names.into_iter().map(str::to_string).collect(),
+        block_names,
         mining_speed_thousandths,
         correct_for_drops,
     });
+    Ok(())
 }
 
 fn non_empty_mining_profile(rules: Vec<ItemMiningRule>) -> Option<ItemMiningProfile> {
@@ -2100,7 +2129,35 @@ mod tests {
         assert!(catalog
             .mining_profile("minecraft:diamond_pickaxe")
             .is_some());
-        assert!(catalog.mining_profile("minecraft:shears").is_some());
+        let rule = |block_names: &[&str], speed, correct_for_drops| ItemMiningRule {
+            block_names: block_names.iter().map(|name| (*name).to_string()).collect(),
+            mining_speed_thousandths: speed,
+            correct_for_drops,
+        };
+        assert_eq!(
+            catalog
+                .mining_profile("minecraft:diamond_sword")
+                .unwrap()
+                .rules,
+            vec![
+                rule(&["minecraft:cobweb"], Some(15_000), Some(true)),
+                rule(&["minecraft:bamboo_sapling"], Some(u32::MAX), None,),
+                rule(&["minecraft:oak_leaves"], Some(1_500), None),
+            ]
+        );
+        assert_eq!(
+            catalog.mining_profile("minecraft:shears").unwrap().rules,
+            vec![
+                rule(&["minecraft:cobweb"], Some(15_000), Some(true)),
+                rule(&["minecraft:oak_leaves"], Some(15_000), None),
+                rule(&["minecraft:white_wool"], Some(5_000), None),
+                rule(
+                    &["minecraft:vine", "minecraft:glow_lichen"],
+                    Some(2_000),
+                    None,
+                ),
+            ]
+        );
         let default_piercing_weapon_ids: Vec<_> = catalog
             .default_piercing_weapon_protocol_ids()
             .into_iter()
@@ -2281,6 +2338,24 @@ mod tests {
             Some("minecraft:weathered_copper_bars")
         );
         assert_eq!(catalog.item_resource_id_for_block("minecraft:water"), None);
+    }
+
+    #[test]
+    fn direct_mining_blocks_delegate_to_generated_block_catalog() {
+        let production = include_str!("item_registry.rs")
+            .split("#[cfg(test)]\nmod tests")
+            .next()
+            .unwrap();
+        for resource_id in [
+            "minecraft:cobweb",
+            "minecraft:vine",
+            "minecraft:glow_lichen",
+        ] {
+            assert!(
+                !production.contains(&format!("\"{resource_id}\"")),
+                "item registry restored direct mining block literal {resource_id}"
+            );
+        }
     }
 
     #[test]

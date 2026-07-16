@@ -16897,3 +16897,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `minecraft:air`；未知 built-in item、count 和 component-patch 校验顺序保持不变。
 - item registry generator 新增 protocol codec semantic group 反向测试；既有 malformed
   hover-event focused test 同时锁定 bare `air` namespace normalization 与空物品拒绝行为。
+
+## 2026-07-16：统一工具直接采掘方块身份
+
+- `bbb-pack` item registry 的 sword/shears `Tool` 规则现按 `Blocks.COBWEB`、
+  `Blocks.VINE`、`Blocks.GLOW_LICHEN` field 从已生成的 block declaration catalog
+  解析 resource id，不再在 item catalog 消费端重建第二份方块身份。
+- `ToolMaterial.applySwordProperties` 与 `ShearsItem.createToolProperties` 的规则顺序、
+  速度和掉落判定由 focused 测试锁定；反向测试禁止三条 direct-holder resource literal
+  回流 production source。`bbb-pack` 审计余下的 potion/copper-golem-statue 字符串属于
+  item-model type/resource discriminator，不是 item registry identity。
