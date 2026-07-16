@@ -17811,3 +17811,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Entity reverse guard 纳入整份 creature pick-bounds 测试并禁止任意局部 `POSE_*` 常量和历史
   `ENTITY_DATA_POSE_ID` 回流；各实体的 scale cap、Camel age/seat 曲线和 local-player sleeping
   gate 回归保持不变。
+
+## 2026-07-16：统一 Breeze transient-animation pose fixture accessor 消费
+
+- Breeze transient animation fixture 删除固定 Entity pose wire id 6 与 standing/long-jumping/
+  sliding/shooting/inhaling ordinal，改由 generated Entity bundle 提供 accessor/default，并使用
+  protocol pose catalog 的命名 ordinal。
+- Entity reverse guard 纳入 transient-events 测试模块并禁止固定 pose 写入与局部 `POSE_*` 常量
+  回流；shoot/slide/slideBack/inhale/longJump 时序以及 Chicken negative gate 回归保持不变。

@@ -7,6 +7,18 @@ use crate::entities::{
     VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_IDLE_ID as COPPER_GOLEM_STATE_IDLE_ID,
 };
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_INHALING_ID, VANILLA_ENTITY_POSE_LONG_JUMPING_ID,
+    VANILLA_ENTITY_POSE_SHOOTING_ID, VANILLA_ENTITY_POSE_SLIDING_ID,
+    VANILLA_ENTITY_POSE_STANDING_ID,
+};
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose_id)
+}
 
 fn copper_golem_state_data_id() -> u8 {
     vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
@@ -1518,12 +1530,6 @@ fn breeze_pose_drives_the_action_animations() {
     // shoot/inhale/slide/longJump one-shots (active while their pose holds), and LEAVING `Pose.SLIDING`
     // fires the brief `slideBack`. Each is projected as the elapsed seconds since it started, `-1.0`
     // when stopped. The looping idle is renderer-side and not projected.
-    const POSE_STANDING: i32 = 0;
-    const POSE_LONG_JUMPING: i32 = 6;
-    const POSE_SLIDING: i32 = 15;
-    const POSE_SHOOTING: i32 = 16;
-    const POSE_INHALING: i32 = 17;
-
     let actions = |store: &WorldStore, id: i32| {
         let s = store
             .entity_model_sources_at_partial_tick(0.0)
@@ -1541,7 +1547,7 @@ fn breeze_pose_drives_the_action_animations() {
     let set_pose = |store: &mut WorldStore, id: i32, pose: i32| {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![protocol_pose_data(6, pose)],
+            values: vec![entity_pose_data(pose)],
         }));
     };
 
@@ -1560,20 +1566,20 @@ fn breeze_pose_drives_the_action_animations() {
 
     // `Pose.SHOOTING` starts the shoot at the current age (elapsed begins at 0, advancing 1/20 per
     // tick); the others stay stopped.
-    set_pose(&mut store, 60, POSE_SHOOTING);
+    set_pose(&mut store, 60, VANILLA_ENTITY_POSE_SHOOTING_ID);
     assert_eq!(actions(&store, 60), (0.0, -1.0, -1.0, -1.0, -1.0));
     store.advance_entity_client_animations(5);
     assert!((actions(&store, 60).0 - 0.25).abs() < 1.0e-6);
     // Leaving SHOOTING stops the shoot (it is not a SLIDING leave, so no slideBack).
-    set_pose(&mut store, 60, POSE_STANDING);
+    set_pose(&mut store, 60, VANILLA_ENTITY_POSE_STANDING_ID);
     assert_eq!(actions(&store, 60), (-1.0, -1.0, -1.0, -1.0, -1.0));
 
     // `Pose.SLIDING` starts the slide; LEAVING it stops the slide AND fires `slideBack` at the leave.
-    set_pose(&mut store, 60, POSE_SLIDING);
+    set_pose(&mut store, 60, VANILLA_ENTITY_POSE_SLIDING_ID);
     assert_eq!(actions(&store, 60).1, 0.0, "slide starts on SLIDING");
     store.advance_entity_client_animations(2);
     assert!((actions(&store, 60).1 - 0.1).abs() < 1.0e-6);
-    set_pose(&mut store, 60, POSE_STANDING);
+    set_pose(&mut store, 60, VANILLA_ENTITY_POSE_STANDING_ID);
     let (shoot, slide, slide_back, _, _) = actions(&store, 60);
     assert_eq!(shoot, -1.0);
     assert_eq!(slide, -1.0, "leaving SLIDING stops the slide");
@@ -1588,15 +1594,15 @@ fn breeze_pose_drives_the_action_animations() {
     );
 
     // `Pose.INHALING` starts the inhale; switching to `Pose.LONG_JUMPING` stops it and starts longJump.
-    set_pose(&mut store, 60, POSE_INHALING);
+    set_pose(&mut store, 60, VANILLA_ENTITY_POSE_INHALING_ID);
     assert_eq!(actions(&store, 60).3, 0.0, "inhale starts on INHALING");
-    set_pose(&mut store, 60, POSE_LONG_JUMPING);
+    set_pose(&mut store, 60, VANILLA_ENTITY_POSE_LONG_JUMPING_ID);
     let (_, _, _, inhale, long_jump) = actions(&store, 60);
     assert_eq!(inhale, -1.0, "leaving INHALING stops the inhale");
     assert_eq!(long_jump, 0.0, "LONG_JUMPING starts the jump");
 
     // A non-breeze never gets a breeze state: every action stays stopped regardless of the pose.
-    set_pose(&mut store, 61, POSE_SHOOTING);
+    set_pose(&mut store, 61, VANILLA_ENTITY_POSE_SHOOTING_ID);
     store.advance_entity_client_animations(2);
     assert_eq!(actions(&store, 61), (-1.0, -1.0, -1.0, -1.0, -1.0));
 }
