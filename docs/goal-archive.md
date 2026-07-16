@@ -17567,3 +17567,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - core-registry generator 的 reverse guard 精确检查 pack 默认初始化段只消费一次 semantic
   owner slice，并按生成成员集合禁止 10 个常量回流为平行表；fixture 本身也必须遍历完整 item
   catalog 并消费该 slice。
+
+## 2026-07-16：强化 animal variant component registry 消费边界
+
+- core-registry generator 的 reverse guard 从全文件字符串检查收窄到 native registry-key
+  projection、persistent patch、world holder decode、dialog apply 与 texture synchronize 五个实际
+  函数体，分别锁定 12 项 Holder 映射或 7 项 texture subset 的 generated API 消费。
+- 守卫中的 component/registry 成员名单由 extractor 结果生成，禁止 production 恢复平行表；
+  native registry-context 与 world holder-decode 两组全 12 项 fixture 也必须动态遍历 generated
+  catalog，实例态的具体 variant 字段路由保持不变。

@@ -1152,21 +1152,175 @@ mod tests {
 
     #[test]
     fn animal_variant_registry_consumers_do_not_restore_parallel_tables() {
+        fn function_body<'a>(source: &'a str, name: &str, next: &str) -> &'a str {
+            source
+                .split(name)
+                .nth(1)
+                .and_then(|source| source.split(next).next())
+                .unwrap_or_else(|| panic!("missing {name}"))
+        }
         let item_models = include_str!("../../bbb-native/src/item_models.rs");
-        assert!(!item_models.contains("SYNCHRONIZED_VARIANT_REGISTRIES"));
-        assert!(item_models.contains("vanilla_data_component_animal_variant_registries"));
+        let item_keys = function_body(
+            item_models,
+            "pub(crate) fn world_synchronized_variant_keys",
+            "pub(crate) fn world_attribute_keys",
+        );
         let native_patch = include_str!("../../bbb-native/src/input/component_patch.rs");
-        assert!(!native_patch.contains("fn synchronized_named_variant_registry"));
-        assert!(native_patch.contains("vanilla_data_component_animal_variant_registry"));
+        let patch_encoder = function_body(
+            native_patch,
+            "fn encode_named_variant",
+            "fn named_variant_holder_id",
+        );
         let holder_set =
             include_str!("../../bbb-world/src/client/dialog/body/component_value/holder_set.rs");
-        assert!(!holder_set.contains("fn synchronized_registry_variant_component"));
-        assert!(holder_set.contains("vanilla_data_component_animal_variant_registry"));
-        let variant_textures = include_str!("../../bbb-native/src/entity_variant_textures.rs");
-        assert!(!variant_textures.contains("const ANIMAL_VARIANT_REGISTRIES"));
-        assert!(
-            variant_textures.contains("vanilla_data_component_animal_texture_variant_registries")
+        let holder_decoder = function_body(
+            holder_set,
+            "pub(super) fn decode_holder_backed_component_value",
+            "fn decode_builtin_villager_type_reference",
         );
+        let component_value =
+            include_str!("../../bbb-world/src/client/dialog/body/component_value.rs");
+        let dialog_apply = function_body(
+            component_value,
+            "fn apply_registry_variant",
+            "pub(super) fn validate_component_player_profile",
+        );
+        let variant_textures = include_str!("../../bbb-native/src/entity_variant_textures.rs");
+        let texture_sync = function_body(
+            variant_textures,
+            "fn synchronize_with_uploader",
+            "fn record_rejected_presentation",
+        );
+        for (name, body, query) in [
+            (
+                "item registry keys",
+                item_keys,
+                "vanilla_data_component_animal_variant_registries",
+            ),
+            (
+                "persistent patch",
+                patch_encoder,
+                "vanilla_data_component_animal_variant_registry",
+            ),
+            (
+                "holder decode",
+                holder_decoder,
+                "vanilla_data_component_animal_variant_registry",
+            ),
+            (
+                "dialog apply",
+                dialog_apply,
+                "vanilla_data_component_animal_variant_registry",
+            ),
+            (
+                "texture sync",
+                texture_sync,
+                "vanilla_data_component_animal_texture_variant_registries",
+            ),
+        ] {
+            assert_eq!(
+                body.matches(query).count(),
+                1,
+                "{name} must consume {query} once"
+            );
+            for registry in [
+                "minecraft:wolf_variant",
+                "minecraft:wolf_sound_variant",
+                "minecraft:pig_variant",
+                "minecraft:pig_sound_variant",
+                "minecraft:cow_variant",
+                "minecraft:cow_sound_variant",
+                "minecraft:chicken_variant",
+                "minecraft:chicken_sound_variant",
+                "minecraft:zombie_nautilus_variant",
+                "minecraft:frog_variant",
+                "minecraft:cat_variant",
+                "minecraft:cat_sound_variant",
+            ] {
+                assert!(
+                    !body.contains(registry),
+                    "{name} restored registry member {registry}"
+                );
+            }
+        }
+        for (name, body) in [
+            ("item registry keys", item_keys),
+            ("persistent patch", patch_encoder),
+            ("holder decode", holder_decoder),
+            ("texture sync", texture_sync),
+        ] {
+            for member in [
+                "VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID",
+                "VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID",
+            ] {
+                assert!(
+                    !body.contains(member),
+                    "{name} restored component member {member}"
+                );
+            }
+        }
+        let item_tests = include_str!("../../bbb-native/src/item_models/tests.rs");
+        let item_fixture = item_tests
+            .split("fn synchronized_variant_registry_context_inventory_is_complete")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("item registry context fixture");
+        let world_tests =
+            include_str!("../../bbb-world/src/client/dialog/body/component_value/tests.rs");
+        let world_fixture = world_tests
+            .split("fn decodes_all_synchronized_registry_fixed_variant_components")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("world holder fixture");
+        for (name, fixture) in [("item", item_fixture), ("world", world_fixture)] {
+            assert!(
+                fixture.contains("vanilla_data_component_animal_variant_registries"),
+                "{name} fixture missing generated catalog"
+            );
+        }
+        let world_catalog_loop = world_fixture
+            .split("for (value, context, expected)")
+            .next()
+            .expect("world full-catalog loop");
+        for member in [
+            "VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_WOLF_SOUND_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_PIG_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_PIG_SOUND_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_COW_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_COW_SOUND_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_CHICKEN_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_CHICKEN_SOUND_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_ZOMBIE_NAUTILUS_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_FROG_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_CAT_VARIANT_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_CAT_SOUND_VARIANT_TYPE_ID",
+        ] {
+            assert!(
+                !item_fixture.contains(member),
+                "item fixture restored component member {member}"
+            );
+            assert!(
+                !world_catalog_loop.contains(member),
+                "world fixture restored component member {member}"
+            );
+        }
+        assert!(!item_models.contains("SYNCHRONIZED_VARIANT_REGISTRIES"));
+        assert!(!native_patch.contains("fn synchronized_named_variant_registry"));
+        assert!(!holder_set.contains("fn synchronized_registry_variant_component"));
+        assert!(!variant_textures.contains("const ANIMAL_VARIANT_REGISTRIES"));
     }
 
     #[test]
