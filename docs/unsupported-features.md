@@ -152,9 +152,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   entity-scene/input tests and `bbb-world` entity test submodules, including the remaining
   baby-state fixtures outside specialized/creature pick-bounds, model-source, and small-mob animation
   coverage, plus pose/shared-base fixtures outside movement/swim, combat-state, player-sleeping,
-  creature pick-bounds projection, transient Breeze animation, aquatic Frog walk animation, and
-  small-mob animation coverage; migrate only families whose exact inherited accessor is already
-  owned by the generated schema, without substituting a same-index accessor from another class.
+  creature pick-bounds projection, transient Breeze animation, aquatic Frog walk animation,
+  small-mob animation, and visibility/equipment shared-flags coverage; migrate only families whose
+  exact inherited accessor is already owned by the generated schema, without substituting a
+  same-index accessor from another class.
   Living health fixtures in combat-state, player-pose, and small-mob animation coverage already use
   the generated inherited accessor/default and remain guarded against fixed aliases.
   The 155 explicit

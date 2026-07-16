@@ -17842,3 +17842,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   生成 Float metadata。
 - LivingEntity reverse guard 纳入三份世界测试并禁止旧 health 别名回流；死亡计时、simulation-
   distance tick gate、non-living negative gate 和 dead-passenger walk-stop 回归保持不变。
+
+## 2026-07-16：统一 visibility shared-flags fixture accessor 消费
+
+- visibility/equipment 测试的 spectator invisibility、same-team visibility、glowing 与 team
+  outline fixtures 删除固定 Entity shared-flags wire id 0 和 invisible/glowing mask，统一使用
+  generated Entity bundle 并校验默认 flags 0。
+- Entity reverse guard 纳入整份 visibility/equipment 测试；living/non-living spectator 差异、
+  friendly-invisible team option 与 outline color 回归保持不变。

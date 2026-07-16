@@ -23399,6 +23399,8 @@ mod generated_catalog_guards {
         let transient_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
         let aquatic_tests = include_str!("../tests/aquatic_and_beam_creature_animation.rs");
         let small_mob_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
+        let visibility_tests =
+            include_str!("../tests/visibility_equipment_and_mount_projection.rs");
         for source in [
             dimensions,
             animations,
@@ -23416,6 +23418,7 @@ mod generated_catalog_guards {
             transient_tests,
             aquatic_tests,
             small_mob_tests,
+            visibility_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [

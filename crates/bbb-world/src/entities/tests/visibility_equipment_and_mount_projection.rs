@@ -1,5 +1,16 @@
 use super::*;
 
+fn entity_metadata_accessors() -> VanillaEntityMetadataAccessors {
+    vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve")
+}
+
+fn entity_shared_flags_data(flags: i8) -> ProtocolEntityDataValue {
+    let accessors = entity_metadata_accessors();
+    assert_eq!(accessors.shared_flags_default, 0);
+    protocol_byte_data(accessors.shared_flags_data_id, flags)
+}
+
 #[test]
 fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
     let accessors = vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
@@ -59,8 +70,7 @@ fn entity_model_sources_project_boat_bubble_angle_from_bubble_time() {
 
 #[test]
 fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
-    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-    const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
+    let invisible_mask = entity_metadata_accessors().invisible_mask;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -69,10 +79,7 @@ fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 35,
-        values: vec![protocol_byte_data(
-            ENTITY_SHARED_FLAGS_DATA_ID,
-            ENTITY_SHARED_FLAG_INVISIBLE,
-        )],
+        values: vec![entity_shared_flags_data(invisible_mask)],
     }));
     store.apply_add_entity(protocol_add_entity_with_type(
         36,
@@ -80,10 +87,7 @@ fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 36,
-        values: vec![protocol_byte_data(
-            ENTITY_SHARED_FLAGS_DATA_ID,
-            ENTITY_SHARED_FLAG_INVISIBLE,
-        )],
+        values: vec![entity_shared_flags_data(invisible_mask)],
     }));
 
     let survival = store.entity_model_sources_at_partial_tick(1.0);
@@ -118,8 +122,7 @@ fn entity_model_sources_project_invisible_to_player_for_spectator_viewer() {
 
 #[test]
 fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
-    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-    const ENTITY_SHARED_FLAG_INVISIBLE: i8 = 1 << 5;
+    let invisible_mask = entity_metadata_accessors().invisible_mask;
 
     let mut store = WorldStore::new();
     let local_uuid = Uuid::from_u128(0x33345678123456781234567812345678);
@@ -147,10 +150,7 @@ fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
     for id in [41, 42] {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![protocol_byte_data(
-                ENTITY_SHARED_FLAGS_DATA_ID,
-                ENTITY_SHARED_FLAG_INVISIBLE,
-            )],
+            values: vec![entity_shared_flags_data(invisible_mask)],
         }));
     }
 
@@ -212,8 +212,7 @@ fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
 
 #[test]
 fn entity_model_sources_project_glowing_shared_flag() {
-    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-    const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
+    let glowing_mask = entity_metadata_accessors().glowing_mask;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -222,10 +221,7 @@ fn entity_model_sources_project_glowing_shared_flag() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 37,
-        values: vec![protocol_byte_data(
-            ENTITY_SHARED_FLAGS_DATA_ID,
-            ENTITY_SHARED_FLAG_GLOWING,
-        )],
+        values: vec![entity_shared_flags_data(glowing_mask)],
     }));
 
     let sources = store.entity_model_sources_at_partial_tick(1.0);
@@ -240,8 +236,7 @@ fn entity_model_sources_project_glowing_shared_flag() {
 
 #[test]
 fn entity_model_sources_project_team_outline_color() {
-    const ENTITY_SHARED_FLAGS_DATA_ID: u8 = 0;
-    const ENTITY_SHARED_FLAG_GLOWING: i8 = 1 << 6;
+    let glowing_mask = entity_metadata_accessors().glowing_mask;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -277,10 +272,7 @@ fn entity_model_sources_project_team_outline_color() {
     for id in [37, 38] {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![protocol_byte_data(
-                ENTITY_SHARED_FLAGS_DATA_ID,
-                ENTITY_SHARED_FLAG_GLOWING,
-            )],
+            values: vec![entity_shared_flags_data(glowing_mask)],
         }));
     }
 
