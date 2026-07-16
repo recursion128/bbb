@@ -482,9 +482,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
   or an Evoker/Vindicator entity-type table. Spellcaster casting and Pillager charging fixtures must
   likewise use their generated accessors instead of hand-written wire indices; generated guards
   must inspect those specific fixtures rather than rely on whole-file matches.
-  Keep static data-component-map membership such as
-  `DataComponents.COMMON_ITEM_COMPONENTS` in the generated component catalog;
-  pack/item consumers must not reconstruct those type-id sets by hand.
   Keep synchronized animal `Holder` component-to-registry mappings derived by joining
   `DataComponents` value types to `Registries` keys in the generated component catalog;
   native/world consumers must not restore parallel 12-entry registry-resource tables. The

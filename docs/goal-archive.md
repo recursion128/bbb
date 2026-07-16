@@ -17558,3 +17558,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 新增完整 entity-type catalog class-dispatch fixture，删除 production 的 Llama/TraderLlama
   重复分支与空 TraderLlama helper；generator 守卫禁止四个具体类型常量恢复为 dispatch 或
   class fixture 表。
+
+## 2026-07-16：强化 common item component generated 消费边界
+
+- `bbb-pack` 新增完整 1506 项 vanilla item catalog fixture，逐项验证默认 component set 包含
+  generated `DataComponents.COMMON_ITEM_COMPONENTS` type-id slice，不再用 Stick 的数量断言代替
+  全目录消费证据。
+- core-registry generator 的 reverse guard 精确检查 pack 默认初始化段只消费一次 semantic
+  owner slice，并按生成成员集合禁止 10 个常量回流为平行表；fixture 本身也必须遍历完整 item
+  catalog 并消费该 slice。

@@ -2056,6 +2056,23 @@ mod tests {
     }
 
     #[test]
+    fn generated_common_item_components_apply_to_full_vanilla_item_catalog() {
+        let catalog = ItemRegistryCatalog::from_generated_source_catalog(None).unwrap();
+        for item in bbb_protocol::item_types::VANILLA_ITEM_TYPES {
+            let actual = catalog
+                .default_component_type_ids(item.resource_id)
+                .unwrap_or_else(|| panic!("missing {} default components", item.resource_id));
+            assert!(
+                component_id::VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS
+                    .iter()
+                    .all(|type_id| actual.contains(type_id)),
+                "{} omitted a generated common item component",
+                item.resource_id
+            );
+        }
+    }
+
+    #[test]
     fn loads_checked_in_vanilla_item_registry() {
         let block_tags = test_block_tags();
         let catalog =

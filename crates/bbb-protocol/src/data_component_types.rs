@@ -1062,6 +1062,51 @@ mod tests {
     }
 
     #[test]
+    fn common_item_component_consumers_do_not_restore_parallel_type_id_sets() {
+        let pack = include_str!("../../bbb-pack/src/item_registry.rs");
+        let consumer = pack
+            .split("fn default_component_type_ids_for_declaration")
+            .nth(1)
+            .and_then(|source| source.split("fn applies_tool_material_defaults").next())
+            .expect("pack default-component consumer");
+        assert_eq!(
+            consumer
+                .matches("component_id::VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS")
+                .count(),
+            1
+        );
+        let common_initializer = consumer
+            .split("type_ids.insert(component_id::VANILLA_DATA_COMPONENT_ITEM_NAME_TYPE_ID)")
+            .next()
+            .expect("common component initializer");
+        for member in [
+            "VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_LORE_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_RARITY_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_TOOLTIP_DISPLAY_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID",
+        ] {
+            assert!(
+                !common_initializer.contains(member),
+                "pack restored common member {member}"
+            );
+        }
+        let fixture = pack
+            .split("fn generated_common_item_components_apply_to_full_vanilla_item_catalog")
+            .nth(1)
+            .and_then(|source| source.split_once("\n    }"))
+            .map(|(body, _)| body)
+            .expect("common component full-catalog fixture");
+        assert!(fixture.contains("bbb_protocol::item_types::VANILLA_ITEM_TYPES"));
+        assert!(fixture.contains("component_id::VANILLA_COMMON_ITEM_COMPONENT_TYPE_IDS"));
+    }
+
+    #[test]
     fn animal_variant_component_registries_follow_holder_value_types() {
         assert_eq!(VANILLA_ANIMAL_VARIANT_COMPONENT_REGISTRIES.len(), 12);
         let actual = vanilla_data_component_animal_variant_registries().collect::<Vec<_>>();
