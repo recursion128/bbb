@@ -33,6 +33,7 @@ use super::schema::{
     vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
+    vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
@@ -76,8 +77,7 @@ use super::{
     VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
     VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-    VANILLA_MAX_AIR_SUPPLY_TICKS,
+    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -2933,6 +2933,11 @@ impl EntityStore {
 
     pub(crate) fn experience_orb_icon_for_entity(&self, id: i32) -> Option<i32> {
         let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let (data_id, default) =
+            vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+                identity.entity_type_id,
+            )?;
         let value = self
             .ecs
             .get::<&EntityMetadata>(entity)
@@ -2941,13 +2946,13 @@ impl EntityStore {
                 metadata
                     .data_values
                     .iter()
-                    .find(|value| value.data_id == VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID)
+                    .find(|value| value.data_id == data_id)
                     .and_then(|value| match &value.value {
                         EntityDataValueKind::Int(value) => Some(*value),
                         _ => None,
                     })
             })
-            .unwrap_or(0);
+            .unwrap_or(default);
         Some(super::experience_orb_icon(value))
     }
 

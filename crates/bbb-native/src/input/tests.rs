@@ -107,7 +107,7 @@ use bbb_world::{
     VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
     VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
     VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID, VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
+    VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
     VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID as PUFFERFISH_PUFF_STATE_DATA_ID,
     VANILLA_SALMON_VARIANT_DATA_ID as SALMON_VARIANT_DATA_ID,
     VANILLA_SLIME_SIZE_DATA_ID as SLIME_SIZE_DATA_ID,
@@ -12472,6 +12472,11 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_skips_unpickable_experience_orb_but_direct_copy_encodes_save_nbt() {
+    let (value_data_id, _) =
+        bbb_world::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+        )
+        .expect("generated ExperienceOrb value accessor");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -12493,7 +12498,7 @@ fn shift_f3_i_skips_unpickable_experience_orb_but_direct_copy_encodes_save_nbt()
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 59,
         values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+            data_id: value_data_id,
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(149),

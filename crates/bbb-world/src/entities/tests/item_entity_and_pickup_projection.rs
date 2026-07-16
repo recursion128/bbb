@@ -455,6 +455,10 @@ fn experience_orb_icon_thresholds_match_vanilla() {
 
 #[test]
 fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
+    let (value_data_id, _) = vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+    )
+    .expect("generated ExperienceOrb value accessor");
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         10,
@@ -467,7 +471,7 @@ fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 10,
         values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+            data_id: value_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(149),
         }],

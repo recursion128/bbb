@@ -261,6 +261,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   remain derived together from generated `DATA_ID_FIREWORKS_ITEM`, `DATA_ATTACHED_TO_TARGET` and
   `DATA_SHOT_AT_ANGLE`; world item/trail/explosion projection, native F3+I and semantic fixtures
   must not restore a FireworkRocket type predicate or fixed accessor/default aliases.
+  ExperienceOrb value membership, wire index and typed default must remain derived from generated
+  `ExperienceOrb.DATA_VALUE`; world pickup-icon projection, native F3+I and semantic fixtures must
+  not restore fixed accessor/default aliases or read the same wire slot from another entity family.
   Living-entity scale sanitization must remain generated from the nearest `sanitizeScale`
   override, including HappyGhast/Shulker maximum clamps and EnderDragon's fixed 1.0 result;
   dimensions/render projection must not restore a type switch or local cap constants.

@@ -2236,6 +2236,25 @@ pub fn vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
     }
 }
 
+/// Resolves ExperienceOrb's generated value accessor and typed default.
+pub fn vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_VALUE")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.ExperienceOrb",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the inherited Guardian moving and attack-target accessors with typed defaults.
 pub(crate) fn vanilla_entity_metadata_guardian_accessors_for_entity_type(
     entity_type_id: i32,
@@ -6121,6 +6140,27 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_TNT_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_experience_orb_value_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID
+            ),
+            Some((
+                VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+                VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE,
+            ))
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_ITEM_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+                    entity_type_id
+                ),
                 None
             );
         }

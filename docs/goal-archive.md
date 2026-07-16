@@ -17179,3 +17179,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   save-debug 与 fixture 不再维护固定 wire index/default aliases。
 - schema generator 新增 production/input-fixture 反向守卫；本片只机械化 metadata 来源，未混入
   Dolphin movement、AI 或其他行为变更。
+
+## 2026-07-16：派生 ExperienceOrb value metadata accessor
+
+- ExperienceOrb value membership、wire index 与 typed default 统一由 generated schema accessor
+  提供；world pickup-icon projection、native F3+I 与两侧 fixtures 不再维护固定 aliases。
+- schema generator 新增跨 store/input 与语义 fixtures 的反向守卫；经验球 icon 阈值映射和
+  pickup particle 行为保持不变。

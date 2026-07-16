@@ -141,6 +141,7 @@ use bbb_world::VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 use bbb_world::{
     vanilla_entity_metadata_dolphin_accessors_for_entity_type,
+    vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
@@ -156,7 +157,6 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE as ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
     VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
@@ -6706,8 +6706,14 @@ fn debug_push_wither_skull_additional_save_data(entity: &EntityState, fields: &m
 fn debug_push_shulker_bullet_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_experience_orb_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let value = debug_entity_data_int_present(entity, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID)
-        .unwrap_or(VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let value = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
     fields.push(format!("Value: {value}s"));
 }
 
