@@ -18132,3 +18132,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   native fixture；Armadillo 同 index 不会被误认成该字段。
 - native F3+I Sniffer fixture 删除固定 wire id，仍注入 client-visible metadata 并验证 vanilla
   `saveWithoutId` 不保存 state/seed-drop 私有运行状态；reverse guard 禁止旧 alias 回流。
+
+## 2026-07-16：统一 Painting variant fixtures
+
+- world block-attached pick-bounds 与 native local-save fixtures 改由 generated Painting
+  registry-holder accessor 构造 metadata，保留 active session holder-order 解析。
+- ItemFrame slot-9 负例改为显式 collision helper；同一 world fixture 的四个 entity type 数字
+  同步替换为 protocol catalog 常量，reverse guard 纳入两份 fixtures 并禁止固定 id 回流。

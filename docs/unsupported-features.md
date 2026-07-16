@@ -261,8 +261,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   falling back to the add-entity packet `data`, matching vanilla recreation behavior.
   Painting variant metadata membership and wire index must remain derived from generated
   `DATA_PAINTING_VARIANT_ID`, including validation of its registry-any virtual default. World
-  metadata projection and native debug must not restore a fixed accessor alias or apply the
-  Painting holder projection to another entity family that reuses slot 9.
+  metadata projection, native debug and semantic fixtures must not restore a fixed accessor alias
+  or apply the Painting holder projection to another entity family that reuses slot 9.
   Spectator camera post-effect selection must remain generated from
   `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
   projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This

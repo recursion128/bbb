@@ -7,6 +7,26 @@ use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_SWIMMING_ID,
 };
 
+fn painting_variant_data(registry_id: i32) -> ProtocolEntityDataValue {
+    let data_id = vanilla_entity_metadata_painting_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_PAINTING_ID,
+    )
+    .expect("generated Painting variant accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+        value: EntityDataValueKind::PaintingVariant(bbb_protocol::packets::PaintingVariantData {
+            registry_id: Some(registry_id),
+            direct: None,
+        }),
+    }
+}
+
+/// Deliberately sends the Painting holder field to an ItemFrame to cover slot-9 type gating.
+fn painting_variant_collision_data(registry_id: i32) -> ProtocolEntityDataValue {
+    painting_variant_data(registry_id)
+}
+
 fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
     let accessors = vanilla_entity_metadata_entity_accessors()
         .expect("generated base Entity metadata accessors must resolve");
@@ -375,10 +395,26 @@ fn ender_dragon_pick_targets_interpolate_flight_history_by_partial_tick() {
 #[test]
 fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type_data(20, 73, 2));
-    store.apply_add_entity(protocol_add_entity_with_type_data(21, 60, 5));
-    store.apply_add_entity(protocol_add_entity_with_type_data(22, 93, 3));
-    store.apply_add_entity(protocol_add_entity_with_type_data(23, 76, 0));
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        20,
+        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+        2,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        21,
+        VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+        5,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        22,
+        VANILLA_ENTITY_TYPE_PAINTING_ID,
+        3,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type_data(
+        23,
+        VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+        0,
+    ));
 
     assert_eq!(
         store.probe_entity_transform(20).unwrap().position,
@@ -396,18 +432,9 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
     );
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 20,
-        values: vec![ProtocolEntityDataValue {
-            // Slot 9 belongs to ItemFrame.DATA_ITEM here; a mismatched painting serializer must not
-            // populate the Painting-only client projection.
-            data_id: VANILLA_PAINTING_VARIANT_DATA_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
-            value: EntityDataValueKind::PaintingVariant(
-                bbb_protocol::packets::PaintingVariantData {
-                    registry_id: Some(21),
-                    direct: None,
-                },
-            ),
-        }],
+        // Slot 9 belongs to ItemFrame.DATA_ITEM here; a mismatched painting serializer must not
+        // populate the Painting-only client projection.
+        values: vec![painting_variant_collision_data(21)],
     }));
     assert_eq!(
         store.probe_entity(20).unwrap().painting_variant_projection,
@@ -469,16 +496,7 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
     );
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 22,
-        values: vec![ProtocolEntityDataValue {
-            data_id: VANILLA_PAINTING_VARIANT_DATA_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
-            value: EntityDataValueKind::PaintingVariant(
-                bbb_protocol::packets::PaintingVariantData {
-                    registry_id: Some(21),
-                    direct: None,
-                }
-            ),
-        }],
+        values: vec![painting_variant_data(21)],
     }));
     assert_eq!(
         store.probe_entity_transform(22).unwrap().position,

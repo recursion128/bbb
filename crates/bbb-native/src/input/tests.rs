@@ -93,12 +93,13 @@ use bbb_protocol::{
 use bbb_world::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
+    vanilla_entity_metadata_painting_variant_accessor_for_entity_type,
     vanilla_entity_metadata_sniffer_drop_seed_at_tick_accessor_for_entity_type,
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
     VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
-    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID, VANILLA_SNIFFER_STATE_DIGGING_ID,
+    VANILLA_SNIFFER_STATE_DIGGING_ID,
 };
 use bbb_world::{
     BlockEntityRecord, BlockPos, BlockStateRegistry, ChatMessageKind, ChunkColumn, ChunkPos,
@@ -345,6 +346,29 @@ fn sniffer_drop_seed_at_tick_data(
         data_id,
         serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
         value: EntityDataValueKind::Int(tick),
+    }
+}
+
+fn painting_variant_data(
+    world: &WorldStore,
+    entity_id: i32,
+    registry_id: i32,
+) -> ProtocolEntityDataValue {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("Painting fixture entity must exist before metadata is constructed");
+    let data_id = vanilla_entity_metadata_painting_variant_accessor_for_entity_type(entity_type_id)
+        .expect("generated Painting variant accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
+        value: EntityDataValueKind::PaintingVariant(
+            bbb_protocol::packets::PaintingVariantData {
+                registry_id: Some(registry_id),
+                direct: None,
+            },
+        ),
     }
 }
 
@@ -11812,16 +11836,7 @@ fn local_painting_save_nbt_and_bounds_follow_synchronized_holder_order() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 64,
-        values: vec![ProtocolEntityDataValue {
-            data_id: PAINTING_VARIANT_DATA_ID,
-            serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
-            value: EntityDataValueKind::PaintingVariant(
-                bbb_protocol::packets::PaintingVariantData {
-                    registry_id: Some(0),
-                    direct: None,
-                },
-            ),
-        }],
+        values: vec![painting_variant_data(&world, 64, 0)],
     }));
 
     assert_eq!(

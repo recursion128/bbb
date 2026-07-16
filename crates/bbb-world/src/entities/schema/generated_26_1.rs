@@ -22319,6 +22319,15 @@ mod generated_catalog_guards {
             .expect("painting variant debug source");
         assert!(debug_body
             .contains("vanilla_entity_metadata_painting_variant_accessor_for_entity_type"));
+        let world_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
+        assert!(world_tests.contains("fn painting_variant_data("));
+        assert!(world_tests.contains("fn painting_variant_collision_data("));
+        assert!(world_tests
+            .contains("vanilla_entity_metadata_painting_variant_accessor_for_entity_type"));
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        assert!(native_input_tests.contains("fn painting_variant_data("));
+        assert!(native_input_tests
+            .contains("vanilla_entity_metadata_painting_variant_accessor_for_entity_type"));
         for removed in [
             "PAINTING_VARIANT_DATA_ID",
             "VANILLA_PAINTING_VARIANT_DATA_ID",
@@ -22330,6 +22339,14 @@ mod generated_catalog_guards {
             assert!(
                 !debug_body.contains(removed),
                 "painting debug restored {removed}"
+            );
+            assert!(
+                !world_tests.contains(removed),
+                "world painting fixture restored {removed}"
+            );
+            assert!(
+                !native_input_tests.contains(removed),
+                "native painting fixture restored {removed}"
             );
         }
     }
