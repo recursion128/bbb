@@ -5709,11 +5709,20 @@ mod tests {
 
     #[test]
     fn generated_parrot_variant_accessor_owns_membership_index_and_default() {
+        let parrot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Parrot);
+        let variant = parrot
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_VARIANT_ID")
+            .expect("generated Parrot variant field");
+        let VanillaEntityMetadataDefault::Int(default) = variant.default else {
+            panic!("generated Parrot variant default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_parrot_variant_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PARROT_ID
             ),
-            Some((20, 0))
+            Some((variant.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_parrot_variant_accessor_for_entity_type(
@@ -7799,8 +7808,16 @@ mod tests {
         );
         assert_eq!(parrot.inherited_field_count, 20);
         assert_eq!(parrot.own_fields.len(), 1);
-        assert_eq!(VANILLA_PARROT_VARIANT_DATA_ID, 20);
-        assert_eq!(VANILLA_PARROT_DEFAULT_VARIANT, 0);
+        let (variant_data_id, variant_default) =
+            vanilla_entity_metadata_parrot_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PARROT_ID,
+            )
+            .expect("generated Parrot variant accessor");
+        assert_eq!(variant_data_id, parrot.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(variant_default),
+            parrot.own_fields[0].default
+        );
         let rabbit = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Rabbit);
         assert_eq!(rabbit.parent, Some(VanillaEntityMetadataFamily::AgeableMob));
         assert_eq!(rabbit.inherited_field_count, 18);

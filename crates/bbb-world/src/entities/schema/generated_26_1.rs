@@ -222,8 +222,6 @@ pub const VANILLA_ABSTRACT_NAUTILUS_DASH_DATA_ID: u8 =
 const GENERATED_VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 = 21;
 pub const VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID: u8 =
     GENERATED_VANILLA_ZOMBIE_NAUTILUS_VARIANT_DATA_ID;
-const GENERATED_VANILLA_PARROT_VARIANT_DATA_ID: u8 = 20;
-pub const VANILLA_PARROT_VARIANT_DATA_ID: u8 = GENERATED_VANILLA_PARROT_VARIANT_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
 pub const VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID;
@@ -830,8 +828,6 @@ pub const VANILLA_ABSTRACT_NAUTILUS_DEFAULT_DASH: bool =
 const GENERATED_VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID: &str = "minecraft:temperate";
 pub const VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID: &str =
     GENERATED_VANILLA_ZOMBIE_NAUTILUS_DEFAULT_VARIANT_RESOURCE_ID;
-const GENERATED_VANILLA_PARROT_DEFAULT_VARIANT: i32 = 0;
-pub const VANILLA_PARROT_DEFAULT_VARIANT: i32 = GENERATED_VANILLA_PARROT_DEFAULT_VARIANT;
 const GENERATED_VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER: i32 = 0;
 pub const VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER: i32 =
     GENERATED_VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER;
@@ -24321,11 +24317,19 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_parrot_variant_does_not_restore_accessor_constants() {
+    fn parrot_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        for source in [native_scene, native_variants, native_input] {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_variants,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
             assert!(
                 source.contains("vanilla_entity_metadata_parrot_variant_accessor_for_entity_type")
             );
@@ -24335,18 +24339,18 @@ mod generated_catalog_guards {
             "PARROT_DEFAULT_VARIANT",
             "PARROT_MAX_VARIANT",
         ] {
-            assert!(
-                !native_scene.contains(removed),
-                "native scene restored {removed}"
-            );
-            assert!(
-                !native_variants.contains(removed),
-                "native variants restored {removed}"
-            );
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
+            for source in [
+                native_scene,
+                native_variants,
+                native_scene_tests,
+                native_input,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Parrot projection restored {removed}"
+                );
+            }
         }
     }
 

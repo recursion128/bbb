@@ -16,7 +16,6 @@ use bbb_world::{
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID, VANILLA_BAT_FLAGS_DATA_ID,
     VANILLA_BAT_FLAG_RESTING, VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
-    VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_VEX_FLAGS_DATA_ID as VEX_FLAGS_DATA_ID,
 };
 use uuid::Uuid;
@@ -127,6 +126,14 @@ fn tropical_fish_variant_data(packed: i32) -> EntityDataValue {
         )
         .expect("generated TropicalFish packed-variant accessor must resolve");
     protocol_int_data(accessors.variant_data_id, packed)
+}
+
+fn parrot_variant_data(variant: i32) -> EntityDataValue {
+    let (data_id, _) = bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_PARROT_ID,
+    )
+    .expect("generated Parrot variant accessor must resolve");
+    protocol_int_data(data_id, variant)
 }
 
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
@@ -9159,14 +9166,9 @@ fn entity_model_kind_maps_tadpole_to_real_model() {
 #[test]
 fn entity_model_kind_maps_parrot_to_real_model() {
     // The parrot resolves to the real `ParrotModel` at its STANDING rest pose, textured per the
-    // five `Parrot.Variant` colours read from the synced `DATA_VARIANT_ID` (20, INT) via
+    // five `Parrot.Variant` colours read from the generated synced `DATA_VARIANT_ID` via
     // `Parrot.Variant.byId`. The head look, per-pose offsets, and wing flap / dance animations are
     // deferred entity-side state.
-    let parrot_variant = |id: i32| EntityDataValue {
-        data_id: PARROT_VARIANT_DATA_ID,
-        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-        value: EntityDataValueKind::Int(id),
-    };
     // No synced data → the vanilla DEFAULT (RED_BLUE).
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[]),
@@ -9185,7 +9187,7 @@ fn entity_model_kind_maps_parrot_to_real_model() {
         (99, ParrotModelVariant::Gray),
     ] {
         assert_eq!(
-            entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[parrot_variant(id)]),
+            entity_model_kind(VANILLA_ENTITY_TYPE_PARROT_ID, &[parrot_variant_data(id)]),
             EntityModelKind::Parrot { variant }
         );
     }

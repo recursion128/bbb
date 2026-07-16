@@ -235,6 +235,18 @@ fn tropical_fish_variant_data(packed: i32) -> ProtocolEntityDataValue {
     }
 }
 
+fn parrot_variant_data(variant: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_parrot_variant_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_PARROT_ID,
+    )
+    .expect("generated Parrot variant accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(variant),
+    }
+}
+
 fn snow_golem_pumpkin_accessor() -> (u8, i8, i8) {
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
@@ -6344,8 +6356,6 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
-    const PARROT_VARIANT_DATA_ID: u8 = 20;
-
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -6385,11 +6395,7 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_PARROT_ID, false, true),
-            ProtocolEntityDataValue {
-                data_id: PARROT_VARIANT_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(3),
-            },
+            parrot_variant_data(3),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

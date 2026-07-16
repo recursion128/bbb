@@ -17335,3 +17335,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   typed bundle；native model 解码与 model/F3+I fixtures 不再导入固定 metadata 常量。
 - 删除 `bbb-world` 的 TropicalFish data/default/mask/shift facade 转发，schema 期望由 generated
   family schema 和提取常量组装；generator 反向守卫覆盖 production 和 native fixtures。
+
+## 2026-07-16：统一 Parrot variant metadata 消费
+
+- native model/F3+I fixtures 统一按 Parrot entity type 解析 generated `DATA_VARIANT_ID`
+  accessor，移除固定 wire index；既有 `ByIdMap` 端点 `CLAMP` 投影保持不变。
+- 删除 `bbb-world` 的 Parrot data/default facade 转发，schema 期望由 generated Parrot family
+  schema 组装；generator 反向守卫覆盖 production 和 native fixtures。
