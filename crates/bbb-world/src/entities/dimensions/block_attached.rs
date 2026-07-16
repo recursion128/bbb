@@ -4,11 +4,8 @@ use bbb_protocol::{
 };
 
 use crate::entities::{
+    schema::{VanillaHangingEntityMetadataAccessor, VanillaItemFrameMetadataAccessors},
     EntityVec3, ItemFrameFacing,
-    VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_DATA_DIRECTION_ID,
-    VANILLA_ITEM_FRAME_DEFAULT_ROTATION,
-    VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_DATA_ITEM_ID,
-    VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_DATA_ROTATION_ID,
 };
 use crate::PaintingVariantClientProjection;
 
@@ -24,11 +21,12 @@ const PAINTING_DEPTH: f32 = 0.0625;
 const HANGING_WALL_OFFSET: f64 = 0.46875;
 
 pub(super) fn item_frame_pick_bounds(
+    accessors: VanillaItemFrameMetadataAccessors,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
 ) -> EntityPickBoundsState {
-    let direction = hanging_direction(add_entity_data, data_values);
-    let frame_size = if item_frame_has_framed_map(data_values) {
+    let direction = hanging_direction(accessors.direction_data_id, add_entity_data, data_values);
+    let frame_size = if item_frame_has_framed_map(accessors, data_values) {
         ITEM_FRAME_MAP_SIZE
     } else {
         ITEM_FRAME_DEFAULT_SIZE
@@ -39,11 +37,12 @@ pub(super) fn item_frame_pick_bounds(
 }
 
 pub(super) fn painting_pick_bounds(
+    accessor: VanillaHangingEntityMetadataAccessor,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
     variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<EntityPickBoundsState> {
-    let direction = hanging_direction(add_entity_data, data_values);
+    let direction = hanging_direction(accessor.direction_data_id, add_entity_data, data_values);
     let (width, height) = painting_variant_size(variant);
     let (x_size, y_size, z_size) = painting_size_for_direction(direction, width, height)?;
     Some(EntityPickBoundsState::from_centered_size(
@@ -52,21 +51,23 @@ pub(super) fn painting_pick_bounds(
 }
 
 pub(super) fn item_frame_center(
+    accessors: VanillaItemFrameMetadataAccessors,
     packet_position: EntityVec3,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
 ) -> EntityVec3 {
-    let direction = hanging_direction(add_entity_data, data_values);
+    let direction = hanging_direction(accessors.direction_data_id, add_entity_data, data_values);
     hanging_wall_center(packet_position, direction)
 }
 
 pub(super) fn painting_center(
+    accessor: VanillaHangingEntityMetadataAccessor,
     packet_position: EntityVec3,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
     variant: Option<&PaintingVariantClientProjection>,
 ) -> Option<EntityVec3> {
-    let direction = hanging_direction(add_entity_data, data_values);
+    let direction = hanging_direction(accessor.direction_data_id, add_entity_data, data_values);
     let (width, height) = painting_variant_size(variant);
     let left = horizontal_counter_clockwise(direction)?;
     let mut center = hanging_wall_center(packet_position, direction);
@@ -125,18 +126,23 @@ fn painting_size_for_direction(
     }
 }
 
-fn hanging_direction(add_entity_data: i32, data_values: &[EntityDataValue]) -> VanillaDirection {
-    entity_data_direction(data_values, HANGING_DATA_DIRECTION_ID)
+fn hanging_direction(
+    direction_data_id: u8,
+    add_entity_data: i32,
+    data_values: &[EntityDataValue],
+) -> VanillaDirection {
+    entity_data_direction(data_values, direction_data_id)
         .unwrap_or_else(|| vanilla_direction_from_3d_data(add_entity_data))
 }
 
 /// The wall the item frame faces (vanilla `ItemFrame.getDirection`), from the synched direction or the
 /// spawn-packet `data` fallback.
 pub(crate) fn item_frame_facing(
+    accessors: VanillaItemFrameMetadataAccessors,
     add_entity_data: i32,
     data_values: &[EntityDataValue],
 ) -> ItemFrameFacing {
-    match hanging_direction(add_entity_data, data_values) {
+    match hanging_direction(accessors.direction_data_id, add_entity_data, data_values) {
         VanillaDirection::Down => ItemFrameFacing::Down,
         VanillaDirection::Up => ItemFrameFacing::Up,
         VanillaDirection::North => ItemFrameFacing::North,
@@ -148,23 +154,29 @@ pub(crate) fn item_frame_facing(
 
 /// The `0..=7` item rotation in the frame (vanilla `ItemFrame.getRotation`, `DATA_ROTATION % 8`), or `0`
 /// when the entity has not sent the rotation datum.
-pub(crate) fn item_frame_rotation(data_values: &[EntityDataValue]) -> u8 {
+pub(crate) fn item_frame_rotation(
+    accessors: VanillaItemFrameMetadataAccessors,
+    data_values: &[EntityDataValue],
+) -> u8 {
     data_values
         .iter()
-        .find(|value| value.data_id == ITEM_FRAME_DATA_ROTATION_ID)
+        .find(|value| value.data_id == accessors.rotation_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::Int(rotation) => Some(rotation.rem_euclid(8) as u8),
             _ => None,
         })
-        .unwrap_or(VANILLA_ITEM_FRAME_DEFAULT_ROTATION as u8)
+        .unwrap_or(accessors.rotation_default as u8)
 }
 
 /// The non-empty item displayed in the frame (vanilla `ItemFrame.getItem`, the `DATA_ITEM` datum), or
 /// `None` for an empty frame.
-pub(crate) fn item_frame_item(data_values: &[EntityDataValue]) -> Option<&ItemStackSummary> {
+pub(crate) fn item_frame_item(
+    accessors: VanillaItemFrameMetadataAccessors,
+    data_values: &[EntityDataValue],
+) -> Option<&ItemStackSummary> {
     data_values
         .iter()
-        .find(|value| value.data_id == ITEM_FRAME_DATA_ITEM_ID)
+        .find(|value| value.data_id == accessors.item_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::ItemStack(item) if item.item_id.is_some() && item.count > 0 => {
                 Some(item)
@@ -173,10 +185,13 @@ pub(crate) fn item_frame_item(data_values: &[EntityDataValue]) -> Option<&ItemSt
         })
 }
 
-fn item_frame_has_framed_map(data_values: &[EntityDataValue]) -> bool {
+fn item_frame_has_framed_map(
+    accessors: VanillaItemFrameMetadataAccessors,
+    data_values: &[EntityDataValue],
+) -> bool {
     data_values
         .iter()
-        .find(|value| value.data_id == ITEM_FRAME_DATA_ITEM_ID)
+        .find(|value| value.data_id == accessors.item_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::ItemStack(item) => Some(item_stack_has_map_component(item)),
             _ => None,
@@ -184,10 +199,13 @@ fn item_frame_has_framed_map(data_values: &[EntityDataValue]) -> bool {
         .unwrap_or(false)
 }
 
-pub(crate) fn item_frame_map_id(data_values: &[EntityDataValue]) -> Option<i32> {
+pub(crate) fn item_frame_map_id(
+    accessors: VanillaItemFrameMetadataAccessors,
+    data_values: &[EntityDataValue],
+) -> Option<i32> {
     data_values
         .iter()
-        .find(|value| value.data_id == ITEM_FRAME_DATA_ITEM_ID)
+        .find(|value| value.data_id == accessors.item_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::ItemStack(item) => item_stack_map_id(item),
             _ => None,
@@ -243,7 +261,16 @@ fn horizontal_counter_clockwise(direction: VanillaDirection) -> Option<VanillaDi
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::schema::vanilla_entity_metadata_item_frame_accessors_for_entity_type;
+    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ITEM_FRAME_ID;
     use bbb_protocol::packets::DataComponentPatchSummary;
+
+    fn item_frame_accessors() -> VanillaItemFrameMetadataAccessors {
+        vanilla_entity_metadata_item_frame_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+        )
+        .expect("generated ItemFrame accessors")
+    }
 
     fn datum(data_id: u8, value: EntityDataValueKind) -> EntityDataValue {
         EntityDataValue {
@@ -268,76 +295,99 @@ mod tests {
 
     #[test]
     fn rotation_reads_datum_and_wraps_mod_8() {
+        let accessors = item_frame_accessors();
         assert_eq!(
-            item_frame_rotation(&[datum(
-                ITEM_FRAME_DATA_ROTATION_ID,
-                EntityDataValueKind::Int(5)
-            )]),
+            item_frame_rotation(
+                accessors,
+                &[datum(
+                    accessors.rotation_data_id,
+                    EntityDataValueKind::Int(5)
+                )]
+            ),
             5
         );
         // Vanilla `ItemFrame.getRotation` wraps `% 8`.
         assert_eq!(
-            item_frame_rotation(&[datum(
-                ITEM_FRAME_DATA_ROTATION_ID,
-                EntityDataValueKind::Int(11)
-            )]),
+            item_frame_rotation(
+                accessors,
+                &[datum(
+                    accessors.rotation_data_id,
+                    EntityDataValueKind::Int(11)
+                )]
+            ),
             3
         );
         // A missing datum defaults to 0.
-        assert_eq!(item_frame_rotation(&[]), 0);
+        assert_eq!(item_frame_rotation(accessors, &[]), 0);
     }
 
     #[test]
     fn facing_reads_direction_then_falls_back_to_spawn_data() {
+        let accessors = item_frame_accessors();
         // The synched direction wins (3 = south in the 3D data encoding).
         assert_eq!(
             item_frame_facing(
+                accessors,
                 0,
                 &[datum(
-                    HANGING_DATA_DIRECTION_ID,
+                    accessors.direction_data_id,
                     EntityDataValueKind::Direction(3)
                 )]
             ),
             ItemFrameFacing::South
         );
         // Without the datum, the spawn-packet `data` fallback is used (2 = north).
-        assert_eq!(item_frame_facing(2, &[]), ItemFrameFacing::North);
+        assert_eq!(item_frame_facing(accessors, 2, &[]), ItemFrameFacing::North);
     }
 
     #[test]
     fn item_returns_only_non_empty_stacks() {
+        let accessors = item_frame_accessors();
         assert_eq!(
-            item_frame_item(&[datum(
-                ITEM_FRAME_DATA_ITEM_ID,
-                EntityDataValueKind::ItemStack(item(Some(1), 1, false))
-            )]),
+            item_frame_item(
+                accessors,
+                &[datum(
+                    accessors.item_data_id,
+                    EntityDataValueKind::ItemStack(item(Some(1), 1, false))
+                )]
+            ),
             Some(&item(Some(1), 1, false))
         );
         // An empty stack (no id / zero count) is treated as no item.
         assert_eq!(
-            item_frame_item(&[datum(
-                ITEM_FRAME_DATA_ITEM_ID,
-                EntityDataValueKind::ItemStack(ItemStackSummary::empty())
-            )]),
+            item_frame_item(
+                accessors,
+                &[datum(
+                    accessors.item_data_id,
+                    EntityDataValueKind::ItemStack(ItemStackSummary::empty())
+                )]
+            ),
             None
         );
-        assert_eq!(item_frame_item(&[]), None);
+        assert_eq!(item_frame_item(accessors, &[]), None);
     }
 
     #[test]
     fn map_id_detects_the_map_id_component() {
+        let accessors = item_frame_accessors();
         assert_eq!(
-            item_frame_map_id(&[datum(
-                ITEM_FRAME_DATA_ITEM_ID,
-                EntityDataValueKind::ItemStack(item(Some(2), 1, true))
-            )]),
+            item_frame_map_id(
+                accessors,
+                &[datum(
+                    accessors.item_data_id,
+                    EntityDataValueKind::ItemStack(item(Some(2), 1, true))
+                )]
+            ),
             Some(7)
         );
         assert_eq!(
-            item_frame_map_id(&[datum(
-                ITEM_FRAME_DATA_ITEM_ID,
-                EntityDataValueKind::ItemStack(item(Some(2), 1, false))
-            )]),
+            item_frame_map_id(
+                accessors,
+                &[datum(
+                    accessors.item_data_id,
+                    EntityDataValueKind::ItemStack(item(Some(2), 1, false))
+                )]
+            ),
             None
         );
     }

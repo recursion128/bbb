@@ -16620,3 +16620,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   accessor/default aliases 及重复的 crystal metadata type gate；现有 world/native/debug 语义
   测试继续覆盖 beam center offset、None 清除、base 显隐与 SNBT，生成器 reverse guard 禁止
   恢复平行事实源。EnderDragon 搜索附近 crystal 的运行时 instance type check 保留。
+
+## 2026-07-15：统一推导 HangingEntity / ItemFrame metadata accessors
+
+- `bbb-world` 现在从生成 schema 解析 inherited `HangingEntity.DATA_DIRECTION` 的 membership、
+  wire id 8 与 `SOUTH(3)` typed default，并成组解析 `ItemFrame.DATA_ITEM/DATA_ROTATION` 的
+  wire id 9/10、空栈与 int 0 defaults；GlowItemFrame 继承同一 bundle，Painting 只消费方向。
+- world bounds/center/render-state 与 native ItemFrame/Painting debug SNBT 删除固定
+  accessor/default aliases；方向 metadata 缺失时仍按 vanilla `recreateFromPacket` 回退
+  add-entity packet `data`，生成器 reverse guard 禁止恢复平行事实源。

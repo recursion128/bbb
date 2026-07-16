@@ -22,7 +22,9 @@ use super::schema::{
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
+    vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
+    vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_phantom_size_accessor_for_entity_type,
     vanilla_entity_metadata_pufferfish_puff_state_accessor_for_entity_type,
     vanilla_entity_metadata_salmon_variant_accessor_for_entity_type,
@@ -213,9 +215,18 @@ fn vanilla_bounds_for_entity_data(
     } else if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID
     {
-        block_attached::item_frame_pick_bounds(add_entity_data, data_values)
+        let accessors =
+            vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity_type_id)?;
+        block_attached::item_frame_pick_bounds(accessors, add_entity_data, data_values)
     } else if entity_type_id == VANILLA_ENTITY_TYPE_PAINTING_ID {
-        block_attached::painting_pick_bounds(add_entity_data, data_values, painting_variant)?
+        let accessor =
+            vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(entity_type_id)?;
+        block_attached::painting_pick_bounds(
+            accessor,
+            add_entity_data,
+            data_values,
+            painting_variant,
+        )?
     } else if entity_type_id == VANILLA_ENTITY_TYPE_LEASH_KNOT_ID {
         EntityPickBoundsState::from_base_size(0.375, 0.5, 0.0)
     } else if let Some(bounds) = slime_pick_bounds(entity_type_id, data_values) {
@@ -308,14 +319,20 @@ pub(crate) fn vanilla_client_position_for_entity_data(
     if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_FRAME_ID
         || entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID
     {
+        let accessors =
+            vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity_type_id)?;
         return Some(block_attached::item_frame_center(
+            accessors,
             packet_position,
             add_entity_data,
             data_values,
         ));
     }
     if entity_type_id == VANILLA_ENTITY_TYPE_PAINTING_ID {
+        let accessor =
+            vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(entity_type_id)?;
         return block_attached::painting_center(
+            accessor,
             packet_position,
             add_entity_data,
             data_values,

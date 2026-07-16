@@ -99,6 +99,35 @@ use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 use bbb_world::{
+    vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
+    vanilla_entity_metadata_item_frame_accessors_for_entity_type, BlockPos, EntityState,
+    EntityVec3, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
+    VanillaArmorStandMetadataAccessors, WorldStore,
+    VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
+    VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
+    VANILLA_ABSTRACT_HORSE_FLAG_TAME as ABSTRACT_HORSE_FLAG_TAME,
+    VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
+    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
+    VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
+    VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE as ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
+    VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
+    VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
+    VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
+    VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
+    VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
+    VANILLA_ENTITY_NO_GRAVITY_DATA_ID as ENTITY_NO_GRAVITY_DATA_ID,
+    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
+    VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING,
+    VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
+    VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
+    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
+    VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
+    VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
+    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
+    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
+    VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
+};
+use bbb_world::{
     vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
     VANILLA_ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID as ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
@@ -153,36 +182,6 @@ use bbb_world::{
     VANILLA_ZOGLIN_DEFAULT_BABY as ZOGLIN_DEFAULT_BABY,
     VANILLA_ZOMBIE_BABY_DATA_ID as ZOMBIE_BABY_DATA_ID,
     VANILLA_ZOMBIE_DEFAULT_BABY as ZOMBIE_DEFAULT_BABY,
-};
-use bbb_world::{
-    BlockPos, EntityState, EntityVec3, LocalPlayerInputState, LocalPlayerPoseState,
-    TagQueryResponseState, VanillaArmorStandMetadataAccessors, WorldStore,
-    VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
-    VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
-    VANILLA_ABSTRACT_HORSE_FLAG_TAME as ABSTRACT_HORSE_FLAG_TAME,
-    VANILLA_AGEABLE_MOB_AGE_LOCKED_DATA_ID as AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-    VANILLA_AGEABLE_MOB_BABY_DATA_ID as AGEABLE_MOB_BABY_DATA_ID,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_MARKER as ARMOR_STAND_CLIENT_FLAG_MARKER,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE as ARMOR_STAND_CLIENT_FLAG_NO_BASEPLATE,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS as ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS,
-    VANILLA_ARMOR_STAND_CLIENT_FLAG_SMALL as ARMOR_STAND_CLIENT_FLAG_SMALL,
-    VANILLA_ENTITY_AIR_SUPPLY_DATA_ID as ENTITY_AIR_SUPPLY_DATA_ID,
-    VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID,
-    VANILLA_ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID as ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
-    VANILLA_ENTITY_NO_GRAVITY_DATA_ID as ENTITY_NO_GRAVITY_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAGS_DATA_ID as ENTITY_SHARED_FLAGS_DATA_ID,
-    VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING,
-    VANILLA_ENTITY_SHARED_FLAG_INVISIBLE as ENTITY_SHARED_FLAG_INVISIBLE,
-    VANILLA_ENTITY_SILENT_DATA_ID as ENTITY_SILENT_DATA_ID,
-    VANILLA_ENTITY_TICKS_FROZEN_DATA_ID as ENTITY_TICKS_FROZEN_DATA_ID,
-    VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
-    VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
-    VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
-    VANILLA_ITEM_FRAME_ROTATION_DATA_ID as ITEM_FRAME_ROTATION_DATA_ID,
-    VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
-    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
-    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
-    VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
     VANILLA_ARMADILLO_DEFAULT_STATE as ARMADILLO_DEFAULT_STATE,
@@ -6583,11 +6582,16 @@ fn debug_push_item_frame_additional_save_data(
     item_runtime: Option<&NativeItemRuntime>,
     fields: &mut Vec<String>,
 ) {
+    let Some(accessors) =
+        vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     if let Some(block_pos) = debug_snbt_block_pos("block_pos", entity.position_base) {
         fields.push(block_pos);
     }
     if let Some((stack, resource_id)) =
-        debug_entity_data_item_stack_present(entity, ITEM_FRAME_ITEM_DATA_ID).and_then(|stack| {
+        debug_entity_data_item_stack_present(entity, accessors.item_data_id).and_then(|stack| {
             let resource_id = stack
                 .item_id
                 .and_then(|item_id| item_runtime?.item_resource_id(item_id))?;
@@ -6621,8 +6625,8 @@ fn debug_push_item_frame_additional_save_data(
             fields.push(format!("Item: {item}"));
         }
     }
-    let facing = debug_item_frame_facing_legacy_id(entity);
-    if let Some(rotation) = debug_entity_data_int_present(entity, ITEM_FRAME_ROTATION_DATA_ID) {
+    let facing = debug_hanging_facing_legacy_id(entity, accessors.direction_data_id);
+    if let Some(rotation) = debug_entity_data_int_present(entity, accessors.rotation_data_id) {
         fields.push(format!("ItemRotation: {}b", rotation.rem_euclid(8) as i8));
     }
     fields.push(format!("Facing: {facing}b"));
@@ -6634,8 +6638,8 @@ fn debug_push_item_frame_additional_save_data(
     }
 }
 
-fn debug_item_frame_facing_legacy_id(entity: &EntityState) -> i32 {
-    debug_entity_data_direction_legacy_id_present(entity, HANGING_ENTITY_DIRECTION_DATA_ID)
+fn debug_hanging_facing_legacy_id(entity: &EntityState, direction_data_id: u8) -> i32 {
+    debug_entity_data_direction_legacy_id_present(entity, direction_data_id)
         .unwrap_or_else(|| debug_vanilla_direction_legacy_id(entity.data))
 }
 
@@ -6644,12 +6648,17 @@ fn debug_push_painting_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    let Some(accessor) =
+        vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     if let Some(block_pos) = debug_snbt_block_pos("block_pos", entity.position_base) {
         fields.push(block_pos);
     }
     fields.push(format!(
         "facing: {}b",
-        debug_painting_facing_legacy_2d_id(entity)
+        debug_painting_facing_legacy_2d_id(entity, accessor.direction_data_id)
     ));
     if let Some(resource_id) = debug_entity_data_painting_variant_named_id(entity).and_then(|id| {
         debug_registry_resource_id(world, "minecraft:painting_variant", id, |id| {
@@ -6660,8 +6669,8 @@ fn debug_push_painting_additional_save_data(
     }
 }
 
-fn debug_painting_facing_legacy_2d_id(entity: &EntityState) -> i32 {
-    match debug_item_frame_facing_legacy_id(entity) {
+fn debug_painting_facing_legacy_2d_id(entity: &EntityState, direction_data_id: u8) -> i32 {
+    match debug_hanging_facing_legacy_id(entity, direction_data_id) {
         3 => 0, // south
         4 => 1, // west
         2 => 2, // north

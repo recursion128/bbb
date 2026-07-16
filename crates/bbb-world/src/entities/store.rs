@@ -29,6 +29,7 @@ use super::schema::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
+    vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
@@ -110,8 +111,7 @@ use crate::entities::renderer_catalog::{
     vanilla_entity_renderer_uses_mob_item_in_hand_layer,
 };
 use crate::entities::schema::{
-    vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_item_frame,
-    vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
@@ -2842,9 +2842,11 @@ impl EntityStore {
             let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
                 continue;
             };
-            if !vanilla_entity_metadata_type_is_item_frame(identity.entity_type_id) {
+            let Some(accessors) = vanilla_entity_metadata_item_frame_accessors_for_entity_type(
+                identity.entity_type_id,
+            ) else {
                 continue;
-            }
+            };
             let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
                 continue;
             };
@@ -2854,17 +2856,17 @@ impl EntityStore {
             frames.push(ItemFrameRenderState {
                 entity_id: identity.id,
                 center: transform.position,
-                facing: item_frame_facing(identity.data, &metadata.data_values),
+                facing: item_frame_facing(accessors, identity.data, &metadata.data_values),
                 light: super::ENTITY_LIGHT_PROBE_FULL_BRIGHT,
-                rotation: item_frame_rotation(&metadata.data_values),
+                rotation: item_frame_rotation(accessors, &metadata.data_values),
                 glow: identity.entity_type_id == VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
                 invisible: self
                     .metadata_byte(identity.id, ENTITY_SHARED_FLAGS_DATA_ID, 0)
                     .unwrap_or(0)
                     & ENTITY_SHARED_FLAG_INVISIBLE
                     != 0,
-                item: item_frame_item(&metadata.data_values).cloned(),
-                map_id: item_frame_map_id(&metadata.data_values),
+                item: item_frame_item(accessors, &metadata.data_values).cloned(),
+                map_id: item_frame_map_id(accessors, &metadata.data_values),
             });
         }
         frames

@@ -256,6 +256,21 @@ pub struct VanillaEndCrystalMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaHangingEntityMetadataAccessor {
+    pub direction_data_id: u8,
+    pub direction_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaItemFrameMetadataAccessors {
+    pub direction_data_id: u8,
+    pub direction_default: i32,
+    pub item_data_id: u8,
+    pub rotation_data_id: u8,
+    pub rotation_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct VanillaAbstractBoatMetadataAccessors {
     pub(crate) paddle_left_data_id: u8,
     pub(crate) paddle_left_default: bool,
@@ -603,6 +618,68 @@ pub fn vanilla_entity_metadata_end_crystal_accessors_for_entity_type(
             beam_target_data_id: beam_target.data_id,
             show_bottom_data_id: show_bottom.data_id,
             show_bottom_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the inherited hanging-entity direction accessor and its typed default.
+pub fn vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaHangingEntityMetadataAccessor> {
+    let direction =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_DIRECTION")?;
+    match (
+        direction.owner,
+        direction.serializer_name,
+        direction.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.decoration.HangingEntity",
+            "DIRECTION",
+            Some(VanillaEntityMetadataDefault::Direction(direction_default)),
+        ) => Some(VanillaHangingEntityMetadataAccessor {
+            direction_data_id: direction.data_id,
+            direction_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the complete ItemFrame metadata layout, including its inherited direction accessor.
+pub fn vanilla_entity_metadata_item_frame_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaItemFrameMetadataAccessors> {
+    let direction =
+        vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(entity_type_id)?;
+    let item = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ITEM")?;
+    let rotation =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ROTATION")?;
+    match (
+        (item.owner, item.serializer_name, item.typed_default),
+        (
+            rotation.owner,
+            rotation.serializer_name,
+            rotation.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.decoration.ItemFrame",
+                "ITEM_STACK",
+                Some(VanillaEntityMetadataDefault::ItemStackEmpty),
+            ),
+            (
+                "net.minecraft.world.entity.decoration.ItemFrame",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(rotation_default)),
+            ),
+        ) => Some(VanillaItemFrameMetadataAccessors {
+            direction_data_id: direction.direction_data_id,
+            direction_default: direction.direction_default,
+            item_data_id: item.data_id,
+            rotation_data_id: rotation.data_id,
+            rotation_default,
         }),
         _ => None,
     }
@@ -2326,15 +2403,17 @@ mod tests {
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
         VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
         VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
-        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
-        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
-        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
-        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
+        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
+        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
         VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
         VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
@@ -3398,6 +3477,56 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_end_crystal_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_hanging_direction_accessor_owns_membership_index_and_default() {
+        let expected = Some(VanillaHangingEntityMetadataAccessor {
+            direction_data_id: 8,
+            direction_default: 3,
+        });
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_PAINTING_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(entity_type_id),
+                expected
+            );
+        }
+        for entity_type_id in [VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_item_frame_accessors_own_membership_indices_and_defaults() {
+        let expected = Some(VanillaItemFrameMetadataAccessors {
+            direction_data_id: 8,
+            direction_default: 3,
+            item_data_id: 9,
+            rotation_data_id: 10,
+            rotation_default: 0,
+        });
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity_type_id),
+                expected
+            );
+        }
+        for entity_type_id in [VANILLA_ENTITY_TYPE_PAINTING_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity_type_id),
                 None
             );
         }

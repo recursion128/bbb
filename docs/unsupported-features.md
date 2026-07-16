@@ -187,6 +187,12 @@ Owner: `scripts/` + each generated catalog's semantic crate
   derived together from generated `DATA_BEAM_TARGET` and `DATA_SHOW_BOTTOM`; world beam, native
   model and debug consumers must not restore fixed accessor/default aliases or a parallel crystal
   type gate. EnderDragon's nearby-crystal search remains a separate runtime-instance type check.
+  HangingEntity direction membership, inherited wire index and typed default must remain derived
+  from generated `DATA_DIRECTION`; ItemFrame item/rotation membership, wire indices and rotation
+  default must remain derived together from generated `DATA_ITEM`/`DATA_ROTATION`. World bounds,
+  center and render-state projection plus native ItemFrame/Painting debug consumers must not
+  restore fixed accessor/default aliases. Missing direction metadata must continue falling back to
+  the add-entity packet `data`, matching vanilla recreation behavior.
   Spectator camera post-effect selection must remain generated from
   `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
   projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This

@@ -22004,6 +22004,66 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_block_attached_metadata_uses_generated_accessors() {
+        let dimensions = include_str!("../dimensions.rs");
+        assert!(dimensions.contains("vanilla_entity_metadata_item_frame_accessors_for_entity_type"));
+        assert!(dimensions
+            .contains("vanilla_entity_metadata_hanging_direction_accessor_for_entity_type"));
+        let block_attached = include_str!("../dimensions/block_attached.rs");
+        let block_attached = block_attached.split("#[cfg(test)]").next().unwrap();
+        assert!(block_attached.contains("VanillaItemFrameMetadataAccessors"));
+        assert!(block_attached.contains("VanillaHangingEntityMetadataAccessor"));
+        let store = include_str!("../store.rs");
+        let render_body = store
+            .split("pub(crate) fn item_frame_render_states")
+            .nth(1)
+            .and_then(|source| source.split("pub(crate) fn held_item").next())
+            .expect("item-frame render-state source");
+        assert!(
+            render_body.contains("vanilla_entity_metadata_item_frame_accessors_for_entity_type")
+        );
+        assert!(!render_body.contains("vanilla_entity_metadata_type_is_item_frame"));
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        let item_frame_debug_body = input
+            .split("fn debug_push_item_frame_additional_save_data")
+            .nth(1)
+            .and_then(|source| source.split("fn debug_hanging_facing_legacy_id").next())
+            .expect("item-frame debug source");
+        assert!(item_frame_debug_body
+            .contains("vanilla_entity_metadata_item_frame_accessors_for_entity_type"));
+        let painting_debug_body = input
+            .split("fn debug_push_painting_additional_save_data")
+            .nth(1)
+            .and_then(|source| source.split("fn debug_painting_facing_legacy_2d_id").next())
+            .expect("painting debug source");
+        assert!(painting_debug_body
+            .contains("vanilla_entity_metadata_hanging_direction_accessor_for_entity_type"));
+        for removed in [
+            "HANGING_DATA_DIRECTION_ID",
+            "HANGING_ENTITY_DIRECTION_DATA_ID",
+            "VANILLA_HANGING_ENTITY_DEFAULT_DIRECTION_ID",
+            "ITEM_FRAME_DATA_ITEM_ID",
+            "ITEM_FRAME_DATA_ROTATION_ID",
+            "ITEM_FRAME_ITEM_DATA_ID",
+            "ITEM_FRAME_ROTATION_DATA_ID",
+            "VANILLA_ITEM_FRAME_DEFAULT_ROTATION",
+        ] {
+            assert!(
+                !block_attached.contains(removed),
+                "block-attached projection restored {removed}"
+            );
+            assert!(
+                !item_frame_debug_body.contains(removed),
+                "item-frame debug restored {removed}"
+            );
+            assert!(
+                !painting_debug_body.contains(removed),
+                "painting debug restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_spellcaster_projection_uses_generated_accessor() {
         let source = include_str!("../store.rs");
         let body = source
