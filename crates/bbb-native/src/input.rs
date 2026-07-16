@@ -90,8 +90,7 @@ use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_entity_accessors;
 use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
-use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
-use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_fox_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_frog_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
@@ -191,12 +190,6 @@ use bbb_world::{
     VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID as COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID as COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID as COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID,
-};
-use bbb_world::{
-    VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
-    VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
-    VANILLA_FOX_TRUSTED_DATA_ID_0 as FOX_TRUSTED_DATA_ID_0,
-    VANILLA_FOX_TRUSTED_DATA_ID_1 as FOX_TRUSTED_DATA_ID_1,
 };
 #[cfg(test)]
 use bbb_world::{
@@ -7026,27 +7019,26 @@ fn debug_push_cat_additional_save_data(
 }
 
 fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags = vanilla_entity_metadata_fox_flags_accessor_for_entity_type(entity.entity_type_id)
-        .map(|(data_id, default)| {
-            debug_entity_data_byte_present(entity, data_id).unwrap_or(default)
-        })
-        .unwrap_or(0);
-    let trusted = [FOX_TRUSTED_DATA_ID_0, FOX_TRUSTED_DATA_ID_1]
+    let Some(accessors) =
+        vanilla_entity_metadata_fox_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let flags = debug_entity_data_byte_present(entity, accessors.flags_data_id)
+        .unwrap_or(accessors.flags_default);
+    let trusted = accessors
+        .trusted_data_ids
         .into_iter()
         .filter_map(|data_id| debug_entity_data_optional_living_reference_present(entity, data_id))
         .map(debug_snbt_uuid_int_array)
         .collect::<Vec<_>>()
         .join(", ");
-    let variant =
-        vanilla_entity_metadata_fox_variant_accessor_for_entity_type(entity.entity_type_id)
-            .map(|(data_id, default)| {
-                debug_entity_data_int_present(entity, data_id).unwrap_or(default)
-            })
-            .unwrap_or_default();
+    let variant = debug_entity_data_int_present(entity, accessors.type_data_id)
+        .unwrap_or(accessors.type_default);
     fields.push(format!("Trusted: [{trusted}]"));
     fields.push(format!(
         "Sleeping: {}",
-        debug_snbt_bool(flags & FOX_FLAG_SLEEPING != 0)
+        debug_snbt_bool(flags & accessors.sleeping_mask != 0)
     ));
     fields.push(format!(
         "Type: {}",
@@ -7054,11 +7046,11 @@ fn debug_push_fox_additional_save_data(entity: &EntityState, fields: &mut Vec<St
     ));
     fields.push(format!(
         "Sitting: {}",
-        debug_snbt_bool(flags & FOX_FLAG_SITTING != 0)
+        debug_snbt_bool(flags & accessors.sitting_mask != 0)
     ));
     fields.push(format!(
         "Crouching: {}",
-        debug_snbt_bool(flags & FOX_FLAG_CROUCHING != 0)
+        debug_snbt_bool(flags & accessors.crouching_mask != 0)
     ));
 }
 

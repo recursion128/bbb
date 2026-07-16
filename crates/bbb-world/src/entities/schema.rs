@@ -335,6 +335,23 @@ pub struct VanillaDolphinMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaFoxMetadataAccessors {
+    pub type_data_id: u8,
+    pub type_default: i32,
+    pub flags_data_id: u8,
+    pub flags_default: i8,
+    pub sitting_mask: i8,
+    pub crouching_mask: i8,
+    pub interested_mask: i8,
+    pub pouncing_mask: i8,
+    pub sleeping_mask: i8,
+    pub faceplanted_mask: i8,
+    pub defending_mask: i8,
+    pub trusted_data_ids: [u8; 2],
+    pub trusted_default: Option<uuid::Uuid>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaWolfMetadataAccessors {
     pub interested_data_id: u8,
     pub interested_default: bool,
@@ -1226,24 +1243,90 @@ pub fn vanilla_entity_metadata_dolphin_accessors_for_entity_type(
     }
 }
 
+/// Resolves Fox's generated variant, flags, named masks, and trusted-entity accessors.
+pub fn vanilla_entity_metadata_fox_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaFoxMetadataAccessors> {
+    let variant = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_TYPE_ID")?;
+    let flags = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
+    let trusted_0 =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_TRUSTED_ID_0")?;
+    let trusted_1 =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_TRUSTED_ID_1")?;
+    match (
+        (
+            variant.owner,
+            variant.serializer_name,
+            variant.typed_default,
+        ),
+        (flags.owner, flags.serializer_name, flags.typed_default),
+        (
+            trusted_0.owner,
+            trusted_0.serializer_name,
+            trusted_0.typed_default,
+        ),
+        (
+            trusted_1.owner,
+            trusted_1.serializer_name,
+            trusted_1.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.fox.Fox",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(type_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.fox.Fox",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(flags_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.fox.Fox",
+                "OPTIONAL_LIVING_ENTITY_REFERENCE",
+                Some(VanillaEntityMetadataDefault::OptionalLivingEntityReferenceNone),
+            ),
+            (
+                "net.minecraft.world.entity.animal.fox.Fox",
+                "OPTIONAL_LIVING_ENTITY_REFERENCE",
+                Some(VanillaEntityMetadataDefault::OptionalLivingEntityReferenceNone),
+            ),
+        ) => {
+            let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Fox);
+            let mask = |name| {
+                schema
+                    .own_flags
+                    .iter()
+                    .find(|flag| flag.name == name && flag.data_id == flags.data_id)
+                    .map(|flag| flag.mask)
+            };
+            Some(VanillaFoxMetadataAccessors {
+                type_data_id: variant.data_id,
+                type_default,
+                flags_data_id: flags.data_id,
+                flags_default,
+                sitting_mask: mask("FLAG_SITTING")?,
+                crouching_mask: mask("FLAG_CROUCHING")?,
+                interested_mask: mask("FLAG_INTERESTED")?,
+                pouncing_mask: mask("FLAG_POUNCING")?,
+                sleeping_mask: mask("FLAG_SLEEPING")?,
+                faceplanted_mask: mask("FLAG_FACEPLANTED")?,
+                defending_mask: mask("FLAG_DEFENDING")?,
+                trusted_data_ids: [trusted_0.data_id, trusted_1.data_id],
+                trusted_default: None,
+            })
+        }
+        _ => None,
+    }
+}
+
 /// Resolves the generated Fox flags accessor and its typed default.
 pub fn vanilla_entity_metadata_fox_flags_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i8)> {
-    let accessor =
-        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
-        (
-            "net.minecraft.world.entity.animal.fox.Fox",
-            "BYTE",
-            Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+    vanilla_entity_metadata_fox_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.flags_data_id, accessors.flags_default))
 }
 
 /// Resolves the generated IronGolem flags accessor and its typed default.
@@ -1466,20 +1549,8 @@ pub fn vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(
 pub fn vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i32)> {
-    let accessor =
-        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_TYPE_ID")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
-        (
-            "net.minecraft.world.entity.animal.fox.Fox",
-            "INT",
-            Some(VanillaEntityMetadataDefault::Int(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+    vanilla_entity_metadata_fox_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.type_data_id, accessors.type_default))
 }
 
 /// Resolves the generated MushroomCow variant accessor and its typed default.
@@ -5170,21 +5241,42 @@ mod tests {
     }
 
     #[test]
-    fn generated_fox_flags_accessor_owns_membership_index_and_default() {
+    fn generated_fox_accessors_own_membership_indices_defaults_and_masks() {
+        let expected = VanillaFoxMetadataAccessors {
+            type_data_id: VANILLA_FOX_TYPE_DATA_ID,
+            type_default: VANILLA_FOX_DEFAULT_TYPE,
+            flags_data_id: VANILLA_FOX_FLAGS_DATA_ID,
+            flags_default: VANILLA_FOX_DEFAULT_FLAGS,
+            sitting_mask: VANILLA_FOX_FLAG_SITTING,
+            crouching_mask: VANILLA_FOX_FLAG_CROUCHING,
+            interested_mask: VANILLA_FOX_FLAG_INTERESTED,
+            pouncing_mask: VANILLA_FOX_FLAG_POUNCING,
+            sleeping_mask: VANILLA_FOX_FLAG_SLEEPING,
+            faceplanted_mask: VANILLA_FOX_FLAG_FACEPLANTED,
+            defending_mask: VANILLA_FOX_FLAG_DEFENDING,
+            trusted_data_ids: [VANILLA_FOX_TRUSTED_DATA_ID_0, VANILLA_FOX_TRUSTED_DATA_ID_1],
+            trusted_default: None,
+        };
+        assert_eq!(
+            vanilla_entity_metadata_fox_accessors_for_entity_type(VANILLA_ENTITY_TYPE_FOX_ID),
+            Some(expected)
+        );
         assert_eq!(
             vanilla_entity_metadata_fox_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_FOX_ID),
-            Some((19, 0))
+            Some((expected.flags_data_id, expected.flags_default))
         );
         assert_eq!(
-            vanilla_entity_metadata_fox_flags_accessor_for_entity_type(
-                VANILLA_ENTITY_TYPE_CHICKEN_ID
+            vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_FOX_ID
             ),
-            None
+            Some((expected.type_data_id, expected.type_default))
         );
-        assert_eq!(
-            vanilla_entity_metadata_fox_flags_accessor_for_entity_type(-1),
-            None
-        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_CHICKEN_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_fox_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]
@@ -5407,26 +5499,6 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type(-1),
-            None
-        );
-    }
-
-    #[test]
-    fn generated_fox_variant_accessor_owns_membership_index_and_default() {
-        assert_eq!(
-            vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
-                VANILLA_ENTITY_TYPE_FOX_ID
-            ),
-            Some((18, 0))
-        );
-        assert_eq!(
-            vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
-                VANILLA_ENTITY_TYPE_RABBIT_ID
-            ),
-            None
-        );
-        assert_eq!(
-            vanilla_entity_metadata_fox_variant_accessor_for_entity_type(-1),
             None
         );
     }

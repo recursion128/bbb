@@ -30,7 +30,7 @@ use super::schema::{
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
-    vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_guardian_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type,
@@ -53,8 +53,6 @@ use super::schema::{
     VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
     VANILLA_COPPER_GOLEM_STATE_IDLE_ID as COPPER_GOLEM_STATE_IDLE_ID,
-    VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
-    VANILLA_FOX_FLAG_INTERESTED as FOX_FLAG_INTERESTED,
     VANILLA_PANDA_FLAG_ON_BACK as PANDA_FLAG_ON_BACK,
     VANILLA_PANDA_FLAG_ROLLING as PANDA_FLAG_ROLLING,
     VANILLA_PANDA_FLAG_SITTING as PANDA_FLAG_SITTING,
@@ -3974,9 +3972,16 @@ impl EntityClientAnimationState {
                 }
             }
             VANILLA_ENTITY_TYPE_FOX_ID => {
-                let flags = fox_flags(entity_type_id, data_values);
-                let interested = flags & FOX_FLAG_INTERESTED != 0;
-                let crouching = flags & FOX_FLAG_CROUCHING != 0;
+                let accessors =
+                    vanilla_entity_metadata_fox_accessors_for_entity_type(entity_type_id)
+                        .expect("generated Fox metadata accessors must resolve");
+                let flags = entity_data_byte(
+                    data_values,
+                    accessors.flags_data_id,
+                    accessors.flags_default,
+                );
+                let interested = flags & accessors.interested_mask != 0;
+                let crouching = flags & accessors.crouching_mask != 0;
                 if let Some(fox) = self.fox.as_mut() {
                     fox.set_flags(interested, crouching);
                 } else if interested || crouching {
@@ -6272,12 +6277,6 @@ fn equine_pose_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> (b
         flags & ABSTRACT_HORSE_FLAG_STANDING != 0,
         flags & ABSTRACT_HORSE_FLAG_OPEN_MOUTH != 0,
     )
-}
-
-fn fox_flags(entity_type_id: i32, data_values: &[EntityDataValue]) -> i8 {
-    vanilla_entity_metadata_fox_flags_accessor_for_entity_type(entity_type_id)
-        .map(|(data_id, default)| entity_data_byte(data_values, data_id, default))
-        .unwrap_or(0)
 }
 
 /// Vanilla `Wolf.isInterested()` = `entityData.get(DATA_INTERESTED_ID)`. The generated accessor

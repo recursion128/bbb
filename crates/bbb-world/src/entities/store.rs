@@ -35,7 +35,7 @@ use super::schema::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
-    vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
@@ -47,10 +47,6 @@ use super::schema::{
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     VanillaFireworkRocketMetadataAccessors, VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING,
-    VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
-    VANILLA_FOX_FLAG_FACEPLANTED as FOX_FLAG_FACEPLANTED,
-    VANILLA_FOX_FLAG_POUNCING as FOX_FLAG_POUNCING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
-    VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,
     VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING,
@@ -1769,17 +1765,24 @@ impl EntityStore {
         // defines that flags byte, so the five bool projections are gated to it and default off. The
         // interest bit (8) is read by the animation layer instead, to drive the `headRollAngle`
         // accumulator below.
-        let fox_flags =
-            vanilla_entity_metadata_fox_flags_accessor_for_entity_type(identity.entity_type_id)
-                .map(|(data_id, default)| {
-                    self.metadata_byte(id, data_id, default).unwrap_or(default)
-                })
-                .unwrap_or(0);
-        let fox_is_crouching = fox_flags & FOX_FLAG_CROUCHING != 0;
-        let fox_is_sleeping = fox_flags & FOX_FLAG_SLEEPING != 0;
-        let fox_is_sitting = fox_flags & FOX_FLAG_SITTING != 0;
-        let fox_is_pouncing = fox_flags & FOX_FLAG_POUNCING != 0;
-        let fox_is_faceplanted = fox_flags & FOX_FLAG_FACEPLANTED != 0;
+        let fox_accessors =
+            vanilla_entity_metadata_fox_accessors_for_entity_type(identity.entity_type_id);
+        let fox_flags = fox_accessors
+            .map(|accessors| {
+                self.metadata_byte(id, accessors.flags_data_id, accessors.flags_default)
+                    .unwrap_or(accessors.flags_default)
+            })
+            .unwrap_or(0);
+        let fox_is_crouching =
+            fox_accessors.is_some_and(|accessors| fox_flags & accessors.crouching_mask != 0);
+        let fox_is_sleeping =
+            fox_accessors.is_some_and(|accessors| fox_flags & accessors.sleeping_mask != 0);
+        let fox_is_sitting =
+            fox_accessors.is_some_and(|accessors| fox_flags & accessors.sitting_mask != 0);
+        let fox_is_pouncing =
+            fox_accessors.is_some_and(|accessors| fox_flags & accessors.pouncing_mask != 0);
+        let fox_is_faceplanted =
+            fox_accessors.is_some_and(|accessors| fox_flags & accessors.faceplanted_mask != 0);
         let is_feline = vanilla_entity_renderer_uses_abstract_feline_model(identity.entity_type_id);
         // Vanilla `CatRenderer` / `OcelotRenderer.extractRenderState` copies
         // `Entity.isCrouching()` and `Entity.isSprinting()` into `FelineRenderState`. The former is the

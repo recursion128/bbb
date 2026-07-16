@@ -17186,3 +17186,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   提供；world pickup-icon projection、native F3+I 与两侧 fixtures 不再维护固定 aliases。
 - schema generator 新增跨 store/input 与语义 fixtures 的反向守卫；经验球 icon 阈值映射和
   pickup particle 行为保持不变。
+
+## 2026-07-16：派生 Fox metadata accessor bundle
+
+- Fox variant、flags、两个 trusted-entity slots 与七个 named masks 的 metadata identity 组合为
+  typed bundle；既有 flags/variant 窄 helper 委托该 bundle，world animation/pose、native model
+  与 F3+I save-debug 不再维护固定 wire index/default/slot/mask aliases。
+- world/native fixtures 同步复用 bundle；schema generator 的 Fox 反向守卫扩展到所有 production
+  consumers 与语义 fixtures，继续以 generated family schema 作为 flag mask 来源。

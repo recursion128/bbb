@@ -22,7 +22,6 @@ use bbb_world::{
     VANILLA_ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID as ARMOR_STAND_RIGHT_ARM_POSE_DATA_ID,
     VANILLA_AXOLOTL_VARIANT_DATA_ID as AXOLOTL_VARIANT_DATA_ID, VANILLA_BAT_FLAGS_DATA_ID,
     VANILLA_BAT_FLAG_RESTING, VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
-    VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
     VANILLA_MUSHROOM_COW_TYPE_DATA_ID as MUSHROOM_COW_TYPE_DATA_ID,
     VANILLA_PARROT_VARIANT_DATA_ID as PARROT_VARIANT_DATA_ID,
     VANILLA_PHANTOM_SIZE_DATA_ID as PHANTOM_SIZE_DATA_ID,
@@ -9777,6 +9776,9 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
         }
     );
     // The fox `DATA_TYPE_ID` (18, int) selects the RED/SNOW variant via `Fox.Variant.byId`.
+    let fox_accessors =
+        vanilla_entity_metadata_fox_accessors_for_entity_type(VANILLA_ENTITY_TYPE_FOX_ID)
+            .expect("generated Fox metadata accessors must resolve");
     for (id, variant) in [
         (-1, FoxModelVariant::Red),
         (0, FoxModelVariant::Red),
@@ -9786,7 +9788,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
         assert_eq!(
             entity_model_kind(
                 VANILLA_ENTITY_TYPE_FOX_ID,
-                &[protocol_int_data(FOX_TYPE_DATA_ID, id)]
+                &[protocol_int_data(fox_accessors.type_data_id, id)]
             ),
             EntityModelKind::Fox {
                 baby: false,

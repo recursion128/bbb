@@ -228,8 +228,8 @@ pub(super) fn fox_model_kind(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> EntityModelKind {
-    let variant = vanilla_entity_metadata_fox_variant_accessor_for_entity_type(entity_type_id)
-        .map(|(data_id, default)| entity_data_int(values, data_id, default))
+    let variant = vanilla_entity_metadata_fox_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| entity_data_int(values, accessors.type_data_id, accessors.type_default))
         .unwrap_or_default();
     EntityModelKind::Fox {
         baby: ageable_baby(values),

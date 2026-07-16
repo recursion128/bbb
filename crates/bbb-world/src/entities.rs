@@ -64,6 +64,7 @@ pub use schema::VanillaCompanionVariantMetadataAccessors;
 pub use schema::VanillaCopperGolemMetadataAccessors;
 pub use schema::VanillaCreeperMetadataAccessors;
 pub use schema::VanillaFarmAnimalVariantMetadataAccessors;
+pub use schema::VanillaFoxMetadataAccessors;
 pub use schema::VanillaGoatMetadataAccessors;
 pub use schema::VanillaHappyGhastMetadataAccessors;
 pub use schema::VanillaInteractionMetadataAccessors;
@@ -108,7 +109,8 @@ pub use schema::{
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
-    vanilla_entity_metadata_field, vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_field, vanilla_entity_metadata_fox_accessors_for_entity_type,
+    vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_variant_accessor_for_entity_type,
     vanilla_entity_metadata_frog_variant_accessor_for_entity_type,
     vanilla_entity_metadata_ghast_charging_accessor_for_entity_type,

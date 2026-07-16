@@ -123,7 +123,6 @@ use bbb_world::{
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
     VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
     VANILLA_CREEPER_POWERED_DATA_ID as CREEPER_POWERED_DATA_ID,
-    VANILLA_FOX_FLAGS_DATA_ID as FOX_FLAGS_DATA_ID, VANILLA_FOX_TYPE_DATA_ID as FOX_TYPE_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
     VANILLA_INTERACTION_HEIGHT_DATA_ID as INTERACTION_HEIGHT_DATA_ID,
     VANILLA_INTERACTION_RESPONSE_DATA_ID as INTERACTION_RESPONSE_DATA_ID,
@@ -7357,6 +7356,9 @@ fn local_wolf_save_uses_generated_resource_collar_and_anger_defaults() {
 fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors =
+        vanilla_entity_metadata_fox_accessors_for_entity_type(VANILLA_ENTITY_TYPE_FOX_ID)
+            .expect("generated Fox metadata accessors must resolve");
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 87,
@@ -7387,26 +7389,26 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: FOX_TYPE_DATA_ID,
+                data_id: accessors.type_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(1),
             },
             ProtocolEntityDataValue {
-                data_id: FOX_FLAGS_DATA_ID,
+                data_id: accessors.flags_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
-                    FOX_FLAG_SITTING | FOX_FLAG_CROUCHING | FOX_FLAG_SLEEPING,
+                    accessors.sitting_mask | accessors.crouching_mask | accessors.sleeping_mask,
                 ),
             },
             ProtocolEntityDataValue {
-                data_id: FOX_TRUSTED_DATA_ID_0,
+                data_id: accessors.trusted_data_ids[0],
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
                 value: EntityDataValueKind::OptionalLivingEntityReference(Some(Uuid::from_u128(
                     0x00000001000000020000000300000004
                 ),)),
             },
             ProtocolEntityDataValue {
-                data_id: FOX_TRUSTED_DATA_ID_1,
+                data_id: accessors.trusted_data_ids[1],
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
                 value: EntityDataValueKind::OptionalLivingEntityReference(Some(Uuid::from_u128(
                     0x00000005000000060000000700000008

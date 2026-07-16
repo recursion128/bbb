@@ -283,9 +283,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Dolphin got-fish/moistness debug membership, wire indices and typed defaults must remain derived
   together from generated `Dolphin.GOT_FISH` and `MOISTNESS_LEVEL`; native F3+I and its fixture must
   not restore fixed accessor/default aliases or read same-index metadata from another family.
-  Fox pose/debug membership plus flags wire index and default must remain derived from generated
-  `Fox.DATA_FLAGS_ID`; world and native debug consumers must not restore a Fox type predicate or
-  fixed accessor aliases.
+  Fox variant/pose/debug membership, wire indices, typed defaults, trusted-entity slots and seven
+  named masks must remain derived together from generated `Fox.DATA_TYPE_ID`, `DATA_FLAGS_ID`,
+  `DATA_TRUSTED_ID_0/1` and `FLAG_*`; world/native consumers and fixtures must not restore a Fox
+  type predicate, fixed accessor/default aliases, trusted-slot ids or hand-copied flag masks, and
+  invalid variant ids must continue following vanilla ZERO fallback.
   Vex charging membership, wire index and default must remain derived from generated
   `Vex.DATA_FLAGS_ID`; world and native render projection must not restore a Vex type predicate or
   fixed accessor aliases.
@@ -360,9 +362,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Axolotl variant membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_VARIANT`; native model/debug consumers must not restore fixed accessor/default
   aliases or a parallel save-id normalizer, and invalid ids must follow vanilla ZERO fallback.
-  Fox variant membership, wire index and typed default must remain derived from generated
-  `Fox.DATA_TYPE_ID`; native model/debug consumers must not restore fixed accessor/default aliases
-  or a parallel serialized-name mapper, and invalid ids must follow vanilla ZERO fallback.
   MushroomCow variant membership, wire index and typed default must remain derived from generated
   `MushroomCow.DATA_TYPE`; native model/debug consumers must not restore fixed accessor/default
   aliases or a parallel serialized-name mapper, and invalid ids must follow vanilla CLAMP behavior.
