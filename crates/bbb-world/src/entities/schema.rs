@@ -485,6 +485,14 @@ pub struct VanillaHappyGhastMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaCopperGolemMetadataAccessors {
+    pub weather_state_data_id: u8,
+    pub weather_state_default: i32,
+    pub state_data_id: u8,
+    pub state_default: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -1551,24 +1559,49 @@ pub fn vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
     }
 }
 
-/// Resolves the generated CopperGolem animation-state accessor and its typed default.
+/// Resolves the generated CopperGolem weathering and animation-state accessors and typed defaults.
+pub fn vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaCopperGolemMetadataAccessors> {
+    let weather_state =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_WEATHER_STATE")?;
+    let state =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "COPPER_GOLEM_STATE")?;
+    match (
+        (
+            weather_state.owner,
+            weather_state.serializer_name,
+            weather_state.typed_default,
+        ),
+        (state.owner, state.serializer_name, state.typed_default),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.golem.CopperGolem",
+                "WEATHERING_COPPER_STATE",
+                Some(VanillaEntityMetadataDefault::Int(weather_state_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.golem.CopperGolem",
+                "COPPER_GOLEM_STATE",
+                Some(VanillaEntityMetadataDefault::Int(state_default)),
+            ),
+        ) => Some(VanillaCopperGolemMetadataAccessors {
+            weather_state_data_id: weather_state.data_id,
+            weather_state_default,
+            state_data_id: state.data_id,
+            state_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Compatibility projection for consumers that need only CopperGolem's animation-state accessor.
 pub fn vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i32)> {
-    let accessor =
-        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "COPPER_GOLEM_STATE")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
-        (
-            "net.minecraft.world.entity.animal.golem.CopperGolem",
-            "COPPER_GOLEM_STATE",
-            Some(VanillaEntityMetadataDefault::Int(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+    vanilla_entity_metadata_copper_golem_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.state_data_id, accessors.state_default))
 }
 
 /// Resolves the generated Sniffer animation-state accessor and its typed default.
@@ -5074,22 +5107,29 @@ mod tests {
     }
 
     #[test]
-    fn generated_copper_golem_state_accessor_owns_membership_index_and_default() {
+    fn generated_copper_golem_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID
+            ),
+            Some(VanillaCopperGolemMetadataAccessors {
+                weather_state_data_id: 16,
+                weather_state_default: 0,
+                state_data_id: 17,
+                state_default: 0,
+            })
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_copper_golem_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
         assert_eq!(
             vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID
             ),
             Some((17, 0))
-        );
-        assert_eq!(
-            vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type(
-                VANILLA_ENTITY_TYPE_IRON_GOLEM_ID
-            ),
-            None
-        );
-        assert_eq!(
-            vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type(-1),
-            None
         );
     }
 

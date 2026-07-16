@@ -58,6 +58,7 @@ pub use renderer_catalog::{
     vanilla_entity_renderer_thrown_item_scales, vanilla_entity_renderer_uses_native_non_model_pass,
 };
 pub use schema::VanillaCompanionVariantMetadataAccessors;
+pub use schema::VanillaCopperGolemMetadataAccessors;
 pub use schema::VanillaCreeperMetadataAccessors;
 pub use schema::VanillaFarmAnimalVariantMetadataAccessors;
 pub use schema::VanillaGoatMetadataAccessors;
@@ -90,6 +91,7 @@ pub use schema::{
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
     vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type,
     vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
+    vanilla_entity_metadata_copper_golem_accessors_for_entity_type,
     vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_active_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,

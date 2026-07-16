@@ -2575,9 +2575,6 @@ fn entity_model_instances_project_copper_golem_holding_item_from_either_hand() {
 
 #[test]
 fn entity_model_instances_project_copper_golem_idle_seconds_from_world_timer() {
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         247,
@@ -2621,9 +2618,6 @@ fn entity_model_instances_project_copper_golem_idle_seconds_from_world_timer() {
 
 #[test]
 fn entity_model_instances_project_copper_golem_get_item_seconds_from_world_timer() {
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         248,
@@ -2664,9 +2658,6 @@ fn entity_model_instances_project_copper_golem_get_item_seconds_from_world_timer
 
 #[test]
 fn entity_model_instances_project_copper_golem_get_no_item_seconds_from_world_timer() {
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 = 2;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         249,
@@ -2707,9 +2698,6 @@ fn entity_model_instances_project_copper_golem_get_no_item_seconds_from_world_ti
 
 #[test]
 fn entity_model_instances_project_copper_golem_drop_item_seconds_from_world_timer() {
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_DROPPING_ITEM_ID: i32 = 3;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         250,
@@ -2750,9 +2738,6 @@ fn entity_model_instances_project_copper_golem_drop_item_seconds_from_world_time
 
 #[test]
 fn entity_model_instances_project_copper_golem_drop_no_item_seconds_from_world_timer() {
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID: i32 = 4;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         251,
@@ -11448,9 +11433,13 @@ fn protocol_armadillo_state_data(id: i32) -> EntityDataValue {
 }
 
 fn protocol_copper_golem_weathering_data(id: i32) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+    )
+    .expect("generated CopperGolem metadata accessors");
     // Vanilla `EntityDataSerializers.WEATHERING_COPPER_STATE` is serializer id 38.
     EntityDataValue {
-        data_id: COPPER_GOLEM_WEATHER_STATE_DATA_ID,
+        data_id: accessors.weather_state_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
         value: EntityDataValueKind::EnumId {
             serializer: EntityDataEnumSerializer::WeatheringCopperState,
@@ -11460,9 +11449,13 @@ fn protocol_copper_golem_weathering_data(id: i32) -> EntityDataValue {
 }
 
 fn protocol_copper_golem_state_data(id: i32) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+    )
+    .expect("generated CopperGolem metadata accessors");
     // Vanilla `EntityDataSerializers.COPPER_GOLEM_STATE` is serializer id 37.
     EntityDataValue {
-        data_id: COPPER_GOLEM_STATE_DATA_ID,
+        data_id: accessors.state_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COPPER_GOLEM_STATE_ID,
         value: EntityDataValueKind::EnumId {
             serializer: EntityDataEnumSerializer::CopperGolemState,

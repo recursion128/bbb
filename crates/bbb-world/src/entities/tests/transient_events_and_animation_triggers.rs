@@ -1,4 +1,19 @@
 use super::*;
+use crate::entities::{
+    VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_IDLE_ID as COPPER_GOLEM_STATE_IDLE_ID,
+};
+
+fn copper_golem_state_data_id() -> u8 {
+    vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+    )
+    .expect("generated CopperGolem metadata accessors")
+    .state_data_id
+}
 
 #[test]
 fn tracks_entity_transient_events() {
@@ -512,10 +527,6 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
 
 #[test]
 fn copper_golem_idle_state_drives_delayed_idle_animation_timer() {
-    const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         92,
@@ -534,7 +545,7 @@ fn copper_golem_idle_state_drives_delayed_idle_animation_timer() {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 92,
             values: vec![protocol_enum_data(
-                COPPER_GOLEM_STATE_DATA_ID,
+                copper_golem_state_data_id(),
                 EntityDataEnumSerializer::CopperGolemState,
                 state_id,
             )],
@@ -569,10 +580,6 @@ fn copper_golem_idle_state_drives_delayed_idle_animation_timer() {
 
 #[test]
 fn copper_golem_getting_item_state_drives_interaction_timer() {
-    const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_GETTING_ITEM_ID: i32 = 1;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         93,
@@ -591,7 +598,7 @@ fn copper_golem_getting_item_state_drives_interaction_timer() {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 93,
             values: vec![protocol_enum_data(
-                COPPER_GOLEM_STATE_DATA_ID,
+                copper_golem_state_data_id(),
                 EntityDataEnumSerializer::CopperGolemState,
                 state_id,
             )],
@@ -620,10 +627,6 @@ fn copper_golem_getting_item_state_drives_interaction_timer() {
 
 #[test]
 fn copper_golem_getting_no_item_state_drives_interaction_timer() {
-    const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID: i32 = 2;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         94,
@@ -642,7 +645,7 @@ fn copper_golem_getting_no_item_state_drives_interaction_timer() {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 94,
             values: vec![protocol_enum_data(
-                COPPER_GOLEM_STATE_DATA_ID,
+                copper_golem_state_data_id(),
                 EntityDataEnumSerializer::CopperGolemState,
                 state_id,
             )],
@@ -671,10 +674,6 @@ fn copper_golem_getting_no_item_state_drives_interaction_timer() {
 
 #[test]
 fn copper_golem_dropping_item_state_drives_interaction_timer() {
-    const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_DROPPING_ITEM_ID: i32 = 3;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         95,
@@ -693,7 +692,7 @@ fn copper_golem_dropping_item_state_drives_interaction_timer() {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 95,
             values: vec![protocol_enum_data(
-                COPPER_GOLEM_STATE_DATA_ID,
+                copper_golem_state_data_id(),
                 EntityDataEnumSerializer::CopperGolemState,
                 state_id,
             )],
@@ -722,10 +721,6 @@ fn copper_golem_dropping_item_state_drives_interaction_timer() {
 
 #[test]
 fn copper_golem_dropping_no_item_state_drives_interaction_timer() {
-    const COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
-    const COPPER_GOLEM_STATE_IDLE_ID: i32 = 0;
-    const COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID: i32 = 4;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         96,
@@ -744,7 +739,7 @@ fn copper_golem_dropping_no_item_state_drives_interaction_timer() {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 96,
             values: vec![protocol_enum_data(
-                COPPER_GOLEM_STATE_DATA_ID,
+                copper_golem_state_data_id(),
                 EntityDataEnumSerializer::CopperGolemState,
                 state_id,
             )],

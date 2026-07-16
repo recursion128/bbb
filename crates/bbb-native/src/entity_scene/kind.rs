@@ -117,7 +117,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => EntityModelKind::SnowGolem,
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => EntityModelKind::CopperGolem {
-            weathering: copper_golem_weathering(data_values),
+            weathering: copper_golem_weathering(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
         VANILLA_ENTITY_TYPE_PIG_ID => {

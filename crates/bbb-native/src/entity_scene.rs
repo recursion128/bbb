@@ -41,6 +41,7 @@ use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_companion_variant_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_copper_golem_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_entity_accessors;
 use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
@@ -74,8 +75,6 @@ use bbb_world::VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID;
 use bbb_world::VANILLA_ARMADILLO_STATE_SCARED_ID as ARMADILLO_STATE_SCARED_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_ENTITY_CUSTOM_NAME_DATA_ID as ENTITY_CUSTOM_NAME_DATA_ID;
 #[cfg(test)]
@@ -147,9 +146,13 @@ use bbb_world::{
     VANILLA_CAT_COLLAR_COLOR_DATA_ID as CAT_COLLAR_COLOR_DATA_ID,
     VANILLA_CAT_DEFAULT_COLLAR_COLOR as CAT_DEFAULT_COLLAR_COLOR_ID,
 };
+#[cfg(test)]
 use bbb_world::{
-    VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
-    VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
+    VANILLA_COPPER_GOLEM_STATE_DROPPING_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID as COPPER_GOLEM_STATE_DROPPING_NO_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_GETTING_ITEM_ID as COPPER_GOLEM_STATE_GETTING_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID as COPPER_GOLEM_STATE_GETTING_NO_ITEM_ID,
+    VANILLA_COPPER_GOLEM_STATE_IDLE_ID as COPPER_GOLEM_STATE_IDLE_ID,
 };
 #[cfg(test)]
 pub(crate) use bbb_world::{

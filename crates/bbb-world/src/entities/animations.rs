@@ -25,7 +25,7 @@ use super::schema::{
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
     vanilla_entity_metadata_cat_relax_state_one_accessor_for_entity_type,
-    vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type,
+    vanilla_entity_metadata_copper_golem_accessors_for_entity_type,
     vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
@@ -5981,16 +5981,16 @@ pub(crate) fn copper_golem_animation_flags(
     entity_type_id: i32,
     data_values: &[EntityDataValue],
 ) -> CopperGolemAnimationFlags {
-    let Some((data_id, default)) =
-        vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type(entity_type_id)
+    let Some(accessors) =
+        vanilla_entity_metadata_copper_golem_accessors_for_entity_type(entity_type_id)
     else {
         return CopperGolemAnimationFlags::default();
     };
     let state_id = entity_data_enum_id(
         data_values,
-        data_id,
+        accessors.state_data_id,
         EntityDataEnumSerializer::CopperGolemState,
-        default,
+        accessors.state_default,
     );
     CopperGolemAnimationFlags {
         idle: state_id == COPPER_GOLEM_STATE_IDLE_ID,

@@ -3723,6 +3723,10 @@ fn shift_f3_i_with_permission_copies_local_armadillo_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_copper_golem_save_nbt_to_clipboard() {
+    let accessors = vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+    )
+    .expect("generated CopperGolem metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -3750,11 +3754,11 @@ fn shift_f3_i_with_permission_copies_local_copper_golem_save_nbt_to_clipboard() 
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: COPPER_GOLEM_WEATHER_STATE_DATA_ID,
+                data_id: accessors.weather_state_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
                 value: EntityDataValueKind::EnumId {
                     serializer: EntityDataEnumSerializer::WeatheringCopperState,
-                    id: 2,
+                    id: COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID,
                 },
             },
         ],

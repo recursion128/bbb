@@ -24285,21 +24285,54 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_copper_golem_state_does_not_restore_accessor_constants() {
+    fn production_copper_golem_metadata_does_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
-        assert!(animations
-            .contains("vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type"));
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_data = include_str!("../../../../bbb-native/src/entity_scene/entity_data.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        assert!(
+            animations.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type")
+        );
         assert!(animations.contains("fn copper_golem_animation_flags"));
         assert!(store.contains(
             "copper_golem_animation_flags(identity.entity_type_id, &metadata.data_values)"
         ));
-        for removed in ["COPPER_GOLEM_STATE_DATA_ID", "COPPER_GOLEM_DEFAULT_STATE"] {
+        assert!(
+            native_data.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type")
+        );
+        assert!(native_kind.contains("copper_golem_weathering(entity_type_id, data_values)"));
+        assert!(
+            native_input.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type")
+        );
+        for removed in [
+            "COPPER_GOLEM_STATE_DATA_ID",
+            "COPPER_GOLEM_DEFAULT_STATE",
+            "COPPER_GOLEM_WEATHER_STATE_DATA_ID",
+            "COPPER_GOLEM_DEFAULT_WEATHER_STATE",
+        ] {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
             );
             assert!(!store.contains(removed), "store restored {removed}");
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_kind.contains(removed),
+                "native kind restored {removed}"
+            );
+            assert!(
+                !native_data.contains(removed),
+                "native data restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
         }
         for removed in [
             "copper_golem_is_idle(",

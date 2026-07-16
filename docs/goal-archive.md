@@ -17085,3 +17085,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native Ghast charging fixture 改为复用既有生成 accessor；schema generator 的跨 crate
   反向守卫现同时扫描 native scene/kind 与 world collision，拒绝 Ghast/HappyGhast 固定 aliases
   回流。
+
+## 2026-07-16：派生 Copper Golem metadata accessor bundle
+
+- CopperGolem 的 weathering/animation-state 两项 metadata identity 统一由生成 schema bundle
+  提供；world animation、native model weathering 与 F3+I save-debug 不再维护固定 wire
+  index/default，测试 fixture 同样复用 bundle 与生成 enum ordinals。
+- schema generator 的跨 crate 反向守卫扩展到 world animation/store 与 native
+  scene/kind/entity-data/input，拒绝两项 metadata 的固定 aliases 或丢失 entity-type membership。

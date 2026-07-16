@@ -172,12 +172,18 @@ pub(super) fn iron_golem_crackiness(
 /// The synced `WeatheringCopper.WeatherState` ordinal maps 0..=3 to unaffected/exposed/weathered/
 /// oxidized, clamping out-of-range values like vanilla's `ByIdMap.OutOfBoundsStrategy.CLAMP`.
 pub(super) fn copper_golem_weathering(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> CopperGolemWeathering {
+    let Some(accessors) =
+        vanilla_entity_metadata_copper_golem_accessors_for_entity_type(entity_type_id)
+    else {
+        return CopperGolemWeathering::Unaffected;
+    };
     values
         .iter()
         .rev()
-        .find(|value| value.data_id == COPPER_GOLEM_WEATHER_STATE_DATA_ID)
+        .find(|value| value.data_id == accessors.weather_state_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::EnumId {
                 serializer: EntityDataEnumSerializer::WeatheringCopperState,
@@ -186,9 +192,7 @@ pub(super) fn copper_golem_weathering(
             _ => None,
         })
         .map(CopperGolemWeathering::from_vanilla_id)
-        .unwrap_or_else(|| {
-            CopperGolemWeathering::from_vanilla_id(COPPER_GOLEM_DEFAULT_WEATHER_STATE)
-        })
+        .unwrap_or_else(|| CopperGolemWeathering::from_vanilla_id(accessors.weather_state_default))
 }
 
 pub(super) fn entity_data_int(

@@ -83,6 +83,7 @@ use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_companion_variant_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_copper_golem_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_entity_accessors;
@@ -203,8 +204,6 @@ use bbb_world::{
     VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
-    VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID as COPPER_GOLEM_WEATHER_STATE_DATA_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID as COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID as COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID as COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID,
@@ -7179,12 +7178,17 @@ fn debug_armadillo_state_name(state_id: i32) -> &'static str {
 }
 
 fn debug_push_copper_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some(accessors) =
+        vanilla_entity_metadata_copper_golem_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     let weather_state_id = debug_entity_data_enum_id_present(
         entity,
-        COPPER_GOLEM_WEATHER_STATE_DATA_ID,
+        accessors.weather_state_data_id,
         EntityDataEnumSerializer::WeatheringCopperState,
     )
-    .unwrap_or(COPPER_GOLEM_DEFAULT_WEATHER_STATE);
+    .unwrap_or(accessors.weather_state_default);
     fields.push(format!(
         "weather_state: {}",
         debug_snbt_string(debug_copper_golem_weather_state_name(weather_state_id))
