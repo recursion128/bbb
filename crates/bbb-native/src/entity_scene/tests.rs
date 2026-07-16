@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::entity_data_serializers::*;
 use bbb_protocol::packets::{
     AddEntity, AttributeSnapshot, ChatFormatting, CommonPlayerSpawnInfo, DataComponentPatchSummary,
     EntityAnimation, EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot,
@@ -1814,7 +1815,6 @@ fn entity_model_instances_project_enderman_carrying_and_creepy() {
     // 15), DATA_CREEPY (17, BOOLEAN serializer 8).
     const CARRY_STATE_DATA_ID: u8 = 16;
     const CREEPY_DATA_ID: u8 = 17;
-    const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -1843,7 +1843,7 @@ fn entity_model_instances_project_enderman_carrying_and_creepy() {
         values: vec![
             EntityDataValue {
                 data_id: CARRY_STATE_DATA_ID,
-                serializer_id: OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
                 value: EntityDataValueKind::OptionalBlockState(Some(10)),
             },
             protocol_bool_data(CREEPY_DATA_ID, true),
@@ -4854,7 +4854,6 @@ fn entity_model_instances_project_player_crouch_pose() {
     const ENTITY_DATA_POSE_ID: u8 = 6;
     const POSE_STANDING: i32 = 0;
     const POSE_CROUCHING: i32 = 5;
-    const POSE_SERIALIZER_ID: i32 = 20;
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -4876,7 +4875,7 @@ fn entity_model_instances_project_player_crouch_pose() {
             id,
             values: vec![EntityDataValue {
                 data_id: ENTITY_DATA_POSE_ID,
-                serializer_id: POSE_SERIALIZER_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
                 value: EntityDataValueKind::Pose(pose),
             }],
         })
@@ -4974,7 +4973,6 @@ fn entity_model_instances_project_upside_down_dinnerbone() {
 fn entity_model_instances_project_sleeping_pose() {
     const ENTITY_DATA_POSE_ID: u8 = 6;
     const POSE_SLEEPING: i32 = 2;
-    const POSE_SERIALIZER_ID: i32 = 20;
 
     let mut world = WorldStore::new();
     // A sheep facing body yaw 45 with no bed resolved (no chunk loaded).
@@ -5005,7 +5003,7 @@ fn entity_model_instances_project_sleeping_pose() {
         id: 93,
         values: vec![EntityDataValue {
             data_id: ENTITY_DATA_POSE_ID,
-            serializer_id: POSE_SERIALIZER_ID,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
             value: EntityDataValueKind::Pose(POSE_SLEEPING),
         }],
     }));
@@ -5322,7 +5320,7 @@ fn entity_model_instances_project_creeper_white_overlay_from_world() {
         id: 92,
         values: vec![EntityDataValue {
             data_id: CREEPER_SWELL_DIR_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(1),
         }],
     }));
@@ -5361,7 +5359,7 @@ fn entity_model_instances_project_creeper_swelling_from_world() {
         id: 93,
         values: vec![EntityDataValue {
             data_id: CREEPER_SWELL_DIR_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(1),
         }],
     }));
@@ -5394,7 +5392,7 @@ fn entity_model_instances_project_charged_creeper_from_world() {
         id: 97,
         values: vec![EntityDataValue {
             data_id: CREEPER_IS_POWERED_DATA_ID,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],
     }));
@@ -6189,7 +6187,7 @@ fn entity_model_instances_project_snow_golem_pumpkin_render_state() {
         id: 111,
         values: vec![EntityDataValue {
             data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(0),
         }],
     }));
@@ -9064,7 +9062,7 @@ fn entity_model_kind_maps_parrot_to_real_model() {
     // deferred entity-side state.
     let parrot_variant = |id: i32| EntityDataValue {
         data_id: PARROT_VARIANT_DATA_ID,
-        serializer_id: 1,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
         value: EntityDataValueKind::Int(id),
     };
     // No synced data → the vanilla DEFAULT (RED_BLUE).
@@ -10088,11 +10086,10 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
     const ENTITY_SHARED_FLAG_SPRINTING: i8 = 1 << 3;
     const POSE_STANDING: i32 = 0;
     const POSE_CROUCHING: i32 = 5;
-    const POSE_SERIALIZER_ID: i32 = 20;
 
     let pose_data = |pose| EntityDataValue {
         data_id: ENTITY_DATA_POSE_ID,
-        serializer_id: POSE_SERIALIZER_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
         value: EntityDataValueKind::Pose(pose),
     };
     let feline_state = |world: &WorldStore, id: i32| {
@@ -11343,7 +11340,7 @@ fn protocol_add_entity_with_rotation(
 fn protocol_bool_data(data_id: u8, value: bool) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         value: EntityDataValueKind::Boolean(value),
     }
 }
@@ -11354,7 +11351,7 @@ fn protocol_optional_block_pos_data(
 ) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 11,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
         value: EntityDataValueKind::OptionalBlockPos(value),
     }
 }
@@ -11362,7 +11359,7 @@ fn protocol_optional_block_pos_data(
 fn protocol_chicken_variant_data(id: i32) -> EntityDataValue {
     EntityDataValue {
         data_id: CHICKEN_VARIANT_DATA_ID,
-        serializer_id: 30,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::ChickenVariant,
             id,
@@ -11374,7 +11371,7 @@ fn protocol_armadillo_state_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.ARMADILLO_STATE` is serializer id 36.
     EntityDataValue {
         data_id: ARMADILLO_STATE_DATA_ID,
-        serializer_id: 36,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ARMADILLO_STATE_ID,
         value: EntityDataValueKind::EnumId {
             serializer: EntityDataEnumSerializer::ArmadilloState,
             id,
@@ -11386,7 +11383,7 @@ fn protocol_copper_golem_weathering_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.WEATHERING_COPPER_STATE` is serializer id 38.
     EntityDataValue {
         data_id: COPPER_GOLEM_WEATHER_STATE_DATA_ID,
-        serializer_id: 38,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
         value: EntityDataValueKind::EnumId {
             serializer: EntityDataEnumSerializer::WeatheringCopperState,
             id,
@@ -11398,7 +11395,7 @@ fn protocol_copper_golem_state_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.COPPER_GOLEM_STATE` is serializer id 37.
     EntityDataValue {
         data_id: COPPER_GOLEM_STATE_DATA_ID,
-        serializer_id: 37,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COPPER_GOLEM_STATE_ID,
         value: EntityDataValueKind::EnumId {
             serializer: EntityDataEnumSerializer::CopperGolemState,
             id,
@@ -11414,7 +11411,7 @@ fn protocol_villager_data(
 ) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 18,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_VILLAGER_DATA_ID,
         value: EntityDataValueKind::VillagerData {
             villager_type,
             profession,
@@ -11426,7 +11423,7 @@ fn protocol_villager_data(
 fn protocol_cow_variant_data(id: i32) -> EntityDataValue {
     EntityDataValue {
         data_id: COW_VARIANT_DATA_ID,
-        serializer_id: 23,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::CowVariant,
             id,
@@ -11437,7 +11434,7 @@ fn protocol_cow_variant_data(id: i32) -> EntityDataValue {
 fn protocol_pig_variant_data(id: i32) -> EntityDataValue {
     EntityDataValue {
         data_id: PIG_VARIANT_DATA_ID,
-        serializer_id: 28,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::PigVariant,
             id,
@@ -11449,7 +11446,7 @@ fn protocol_zombie_nautilus_variant_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.ZOMBIE_NAUTILUS_VARIANT` is serializer id 32.
     EntityDataValue {
         data_id: ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
-        serializer_id: 32,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
             id,
@@ -11461,7 +11458,7 @@ fn protocol_frog_variant_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.FROG_VARIANT` is serializer id 27.
     EntityDataValue {
         data_id: FROG_VARIANT_DATA_ID,
-        serializer_id: 27,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::FrogVariant,
             id,
@@ -11473,7 +11470,7 @@ fn protocol_cat_variant_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.CAT_VARIANT` is serializer id 21.
     EntityDataValue {
         data_id: CAT_VARIANT_DATA_ID,
-        serializer_id: 21,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::CatVariant,
             id,
@@ -11485,7 +11482,7 @@ fn protocol_wolf_variant_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.WOLF_VARIANT` is serializer id 25.
     EntityDataValue {
         data_id: WOLF_VARIANT_DATA_ID,
-        serializer_id: 25,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::WolfVariant,
             id,
@@ -11496,7 +11493,7 @@ fn protocol_wolf_variant_data(id: i32) -> EntityDataValue {
 fn protocol_int_data(data_id: u8, value: i32) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 1,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
         value: EntityDataValueKind::Int(value),
     }
 }
@@ -11504,7 +11501,7 @@ fn protocol_int_data(data_id: u8, value: i32) -> EntityDataValue {
 fn protocol_optional_unsigned_int_data(data_id: u8, value: Option<i32>) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
         value: EntityDataValueKind::OptionalUnsignedInt(value),
     }
 }
@@ -11512,7 +11509,7 @@ fn protocol_optional_unsigned_int_data(data_id: u8, value: Option<i32>) -> Entit
 fn protocol_long_data(data_id: u8, value: i64) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 2,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
         value: EntityDataValueKind::Long(value),
     }
 }
@@ -11520,7 +11517,7 @@ fn protocol_long_data(data_id: u8, value: i64) -> EntityDataValue {
 fn protocol_pose_data(data_id: u8, pose: i32) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
         value: EntityDataValueKind::Pose(pose),
     }
 }
@@ -11528,7 +11525,7 @@ fn protocol_pose_data(data_id: u8, pose: i32) -> EntityDataValue {
 fn protocol_float_data(data_id: u8, value: f32) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 3,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
         value: EntityDataValueKind::Float(value),
     }
 }
@@ -11536,7 +11533,7 @@ fn protocol_float_data(data_id: u8, value: f32) -> EntityDataValue {
 fn protocol_optional_component_data(data_id: u8, value: Option<&str>) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 6,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
         value: EntityDataValueKind::OptionalComponent(value.map(str::to_string)),
     }
 }
@@ -11544,7 +11541,7 @@ fn protocol_optional_component_data(data_id: u8, value: Option<&str>) -> EntityD
 fn protocol_byte_data(data_id: u8, value: i8) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 0,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(value),
     }
 }
@@ -11552,7 +11549,7 @@ fn protocol_byte_data(data_id: u8, value: i8) -> EntityDataValue {
 fn protocol_direction_data(data_id: u8, value: i32) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 12,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
         value: EntityDataValueKind::Direction(value),
     }
 }
@@ -11560,7 +11557,7 @@ fn protocol_direction_data(data_id: u8, value: i32) -> EntityDataValue {
 fn protocol_rotations_data(data_id: u8, value: [f32; 3]) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 9,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
         value: EntityDataValueKind::Rotations {
             x: value[0],
             y: value[1],

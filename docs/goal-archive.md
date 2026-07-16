@@ -16926,3 +16926,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   数字别名同步删除。
 - gameplay-id generator 新增该消费面的反向扫描，拒绝 numeric `serializer_id` 与
   `SERIALIZER_ID: i32` alias 回流；生成测试及 80 个 item-model focused tests 通过。
+
+## 2026-07-16：统一 entity-scene fixture serializer 身份
+
+- `bbb-native` entity-scene 测试的 31 个 metadata `serializer_id` 写入点现直接消费
+  `EntityDataSerializers.java` 注册顺序生成的 23 种 typed constants，三个 Pose 与一个
+  OptionalBlockState 本地数字 alias 同步删除。
+- 审计修正一条原本以 BYTE id `0` 搭配 Boolean value 的 charged-Creeper fixture：
+  `Creeper.DATA_IS_POWERED` 在 vanilla 26.1 明确使用 `EntityDataSerializers.BOOLEAN`，
+  现消费生成的 BOOLEAN id；254 个 entity-scene focused tests 通过。
+- gameplay-id generator 的 presentation fixture 反向测试现同时覆盖 item-model 与
+  entity-scene，拒绝 numeric `serializer_id` 和本地 serializer alias 回流。
