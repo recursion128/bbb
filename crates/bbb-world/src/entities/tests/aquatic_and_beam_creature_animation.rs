@@ -4,9 +4,14 @@ use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_LONG_JUMPING_ID;
 const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = 16;
 const VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
 
+fn creeper_metadata_accessors() -> VanillaCreeperMetadataAccessors {
+    vanilla_entity_metadata_creeper_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CREEPER_ID)
+        .expect("generated Creeper metadata accessors must resolve")
+}
+
 #[test]
 fn entity_model_sources_project_creeper_swelling_fuse() {
-    const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+    let accessors = creeper_metadata_accessors();
 
     // Read at partial tick 1.0 so getSwelling returns the current swell.
     let swelling = |store: &WorldStore| {
@@ -33,7 +38,7 @@ fn entity_model_sources_project_creeper_swelling_fuse() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![ProtocolEntityDataValue {
-            data_id: CREEPER_SWELL_DIR_DATA_ID,
+            data_id: accessors.swell_dir_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(1),
         }],
@@ -45,7 +50,7 @@ fn entity_model_sources_project_creeper_swelling_fuse() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![ProtocolEntityDataValue {
-            data_id: CREEPER_SWELL_DIR_DATA_ID,
+            data_id: accessors.swell_dir_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(-1),
         }],

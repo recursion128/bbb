@@ -117,8 +117,6 @@ use bbb_world::{
     VANILLA_ARMADILLO_STATE_DATA_ID as ARMADILLO_STATE_DATA_ID,
     VANILLA_BAT_FLAGS_DATA_ID as BAT_FLAGS_DATA_ID,
     VANILLA_BOGGED_SHEARED_DATA_ID as BOGGED_SHEARED_DATA_ID,
-    VANILLA_CREEPER_IGNITED_DATA_ID as CREEPER_IGNITED_DATA_ID,
-    VANILLA_CREEPER_POWERED_DATA_ID as CREEPER_POWERED_DATA_ID,
     VANILLA_HANGING_ENTITY_DIRECTION_DATA_ID as HANGING_ENTITY_DIRECTION_DATA_ID,
     VANILLA_IRON_GOLEM_FLAGS_DATA_ID as IRON_GOLEM_FLAGS_DATA_ID,
     VANILLA_ITEM_FRAME_ITEM_DATA_ID as ITEM_FRAME_ITEM_DATA_ID,
@@ -166,6 +164,11 @@ fn abstract_horse_metadata_accessors(
 ) -> bbb_world::VanillaAbstractHorseMetadataAccessors {
     vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(entity_type_id)
         .expect("generated AbstractHorse metadata accessors must resolve")
+}
+
+fn creeper_metadata_accessors() -> bbb_world::VanillaCreeperMetadataAccessors {
+    vanilla_entity_metadata_creeper_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CREEPER_ID)
+        .expect("generated Creeper metadata accessors must resolve")
 }
 
 fn piglin_immunity_data_id(entity_type_id: i32) -> u8 {
@@ -3019,6 +3022,7 @@ fn shift_f3_i_copies_entity_recreate_command_to_clipboard_and_reports_feedback()
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
+    let accessors = creeper_metadata_accessors();
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -3085,12 +3089,12 @@ fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: CREEPER_POWERED_DATA_ID,
+                data_id: accessors.powered_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: CREEPER_IGNITED_DATA_ID,
+                data_id: accessors.ignited_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },

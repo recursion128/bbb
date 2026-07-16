@@ -6494,12 +6494,12 @@ mod tests {
                 VANILLA_ENTITY_TYPE_CREEPER_ID
             ),
             Some(VanillaCreeperMetadataAccessors {
-                swell_dir_data_id: 16,
-                swell_dir_default: -1,
-                powered_data_id: 17,
-                powered_default: false,
-                ignited_data_id: 18,
-                ignited_default: false,
+                swell_dir_data_id: VANILLA_CREEPER_SWELL_DIR_DATA_ID,
+                swell_dir_default: VANILLA_CREEPER_DEFAULT_SWELL_DIR,
+                powered_data_id: VANILLA_CREEPER_POWERED_DATA_ID,
+                powered_default: VANILLA_CREEPER_DEFAULT_POWERED,
+                ignited_data_id: VANILLA_CREEPER_IGNITED_DATA_ID,
+                ignited_default: VANILLA_CREEPER_DEFAULT_IGNITED,
             })
         );
         assert_eq!(

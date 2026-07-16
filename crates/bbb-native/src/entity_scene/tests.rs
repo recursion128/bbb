@@ -58,6 +58,13 @@ fn vehicle_metadata_accessors(entity_type_id: i32) -> bbb_world::VanillaVehicleM
         .expect("generated VehicleEntity metadata accessors must resolve")
 }
 
+fn creeper_metadata_accessors() -> bbb_world::VanillaCreeperMetadataAccessors {
+    bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_CREEPER_ID,
+    )
+    .expect("generated Creeper metadata accessors must resolve")
+}
+
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
     let accessors = armor_stand_metadata_accessors();
     ArmorStandModelPose {
@@ -5344,7 +5351,7 @@ fn creeper_white_overlay_progress_matches_vanilla_strobe() {
 
 #[test]
 fn entity_model_instances_project_creeper_white_overlay_from_world() {
-    const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+    let accessors = creeper_metadata_accessors();
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -5358,7 +5365,7 @@ fn entity_model_instances_project_creeper_white_overlay_from_world() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 92,
         values: vec![EntityDataValue {
-            data_id: CREEPER_SWELL_DIR_DATA_ID,
+            data_id: accessors.swell_dir_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(1),
         }],
@@ -5378,7 +5385,7 @@ fn entity_model_instances_project_creeper_white_overlay_from_world() {
 
 #[test]
 fn entity_model_instances_project_creeper_swelling_from_world() {
-    const CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
+    let accessors = creeper_metadata_accessors();
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -5397,7 +5404,7 @@ fn entity_model_instances_project_creeper_swelling_from_world() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 93,
         values: vec![EntityDataValue {
-            data_id: CREEPER_SWELL_DIR_DATA_ID,
+            data_id: accessors.swell_dir_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(1),
         }],
@@ -5414,7 +5421,7 @@ fn entity_model_instances_project_creeper_swelling_from_world() {
 
 #[test]
 fn entity_model_instances_project_charged_creeper_from_world() {
-    const CREEPER_IS_POWERED_DATA_ID: u8 = 17;
+    let accessors = creeper_metadata_accessors();
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -5426,11 +5433,11 @@ fn entity_model_instances_project_charged_creeper_from_world() {
     let resting = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
     assert!(!resting[0].render_state.creeper_powered);
 
-    // Vanilla `Creeper.DATA_IS_POWERED` (index 17): set true for a lightning-charged creeper.
+    // Vanilla `Creeper.DATA_IS_POWERED`: set true for a lightning-charged creeper.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 97,
         values: vec![EntityDataValue {
-            data_id: CREEPER_IS_POWERED_DATA_ID,
+            data_id: accessors.powered_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],

@@ -17255,3 +17255,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   aliases，而是按实际 Oak Boat 或 Minecart entity type 解析父类 bundle。
 - schema expected bundle 改由 generated constants 组装；generator 反向守卫覆盖 production
   animation 以及 world/native 语义 fixtures，既有 hurt-roll 行为保持不变。
+
+## 2026-07-16：统一 Creeper metadata accessor 消费
+
+- world swelling animation、native strobe/swelling/powered model 与 F3+I save fixtures 统一按
+  Creeper entity type 解析 swell-direction/powered/ignited typed bundle，不再维护固定 wire
+  index aliases。
+- schema expected bundle 改由 generated constants 组装；generator 反向守卫扩展到 production
+  consumers 与 world/native 语义 fixtures，既有 fuse、overlay 与 save 行为保持不变。

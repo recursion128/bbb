@@ -327,9 +327,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   fixed metadata aliases, hand-written wire indices or a parallel boat/minecart membership union.
   Creeper swell-direction, powered and ignited membership, wire indices and typed defaults must
   remain derived together from generated `DATA_SWELL_DIR`, `DATA_IS_POWERED` and
-  `DATA_IS_IGNITED`; world animation plus native model/debug consumers must not restore fixed
-  metadata aliases, and the native powered-model projection must not restore a Creeper type
-  predicate alongside the accessor membership.
+  `DATA_IS_IGNITED`; world animation, native model/debug consumers and their fixtures must not
+  restore fixed metadata aliases or hand-written wire indices, and the native powered-model
+  projection must not restore a Creeper type predicate alongside the accessor membership.
   Guardian moving and attack-target membership, inherited wire indices and typed defaults must
   remain derived together from generated `DATA_ID_MOVING` and `DATA_ID_ATTACK_TARGET`; world
   animation/beam consumers must not restore fixed metadata aliases or read those slots without
