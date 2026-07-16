@@ -17600,3 +17600,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 四类 generated reverse guard 分别按自身完整资产集合禁止 native fixture 恢复路径字面量，并
   锁定 loader 与 fixture 对权威迭代器的消费；生产中的 model type/key/texture 选择保持由既有
   bootstrap catalog 驱动。
+
+## 2026-07-16：统一 animal sound-variant death-sound 消费
+
+- sound-variant generated catalog 新增全量 `(registry id, identity)` 迭代面；world 音频回归从
+  每族一个代表项扩为 cat/chicken/cow/pig/wolf 共 15 个 built-in identity × adult/baby，期望
+  声音直接来自各 identity 的 generated `builtin_death_sound_event`。
+- bootstrap generator 守卫按五族完整目录禁止 fixture 恢复具名 variant 或 adult/baby sound
+  event 字面量，并要求五族统一消费全量迭代接口；同步 registry typed payload/server order
+  测试保持独立。

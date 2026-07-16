@@ -2905,6 +2905,11 @@ def render_animal_sound_variants(
         "                $entries[self as usize].0",
         "            }",
         "",
+        "            #[cfg(test)]",
+        "            pub(crate) fn builtin_variants() -> impl ExactSizeIterator<Item = (i32, Self)> {",
+        "                $entries.iter().enumerate().map(|(registry_id, (_, variant, _, _))| (registry_id as i32, *variant))",
+        "            }",
+        "",
         "            pub(crate) const fn builtin_death_sound_event(self, baby: bool) -> &'static str {",
         "                let entry = $entries[self as usize];",
         "                if baby { entry.3 } else { entry.2 }",
@@ -2978,6 +2983,27 @@ def render_animal_sound_variants(
             "",
             "    #[test]",
             "    fn production_sources_do_not_redeclare_animal_sound_variant_catalog_facts() {",
+            "        let audio = include_str!(\"../client/audio.rs\");",
+            "        let fixture = audio.split(\"fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds\").nth(1).and_then(|source| source.split(\"    #[test]\").next()).expect(\"full animal death-sound fixture\");",
+            f"        assert_eq!(fixture.matches(\"assert_family!\").count(), {len(expected_catalogs)});",
+            "        assert_eq!(fixture.matches(\"builtin_variants()\").count(), 1);",
+            "        assert_eq!(fixture.matches(\"builtin_death_sound_event(baby)\").count(), 1);",
+        )
+    )
+    for family, catalog_name, type_name in expected_catalogs:
+        const_name = catalog_name.removesuffix("_KEYS") + "_IDENTITIES"
+        lines.extend(
+            (
+                f"        assert_eq!(fixture.matches(\"{type_name}\").count(), 1);",
+                f"        for (_, variant, adult, baby) in {const_name} {{",
+                "            assert!(!fixture.contains(adult), \"fixture restored adult death-sound literal {adult}\");",
+                "            assert!(!fixture.contains(baby), \"fixture restored baby death-sound literal {baby}\");",
+                f"            assert!(!fixture.contains(&format!(\"{type_name}::{{variant:?}}\")), \"fixture restored representative {type_name} variant {{variant:?}}\");",
+                "        }",
+            )
+        )
+    lines.extend(
+        (
             "        fn visit(directory: &Path, violations: &mut Vec<String>) {",
             "            for entry in fs::read_dir(directory).unwrap() {",
             "                let path = entry.unwrap().path();",

@@ -38,6 +38,11 @@ macro_rules! define_sound_variant_catalog {
                 $entries[self as usize].0
             }
 
+            #[cfg(test)]
+            pub(crate) fn builtin_variants() -> impl ExactSizeIterator<Item = (i32, Self)> {
+                $entries.iter().enumerate().map(|(registry_id, (_, variant, _, _))| (registry_id as i32, *variant))
+            }
+
             pub(crate) const fn builtin_death_sound_event(self, baby: bool) -> &'static str {
                 let entry = $entries[self as usize];
                 if baby { entry.3 } else { entry.2 }
@@ -466,6 +471,93 @@ mod tests {
 
     #[test]
     fn production_sources_do_not_redeclare_animal_sound_variant_catalog_facts() {
+        let audio = include_str!("../client/audio.rs");
+        let fixture = audio
+            .split("fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds")
+            .nth(1)
+            .and_then(|source| source.split("    #[test]").next())
+            .expect("full animal death-sound fixture");
+        assert_eq!(fixture.matches("assert_family!").count(), 5);
+        assert_eq!(fixture.matches("builtin_variants()").count(), 1);
+        assert_eq!(
+            fixture.matches("builtin_death_sound_event(baby)").count(),
+            1
+        );
+        assert_eq!(fixture.matches("CatSoundVariantIdentity").count(), 1);
+        for (_, variant, adult, baby) in VANILLA_CAT_SOUND_VARIANT_IDENTITIES {
+            assert!(
+                !fixture.contains(adult),
+                "fixture restored adult death-sound literal {adult}"
+            );
+            assert!(
+                !fixture.contains(baby),
+                "fixture restored baby death-sound literal {baby}"
+            );
+            assert!(
+                !fixture.contains(&format!("CatSoundVariantIdentity::{variant:?}")),
+                "fixture restored representative CatSoundVariantIdentity variant {variant:?}"
+            );
+        }
+        assert_eq!(fixture.matches("ChickenSoundVariantIdentity").count(), 1);
+        for (_, variant, adult, baby) in VANILLA_CHICKEN_SOUND_VARIANT_IDENTITIES {
+            assert!(
+                !fixture.contains(adult),
+                "fixture restored adult death-sound literal {adult}"
+            );
+            assert!(
+                !fixture.contains(baby),
+                "fixture restored baby death-sound literal {baby}"
+            );
+            assert!(
+                !fixture.contains(&format!("ChickenSoundVariantIdentity::{variant:?}")),
+                "fixture restored representative ChickenSoundVariantIdentity variant {variant:?}"
+            );
+        }
+        assert_eq!(fixture.matches("CowSoundVariantIdentity").count(), 1);
+        for (_, variant, adult, baby) in VANILLA_COW_SOUND_VARIANT_IDENTITIES {
+            assert!(
+                !fixture.contains(adult),
+                "fixture restored adult death-sound literal {adult}"
+            );
+            assert!(
+                !fixture.contains(baby),
+                "fixture restored baby death-sound literal {baby}"
+            );
+            assert!(
+                !fixture.contains(&format!("CowSoundVariantIdentity::{variant:?}")),
+                "fixture restored representative CowSoundVariantIdentity variant {variant:?}"
+            );
+        }
+        assert_eq!(fixture.matches("PigSoundVariantIdentity").count(), 1);
+        for (_, variant, adult, baby) in VANILLA_PIG_SOUND_VARIANT_IDENTITIES {
+            assert!(
+                !fixture.contains(adult),
+                "fixture restored adult death-sound literal {adult}"
+            );
+            assert!(
+                !fixture.contains(baby),
+                "fixture restored baby death-sound literal {baby}"
+            );
+            assert!(
+                !fixture.contains(&format!("PigSoundVariantIdentity::{variant:?}")),
+                "fixture restored representative PigSoundVariantIdentity variant {variant:?}"
+            );
+        }
+        assert_eq!(fixture.matches("WolfSoundVariantIdentity").count(), 1);
+        for (_, variant, adult, baby) in VANILLA_WOLF_SOUND_VARIANT_IDENTITIES {
+            assert!(
+                !fixture.contains(adult),
+                "fixture restored adult death-sound literal {adult}"
+            );
+            assert!(
+                !fixture.contains(baby),
+                "fixture restored baby death-sound literal {baby}"
+            );
+            assert!(
+                !fixture.contains(&format!("WolfSoundVariantIdentity::{variant:?}")),
+                "fixture restored representative WolfSoundVariantIdentity variant {variant:?}"
+            );
+        }
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();

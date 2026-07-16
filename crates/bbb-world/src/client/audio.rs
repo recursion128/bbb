@@ -17,18 +17,14 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+use crate::entities::VANILLA_CAT_SOUND_VARIANT_DATA_ID;
 use crate::entities::{
     vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
     ChickenSoundVariantIdentity, CowSoundVariantIdentity, PigSoundVariantIdentity,
     VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
-};
-#[cfg(test)]
-use crate::entities::{
-    VANILLA_CAT_SOUND_VARIANT_DATA_ID, VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
-    VANILLA_COW_SOUND_VARIANT_DATA_ID, VANILLA_PIG_SOUND_VARIANT_DATA_ID,
-    VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
 };
 use crate::registries::{
     DamageTypeEffects, RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY,
@@ -1935,108 +1931,87 @@ mod tests {
 
     #[test]
     fn built_in_animal_sound_variants_drive_adult_and_baby_death_sounds() {
-        struct Case {
-            entity_type_id: i32,
-            data_id: u8,
-            serializer_id: i32,
-            serializer: EntityDataRegistryHolder,
-            registry_id: i32,
-            adult_sound: &'static str,
-            baby_sound: &'static str,
-            volume: f32,
-        }
-
-        let cases = [
-            Case {
-                entity_type_id: VANILLA_ENTITY_TYPE_CAT_ID,
-                data_id: VANILLA_CAT_SOUND_VARIANT_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
-                serializer: EntityDataRegistryHolder::CatSoundVariant,
-                registry_id: 1,
-                adult_sound: "minecraft:entity.cat_royal.death",
-                baby_sound: "minecraft:entity.baby_cat.death",
-                volume: 1.0,
-            },
-            Case {
-                entity_type_id: VANILLA_ENTITY_TYPE_CHICKEN_ID,
-                data_id: VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
-                serializer: EntityDataRegistryHolder::ChickenSoundVariant,
-                registry_id: 1,
-                adult_sound: "minecraft:entity.chicken_picky.death",
-                baby_sound: "minecraft:entity.baby_chicken.death",
-                volume: 1.0,
-            },
-            Case {
-                entity_type_id: VANILLA_ENTITY_TYPE_COW_ID,
-                data_id: VANILLA_COW_SOUND_VARIANT_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
-                serializer: EntityDataRegistryHolder::CowSoundVariant,
-                registry_id: 1,
-                adult_sound: "minecraft:entity.cow_moody.death",
-                baby_sound: "minecraft:entity.cow_moody.death",
-                volume: 0.4,
-            },
-            Case {
-                entity_type_id: VANILLA_ENTITY_TYPE_PIG_ID,
-                data_id: VANILLA_PIG_SOUND_VARIANT_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
-                serializer: EntityDataRegistryHolder::PigSoundVariant,
-                registry_id: 1,
-                adult_sound: "minecraft:entity.pig_big.death",
-                baby_sound: "minecraft:entity.baby_pig.death",
-                volume: 1.0,
-            },
-            Case {
-                entity_type_id: VANILLA_ENTITY_TYPE_WOLF_ID,
-                data_id: VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
-                serializer: EntityDataRegistryHolder::WolfSoundVariant,
-                registry_id: 6,
-                adult_sound: "minecraft:entity.wolf_cute.death",
-                baby_sound: "minecraft:entity.baby_wolf.death",
-                volume: 0.4,
-            },
-        ];
-
         let mut store = WorldStore::new();
-        for (index, case) in cases.into_iter().enumerate() {
-            for (baby_offset, baby) in [false, true].into_iter().enumerate() {
-                let id = 1_000 + (index as i32 * 2) + baby_offset as i32;
-                store.apply_add_entity(protocol_add_entity_of_type(id, case.entity_type_id));
-                let mut values = vec![EntityDataValue {
-                    data_id: case.data_id,
-                    serializer_id: case.serializer_id,
-                    value: EntityDataValueKind::RegistryId {
-                        serializer: case.serializer,
-                        id: case.registry_id,
-                    },
-                }];
-                if baby {
-                    values.push(EntityDataValue {
-                        data_id: crate::entities::VANILLA_AGEABLE_MOB_BABY_DATA_ID,
-                        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                        value: EntityDataValueKind::Boolean(true),
-                    });
-                }
-                assert!(store.apply_set_entity_data(SetEntityData { id, values }));
+        let mut entity_ids = 1_000..;
+        macro_rules! assert_family {
+            ($identity:ty, $entity_type_id:expr, $accessors:path, $serializer_id:expr, $serializer:expr, $volume:expr) => {
+                let accessors = $accessors($entity_type_id).expect("sound-variant accessors");
+                for (registry_id, identity) in <$identity>::builtin_variants() {
+                    for baby in [false, true] {
+                        let id = entity_ids.next().unwrap();
+                        store.apply_add_entity(protocol_add_entity_of_type(id, $entity_type_id));
+                        let mut values = vec![EntityDataValue {
+                            data_id: accessors.sound_variant_data_id,
+                            serializer_id: $serializer_id,
+                            value: EntityDataValueKind::RegistryId {
+                                serializer: $serializer,
+                                id: registry_id,
+                            },
+                        }];
+                        if baby {
+                            values.push(EntityDataValue {
+                                data_id: crate::entities::VANILLA_AGEABLE_MOB_BABY_DATA_ID,
+                                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                                value: EntityDataValueKind::Boolean(true),
+                            });
+                        }
+                        assert!(store.apply_set_entity_data(SetEntityData { id, values }));
 
-                let mut samples = [0.75, 0.25].into_iter();
-                let sound = store
-                    .living_death_sound_for_entity(id, || samples.next().unwrap())
-                    .unwrap();
-                assert_eq!(
-                    sound.sound.location.as_deref(),
-                    Some(if baby {
-                        case.baby_sound
-                    } else {
-                        case.adult_sound
-                    })
-                );
-                assert_close(sound.volume, case.volume);
-                assert_close(sound.pitch, 1.1);
+                        let mut samples = [0.75, 0.25].into_iter();
+                        let sound = store
+                            .living_death_sound_for_entity(id, || samples.next().unwrap())
+                            .unwrap();
+                        assert_eq!(
+                            sound.sound.location.as_deref(),
+                            Some(identity.builtin_death_sound_event(baby))
+                        );
+                        assert_close(sound.volume, $volume);
+                        assert_close(sound.pitch, 1.1);
+                    }
+                }
             }
         }
+
+        assert_family!(
+            CatSoundVariantIdentity,
+            VANILLA_ENTITY_TYPE_CAT_ID,
+            vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
+            VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
+            EntityDataRegistryHolder::CatSoundVariant,
+            1.0
+        );
+        assert_family!(
+            ChickenSoundVariantIdentity,
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
+            VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
+            EntityDataRegistryHolder::ChickenSoundVariant,
+            1.0
+        );
+        assert_family!(
+            CowSoundVariantIdentity,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
+            VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+            EntityDataRegistryHolder::CowSoundVariant,
+            0.4
+        );
+        assert_family!(
+            PigSoundVariantIdentity,
+            VANILLA_ENTITY_TYPE_PIG_ID,
+            vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
+            VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
+            EntityDataRegistryHolder::PigSoundVariant,
+            1.0
+        );
+        assert_family!(
+            WolfSoundVariantIdentity,
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+            vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
+            VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
+            EntityDataRegistryHolder::WolfSoundVariant,
+            0.4
+        );
     }
 
     #[test]
