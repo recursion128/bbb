@@ -427,8 +427,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   PiglinBrute as owning the regular Piglin accessor.
   CopperGolem weathering/animation-state membership, wire indices and typed defaults must remain
   derived as one bundle from generated `CopperGolem.DATA_WEATHER_STATE` and
-  `CopperGolem.COPPER_GOLEM_STATE`; world animation, native render and F3+I save-debug consumers
-  must not restore fixed accessor/default aliases and must keep generated enum ordinals.
+  `CopperGolem.COPPER_GOLEM_STATE`; world animation, native render, F3+I save-debug consumers and
+  semantic fixtures must not restore fixed accessor/default aliases or hand-written wire indices,
+  and must keep generated enum ordinals.
   Sniffer animation-state membership, wire index and typed default must remain derived from
   generated `Sniffer.DATA_STATE`; world animation and dimensions consumers must not restore fixed
   accessor/default aliases or duplicate the generated `Sniffer.State` ordinals. Sniffer baby

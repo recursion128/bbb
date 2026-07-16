@@ -6081,16 +6081,34 @@ mod tests {
 
     #[test]
     fn generated_copper_golem_accessors_own_membership_indices_and_defaults() {
+        let copper_golem = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::CopperGolem);
+        let weather_state = copper_golem
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_WEATHER_STATE")
+            .expect("generated CopperGolem weather-state field");
+        let state = copper_golem
+            .own_fields
+            .iter()
+            .find(|field| field.name == "COPPER_GOLEM_STATE")
+            .expect("generated CopperGolem animation-state field");
+        let VanillaEntityMetadataDefault::Int(weather_state_default) = weather_state.default else {
+            panic!("generated CopperGolem weather-state default must be enum INT");
+        };
+        let VanillaEntityMetadataDefault::Int(state_default) = state.default else {
+            panic!("generated CopperGolem animation-state default must be enum INT");
+        };
+        let expected = VanillaCopperGolemMetadataAccessors {
+            weather_state_data_id: weather_state.data_id,
+            weather_state_default,
+            state_data_id: state.data_id,
+            state_default,
+        };
         assert_eq!(
             vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
                 VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID
             ),
-            Some(VanillaCopperGolemMetadataAccessors {
-                weather_state_data_id: 16,
-                weather_state_default: 0,
-                state_data_id: 17,
-                state_default: 0,
-            })
+            Some(expected)
         );
         for entity_type_id in [VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, -1] {
             assert_eq!(
@@ -6102,7 +6120,7 @@ mod tests {
             vanilla_entity_metadata_copper_golem_state_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID
             ),
-            Some((17, 0))
+            Some((expected.state_data_id, expected.state_default))
         );
     }
 
@@ -7663,10 +7681,23 @@ mod tests {
         assert_eq!(copper_golem.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(copper_golem.inherited_field_count, 16);
         assert_eq!(copper_golem.own_fields.len(), 2);
-        assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID, 16);
-        assert_eq!(VANILLA_COPPER_GOLEM_STATE_DATA_ID, 17);
-        assert_eq!(VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE, 0);
-        assert_eq!(VANILLA_COPPER_GOLEM_DEFAULT_STATE, 0);
+        let accessors = vanilla_entity_metadata_copper_golem_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID,
+        )
+        .expect("generated CopperGolem metadata accessors");
+        assert_eq!(
+            accessors.weather_state_data_id,
+            copper_golem.own_fields[0].data_id
+        );
+        assert_eq!(accessors.state_data_id, copper_golem.own_fields[1].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(accessors.weather_state_default),
+            copper_golem.own_fields[0].default
+        );
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(accessors.state_default),
+            copper_golem.own_fields[1].default
+        );
         assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_UNAFFECTED_ID, 0);
         assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID, 1);
         assert_eq!(VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID, 2);

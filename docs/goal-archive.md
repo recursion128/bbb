@@ -17427,3 +17427,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   派生；world Piglin fixture 移除固定 slot，native fixtures 移除固定索引注释。
 - 删除两类 data/default 四个 facade 转发；generator 守卫覆盖 world/native fixtures，并锁定
   PiglinBrute 不拥有普通 Piglin accessor，避免同名字段跨 owner 混用。
+
+## 2026-07-16：统一 CopperGolem metadata 消费
+
+- weather-state 与 animation-state 的 wire index/default 统一由 generated CopperGolem family
+  schema 组装为 typed bundle；world/native/F3+I production 与 fixtures 继续消费该 bundle。
+- 删除两项 data/default 四个 facade 转发，保留全部 generated enum ordinal 常量；generator
+  反向守卫扩展到 world/native/input fixtures，并保持每帧一次状态读取约束。

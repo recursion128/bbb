@@ -118,11 +118,6 @@ const GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_0: u8 = 20;
 pub const VANILLA_FOX_TRUSTED_DATA_ID_0: u8 = GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_0;
 const GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_1: u8 = 21;
 pub const VANILLA_FOX_TRUSTED_DATA_ID_1: u8 = GENERATED_VANILLA_FOX_TRUSTED_DATA_ID_1;
-const GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 = 16;
-pub const VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID: u8 =
-    GENERATED_VANILLA_COPPER_GOLEM_WEATHER_STATE_DATA_ID;
-const GENERATED_VANILLA_COPPER_GOLEM_STATE_DATA_ID: u8 = 17;
-pub const VANILLA_COPPER_GOLEM_STATE_DATA_ID: u8 = GENERATED_VANILLA_COPPER_GOLEM_STATE_DATA_ID;
 const GENERATED_VANILLA_OCELOT_TRUSTING_DATA_ID: u8 = 18;
 pub const VANILLA_OCELOT_TRUSTING_DATA_ID: u8 = GENERATED_VANILLA_OCELOT_TRUSTING_DATA_ID;
 const GENERATED_VANILLA_PANDA_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
@@ -665,11 +660,6 @@ const GENERATED_VANILLA_FOX_DEFAULT_TYPE: i32 = 0;
 pub const VANILLA_FOX_DEFAULT_TYPE: i32 = GENERATED_VANILLA_FOX_DEFAULT_TYPE;
 const GENERATED_VANILLA_FOX_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_FOX_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_FOX_DEFAULT_FLAGS;
-const GENERATED_VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE: i32 = 0;
-pub const VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE: i32 =
-    GENERATED_VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE;
-const GENERATED_VANILLA_COPPER_GOLEM_DEFAULT_STATE: i32 = 0;
-pub const VANILLA_COPPER_GOLEM_DEFAULT_STATE: i32 = GENERATED_VANILLA_COPPER_GOLEM_DEFAULT_STATE;
 const GENERATED_VANILLA_OCELOT_DEFAULT_TRUSTING: bool = false;
 pub const VANILLA_OCELOT_DEFAULT_TRUSTING: bool = GENERATED_VANILLA_OCELOT_DEFAULT_TRUSTING;
 const GENERATED_VANILLA_PANDA_DEFAULT_UNHAPPY_COUNTER: i32 = 0;
@@ -24929,13 +24919,16 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_copper_golem_metadata_does_not_restore_accessor_constants() {
+    fn copper_golem_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
         let native_data = include_str!("../../../../bbb-native/src/entity_scene/entity_data.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         assert!(
             animations.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type")
         );
@@ -24950,6 +24943,11 @@ mod generated_catalog_guards {
         assert!(
             native_input.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type")
         );
+        for source in [world_tests, native_scene_tests, native_input_tests] {
+            assert!(
+                source.contains("vanilla_entity_metadata_copper_golem_accessors_for_entity_type")
+            );
+        }
         for removed in [
             "COPPER_GOLEM_STATE_DATA_ID",
             "COPPER_GOLEM_DEFAULT_STATE",
@@ -24976,6 +24974,18 @@ mod generated_catalog_guards {
             assert!(
                 !native_input.contains(removed),
                 "native input restored {removed}"
+            );
+            assert!(
+                !world_tests.contains(removed),
+                "world fixtures restored {removed}"
+            );
+            assert!(
+                !native_scene_tests.contains(removed),
+                "native scene fixtures restored {removed}"
+            );
+            assert!(
+                !native_input_tests.contains(removed),
+                "native input fixtures restored {removed}"
             );
         }
         for removed in [
