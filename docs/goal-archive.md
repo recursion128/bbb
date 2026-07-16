@@ -17819,3 +17819,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   protocol pose catalog 的命名 ordinal。
 - Entity reverse guard 纳入 transient-events 测试模块并禁止固定 pose 写入与局部 `POSE_*` 常量
   回流；shoot/slide/slideBack/inhale/longJump 时序以及 Chicken negative gate 回归保持不变。
+
+## 2026-07-16：统一 Frog walk-animation pose fixture accessor 消费
+
+- Frog walk override fixture 删除固定 Entity pose wire id 6，改由 generated Entity bundle 提供
+  accessor/default，并继续使用 protocol pose catalog 的 `LONG_JUMPING` 命名 ordinal。
+- Entity reverse guard 纳入 aquatic/beam 测试模块并禁止固定 pose 写入回流；long-jump 期间目标
+  walk speed 归零、既有速度按 0.4 low-pass 衰减并继续积分的回归保持不变。

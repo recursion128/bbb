@@ -2,7 +2,16 @@ use super::super::schema::{
     vanilla_entity_metadata_guardian_accessors_for_entity_type, VanillaGuardianMetadataAccessors,
 };
 use super::*;
-use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_LONG_JUMPING_ID;
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_LONG_JUMPING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
+};
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose_id)
+}
 
 fn creeper_metadata_accessors() -> VanillaCreeperMetadataAccessors {
     vanilla_entity_metadata_creeper_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CREEPER_ID)
@@ -901,7 +910,7 @@ fn frog_walk_animation_uses_vanilla_update_override() {
     // the target speed to 0, so the existing speed decays by the same 0.4 factor.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 82,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_LONG_JUMPING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_LONG_JUMPING_ID)],
     }));
     sync_position(&mut store, 0.04);
     store.advance_entity_client_animations(1);
