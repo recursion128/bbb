@@ -16917,3 +16917,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - core-registry generator 现生成跨这四个测试源的反向扫描，禁止 `const ...
   ENTITY_TYPE_ID: i32 = ...` 再次成为平行事实源；movement 23 项与 runtime 454 项
   focused tests 保持通过。
+
+## 2026-07-16：统一 item-model fixture serializer 身份
+
+- `bbb-native` item-model 测试的 Int、BlockState、OptionalBlockState 与 ItemStack
+  metadata fixture 共五个 `serializer_id` 写入点，现直接消费由
+  `EntityDataSerializers.java` 注册顺序生成的 typed constants；两个本地 serializer
+  数字别名同步删除。
+- gameplay-id generator 新增该消费面的反向扫描，拒绝 numeric `serializer_id` 与
+  `SERIALIZER_ID: i32` alias 回流；生成测试及 80 个 item-model focused tests 通过。

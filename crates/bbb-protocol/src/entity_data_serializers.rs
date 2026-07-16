@@ -313,4 +313,28 @@ mod tests {
             violations.join("\n")
         );
     }
+
+    #[test]
+    fn native_item_model_tests_use_generated_serializer_ids() {
+        let source = include_str!("../../bbb-native/src/item_models/tests.rs");
+        let aliases = source
+            .lines()
+            .filter(|line| line.contains("SERIALIZER_ID: i32 ="))
+            .collect::<Vec<_>>();
+        let numeric_fields = source
+            .lines()
+            .filter(|line| {
+                line.trim()
+                    .strip_prefix("serializer_id:")
+                    .and_then(|value| value.strip_suffix(","))
+                    .is_some_and(|value| {
+                        value
+                            .trim()
+                            .chars()
+                            .all(|character| character.is_ascii_digit() || character == '_')
+                    })
+            })
+            .collect::<Vec<_>>();
+        assert!(aliases.is_empty() && numeric_fields.is_empty(), "item-model tests restored serializer ids:\naliases={aliases:?}\nfields={numeric_fields:?}");
+    }
 }

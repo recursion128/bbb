@@ -1,5 +1,10 @@
 use super::*;
 use crate::map_textures::map_color_rgba8;
+use bbb_protocol::entity_data_serializers::{
+    VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_STATE_ID, VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+    VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
+};
 use bbb_protocol::packets::{
     AddEntity, BlockPos as ProtocolBlockPos, BlockUpdate, CommonPlayerSpawnInfo,
     DataComponentPatchSummary, EntityAnimation, EntityDataValue, EntityDataValueKind, EntityEvent,
@@ -19,8 +24,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 const ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
-const BLOCK_STATE_SERIALIZER_ID: i32 = 14;
-const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
 const AIR_BLOCK_STATE_ID: i32 = 0;
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 
@@ -169,7 +172,7 @@ fn first_person_test_consumable_stack(
 fn protocol_optional_block_state_data(data_id: u8, block_state: Option<i32>) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
         value: EntityDataValueKind::OptionalBlockState(block_state),
     }
 }
@@ -177,7 +180,7 @@ fn protocol_optional_block_state_data(data_id: u8, block_state: Option<i32>) -> 
 fn protocol_int_data(data_id: u8, value: i32) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 1,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
         value: EntityDataValueKind::Int(value),
     }
 }
@@ -185,7 +188,7 @@ fn protocol_int_data(data_id: u8, value: i32) -> EntityDataValue {
 fn protocol_block_state_data(data_id: u8, block_state: i32) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: BLOCK_STATE_SERIALIZER_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_STATE_ID,
         value: EntityDataValueKind::BlockState(block_state),
     }
 }
@@ -3774,7 +3777,7 @@ fn ominous_item_spawner_models_emit_item_cluster_meshes() {
         id: 801,
         values: vec![EntityDataValue {
             data_id: OMINOUS_ITEM_SPAWNER_DATA_ITEM_ID,
-            serializer_id: 7,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(ItemStackSummary {
                 item_id: Some(item_id),
                 count: 3,
@@ -3883,7 +3886,7 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
         id: ENTITY_ID,
         values: vec![EntityDataValue {
             data_id: ITEM_ENTITY_DATA_ITEM_STACK_ID,
-            serializer_id: 7,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(stack.clone()),
         }],
     }));
