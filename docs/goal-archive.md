@@ -17744,3 +17744,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - LivingEntity generator 守卫把 entity-scene 父模块与整份 semantic fixture 纳入完整 flags、
   health、sleeping-pos alias 禁止集；非 living boat 的 stray-field 负例仍以 Chicken accessor 构造
   精确的继承槽位，继续证明 renderer projection fail closed。
+
+## 2026-07-16：统一 specialized pick-bounds baby fixture accessor 消费
+
+- specialized pick-bounds/render-scale fixtures 删除 AgeableMob baby wire id 16 与 Zombie/Piglin
+  单独 accessor 变量，统一按 store 中每个实体的实际 type 查询 generated nearest
+  `DATA_BABY_ID` owner/default，再构造 boolean payload。
+- Piglin 错 owner 负例改用 Goat 的 generated AgeableMob accessor 构造，随后再用 Piglin 自己的
+  nearest accessor 置 baby，继续证明同为 baby 语义也不能跨 owner 复用；generator reverse guard
+  禁止该 fixture 恢复 Ageable baby 固定别名。

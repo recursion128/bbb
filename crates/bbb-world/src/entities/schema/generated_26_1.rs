@@ -22382,6 +22382,7 @@ mod generated_catalog_guards {
     #[test]
     fn production_baby_projection_does_not_restore_entity_type_membership() {
         let source = include_str!("../dimensions.rs");
+        let fixture = include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");
         let body = source
             .split("fn vanilla_is_baby")
             .nth(1)
@@ -22399,6 +22400,13 @@ mod generated_catalog_guards {
                 .count(),
             6
         );
+        assert!(fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+            assert!(
+                !fixture.contains(removed),
+                "baby fixture restored {removed}"
+            );
+        }
     }
 
     #[test]

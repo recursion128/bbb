@@ -8,10 +8,27 @@ fn polar_bear_standing_data(standing: bool) -> ProtocolEntityDataValue {
     protocol_bool_data(data_id, standing)
 }
 
+fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+            .expect("generated nearest baby accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, is_baby)
+}
+
+fn set_baby(store: &mut WorldStore, entity_id: i32, is_baby: bool) -> bool {
+    let entity_type_id = store
+        .entities
+        .entity_type_id(entity_id)
+        .expect("baby fixture entity type");
+    store.apply_set_entity_data(ProtocolSetEntityData {
+        id: entity_id,
+        values: vec![baby_data(entity_type_id, is_baby)],
+    })
+}
+
 #[test]
 fn generated_baby_accessor_membership_covers_all_ageable_families() {
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
-
     let mut store = WorldStore::new();
     for (id, entity_type_id) in [
         (180, VANILLA_ENTITY_TYPE_CAMEL_ID),
@@ -24,10 +41,7 @@ fn generated_baby_accessor_membership_covers_all_ageable_families() {
     ] {
         store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
         assert_eq!(store.entities.is_baby(id), Some(false));
-        assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-            id,
-            values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-        }));
+        assert!(set_baby(&mut store, id, true));
         assert_eq!(
             store.entities.is_baby(id),
             Some(true),
@@ -116,19 +130,7 @@ fn turtle_pick_bounds_compose_adult_baby_and_scale_dimensions() {
 #[test]
 fn baby_pick_bounds_follow_vanilla_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
     let mut store = WorldStore::new();
-    let (piglin_baby_data_id, piglin_baby_default) =
-        super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(
-            VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        )
-        .expect("generated Piglin baby accessor");
-    assert!(!piglin_baby_default);
-    let zombie_accessors = super::schema::vanilla_entity_metadata_zombie_accessors_for_entity_type(
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-    )
-    .expect("generated Zombie metadata accessors");
-    assert!(!zombie_accessors.baby_default);
     store.apply_add_entity(protocol_add_entity_with_type(34, 100));
     store.apply_add_entity(protocol_add_entity_with_type(35, 26));
     store.apply_add_entity(protocol_add_entity_with_type(36, 139));
@@ -168,10 +170,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         store.probe_entity_pick_bounds(34),
         Some(EntityPickBoundsState::from_base_size(0.9, 0.9, 0.0))
     );
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 34,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 34, true));
     assert_eq!(
         store.probe_entity_pick_bounds(34),
         Some(EntityPickBoundsState::from_base_size(
@@ -193,19 +192,13 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         Some(EntityPickBoundsState::from_base_size(0.9, 0.9, 0.0))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 35,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 35, true));
     assert_eq!(
         store.probe_entity_pick_bounds(35),
         Some(EntityPickBoundsState::from_base_size(0.3, 0.4, 0.0))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 52,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 52, true));
     assert_eq!(
         store.probe_entity_pick_bounds(52),
         Some(EntityPickBoundsState::from_base_size(
@@ -215,19 +208,13 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 36,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 36, true));
     assert_eq!(
         store.probe_entity_pick_bounds(36),
         Some(EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 37,
-        values: vec![protocol_bool_data(zombie_accessors.baby_data_id, true)],
-    }));
+    assert!(set_baby(&mut store, 37, true));
     assert_eq!(
         store.probe_entity_pick_bounds(37),
         Some(EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0))
@@ -235,25 +222,19 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 38,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_GOAT_ID, true)],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(38),
         Some(EntityPickBoundsState::from_base_size(0.6, 1.95, 0.0))
     );
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 38,
-        values: vec![protocol_bool_data(piglin_baby_data_id, true)],
-    }));
+    assert!(set_baby(&mut store, 38, true));
     assert_eq!(
         store.probe_entity_pick_bounds(38),
         Some(EntityPickBoundsState::from_base_size(0.49, 0.99, 0.0))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 39,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 39, true));
     assert_eq!(
         store.probe_entity_pick_bounds(39),
         Some(EntityPickBoundsState::from_base_size(
@@ -263,10 +244,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 40,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 40, true));
     assert_eq!(
         store.probe_entity_pick_bounds(40),
         Some(EntityPickBoundsState::from_base_size(
@@ -276,10 +254,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 45,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 45, true));
     assert_eq!(
         store.probe_entity_pick_bounds(45),
         Some(EntityPickBoundsState::from_base_size(
@@ -305,10 +280,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 46,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 46, true));
     assert_eq!(
         store.probe_entity_pick_bounds(46),
         Some(EntityPickBoundsState::from_base_size(
@@ -334,10 +306,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 47,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 47, true));
     assert_eq!(
         store.probe_entity_pick_bounds(47),
         Some(EntityPickBoundsState::from_base_size(0.24, 0.4, 0.0))
@@ -359,10 +328,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 71,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 71, true));
     assert_eq!(
         store.probe_entity_pick_bounds(71),
         Some(EntityPickBoundsState::from_base_size(
@@ -388,10 +354,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 53,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 53, true));
     assert_eq!(
         store.probe_entity_pick_bounds(53),
         Some(EntityPickBoundsState::from_base_size(
@@ -417,37 +380,25 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 48,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 48, true));
     assert_eq!(
         store.probe_entity_pick_bounds(48),
         Some(EntityPickBoundsState::from_base_size(0.5, 0.25, 0.0))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 49,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 49, true));
     assert_eq!(
         store.probe_entity_pick_bounds(49),
         Some(EntityPickBoundsState::from_base_size(0.5, 0.63, 0.0))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 50,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 50, true));
     assert_eq!(
         store.probe_entity_pick_bounds(50),
         Some(EntityPickBoundsState::from_base_size(0.5, 0.63, 0.0))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 54,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 54, true));
     assert_eq!(
         store.probe_entity_pick_bounds(54),
         Some(EntityPickBoundsState::from_base_size(
@@ -457,10 +408,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 55,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 55, true));
     assert_eq!(
         store.probe_entity_pick_bounds(55),
         Some(EntityPickBoundsState::from_base_size(
@@ -470,10 +418,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 56,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 56, true));
     assert_eq!(
         store.probe_entity_pick_bounds(56),
         Some(EntityPickBoundsState::from_base_size(
@@ -483,10 +428,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 57,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 57, true));
     assert_eq!(
         store.probe_entity_pick_bounds(57),
         Some(EntityPickBoundsState::from_base_size(
@@ -512,10 +454,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 58,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 58, true));
     assert_eq!(
         store.probe_entity_pick_bounds(58),
         Some(EntityPickBoundsState::from_base_size(
@@ -525,10 +464,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 59,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 59, true));
     assert_eq!(
         store.probe_entity_pick_bounds(59),
         Some(EntityPickBoundsState::from_base_size(
@@ -538,10 +474,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 60,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 60, true));
     assert_eq!(
         store.probe_entity_pick_bounds(60),
         Some(EntityPickBoundsState::from_base_size(
@@ -551,10 +484,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 61,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 61, true));
     assert_eq!(
         store.probe_entity_pick_bounds(61),
         Some(EntityPickBoundsState::from_base_size(
@@ -564,10 +494,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 51,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 51, true));
     assert_eq!(
         store.probe_entity_pick_bounds(51),
         Some(EntityPickBoundsState::from_base_size(
@@ -593,10 +520,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 62,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 62, true));
     assert_eq!(
         store.probe_entity_pick_bounds(62),
         Some(EntityPickBoundsState::from_base_size(
@@ -622,10 +546,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 63,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 63, true));
     assert_eq!(
         store.probe_entity_pick_bounds(63),
         Some(EntityPickBoundsState::from_base_size(
@@ -635,10 +556,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 64,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 64, true));
     assert_eq!(
         store.probe_entity_pick_bounds(64),
         Some(EntityPickBoundsState::from_base_size(
@@ -648,10 +566,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 65,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 65, true));
     assert_eq!(
         store.probe_entity_pick_bounds(65),
         Some(EntityPickBoundsState::from_base_size(
@@ -661,10 +576,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 66,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 66, true));
     assert_eq!(
         store.probe_entity_pick_bounds(66),
         Some(EntityPickBoundsState::from_base_size(
@@ -674,10 +586,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 67,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 67, true));
     assert_eq!(
         store.probe_entity_pick_bounds(67),
         Some(EntityPickBoundsState::from_base_size(
@@ -687,10 +596,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 68,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 68, true));
     assert_eq!(
         store.probe_entity_pick_bounds(68),
         Some(EntityPickBoundsState::from_base_size(
@@ -700,10 +606,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 69,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 69, true));
     assert_eq!(
         store.probe_entity_pick_bounds(69),
         Some(EntityPickBoundsState::from_base_size(
@@ -713,10 +616,7 @@ fn baby_pick_bounds_follow_vanilla_metadata() {
         ))
     );
 
-    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
-        id: 70,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
-    }));
+    assert!(set_baby(&mut store, 70, true));
     assert_eq!(
         store.probe_entity_pick_bounds(70),
         Some(EntityPickBoundsState::from_base_size(
@@ -945,7 +845,6 @@ fn generated_sanitize_scale_overrides_apply_to_render_state() {
 #[test]
 fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
 
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -1026,7 +925,7 @@ fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 81,
         values: vec![
-            protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
+            baby_data(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, true),
             polar_bear_standing_data(true),
         ],
     }));
