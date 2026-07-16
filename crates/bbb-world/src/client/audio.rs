@@ -1949,11 +1949,7 @@ mod tests {
                             },
                         }];
                         if baby {
-                            values.push(EntityDataValue {
-                                data_id: crate::entities::VANILLA_AGEABLE_MOB_BABY_DATA_ID,
-                                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                                value: EntityDataValueKind::Boolean(true),
-                            });
+                            values.push(baby_entity_data($entity_type_id));
                         }
                         assert!(store.apply_set_entity_data(SetEntityData { id, values }));
 
@@ -1969,7 +1965,7 @@ mod tests {
                         assert_close(sound.pitch, 1.1);
                     }
                 }
-            }
+            };
         }
 
         assert_family!(
@@ -2839,6 +2835,19 @@ mod tests {
             y_rot: 0.0,
             y_head_rot: 0.0,
             data: 0,
+        }
+    }
+
+    fn baby_entity_data(entity_type_id: i32) -> EntityDataValue {
+        let (data_id, default) =
+            crate::entities::vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+                .expect("generated nearest baby accessor must resolve");
+        assert!(!default, "vanilla AgeableMob baby default must be false");
+        EntityDataValue {
+            data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(true),
         }
     }
 

@@ -18016,3 +18016,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   wire id 16，按 Donkey type 查询 generated nearest-baby accessor 并校验默认 false。
 - baby reverse guard 纳入整份 world inventory tests；成人 tame saddle 可见、baby saddle 隐藏与
   Nautilus equipment slot visibility 回归保持不变。
+
+## 2026-07-16：统一 built-in animal audio baby fixtures
+
+- world audio tests 新增按 entity type 查询 generated nearest-baby accessor、校验默认 false 的
+  Boolean metadata helper；Cat、Chicken、Cow、Pig、Wolf built-in sound variant 宏删除固定
+  AgeableMob baby wire id 16。
+- baby reverse guard 覆盖 helper 与 built-in family 测试；各 registry identity 的 adult/baby
+  death sound、volume、pitch 与随机采样顺序回归保持不变。
