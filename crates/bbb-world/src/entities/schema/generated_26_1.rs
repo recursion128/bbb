@@ -22360,6 +22360,35 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn ominous_item_spawner_consumers_use_generated_accessor() {
+        let store = include_str!("../store.rs");
+        assert!(store.contains(
+            "vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type"
+        ));
+        let render_body = store
+            .split("pub(crate) fn ominous_item_spawner_item_states_at_partial_tick")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("pub(crate) fn append_ominous_item_spawner_particle_states")
+                    .next()
+            })
+            .expect("OminousItemSpawner item render projection source");
+        assert!(render_body.contains("ominous_item_spawner_render_stack("));
+        assert!(render_body.contains("identity.entity_type_id"));
+        assert!(!render_body.contains("VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID"));
+        let world_tests = include_str!("../tests/item_entity_and_pickup_projection.rs");
+        assert!(world_tests.contains("fn ominous_item_stack_entity_data("));
+        assert!(world_tests.contains("fn ominous_item_stack_collision_entity_data("));
+        assert!(world_tests.contains(
+            "vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type"
+        ));
+        for source in [store, world_tests] {
+            assert!(!source.contains("OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID"));
+        }
+    }
+
+    #[test]
     fn spellcaster_projection_consumers_use_generated_accessor() {
         let source = include_str!("../store.rs");
         let body = source

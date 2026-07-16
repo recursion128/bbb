@@ -79,6 +79,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_llama_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type,
+    vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type,
     vanilla_entity_metadata_panda_accessors_for_entity_type,
     vanilla_entity_metadata_panda_flags_accessor_for_entity_type,
     vanilla_entity_metadata_parrot_variant_accessor_for_entity_type,

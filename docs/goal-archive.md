@@ -18146,3 +18146,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   direction/item/rotation 三个 metadata 字段删除固定 wire id，并校验 direction/rotation default。
 - item-stack debug probe 复用同一 bundle 的 item id；block-attached reverse guard 纳入完整 input
   tests，禁止 HangingEntity/ItemFrame 固定 accessor/default aliases 回流。
+
+## 2026-07-16：派生 OminousItemSpawner item metadata
+
+- world schema 新增 OminousItemSpawner-only `DATA_ITEM` ITEM_STACK/empty typed accessor；render
+  stack 查询以 accessor membership 替代平行 type gate 与固定 slot 8。
+- world item/age projection fixtures 从该 accessor 构造正常、Cow collision 与 adjacent wrong-id
+  样本；generator reverse guard 覆盖生产和 fixtures，禁止固定 metadata id 回流。

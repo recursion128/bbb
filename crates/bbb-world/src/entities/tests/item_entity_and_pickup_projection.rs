@@ -16,8 +16,18 @@ fn firework_item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEn
 
 fn ominous_item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataValue {
     let mut value = item_stack_entity_data(item);
-    value.data_id = VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID;
+    value.data_id = vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    )
+    .expect("generated OminousItemSpawner item accessor must resolve");
     value
+}
+
+/// Deliberately sends the OminousItemSpawner item field to a Cow to cover type gating.
+fn ominous_item_stack_collision_entity_data(
+    item: ProtocolItemStackSummary,
+) -> ProtocolEntityDataValue {
+    ominous_item_stack_entity_data(item)
 }
 
 #[test]
@@ -339,10 +349,13 @@ fn ominous_item_spawner_item_states_project_item_stack_and_age_ticks() {
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 82,
-        values: vec![item_stack_entity_data(item_stack(912, 1))],
+        values: vec![ominous_item_stack_collision_entity_data(item_stack(912, 1))],
     }));
     let mut wrong_data_id = ominous_item_stack_entity_data(item_stack(913, 1));
-    wrong_data_id.data_id = VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID + 1;
+    wrong_data_id.data_id = wrong_data_id
+        .data_id
+        .checked_add(1)
+        .expect("fixture accessor id must permit an adjacent wrong-id sample");
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 83,
         values: vec![wrong_data_id],

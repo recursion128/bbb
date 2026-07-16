@@ -38,6 +38,7 @@ use super::schema::{
     vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
+    vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
@@ -115,9 +116,9 @@ use crate::entities::schema::{
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
     VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK, VANILLA_HUMANOID_ARM_LEFT_ID,
-    VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID,
-    VANILLA_PLAYER_ABSORPTION_DATA_ID, VANILLA_PLAYER_DEFAULT_ABSORPTION,
-    VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+    VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_PLAYER_ABSORPTION_DATA_ID,
+    VANILLA_PLAYER_DEFAULT_ABSORPTION, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -3167,9 +3168,8 @@ impl EntityStore {
         })
     }
 
-    /// Collects the ominous item spawner item-cluster render state. Vanilla
-    /// `OminousItemSpawner.DATA_ITEM` is the first accessor after `Entity` and therefore uses
-    /// item-stack metadata id 8.
+    /// Collects the ominous item spawner item-cluster render state. The generated
+    /// `OminousItemSpawner.DATA_ITEM` accessor owns membership and the item-stack wire index.
     pub(crate) fn ominous_item_spawner_item_states_at_partial_tick(
         &self,
         partial_ticks: f32,
@@ -3182,9 +3182,6 @@ impl EntityStore {
             let Ok(identity) = self.ecs.get::<&EntityIdentity>(entity) else {
                 continue;
             };
-            if identity.entity_type_id != VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID {
-                continue;
-            }
             let Ok(transform) = self.ecs.get::<&EntityTransform>(entity) else {
                 continue;
             };
@@ -3194,7 +3191,9 @@ impl EntityStore {
             let Ok(client_animations) = self.ecs.get::<&EntityClientAnimations>(entity) else {
                 continue;
             };
-            let Some(stack) = ominous_item_spawner_render_stack(&metadata.data_values) else {
+            let Some(stack) =
+                ominous_item_spawner_render_stack(identity.entity_type_id, &metadata.data_values)
+            else {
                 continue;
             };
             items.push(OminousItemSpawnerItemState {
@@ -4356,9 +4355,12 @@ fn firework_rocket_render_stack(
 }
 
 fn ominous_item_spawner_render_stack(
+    entity_type_id: i32,
     data_values: &[bbb_protocol::packets::EntityDataValue],
 ) -> Option<&bbb_protocol::packets::ItemStackSummary> {
-    metadata_item_stack(data_values, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID)
+    let data_id =
+        vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(entity_type_id)?;
+    metadata_item_stack(data_values, data_id)
         .filter(|stack| stack.item_id.is_some() && stack.count > 0)
 }
 
