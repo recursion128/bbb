@@ -16796,3 +16796,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   visibility/light 投影删除固定 id/default/mask aliases；完整 `bbb-world` 测试及 focused native
   debug/light/name/invisibility 测试继续锁定行为，metadata generator reverse guard 覆盖七条生产
   消费面。
+
+## 2026-07-16：Turtle dimensions/collision/pick coverage
+
+- Turtle entity coverage 的 `dimensions/collision/pick` 格现在以专属 evidence 标为 complete：
+  adult `1.2 × 0.4`、baby `0.3` scale、attribute scale 的乘法顺序，以及继承的
+  Living pushability / never-direct-collidability 均由现有生产路径处理。
+- 新增两条 Turtle focused 语义测试，分别锁定 adult/baby/scale pick bounds 与生成 collision
+  分类、存活/climbable pushability；其他 Turtle partial 格保持不变并继续按 vanilla notes
+  中的不确定项审计。

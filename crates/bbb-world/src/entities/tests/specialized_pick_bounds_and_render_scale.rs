@@ -41,6 +41,56 @@ fn generated_baby_accessor_membership_covers_all_ageable_families() {
 }
 
 #[test]
+fn turtle_pick_bounds_compose_adult_baby_and_scale_dimensions() {
+    let entity_id = 188;
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        entity_id,
+        VANILLA_ENTITY_TYPE_TURTLE_ID,
+    ));
+    assert_eq!(
+        store.probe_entity_pick_bounds(entity_id),
+        Some(EntityPickBoundsState::from_base_size(1.2, 0.4, 0.0))
+    );
+
+    let (baby_data_id, baby_default) =
+        super::schema::vanilla_entity_metadata_baby_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_TURTLE_ID,
+        )
+        .expect("generated Turtle baby accessor");
+    assert!(!baby_default);
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: entity_id,
+        values: vec![protocol_bool_data(baby_data_id, true)],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(entity_id),
+        Some(EntityPickBoundsState::from_base_size(
+            1.2 * 0.3,
+            0.4 * 0.3,
+            0.0,
+        ))
+    );
+
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity_pick_bounds(entity_id),
+        Some(EntityPickBoundsState::from_base_size(
+            1.2 * 0.3 * 2.0,
+            0.4 * 0.3 * 2.0,
+            0.0,
+        ))
+    );
+}
+
+#[test]
 fn baby_pick_bounds_follow_vanilla_metadata() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const AGEABLE_BABY_DATA_ID: u8 = 16;

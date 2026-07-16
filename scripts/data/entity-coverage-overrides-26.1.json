@@ -114,6 +114,27 @@
         "vanilla:net/minecraft/client/model/animal/turtle/TurtleModel.java#setupAnim"
       ]
     },
+    "turtle_dimensions_collision_pick": {
+      "implementation": [
+        "crates/bbb-world/src/entities/dimensions.rs#pub(crate) fn vanilla_pick_bounds_for_type",
+        "crates/bbb-world/src/entities/dimensions.rs#fn baby_pick_bounds",
+        "crates/bbb-world/src/entities/dimensions.rs#fn apply_living_scale",
+        "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_metadata_type_pushability_kind",
+        "crates/bbb-world/src/entities/schema.rs#pub fn vanilla_entity_metadata_type_collidability_kind",
+        "crates/bbb-world/src/client/local_player_collision.rs#fn debug_entity_is_pushable"
+      ],
+      "tests": [
+        "crates/bbb-world/src/entities/tests/specialized_pick_bounds_and_render_scale.rs#turtle_pick_bounds_compose_adult_baby_and_scale_dimensions",
+        "crates/bbb-world/src/client/local_player_collision.rs#turtle_collision_uses_living_pushability_and_never_direct_collidability"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/world/entity/EntityType.java#public static final EntityType<Turtle> TURTLE",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#private static final EntityDimensions BABY_DIMENSIONS",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public EntityDimensions getDefaultDimensions",
+        "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPickable()",
+        "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPushable()"
+      ]
+    },
     "equipment_passenger_leash_audit": {
       "implementation": [
         "crates/bbb-world/src/entities/metadata.rs#pub fn apply_set_equipment",
@@ -223,6 +244,10 @@
       }
     },
     "minecraft:turtle": {
+      "dimensions/collision/pick": {
+        "status": "complete",
+        "evidence_ref": "turtle_dimensions_collision_pick"
+      },
       "animation": {
         "status": "complete",
         "evidence_ref": "turtle_animation"

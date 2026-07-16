@@ -4946,6 +4946,30 @@ mod tests {
     }
 
     #[test]
+    fn turtle_collision_uses_living_pushability_and_never_direct_collidability() {
+        let turtle_type = bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TURTLE_ID;
+        assert_eq!(
+            vanilla_entity_metadata_type_pushability_kind(turtle_type),
+            Some(VanillaEntityPushabilityKind::Living)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_collidability_kind(turtle_type),
+            Some(VanillaEntityCollidabilityKind::Never)
+        );
+
+        let mut world = empty_world();
+        add_collision_test_entity(&mut world, 39, turtle_type, [0.5, 0.0, 0.5]);
+        assert!(world.debug_entity_is_pushable(39, turtle_type, [0.5, 0.0, 0.5]));
+
+        let ladder = vanilla_block_state_id(
+            "minecraft:ladder",
+            [("facing", "north"), ("waterlogged", "false")],
+        );
+        set_block(&mut world, BlockPos { x: 0, y: 0, z: 0 }, ladder);
+        assert!(!world.debug_entity_is_pushable(39, turtle_type, [0.5, 0.0, 0.5]));
+    }
+
+    #[test]
     fn living_pushability_rejects_entities_on_climbable_blocks() {
         let mut world = empty_world();
         add_collision_test_entity(
