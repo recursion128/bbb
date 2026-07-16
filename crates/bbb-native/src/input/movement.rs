@@ -413,6 +413,10 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::*;
+    use bbb_protocol::entity_types::{
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+    };
     use bbb_protocol::packets::{
         AddEntity, CommonPlayerSpawnInfo, EquipmentSlot, EquipmentSlotUpdate,
         GameEvent as ProtocolGameEvent, ItemStackSummary, PaddleBoat, PlayLogin, PlayerAbilities,
@@ -421,9 +425,6 @@ mod tests {
     use bbb_world::ItemEquipmentSlot;
     use uuid::Uuid;
 
-    const VANILLA_26_1_MINECART_ENTITY_TYPE_ID: i32 = 85;
-    const VANILLA_26_1_HORSE_ENTITY_TYPE_ID: i32 = 66;
-    const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
     const SADDLE_ITEM_ID: i32 = 8_902;
 
     #[test]
@@ -1039,7 +1040,7 @@ mod tests {
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
         input.left = true;
-        let mut world = world_with_local_vehicle(VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
         let initial_pose = world.local_player_pose().unwrap();
         let mut counters = NetCounters::default();
 
@@ -1115,7 +1116,7 @@ mod tests {
         let commands = Some(tx);
         let mut input = ClientInputState::new(true);
         input.forward = true;
-        let mut world = world_with_local_vehicle(VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
         world.apply_add_entity(protocol_add_entity_with_type(123, 0));
         assert!(world.apply_set_passengers(SetPassengers {
             vehicle_id: 10,
@@ -1149,7 +1150,7 @@ mod tests {
         let mut input = ClientInputState::new(true);
         input.mouse_delta_x = 100.0;
         input.mouse_delta_y = -50.0;
-        let mut world = world_with_local_vehicle(VANILLA_26_1_MINECART_ENTITY_TYPE_ID);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_MINECART_ID);
         let initial_pose = world.local_player_pose().unwrap();
         let mut counters = NetCounters::default();
 
@@ -1179,7 +1180,7 @@ mod tests {
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
         input.forward = true;
-        let mut world = world_with_local_vehicle(VANILLA_26_1_MINECART_ENTITY_TYPE_ID);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_MINECART_ID);
         let initial_pose = world.local_player_pose().unwrap();
         let mut counters = NetCounters::default();
 
@@ -1225,7 +1226,7 @@ mod tests {
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
         input.jump = true;
-        let mut world = world_with_local_vehicle(VANILLA_26_1_HORSE_ENTITY_TYPE_ID);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_HORSE_ID);
         let mut counters = NetCounters::default();
 
         advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
@@ -1265,7 +1266,7 @@ mod tests {
         let start = Instant::now();
         let mut input = ClientInputState::new(true);
         input.jump = true;
-        let mut world = world_with_local_vehicle(VANILLA_26_1_MINECART_ENTITY_TYPE_ID);
+        let mut world = world_with_local_vehicle(VANILLA_ENTITY_TYPE_MINECART_ID);
         let mut counters = NetCounters::default();
 
         advance_player_input(&mut input, &mut world, &mut counters, &commands, start);
@@ -1322,7 +1323,7 @@ mod tests {
         let mut world = WorldStore::new();
         world.apply_login(&protocol_play_login(99));
         world.apply_add_entity(protocol_add_entity_with_type(10, entity_type_id));
-        if entity_type_id == VANILLA_26_1_HORSE_ENTITY_TYPE_ID {
+        if entity_type_id == VANILLA_ENTITY_TYPE_HORSE_ID {
             world.set_default_item_equipment_slots(BTreeMap::from([(
                 SADDLE_ITEM_ID,
                 ItemEquipmentSlot::Saddle,

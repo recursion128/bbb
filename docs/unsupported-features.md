@@ -167,6 +167,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   compatibility lookup functions whose only behavior is forwarding an
   id/resource lookup across an unrelated crate boundary, and have the owner
   generator reject those bridges from production sources.
+  Native test setup must also consume generated entity-type constants rather than
+  restoring version-number aliases for catalog ids.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Goat and PolarBear specialized bounds must query that generated accessor instead of restoring

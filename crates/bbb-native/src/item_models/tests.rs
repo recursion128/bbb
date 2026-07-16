@@ -761,8 +761,10 @@ fn armor_stand_invisible_marker_keeps_held_and_custom_head_item_models() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut world = WorldStore::new();
     const ENTITY_ID: i32 = 601;
-    const ARMOR_STAND_ENTITY_TYPE_ID: i32 = 5;
-    world.apply_add_entity(protocol_add_entity(ENTITY_ID, ARMOR_STAND_ENTITY_TYPE_ID));
+    world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    ));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::Head, 1)));
 
@@ -814,8 +816,10 @@ fn humanoid_invisible_keeps_held_and_custom_head_item_models() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut world = WorldStore::new();
     const ENTITY_ID: i32 = 602;
-    const ZOMBIE_ENTITY_TYPE_ID: i32 = 150;
-    world.apply_add_entity(protocol_add_entity(ENTITY_ID, ZOMBIE_ENTITY_TYPE_ID));
+    world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::Head, 1)));
 
@@ -853,11 +857,13 @@ fn humanoid_item_in_hand_layer_uses_main_arm_for_hand_slot_mapping() {
     let item_runtime =
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     const ENTITY_ID: i32 = 606;
-    const PLAYER_ENTITY_TYPE_ID: i32 = 155;
     let terrain_textures = TerrainTextureState::default();
 
     let mut main_world = WorldStore::new();
-    main_world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+    main_world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
     assert!(main_world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
     let right_main = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
     let left_main = right_main.with_main_arm_left(true);
@@ -881,7 +887,10 @@ fn humanoid_item_in_hand_layer_uses_main_arm_for_hand_slot_mapping() {
     );
 
     let mut off_world = WorldStore::new();
-    off_world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+    off_world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
     assert!(off_world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::OffHand, 1)));
     let right_off_models = held_item_models(
         &[right_main],
@@ -3263,10 +3272,12 @@ fn held_generated_item_context_dimension_select_uses_world_level() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let terrain_textures = TerrainTextureState::default();
     const ENTITY_ID: i32 = 610;
-    const PLAYER_ENTITY_TYPE_ID: i32 = 155;
     let bake = |dimension: Option<&str>| {
         let mut world = dimension.map_or_else(WorldStore::new, world_with_level_dimension);
-        world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+        world.apply_add_entity(protocol_add_entity(
+            ENTITY_ID,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        ));
         assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
         let instance = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
         let models = held_item_models(&[instance], &world, Some(&item_runtime), &terrain_textures);
@@ -3297,13 +3308,15 @@ fn held_generated_item_trim_material_select_uses_world_registry() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let terrain_textures = TerrainTextureState::default();
     const ENTITY_ID: i32 = 611;
-    const PLAYER_ENTITY_TYPE_ID: i32 = 155;
     let bake = |with_registry: bool, material_id: Option<i32>| {
         let mut world = WorldStore::new();
         if with_registry {
             record_trim_material_registry(&mut world);
         }
-        world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+        world.apply_add_entity(protocol_add_entity(
+            ENTITY_ID,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+        ));
         assert!(world.apply_set_equipment(SetEquipment {
             entity_id: ENTITY_ID,
             slots: vec![EquipmentSlotUpdate {
@@ -3346,8 +3359,10 @@ fn humanoid_held_generated_item_using_item_condition_matches_used_hand() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut world = WorldStore::new();
     const ENTITY_ID: i32 = 607;
-    const PLAYER_ENTITY_TYPE_ID: i32 = 155;
-    world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
     let terrain_textures = TerrainTextureState::default();
     let base = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
@@ -3386,8 +3401,10 @@ fn humanoid_held_generated_item_use_duration_reads_owner_use_ticks() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut world = WorldStore::new();
     const ENTITY_ID: i32 = 608;
-    const PLAYER_ENTITY_TYPE_ID: i32 = 155;
-    world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
     let terrain_textures = TerrainTextureState::default();
     let base = EntityModelInstance::player(ENTITY_ID, [0.0, 64.0, 0.0], 0.0, false);
@@ -3433,7 +3450,6 @@ fn humanoid_held_generated_crossbow_pull_applies_quick_charge_registry() {
     let item_runtime =
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     const ENTITY_ID: i32 = 609;
-    const PLAYER_ENTITY_TYPE_ID: i32 = 155;
     let quick_charge_crossbow = ItemStackSummary {
         item_id: Some(0),
         count: 1,
@@ -3446,7 +3462,10 @@ fn humanoid_held_generated_crossbow_pull_applies_quick_charge_registry() {
         },
     };
     let mut default_world = WorldStore::new();
-    default_world.apply_add_entity(protocol_add_entity(ENTITY_ID, PLAYER_ENTITY_TYPE_ID));
+    default_world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
     assert!(default_world.apply_set_equipment(SetEquipment {
         entity_id: ENTITY_ID,
         slots: vec![EquipmentSlotUpdate {
@@ -3497,8 +3516,10 @@ fn illusioner_item_in_hand_layer_uses_vanilla_visibility_and_clones() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut world = WorldStore::new();
     const ENTITY_ID: i32 = 604;
-    const ILLUSIONER_ENTITY_TYPE_ID: i32 = 68;
-    world.apply_add_entity(protocol_add_entity(ENTITY_ID, ILLUSIONER_ENTITY_TYPE_ID));
+    world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+    ));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
 
     let offsets = [
@@ -3566,8 +3587,10 @@ fn illusioner_custom_head_item_branch_submits_per_invisible_clone() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut world = WorldStore::new();
     const ENTITY_ID: i32 = 605;
-    const ILLUSIONER_ENTITY_TYPE_ID: i32 = 68;
-    world.apply_add_entity(protocol_add_entity(ENTITY_ID, ILLUSIONER_ENTITY_TYPE_ID));
+    world.apply_add_entity(protocol_add_entity(
+        ENTITY_ID,
+        VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+    ));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::Head, 0)));
 
     let offsets = [
@@ -3623,8 +3646,7 @@ fn allay_item_in_hand_layer_bakes_main_and_offhand_items() {
         NativeItemRuntime::load(&bbb_pack::PackRoots::from_root(&root).unwrap()).unwrap();
     let mut world = WorldStore::new();
     const ENTITY_ID: i32 = 603;
-    const ALLAY_ENTITY_TYPE_ID: i32 = 2;
-    world.apply_add_entity(protocol_add_entity(ENTITY_ID, ALLAY_ENTITY_TYPE_ID));
+    world.apply_add_entity(protocol_add_entity(ENTITY_ID, VANILLA_ENTITY_TYPE_ALLAY_ID));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::MainHand, 0)));
     assert!(world.apply_set_equipment(equipment(ENTITY_ID, EquipmentSlot::OffHand, 1)));
 

@@ -16907,3 +16907,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   速度和掉落判定由 focused 测试锁定；反向测试禁止三条 direct-holder resource literal
   回流 production source。`bbb-pack` 审计余下的 potion/copper-golem-statue 字符串属于
   item-model type/resource discriminator，不是 item registry identity。
+
+## 2026-07-16：统一 native 测试实体类型身份
+
+- `bbb-native` input movement、input integration、runtime 与 item-model 测试中的 22 个本地
+  entity-type 数字别名（含 `VANILLA_26_1_*_ENTITY_TYPE_ID`）已删除；Camel/CamelHusk、Horse、
+  Minecart、OakBoat/OakChestBoat、Player、FishingBobber、ArmorStand、Zombie、
+  Illusioner 与 Allay fixture 直接消费 `bbb_protocol::entity_types` 的生成常量。
+- core-registry generator 现生成跨这四个测试源的反向扫描，禁止 `const ...
+  ENTITY_TYPE_ID: i32 = ...` 再次成为平行事实源；movement 23 项与 runtime 454 项
+  focused tests 保持通过。

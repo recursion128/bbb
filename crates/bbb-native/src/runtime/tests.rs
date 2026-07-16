@@ -9,6 +9,9 @@ use bbb_pack::{
     BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, EquipmentAssetCatalog,
     FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, ItemRegistryCatalog,
 };
+use bbb_protocol::entity_types::{
+    VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+};
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary, AdvancementDisplaySummary, AdvancementFrameType,
@@ -43,8 +46,6 @@ const TOOLTIP_TEST_GRAY: [f32; 4] = [170.0 / 255.0, 170.0 / 255.0, 170.0 / 255.0
 const TOOLTIP_TEST_DARK_GRAY: [f32; 4] = [85.0 / 255.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
 const TOOLTIP_TEST_DARK_GREEN: [f32; 4] = [0.0, 170.0 / 255.0, 0.0, 1.0];
 const TOOLTIP_TEST_RED: [f32; 4] = [1.0, 85.0 / 255.0, 85.0 / 255.0, 1.0];
-const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
-const VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID: i32 = 156;
 const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 const OAK_SIGN_ROTATION_0_BLOCK_STATE_ID: i32 = 5336;
 const BAMBOO_HANGING_SIGN_ATTACHED_ROTATION_0_BLOCK_STATE_ID: i32 = 6612;
@@ -158,7 +159,7 @@ fn camera_pose_uses_local_player_eye_height() {
 #[test]
 fn camera_hurt_effect_follows_the_active_living_camera_entity() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
-    world.apply_add_entity(test_add_entity(42, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(42, VANILLA_ENTITY_TYPE_PLAYER_ID));
     assert!(world.apply_hurt_animation(bbb_protocol::packets::HurtAnimation { id: 42, yaw: 45.0 }));
 
     let local = camera_hurt_effect_from_world(&world, 0.5, 0.25).unwrap();
@@ -255,14 +256,11 @@ fn particle_player_motion_contexts_track_local_and_remote_players() {
         ..LocalPlayerPoseState::default()
     });
     // Non-player entities are never nearest-player candidates.
-    world.apply_add_entity(test_add_entity(
-        7,
-        VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID,
-    ));
+    world.apply_add_entity(test_add_entity(7, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID));
     world.apply_add_entity(bbb_protocol::packets::AddEntity {
         id: 42,
         uuid: uuid::Uuid::from_u128(42),
-        entity_type_id: VANILLA_26_1_PLAYER_ENTITY_TYPE_ID,
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
         position: bbb_protocol::packets::Vec3d {
             x: 4.0,
             y: 5.0,
@@ -415,8 +413,8 @@ fn particle_entity_target_contexts_track_world_entity_positions() {
     let mut world = WorldStore::new();
     assert!(particle_entity_target_contexts(&world).is_empty());
 
-    world.apply_add_entity(test_add_entity(42, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
-    world.apply_add_entity(test_add_entity(77, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(42, VANILLA_ENTITY_TYPE_PLAYER_ID));
+    world.apply_add_entity(test_add_entity(77, VANILLA_ENTITY_TYPE_PLAYER_ID));
 
     let contexts = particle_entity_target_contexts(&world);
 
@@ -1990,11 +1988,8 @@ fn hud_debug_overlay_projects_custom_entity_render_stats_under_reduced_debug_inf
     let mut world =
         world_with_dimension_height_and_reduced_debug_info(0, "minecraft:overworld", 384, true);
     world.apply_simulation_distance(bbb_protocol::packets::SetSimulationDistance { distance: 12 });
-    world.apply_add_entity(test_add_entity(
-        7,
-        VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID,
-    ));
-    world.apply_add_entity(test_add_entity(8, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(7, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID));
+    world.apply_add_entity(test_add_entity(8, VANILLA_ENTITY_TYPE_PLAYER_ID));
     let mut input = ClientInputState::new(true);
     input.set_debug_screen_entry_status(
         DebugScreenEntryId::EntityRenderStats,
@@ -2078,10 +2073,7 @@ fn hud_debug_overlay_projects_custom_chunk_source_stats_under_reduced_debug_info
     let mut second_chunk = empty_lightmap_test_chunk(world.dimension());
     second_chunk.pos = ChunkPos { x: 1, z: 0 };
     world.insert_decoded_chunk(second_chunk);
-    world.apply_add_entity(test_add_entity(
-        7,
-        VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID,
-    ));
+    world.apply_add_entity(test_add_entity(7, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID));
     let mut input = ClientInputState::new(true);
     input.set_debug_screen_entry_status(
         DebugScreenEntryId::ChunkSourceStats,
@@ -2284,7 +2276,7 @@ fn hud_debug_post_effect_tracks_vanilla_camera_entity_families() {
     .expect("current enderman camera post effect should render");
     assert_eq!(overlay.left_lines, vec!["Post: minecraft:invert"]);
 
-    world.apply_add_entity(test_add_entity(104, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(104, VANILLA_ENTITY_TYPE_PLAYER_ID));
     assert!(world.apply_set_camera(bbb_protocol::packets::SetCamera { camera_id: 104 }));
     assert_eq!(current_post_effect_id_from_world(&world), None);
 }
@@ -3364,7 +3356,7 @@ fn hud_debug_overlay_help_lines_reflect_status_toggle_state() {
 #[test]
 fn debug_entity_scene_outline_follows_f3_b_hitbox_toggle() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
-    world.apply_add_entity(test_add_entity(77, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(77, VANILLA_ENTITY_TYPE_PLAYER_ID));
     let mut input = ClientInputState::new(true);
 
     assert_eq!(debug_entity_scene_outline(&input, &world, 1.0), None);
@@ -3394,7 +3386,7 @@ fn debug_entity_scene_outline_follows_f3_b_hitbox_toggle() {
 #[test]
 fn debug_entity_scene_outline_includes_missing_server_label_when_startup_flag_is_enabled() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
-    world.apply_add_entity(test_add_entity(77, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(77, VANILLA_ENTITY_TYPE_PLAYER_ID));
     let mut input = ClientInputState::new(true);
     input.set_debug_show_local_server_entity_hit_boxes(true);
 
@@ -6706,7 +6698,7 @@ fn attach_lightmap_local_player(world: &mut WorldStore, id: i32) {
     world.apply_add_entity(bbb_protocol::packets::AddEntity {
         id,
         uuid: uuid::Uuid::from_u128(id as u128),
-        entity_type_id: VANILLA_26_1_PLAYER_ENTITY_TYPE_ID,
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
         position: bbb_protocol::packets::Vec3d {
             x: 0.0,
             y: 64.0,
@@ -8244,7 +8236,7 @@ fn hud_inventory_screen_projects_open_local_inventory_layout() {
 #[test]
 fn hud_inventory_screen_projects_local_player_entity_preview() {
     let mut world = world_with_dimension_height(0, "minecraft:overworld", 384);
-    world.apply_add_entity(test_add_entity(42, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(42, VANILLA_ENTITY_TYPE_PLAYER_ID));
     assert!(world.open_local_inventory());
 
     let screen = hud_inventory_screen_with_local_state(
@@ -8999,7 +8991,7 @@ fn hotbar_item_icons_use_local_player_main_hand_owner_context() {
     );
 
     let mut world = world_with_dimension(0, "minecraft:overworld");
-    world.apply_add_entity(test_add_entity(42, VANILLA_26_1_PLAYER_ENTITY_TYPE_ID));
+    world.apply_add_entity(test_add_entity(42, VANILLA_ENTITY_TYPE_PLAYER_ID));
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
         slot: 0,
         item: stack,
@@ -9465,7 +9457,7 @@ fn hotbar_item_icons_use_fishing_rod_cast_condition_for_selected_local_rod() {
 
     world.apply_add_entity(bbb_protocol::packets::AddEntity {
         data: 42,
-        ..test_add_entity(700, VANILLA_26_1_FISHING_BOBBER_ENTITY_TYPE_ID)
+        ..test_add_entity(700, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID)
     });
     let icons = hotbar_item_icons(&world, Some(&item_runtime), 0.0);
     assert_eq!(

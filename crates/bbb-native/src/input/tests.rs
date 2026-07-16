@@ -34,25 +34,26 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_LLAMA_SPIT_ID,
     VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
     VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
-    VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-    VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-    VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+    VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+    VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
     VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID,
-    VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
-    VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-    VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
-    VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
-    VANILLA_ENTITY_TYPE_SILVERFISH_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-    VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SLIME_ID,
-    VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
-    VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
-    VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
-    VANILLA_ENTITY_TYPE_SQUID_ID, VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-    VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
-    VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+    VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+    VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SALMON_ID,
+    VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+    VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_SILVERFISH_ID,
+    VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+    VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
+    VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+    VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
+    VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
+    VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID,
+    VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TRIDENT_ID,
+    VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+    VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
     VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
     VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
     VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
@@ -150,12 +151,6 @@ use std::{
 };
 use uuid::Uuid;
 
-const VANILLA_26_1_CAMEL_ENTITY_TYPE_ID: i32 = 19;
-const VANILLA_26_1_CAMEL_HUSK_ENTITY_TYPE_ID: i32 = 20;
-const VANILLA_26_1_HORSE_ENTITY_TYPE_ID: i32 = 66;
-const VANILLA_26_1_OAK_CHEST_BOAT_ENTITY_TYPE_ID: i32 = 90;
-const VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID: i32 = 89;
-const VANILLA_26_1_PLAYER_ENTITY_TYPE_ID: i32 = 155;
 const TEST_SADDLE_ITEM_ID: i32 = 8_903;
 const VANILLA_ENTITY_DATA_POSE_ID: u8 = 6;
 const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
@@ -402,7 +397,7 @@ fn variable_debug_options_search_prefix_width(search_text: &str, char_count: usi
 }
 
 fn world_with_local_boat(player_id: i32) -> WorldStore {
-    world_with_local_vehicle(player_id, 10, VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID)
+    world_with_local_vehicle(player_id, 10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
 }
 
 fn world_with_local_vehicle(player_id: i32, vehicle_id: i32, entity_type_id: i32) -> WorldStore {
@@ -422,7 +417,7 @@ fn world_with_local_vehicle(player_id: i32, vehicle_id: i32, entity_type_id: i32
         y_head_rot: 0.0,
         data: 0,
     });
-    if entity_type_id == VANILLA_26_1_HORSE_ENTITY_TYPE_ID {
+    if entity_type_id == VANILLA_ENTITY_TYPE_HORSE_ID {
         world.set_default_item_equipment_slots(BTreeMap::from([(
             TEST_SADDLE_ITEM_ID,
             ItemEquipmentSlot::Saddle,
@@ -664,7 +659,7 @@ fn world_with_sleeping_local_player(player_id: i32) -> WorldStore {
     world.apply_add_entity(AddEntity {
         id: player_id,
         uuid: Uuid::from_u128(player_id as u128),
-        entity_type_id: VANILLA_26_1_PLAYER_ENTITY_TYPE_ID,
+        entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
         position: ProtocolVec3d::default(),
         delta_movement: ProtocolVec3d::default(),
         x_rot: 0.0,
@@ -12047,7 +12042,7 @@ fn shift_f3_i_with_permission_copies_local_chest_boat_save_nbt_to_clipboard() {
     world.apply_add_entity(AddEntity {
         id: 65,
         uuid: Uuid::from_u128(65),
-        entity_type_id: VANILLA_26_1_OAK_CHEST_BOAT_ENTITY_TYPE_ID,
+        entity_type_id: VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
         position: ProtocolVec3d {
             x: 0.0,
             y: 1.1,
@@ -20252,7 +20247,7 @@ fn inventory_key_on_server_controlled_mount_queues_open_inventory_command() {
     let commands = Some(tx);
     let mut input = ClientInputState::new(true);
     let mut counters = NetCounters::default();
-    let mut world = world_with_local_vehicle(77, 10, VANILLA_26_1_OAK_CHEST_BOAT_ENTITY_TYPE_ID);
+    let mut world = world_with_local_vehicle(77, 10, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID);
 
     handle_key_input(
         &mut input,
@@ -22425,19 +22420,19 @@ fn sprint_key_while_using_slow_item_only_queues_raw_player_input() {
 
 #[test]
 fn sprint_key_on_horse_mount_only_queues_raw_player_input() {
-    assert_sprint_key_on_mount_only_queues_raw_player_input(VANILLA_26_1_HORSE_ENTITY_TYPE_ID);
+    assert_sprint_key_on_mount_only_queues_raw_player_input(VANILLA_ENTITY_TYPE_HORSE_ID);
 }
 
 #[test]
 fn sprint_key_on_boat_mount_only_queues_raw_player_input() {
-    assert_sprint_key_on_mount_only_queues_raw_player_input(VANILLA_26_1_OAK_BOAT_ENTITY_TYPE_ID);
+    assert_sprint_key_on_mount_only_queues_raw_player_input(VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
 }
 
 #[test]
 fn sprint_key_on_camel_mount_queues_player_input_and_sprint_command_with_low_food() {
     for entity_type_id in [
-        VANILLA_26_1_CAMEL_ENTITY_TYPE_ID,
-        VANILLA_26_1_CAMEL_HUSK_ENTITY_TYPE_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
     ] {
         assert_sprint_key_on_camel_type_queues_start_sprinting(entity_type_id);
     }
@@ -22451,7 +22446,7 @@ fn sprint_key_camel_mount_focus_loss_queues_stop_sprinting() {
     input.forward = true;
     input.sprint = true;
     let mut counters = NetCounters::default();
-    let mut world = world_with_local_vehicle(77, 10, VANILLA_26_1_CAMEL_ENTITY_TYPE_ID);
+    let mut world = world_with_local_vehicle(77, 10, VANILLA_ENTITY_TYPE_CAMEL_ID);
 
     handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
 
@@ -22965,7 +22960,7 @@ fn focus_loss_releases_charged_riding_jump() {
     input.jump = true;
     input.riding_jump_charge_seconds = Some(0.2);
     let mut counters = NetCounters::default();
-    let mut world = world_with_local_vehicle(77, 10, VANILLA_26_1_HORSE_ENTITY_TYPE_ID);
+    let mut world = world_with_local_vehicle(77, 10, VANILLA_ENTITY_TYPE_HORSE_ID);
 
     handle_focus_change(&mut input, &mut world, &mut counters, &commands, false);
 
