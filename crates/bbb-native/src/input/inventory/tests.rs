@@ -1,6 +1,7 @@
 use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_DONKEY_ID;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
 };
@@ -19,7 +20,6 @@ use uuid::Uuid;
 
 const TEST_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const TEST_MOUNT_TAME_FLAGS_DATA_ID: u8 = 18;
-const TEST_ABSTRACT_HORSE_TAME_FLAG: i8 = 2;
 const TEST_TAMABLE_ANIMAL_TAME_FLAG: i8 = 4;
 const TEST_MAX_DAMAGE_COMPONENT_ID: i32 = 2;
 const TEST_DAMAGE_COMPONENT_ID: i32 = 3;
@@ -957,7 +957,7 @@ fn mount_nautilus_layout_uses_equipment_and_player_slots_only() {
 #[test]
 fn mount_donkey_layout_hides_inactive_equipment_slots() {
     let mut world = WorldStore::new();
-    world.apply_add_entity(add_entity_with_type(42, 36));
+    world.apply_add_entity(add_entity_with_type(42, VANILLA_ENTITY_TYPE_DONKEY_ID));
     world.apply_mount_screen_open(MountScreenOpen {
         container_id: 7,
         inventory_columns: 3,
@@ -998,12 +998,16 @@ fn mount_donkey_layout_hides_inactive_equipment_slots() {
 #[test]
 fn mount_tamed_donkey_layout_shows_saddle_but_no_body_slot() {
     let mut world = WorldStore::new();
-    world.apply_add_entity(add_entity_with_type(42, 36));
+    let accessors = bbb_world::vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_DONKEY_ID,
+    )
+    .expect("generated AbstractHorse metadata accessors must resolve");
+    world.apply_add_entity(add_entity_with_type(42, VANILLA_ENTITY_TYPE_DONKEY_ID));
     world.apply_set_entity_data(SetEntityData {
         id: 42,
         values: vec![byte_entity_data(
-            TEST_MOUNT_TAME_FLAGS_DATA_ID,
-            TEST_ABSTRACT_HORSE_TAME_FLAG,
+            accessors.flags_data_id,
+            accessors.tame_mask,
         )],
     });
     world.apply_mount_screen_open(MountScreenOpen {
@@ -1037,11 +1041,15 @@ fn mount_tamed_donkey_layout_shows_saddle_but_no_body_slot() {
 #[test]
 fn mount_baby_tamed_donkey_layout_hides_equipment_slots() {
     let mut world = WorldStore::new();
-    world.apply_add_entity(add_entity_with_type(42, 36));
+    let accessors = bbb_world::vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_DONKEY_ID,
+    )
+    .expect("generated AbstractHorse metadata accessors must resolve");
+    world.apply_add_entity(add_entity_with_type(42, VANILLA_ENTITY_TYPE_DONKEY_ID));
     world.apply_set_entity_data(SetEntityData {
         id: 42,
         values: vec![
-            byte_entity_data(TEST_MOUNT_TAME_FLAGS_DATA_ID, TEST_ABSTRACT_HORSE_TAME_FLAG),
+            byte_entity_data(accessors.flags_data_id, accessors.tame_mask),
             bool_entity_data(TEST_AGEABLE_MOB_BABY_DATA_ID, true),
         ],
     });
@@ -1829,7 +1837,7 @@ fn mount_horse_hit_test_uses_vanilla_slots() {
 fn mount_donkey_hit_test_ignores_inactive_equipment_slots() {
     let size = PhysicalSize::new(1280, 720);
     let mut world = WorldStore::new();
-    world.apply_add_entity(add_entity_with_type(42, 36));
+    world.apply_add_entity(add_entity_with_type(42, VANILLA_ENTITY_TYPE_DONKEY_ID));
     world.apply_mount_screen_open(MountScreenOpen {
         container_id: 7,
         inventory_columns: 3,
@@ -1858,12 +1866,16 @@ fn mount_donkey_hit_test_ignores_inactive_equipment_slots() {
 fn mount_tamed_donkey_hit_test_uses_active_saddle_slot_only() {
     let size = PhysicalSize::new(1280, 720);
     let mut world = WorldStore::new();
-    world.apply_add_entity(add_entity_with_type(42, 36));
+    let accessors = bbb_world::vanilla_entity_metadata_abstract_horse_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_DONKEY_ID,
+    )
+    .expect("generated AbstractHorse metadata accessors must resolve");
+    world.apply_add_entity(add_entity_with_type(42, VANILLA_ENTITY_TYPE_DONKEY_ID));
     world.apply_set_entity_data(SetEntityData {
         id: 42,
         values: vec![byte_entity_data(
-            TEST_MOUNT_TAME_FLAGS_DATA_ID,
-            TEST_ABSTRACT_HORSE_TAME_FLAG,
+            accessors.flags_data_id,
+            accessors.tame_mask,
         )],
     });
     world.apply_mount_screen_open(MountScreenOpen {

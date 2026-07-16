@@ -17210,3 +17210,9 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   inventory 与 native F3+I 不再维护固定 wire index/default/mask aliases。
 - world inventory/animation 与八个 equine F3+I fixtures 同步复用 bundle；schema generator 的
   AbstractHorse 反向守卫覆盖所有 production consumers 与语义 fixtures。
+
+## 2026-07-16：补齐 AbstractHorse mount inventory fixture 派生
+
+- native mount layout/hit-test 的 Donkey fixtures 不再与 TamableAnimal 共享同 index 测试常量，
+  改为按 Donkey entity type 解析 AbstractHorse bundle 的 flags id 与 tame mask。
+- AbstractHorse 反向守卫扩展到 native inventory fixtures，并同时移除其中手写 Donkey type id。

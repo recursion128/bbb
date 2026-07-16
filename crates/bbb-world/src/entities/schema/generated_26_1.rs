@@ -23036,6 +23036,8 @@ mod generated_catalog_guards {
         let inventory_tests = include_str!("../../client/inventory/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let native_inventory_tests =
+            include_str!("../../../../bbb-native/src/input/inventory/tests.rs");
         for source in [
             animations,
             world_tests,
@@ -23044,6 +23046,7 @@ mod generated_catalog_guards {
             inventory_tests,
             native_input,
             native_input_tests,
+            native_inventory_tests,
         ] {
             assert!(
                 source.contains("vanilla_entity_metadata_abstract_horse_accessors_for_entity_type")
@@ -23064,6 +23067,7 @@ mod generated_catalog_guards {
                 inventory_tests,
                 native_input,
                 native_input_tests,
+                native_inventory_tests,
             ] {
                 assert!(
                     !source.contains(removed),
