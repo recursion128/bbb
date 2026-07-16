@@ -458,7 +458,7 @@ fn camel_dash_flag_drives_the_dash_animation_timer() {
             id: 90,
             values: vec![ProtocolEntityDataValue {
                 data_id: CAMEL_DASH_DATA_ID,
-                serializer_id: 8,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(dashing),
             }],
         }));
@@ -793,7 +793,7 @@ fn allay_dancing_flag_drives_the_dance_spin_state() {
             id: 91,
             values: vec![ProtocolEntityDataValue {
                 data_id: ALLAY_DANCING_DATA_ID,
-                serializer_id: 8,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(dancing),
             }],
         }));
@@ -927,7 +927,7 @@ fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
             id: 77,
             values: vec![ProtocolEntityDataValue {
                 data_id: PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
-                serializer_id: 8,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(charging),
             }],
         }));
@@ -989,7 +989,7 @@ fn piglin_charging_crossbow_flag_drives_the_shared_use_item_tick_counter() {
             id: 78,
             values: vec![ProtocolEntityDataValue {
                 data_id: PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
-                serializer_id: 8,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(charging),
             }],
         }));
@@ -1039,7 +1039,7 @@ fn player_using_item_flag_drives_the_shared_use_item_tick_counter() {
             id: 79,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(if using {
                     LIVING_ENTITY_FLAG_IS_USING
                 } else {
@@ -1094,7 +1094,7 @@ fn axolotl_playing_dead_flag_drives_the_eased_factor() {
             id: 92,
             values: vec![ProtocolEntityDataValue {
                 data_id: AXOLOTL_PLAYING_DEAD_DATA_ID,
-                serializer_id: 8,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(dead),
             }],
         }));
@@ -1349,7 +1349,7 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
 
     let creaking_bool = |data_id: u8, value: bool| ProtocolEntityDataValue {
         data_id,
-        serializer_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         value: EntityDataValueKind::Boolean(value),
     };
     let source = |store: &WorldStore, id: i32, partial: f32| {

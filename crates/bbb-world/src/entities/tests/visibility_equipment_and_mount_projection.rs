@@ -573,7 +573,7 @@ fn entity_model_sources_project_snow_golem_pumpkin_flag() {
         id: 70,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(0),
         }],
     }));
@@ -583,7 +583,7 @@ fn entity_model_sources_project_snow_golem_pumpkin_flag() {
         id: 70,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_SNOW_GOLEM_PUMPKIN_DATA_ID,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(16),
         }],
     }));

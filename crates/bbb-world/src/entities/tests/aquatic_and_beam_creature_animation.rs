@@ -34,7 +34,7 @@ fn entity_model_sources_project_creeper_swelling_fuse() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: CREEPER_SWELL_DIR_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(1),
         }],
     }));
@@ -46,7 +46,7 @@ fn entity_model_sources_project_creeper_swelling_fuse() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: CREEPER_SWELL_DIR_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(-1),
         }],
     }));
@@ -557,7 +557,7 @@ fn entity_model_sources_project_end_crystal_beam_target() {
     };
     let beam_target = |target: Option<ProtocolBlockPos>| ProtocolEntityDataValue {
         data_id: VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID,
-        serializer_id: 11,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
         value: EntityDataValueKind::OptionalBlockPos(target),
     };
     let beam = |store: &WorldStore, id: i32| {

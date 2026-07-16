@@ -3,7 +3,6 @@ use super::*;
 #[test]
 fn entity_model_sources_project_death_animation_counter() {
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-    const FLOAT_SERIALIZER_ID: i32 = 3;
 
     let source = |store: &WorldStore, partial: f32| {
         store
@@ -17,7 +16,7 @@ fn entity_model_sources_project_death_animation_counter() {
             id: 60,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-                serializer_id: FLOAT_SERIALIZER_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(health),
             }],
         })
@@ -66,7 +65,6 @@ fn entity_model_sources_project_death_animation_counter() {
 #[test]
 fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-    const FLOAT_SERIALIZER_ID: i32 = 3;
 
     let mut store = WorldStore::new();
     let mut login = protocol_play_login(99);
@@ -97,7 +95,7 @@ fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-                serializer_id: FLOAT_SERIALIZER_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(0.0),
             }],
         }));
@@ -143,7 +141,6 @@ fn simulation_distance_only_gates_living_death_ticks_by_chunk_distance() {
 #[test]
 fn entity_model_sources_project_ender_dragon_death_time() {
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-    const FLOAT_SERIALIZER_ID: i32 = 3;
 
     let source = |store: &WorldStore, partial: f32| {
         let position = store.entities.transform(61).unwrap().position;
@@ -170,7 +167,7 @@ fn entity_model_sources_project_ender_dragon_death_time() {
             id: 61,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-                serializer_id: FLOAT_SERIALIZER_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(health),
             }],
         })
@@ -207,7 +204,6 @@ fn entity_model_sources_project_ender_dragon_death_time() {
 #[test]
 fn entity_model_sources_project_full_freeze_for_living_entities() {
     const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
-    const INT_SERIALIZER_ID: i32 = 1;
 
     let fully_frozen = |store: &WorldStore, id: i32| {
         store
@@ -222,7 +218,7 @@ fn entity_model_sources_project_full_freeze_for_living_entities() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
-                serializer_id: INT_SERIALIZER_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(ticks),
             }],
         })
@@ -492,7 +488,7 @@ fn entity_model_sources_project_aggressive_for_renderer_extractors() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(flags),
             }],
         })
@@ -576,7 +572,7 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_AGGRESSIVE),
             }],
         }));
@@ -720,8 +716,6 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
     // DATA_CREEPY (17, BOOLEAN serializer 8).
     const CARRY_STATE_DATA_ID: u8 = 16;
     const CREEPY_DATA_ID: u8 = 17;
-    const OPTIONAL_BLOCK_STATE_SERIALIZER_ID: i32 = 15;
-    const BOOLEAN_SERIALIZER_ID: i32 = 8;
     const GRASS_BLOCK_STATE_ID: i32 = 9;
 
     let source = |store: &WorldStore, id: i32| {
@@ -738,12 +732,12 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
                 values: vec![
                     ProtocolEntityDataValue {
                         data_id: CARRY_STATE_DATA_ID,
-                        serializer_id: OPTIONAL_BLOCK_STATE_SERIALIZER_ID,
+                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
                         value: EntityDataValueKind::OptionalBlockState(block),
                     },
                     ProtocolEntityDataValue {
                         data_id: CREEPY_DATA_ID,
-                        serializer_id: BOOLEAN_SERIALIZER_ID,
+                        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                         value: EntityDataValueKind::Boolean(creepy),
                     },
                 ],
@@ -827,7 +821,7 @@ fn entity_model_sources_project_bat_resting_from_flags() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_BAT_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(flags),
             }],
         })
@@ -873,7 +867,7 @@ fn entity_model_sources_project_vex_charging_from_flags() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_VEX_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(flags),
             }],
         })
@@ -917,7 +911,7 @@ fn entity_model_sources_project_wither_invulnerable_ticks() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_WITHER_INV_DATA_ID,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(value),
             }],
         })
@@ -1122,7 +1116,7 @@ fn entity_model_sources_project_bee_stinger_from_flags() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_BEE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(flags),
             }],
         })

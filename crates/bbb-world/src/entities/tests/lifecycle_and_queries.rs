@@ -160,12 +160,12 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: 0,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(0x20),
             },
             ProtocolEntityDataValue {
                 data_id: 2,
-                serializer_id: 1,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(300),
             },
         ],
@@ -174,7 +174,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         id: 123,
         values: vec![ProtocolEntityDataValue {
             data_id: 2,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(301),
         }],
     }));
@@ -184,12 +184,12 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         vec![
             ProtocolEntityDataValue {
                 data_id: 0,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(0x20),
             },
             ProtocolEntityDataValue {
                 data_id: 2,
-                serializer_id: 1,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(301),
             },
         ]
@@ -664,7 +664,7 @@ fn set_entity_data_ignores_unknown_entities() {
         id: 999,
         values: vec![ProtocolEntityDataValue {
             data_id: 0,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(0x20),
         }],
     }));
@@ -1199,17 +1199,17 @@ fn entity_pick_bounds_follow_vanilla_is_pickable() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: VANILLA_INTERACTION_WIDTH_DATA_ID,
-                serializer_id: 3,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(2.5),
             },
             ProtocolEntityDataValue {
                 data_id: VANILLA_INTERACTION_HEIGHT_DATA_ID,
-                serializer_id: 3,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(0.75),
             },
             ProtocolEntityDataValue {
                 data_id: VANILLA_INTERACTION_RESPONSE_DATA_ID,
-                serializer_id: 8,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],

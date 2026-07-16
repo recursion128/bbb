@@ -462,7 +462,7 @@ fn take_item_entity_pickup_particle_state_captures_experience_orb_icon() {
         id: 10,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(149),
         }],
     }));
@@ -546,7 +546,7 @@ fn take_item_entity_pickup_particle_state_captures_projectile_models() {
         id: 11,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(0x38_5DC6),
         }],
     }));
@@ -555,7 +555,7 @@ fn take_item_entity_pickup_particle_state_captures_projectile_models() {
         id: 12,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_ARROW_EFFECT_COLOR_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(0),
         }],
     }));
@@ -564,7 +564,7 @@ fn take_item_entity_pickup_particle_state_captures_projectile_models() {
         id: 15,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_TRIDENT_FOIL_DATA_ID,
-            serializer_id: 8,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],
     }));

@@ -646,7 +646,7 @@ fn local_player_rideable_jumping_vehicle_cooldown_tracks_camel_dash_cooldown() {
         id: 20,
         values: vec![ProtocolEntityDataValue {
             data_id: CAMEL_DASH_DATA_ID,
-            serializer_id: 8,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],
     }));

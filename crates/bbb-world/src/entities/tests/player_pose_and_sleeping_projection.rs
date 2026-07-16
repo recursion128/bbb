@@ -93,7 +93,7 @@ fn entity_model_sources_project_elytra_animation_state() {
         id: 76,
         values: vec![ProtocolEntityDataValue {
             data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(ENTITY_FLAG_FALL_FLYING),
         }],
     }));
@@ -143,7 +143,7 @@ fn entity_model_sources_project_elytra_animation_state() {
         id: 77,
         values: vec![ProtocolEntityDataValue {
             data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(ENTITY_FLAG_FALL_FLYING),
         }],
     }));
@@ -227,7 +227,6 @@ fn entity_model_sources_project_player_cape_cloak_state() {
 #[test]
 fn entity_model_sources_project_dinnerbone_upside_down() {
     const VANILLA_ENTITY_CUSTOM_NAME_DATA_ID: u8 = 2;
-    const OPTIONAL_COMPONENT_SERIALIZER_ID: i32 = 6;
 
     let source = |store: &WorldStore, id: i32| {
         store
@@ -241,7 +240,7 @@ fn entity_model_sources_project_dinnerbone_upside_down() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_ENTITY_CUSTOM_NAME_DATA_ID,
-                serializer_id: OPTIONAL_COMPONENT_SERIALIZER_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
                 value: EntityDataValueKind::OptionalComponent(name.map(str::to_string)),
             }],
         })
@@ -310,7 +309,7 @@ fn entity_model_sources_project_player_upside_down() {
             id,
             values: vec![ProtocolEntityDataValue {
                 data_id: VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
-                serializer_id: 0,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(mask),
             }],
         })
@@ -610,7 +609,6 @@ fn entity_model_sources_gate_sleeping_pose_on_living_entities() {
 fn entity_model_sources_resolve_sleeping_bed_orientation() {
     const POSE_SLEEPING: i32 = 2;
     const SLEEPING_POS_DATA_ID: u8 = 14;
-    const OPTIONAL_BLOCK_POS_SERIALIZER_ID: i32 = 11;
 
     let mut store = WorldStore::with_dimension(crate::WorldDimension {
         min_y: 0,
@@ -647,7 +645,7 @@ fn entity_model_sources_resolve_sleeping_bed_orientation() {
             ),
             ProtocolEntityDataValue {
                 data_id: SLEEPING_POS_DATA_ID,
-                serializer_id: OPTIONAL_BLOCK_POS_SERIALIZER_ID,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
                 value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
                     x: 2,
                     y: 1,
@@ -724,11 +722,10 @@ fn entity_model_sources_project_scale_attribute() {
 #[test]
 fn death_animation_gates_on_living_entity_health() {
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-    const FLOAT_SERIALIZER_ID: i32 = 3;
 
     let zero_health = vec![ProtocolEntityDataValue {
         data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-        serializer_id: FLOAT_SERIALIZER_ID,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
         value: EntityDataValueKind::Float(0.0),
     }];
 

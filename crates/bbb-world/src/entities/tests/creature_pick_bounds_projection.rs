@@ -311,7 +311,7 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
             // Slot 9 belongs to ItemFrame.DATA_ITEM here; a mismatched painting serializer must not
             // populate the Painting-only client projection.
             data_id: VANILLA_PAINTING_VARIANT_DATA_ID,
-            serializer_id: 34,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
             value: EntityDataValueKind::PaintingVariant(
                 bbb_protocol::packets::PaintingVariantData {
                     registry_id: Some(21),
@@ -344,7 +344,7 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
         id: 21,
         values: vec![ProtocolEntityDataValue {
             data_id: 9,
-            serializer_id: 7,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(ItemStackSummary {
                 item_id: Some(999),
                 count: 1,
@@ -382,7 +382,7 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
         id: 22,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_PAINTING_VARIANT_DATA_ID,
-            serializer_id: 34,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
             value: EntityDataValueKind::PaintingVariant(
                 bbb_protocol::packets::PaintingVariantData {
                     registry_id: Some(21),
@@ -439,7 +439,7 @@ fn slime_pick_bounds_scale_with_vanilla_size_metadata() {
         id: 24,
         values: vec![ProtocolEntityDataValue {
             data_id: 16,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(4),
         }],
     }));
@@ -447,7 +447,7 @@ fn slime_pick_bounds_scale_with_vanilla_size_metadata() {
         id: 25,
         values: vec![ProtocolEntityDataValue {
             data_id: 16,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(3),
         }],
     }));
@@ -490,7 +490,7 @@ fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata() {
         id: 26,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(1),
         }],
     }));
@@ -524,7 +524,7 @@ fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata() {
         id: 26,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_PUFFERFISH_PUFF_STATE_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(2),
         }],
     }));
@@ -555,7 +555,7 @@ fn salmon_pick_bounds_scale_with_vanilla_variant_metadata() {
         id: 27,
         values: vec![ProtocolEntityDataValue {
             data_id: SALMON_VARIANT_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(0),
         }],
     }));
@@ -572,7 +572,7 @@ fn salmon_pick_bounds_scale_with_vanilla_variant_metadata() {
         id: 27,
         values: vec![ProtocolEntityDataValue {
             data_id: SALMON_VARIANT_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(2),
         }],
     }));
@@ -618,7 +618,7 @@ fn phantom_pick_bounds_scale_with_vanilla_size_metadata() {
         id: 28,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_PHANTOM_SIZE_DATA_ID,
-            serializer_id: 1,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(4),
         }],
     }));

@@ -389,7 +389,7 @@ fn entity_model_sources_project_bee_roll_amount() {
     // Vanilla `Bee.DATA_FLAGS_ID` is synced data id 18; `FLAG_ROLL` is mask 2 within that byte.
     let bee_flags = |raw: i8| ProtocolEntityDataValue {
         data_id: 18,
-        serializer_id: 0,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(raw),
     };
     let roll = |store: &WorldStore, partial: f32| {
@@ -453,7 +453,7 @@ fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
     const PANDA_FLAG_ON_BACK: i8 = 0x10;
     let panda_flags = |raw: i8| ProtocolEntityDataValue {
         data_id: PANDA_FLAGS_DATA_ID,
-        serializer_id: 0,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(raw),
     };
     let source = |store: &WorldStore, id: i32, partial: f32| {
@@ -1072,7 +1072,7 @@ fn entity_model_sources_project_fox_head_roll_and_crouch() {
     // `FLAG_INTERESTED` is mask 8 within that byte.
     let fox_flags = |raw: i8| ProtocolEntityDataValue {
         data_id: 19,
-        serializer_id: 0,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(raw),
     };
     let source = |store: &WorldStore, partial: f32| {
@@ -1421,7 +1421,6 @@ fn entity_model_sources_project_walk_animation_limb_swing() {
 #[test]
 fn entity_model_sources_walk_animation_scales_position_for_babies() {
     const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
-    const BOOLEAN_SERIALIZER_ID: i32 = 8;
 
     let walk = |store: &WorldStore| -> (f32, f32) {
         let source = store
@@ -1443,7 +1442,7 @@ fn entity_model_sources_walk_animation_scales_position_for_babies() {
         id: 61,
         values: vec![ProtocolEntityDataValue {
             data_id: AGEABLE_MOB_BABY_DATA_ID,
-            serializer_id: BOOLEAN_SERIALIZER_ID,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],
     }));
@@ -1500,7 +1499,6 @@ fn entity_model_sources_walk_animation_scales_position_for_babies() {
 #[test]
 fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
     const VANILLA_ENTITY_HEALTH_DATA_ID: u8 = 9;
-    const FLOAT_SERIALIZER_ID: i32 = 3;
 
     let walk = |store: &WorldStore, id: i32| -> (bool, f32, f32, f32) {
         let source = store
@@ -1586,7 +1584,7 @@ fn entity_model_sources_walk_animation_stops_for_passengers_and_the_dead() {
         id: 72,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_ENTITY_HEALTH_DATA_ID,
-            serializer_id: FLOAT_SERIALIZER_ID,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
             value: EntityDataValueKind::Float(0.0),
         }],
     }));
@@ -1676,7 +1674,7 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
             VANILLA_ENTITY_TYPE_CAMEL_ID,
             vec![ProtocolEntityDataValue {
                 data_id: CAMEL_DASH_DATA_ID,
-                serializer_id: 8,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             }]
         ),

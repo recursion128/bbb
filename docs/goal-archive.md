@@ -16947,3 +16947,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   两处错配；vanilla 26.1 对应 serializer 分别为 INT 与 ITEM_STACK。
 - gameplay-id generator 的 presentation fixture 反向测试现扩展至上述三个 inline
   test module，拒绝 numeric `serializer_id` 与本地 serializer alias 回流。
+
+## 2026-07-16：统一 world entity fixture serializer 身份
+
+- `bbb-world::entities` 根测试模块与 11 个子模块的 76 个 metadata
+  `serializer_id` 写入点，现按 `EntityDataValueKind` 消费 gameplay-id generator 从
+  `EntityDataSerializers.java` 注册顺序生成的 typed constants；13 个局部数字 alias
+  同步删除。
+- 审计修正 Wither `DATA_ID_INV` fixture 中 BYTE id `0` 与 Int 载荷的旧错配；
+  vanilla 26.1 `WitherBoss` 将该 accessor 定义为 `EntityDataSerializers.INT`。
+- 生成测试递归扫描 `entities/tests.rs` 与整个 `entities/tests/` 目录，拒绝
+  numeric `serializer_id` 或本地 serializer alias 回流；协议 wire sample 仍保持独立 evidence
+  owner，未纳入该语义 fixture 扫描。

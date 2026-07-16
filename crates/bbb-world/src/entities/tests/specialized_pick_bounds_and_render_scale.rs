@@ -1087,7 +1087,7 @@ fn armor_stand_pick_bounds_follow_client_flags() {
         // `ArmorStand.DATA_CLIENT_FLAGS` data id (15): the SMALL bit (1) halves the pick bounds.
         values: vec![ProtocolEntityDataValue {
             data_id: 15,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(1),
         }],
     }));
@@ -1105,7 +1105,7 @@ fn armor_stand_pick_bounds_follow_client_flags() {
         // `ArmorStand.DATA_CLIENT_FLAGS` data id (15): the MARKER bit (0x10) zeroes the pick bounds.
         values: vec![ProtocolEntityDataValue {
             data_id: 15,
-            serializer_id: 0,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(16),
         }],
     }));

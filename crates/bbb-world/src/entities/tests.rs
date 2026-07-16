@@ -1,5 +1,6 @@
 use super::*;
 
+use bbb_protocol::entity_data_serializers::*;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, BlockPos as ProtocolBlockPos,
@@ -139,7 +140,7 @@ fn wind_charge_pick_bounds() -> EntityPickBoundsState {
 fn shulker_attach_face_data(direction_id: i32) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id: SHULKER_ATTACH_FACE_DATA_ID,
-        serializer_id: 12,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
         value: EntityDataValueKind::Direction(direction_id),
     }
 }
@@ -147,7 +148,7 @@ fn shulker_attach_face_data(direction_id: i32) -> ProtocolEntityDataValue {
 fn shulker_peek_data(raw_peek: i8) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id: SHULKER_PEEK_DATA_ID,
-        serializer_id: 0,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(raw_peek),
     }
 }
@@ -302,7 +303,7 @@ fn protocol_player_info_entry_with_mode(
 fn protocol_pose_data(data_id: u8, pose_id: i32) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 20,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
         value: EntityDataValueKind::Pose(pose_id),
     }
 }
@@ -310,7 +311,7 @@ fn protocol_pose_data(data_id: u8, pose_id: i32) -> ProtocolEntityDataValue {
 fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 8,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         value: EntityDataValueKind::Boolean(value),
     }
 }
@@ -318,7 +319,7 @@ fn protocol_bool_data(data_id: u8, value: bool) -> ProtocolEntityDataValue {
 fn protocol_byte_data(data_id: u8, value: i8) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 0,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(value),
     }
 }
@@ -326,7 +327,7 @@ fn protocol_byte_data(data_id: u8, value: i8) -> ProtocolEntityDataValue {
 fn protocol_int_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 1,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
         value: EntityDataValueKind::Int(value),
     }
 }
@@ -334,7 +335,7 @@ fn protocol_int_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
 fn protocol_block_state_data(data_id: u8, value: i32) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 14,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BLOCK_STATE_ID,
         value: EntityDataValueKind::BlockState(value),
     }
 }
@@ -342,7 +343,7 @@ fn protocol_block_state_data(data_id: u8, value: i32) -> ProtocolEntityDataValue
 fn protocol_long_data(data_id: u8, value: i64) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 2,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
         value: EntityDataValueKind::Long(value),
     }
 }
@@ -350,7 +351,7 @@ fn protocol_long_data(data_id: u8, value: i64) -> ProtocolEntityDataValue {
 fn protocol_optional_unsigned_int_data(data_id: u8, value: Option<i32>) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 19,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_UNSIGNED_INT_ID,
         value: EntityDataValueKind::OptionalUnsignedInt(value),
     }
 }
@@ -358,7 +359,7 @@ fn protocol_optional_unsigned_int_data(data_id: u8, value: Option<i32>) -> Proto
 fn protocol_optional_block_state_data(data_id: u8, value: Option<i32>) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 15,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
         value: EntityDataValueKind::OptionalBlockState(value),
     }
 }
@@ -366,7 +367,7 @@ fn protocol_optional_block_state_data(data_id: u8, value: Option<i32>) -> Protoc
 fn protocol_float_data(data_id: u8, value: f32) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 3,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
         value: EntityDataValueKind::Float(value),
     }
 }
@@ -393,7 +394,7 @@ fn protocol_enum_data(
 fn protocol_humanoid_arm_data(data_id: u8, arm_id: i32) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id,
-        serializer_id: 42,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_HUMANOID_ARM_ID,
         value: EntityDataValueKind::HumanoidArm(arm_id),
     }
 }
@@ -428,7 +429,7 @@ fn protocol_play_login(player_id: i32) -> ProtocolPlayLogin {
 fn item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id: VANILLA_ITEM_ENTITY_STACK_DATA_ID,
-        serializer_id: 7,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
         value: EntityDataValueKind::ItemStack(item),
     }
 }
@@ -436,7 +437,7 @@ fn item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataV
 fn living_entity_flags_data(flags: i8) -> ProtocolEntityDataValue {
     ProtocolEntityDataValue {
         data_id: 8,
-        serializer_id: 0,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(flags),
     }
 }
