@@ -724,6 +724,31 @@ mod tests {
 
     #[test]
     fn production_sources_do_not_redeclare_temperature_animal_variant_catalog_facts() {
+        let native = include_str!("../../../bbb-native/src/entity_assets.rs");
+        let loader = native
+            .split("fn load_entity_model_texture_images")
+            .nth(1)
+            .and_then(|source| source.split("fn load_entity_model_texture_image").next())
+            .expect("native entity texture loader");
+        assert_eq!(loader.matches("entity_model_texture_refs()").count(), 1);
+        let fixture = native
+            .split("fn loads_vanilla_entity_textures_from_resource_stack")
+            .nth(1)
+            .and_then(|source| source.split("    #[test]").next())
+            .expect("native entity texture loader fixture");
+        assert_eq!(fixture.matches("entity_model_texture_refs()").count(), 3);
+        for texture in VANILLA_CHICKEN_VARIANT_TEXTURE_REFS
+            .iter()
+            .chain(&VANILLA_COW_VARIANT_TEXTURE_REFS)
+            .chain(&VANILLA_PIG_VARIANT_TEXTURE_REFS)
+            .chain(&VANILLA_FROG_VARIANT_TEXTURE_REFS)
+        {
+            assert!(
+                !fixture.contains(texture.path),
+                "native fixture restored temperature-animal asset literal {}",
+                texture.path
+            );
+        }
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();

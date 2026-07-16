@@ -402,6 +402,20 @@ mod tests {
 
     #[test]
     fn production_sources_do_not_redeclare_wolf_variant_catalog_facts() {
+        let native = include_str!("../../../bbb-native/src/entity_assets.rs");
+        let fixture = native
+            .split("fn loads_vanilla_entity_textures_from_resource_stack")
+            .nth(1)
+            .and_then(|source| source.split("    #[test]").next())
+            .expect("native entity texture loader fixture");
+        assert_eq!(fixture.matches("entity_model_texture_refs()").count(), 3);
+        for texture in VANILLA_WOLF_VARIANT_TEXTURE_REFS {
+            assert!(
+                !fixture.contains(texture.path),
+                "native fixture restored wolf asset literal {}",
+                texture.path
+            );
+        }
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();

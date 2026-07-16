@@ -17591,3 +17591,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   sprite，不再用 5 个具名装饰代表完整生成目录。
 - bootstrap generator 守卫精确检查 renderer 查询与 surface baker 对 generated catalog 的消费，
   并要求 full-catalog fixture 不恢复任何 resource/asset 字面量；unknown id 继续 fail closed。
+
+## 2026-07-16：统一 built-in animal fallback asset 消费
+
+- native entity texture loader fixture 删除约 700 行全局纹理路径副本，逐项比较实际加载结果与
+  renderer 权威 `entity_model_texture_refs`；farm/frog、cat、wolf、zombie-nautilus 的 bootstrap
+  presentation 资产不再被测试代码重述。
+- 四类 generated reverse guard 分别按自身完整资产集合禁止 native fixture 恢复路径字面量，并
+  锁定 loader 与 fixture 对权威迭代器的消费；生产中的 model type/key/texture 选择保持由既有
+  bootstrap catalog 驱动。
