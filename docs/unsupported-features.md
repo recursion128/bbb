@@ -149,8 +149,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   renderer-class/event-dispatch membership discovery audit.
   Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
   Continue the remaining fixed metadata-id fixture-alias pass across `bbb-native`
-  entity-scene/input tests and `bbb-world` entity test submodules, including render-state,
-  villager-data, and shared-base-field fixtures; migrate only families whose exact inherited accessor is
+  entity-scene/input tests and `bbb-world` entity test submodules, including render-state and
+  shared-base-field fixtures; migrate only families whose exact inherited accessor is
   already owned by the generated schema, without substituting a same-index accessor from another
   class.
   The 155 explicit

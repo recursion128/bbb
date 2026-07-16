@@ -102,8 +102,6 @@ use bbb_world::VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DA
 use bbb_world::VANILLA_LIVING_ENTITY_HEALTH_DATA_ID as LIVING_ENTITY_HEALTH_DATA_ID;
 use bbb_world::VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING;
 #[cfg(test)]
-use bbb_world::VANILLA_VILLAGER_DATA_DATA_ID as VILLAGER_DATA_DATA_ID;
-#[cfg(test)]
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 use bbb_world::{
     vanilla_entity_metadata_creeper_accessors_for_entity_type,

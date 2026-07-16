@@ -9689,7 +9689,7 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
     assert_eq!(
         villager_model_data(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
-            &[protocol_villager_data(18, 6, 14, 9)],
+            &[protocol_villager_data_at_unhappy_counter(6, 14, 9)],
             None,
         ),
         VillagerModelData::DEFAULT,
@@ -9698,7 +9698,12 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
     assert_eq!(
         villager_model_data(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
-            &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 6, 14, 9)],
+            &[protocol_villager_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                6,
+                14,
+                9,
+            )],
             None,
         ),
         VillagerModelData::new(
@@ -9711,10 +9716,7 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
         villager_model_data(
             VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
             &[protocol_villager_data(
-                vanilla_entity_metadata_villager_data_accessor_for_entity_type(
-                    VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
-                )
-                .expect("generated ZombieVillager villager-data accessor"),
+                VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
                 4,
                 11,
                 2
@@ -9726,7 +9728,12 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
     assert_eq!(
         villager_model_data(
             VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
-            &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 4, 11, 2)],
+            &[protocol_villager_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                4,
+                11,
+                2,
+            )],
             None,
         ),
         VillagerModelData::DEFAULT,
@@ -9735,7 +9742,12 @@ fn villager_model_data_reads_vanilla_serializer_and_static_fallback_order() {
     assert_eq!(
         villager_model_data(
             VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-            &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 6, 14, 9)],
+            &[protocol_villager_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                6,
+                14,
+                9,
+            )],
             None,
         ),
         VillagerModelData::DEFAULT,
@@ -9765,7 +9777,12 @@ fn villager_model_data_uses_fixed_built_in_registry_order() {
     assert_eq!(
         villager_model_data(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
-            &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 1, 0, 5)],
+            &[protocol_villager_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                1,
+                0,
+                5,
+            )],
             Some(&world),
         ),
         VillagerModelData::new(VillagerModelType::Jungle, VillagerModelProfession::None, 5,),
@@ -9774,7 +9791,12 @@ fn villager_model_data_uses_fixed_built_in_registry_order() {
     assert_eq!(
         villager_model_data(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
-            &[protocol_villager_data(VILLAGER_DATA_DATA_ID, 99, -1, 3)],
+            &[protocol_villager_data(
+                VANILLA_ENTITY_TYPE_VILLAGER_ID,
+                99,
+                -1,
+                3,
+            )],
             Some(&world),
         ),
         VillagerModelData::new(VillagerModelType::Plains, VillagerModelProfession::None, 3,)
@@ -11761,6 +11783,31 @@ fn protocol_copper_golem_state_data(id: i32) -> EntityDataValue {
 }
 
 fn protocol_villager_data(
+    entity_type_id: i32,
+    villager_type: i32,
+    profession: i32,
+    level: i32,
+) -> EntityDataValue {
+    let data_id = vanilla_entity_metadata_villager_data_accessor_for_entity_type(entity_type_id)
+        .expect("generated villager-data accessor must resolve");
+    protocol_villager_data_at(data_id, villager_type, profession, level)
+}
+
+fn protocol_villager_data_at_unhappy_counter(
+    villager_type: i32,
+    profession: i32,
+    level: i32,
+) -> EntityDataValue {
+    let accessor = bbb_world::vanilla_entity_metadata_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        "DATA_UNHAPPY_COUNTER",
+    )
+    .expect("generated AbstractVillager unhappy-counter accessor must resolve");
+    assert_eq!(accessor.serializer_name, "INT");
+    protocol_villager_data_at(accessor.data_id, villager_type, profession, level)
+}
+
+fn protocol_villager_data_at(
     data_id: u8,
     villager_type: i32,
     profession: i32,

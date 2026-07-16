@@ -17687,3 +17687,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Hoglin F3+I production 与 fixture 同步删除固定 id/default，和 Piglin/PiglinBrute 共用 generated
   zombification-immunity accessor；metadata generator 守卫覆盖 scene、debug-save 函数体及两侧
   semantic fixtures，禁止三族固定别名回流。
+
+## 2026-07-16：统一 Villager data entity-scene fixture accessor 消费
+
+- Villager/ZombieVillager 正向模型夹具按具体 entity type 查询 generated
+  `DATA_VILLAGER_DATA` accessor；把 Villager owner 的 payload 写入 ZombieVillager 或
+  WanderingTrader 的负例继续验证不同 owner/无 owner 时 fail closed。
+- AbstractVillager unhappy-counter serializer 错位负例改由 generic generated schema 查询精确
+  owner accessor，不再手写 id 18；generator 守卫覆盖 production 与整份 semantic fixture，
+  禁止 Villager/ZombieVillager 固定 wire id 别名或 numeric helper 回流。
