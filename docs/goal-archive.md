@@ -18056,3 +18056,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Nautilus 与 undead-horse helper 补齐上游已持有的类型参数；baby reverse guard 覆盖生产
   import、kind 分派、variant helper 和全部调用，adult/baby 模型、Turtle egg gate 与 mount
   variant/chest 回归保持不变。
+
+## 2026-07-16：统一 world combat-state Mob flags fixtures
+
+- combat-state tests 新增按实际 entity type 查询 `VanillaMobMetadataAccessors`、校验默认值并
+  构造 flags byte 的 helper；main-arm 与 aggressive 三项测试删除 9 处固定 Mob wire id，
+  left-handed/aggressive bit 同步改读 generated named masks。
+- ArmorStand/Boat 的 data-id 碰撞负例保留为显式 Mob payload 注入；Mob reverse guard 纳入整份
+  combat-state fixture，renderer extractor、direct item-in-hand layer 与非消费类型回归保持不变。

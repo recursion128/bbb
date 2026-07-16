@@ -31,6 +31,22 @@ fn living_health_data(entity_type_id: i32, health: f32) -> ProtocolEntityDataVal
     protocol_float_data(accessors.health_data_id, health)
 }
 
+fn mob_metadata_accessors(entity_type_id: i32) -> VanillaMobMetadataAccessors {
+    let accessors = vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
+        .expect("generated inherited Mob metadata accessors must resolve");
+    assert_eq!(accessors.flags_default, 0);
+    accessors
+}
+
+fn mob_flags_data(entity_type_id: i32, flags: i8) -> ProtocolEntityDataValue {
+    protocol_byte_data(mob_metadata_accessors(entity_type_id).flags_data_id, flags)
+}
+
+/// Deliberately sends a valid Mob flags field to a non-Mob to cover data-id collision gating.
+fn mob_flags_collision_data(flags: i8) -> ProtocolEntityDataValue {
+    mob_flags_data(VANILLA_ENTITY_TYPE_ZOMBIE_ID, flags)
+}
+
 fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEntityDataValue> {
     let accessors =
         crate::entities::schema::vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
@@ -388,10 +404,8 @@ fn entity_model_sources_project_using_item_flags() {
 #[test]
 fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
     const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
-    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
     const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
     const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
-    const MOB_FLAG_LEFTHANDED: i8 = 2;
 
     let main_arm_left = |store: &WorldStore, id: i32| {
         store
@@ -431,13 +445,14 @@ fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
         83,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     ));
+    let zombie_accessors = mob_metadata_accessors(VANILLA_ENTITY_TYPE_ZOMBIE_ID);
     assert!(!main_arm_left(&store, 83));
-    // Vanilla `Mob.getMainArm`: `MOB_FLAG_LEFTHANDED` flips the default RIGHT arm.
+    // Vanilla `Mob.getMainArm`: the generated left-handed flag flips the default RIGHT arm.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 83,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_LEFTHANDED,
+        values: vec![mob_flags_data(
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            zombie_accessors.left_handed_mask,
         )],
     }));
     assert!(main_arm_left(&store, 83));
@@ -449,13 +464,11 @@ fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
         (85, VANILLA_ENTITY_TYPE_ALLAY_ID),
         (86, VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID),
     ] {
+        let accessors = mob_metadata_accessors(entity_type_id);
         store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![protocol_byte_data(
-                VANILLA_MOB_FLAGS_DATA_ID,
-                MOB_FLAG_LEFTHANDED,
-            )],
+            values: vec![mob_flags_data(entity_type_id, accessors.left_handed_mask)],
         }));
         assert!(main_arm_left(&store, id));
     }
@@ -468,10 +481,7 @@ fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 87,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_LEFTHANDED,
-        )],
+        values: vec![mob_flags_collision_data(zombie_accessors.left_handed_mask)],
     }));
     assert!(!main_arm_left(&store, 87));
 
@@ -482,21 +492,13 @@ fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 84,
-        values: vec![protocol_byte_data(
-            VANILLA_MOB_FLAGS_DATA_ID,
-            MOB_FLAG_LEFTHANDED,
-        )],
+        values: vec![mob_flags_collision_data(zombie_accessors.left_handed_mask)],
     }));
     assert!(!main_arm_left(&store, 84));
 }
 
 #[test]
 fn entity_model_sources_project_aggressive_for_renderer_extractors() {
-    // Vanilla Mob.DATA_MOB_FLAGS_ID (15); MOB_FLAG_AGGRESSIVE (4), LEFTHANDED is bit 2.
-    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
-    const MOB_FLAG_AGGRESSIVE: i8 = 4;
-    const MOB_FLAG_LEFTHANDED: i8 = 2;
-
     let aggressive = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -505,14 +507,10 @@ fn entity_model_sources_project_aggressive_for_renderer_extractors() {
             .unwrap()
             .is_aggressive
     };
-    let set_mob_flags = |store: &mut WorldStore, id: i32, flags: i8| {
+    let set_mob_flags = |store: &mut WorldStore, id: i32, entity_type_id: i32, flags: i8| {
         store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_MOB_FLAGS_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(flags),
-            }],
+            values: vec![mob_flags_data(entity_type_id, flags)],
         })
     };
 
@@ -521,6 +519,7 @@ fn entity_model_sources_project_aggressive_for_renderer_extractors() {
         80,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     ));
+    let zombie_accessors = mob_metadata_accessors(VANILLA_ENTITY_TYPE_ZOMBIE_ID);
     // A zombie with no mob flags is calm.
     assert!(!aggressive(&store, 80));
 
@@ -528,11 +527,17 @@ fn entity_model_sources_project_aggressive_for_renderer_extractors() {
     assert!(set_mob_flags(
         &mut store,
         80,
-        MOB_FLAG_AGGRESSIVE | MOB_FLAG_LEFTHANDED,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        zombie_accessors.aggressive_mask | zombie_accessors.left_handed_mask,
     ));
     assert!(aggressive(&store, 80));
     // Clearing the aggressive bit (left-handed still set) returns to calm.
-    assert!(set_mob_flags(&mut store, 80, MOB_FLAG_LEFTHANDED));
+    assert!(set_mob_flags(
+        &mut store,
+        80,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        zombie_accessors.left_handed_mask,
+    ));
     assert!(!aggressive(&store, 80));
 
     // These renderer paths assign `state.isAggressive = entity.isAggressive()` directly, including
@@ -541,8 +546,14 @@ fn entity_model_sources_project_aggressive_for_renderer_extractors() {
         (81, VANILLA_ENTITY_TYPE_SKELETON_ID),
         (82, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID),
     ] {
+        let accessors = mob_metadata_accessors(entity_type_id);
         store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
-        assert!(set_mob_flags(&mut store, id, MOB_FLAG_AGGRESSIVE));
+        assert!(set_mob_flags(
+            &mut store,
+            id,
+            entity_type_id,
+            accessors.aggressive_mask,
+        ));
         assert!(aggressive(&store, id));
     }
 
@@ -552,8 +563,14 @@ fn entity_model_sources_project_aggressive_for_renderer_extractors() {
         (83, VANILLA_ENTITY_TYPE_GIANT_ID),
         (84, VANILLA_ENTITY_TYPE_CHICKEN_ID),
     ] {
+        let accessors = mob_metadata_accessors(entity_type_id);
         store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
-        assert!(set_mob_flags(&mut store, id, MOB_FLAG_AGGRESSIVE));
+        assert!(set_mob_flags(
+            &mut store,
+            id,
+            entity_type_id,
+            accessors.aggressive_mask,
+        ));
         assert!(!aggressive(&store, id));
     }
 }
@@ -563,9 +580,6 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
     // The aggressive flag also drives the piglin/brute `ATTACKING_WITH_MELEE_WEAPON`, the vindicator /
     // pillager `ATTACKING` arm pose, and the illusioner `BOW_AND_ARROW` aim. IllagerRenderer extracts
     // the flag for every illager render state; EvokerModel simply does not consume it for arm pose.
-    const VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
-    const MOB_FLAG_AGGRESSIVE: i8 = 4;
-
     let aggressive = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -585,6 +599,7 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
         (94, VANILLA_ENTITY_TYPE_EVOKER_ID),
         (95, VANILLA_ENTITY_TYPE_PILLAGER_ID),
     ] {
+        let accessors = mob_metadata_accessors(type_id);
         store.apply_add_entity(protocol_add_entity_with_type(id, type_id));
         assert!(
             !aggressive(&store, id),
@@ -592,11 +607,7 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
         );
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,
-            values: vec![ProtocolEntityDataValue {
-                data_id: VANILLA_MOB_FLAGS_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_AGGRESSIVE),
-            }],
+            values: vec![mob_flags_data(type_id, accessors.aggressive_mask)],
         }));
         assert!(
             aggressive(&store, id),
