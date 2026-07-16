@@ -400,8 +400,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Camel-only baby scaling and its fixtures must read the generated inherited baby accessor while
   preserving CamelHusk's `isBaby() = false` override.
   PolarBear standing membership, wire index and typed default must remain derived from generated
-  `PolarBear.DATA_STANDING_ID`; world animation consumers must not restore fixed accessor/default
-  aliases or read the standing flag without generated PolarBear membership.
+  `PolarBear.DATA_STANDING_ID`; world animation consumers and semantic fixtures must not restore
+  fixed accessor/default aliases, hand-written wire indices or read the standing flag without
+  generated PolarBear membership.
   Wolf interested/collar-color/anger-end-time membership, wire indices and typed defaults must
   remain derived together from generated `Wolf.DATA_INTERESTED_ID`, `DATA_COLLAR_COLOR` and
   `DATA_ANGER_END_TIME`; world head-roll plus native model/tail/F3+I consumers and fixtures must not

@@ -17385,3 +17385,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 删除 `bbb-world` 的 Camel dash/pose-tick data/default facade 转发，schema 期望由 generated
   Camel family schema 组装；Camel 尺寸 fixtures 也由 generated baby accessor 注入数据，并保持
   CamelHusk `isBaby() = false` 的成年尺寸语义。
+
+## 2026-07-16：统一 PolarBear standing metadata 消费
+
+- world animation/尺寸、native render-state 与 F3+I fixtures 统一按 PolarBear entity type
+  解析 generated `DATA_STANDING_ID` accessor，移除固定 wire index 与裸 entity type id。
+- 删除 `bbb-world` 的 standing data/default facade 转发，schema 期望由 generated PolarBear
+  family schema 组装；generator 反向守卫覆盖 production 和 world/native fixtures。

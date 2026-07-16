@@ -159,6 +159,15 @@ fn camel_last_pose_change_tick_data(entity_type_id: i32, tick: i64) -> EntityDat
     protocol_long_data(data_id, tick)
 }
 
+fn polar_bear_standing_data(standing: bool) -> EntityDataValue {
+    let (data_id, _) =
+        bbb_world::vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+        )
+        .expect("generated PolarBear standing accessor must resolve");
+    protocol_bool_data(data_id, standing)
+}
+
 fn mushroom_cow_variant_data(variant: i32) -> EntityDataValue {
     let (data_id, _) =
         bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
@@ -1117,8 +1126,6 @@ fn entity_model_instances_project_head_look_from_world() {
 
 #[test]
 fn entity_model_instances_project_polar_bear_standing_scale() {
-    const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         80,
@@ -1138,7 +1145,7 @@ fn entity_model_instances_project_polar_bear_standing_scale() {
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 80,
-        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true)],
+        values: vec![polar_bear_standing_data(true)],
     }));
     world.advance_entity_client_animations(1);
 

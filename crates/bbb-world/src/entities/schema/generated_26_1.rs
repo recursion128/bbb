@@ -75,8 +75,6 @@ const GENERATED_VANILLA_BEE_FLAGS_DATA_ID: u8 = 18;
 pub const VANILLA_BEE_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_BEE_FLAGS_DATA_ID;
 const GENERATED_VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = 19;
 pub const VANILLA_BEE_ANGER_END_TIME_DATA_ID: u8 = GENERATED_VANILLA_BEE_ANGER_END_TIME_DATA_ID;
-const GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
-pub const VANILLA_POLAR_BEAR_STANDING_DATA_ID: u8 = GENERATED_VANILLA_POLAR_BEAR_STANDING_DATA_ID;
 const GENERATED_VANILLA_ZOMBIE_BABY_DATA_ID: u8 = 16;
 pub const VANILLA_ZOMBIE_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOMBIE_BABY_DATA_ID;
 const GENERATED_VANILLA_ZOMBIE_SPECIAL_TYPE_DATA_ID: u8 = 17;
@@ -659,8 +657,6 @@ const GENERATED_VANILLA_BEE_DEFAULT_FLAGS: i8 = 0;
 pub const VANILLA_BEE_DEFAULT_FLAGS: i8 = GENERATED_VANILLA_BEE_DEFAULT_FLAGS;
 const GENERATED_VANILLA_BEE_DEFAULT_ANGER_END_TIME: i64 = -1;
 pub const VANILLA_BEE_DEFAULT_ANGER_END_TIME: i64 = GENERATED_VANILLA_BEE_DEFAULT_ANGER_END_TIME;
-const GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = false;
-pub const VANILLA_POLAR_BEAR_DEFAULT_STANDING: bool = GENERATED_VANILLA_POLAR_BEAR_DEFAULT_STANDING;
 const GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 = 0;
 pub const VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION: i8 =
     GENERATED_VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION;
@@ -24622,15 +24618,22 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_polar_bear_standing_does_not_restore_accessor_constants() {
+    fn polar_bear_standing_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
-        assert!(animations
-            .contains("vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type"));
+        let world_tests = include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [animations, world_tests, native_scene_tests, input_tests] {
+            assert!(source
+                .contains("vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type"));
+        }
         for removed in ["POLAR_BEAR_STANDING_DATA_ID", "POLAR_BEAR_DEFAULT_STANDING"] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
+            for source in [animations, world_tests, native_scene_tests, input_tests] {
+                assert!(
+                    !source.contains(removed),
+                    "PolarBear standing projection restored {removed}"
+                );
+            }
         }
     }
 

@@ -6185,11 +6185,20 @@ mod tests {
 
     #[test]
     fn generated_polar_bear_standing_accessor_owns_membership_index_and_default() {
+        let polar_bear = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PolarBear);
+        let standing = polar_bear
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_STANDING_ID")
+            .expect("generated PolarBear standing field");
+        let VanillaEntityMetadataDefault::Boolean(default) = standing.default else {
+            panic!("generated PolarBear standing default must be BOOLEAN");
+        };
         assert_eq!(
             vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_POLAR_BEAR_ID
             ),
-            Some((18, false))
+            Some((standing.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
@@ -8352,8 +8361,16 @@ mod tests {
         );
         assert_eq!(polar_bear.inherited_field_count, 18);
         assert_eq!(polar_bear.own_fields.len(), 1);
-        assert_eq!(VANILLA_POLAR_BEAR_STANDING_DATA_ID, 18);
-        assert!(!VANILLA_POLAR_BEAR_DEFAULT_STANDING);
+        let (standing_data_id, standing_default) =
+            vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+            )
+            .expect("generated PolarBear standing accessor");
+        assert_eq!(standing_data_id, polar_bear.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(standing_default),
+            polar_bear.own_fields[0].default
+        );
         assert_eq!(
             arrow.parent,
             Some(VanillaEntityMetadataFamily::AbstractArrow)

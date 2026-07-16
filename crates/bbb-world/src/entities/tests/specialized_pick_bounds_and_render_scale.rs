@@ -1,5 +1,13 @@
 use super::*;
 
+fn polar_bear_standing_data(standing: bool) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+    )
+    .expect("generated PolarBear standing accessor must resolve");
+    protocol_bool_data(data_id, standing)
+}
+
 #[test]
 fn generated_baby_accessor_membership_covers_all_ageable_families() {
     const AGEABLE_BABY_DATA_ID: u8 = 16;
@@ -923,18 +931,19 @@ fn generated_sanitize_scale_overrides_apply_to_render_state() {
 fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
     const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     const AGEABLE_BABY_DATA_ID: u8 = 16;
-    const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
-    const POLAR_BEAR_TYPE_ID: i32 = 104;
 
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(80, POLAR_BEAR_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+    ));
 
     let adult_bounds = Some(EntityPickBoundsState::from_base_size(1.4, 1.4, 0.0));
     assert_eq!(store.probe_entity_pick_bounds(80), adult_bounds);
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 80,
-        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true)],
+        values: vec![polar_bear_standing_data(true)],
     }));
     assert_eq!(store.probe_entity_pick_bounds(80), adult_bounds);
 
@@ -974,7 +983,7 @@ fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 80,
-        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, false)],
+        values: vec![polar_bear_standing_data(false)],
     }));
     store.advance_entity_client_animations(1);
     assert_eq!(
@@ -995,12 +1004,15 @@ fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
     store.advance_entity_client_animations(5);
     assert_eq!(store.probe_entity_pick_bounds(80), adult_bounds);
 
-    store.apply_add_entity(protocol_add_entity_with_type(81, POLAR_BEAR_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+    ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 81,
         values: vec![
             protocol_bool_data(AGEABLE_BABY_DATA_ID, true),
-            protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true),
+            polar_bear_standing_data(true),
         ],
     }));
     store.advance_entity_client_animations(7);
@@ -1024,13 +1036,15 @@ fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
 
 #[test]
 fn polar_bear_standing_projects_render_stand_scale() {
-    const POLAR_BEAR_TYPE_ID: i32 = 104;
-    const CHICKEN_TYPE_ID: i32 = 26;
-    const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
-
     let mut store = WorldStore::new();
-    store.apply_add_entity(protocol_add_entity_with_type(80, POLAR_BEAR_TYPE_ID));
-    store.apply_add_entity(protocol_add_entity_with_type(81, CHICKEN_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        80,
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        81,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
 
     let stand_scale = |store: &WorldStore, id: i32, partial: f32| {
         store
@@ -1046,7 +1060,7 @@ fn polar_bear_standing_projects_render_stand_scale() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 80,
-        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true)],
+        values: vec![polar_bear_standing_data(true)],
     }));
 
     // After one client tick clientSideStandAnimationO=0, clientSideStandAnimation=1,
@@ -1067,14 +1081,14 @@ fn polar_bear_standing_projects_render_stand_scale() {
 
 #[test]
 fn advancing_entity_client_animations_in_batches_matches_single_ticks() {
-    const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
-    const POLAR_BEAR_TYPE_ID: i32 = 104;
-
     let mut batch = WorldStore::new();
-    batch.apply_add_entity(protocol_add_entity_with_type(90, POLAR_BEAR_TYPE_ID));
+    batch.apply_add_entity(protocol_add_entity_with_type(
+        90,
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+    ));
     assert!(batch.apply_set_entity_data(ProtocolSetEntityData {
         id: 90,
-        values: vec![protocol_bool_data(POLAR_BEAR_STANDING_DATA_ID, true)],
+        values: vec![polar_bear_standing_data(true)],
     }));
 
     let mut repeated = batch.clone();

@@ -6185,10 +6185,13 @@ fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard() {
-    const POLAR_BEAR_STANDING_DATA_ID: u8 = 18;
-
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let (standing_data_id, _) =
+        bbb_world::vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+        )
+        .expect("generated PolarBear standing accessor must resolve");
     grant_debug_recreate_nbt_permission(&mut world);
     world.apply_add_entity(AddEntity {
         id: 68,
@@ -6224,7 +6227,7 @@ fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: POLAR_BEAR_STANDING_DATA_ID,
+                data_id: standing_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
