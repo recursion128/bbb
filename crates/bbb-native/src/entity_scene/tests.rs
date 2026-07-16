@@ -1,5 +1,9 @@
 use super::*;
 use bbb_protocol::entity_data_serializers::*;
+use bbb_protocol::entity_poses::{
+    VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SITTING_ID,
+    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_STANDING_ID,
+};
 use bbb_protocol::packets::{
     AddEntity, AttributeSnapshot, ChatFormatting, CommonPlayerSpawnInfo, DataComponentPatchSummary,
     EntityAnimation, EntityDataValue, EntityEvent, EntityPositionSync, EquipmentSlot,
@@ -4974,10 +4978,6 @@ fn entity_model_instances_project_camel_class_sit_then_sit_pose_from_pose_change
 
 #[test]
 fn camel_body_anchor_y_offset_is_exposed_for_native_attachment_projection() {
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_STANDING: i32 = 0;
-    const POSE_SITTING: i32 = 10;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         151,
@@ -4987,7 +4987,7 @@ fn camel_body_anchor_y_offset_is_exposed_for_native_attachment_projection() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 151,
         values: vec![
-            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SITTING),
+            entity_pose_data(VANILLA_ENTITY_POSE_SITTING_ID),
             camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, -100),
         ],
     }));
@@ -5006,7 +5006,7 @@ fn camel_body_anchor_y_offset_is_exposed_for_native_attachment_projection() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 151,
         values: vec![
-            protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_STANDING),
+            entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID),
             camel_last_pose_change_tick_data(VANILLA_ENTITY_TYPE_CAMEL_ID, 200),
         ],
     }));
@@ -5025,10 +5025,7 @@ fn camel_body_anchor_y_offset_is_exposed_for_native_attachment_projection() {
 
 #[test]
 fn entity_model_instances_project_player_crouch_pose() {
-    // Vanilla Entity.isCrouching (Pose.CROUCHING, ordinal 5, POSE serializer 20).
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_STANDING: i32 = 0;
-    const POSE_CROUCHING: i32 = 5;
+    // Vanilla Entity.isCrouching reads the generated Entity pose accessor.
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -5048,20 +5045,16 @@ fn entity_model_instances_project_player_crouch_pose() {
     let set_pose = |world: &mut WorldStore, id: i32, pose: i32| {
         world.apply_set_entity_data(SetEntityData {
             id,
-            values: vec![EntityDataValue {
-                data_id: ENTITY_DATA_POSE_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
-                value: EntityDataValueKind::Pose(pose),
-            }],
+            values: vec![entity_pose_data(pose)],
         })
     };
 
     // A standing player is not crouching.
     assert!(!crouching(&world, 98));
     // Pose.CROUCHING projects the sneaking pose; standing again clears it.
-    assert!(set_pose(&mut world, 98, POSE_CROUCHING));
+    assert!(set_pose(&mut world, 98, VANILLA_ENTITY_POSE_CROUCHING_ID));
     assert!(crouching(&world, 98));
-    assert!(set_pose(&mut world, 98, POSE_STANDING));
+    assert!(set_pose(&mut world, 98, VANILLA_ENTITY_POSE_STANDING_ID));
     assert!(!crouching(&world, 98));
 }
 
@@ -5134,9 +5127,6 @@ fn entity_model_instances_project_upside_down_dinnerbone() {
 
 #[test]
 fn entity_model_instances_project_sleeping_pose() {
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_SLEEPING: i32 = 2;
-
     let mut world = WorldStore::new();
     // A sheep facing body yaw 45 with no bed resolved (no chunk loaded).
     world.apply_add_entity(protocol_add_entity_with_rotation(
@@ -5164,11 +5154,7 @@ fn entity_model_instances_project_sleeping_pose() {
     // no head offset (setupRotations `angle = bodyRot`).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 93,
-        values: vec![EntityDataValue {
-            data_id: ENTITY_DATA_POSE_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
-            value: EntityDataValueKind::Pose(POSE_SLEEPING),
-        }],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID)],
     }));
     assert_eq!(
         sleeping(&world, 93),
@@ -10257,15 +10243,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
     // Vanilla `CatRenderer` / `OcelotRenderer.extractRenderState` copy `Entity.isCrouching()`
     // (Pose.CROUCHING, ordinal 5) and `Entity.isSprinting()` (shared flags bit 3). Cat also copies
     // `TamableAnimal.isInSittingPose()`; ocelot leaves `isSitting` at the default false.
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_STANDING: i32 = 0;
-    const POSE_CROUCHING: i32 = 5;
-
-    let pose_data = |pose| EntityDataValue {
-        data_id: ENTITY_DATA_POSE_ID,
-        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
-        value: EntityDataValueKind::Pose(pose),
-    };
+    let pose_data = |pose| entity_pose_data(pose);
     let feline_state = |world: &WorldStore, id: i32| {
         let instance = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
             .into_iter()
@@ -10301,7 +10279,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 43,
         values: vec![
-            pose_data(POSE_CROUCHING),
+            pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
             entity_sprinting_data(),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
         ],
@@ -10311,7 +10289,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 44,
         values: vec![
-            pose_data(POSE_CROUCHING),
+            pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
         ],
     }));
@@ -10320,7 +10298,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 45,
         values: vec![
-            pose_data(POSE_CROUCHING),
+            pose_data(VANILLA_ENTITY_POSE_CROUCHING_ID),
             entity_sprinting_data(),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, true),
         ],
@@ -10330,7 +10308,7 @@ fn entity_model_instances_project_feline_crouch_sprint_and_cat_sitting_from_worl
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 43,
         values: vec![
-            pose_data(POSE_STANDING),
+            pose_data(VANILLA_ENTITY_POSE_STANDING_ID),
             entity_default_shared_flags_data(),
             tamable_animal_flags_data(VANILLA_ENTITY_TYPE_CAT_ID, false, false),
         ],
@@ -10406,9 +10384,6 @@ fn entity_model_instances_project_cat_lying_on_sleeping_player_from_world() {
     // Vanilla `CatRenderer.extractRenderState` forwards
     // `Cat.isLyingOnTopOfSleepingPlayer()`, which the world source derives from a lying cat and
     // nearby sleeping player.
-    const ENTITY_DATA_POSE_ID: u8 = 6;
-    const POSE_SLEEPING: i32 = 2;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         48,
@@ -10429,7 +10404,7 @@ fn entity_model_instances_project_cat_lying_on_sleeping_player_from_world() {
     }));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 49,
-        values: vec![protocol_pose_data(ENTITY_DATA_POSE_ID, POSE_SLEEPING)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID)],
     }));
 
     let source = world
@@ -11603,6 +11578,12 @@ fn living_entity_flags_data(
 
 fn entity_metadata_accessors() -> bbb_world::VanillaEntityMetadataAccessors {
     vanilla_entity_metadata_entity_accessors().expect("generated Entity metadata accessors")
+}
+
+fn entity_pose_data(pose: i32) -> EntityDataValue {
+    let accessors = entity_metadata_accessors();
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose)
 }
 
 fn entity_custom_name_data(value: Option<&str>) -> EntityDataValue {

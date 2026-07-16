@@ -23486,6 +23486,7 @@ mod generated_catalog_guards {
                 "ENTITY_SILENT_DATA_ID",
                 "ENTITY_NO_GRAVITY_DATA_ID",
                 "ENTITY_POSE_DATA_ID",
+                "ENTITY_DATA_POSE_ID",
                 "ENTITY_TICKS_FROZEN_DATA_ID",
                 "ENTITY_SHARED_FLAG_ON_FIRE",
                 "ENTITY_SHARED_FLAG_SHIFT_KEY_DOWN",
@@ -23516,6 +23517,7 @@ mod generated_catalog_guards {
         assert!(!aquatic_tests.contains("protocol_pose_data(6"));
         assert!(!small_mob_tests.contains("protocol_pose_data(6"));
         assert!(!small_mob_tests.contains("const POSE_"));
+        assert!(!native_scene_tests.contains("const POSE_"));
     }
 
     #[test]

@@ -17886,3 +17886,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   并校验默认 false。
 - baby projection reverse guard 精确覆盖这 4 个连续 fixtures 及其 helper，不误宣称同一大文件的
   其他历史 baby fixtures 已迁移；材质/染色/crackiness/foil 与 baby layer suppression 回归不变。
+
+## 2026-07-16：统一 native entity-scene pose fixture accessor 消费
+
+- native entity-scene 的 Camel body-anchor、Player crouch、Living sleeping、feline crouch 与
+  Cat sleeping-player fixtures 删除 5 组固定 Entity pose wire id 6 和 standing/crouching/sitting/
+  sleeping 局部 ordinal，统一使用 generated Entity bundle 与 protocol pose catalog。
+- Entity reverse guard 全局禁止 `entity_scene/tests.rs` 恢复 `ENTITY_DATA_POSE_ID` 或局部 `POSE_*`
+  常量；Camel 曲线、Player/Living render state、Cat/Ocelot/Chicken gate 回归保持不变。
