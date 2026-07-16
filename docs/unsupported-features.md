@@ -237,9 +237,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
   projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This
   only owns selection metadata; executing the post chains remains in the renderer queue below.
-  Per-minecart default display offsets must remain generated from the nearest
-  `getDefaultDisplayOffset` class override; world render and native save projection must not
-  restore Chest/Hopper exception arms or standalone virtual-default constants.
+  AbstractMinecart custom-display-block/display-offset membership and wire indices must remain
+  derived together from generated `DATA_ID_CUSTOM_DISPLAY_BLOCK` and `DATA_ID_DISPLAY_OFFSET`;
+  per-minecart offset defaults must remain generated from the nearest `getDefaultDisplayOffset`
+  class override. World render and native save projection must not restore fixed accessor aliases,
+  Chest/Hopper exception arms or standalone virtual-default constants.
   FurnaceMinecart fuel membership, wire index and default must remain derived from generated
   `MinecartFurnace.DATA_ID_FUEL`; default display-block projection must not restore a furnace type
   predicate or fixed accessor/default aliases.

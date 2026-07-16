@@ -27,6 +27,7 @@ use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
 
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
+    vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
@@ -43,9 +44,6 @@ use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
-    vanilla_minecart_default_display_offset,
-    VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
-    VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_FACEPLANTED as FOX_FLAG_FACEPLANTED,
@@ -935,9 +933,12 @@ impl EntityStore {
         if !is_vanilla_minecart_type(identity.entity_type_id) {
             return None;
         }
+        let accessors = vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(
+            identity.entity_type_id,
+        )?;
 
         let custom_state_id = self
-            .metadata_optional_block_state(id, MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID)
+            .metadata_optional_block_state(id, accessors.custom_display_block_data_id)
             .unwrap_or(None);
         let block = if let Some(state_id) = custom_state_id {
             let state = registries.block_state(state_id)?;
@@ -962,10 +963,13 @@ impl EntityStore {
                 registries,
             )?
         };
-        let default_offset = vanilla_minecart_default_display_offset(identity.entity_type_id)?;
         let display_offset = self
-            .metadata_int(id, MINECART_DISPLAY_OFFSET_DATA_ID, default_offset)
-            .unwrap_or(default_offset);
+            .metadata_int(
+                id,
+                accessors.display_offset_data_id,
+                accessors.display_offset_default,
+            )
+            .unwrap_or(accessors.display_offset_default);
         Some(MinecartDisplayBlockState {
             block,
             display_offset,

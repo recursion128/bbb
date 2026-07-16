@@ -57,6 +57,7 @@ pub use renderer_catalog::{
     vanilla_entity_renderer_minimum_block_light, vanilla_entity_renderer_thrown_item_scale,
     vanilla_entity_renderer_thrown_item_scales, vanilla_entity_renderer_uses_native_non_model_pass,
 };
+pub use schema::VanillaAbstractMinecartMetadataAccessors;
 pub use schema::VanillaArrowMetadataAccessors;
 pub use schema::VanillaCompanionVariantMetadataAccessors;
 pub use schema::VanillaCopperGolemMetadataAccessors;
@@ -78,6 +79,7 @@ pub use schema::{
     vanilla_entity_camera_post_effect_id,
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,

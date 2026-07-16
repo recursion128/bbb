@@ -74,6 +74,7 @@ use bbb_protocol::{
 };
 use bbb_world::vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armadillo_state_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_armor_stand_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_axolotl_variant_accessor_for_entity_type;
@@ -152,9 +153,7 @@ use bbb_world::{
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
-    vanilla_minecart_default_display_offset, vanilla_painting_variant_resource_id,
-    VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
-    VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
+    vanilla_painting_variant_resource_id,
     VANILLA_AXOLOTL_DEFAULT_FROM_BUCKET as AXOLOTL_DEFAULT_FROM_BUCKET,
     VANILLA_AXOLOTL_FROM_BUCKET_DATA_ID as AXOLOTL_FROM_BUCKET_DATA_ID,
     VANILLA_BEE_ANGER_END_TIME_DATA_ID as BEE_ANGER_END_TIME_DATA_ID,
@@ -6511,9 +6510,17 @@ fn debug_push_minecart_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
-    if debug_entity_data_optional_block_state_present(entity, MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID)
-        .flatten()
-        .is_some()
+    let Some(accessors) =
+        vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    if debug_entity_data_optional_block_state_present(
+        entity,
+        accessors.custom_display_block_data_id,
+    )
+    .flatten()
+    .is_some()
     {
         if let Some(display) = world.minecart_display_block_state(entity.id) {
             fields.push(format!(
@@ -6522,14 +6529,9 @@ fn debug_push_minecart_additional_save_data(
             ));
         }
     }
-    let Some(default_display_offset) =
-        vanilla_minecart_default_display_offset(entity.entity_type_id)
-    else {
-        return;
-    };
-    let display_offset = debug_entity_data_int_present(entity, MINECART_DISPLAY_OFFSET_DATA_ID)
-        .unwrap_or(default_display_offset);
-    if display_offset != default_display_offset {
+    let display_offset = debug_entity_data_int_present(entity, accessors.display_offset_data_id)
+        .unwrap_or(accessors.display_offset_default);
+    if display_offset != accessors.display_offset_default {
         fields.push(format!("DisplayOffset: {display_offset}"));
     }
     fields.push(format!(

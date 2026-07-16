@@ -1,6 +1,7 @@
 pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
+pub use crate::entities::VanillaAbstractMinecartMetadataAccessors;
 pub use crate::entities::VanillaArrowMetadataAccessors;
 pub use crate::entities::VanillaCompanionVariantMetadataAccessors;
 pub use crate::entities::VanillaCopperGolemMetadataAccessors;
@@ -22,6 +23,7 @@ pub use crate::entities::{
     vanilla_entity_camera_post_effect_id,
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_abstract_horse_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type,
     vanilla_entity_metadata_accessor_for_entity_type,
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,

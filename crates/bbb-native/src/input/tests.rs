@@ -11104,6 +11104,10 @@ fn shift_f3_i_with_permission_copies_local_falling_block_save_nbt_to_clipboard()
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_minecart_save_nbt_to_clipboard() {
+    let accessors = vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    )
+    .expect("generated Minecart metadata accessors");
     let grass_props = BTreeMap::from([("snowy".to_string(), "false".to_string())]);
     let grass_state_id = BlockStateRegistry::vanilla_26_1()
         .find_by_name_and_properties("minecraft:grass_block", &grass_props)
@@ -11131,12 +11135,12 @@ fn shift_f3_i_with_permission_copies_local_minecart_save_nbt_to_clipboard() {
         id: 62,
         values: vec![
             ProtocolEntityDataValue {
-                data_id: MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
+                data_id: accessors.custom_display_block_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
                 value: EntityDataValueKind::OptionalBlockState(Some(grass_state_id)),
             },
             ProtocolEntityDataValue {
-                data_id: MINECART_DISPLAY_OFFSET_DATA_ID,
+                data_id: accessors.display_offset_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(3),
             },
@@ -11196,6 +11200,10 @@ fn shift_f3_i_with_permission_copies_local_minecart_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard() {
+    let accessors = vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    )
+    .expect("generated ChestMinecart metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -11217,7 +11225,7 @@ fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard(
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 63,
         values: vec![ProtocolEntityDataValue {
-            data_id: MINECART_DISPLAY_OFFSET_DATA_ID,
+            data_id: accessors.display_offset_data_id,
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(6),
@@ -11410,6 +11418,10 @@ fn shift_f3_i_with_permission_copies_local_furnace_minecart_save_nbt_to_clipboar
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_hopper_minecart_save_nbt_to_clipboard() {
+    let accessors = vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    )
+    .expect("generated HopperMinecart metadata accessors");
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -11431,7 +11443,7 @@ fn shift_f3_i_with_permission_copies_local_hopper_minecart_save_nbt_to_clipboard
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 63,
         values: vec![ProtocolEntityDataValue {
-            data_id: MINECART_DISPLAY_OFFSET_DATA_ID,
+            data_id: accessors.display_offset_data_id,
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(6),

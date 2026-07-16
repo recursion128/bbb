@@ -462,6 +462,13 @@ pub struct VanillaZombieMetadataAccessors {
     pub drowned_conversion_default: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaAbstractMinecartMetadataAccessors {
+    pub custom_display_block_data_id: u8,
+    pub display_offset_data_id: u8,
+    pub display_offset_default: i32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VanillaArmorStandMetadataAccessors {
     pub client_flags_data_id: u8,
@@ -2102,6 +2109,48 @@ pub fn vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
             pierce_level_default,
             in_ground_data_id: in_ground.data_id,
             in_ground_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves AbstractMinecart's display metadata and the generated per-type virtual offset default.
+pub fn vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaAbstractMinecartMetadataAccessors> {
+    let custom_display_block = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_ID_CUSTOM_DISPLAY_BLOCK",
+    )?;
+    let display_offset =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ID_DISPLAY_OFFSET")?;
+    match (
+        (
+            custom_display_block.owner,
+            custom_display_block.serializer_name,
+            custom_display_block.typed_default,
+        ),
+        (
+            display_offset.owner,
+            display_offset.serializer_name,
+            display_offset.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart",
+                "OPTIONAL_BLOCK_STATE",
+                Some(VanillaEntityMetadataDefault::OptionalBlockStateNone),
+            ),
+            (
+                "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart",
+                "INT",
+                Some(VanillaEntityMetadataDefault::MinecartDefaultDisplayOffset),
+            ),
+        ) => Some(VanillaAbstractMinecartMetadataAccessors {
+            custom_display_block_data_id: custom_display_block.data_id,
+            display_offset_data_id: display_offset.data_id,
+            display_offset_default: vanilla_minecart_default_display_offset(entity_type_id)?,
         }),
         _ => None,
     }
@@ -5492,6 +5541,32 @@ mod tests {
             vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_abstract_minecart_accessors_own_membership_indices_and_virtual_default() {
+        for (entity_type_id, display_offset_default) in [
+            (VANILLA_ENTITY_TYPE_MINECART_ID, 6),
+            (VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, 8),
+            (VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, 1),
+            (VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, 6),
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(entity_type_id),
+                Some(VanillaAbstractMinecartMetadataAccessors {
+                    custom_display_block_data_id: 11,
+                    display_offset_data_id: 12,
+                    display_offset_default,
+                }),
+                "entity type {entity_type_id}"
+            );
+        }
+        for entity_type_id in [VANILLA_ENTITY_TYPE_COW_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]

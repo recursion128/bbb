@@ -17109,3 +17109,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   conversion shake 和 F3+I save-debug 不再维护固定 wire index/default。
 - world/native/input fixtures 同步复用 Zombie bundle 及既有 ZombieVillager converting/villager-data
   resolver；schema generator 新增跨 native surface 反向守卫，拒绝固定 Zombie aliases 回流。
+
+## 2026-07-16：派生 AbstractMinecart metadata accessor bundle
+
+- AbstractMinecart custom-display-block/display-offset 两项 metadata identity 组合为 typed bundle，
+  display-offset default 同时从生成的最近 `getDefaultDisplayOffset` override 解析；world model
+  source 与 native F3+I 不再维护固定 wire index 或独立 virtual-default lookup。
+- world/native fixtures 同步复用该 bundle；schema generator 的 minecart 反向守卫扩展为拒绝
+  display metadata 固定 aliases，同时保留 FurnaceMinecart fuel accessor 与生成 offset 表检查。

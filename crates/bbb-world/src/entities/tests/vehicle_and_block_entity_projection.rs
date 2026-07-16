@@ -343,8 +343,10 @@ fn entity_model_sources_project_tnt_minecart_fuse_from_prime_event() {
 
 #[test]
 fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
-    const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
-    const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
+    let accessors = vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    )
+    .expect("generated Minecart metadata accessors");
     let mut store = WorldStore::new();
     for (id, entity_type_id) in [
         (23, VANILLA_ENTITY_TYPE_MINECART_ID),
@@ -461,10 +463,10 @@ fn minecart_display_block_state_projects_defaults_and_custom_metadata() {
         id: 23,
         values: vec![
             protocol_optional_block_state_data(
-                MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
+                accessors.custom_display_block_data_id,
                 Some(grass_id),
             ),
-            protocol_int_data(MINECART_DISPLAY_OFFSET_DATA_ID, 3),
+            protocol_int_data(accessors.display_offset_data_id, 3),
         ],
     }));
     assert_eq!(
@@ -593,8 +595,10 @@ fn primed_tnt_projects_block_state_and_fuse_metadata() {
 
 #[test]
 fn minecart_display_blocks_expand_model_culling_bounds() {
-    const MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID: u8 = 11;
-    const MINECART_DISPLAY_OFFSET_DATA_ID: u8 = 12;
+    let accessors = vanilla_entity_metadata_abstract_minecart_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    )
+    .expect("generated Minecart metadata accessors");
 
     fn assert_close(actual: f32, expected: f32, label: &str) {
         assert!(
@@ -655,10 +659,10 @@ fn minecart_display_blocks_expand_model_culling_bounds() {
         id: 23,
         values: vec![
             protocol_optional_block_state_data(
-                MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
+                accessors.custom_display_block_data_id,
                 Some(grass_id),
             ),
-            protocol_int_data(MINECART_DISPLAY_OFFSET_DATA_ID, -4),
+            protocol_int_data(accessors.display_offset_data_id, -4),
         ],
     }));
 
