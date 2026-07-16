@@ -17363,3 +17363,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   accessor，移除固定 wire index，并保持其他 Skeleton family 不读取同 slot。
 - 删除 `bbb-world` 的 Bogged sheared data/default facade 转发，schema 期望由 generated
   Bogged family schema 组装；generator 反向守卫覆盖 production 和 native fixtures。
+
+## 2026-07-16：统一 Allay dancing metadata 消费
+
+- world animation 与 native render/F3+I fixtures 统一按 Allay entity type 解析 generated
+  `DATA_DANCING` accessor，移除固定 wire index，并保持其他 entity family 不读取 slot 16。
+- 删除 `bbb-world` 的 Allay dancing data/default facade 转发，schema 期望由 generated Allay
+  family schema 组装；generator 反向守卫覆盖 production 和 world/native fixtures。

@@ -46,8 +46,6 @@ pub const VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID: u8 =
     GENERATED_VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID;
 const GENERATED_VANILLA_MOB_FLAGS_DATA_ID: u8 = 15;
 pub const VANILLA_MOB_FLAGS_DATA_ID: u8 = GENERATED_VANILLA_MOB_FLAGS_DATA_ID;
-const GENERATED_VANILLA_ALLAY_DANCING_DATA_ID: u8 = 16;
-pub const VANILLA_ALLAY_DANCING_DATA_ID: u8 = GENERATED_VANILLA_ALLAY_DANCING_DATA_ID;
 const GENERATED_VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID: u8 = 17;
 pub const VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID: u8 = GENERATED_VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID;
 const GENERATED_VANILLA_CREEPER_SWELL_DIR_DATA_ID: u8 = 16;
@@ -638,8 +636,6 @@ pub const fn vanilla_ender_dragon_phase_is_sitting(phase_id: i32) -> bool {
     matches!(phase_id, 5 | 6 | 7 | 10)
 }
 
-const GENERATED_VANILLA_ALLAY_DEFAULT_DANCING: bool = false;
-pub const VANILLA_ALLAY_DEFAULT_DANCING: bool = GENERATED_VANILLA_ALLAY_DEFAULT_DANCING;
 const GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = true;
 pub const VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE: bool = GENERATED_VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE;
 const GENERATED_VANILLA_CREEPER_DEFAULT_SWELL_DIR: i32 = -1;
@@ -24460,19 +24456,34 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_allay_dancing_does_not_restore_accessor_constants() {
+    fn allay_dancing_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         assert!(
             animations.contains("vanilla_entity_metadata_allay_dancing_accessor_for_entity_type")
         );
         assert!(store.contains("allay_is_dancing(identity.entity_type_id, &metadata.data_values)"));
-        for removed in ["ALLAY_DANCING_DATA_ID", "ALLAY_DEFAULT_DANCING"] {
+        for source in [world_tests, native_scene_tests, native_input_tests] {
             assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
+                source.contains("vanilla_entity_metadata_allay_dancing_accessor_for_entity_type")
             );
-            assert!(!store.contains(removed), "store restored {removed}");
+        }
+        for removed in ["ALLAY_DANCING_DATA_ID", "ALLAY_DEFAULT_DANCING"] {
+            for source in [
+                animations,
+                store,
+                world_tests,
+                native_scene_tests,
+                native_input_tests,
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Allay dancing projection restored {removed}"
+                );
+            }
         }
     }
 

@@ -5825,11 +5825,20 @@ mod tests {
 
     #[test]
     fn generated_allay_dancing_accessor_owns_membership_index_and_default() {
+        let allay = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Allay);
+        let dancing = allay
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_DANCING")
+            .expect("generated Allay dancing field");
+        let VanillaEntityMetadataDefault::Boolean(default) = dancing.default else {
+            panic!("generated Allay dancing default must be BOOLEAN");
+        };
         assert_eq!(
             vanilla_entity_metadata_allay_dancing_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_ALLAY_ID
             ),
-            Some((16, false))
+            Some((dancing.data_id, default))
         );
         assert_eq!(
             vanilla_entity_metadata_allay_dancing_accessor_for_entity_type(
@@ -7355,9 +7364,17 @@ mod tests {
         assert_eq!(allay.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(allay.inherited_field_count, 16);
         assert_eq!(allay.own_fields.len(), 2);
-        assert_eq!(VANILLA_ALLAY_DANCING_DATA_ID, 16);
+        let (dancing_data_id, dancing_default) =
+            vanilla_entity_metadata_allay_dancing_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ALLAY_ID,
+            )
+            .expect("generated Allay dancing accessor");
+        assert_eq!(dancing_data_id, allay.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Boolean(dancing_default),
+            allay.own_fields[0].default
+        );
         assert_eq!(VANILLA_ALLAY_CAN_DUPLICATE_DATA_ID, 17);
-        assert!(!VANILLA_ALLAY_DEFAULT_DANCING);
         assert!(VANILLA_ALLAY_DEFAULT_CAN_DUPLICATE);
         let creeper = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Creeper);
         assert_eq!(creeper.parent, Some(VanillaEntityMetadataFamily::Mob));

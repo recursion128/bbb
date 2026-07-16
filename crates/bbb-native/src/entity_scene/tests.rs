@@ -159,6 +159,14 @@ fn bogged_sheared_data(sheared: bool) -> EntityDataValue {
     protocol_bool_data(data_id, sheared)
 }
 
+fn allay_dancing_data(dancing: bool) -> EntityDataValue {
+    let (data_id, _) = bbb_world::vanilla_entity_metadata_allay_dancing_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ALLAY_ID,
+    )
+    .expect("generated Allay dancing accessor must resolve");
+    protocol_bool_data(data_id, dancing)
+}
+
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
     let accessors = armor_stand_metadata_accessors();
     ArmorStandModelPose {
@@ -950,8 +958,6 @@ fn entity_model_instances_project_axolotl_play_dead_from_world() {
 
 #[test]
 fn entity_model_instances_project_allay_dance_from_world() {
-    const ALLAY_DANCING_DATA_ID: u8 = 16;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         96,
@@ -980,7 +986,7 @@ fn entity_model_instances_project_allay_dance_from_world() {
     // (`AllayModel.setupAnim` dance branch: body spin/sway + head tilt).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 96,
-        values: vec![protocol_bool_data(ALLAY_DANCING_DATA_ID, true)],
+        values: vec![allay_dancing_data(true)],
     }));
     world.advance_entity_client_animations(1);
     let (dancing, spinning, progress) =

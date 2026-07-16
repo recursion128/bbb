@@ -386,8 +386,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases, hand-written wire indices or read the boolean slot without generated
   Bogged membership.
   Allay dancing membership, wire index and typed default must remain derived from generated
-  `Allay.DATA_DANCING`; world animation consumers must not restore fixed accessor/default aliases
-  or read another entity family's slot 16 as the dancing flag.
+  `Allay.DATA_DANCING`; world animation consumers and semantic fixtures must not restore fixed
+  accessor/default aliases, hand-written wire indices or read another entity family's slot 16 as
+  the dancing flag.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers must not restore fixed accessor/default
   aliases or read another entity family's slot 19 as the playing-dead flag.

@@ -15,6 +15,18 @@ fn copper_golem_state_data_id() -> u8 {
     .state_data_id
 }
 
+fn allay_dancing_data(dancing: bool) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_allay_dancing_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ALLAY_ID,
+    )
+    .expect("generated Allay dancing accessor must resolve");
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(dancing),
+    }
+}
+
 #[test]
 fn tracks_entity_transient_events() {
     let mut store = WorldStore::new();
@@ -768,8 +780,6 @@ fn copper_golem_dropping_no_item_state_drives_interaction_timer() {
 
 #[test]
 fn allay_dancing_flag_drives_the_dance_spin_state() {
-    const ALLAY_DANCING_DATA_ID: u8 = 16;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         91,
@@ -786,11 +796,7 @@ fn allay_dancing_flag_drives_the_dance_spin_state() {
     let set_dancing = |store: &mut WorldStore, dancing: bool| {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 91,
-            values: vec![ProtocolEntityDataValue {
-                data_id: ALLAY_DANCING_DATA_ID,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(dancing),
-            }],
+            values: vec![allay_dancing_data(dancing)],
         }));
     };
 
