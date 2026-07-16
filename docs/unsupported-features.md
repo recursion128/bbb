@@ -456,7 +456,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases or hand-written wire indices, while the generated player-created mask
   remains the semantic flag owner.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
-  membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size table.
+  membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size
+  table; production and fixtures must not restore fixed registry ranges or projectile-type tables.
   Projectile owner-collision pickability must consume the generated nearest-`isPickable` class
   behavior plus redirectable-projectile tag, with spectator/marker kept as per-instance gates.
   Remote-entity powder-snow collision must consume the generated

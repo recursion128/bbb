@@ -22262,6 +22262,30 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn saved_projectile_membership_consumers_do_not_restore_type_tables() {
+        let source = include_str!("../projectiles.rs");
+        let body = source
+            .split("fn is_vanilla_saved_projectile_type")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}"))
+            .map(|(body, _)| body)
+            .expect("saved projectile membership source");
+        assert!(body.contains("vanilla_entity_metadata_type_is_projectile"));
+        assert!(body.contains("vanilla_entity_type_is_serializable"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        assert!(!body.contains("matches!"));
+        let fixture = source
+            .split("fn saveable_projectile_membership_combines_class_and_builder_metadata")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("saved projectile membership fixture source");
+        assert!(fixture.contains("VANILLA_ENTITY_TYPES"));
+        assert!(fixture.contains("vanilla_entity_metadata_type_is_projectile"));
+        assert!(!fixture.contains("0..157"));
+        assert!(!fixture.contains("VANILLA_ENTITY_TYPE_"));
+    }
+
+    #[test]
     fn production_owner_collision_does_not_restore_pickable_type_membership() {
         let source = include_str!("../projectiles.rs");
         let body = source

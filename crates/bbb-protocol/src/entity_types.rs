@@ -3352,7 +3352,7 @@ mod tests {
     }
 
     #[test]
-    fn production_saved_projectile_bounds_do_not_redeclare_dimensions() {
+    fn saved_projectile_bounds_consumers_do_not_redeclare_dimensions() {
         let source = include_str!("../../bbb-world/src/entities/projectiles.rs");
         let body = source
             .split("fn vanilla_saved_projectile_bounds")
@@ -3360,7 +3360,18 @@ mod tests {
             .and_then(|source| source.split_once("\n}"))
             .map(|(body, _)| body)
             .expect("saved projectile bounds source");
+        assert!(body.contains("vanilla_entity_type_dimensions"));
         assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        assert!(!body.contains("match entity_type_id"));
+        let fixture = source
+            .split("fn saveable_projectile_bounds_use_generated_builder_dimensions")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("saved projectile bounds fixture source");
+        assert!(fixture.contains("VANILLA_ENTITY_TYPES"));
+        assert!(fixture.contains("vanilla_entity_type_dimensions"));
+        assert!(!fixture.contains("0..157"));
+        assert!(!fixture.contains("VANILLA_ENTITY_TYPE_"));
     }
 
     #[test]

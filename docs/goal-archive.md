@@ -17482,3 +17482,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `IronGolem.DATA_FLAGS_ID` accessor 提供；production 与 native fixture 共享该入口。
 - 删除 flags data/default 两个 facade，保留 generated player-created mask；schema 测试由生成
   field 自证，generator 反向守卫覆盖 production/fixture。
+
+## 2026-07-16：统一 Saveable projectile lifecycle catalog 消费
+
+- saveable projectile membership fixture 删除固定 `0..157` registry 范围与具名正/负例，改为
+  遍历 generated entity-type catalog，并逐项组合 generated `Projectile` class membership 与
+  `Builder.noSave` 属性。
+- lifecycle bounds fixture 对 generated catalog 全量比较 `Builder.sized` dimensions，同时覆盖
+  非成员与无效 id；metadata/core-registry 两个 generator 分别输出反向守卫，防止生产或 fixture
+  恢复 projectile type/size 表。

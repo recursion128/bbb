@@ -403,8 +403,8 @@ mod tests {
     use super::*;
     use crate::WorldStore;
     use bbb_protocol::entity_types::{
-        VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_COW_ID, VANILLA_ENTITY_TYPE_EGG_ID,
-        VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ARROW_ID, VANILLA_ENTITY_TYPE_COW_ID,
+        VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_FIREBALL_ID,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_WIND_CHARGE_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
     };
@@ -418,41 +418,45 @@ mod tests {
 
     #[test]
     fn saveable_projectile_membership_combines_class_and_builder_metadata() {
+        for entry in VANILLA_ENTITY_TYPES {
+            assert_eq!(
+                is_vanilla_saved_projectile_type(entry.id),
+                vanilla_entity_metadata_type_is_projectile(entry.id) && entry.serializable,
+                "entity type {}",
+                entry.resource_id
+            );
+        }
         assert_eq!(
-            (0..157)
-                .filter(|id| is_vanilla_saved_projectile_type(*id))
+            VANILLA_ENTITY_TYPES
+                .iter()
+                .filter(|entry| is_vanilla_saved_projectile_type(entry.id))
                 .count(),
             18
         );
-        assert!(is_vanilla_saved_projectile_type(
-            VANILLA_ENTITY_TYPE_ARROW_ID
-        ));
-        assert!(!is_vanilla_saved_projectile_type(
-            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
-        ));
-        assert!(!is_vanilla_saved_projectile_type(
-            VANILLA_ENTITY_TYPE_OAK_BOAT_ID
-        ));
+        assert!(VANILLA_ENTITY_TYPES.iter().any(|entry| {
+            vanilla_entity_metadata_type_is_projectile(entry.id) && !entry.serializable
+        }));
+        assert!(VANILLA_ENTITY_TYPES.iter().any(|entry| {
+            !vanilla_entity_metadata_type_is_projectile(entry.id) && entry.serializable
+        }));
+        assert!(!is_vanilla_saved_projectile_type(-1));
     }
 
     #[test]
     fn saveable_projectile_bounds_use_generated_builder_dimensions() {
-        for entity_type_id in (0..157).filter(|id| is_vanilla_saved_projectile_type(*id)) {
-            let [width, height] = vanilla_entity_type_dimensions(entity_type_id).unwrap();
+        for entry in VANILLA_ENTITY_TYPES {
+            let expected = is_vanilla_saved_projectile_type(entry.id).then(|| {
+                let [width, height] = vanilla_entity_type_dimensions(entry.id).unwrap();
+                EntityPickBoundsState::from_base_size(width, height, 0.0)
+            });
             assert_eq!(
-                vanilla_saved_projectile_bounds(entity_type_id),
-                Some(EntityPickBoundsState::from_base_size(width, height, 0.0)),
-                "entity type {entity_type_id}"
+                vanilla_saved_projectile_bounds(entry.id),
+                expected,
+                "entity type {}",
+                entry.resource_id
             );
         }
-        assert_eq!(
-            vanilla_saved_projectile_bounds(VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID),
-            None
-        );
-        assert_eq!(
-            vanilla_saved_projectile_bounds(VANILLA_ENTITY_TYPE_OAK_BOAT_ID),
-            None
-        );
+        assert_eq!(vanilla_saved_projectile_bounds(-1), None);
     }
 
     #[test]
