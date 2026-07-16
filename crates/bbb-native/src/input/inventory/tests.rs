@@ -19,12 +19,19 @@ use bbb_protocol::packets::{
 };
 use uuid::Uuid;
 
-const TEST_AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
 const TEST_MAX_DAMAGE_COMPONENT_ID: i32 = 2;
 const TEST_DAMAGE_COMPONENT_ID: i32 = 3;
 const TEST_MAP_ID_COMPONENT_ID: i32 = 46;
 const TEST_HASH_OPS_INT_7_HASH: i32 = -1_726_626_450;
 const TEST_MAP_ID_7_HASH: i32 = TEST_HASH_OPS_INT_7_HASH;
+
+fn baby_data(entity_type_id: i32, is_baby: bool) -> EntityDataValue {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+            .expect("generated nearest baby accessor must resolve");
+    assert!(!default);
+    bool_entity_data(data_id, is_baby)
+}
 
 #[test]
 fn local_inventory_slot_layouts_match_vanilla_inventory_menu() {
@@ -1053,7 +1060,7 @@ fn mount_baby_tamed_donkey_layout_hides_equipment_slots() {
         id: 42,
         values: vec![
             byte_entity_data(accessors.flags_data_id, accessors.tame_mask),
-            bool_entity_data(TEST_AGEABLE_MOB_BABY_DATA_ID, true),
+            baby_data(VANILLA_ENTITY_TYPE_DONKEY_ID, true),
         ],
     });
     world.apply_mount_screen_open(MountScreenOpen {

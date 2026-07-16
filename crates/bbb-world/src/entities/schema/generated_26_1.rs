@@ -22388,6 +22388,8 @@ mod generated_catalog_guards {
         let creature_bounds_fixture = include_str!("../tests/creature_pick_bounds_projection.rs");
         let visibility_fixture =
             include_str!("../tests/visibility_equipment_and_mount_projection.rs");
+        let native_inventory_fixture =
+            include_str!("../../../../bbb-native/src/input/inventory/tests.rs");
         let body = source
             .split("fn vanilla_is_baby")
             .nth(1)
@@ -22415,6 +22417,8 @@ mod generated_catalog_guards {
         assert!(
             visibility_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type")
         );
+        assert!(native_inventory_fixture
+            .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
             for fixture in [
                 fixture,
@@ -22422,6 +22426,7 @@ mod generated_catalog_guards {
                 animation_fixture,
                 creature_bounds_fixture,
                 visibility_fixture,
+                native_inventory_fixture,
             ] {
                 assert!(
                     !fixture.contains(removed),

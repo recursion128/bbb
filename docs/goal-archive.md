@@ -17871,3 +17871,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   generated Entity bundle 提供 accessor/default/mask。
 - Entity reverse guard 纳入 `item_frames.rs`；visible frame border、invisible frame border clear、
   deeper item offset 与世界 render-state invisible 投影回归保持不变。
+
+## 2026-07-16：统一 native mount-inventory baby fixture accessor 消费
+
+- baby tamed Donkey mount-inventory fixture 删除固定 AgeableMob baby wire id 16，按 Donkey type
+  查询 generated nearest baby accessor 并校验默认 false；AbstractHorse tame accessor 继续独立解析。
+- baby projection reverse guard 纳入 native inventory tests；成人已驯服 Donkey 显示 saddle、baby
+  隐藏 saddle/body equipment slots 且 storage slot 2 排首位的布局回归保持不变。
