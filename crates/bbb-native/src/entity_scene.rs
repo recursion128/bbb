@@ -52,6 +52,7 @@ use bbb_world::vanilla_entity_metadata_salmon_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_sheep_wool_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_shulker_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_slime_size_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_turtle_accessors_for_entity_type;
@@ -76,6 +77,8 @@ use bbb_world::VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DA
 use bbb_world::VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_SKELETON_STRAY_CONVERSION_DATA_ID as SKELETON_STRAY_CONVERSION_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_STRIDER_SUFFOCATING_DATA_ID as STRIDER_SUFFOCATING_DATA_ID;
 use bbb_world::VANILLA_VEX_FLAG_CHARGING as VEX_FLAG_IS_CHARGING;
 #[cfg(test)]
 use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
@@ -205,10 +208,6 @@ use bbb_world::{
 use bbb_world::{
     VANILLA_SHEEP_FLAG_SHEARED as SHEEP_WOOL_SHEARED_FLAG,
     VANILLA_SHEEP_WOOL_COLOR_MASK as SHEEP_WOOL_COLOR_MASK,
-};
-use bbb_world::{
-    VANILLA_STRIDER_DEFAULT_SUFFOCATING as STRIDER_DEFAULT_SUFFOCATING,
-    VANILLA_STRIDER_SUFFOCATING_DATA_ID as STRIDER_SUFFOCATING_DATA_ID,
 };
 use bbb_world::{
     VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG,

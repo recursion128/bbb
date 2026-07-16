@@ -16719,3 +16719,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   不再维护固定 accessor/default aliases 或单独的 type predicate。
 - 既有 sit/stand 时间窗和 debug SNBT 语义测试继续锁定行为；metadata generator reverse
   guard 扩展到 native 两条生产路径，防止恢复平行事实源。
+
+## 2026-07-16：补齐 Strider metadata accessor 的模型消费路径
+
+- native Strider cold 模型状态现在与 shaking 投影共同消费既有 generated
+  `DATA_SUFFOCATING` accessor，由 schema 解析 membership、BOOLEAN wire id 与 typed
+  default；模型路径删除固定 accessor/default aliases。
+- 既有 warm/cold 模型和 shaking 语义测试继续锁定行为；metadata generator reverse guard
+  同时覆盖两条生产路径。
