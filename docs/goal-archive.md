@@ -17583,3 +17583,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   packed id，并仅由 generated 64 项 material palette 与 4 项 brightness modifier 计算期望 RGBA。
 - gameplay-id generator 守卫精确检查 runtime scaling 函数与 full-domain fixture 各消费一次两张
   owner 表，禁止恢复 material-id match 或手写 Grass/RGB fixture；生产仍只拥有颜色通道缩放算法。
+
+## 2026-07-16：强化 map decoration generated presentation 消费
+
+- render-types 新增全量 map-decoration catalog 迭代接口；renderer 回归遍历 vanilla 35 项注册
+  顺序，逐项验证 registry id 查询、first-person sprite、`showOnItemFrame` 过滤及 item-frame
+  sprite，不再用 5 个具名装饰代表完整生成目录。
+- bootstrap generator 守卫精确检查 renderer 查询与 surface baker 对 generated catalog 的消费，
+  并要求 full-catalog fixture 不恢复任何 resource/asset 字面量；unknown id 继续 fail closed。

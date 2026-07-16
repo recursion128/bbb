@@ -26,7 +26,7 @@ pub use hud_glyphs::{
 pub use map_backgrounds::{FirstPersonMapBackgroundKind, FirstPersonMapBackgroundTexture};
 pub use map_decorations::{
     vanilla_map_decoration_type, vanilla_map_decoration_type_for_resource_id,
-    ItemFrameMapDecorationTexture, VanillaMapDecorationType,
+    vanilla_map_decoration_types, ItemFrameMapDecorationTexture, VanillaMapDecorationType,
 };
 pub use player_skin::{
     decode_dynamic_player_skin_png, decode_dynamic_player_texture_png, DynamicEntityTextureImage,

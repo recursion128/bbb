@@ -1672,52 +1672,49 @@ mod tests {
     }
 
     #[test]
-    fn map_decoration_type_mapping_matches_vanilla_registration_order() {
-        // Vanilla `MapDecorationTypes` registers these holders in static field order; the packet carries
-        // their registry id through `MapDecorationType.STREAM_CODEC`.
-        assert_eq!(
-            item_frame_map_decoration_type(0),
-            Some(ItemFrameMapDecorationType {
-                type_id: 0,
-                resource_id: "minecraft:player",
-                sprite_id: "minecraft:player",
-                render_on_frame: false,
-            })
-        );
-        assert_eq!(
-            item_frame_map_decoration_type(1),
-            Some(ItemFrameMapDecorationType {
-                type_id: 1,
-                resource_id: "minecraft:frame",
-                sprite_id: "minecraft:frame",
-                render_on_frame: true,
-            })
-        );
-        assert_eq!(
-            item_frame_map_decoration_type(8),
-            Some(ItemFrameMapDecorationType {
-                type_id: 8,
-                resource_id: "minecraft:mansion",
-                sprite_id: "minecraft:woodland_mansion",
-                render_on_frame: true,
-            })
-        );
-        assert_eq!(
-            item_frame_map_decoration_type(26)
-                .expect("red_x decoration type")
-                .sprite_id,
-            "minecraft:red_x"
-        );
-        assert_eq!(
-            item_frame_map_decoration_type(34),
-            Some(ItemFrameMapDecorationType {
-                type_id: 34,
-                resource_id: "minecraft:trial_chambers",
-                sprite_id: "minecraft:trial_chambers",
-                render_on_frame: true,
-            })
-        );
-        assert!(item_frame_map_decoration_type(35).is_none());
+    fn generated_map_decoration_catalog_drives_all_surface_metadata() {
+        let map_transform = Mat4::IDENTITY;
+        let light = ITEM_MODEL_FULL_BRIGHT_LIGHT;
+        for entry in bbb_render_types::vanilla_map_decoration_types() {
+            assert_eq!(item_frame_map_decoration_type(entry.type_id), Some(entry));
+
+            let first_person = bake_first_person_map_decoration_surface(
+                entry.type_id,
+                0,
+                0,
+                0,
+                0,
+                map_transform,
+                light,
+                0,
+            )
+            .expect("first-person maps show every registered decoration");
+            assert_eq!(
+                first_person.submission.texture.vanilla_sprite_id(),
+                entry.sprite_id
+            );
+
+            let item_frame = bake_item_frame_map_decoration_surface(
+                entry.type_id,
+                0,
+                0,
+                0,
+                0,
+                map_transform,
+                light,
+                0,
+            );
+            assert_eq!(item_frame.is_some(), entry.render_on_frame);
+            if let Some(surface) = item_frame {
+                assert_eq!(
+                    surface.submission.texture.vanilla_sprite_id(),
+                    entry.sprite_id
+                );
+            }
+        }
+        assert!(item_frame_map_decoration_type(-1).is_none());
+        let unknown_type_id = bbb_render_types::vanilla_map_decoration_types().len() as i32;
+        assert!(item_frame_map_decoration_type(unknown_type_id).is_none());
     }
 
     #[test]

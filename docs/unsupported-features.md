@@ -482,10 +482,7 @@ Owner: `scripts/` + each generated catalog's semantic crate
   or an Evoker/Vindicator entity-type table. Spellcaster casting and Pillager charging fixtures must
   likewise use their generated accessors instead of hand-written wire indices; generated guards
   must inspect those specific fixtures rather than rely on whole-file matches.
-  Built-in holder registries with client presentation payloads, including map
-  decoration registry key/asset/show-on-frame projection, must likewise stay
-  source-generated rather than becoming renderer tuple tables. Built-in
-  chicken/cow/pig model type + adult/baby assets, zombie-nautilus model type +
+  Built-in chicken/cow/pig model type + adult/baby assets, zombie-nautilus model type +
   texture, frog assets, cat adult/baby, and wolf wild/tame/angry × adult/baby
   fallback assets must come from their bootstrap literals/formula. Built-in
   cat/chicken/cow/pig/wolf adult/baby death sounds must likewise come from each

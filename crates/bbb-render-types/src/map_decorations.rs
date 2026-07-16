@@ -9,6 +9,10 @@ pub struct VanillaMapDecorationType {
 
 include!("map_decorations/generated_26_1.rs");
 
+pub fn vanilla_map_decoration_types() -> impl ExactSizeIterator<Item = VanillaMapDecorationType> {
+    VANILLA_MAP_DECORATION_TYPES.iter().copied()
+}
+
 pub fn vanilla_map_decoration_type(type_id: i32) -> Option<VanillaMapDecorationType> {
     VANILLA_MAP_DECORATION_TYPES
         .get(usize::try_from(type_id).ok()?)
