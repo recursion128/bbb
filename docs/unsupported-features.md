@@ -254,6 +254,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   derived together from generated `DATA_IS_SCREAMING_GOAT`, `DATA_HAS_LEFT_HORN` and
   `DATA_HAS_RIGHT_HORN`; native model/debug consumers and semantic fixtures must not restore fixed
   accessor/default aliases.
+  Turtle has-egg/laying-egg membership, wire indices and typed defaults must remain derived together
+  from generated `HAS_EGG` and `LAYING_EGG`; native model/debug consumers and semantic fixtures must
+  not restore fixed accessor/default aliases or apply either field to another boolean family.
   WitherSkull dangerous texture/debug membership, wire index and typed default must remain derived
   from generated `WitherSkull.DATA_DANGEROUS`; native consumers must not restore fixed
   accessor/default aliases or apply the field to another hurting-projectile family.

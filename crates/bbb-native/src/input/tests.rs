@@ -401,6 +401,20 @@ fn goat_metadata_accessors() -> bbb_world::VanillaGoatMetadataAccessors {
         .expect("generated Goat metadata accessors must resolve")
 }
 
+fn turtle_metadata_accessors(
+    world: &WorldStore,
+    entity_id: i32,
+) -> bbb_world::VanillaTurtleMetadataAccessors {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("Turtle fixture entity must exist before metadata is constructed");
+    let accessors = vanilla_entity_metadata_turtle_accessors_for_entity_type(entity_type_id)
+        .expect("generated Turtle metadata accessors must resolve");
+    assert!(!accessors.has_egg_default);
+    assert!(!accessors.laying_egg_default);
+    accessors
+}
+
 fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
     let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
         .expect("generated nearest baby accessor must resolve");
@@ -4753,13 +4767,14 @@ fn shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard() {
         y_head_rot: 0.0,
         data: 0,
     });
+    let turtle_accessors = turtle_metadata_accessors(&world, 50);
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, true, true),
             age_locked_data(&world, 50, true),
             ProtocolEntityDataValue {
-                data_id: TURTLE_HAS_EGG_DATA_ID,
+                data_id: turtle_accessors.has_egg_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },

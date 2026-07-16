@@ -18181,3 +18181,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   BOOLEAN metadata，并校验 vanilla typed defaults `false/true/true`，删除 test-only 固定 id aliases。
 - Goat reverse guard 扩展到两份 native facade 与完整 fixtures，生产 model/debug 投影继续由同一
   membership-aware accessor bundle 驱动。
+
+## 2026-07-16：统一 Turtle metadata fixtures
+
+- native entity-scene 与 F3+I fixtures 统一通过 generated Turtle bundle 构造 has-egg 与
+  laying-egg BOOLEAN metadata，并校验两个 vanilla typed default 均为 `false`。
+- Bat 同槽位负例保留为显式 collision helper；Turtle reverse guard 扩展到两份 native facade
+  与完整 fixtures，禁止固定 accessor/default aliases 回流。

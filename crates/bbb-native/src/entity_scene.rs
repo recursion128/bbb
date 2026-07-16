@@ -116,11 +116,6 @@ use bbb_world::{
     VANILLA_HORSE_MARKINGS_MASK as HORSE_MARKINGS_MASK,
     VANILLA_HORSE_MARKINGS_SHIFT as HORSE_MARKINGS_SHIFT,
 };
-#[cfg(test)]
-use bbb_world::{
-    VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
-    VANILLA_TURTLE_LAYING_EGG_DATA_ID as TURTLE_LAYING_EGG_DATA_ID,
-};
 trait EntityVariantRegistryLookup {
     fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str>;
 

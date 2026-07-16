@@ -144,6 +144,33 @@ fn goat_right_horn_data(has_right_horn: bool) -> EntityDataValue {
     protocol_bool_data(accessors.right_horn_data_id, has_right_horn)
 }
 
+fn turtle_metadata_accessors() -> bbb_world::VanillaTurtleMetadataAccessors {
+    vanilla_entity_metadata_turtle_accessors_for_entity_type(VANILLA_ENTITY_TYPE_TURTLE_ID)
+        .expect("generated Turtle metadata accessors must resolve")
+}
+
+fn turtle_has_egg_data(has_egg: bool) -> EntityDataValue {
+    let accessors = turtle_metadata_accessors();
+    assert!(!accessors.has_egg_default);
+    protocol_bool_data(accessors.has_egg_data_id, has_egg)
+}
+
+/// Deliberately sends the Turtle egg field to a Bat to cover data-id/type gating.
+fn turtle_has_egg_collision_data(has_egg: bool) -> EntityDataValue {
+    turtle_has_egg_data(has_egg)
+}
+
+fn turtle_laying_egg_data(laying_egg: bool) -> EntityDataValue {
+    let accessors = turtle_metadata_accessors();
+    assert!(!accessors.laying_egg_default);
+    protocol_bool_data(accessors.laying_egg_data_id, laying_egg)
+}
+
+/// Deliberately sends the Turtle laying-egg field to a Bat to cover data-id/type gating.
+fn turtle_laying_egg_collision_data(laying_egg: bool) -> EntityDataValue {
+    turtle_laying_egg_data(laying_egg)
+}
+
 fn mob_aggressive_data(entity_type_id: i32) -> EntityDataValue {
     let accessors =
         bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
@@ -2318,7 +2345,7 @@ fn entity_model_instances_project_turtle_has_egg() {
     // Setting Turtle.HAS_EGG (data id 18) on the adult projects the egg belly.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 140,
-        values: vec![protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true)],
+        values: vec![turtle_has_egg_data(true)],
     }));
     assert!(has_egg(&world, 140));
 
@@ -2327,7 +2354,7 @@ fn entity_model_instances_project_turtle_has_egg() {
         id: 141,
         values: vec![
             baby_data(VANILLA_ENTITY_TYPE_TURTLE_ID, true),
-            protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true),
+            turtle_has_egg_data(true),
         ],
     }));
     assert!(!has_egg(&world, 141));
@@ -2335,7 +2362,7 @@ fn entity_model_instances_project_turtle_has_egg() {
     // The same flag on a non-turtle (bat) does NOT project turtle_has_egg.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 142,
-        values: vec![protocol_bool_data(TURTLE_HAS_EGG_DATA_ID, true)],
+        values: vec![turtle_has_egg_collision_data(true)],
     }));
     assert!(!has_egg(&world, 142));
 }
@@ -4714,7 +4741,7 @@ fn entity_model_instances_project_turtle_laying_egg() {
     // Setting Turtle.LAYING_EGG (data id 19) projects through.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 150,
-        values: vec![protocol_bool_data(TURTLE_LAYING_EGG_DATA_ID, true)],
+        values: vec![turtle_laying_egg_data(true)],
     }));
     assert!(laying(&world, 150));
 
@@ -4723,7 +4750,7 @@ fn entity_model_instances_project_turtle_laying_egg() {
         id: 151,
         values: vec![
             baby_data(VANILLA_ENTITY_TYPE_TURTLE_ID, true),
-            protocol_bool_data(TURTLE_LAYING_EGG_DATA_ID, true),
+            turtle_laying_egg_data(true),
         ],
     }));
     assert!(laying(&world, 151));
@@ -4731,7 +4758,7 @@ fn entity_model_instances_project_turtle_laying_egg() {
     // The same flag on a non-turtle (bat) does NOT project turtle_laying_egg.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 152,
-        values: vec![protocol_bool_data(TURTLE_LAYING_EGG_DATA_ID, true)],
+        values: vec![turtle_laying_egg_collision_data(true)],
     }));
     assert!(!laying(&world, 152));
 }
