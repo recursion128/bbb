@@ -17549,3 +17549,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   save chain 验证。
 - metadata generator 守卫锁定 production 与三组端到端 fixture 的 membership query，禁止六个
   具体成员常量回流为 dispatch 或 fixture 表。
+
+## 2026-07-16：统一 AbstractChestedHorse debug save chain 消费
+
+- native F3+I save dispatch 先由 generated AbstractChestedHorse 四类型 membership 写入公共
+  Mob→AgeableMob→Animal→AbstractHorse→AbstractChestedHorse 链，再由公开的 generated Llama
+  membership 为 Llama/TraderLlama 追加可重建的 `Variant/Strength`。
+- 新增完整 entity-type catalog class-dispatch fixture，删除 production 的 Llama/TraderLlama
+  重复分支与空 TraderLlama helper；generator 守卫禁止四个具体类型常量恢复为 dispatch 或
+  class fixture 表。

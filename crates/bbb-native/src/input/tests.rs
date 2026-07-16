@@ -7541,6 +7541,102 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
 }
 
 #[test]
+fn debug_save_data_abstract_chested_horse_class_dispatch_uses_generated_membership() {
+    let mut matched_members = 0;
+    for entity_type in VANILLA_ENTITY_TYPES {
+        let entity_type_id = entity_type.id;
+        if !bbb_world::vanilla_entity_metadata_type_is_abstract_chested_horse(entity_type_id) {
+            continue;
+        }
+        matched_members += 1;
+        let horse_accessors = abstract_horse_metadata_accessors(entity_type_id);
+        let (chest_data_id, _) =
+            vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type(entity_type_id)
+                .expect("generated AbstractChestedHorse chest accessor must resolve");
+        let llama_accessors =
+            vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id);
+        let mut world = world_with_debug_player(false);
+        world.apply_add_entity(AddEntity {
+            id: 81,
+            uuid: Uuid::from_u128(81),
+            entity_type_id,
+            position: ProtocolVec3d::default(),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        let mut values = vec![
+            ProtocolEntityDataValue {
+                data_id: MOB_FLAGS_DATA_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
+            },
+            ProtocolEntityDataValue {
+                data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            },
+            ProtocolEntityDataValue {
+                data_id: horse_accessors.flags_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+                value: EntityDataValueKind::Byte(
+                    horse_accessors.eating_mask
+                        | horse_accessors.bred_mask
+                        | horse_accessors.tame_mask,
+                ),
+            },
+            ProtocolEntityDataValue {
+                data_id: chest_data_id,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+                value: EntityDataValueKind::Boolean(true),
+            },
+        ];
+        if let Some(llama_accessors) = llama_accessors {
+            values.extend([
+                ProtocolEntityDataValue {
+                    data_id: llama_accessors.strength_data_id,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    value: EntityDataValueKind::Int(5),
+                },
+                ProtocolEntityDataValue {
+                    data_id: llama_accessors.variant_data_id,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+                    value: EntityDataValueKind::Int(2),
+                },
+            ]);
+        }
+        assert!(world.apply_set_entity_data(ProtocolSetEntityData { id: 81, values }));
+
+        let entity = world.probe_entity(81).expect("catalog entity must exist");
+        let mut fields = Vec::new();
+        debug_push_entity_additional_save_data(&world, None, &entity, &mut fields);
+        let mut expected = vec![
+            "LeftHanded: 1b".to_string(),
+            "NoAI: 1b".to_string(),
+            "AgeLocked: 1b".to_string(),
+            "EatingHaystack: 1b".to_string(),
+            "Bred: 1b".to_string(),
+            "Tame: 1b".to_string(),
+            "ChestedHorse: 1b".to_string(),
+        ];
+        if llama_accessors.is_some() {
+            expected.extend(["Variant: 2".to_string(), "Strength: 5".to_string()]);
+        }
+        assert_eq!(fields, expected, "{} save chain", entity_type.resource_id);
+    }
+    assert_ne!(
+        matched_members, 0,
+        "generated AbstractChestedHorse class has no entity types"
+    );
+}
+
+#[test]
 fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);

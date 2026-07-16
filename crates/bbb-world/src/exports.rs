@@ -104,7 +104,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_turtle_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_chested_horse, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
-    vanilla_entity_metadata_type_is_slime,
+    vanilla_entity_metadata_type_is_llama, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,

@@ -23191,7 +23191,7 @@ mod generated_catalog_guards {
             .nth(1)
             .and_then(|source| {
                 source
-                    .split("fn debug_push_trader_llama_additional_save_data")
+                    .split("fn debug_push_tamable_animal_additional_save_data")
                     .next()
             })
             .expect("Llama debug projection source");
@@ -25445,6 +25445,7 @@ mod generated_catalog_guards {
             .expect("debug entity save-data dispatch source");
         for query in [
             "bbb_world::vanilla_entity_metadata_type_is_abstract_chested_horse",
+            "bbb_world::vanilla_entity_metadata_type_is_llama",
             "bbb_world::vanilla_entity_metadata_type_is_camel",
             "bbb_world::vanilla_entity_metadata_type_is_guardian",
             "bbb_world::vanilla_entity_metadata_type_is_slime",
@@ -25452,7 +25453,10 @@ mod generated_catalog_guards {
             assert!(body.contains(query), "missing {query}");
         }
         for removed in [
-            "VANILLA_ENTITY_TYPE_DONKEY_ID | VANILLA_ENTITY_TYPE_MULE_ID",
+            "VANILLA_ENTITY_TYPE_DONKEY_ID",
+            "VANILLA_ENTITY_TYPE_MULE_ID",
+            "VANILLA_ENTITY_TYPE_LLAMA_ID",
+            "VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID",
             "VANILLA_ENTITY_TYPE_CAMEL_ID",
             "VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID",
             "VANILLA_ENTITY_TYPE_GUARDIAN_ID",
@@ -25462,31 +25466,42 @@ mod generated_catalog_guards {
         ] {
             assert!(!body.contains(removed), "restored {removed}");
         }
+        assert!(!source.contains("fn debug_push_trader_llama_additional_save_data"));
         let fixtures = include_str!("../../../../bbb-native/src/input/tests.rs");
         for (fixture_name, query, removed) in [
             (
+                "debug_save_data_abstract_chested_horse_class_dispatch_uses_generated_membership",
+                "bbb_world::vanilla_entity_metadata_type_is_abstract_chested_horse",
+                &[
+                    "VANILLA_ENTITY_TYPE_DONKEY_ID",
+                    "VANILLA_ENTITY_TYPE_MULE_ID",
+                    "VANILLA_ENTITY_TYPE_LLAMA_ID",
+                    "VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID",
+                ][..],
+            ),
+            (
                 "shift_f3_i_with_permission_copies_local_camel_family_save_nbt_to_clipboard",
                 "bbb_world::vanilla_entity_metadata_type_is_camel",
-                [
+                &[
                     "VANILLA_ENTITY_TYPE_CAMEL_ID",
                     "VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID",
-                ],
+                ][..],
             ),
             (
                 "shift_f3_i_with_permission_copies_local_guardian_family_save_nbt_to_clipboard",
                 "bbb_world::vanilla_entity_metadata_type_is_guardian",
-                [
+                &[
                     "VANILLA_ENTITY_TYPE_GUARDIAN_ID",
                     "VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID",
-                ],
+                ][..],
             ),
             (
                 "shift_f3_i_with_permission_copies_local_slime_family_save_nbt_to_clipboard",
                 "bbb_world::vanilla_entity_metadata_type_is_slime",
-                [
+                &[
                     "VANILLA_ENTITY_TYPE_SLIME_ID",
                     "VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID",
-                ],
+                ][..],
             ),
         ] {
             let fixture = fixtures
@@ -25497,7 +25512,7 @@ mod generated_catalog_guards {
                 .unwrap_or_else(|| panic!("missing {fixture_name}"));
             assert!(fixture.contains("VANILLA_ENTITY_TYPES"));
             assert!(fixture.contains(query), "{fixture_name} missing {query}");
-            for member in removed {
+            for &member in removed {
                 assert!(
                     !fixture.contains(member),
                     "{fixture_name} restored {member}"
