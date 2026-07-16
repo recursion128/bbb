@@ -100,7 +100,8 @@ use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 use bbb_world::{
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
-    vanilla_entity_metadata_item_frame_accessors_for_entity_type, BlockPos, EntityState,
+    vanilla_entity_metadata_item_frame_accessors_for_entity_type,
+    vanilla_entity_metadata_painting_variant_accessor_for_entity_type, BlockPos, EntityState,
     EntityVec3, LocalPlayerInputState, LocalPlayerPoseState, TagQueryResponseState,
     VanillaArmorStandMetadataAccessors, WorldStore,
     VANILLA_ABSTRACT_HORSE_FLAG_BRED as ABSTRACT_HORSE_FLAG_BRED,
@@ -124,7 +125,6 @@ use bbb_world::{
     VANILLA_EXPERIENCE_ORB_DEFAULT_VALUE, VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
     VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
     VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
-    VANILLA_PAINTING_VARIANT_DATA_ID as PAINTING_VARIANT_DATA_ID,
     VANILLA_SNOW_GOLEM_PUMPKIN_FLAG as SNOW_GOLEM_PUMPKIN_FLAG,
 };
 use bbb_world::{
@@ -6680,10 +6680,12 @@ fn debug_painting_facing_legacy_2d_id(entity: &EntityState, direction_data_id: u
 }
 
 fn debug_entity_data_painting_variant_named_id(entity: &EntityState) -> Option<i32> {
+    let data_id =
+        vanilla_entity_metadata_painting_variant_accessor_for_entity_type(entity.entity_type_id)?;
     entity
         .data_values
         .iter()
-        .find(|value| value.data_id == PAINTING_VARIANT_DATA_ID)
+        .find(|value| value.data_id == data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::PaintingVariant(variant) if variant.direct.is_none() => {
                 variant.registry_id

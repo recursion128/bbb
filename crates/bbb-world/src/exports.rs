@@ -128,6 +128,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
+    vanilla_entity_metadata_painting_variant_accessor_for_entity_type,
     VanillaEndCrystalMetadataAccessors, VanillaHangingEntityMetadataAccessor,
     VanillaItemFrameMetadataAccessors, VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM, VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID,

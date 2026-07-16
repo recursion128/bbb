@@ -9,10 +9,10 @@ use crate::WorldStore;
 
 use super::dimensions::vanilla_living_entity_type;
 use super::schema::{
+    vanilla_entity_metadata_painting_variant_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_living, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
     VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
     VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
-    VANILLA_PAINTING_VARIANT_DATA_ID,
 };
 
 impl WorldStore {
@@ -22,8 +22,9 @@ impl WorldStore {
         let id = packet.id;
         let is_local_player = self.local_player_id == Some(id);
         let updated_values = packet.values.clone();
-        let painting_variant_projection =
-            self.painting_variant_projection_from_metadata(&updated_values);
+        let painting_variant_projection = self.entities.entity_type_id(id).and_then(|type_id| {
+            self.painting_variant_projection_from_metadata(type_id, &updated_values)
+        });
         let mut local_living_entity_flags = None;
         let Some(()) = self.entities.with_metadata_mut(id, |metadata| {
             for value in packet.values {
@@ -66,10 +67,13 @@ impl WorldStore {
 
     fn painting_variant_projection_from_metadata(
         &mut self,
+        entity_type_id: i32,
         values: &[bbb_protocol::packets::EntityDataValue],
     ) -> Option<Option<PaintingVariantClientProjection>> {
+        let data_id =
+            vanilla_entity_metadata_painting_variant_accessor_for_entity_type(entity_type_id)?;
         let variant = values.iter().find_map(|value| {
-            (value.data_id == VANILLA_PAINTING_VARIANT_DATA_ID)
+            (value.data_id == data_id)
                 .then_some(&value.value)
                 .and_then(|value| match value {
                     EntityDataValueKind::PaintingVariant(variant) => Some(variant),

@@ -16629,3 +16629,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - world bounds/center/render-state 与 native ItemFrame/Painting debug SNBT 删除固定
   accessor/default aliases；方向 metadata 缺失时仍按 vanilla `recreateFromPacket` 回退
   add-entity packet `data`，生成器 reverse guard 禁止恢复平行事实源。
+
+## 2026-07-16：统一推导 Painting variant metadata accessor
+
+- `bbb-world` 现在从生成 schema 解析 `Painting.DATA_PAINTING_VARIANT_ID` 的 membership、
+  wire id 9、`PAINTING_VARIANT` serializer 与 registry-any virtual default；具体 holder 仍由
+  当前 session 的动态 `minecraft:painting_variant` registry 解析，不把虚拟默认误作固定 id。
+- world metadata projection 与 native debug SNBT 删除固定 accessor alias，并按实体 type 拒绝
+  其它 family 对槽 9 的复用；语义测试与生成器 reverse guard 锁定该边界。

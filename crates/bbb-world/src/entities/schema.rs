@@ -646,6 +646,32 @@ pub fn vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(
     }
 }
 
+/// Resolves Painting's synchronized variant accessor.
+///
+/// The generated typed default is a virtual "any registry holder" marker, not a stable concrete
+/// holder id, so consumers only receive the validated wire index and continue resolving holder
+/// values through the active session registry.
+pub fn vanilla_entity_metadata_painting_variant_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<u8> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_PAINTING_VARIANT_ID",
+    )?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.decoration.painting.Painting",
+            "PAINTING_VARIANT",
+            Some(VanillaEntityMetadataDefault::RegistryAny("minecraft:painting_variant")),
+        ) => Some(accessor.data_id),
+        _ => None,
+    }
+}
+
 /// Resolves the complete ItemFrame metadata layout, including its inherited direction accessor.
 pub fn vanilla_entity_metadata_item_frame_accessors_for_entity_type(
     entity_type_id: i32,
@@ -3501,6 +3527,26 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_painting_variant_accessor_owns_membership_index_and_virtual_default() {
+        assert_eq!(
+            vanilla_entity_metadata_painting_variant_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PAINTING_ID
+            ),
+            Some(9)
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_painting_variant_accessor_for_entity_type(entity_type_id),
                 None
             );
         }

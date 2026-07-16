@@ -305,6 +305,25 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
             0.75, 0.75, 0.0625, 0.0,
         ))
     );
+    assert!(store.apply_set_entity_data(ProtocolSetEntityData {
+        id: 20,
+        values: vec![ProtocolEntityDataValue {
+            // Slot 9 belongs to ItemFrame.DATA_ITEM here; a mismatched painting serializer must not
+            // populate the Painting-only client projection.
+            data_id: VANILLA_PAINTING_VARIANT_DATA_ID,
+            serializer_id: 34,
+            value: EntityDataValueKind::PaintingVariant(
+                bbb_protocol::packets::PaintingVariantData {
+                    registry_id: Some(21),
+                    direct: None,
+                },
+            ),
+        }],
+    }));
+    assert_eq!(
+        store.probe_entity(20).unwrap().painting_variant_projection,
+        None
+    );
 
     assert_eq!(
         store.probe_entity_transform(21).unwrap().position,
