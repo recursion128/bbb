@@ -7558,6 +7558,10 @@ pub fn vanilla_item_type_for_resource_id(
         .find(|entry| entry.resource_id.strip_prefix("minecraft:") == Some(resource_id))
 }
 
+pub fn vanilla_item_resource_id_matches_type(resource_id: &str, item_type_id: i32) -> bool {
+    vanilla_item_type(item_type_id).is_some_and(|entry| entry.resource_id == resource_id)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -7592,15 +7596,30 @@ mod tests {
             VANILLA_ITEM_SNOWBALL_ID
         );
         assert_eq!(vanilla_item_type_for_resource_id("example:snowball"), None);
+        assert!(vanilla_item_resource_id_matches_type(
+            "minecraft:snowball",
+            VANILLA_ITEM_SNOWBALL_ID
+        ));
+        assert!(!vanilla_item_resource_id_matches_type(
+            "snowball",
+            VANILLA_ITEM_SNOWBALL_ID
+        ));
+        assert!(!vanilla_item_resource_id_matches_type(
+            "minecraft:snowball",
+            VANILLA_ITEM_EGG_ID
+        ));
     }
 
     #[test]
-    fn item_model_consumers_do_not_restore_item_resource_literals() {
+    fn item_identity_consumers_do_not_restore_item_resource_literals() {
         let sources = [
             include_str!("../../bbb-item-model/src/item_runtime.rs"),
             include_str!("../../bbb-item-model/src/item_runtime/icon.rs"),
             include_str!("../../bbb-item-model/src/item_runtime/profiles.rs"),
             include_str!("../../bbb-item-model/src/item_runtime/tooltip.rs"),
+            include_str!("../../bbb-native/src/item_models/first_person.rs"),
+            include_str!("../../bbb-native/src/entity_scene/hands.rs"),
+            include_str!("../../bbb-native/src/entity_scene/instance.rs"),
         ];
         let migrated_item_ids = [
             VANILLA_ITEM_FIREWORK_ROCKET_ID,
@@ -7626,6 +7645,10 @@ mod tests {
             VANILLA_ITEM_CLOCK_ID,
             VANILLA_ITEM_COMPASS_ID,
             VANILLA_ITEM_RECOVERY_COMPASS_ID,
+            VANILLA_ITEM_BUNDLE_ID,
+            VANILLA_ITEM_GOAT_HORN_ID,
+            VANILLA_ITEM_SHIELD_ID,
+            VANILLA_ITEM_POTION_ID,
         ];
         let combined = sources.concat();
         for item_id in migrated_item_ids {
@@ -7639,6 +7662,8 @@ mod tests {
             );
         }
         assert!(sources[0].contains("use bbb_protocol::item_types"));
-        assert!(sources[0].contains("vanilla_item_type_for_resource_id"));
+        assert!(sources
+            .iter()
+            .any(|source| source.contains("vanilla_item_resource_id_matches_type")));
     }
 }

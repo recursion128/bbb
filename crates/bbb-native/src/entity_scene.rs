@@ -5,6 +5,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
         VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
     },
+    item_types,
     packets::{
         decode_profile_textures_from_properties, EntityDataEnumSerializer,
         EntityDataRegistryHolder, EntityDataValueKind, EquipmentSlot, GameProfilePropertySummary,

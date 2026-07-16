@@ -665,8 +665,10 @@ fn push_item_specific_tooltip_lines(
     options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let item_type_id = vanilla_namespaced_item_type_id(item_id);
-    if item_type_id == Some(item_types::VANILLA_ITEM_DISC_FRAGMENT_5_ID) {
+    if item_types::vanilla_item_resource_id_matches_type(
+        item_id,
+        item_types::VANILLA_ITEM_DISC_FRAGMENT_5_ID,
+    ) {
         lines.push(NativeItemTooltipLine::plain(
             language
                 .get_or_key(DISC_FRAGMENT_5_DESCRIPTION_KEY)
@@ -677,12 +679,13 @@ fn push_item_specific_tooltip_lines(
     if let Some((applies_to_key, ingredients_key)) = smithing_template_tooltip_keys(item_id) {
         push_smithing_template_tooltip_lines(language, applies_to_key, ingredients_key, lines);
     }
-    if item_type_id == Some(item_types::VANILLA_ITEM_PAINTING_ID)
-        && tooltip_display_shows(
-            component_patch,
-            component_id::VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
-        )
-    {
+    if item_types::vanilla_item_resource_id_matches_type(
+        item_id,
+        item_types::VANILLA_ITEM_PAINTING_ID,
+    ) && tooltip_display_shows(
+        component_patch,
+        component_id::VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
+    ) {
         push_painting_tooltip_lines(language, component_patch, options.creative, lines);
     }
 }
@@ -876,9 +879,12 @@ fn push_entity_data_tooltip_lines(
 }
 
 fn item_is_spawner(resource_id: &str) -> bool {
-    matches!(
-        vanilla_namespaced_item_type_id(resource_id),
-        Some(item_types::VANILLA_ITEM_SPAWNER_ID | item_types::VANILLA_ITEM_TRIAL_SPAWNER_ID)
+    item_types::vanilla_item_resource_id_matches_type(
+        resource_id,
+        item_types::VANILLA_ITEM_SPAWNER_ID,
+    ) || item_types::vanilla_item_resource_id_matches_type(
+        resource_id,
+        item_types::VANILLA_ITEM_TRIAL_SPAWNER_ID,
     )
 }
 
@@ -923,9 +929,10 @@ fn localized_block_name(language: &LanguageCatalog, resource_id: &str) -> String
 }
 
 fn smithing_template_tooltip_keys(item_id: &str) -> Option<(&'static str, &'static str)> {
-    if vanilla_namespaced_item_type_id(item_id)
-        == Some(item_types::VANILLA_ITEM_NETHERITE_UPGRADE_SMITHING_TEMPLATE_ID)
-    {
+    if item_types::vanilla_item_resource_id_matches_type(
+        item_id,
+        item_types::VANILLA_ITEM_NETHERITE_UPGRADE_SMITHING_TEMPLATE_ID,
+    ) {
         return Some((
             SMITHING_TEMPLATE_NETHERITE_UPGRADE_APPLIES_TO_KEY,
             SMITHING_TEMPLATE_NETHERITE_UPGRADE_INGREDIENTS_KEY,

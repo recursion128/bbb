@@ -148,16 +148,31 @@ pub(super) fn item_use_duration_ticks(
     item_id: &str,
     component_patch: &DataComponentPatchSummary,
 ) -> i32 {
-    match vanilla_namespaced_item_type_id(item_id) {
-        Some(
-            item_types::VANILLA_ITEM_BOW_ID
-            | item_types::VANILLA_ITEM_CROSSBOW_ID
-            | item_types::VANILLA_ITEM_TRIDENT_ID,
-        ) => return VANILLA_LONG_USE_DURATION_TICKS,
-        Some(item_types::VANILLA_ITEM_BRUSH_ID) => return VANILLA_BRUSH_USE_DURATION_TICKS,
-        Some(item_types::VANILLA_ITEM_SPYGLASS_ID) => return VANILLA_SPYGLASS_USE_DURATION_TICKS,
-        Some(item_types::VANILLA_ITEM_ENDER_EYE_ID) => return VANILLA_ENDER_EYE_USE_DURATION_TICKS,
-        _ => {}
+    if [
+        item_types::VANILLA_ITEM_BOW_ID,
+        item_types::VANILLA_ITEM_CROSSBOW_ID,
+        item_types::VANILLA_ITEM_TRIDENT_ID,
+    ]
+    .into_iter()
+    .any(|item_type_id| item_types::vanilla_item_resource_id_matches_type(item_id, item_type_id))
+    {
+        return VANILLA_LONG_USE_DURATION_TICKS;
+    }
+    if item_types::vanilla_item_resource_id_matches_type(item_id, item_types::VANILLA_ITEM_BRUSH_ID)
+    {
+        return VANILLA_BRUSH_USE_DURATION_TICKS;
+    }
+    if item_types::vanilla_item_resource_id_matches_type(
+        item_id,
+        item_types::VANILLA_ITEM_SPYGLASS_ID,
+    ) {
+        return VANILLA_SPYGLASS_USE_DURATION_TICKS;
+    }
+    if item_types::vanilla_item_resource_id_matches_type(
+        item_id,
+        item_types::VANILLA_ITEM_ENDER_EYE_ID,
+    ) {
+        return VANILLA_ENDER_EYE_USE_DURATION_TICKS;
     }
     if let Some(consumable) = component_patch.consumable {
         return consumable_use_duration_ticks(consumable);
@@ -185,7 +200,10 @@ pub(super) fn crossbow_charge_duration_ticks(
     item_id: &str,
     synchronized_duration_ticks: Option<i32>,
 ) -> Option<i32> {
-    if vanilla_namespaced_item_type_id(item_id) != Some(item_types::VANILLA_ITEM_CROSSBOW_ID) {
+    if !item_types::vanilla_item_resource_id_matches_type(
+        item_id,
+        item_types::VANILLA_ITEM_CROSSBOW_ID,
+    ) {
         return None;
     }
     Some(
@@ -841,19 +859,22 @@ impl NativeItemRuntime {
     }
 
     pub(super) fn item_resource_uses_special_foil_texture(&self, resource_id: &str) -> bool {
-        if vanilla_namespaced_item_type_id(resource_id) == Some(item_types::VANILLA_ITEM_CLOCK_ID) {
+        if item_types::vanilla_item_resource_id_matches_type(
+            resource_id,
+            item_types::VANILLA_ITEM_CLOCK_ID,
+        ) {
             return true;
         }
         self.item_tags
             .as_ref()
             .map(|tags| tags.contains("minecraft:compasses", resource_id))
             .unwrap_or_else(|| {
-                matches!(
-                    vanilla_namespaced_item_type_id(resource_id),
-                    Some(
-                        item_types::VANILLA_ITEM_COMPASS_ID
-                            | item_types::VANILLA_ITEM_RECOVERY_COMPASS_ID
-                    )
+                item_types::vanilla_item_resource_id_matches_type(
+                    resource_id,
+                    item_types::VANILLA_ITEM_COMPASS_ID,
+                ) || item_types::vanilla_item_resource_id_matches_type(
+                    resource_id,
+                    item_types::VANILLA_ITEM_RECOVERY_COMPASS_ID,
                 )
             })
     }
@@ -1739,8 +1760,12 @@ impl NativeItemRuntime {
             self.registry
                 .as_ref()
                 .and_then(|registry| registry.resource_id(template.item_id))
-                .and_then(vanilla_namespaced_item_type_id)
-                == Some(item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID)
+                .is_some_and(|resource_id| {
+                    item_types::vanilla_item_resource_id_matches_type(
+                        resource_id,
+                        item_types::VANILLA_ITEM_FIREWORK_ROCKET_ID,
+                    )
+                })
         });
         if is_rocket {
             CrossbowChargeType::Rocket

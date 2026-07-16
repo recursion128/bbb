@@ -34,12 +34,18 @@ fn item_runtime_does_not_restore_removed_component_id_aliases() {
 
 #[test]
 fn vanilla_item_selector_requires_canonical_namespaced_resource_id() {
-    assert_eq!(
-        vanilla_namespaced_item_type_id("minecraft:bow"),
-        Some(item_types::VANILLA_ITEM_BOW_ID)
-    );
-    assert_eq!(vanilla_namespaced_item_type_id("bow"), None);
-    assert_eq!(vanilla_namespaced_item_type_id("example:bow"), None);
+    assert!(item_types::vanilla_item_resource_id_matches_type(
+        "minecraft:bow",
+        item_types::VANILLA_ITEM_BOW_ID
+    ));
+    assert!(!item_types::vanilla_item_resource_id_matches_type(
+        "bow",
+        item_types::VANILLA_ITEM_BOW_ID
+    ));
+    assert!(!item_types::vanilla_item_resource_id_matches_type(
+        "example:bow",
+        item_types::VANILLA_ITEM_BOW_ID
+    ));
 }
 
 static NEXT_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);

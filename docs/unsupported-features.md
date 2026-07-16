@@ -147,8 +147,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
 
 - Complete the remaining cross-crate ordinal/serializer-id and entity
   renderer-class/event-dispatch membership discovery audit, plus registry-identity consumers
-  outside `bbb-item-model` that still reconstruct generated item facts. Migrate each homogeneous
-  family through schema-owned accessors and generator-emitted reverse guards. The 155 explicit
+  in `bbb-world`, `bbb-pack`, and `bbb-protocol` that still reconstruct generated item facts.
+  Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
+  The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression
   plus `AbstractFelineModel` / `AbstractHorseRenderer` hierarchy memberships and the

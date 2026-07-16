@@ -8,27 +8,46 @@ pub(super) fn entity_main_hand_holds_bow(
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
 ) -> bool {
-    entity_main_hand_is_item(world, item_runtime, entity_id, "minecraft:bow")
+    entity_main_hand_is_item(
+        world,
+        item_runtime,
+        entity_id,
+        item_types::VANILLA_ITEM_BOW_ID,
+    )
 }
 
-/// Whether the entity's main-hand item resolves to a specific item resource id. Used for renderer
+/// Whether the entity's main-hand item resolves to a specific vanilla item id. Used for renderer
 /// states whose vanilla extraction calls `getMainHandItem().is(Items.X)`.
 pub(super) fn entity_main_hand_is_item(
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     entity_id: i32,
-    resource_id: &str,
+    vanilla_item_type_id: i32,
+) -> bool {
+    entity_hand_is_vanilla_item_type(world, item_runtime, entity_id, false, vanilla_item_type_id)
+}
+
+fn entity_hand_is_vanilla_item_type(
+    world: &WorldStore,
+    item_runtime: Option<&NativeItemRuntime>,
+    entity_id: i32,
+    off_hand: bool,
+    vanilla_item_type_id: i32,
 ) -> bool {
     let Some(item_runtime) = item_runtime else {
         return false;
     };
-    let Some(stack) = world.held_item(entity_id, false) else {
+    let Some(item_id) = world
+        .held_item(entity_id, off_hand)
+        .and_then(|stack| stack.item_id)
+    else {
         return false;
     };
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some(resource_id)
+    item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| {
+            item_types::vanilla_item_resource_id_matches_type(resource_id, vanilla_item_type_id)
+        })
 }
 
 /// Whether the item in the given hand is a trident (vanilla `Items.TRIDENT`). Drives the drowned's
@@ -42,16 +61,13 @@ pub(super) fn entity_hand_holds_trident(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
-    let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
-    };
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:trident")
+    entity_hand_is_vanilla_item_type(
+        world,
+        item_runtime,
+        entity_id,
+        off_hand,
+        item_types::VANILLA_ITEM_TRIDENT_ID,
+    )
 }
 
 /// Whether the item in the given hand is a bow (vanilla `BowItem.getUseAnimation() == BOW`, which only
@@ -65,16 +81,13 @@ pub(super) fn entity_hand_holds_bow(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
-    let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
-    };
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:bow")
+    entity_hand_is_vanilla_item_type(
+        world,
+        item_runtime,
+        entity_id,
+        off_hand,
+        item_types::VANILLA_ITEM_BOW_ID,
+    )
 }
 
 /// Whether the item in the given hand is one of the tool-material spears. This is the item/tag side of
@@ -132,16 +145,13 @@ pub(super) fn entity_hand_holds_spyglass(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
-    let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
-    };
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:spyglass")
+    entity_hand_is_vanilla_item_type(
+        world,
+        item_runtime,
+        entity_id,
+        off_hand,
+        item_types::VANILLA_ITEM_SPYGLASS_ID,
+    )
 }
 
 /// Whether the item in the given hand is a goat horn (vanilla `ItemStack.getUseAnimation() ==
@@ -154,16 +164,13 @@ pub(super) fn entity_hand_holds_goat_horn(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
-    let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
-    };
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:goat_horn")
+    entity_hand_is_vanilla_item_type(
+        world,
+        item_runtime,
+        entity_id,
+        off_hand,
+        item_types::VANILLA_ITEM_GOAT_HORN_ID,
+    )
 }
 
 /// Whether the item in the given hand is a brush (vanilla `ItemStack.getUseAnimation() ==
@@ -176,16 +183,13 @@ pub(super) fn entity_hand_holds_brush(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
-    let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
-    };
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:brush")
+    entity_hand_is_vanilla_item_type(
+        world,
+        item_runtime,
+        entity_id,
+        off_hand,
+        item_types::VANILLA_ITEM_BRUSH_ID,
+    )
 }
 
 pub(super) fn component_patch_has_added_component(
@@ -255,9 +259,9 @@ pub(super) fn entity_hand_blocks_attacks(
     let Some(stack) = world.held_item(entity_id, off_hand) else {
         return false;
     };
-    let Some(item_id) = stack.item_id else {
+    if stack.item_id.is_none() {
         return false;
-    };
+    }
     if component_patch_has_added_component(
         &stack.component_patch,
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
@@ -277,10 +281,13 @@ pub(super) fn entity_hand_blocks_attacks(
     {
         return false;
     }
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:shield")
+    entity_hand_is_vanilla_item_type(
+        world,
+        item_runtime,
+        entity_id,
+        off_hand,
+        item_types::VANILLA_ITEM_SHIELD_ID,
+    )
 }
 
 /// Whether the item in the given hand is a crossbow (vanilla `Pillager.isHolding(Items.CROSSBOW)` for the
@@ -292,16 +299,13 @@ pub(super) fn entity_hand_holds_crossbow(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
-    let Some(stack) = world.held_item(entity_id, off_hand) else {
-        return false;
-    };
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:crossbow")
+    entity_hand_is_vanilla_item_type(
+        world,
+        item_runtime,
+        entity_id,
+        off_hand,
+        item_types::VANILLA_ITEM_CROSSBOW_ID,
+    )
 }
 
 pub(super) fn entity_holds_crossbow(
@@ -346,17 +350,16 @@ pub(super) fn entity_hand_holds_charged_crossbow(
     entity_id: i32,
     off_hand: bool,
 ) -> bool {
-    let Some(item_runtime) = item_runtime else {
-        return false;
-    };
     let Some(stack) = world.held_item(entity_id, off_hand) else {
         return false;
     };
-    let Some(item_id) = stack.item_id else {
-        return false;
-    };
-    item_runtime.item_resource_id(item_id) == Some("minecraft:crossbow")
-        && !stack.component_patch.charged_projectiles_items.is_empty()
+    entity_hand_is_vanilla_item_type(
+        world,
+        item_runtime,
+        entity_id,
+        off_hand,
+        item_types::VANILLA_ITEM_CROSSBOW_ID,
+    ) && !stack.component_patch.charged_projectiles_items.is_empty()
 }
 
 /// Whether the entity's main-hand item is a melee weapon (vanilla

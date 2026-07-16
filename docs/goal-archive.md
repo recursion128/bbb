@@ -16871,3 +16871,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - catalog 继续由 26.1 `Items.java` 注册顺序经共享 Tree-sitter frontend 生成；item registry
   generator 新增跨 crate 反向测试，按生成 id 反查上述 resource，并拒绝四个生产消费文件恢复
   精确字面量。既有 use tick、charge、tooltip、skull 与 foil focused tests 继续锁定行为。
+
+## 2026-07-16：统一 native 手持物品身份选择器
+
+- `bbb-native` 第一人称 use/hand-selection/scoping 与 entity hand pose、Witch potion 投影的
+  Bow/Brush/Bundle/Crossbow/GoatHorn/Shield/Spyglass/Trident/Potion 判断，现直接消费
+  `bbb_protocol::item_types` 的生成 id；三个生产文件不再维护对应 resource 字面量。
+- item catalog 新增按生成 id 对 canonical namespaced resource 做 O(1) 比较的共享谓词，避免
+  渲染热路径为机械迁移扫描 1506 项。generator 生成的跨 crate 反向测试覆盖 native 消费面；
+  19 条 first-person、137 条 entity-model focused tests（含新增 Witch 正向 potion case）锁定行为。

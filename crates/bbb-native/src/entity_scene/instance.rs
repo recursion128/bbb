@@ -378,7 +378,12 @@ pub(super) fn entity_model_instance(
     let witch_holding_item = matches!(kind, EntityModelKind::Witch)
         && entity_main_hand_non_empty(world, source.entity_id);
     let witch_holding_potion = witch_holding_item
-        && entity_main_hand_is_item(world, item_runtime, source.entity_id, "minecraft:potion");
+        && entity_main_hand_is_item(
+            world,
+            item_runtime,
+            source.entity_id,
+            item_types::VANILLA_ITEM_POTION_ID,
+        );
     // Vanilla `CopperGolemModel.setupAnim`: either rendered hand item state selects the held-item arm
     // clamp before `ItemInHandLayer` reads the hand transform. The walk-with-item keyframe stays deferred.
     let copper_golem_holding_item = matches!(kind, EntityModelKind::CopperGolem { .. })

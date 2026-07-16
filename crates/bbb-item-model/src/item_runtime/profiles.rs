@@ -162,12 +162,23 @@ pub(super) fn custom_head_skull_for_resource_id(
     local_dynamic_skins: &RefCell<LocalDynamicPlayerSkinCache>,
     profile_skins: &RefCell<ProfileSkinCache>,
 ) -> Option<EntityCustomHeadSkull> {
-    match vanilla_namespaced_item_type_id(resource_id) {
-        Some(item_types::VANILLA_ITEM_SKELETON_SKULL_ID) => Some(EntityCustomHeadSkull::Skeleton),
-        Some(item_types::VANILLA_ITEM_WITHER_SKELETON_SKULL_ID) => {
-            Some(EntityCustomHeadSkull::WitherSkeleton)
-        }
-        Some(item_types::VANILLA_ITEM_PLAYER_HEAD_ID) => custom_head_player_skull(
+    if item_types::vanilla_item_resource_id_matches_type(
+        resource_id,
+        item_types::VANILLA_ITEM_SKELETON_SKULL_ID,
+    ) {
+        return Some(EntityCustomHeadSkull::Skeleton);
+    }
+    if item_types::vanilla_item_resource_id_matches_type(
+        resource_id,
+        item_types::VANILLA_ITEM_WITHER_SKELETON_SKULL_ID,
+    ) {
+        return Some(EntityCustomHeadSkull::WitherSkeleton);
+    }
+    if item_types::vanilla_item_resource_id_matches_type(
+        resource_id,
+        item_types::VANILLA_ITEM_PLAYER_HEAD_ID,
+    ) {
+        return custom_head_player_skull(
             component_patch,
             profile_resolutions,
             dynamic_skins,
@@ -175,13 +186,31 @@ pub(super) fn custom_head_skull_for_resource_id(
             profile_texture_resources,
             local_dynamic_skins,
             profile_skins,
-        ),
-        Some(item_types::VANILLA_ITEM_ZOMBIE_HEAD_ID) => Some(EntityCustomHeadSkull::Zombie),
-        Some(item_types::VANILLA_ITEM_CREEPER_HEAD_ID) => Some(EntityCustomHeadSkull::Creeper),
-        Some(item_types::VANILLA_ITEM_DRAGON_HEAD_ID) => Some(EntityCustomHeadSkull::Dragon),
-        Some(item_types::VANILLA_ITEM_PIGLIN_HEAD_ID) => Some(EntityCustomHeadSkull::Piglin),
-        _ => None,
+        );
     }
+    [
+        (
+            item_types::VANILLA_ITEM_ZOMBIE_HEAD_ID,
+            EntityCustomHeadSkull::Zombie,
+        ),
+        (
+            item_types::VANILLA_ITEM_CREEPER_HEAD_ID,
+            EntityCustomHeadSkull::Creeper,
+        ),
+        (
+            item_types::VANILLA_ITEM_DRAGON_HEAD_ID,
+            EntityCustomHeadSkull::Dragon,
+        ),
+        (
+            item_types::VANILLA_ITEM_PIGLIN_HEAD_ID,
+            EntityCustomHeadSkull::Piglin,
+        ),
+    ]
+    .into_iter()
+    .find_map(|(item_type_id, skull)| {
+        item_types::vanilla_item_resource_id_matches_type(resource_id, item_type_id)
+            .then_some(skull)
+    })
 }
 
 pub(super) fn custom_head_player_skull(

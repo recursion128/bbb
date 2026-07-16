@@ -106,12 +106,6 @@ const VANILLA_ENDER_EYE_USE_DURATION_TICKS: i32 = 0;
 
 const VANILLA_CROSSBOW_CHARGE_DURATION_TICKS: i32 = 25;
 
-fn vanilla_namespaced_item_type_id(resource_id: &str) -> Option<i32> {
-    item_types::vanilla_item_type_for_resource_id(resource_id)
-        .filter(|entry| entry.resource_id == resource_id)
-        .map(|entry| entry.id)
-}
-
 const ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF: EntityModelTextureRef = EntityModelTextureRef {
     path: "textures/entity/equipment/wings/elytra.png",
     size: [64, 32],

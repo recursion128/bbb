@@ -18,6 +18,7 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID, VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID,
     VANILLA_DATA_COMPONENT_KINETIC_WEAPON_TYPE_ID, VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID,
 };
+use bbb_protocol::item_types;
 #[cfg(test)]
 use bbb_protocol::packets::ItemStackTemplateSummary;
 use bbb_protocol::packets::{

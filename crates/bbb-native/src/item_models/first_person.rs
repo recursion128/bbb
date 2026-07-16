@@ -497,11 +497,17 @@ fn first_person_only_render_using_hand(
             InteractionHand::MainHand => main_stack,
             InteractionHand::OffHand => off_stack,
         };
-        stack
-            .and_then(|stack| first_person_stack_resource_id(stack, item_runtime))
-            .is_some_and(|resource_id| {
-                matches!(resource_id, "minecraft:bow" | "minecraft:crossbow")
-            })
+        stack.is_some_and(|stack| {
+            first_person_stack_is_vanilla_item_type(
+                stack,
+                item_runtime,
+                item_types::VANILLA_ITEM_BOW_ID,
+            ) || first_person_stack_is_vanilla_item_type(
+                stack,
+                item_runtime,
+                item_types::VANILLA_ITEM_CROSSBOW_ID,
+            )
+        })
     })
 }
 
@@ -575,7 +581,14 @@ pub(super) fn first_person_stack_block_use_kind(
     {
         return None;
     }
-    let is_shield = item_runtime.item_resource_id(item_id) == Some("minecraft:shield");
+    let is_shield = item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| {
+            item_types::vanilla_item_resource_id_matches_type(
+                resource_id,
+                item_types::VANILLA_ITEM_SHIELD_ID,
+            )
+        });
     if is_shield {
         return Some(FirstPersonBlockUseKind::Shield);
     }
@@ -587,31 +600,53 @@ pub(super) fn first_person_stack_supported_use_animation(
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
 ) -> Option<FirstPersonUseAnimation> {
-    match first_person_stack_resource_id(stack, item_runtime) {
-        Some("minecraft:goat_horn") => return Some(FirstPersonUseAnimation::None),
-        Some("minecraft:brush") => {
-            return Some(FirstPersonUseAnimation::Brush {
-                use_duration_ticks: VANILLA_BRUSH_USE_DURATION_TICKS,
-            });
-        }
-        Some("minecraft:bundle") => return Some(FirstPersonUseAnimation::Bundle),
-        Some("minecraft:trident") => {
-            return Some(FirstPersonUseAnimation::Trident {
-                use_duration_ticks: VANILLA_TRIDENT_USE_DURATION_TICKS,
-            });
-        }
-        Some("minecraft:bow") => {
-            return Some(FirstPersonUseAnimation::Bow {
-                use_duration_ticks: VANILLA_BOW_USE_DURATION_TICKS,
-            });
-        }
-        Some("minecraft:crossbow") => {
-            return Some(FirstPersonUseAnimation::Crossbow {
-                use_duration_ticks: VANILLA_CROSSBOW_USE_DURATION_TICKS,
-                charge_duration_ticks: VANILLA_CROSSBOW_CHARGE_DURATION_TICKS,
-            });
-        }
-        _ => {}
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_GOAT_HORN_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::None);
+    }
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_BRUSH_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::Brush {
+            use_duration_ticks: VANILLA_BRUSH_USE_DURATION_TICKS,
+        });
+    }
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_BUNDLE_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::Bundle);
+    }
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_TRIDENT_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::Trident {
+            use_duration_ticks: VANILLA_TRIDENT_USE_DURATION_TICKS,
+        });
+    }
+    if first_person_stack_is_vanilla_item_type(stack, item_runtime, item_types::VANILLA_ITEM_BOW_ID)
+    {
+        return Some(FirstPersonUseAnimation::Bow {
+            use_duration_ticks: VANILLA_BOW_USE_DURATION_TICKS,
+        });
+    }
+    if first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_CROSSBOW_ID,
+    ) {
+        return Some(FirstPersonUseAnimation::Crossbow {
+            use_duration_ticks: VANILLA_CROSSBOW_USE_DURATION_TICKS,
+            charge_duration_ticks: VANILLA_CROSSBOW_CHARGE_DURATION_TICKS,
+        });
     }
     if let Some(consumable) = first_person_stack_consumable_summary(stack, item_runtime) {
         let use_duration_ticks = first_person_consumable_use_duration_ticks(consumable);
@@ -660,12 +695,25 @@ fn first_person_stack_resource_id<'a>(
         .and_then(|item_id| item_runtime.item_resource_id(item_id))
 }
 
+fn first_person_stack_is_vanilla_item_type(
+    stack: &ItemStackSummary,
+    item_runtime: &NativeItemRuntime,
+    item_type_id: i32,
+) -> bool {
+    first_person_stack_resource_id(stack, item_runtime).is_some_and(|resource_id| {
+        item_types::vanilla_item_resource_id_matches_type(resource_id, item_type_id)
+    })
+}
+
 fn first_person_stack_is_charged_crossbow(
     stack: &ItemStackSummary,
     item_runtime: &NativeItemRuntime,
 ) -> bool {
-    first_person_stack_resource_id(stack, item_runtime) == Some("minecraft:crossbow")
-        && !stack.component_patch.charged_projectiles_items.is_empty()
+    first_person_stack_is_vanilla_item_type(
+        stack,
+        item_runtime,
+        item_types::VANILLA_ITEM_CROSSBOW_ID,
+    ) && !stack.component_patch.charged_projectiles_items.is_empty()
 }
 
 fn first_person_stack_consumable_summary(
@@ -695,7 +743,15 @@ fn first_person_stack_block_kind_for_animation(
     item_runtime: &NativeItemRuntime,
 ) -> Option<FirstPersonBlockUseKind> {
     let item_id = stack.item_id?;
-    if item_runtime.item_resource_id(item_id) == Some("minecraft:shield") {
+    if item_runtime
+        .item_resource_id(item_id)
+        .is_some_and(|resource_id| {
+            item_types::vanilla_item_resource_id_matches_type(
+                resource_id,
+                item_types::VANILLA_ITEM_SHIELD_ID,
+            )
+        })
+    {
         Some(FirstPersonBlockUseKind::Shield)
     } else {
         Some(FirstPersonBlockUseKind::NonShieldBlock)
@@ -767,7 +823,12 @@ fn local_player_is_scoping(world: &WorldStore, item_runtime: &NativeItemRuntime)
     world
         .local_using_item_item_id()
         .and_then(|item_id| item_runtime.item_resource_id(item_id))
-        == Some("minecraft:spyglass")
+        .is_some_and(|resource_id| {
+            item_types::vanilla_item_resource_id_matches_type(
+                resource_id,
+                item_types::VANILLA_ITEM_SPYGLASS_ID,
+            )
+        })
 }
 
 fn first_person_block_fallback(context: BlockModelDisplayContext) -> BlockModelDisplayTransform {

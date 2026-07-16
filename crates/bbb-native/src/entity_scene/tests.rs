@@ -2484,10 +2484,12 @@ fn entity_model_instance_projects_elytra_animation_state_from_source() {
 }
 
 #[test]
-fn entity_model_instances_project_witch_holding_item_without_runtime() {
+fn entity_model_instances_project_witch_item_and_potion_state() {
     // `WitchRenderState.isHoldingItem` only needs a non-empty main hand, so it projects without the
     // item runtime. `isHoldingPotion` needs registry resolution (`Items.POTION`), so it stays false
     // without the runtime.
+    const POTION_ID: i32 = 0;
+
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         244,
@@ -2499,7 +2501,7 @@ fn entity_model_instances_project_witch_holding_item_without_runtime() {
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::MainHand,
             item: ItemStackSummary {
-                item_id: Some(5),
+                item_id: Some(POTION_ID),
                 count: 1,
                 component_patch: DataComponentPatchSummary::default(),
             },
@@ -2513,6 +2515,23 @@ fn entity_model_instances_project_witch_holding_item_without_runtime() {
         .render_state;
     assert!(state.witch_holding_item);
     assert!(!state.witch_holding_potion);
+
+    let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
+        "resource_ids": ["minecraft:potion"],
+        "protocol_ids": { "minecraft:potion": POTION_ID }
+    }))
+    .unwrap();
+    let runtime = NativeItemRuntime::for_test_with_registry_and_equipment_assets(
+        registry,
+        bbb_pack::EquipmentAssetCatalog::default(),
+    );
+    let state = entity_model_instances_from_world_at_partial_tick(&world, Some(&runtime), 0.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 244)
+        .unwrap()
+        .render_state;
+    assert!(state.witch_holding_item);
+    assert!(state.witch_holding_potion);
 }
 
 #[test]
