@@ -304,7 +304,11 @@ mod tests {
         }
         let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let mut violations = Vec::new();
-        for path in [crates.join("bbb-world/src"), crates.join("bbb-native/src")] {
+        for path in [
+            crates.join("bbb-world/src"),
+            crates.join("bbb-native/src"),
+            crates.join("bbb-net/src"),
+        ] {
             visit(&path, &mut violations);
         }
         assert!(
@@ -315,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn native_consumers_use_generated_serializer_ids() {
+    fn semantic_consumers_use_generated_serializer_ids() {
         fn visit(path: &Path, violations: &mut Vec<String>) {
             if path.is_dir() {
                 for entry in fs::read_dir(path).unwrap() {
@@ -346,60 +350,18 @@ mod tests {
                 }
             }
         }
-        let native = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .join("bbb-native/src");
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let mut violations = Vec::new();
-        visit(&native, &mut violations);
-        assert!(
-            violations.is_empty(),
-            "native consumers restored serializer ids:\n{}",
-            violations.join("\n")
-        );
-    }
-
-    #[test]
-    fn world_consumers_use_generated_serializer_ids() {
-        fn visit(path: &Path, violations: &mut Vec<String>) {
-            if path.is_dir() {
-                for entry in fs::read_dir(path).unwrap() {
-                    visit(&entry.unwrap().path(), violations);
-                }
-                return;
-            }
-            if path.extension().and_then(|value| value.to_str()) != Some("rs") {
-                return;
-            }
-            let source = fs::read_to_string(path).unwrap();
-            for line in source.lines() {
-                if line.contains("SERIALIZER_ID: i32 =") {
-                    violations.push(format!("{}: {line}", path.display()));
-                }
-                let numeric = line
-                    .trim()
-                    .strip_prefix("serializer_id:")
-                    .and_then(|value| value.strip_suffix(","))
-                    .is_some_and(|value| {
-                        value
-                            .trim()
-                            .chars()
-                            .all(|character| character.is_ascii_digit() || character == '_')
-                    });
-                if numeric {
-                    violations.push(format!("{}: {line}", path.display()));
-                }
-            }
+        for path in [
+            crates.join("bbb-native/src"),
+            crates.join("bbb-world/src"),
+            crates.join("bbb-net/src"),
+        ] {
+            visit(&path, &mut violations);
         }
-        let world = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .join("bbb-world/src");
-        let mut violations = Vec::new();
-        visit(&world, &mut violations);
         assert!(
             violations.is_empty(),
-            "world consumers restored serializer ids:\n{}",
+            "semantic consumers restored serializer ids:\n{}",
             violations.join("\n")
         );
     }

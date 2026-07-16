@@ -16992,3 +16992,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - presentation、runtime 与 input 三类反向检查现合并为对整个
   `bbb-native/src` 的递归扫描，拒绝 numeric `serializer_id` 或本地 serializer alias
   在任一 native 语义消费面回流。
+
+## 2026-07-16：统一 net fixture serializer 身份
+
+- `bbb-net` event-stream 与 play probe 测试的 8 个 Byte、Int 与 ItemStack metadata
+  `serializer_id` 写入点，现直接消费 gameplay-id generator 生成的 typed constants。
+- native/world/net 的反向检查合并为一条跨 crate 语义消费者扫描，同时
+  覆盖 production alias 反向检查；`bbb-protocol` 的数字 wire sample 仍由协议编解码
+  evidence 独立审计。

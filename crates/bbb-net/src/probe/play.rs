@@ -2352,12 +2352,12 @@ mod tests {
                 values: vec![
                     EntityDataValue {
                         data_id: 0,
-                        serializer_id: 0,
+                        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                         value: EntityDataValueKind::Byte(0x20),
                     },
                     EntityDataValue {
                         data_id: 2,
-                        serializer_id: 1,
+                        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                         value: EntityDataValueKind::Int(301),
                     },
                 ],
@@ -2480,12 +2480,12 @@ mod tests {
             vec![
                 EntityDataValue {
                     data_id: 0,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(0x20),
                 },
                 EntityDataValue {
                     data_id: 2,
-                    serializer_id: 1,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                     value: EntityDataValueKind::Int(301),
                 },
             ]
@@ -4726,7 +4726,7 @@ mod tests {
                 id: 9,
                 values: vec![EntityDataValue {
                     data_id: 0,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(0x02),
                 }],
             }))
@@ -5075,7 +5075,8 @@ mod tests {
     fn item_stack_entity_data(item: ItemStackSummary) -> EntityDataValue {
         EntityDataValue {
             data_id: 8,
-            serializer_id: 7,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(item),
         }
     }

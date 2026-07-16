@@ -172,7 +172,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test
-  submodules; protocol wire samples remain separately owned evidence.
+  submodules, as must `bbb-net` event/probe fixtures; protocol wire samples remain separately
+  owned evidence.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Goat and PolarBear specialized bounds must query that generated accessor instead of restoring

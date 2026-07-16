@@ -1523,12 +1523,12 @@ mod tests {
             values: vec![
                 packets::EntityDataValue {
                     data_id: 0,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: packets::EntityDataValueKind::Byte(0x20),
                 },
                 packets::EntityDataValue {
                     data_id: 2,
-                    serializer_id: 1,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                     value: packets::EntityDataValueKind::Int(301),
                 },
             ],
