@@ -166,6 +166,11 @@ pub use schema::{
     VANILLA_SLIME_DEFAULT_SIZE, VANILLA_SLIME_SIZE_DATA_ID,
 };
 pub use schema::{
+    vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
+    VanillaEndCrystalMetadataAccessors, VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID,
+    VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM, VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
+};
+pub use schema::{
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_pushability_kind,
     vanilla_entity_metadata_type_sound_source_kind, VanillaEntityCollidabilityKind,
     VanillaEntityPushabilityKind, VanillaEntitySoundSourceKind,
@@ -296,10 +301,6 @@ pub use schema::{
     VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID, VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID,
     VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID, VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID,
     VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID,
-};
-pub use schema::{
-    VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID, VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
-    VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
 pub use schema::{
     VANILLA_ENTITY_METADATA_ACCESSORS_26_1, VANILLA_ENTITY_METADATA_CLASSES_26_1,

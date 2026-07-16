@@ -249,6 +249,13 @@ pub(crate) struct VanillaEndermanRenderMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaEndCrystalMetadataAccessors {
+    pub beam_target_data_id: u8,
+    pub show_bottom_data_id: u8,
+    pub show_bottom_default: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct VanillaAbstractBoatMetadataAccessors {
     pub(crate) paddle_left_data_id: u8,
     pub(crate) paddle_left_default: bool,
@@ -556,6 +563,46 @@ pub(crate) fn vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
             carried_block_state_default: None,
             creepy_data_id: creepy.data_id,
             creepy_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves the generated EndCrystal beam-target and show-bottom accessors with typed defaults.
+pub fn vanilla_entity_metadata_end_crystal_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaEndCrystalMetadataAccessors> {
+    let beam_target =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_BEAM_TARGET")?;
+    let show_bottom =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SHOW_BOTTOM")?;
+    match (
+        (
+            beam_target.owner,
+            beam_target.serializer_name,
+            beam_target.typed_default,
+        ),
+        (
+            show_bottom.owner,
+            show_bottom.serializer_name,
+            show_bottom.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.boss.enderdragon.EndCrystal",
+                "OPTIONAL_BLOCK_POS",
+                Some(VanillaEntityMetadataDefault::OptionalBlockPosNone),
+            ),
+            (
+                "net.minecraft.world.entity.boss.enderdragon.EndCrystal",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(show_bottom_default)),
+            ),
+        ) => Some(VanillaEndCrystalMetadataAccessors {
+            beam_target_data_id: beam_target.data_id,
+            show_bottom_data_id: show_bottom.data_id,
+            show_bottom_default,
         }),
         _ => None,
     }
@@ -2276,24 +2323,24 @@ mod tests {
         VANILLA_ENTITY_TYPE_CREEPER_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
         VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
-        VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
-        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
-        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
-        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
-        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_EVOKER_ID,
+        VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
+        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
+        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
@@ -3334,6 +3381,26 @@ mod tests {
             vanilla_entity_metadata_enderman_render_accessors_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_end_crystal_accessors_own_membership_indices_and_defaults() {
+        assert_eq!(
+            vanilla_entity_metadata_end_crystal_accessors_for_entity_type(
+                VANILLA_ENTITY_TYPE_END_CRYSTAL_ID
+            ),
+            Some(VanillaEndCrystalMetadataAccessors {
+                beam_target_data_id: 8,
+                show_bottom_data_id: 9,
+                show_bottom_default: true,
+            })
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_end_crystal_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]

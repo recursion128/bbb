@@ -80,6 +80,7 @@ use bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
@@ -270,10 +271,8 @@ use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
 use crate::entity_scene::PIGLIN_BABY_DATA_ID;
-use crate::entity_scene::{
-    END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
-    END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
-};
+#[cfg(test)]
+use crate::entity_scene::{END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_SHOW_BOTTOM_DATA_ID};
 use crate::entity_scene::{WITHER_SKULL_DANGEROUS_DATA_ID, WITHER_SKULL_DEFAULT_DANGEROUS};
 use crate::terrain_runtime::TerrainUploadState;
 use bbb_item_model::{ItemModelKeybindContext, NativeItemRuntime};
@@ -7454,16 +7453,21 @@ fn debug_push_bogged_additional_save_data(entity: &EntityState, fields: &mut Vec
 fn debug_push_endermite_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some(accessors) =
+        vanilla_entity_metadata_end_crystal_accessors_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     if let Some(beam_target) =
-        debug_entity_data_optional_block_pos_present(entity, END_CRYSTAL_BEAM_TARGET_DATA_ID)
+        debug_entity_data_optional_block_pos_present(entity, accessors.beam_target_data_id)
     {
         fields.push(format!(
             "beam_target: [I; {}, {}, {}]",
             beam_target.x, beam_target.y, beam_target.z
         ));
     }
-    let show_bottom = debug_entity_data_bool_present(entity, END_CRYSTAL_SHOW_BOTTOM_DATA_ID)
-        .unwrap_or(END_CRYSTAL_DEFAULT_SHOW_BOTTOM);
+    let show_bottom = debug_entity_data_bool_present(entity, accessors.show_bottom_data_id)
+        .unwrap_or(accessors.show_bottom_default);
     fields.push(format!("ShowBottom: {}", debug_snbt_bool(show_bottom)));
 }
 

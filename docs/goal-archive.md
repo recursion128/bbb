@@ -16610,3 +16610,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - world store 删除固定 accessor/default aliases 与 untyped name probe；既有语义测试继续证明
   ZombieVillager 无 AbstractVillager renderer state、Panda 的独立 `UNHAPPY_COUNTER` 不会被
   误读，生成器 reverse guard 禁止恢复平行事实源。
+
+## 2026-07-15：统一推导 EndCrystal metadata accessors
+
+- `bbb-world` 现在从生成 schema 成对解析 `EndCrystal.DATA_BEAM_TARGET` 与
+  `DATA_SHOW_BOTTOM` 的 membership、wire id 8/9，以及 optional-empty/boolean-true typed
+  defaults，并公开一个窄的跨 crate accessor 结构。
+- world beam offset、native show-bottom model flag 与 debug SNBT 三条生产路径删除固定
+  accessor/default aliases 及重复的 crystal metadata type gate；现有 world/native/debug 语义
+  测试继续覆盖 beam center offset、None 清除、base 显隐与 SNBT，生成器 reverse guard 禁止
+  恢复平行事实源。EnderDragon 搜索附近 crystal 的运行时 instance type check 保留。

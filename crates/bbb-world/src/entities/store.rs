@@ -25,6 +25,7 @@ use super::schema::{
     vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type,
     vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
@@ -40,7 +41,6 @@ use super::schema::{
     VANILLA_ABSTRACT_MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID as MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
     VANILLA_ABSTRACT_MINECART_DISPLAY_OFFSET_DATA_ID as MINECART_DISPLAY_OFFSET_DATA_ID,
     VANILLA_BAT_FLAG_RESTING as BAT_FLAG_RESTING, VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
-    VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING,
     VANILLA_FOX_FLAG_FACEPLANTED as FOX_FLAG_FACEPLANTED,
     VANILLA_FOX_FLAG_POUNCING as FOX_FLAG_POUNCING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
@@ -2444,12 +2444,11 @@ impl EntityStore {
         data_values: &[bbb_protocol::packets::EntityDataValue],
         position: super::EntityVec3,
     ) -> Option<super::EndCrystalBeamSource> {
-        if entity_type_id != VANILLA_ENTITY_TYPE_END_CRYSTAL_ID {
-            return None;
-        }
+        let accessors =
+            vanilla_entity_metadata_end_crystal_accessors_for_entity_type(entity_type_id)?;
         let target = data_values
             .iter()
-            .find(|value| value.data_id == END_CRYSTAL_BEAM_TARGET_DATA_ID)
+            .find(|value| value.data_id == accessors.beam_target_data_id)
             .and_then(|value| match &value.value {
                 EntityDataValueKind::OptionalBlockPos(Some(pos)) => Some(pos),
                 _ => None,

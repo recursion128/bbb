@@ -183,6 +183,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Villager unhappy render-state projection must intersect generated renderer assignment with the
   generated `AbstractVillager.DATA_UNHAPPY_COUNTER` accessor; it must not restore a fixed int
   slot/default or confuse Panda's separate `UNHAPPY_COUNTER` with AbstractVillager membership.
+  EndCrystal beam-target/show-bottom membership, wire indices and typed defaults must remain
+  derived together from generated `DATA_BEAM_TARGET` and `DATA_SHOW_BOTTOM`; world beam, native
+  model and debug consumers must not restore fixed accessor/default aliases or a parallel crystal
+  type gate. EnderDragon's nearby-crystal search remains a separate runtime-instance type check.
   Spectator camera post-effect selection must remain generated from
   `GameRenderer.checkEntityPostEffect` pattern arms plus the entity class hierarchy; native debug
   projection must not restore a Creeper/Spider/Enderman type switch or resource-id literals. This

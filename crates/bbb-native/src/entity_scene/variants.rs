@@ -1101,12 +1101,16 @@ pub(super) fn end_crystal_shows_bottom(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id != VANILLA_ENTITY_TYPE_END_CRYSTAL_ID
-        || entity_data_bool(
-            values,
-            END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
-            END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
-        )
+    let Some(accessors) =
+        bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type(entity_type_id)
+    else {
+        return true;
+    };
+    entity_data_bool(
+        values,
+        accessors.show_bottom_data_id,
+        accessors.show_bottom_default,
+    )
 }
 
 pub(super) fn donkey_model_kind(

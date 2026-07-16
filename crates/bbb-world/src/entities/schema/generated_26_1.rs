@@ -21964,6 +21964,46 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_end_crystal_projection_uses_generated_accessors() {
+        let store = include_str!("../store.rs");
+        let beam_body = store
+            .split("fn end_crystal_beam_source")
+            .nth(1)
+            .and_then(|source| source.split("fn ender_dragon_beam_source").next())
+            .expect("end crystal beam projection source");
+        assert!(beam_body.contains("vanilla_entity_metadata_end_crystal_accessors_for_entity_type"));
+        assert!(!beam_body.contains("END_CRYSTAL_BEAM_TARGET_DATA_ID"));
+        assert!(!beam_body.contains("VANILLA_ENTITY_TYPE_END_CRYSTAL_ID"));
+        let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let show_bottom_body = variants
+            .split("fn end_crystal_shows_bottom")
+            .nth(1)
+            .and_then(|source| source.split_once("\n}").map(|(body, _)| body))
+            .expect("end crystal show-bottom projection source");
+        assert!(show_bottom_body
+            .contains("vanilla_entity_metadata_end_crystal_accessors_for_entity_type"));
+        assert!(!show_bottom_body.contains("END_CRYSTAL_SHOW_BOTTOM_DATA_ID"));
+        assert!(!show_bottom_body.contains("END_CRYSTAL_DEFAULT_SHOW_BOTTOM"));
+        assert!(!show_bottom_body.contains("VANILLA_ENTITY_TYPE_END_CRYSTAL_ID"));
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        let debug_body = input
+            .split("fn debug_push_end_crystal_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_ghast_additional_save_data")
+                    .next()
+            })
+            .expect("end crystal debug projection source");
+        assert!(
+            debug_body.contains("vanilla_entity_metadata_end_crystal_accessors_for_entity_type")
+        );
+        assert!(!debug_body.contains("END_CRYSTAL_BEAM_TARGET_DATA_ID"));
+        assert!(!debug_body.contains("END_CRYSTAL_SHOW_BOTTOM_DATA_ID"));
+        assert!(!debug_body.contains("END_CRYSTAL_DEFAULT_SHOW_BOTTOM"));
+    }
+
+    #[test]
     fn production_spellcaster_projection_uses_generated_accessor() {
         let source = include_str!("../store.rs");
         let body = source

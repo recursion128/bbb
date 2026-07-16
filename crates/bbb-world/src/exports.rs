@@ -124,6 +124,11 @@ pub use crate::entities::{
     VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
     VANILLA_SLIME_DEFAULT_SIZE, VANILLA_SLIME_SIZE_DATA_ID,
 };
+pub use crate::entities::{
+    vanilla_entity_metadata_end_crystal_accessors_for_entity_type,
+    VanillaEndCrystalMetadataAccessors, VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID,
+    VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM, VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
+};
 pub use crate::entities::{vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer};
 pub use crate::entities::{
     vanilla_minecart_default_display_offset,
@@ -256,10 +261,6 @@ pub use crate::entities::{
     VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID, VANILLA_ENDER_DRAGON_PHASE_HOVERING_ID,
     VANILLA_ENDER_DRAGON_PHASE_SITTING_ATTACKING_ID, VANILLA_ENDER_DRAGON_PHASE_SITTING_FLAMING_ID,
     VANILLA_ENDER_DRAGON_PHASE_SITTING_SCANNING_ID,
-};
-pub use crate::entities::{
-    VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID, VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM,
-    VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
 pub use crate::entities::{
     VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID,
