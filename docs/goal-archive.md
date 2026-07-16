@@ -16813,3 +16813,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   服务端权威行为；客户端只消费通用 transform/on-ground/in-water state 并投影 renderer。
 - 通用远端 transform/interpolation 与 Turtle model animation 分别留在独立 coverage 格，
   不以本分类掩盖；model 格因 entity shadow radius 尚无消费面继续保持 partial。
+
+## 2026-07-16：Turtle event/particle/audio coverage
+
+- Turtle entity coverage 的 `event/particle/audio` 格由 partial 改为 complete。审计确认
+  digging level event `2001` 已同时覆盖 block-state break sound 公式与
+  block-state-driven destroy particles，egg placement event `2012` 已按 data count 生成
+  `minecraft:happy_villager`。
+- ambient、step、swim、hurt、death 与 lay-egg 的选择和参数由服务端 Turtle 行为决定并经
+  sound packet 下发；客户端通用 sound holder、registry、position/entity、audio resolver
+  链保持 packet 给出的 source、volume、pitch 与 seed，因此不在客户端重演服务端随机选择。

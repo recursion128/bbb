@@ -7717,9 +7717,8 @@
           "status": "partial"
         },
         "event/particle/audio": {
-          "evidence_ref": "entity_event_audit",
-          "gap": "docs/unsupported-features.md#entity-coverage-matrix-events-particles-and-audio",
-          "status": "partial"
+          "evidence_ref": "turtle_event_particle_audio",
+          "status": "complete"
         },
         "metadata/schema": {
           "evidence_ref": "fixed_metadata_schema",
@@ -8972,6 +8971,28 @@
         "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public EntityDimensions getDefaultDimensions",
         "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPickable()",
         "vanilla:net/minecraft/world/entity/LivingEntity.java#public boolean isPushable()"
+      ]
+    },
+    "turtle_event_particle_audio": {
+      "implementation": [
+        "crates/bbb-world/src/client/audio.rs#pub fn apply_sound_event",
+        "crates/bbb-world/src/client/audio.rs#pub fn level_event_block_break_sound",
+        "crates/bbb-native/src/particle_runtime/resolver_block_events.rs#pub(super) fn destroy_block_particle_batch",
+        "crates/bbb-native/src/particle_runtime/resolver_core.rs#pub(super) fn resolve_level_event_particles_with_context",
+        "crates/bbb-protocol/src/sound_event_types.rs#pub const VANILLA_SOUND_EVENT_RESOURCE_IDS"
+      ],
+      "tests": [
+        "crates/bbb-native/src/runtime/events/tests/level_event_block_and_potion_sounds.rs#level_event_2001_emits_vanilla_block_break_sound",
+        "crates/bbb-native/src/particle_runtime/tests.rs#level_event_destroy_block_particles_use_block_particle_options",
+        "crates/bbb-native/src/particle_runtime/tests.rs#level_event_particles_map_vanilla_simple_side_effects",
+        "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#client_audio_events_emit_runtime_commands_for_applied_events"
+      ],
+      "vanilla": [
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#public void aiStep()",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected @Nullable SoundEvent getAmbientSound()",
+        "vanilla:net/minecraft/world/entity/animal/turtle/Turtle.java#protected void playStepSound",
+        "vanilla:net/minecraft/client/renderer/LevelEventHandler.java#public void globalLevelEvent",
+        "vanilla:net/minecraft/server/level/ServerLevel.java#public void playSeededSound"
       ]
     },
     "turtle_server_authoritative_movement": {
