@@ -22474,6 +22474,29 @@ mod generated_catalog_guards {
                 "world audio built-in baby fixture restored {removed}"
             );
         }
+        let world_audio_synchronized_fixture = world_audio_fixture
+            .split("fn synchronized_sound_variant_registry_uses_server_order_and_typed_payload")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split(
+                        "fn synchronized_sound_variant_stubs_use_resource_fallback_in_server_order",
+                    )
+                    .next()
+            })
+            .expect("world audio synchronized baby fixture source");
+        assert_eq!(
+            world_audio_synchronized_fixture
+                .matches("baby_entity_data(")
+                .count(),
+            1
+        );
+        for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
+            assert!(
+                !world_audio_fixture.contains(removed),
+                "world audio baby fixtures restored {removed}"
+            );
+        }
         assert!(native_inventory_fixture
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert!(native_scene_baby_helper

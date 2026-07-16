@@ -2028,11 +2028,7 @@ mod tests {
             store.apply_add_entity(protocol_add_entity_of_type(id, VANILLA_ENTITY_TYPE_CAT_ID));
             let mut values = vec![cat_sound_variant_entity_data(0)];
             if baby {
-                values.push(EntityDataValue {
-                    data_id: crate::entities::VANILLA_AGEABLE_MOB_BABY_DATA_ID,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                    value: EntityDataValueKind::Boolean(true),
-                });
+                values.push(baby_entity_data(VANILLA_ENTITY_TYPE_CAT_ID));
             }
             assert!(store.apply_set_entity_data(SetEntityData { id, values }));
             let sound = store.living_death_sound_for_entity(id, || 0.5).unwrap();

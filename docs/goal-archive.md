@@ -18024,3 +18024,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   AgeableMob baby wire id 16。
 - baby reverse guard 覆盖 helper 与 built-in family 测试；各 registry identity 的 adult/baby
   death sound、volume、pitch 与随机采样顺序回归保持不变。
+
+## 2026-07-16：完成 world animal audio baby fixture 迁移
+
+- synchronized Cat sound-variant registry-order fixture 删除 world audio 最后一处固定 AgeableMob
+  baby wire id 16，按 Cat type 复用 generated nearest-baby helper。
+- baby reverse guard 精确覆盖 synchronized 测试并整文件禁止旧别名回流；服务器 holder 顺序、
+  typed payload、adult/baby custom death sound 与 baby fixed range 回归保持不变。
