@@ -24029,6 +24029,7 @@ mod generated_catalog_guards {
         let input = include_str!("../../../../bbb-native/src/input.rs");
         let combat_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         let mob_debug = input
             .split("fn debug_push_mob_additional_save_data")
             .nth(1)
@@ -24038,7 +24039,26 @@ mod generated_catalog_guards {
                     .next()
             })
             .expect("Mob debug projection source");
-        for source in [store, mob_debug, combat_tests, native_scene_tests] {
+        let native_input_mob_helper = native_input_tests
+            .split("fn mob_flags_data")
+            .nth(1)
+            .and_then(|source| source.split("fn sniffer_baby_data").next())
+            .expect("native input Mob flags helper source");
+        assert!(native_input_mob_helper.contains("entity_type_id(entity_id)"));
+        assert!(native_input_mob_helper.contains("no_ai_mask"));
+        assert!(native_input_mob_helper.contains("left_handed_mask"));
+        assert_eq!(
+            native_input_tests.matches("mob_flags_data(&world").count(),
+            77
+        );
+        for source in [
+            store,
+            input,
+            mob_debug,
+            combat_tests,
+            native_scene_tests,
+            native_input_tests,
+        ] {
             assert!(source.contains("vanilla_entity_metadata_mob_accessors_for_entity_type"));
             for removed in [
                 "VANILLA_MOB_FLAGS_DATA_ID",

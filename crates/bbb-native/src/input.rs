@@ -180,11 +180,6 @@ use bbb_world::{
     VANILLA_GOAT_RIGHT_HORN_DATA_ID as GOAT_RIGHT_HORN_DATA_ID,
     VANILLA_GOAT_SCREAMING_DATA_ID as GOAT_SCREAMING_DATA_ID,
 };
-#[cfg(test)]
-use bbb_world::{
-    VANILLA_MOB_FLAGS_DATA_ID as MOB_FLAGS_DATA_ID,
-    VANILLA_MOB_FLAG_LEFT_HANDED as MOB_FLAG_LEFT_HANDED, VANILLA_MOB_FLAG_NO_AI as MOB_FLAG_NO_AI,
-};
 use tokio::sync::mpsc;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},

@@ -18072,3 +18072,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Piglin/Brute/ZombifiedPiglin 五项测试删除 12 处固定 Mob wire id/mask。
 - Mob reverse guard 纳入整份 native scene tests；held-out arm、Illager attacking、Drowned
   trident、Piglin melee/dancing/admiring precedence 回归保持不变。
+
+## 2026-07-16：完成 native input Mob flags fixture 迁移
+
+- input tests 新增从 `WorldStore::entity_type_id` 获取实际 fixture 类型、查询
+  `VanillaMobMetadataAccessors`、校验默认值并组合 generated no-AI/left-handed masks 的 helper；
+  77 个 Shift+F3+I debug-save payload 删除固定 Mob wire id/masks。
+- 父模块删除仅供测试的旧常量导入；Mob reverse guard 纳入完整 `input.rs` 与 input tests，
+  全实体本地 save NBT、循环 membership dispatch、NoAI/LeftHanded 省略规则回归保持不变。

@@ -320,6 +320,32 @@ fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
     }
 }
 
+fn mob_flags_data(
+    world: &WorldStore,
+    entity_id: i32,
+    no_ai: bool,
+    left_handed: bool,
+) -> ProtocolEntityDataValue {
+    let entity_type_id = world
+        .entity_type_id(entity_id)
+        .expect("Mob fixture entity must exist before metadata is constructed");
+    let accessors = vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
+        .expect("generated inherited Mob metadata accessors must resolve");
+    assert_eq!(accessors.flags_default, 0);
+    let flags = if no_ai { accessors.no_ai_mask } else { 0 }
+        | if left_handed {
+            accessors.left_handed_mask
+        } else {
+            0
+        };
+    ProtocolEntityDataValue {
+        data_id: accessors.flags_data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(flags),
+    }
+}
+
 fn sniffer_baby_data(is_baby: bool) -> ProtocolEntityDataValue {
     let (data_id, _) =
         vanilla_entity_metadata_baby_accessor_for_entity_type(VANILLA_ENTITY_TYPE_SNIFFER_ID)
@@ -3324,11 +3350,7 @@ fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(42),
             },
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, true, true),
             ProtocolEntityDataValue {
                 data_id: accessors.powered_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -3491,11 +3513,7 @@ fn shift_f3_i_with_permission_copies_local_creaking_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             ProtocolEntityDataValue {
                 data_id: creaking_home_pos_data_id(),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
@@ -3576,11 +3594,7 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             ProtocolEntityDataValue {
                 data_id: accessors.attach_face_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
@@ -3674,11 +3688,7 @@ fn shift_f3_i_with_permission_copies_local_slime_family_save_nbt_to_clipboard() 
         assert!(world.apply_set_entity_data(ProtocolSetEntityData {
             id: 50,
             values: vec![
-                ProtocolEntityDataValue {
-                    data_id: MOB_FLAGS_DATA_ID,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-                },
+                mob_flags_data(&world, 50, false, true),
                 slime_size_data(entity_type_id, 4),
             ],
         }));
@@ -3755,12 +3765,7 @@ fn shift_f3_i_with_permission_copies_local_snow_golem_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             ProtocolEntityDataValue {
                 data_id: pumpkin_data_id,
                 serializer_id:
@@ -3837,12 +3842,7 @@ fn shift_f3_i_with_permission_copies_local_bat_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             ProtocolEntityDataValue {
                 data_id: BAT_FLAGS_DATA_ID,
                 serializer_id:
@@ -3919,11 +3919,7 @@ fn shift_f3_i_with_permission_copies_local_armadillo_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4005,11 +4001,7 @@ fn shift_f3_i_with_permission_copies_local_copper_golem_save_nbt_to_clipboard() 
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, true, true),
             ProtocolEntityDataValue {
                 data_id: accessors.weather_state_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
@@ -4093,11 +4085,7 @@ fn shift_f3_i_with_permission_copies_local_bee_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4186,12 +4174,7 @@ fn shift_f3_i_with_permission_copies_local_blaze_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -4260,12 +4243,7 @@ fn shift_f3_i_with_permission_copies_local_breeze_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -4335,11 +4313,7 @@ fn shift_f3_i_with_permission_copies_local_cod_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 52,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 52, true, true),
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4415,11 +4389,7 @@ fn shift_f3_i_with_permission_copies_local_pufferfish_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 53,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 53, true, true),
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4497,11 +4467,7 @@ fn shift_f3_i_with_permission_copies_local_salmon_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 54,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 54, true, true),
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4579,11 +4545,7 @@ fn shift_f3_i_with_permission_copies_local_tropical_fish_save_nbt_to_clipboard()
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 55,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 55, true, true),
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4661,11 +4623,7 @@ fn shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4749,11 +4707,7 @@ fn shift_f3_i_with_permission_copies_local_tadpole_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 56,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 56, true, true),
             ProtocolEntityDataValue {
                 data_id: TADPOLE_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -4830,11 +4784,7 @@ fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 57,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 57, true, true),
             baby_data(VANILLA_ENTITY_TYPE_AXOLOTL_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -4918,11 +4868,7 @@ fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 88,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 88, true, true),
             baby_data(VANILLA_ENTITY_TYPE_NAUTILUS_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -5014,11 +4960,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 89,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 89, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -5131,11 +5073,7 @@ fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 66,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 66, true, true),
             baby_data(VANILLA_ENTITY_TYPE_DOLPHIN_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -5235,11 +5173,7 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 67,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 67, true, true),
             baby_data(VANILLA_ENTITY_TYPE_FROG_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -5345,11 +5279,7 @@ fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 58,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 58, true, true),
             baby_data(VANILLA_ENTITY_TYPE_RABBIT_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -5428,11 +5358,7 @@ fn shift_f3_i_with_permission_copies_local_ocelot_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 59,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 59, true, true),
             baby_data(VANILLA_ENTITY_TYPE_OCELOT_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -5515,11 +5441,7 @@ fn shift_f3_i_with_permission_copies_local_sheep_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 60,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 60, true, true),
             baby_data(VANILLA_ENTITY_TYPE_SHEEP_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -5616,11 +5538,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 61,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 61, true, true),
             baby_data(VANILLA_ENTITY_TYPE_PIG_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -5796,11 +5714,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 62,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 62, true, true),
             baby_data(VANILLA_ENTITY_TYPE_CHICKEN_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -5941,11 +5855,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 63,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 63, true, true),
             baby_data(VANILLA_ENTITY_TYPE_COW_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6075,11 +5985,7 @@ fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 64,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 64, true, true),
             baby_data(VANILLA_ENTITY_TYPE_MOOSHROOM_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6158,11 +6064,7 @@ fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 65,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 65, true, true),
             baby_data(VANILLA_ENTITY_TYPE_GOAT_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6261,11 +6163,7 @@ fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 68,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 68, true, true),
             baby_data(VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6351,11 +6249,7 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 69,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 69, true, true),
             baby_data(VANILLA_ENTITY_TYPE_PANDA_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6463,11 +6357,7 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 71,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 71, true, true),
             baby_data(VANILLA_ENTITY_TYPE_PARROT_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6549,11 +6439,7 @@ fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 71,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 71, true, true),
             allay_dancing_data(true),
             ProtocolEntityDataValue {
                 data_id: ALLAY_CAN_DUPLICATE_DATA_ID,
@@ -6630,11 +6516,7 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 70, true, true),
             sniffer_baby_data(true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6720,11 +6602,7 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 72,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 72, true, true),
             baby_data(VANILLA_ENTITY_TYPE_STRIDER_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6812,11 +6690,7 @@ fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 73,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 73, true, true),
             baby_data(VANILLA_ENTITY_TYPE_HOGLIN_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -6901,11 +6775,7 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 76,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 76, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -7008,11 +6878,7 @@ fn shift_f3_i_with_permission_copies_local_camel_family_save_nbt_to_clipboard() 
         assert!(world.apply_set_entity_data(ProtocolSetEntityData {
             id: 79,
             values: vec![
-                ProtocolEntityDataValue {
-                    data_id: MOB_FLAGS_DATA_ID,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-                },
+                mob_flags_data(&world, 79, true, true),
                 ProtocolEntityDataValue {
                     data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -7127,11 +6993,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 85,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 85, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -7283,11 +7145,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 86,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 86, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -7425,11 +7283,7 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 87,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 87, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -7539,12 +7393,7 @@ fn debug_save_data_abstract_chested_horse_class_dispatch_uses_generated_membersh
             data: 0,
         });
         let mut values = vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 81, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id:
@@ -7631,11 +7480,7 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 81,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 81, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -7724,11 +7569,7 @@ fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 82,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 82, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -7812,11 +7653,7 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 83,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 83, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -7916,11 +7753,7 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 84,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 84, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -8015,11 +7848,7 @@ fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard(
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 77,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 77, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -8103,11 +7932,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_horse_save_nbt_to_clipboard() 
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 78,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 78, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -8190,11 +8015,7 @@ fn shift_f3_i_with_permission_copies_local_piglin_brute_save_nbt_to_clipboard() 
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 74,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 74, true, true),
             ProtocolEntityDataValue {
                 data_id: zombification_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -8271,11 +8092,7 @@ fn shift_f3_i_with_permission_copies_local_piglin_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 75,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 75, true, true),
             ProtocolEntityDataValue {
                 data_id: zombification_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -8361,12 +8178,7 @@ fn shift_f3_i_with_permission_copies_local_spider_family_save_nbt_to_clipboard()
         });
         assert!(world.apply_set_entity_data(ProtocolSetEntityData {
             id: 50,
-            values: vec![ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            }],
+            values: vec![mob_flags_data(&world, 50, true, true)],
         }));
         world.set_local_player_pose(LocalPlayerPoseState {
             position: ProtocolVec3d {
@@ -8434,12 +8246,7 @@ fn shift_f3_i_with_permission_copies_local_skeleton_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 55,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 55, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -8516,12 +8323,7 @@ fn shift_f3_i_with_permission_copies_local_nonconverting_skeleton_family_save_nb
         });
         assert!(world.apply_set_entity_data(ProtocolSetEntityData {
             id: 56,
-            values: vec![ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            }],
+            values: vec![mob_flags_data(&world, 56, true, true)],
         }));
         world.set_local_player_pose(LocalPlayerPoseState {
             position: ProtocolVec3d {
@@ -8597,11 +8399,7 @@ fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard()
         assert!(world.apply_set_entity_data(ProtocolSetEntityData {
             id: 57,
             values: vec![
-                ProtocolEntityDataValue {
-                    data_id: MOB_FLAGS_DATA_ID,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-                },
+                mob_flags_data(&world, 57, true, true),
                 ProtocolEntityDataValue {
                     data_id: accessors.baby_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -8681,11 +8479,7 @@ fn shift_f3_i_with_permission_copies_local_zombified_piglin_save_nbt_to_clipboar
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 58,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 58, true, true),
             ProtocolEntityDataValue {
                 data_id: accessors.baby_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -8762,12 +8556,7 @@ fn shift_f3_i_with_permission_copies_local_bogged_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             bogged_sheared_data(true),
         ],
     }));
@@ -12713,12 +12502,7 @@ fn shift_f3_i_with_permission_copies_local_endermite_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -12787,12 +12571,7 @@ fn shift_f3_i_with_permission_copies_local_enderman_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -12861,12 +12640,7 @@ fn shift_f3_i_with_permission_copies_local_silverfish_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -12942,12 +12716,7 @@ fn shift_f3_i_with_permission_copies_local_guardian_family_save_nbt_to_clipboard
         });
         assert!(world.apply_set_entity_data(ProtocolSetEntityData {
             id: 50,
-            values: vec![ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            }],
+            values: vec![mob_flags_data(&world, 50, true, true)],
         }));
         world.set_local_player_pose(LocalPlayerPoseState {
             position: ProtocolVec3d {
@@ -13021,11 +12790,7 @@ fn shift_f3_i_with_permission_copies_local_happy_ghast_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -13101,12 +12866,7 @@ fn shift_f3_i_with_permission_copies_local_ghast_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, false, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -13175,12 +12935,7 @@ fn shift_f3_i_with_permission_copies_local_giant_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -13250,11 +13005,7 @@ fn shift_f3_i_with_permission_copies_local_glow_squid_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, true, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -13336,11 +13087,7 @@ fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 51,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 51, true, true),
             baby_data(VANILLA_ENTITY_TYPE_SQUID_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -13508,12 +13255,7 @@ fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             iron_golem_flags_data(IRON_GOLEM_PLAYER_CREATED_FLAG),
         ],
     }));
@@ -13585,12 +13327,7 @@ fn shift_f3_i_with_permission_copies_local_phantom_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             phantom_size_data(5),
         ],
     }));
@@ -13661,12 +13398,7 @@ fn shift_f3_i_with_permission_copies_local_ravager_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, false, true)],
     }));
     assert!(world.apply_entity_event(ProtocolEntityEvent {
         entity_id: 50,
@@ -13743,12 +13475,7 @@ fn shift_f3_i_with_permission_copies_local_pillager_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 51,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 51, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -13818,11 +13545,7 @@ fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboar
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 52,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 52, true, true),
             baby_data(VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, true),
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
@@ -13902,11 +13625,7 @@ fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 51,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 51, true, true),
             ProtocolEntityDataValue {
                 data_id: WITCH_USING_ITEM_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -13990,11 +13709,7 @@ fn shift_f3_i_with_permission_copies_local_spellcaster_illager_save_nbt_to_clipb
         assert!(world.apply_set_entity_data(ProtocolSetEntityData {
             id: entity_id,
             values: vec![
-                ProtocolEntityDataValue {
-                    data_id: MOB_FLAGS_DATA_ID,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-                },
+                mob_flags_data(&world, entity_id, true, true),
                 ProtocolEntityDataValue {
                     data_id: spellcaster_casting_data_id(entity_type_id),
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
@@ -14069,11 +13784,7 @@ fn shift_f3_i_with_permission_copies_local_vindicator_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 54,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 54, true, true),
             ProtocolEntityDataValue {
                 data_id: raider_celebrating_data_id(VANILLA_ENTITY_TYPE_VINDICATOR_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
@@ -14148,12 +13859,7 @@ fn shift_f3_i_with_permission_copies_local_vex_save_nbt_to_clipboard() {
     });
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
-        values: vec![ProtocolEntityDataValue {
-            data_id: MOB_FLAGS_DATA_ID,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
-        }],
+        values: vec![mob_flags_data(&world, 50, true, true)],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {
         position: ProtocolVec3d {
@@ -14223,12 +13929,7 @@ fn shift_f3_i_with_permission_copies_local_wither_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             ProtocolEntityDataValue {
                 data_id: WITHER_INVULNERABLE_TICKS_DATA_ID,
                 serializer_id:
@@ -14305,11 +14006,7 @@ fn shift_f3_i_with_permission_copies_local_zoglin_save_nbt_to_clipboard() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 50,
         values: vec![
-            ProtocolEntityDataValue {
-                data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
-            },
+            mob_flags_data(&world, 50, false, true),
             ProtocolEntityDataValue {
                 data_id: ZOGLIN_BABY_DATA_ID,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
