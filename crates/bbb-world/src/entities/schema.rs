@@ -1663,6 +1663,26 @@ pub fn vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_typ
     }
 }
 
+/// Resolves the generated Ocelot trusting accessor and its typed default.
+pub fn vanilla_entity_metadata_ocelot_trusting_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_TRUSTING")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.animal.feline.Ocelot",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Fox variant accessor and its typed default.
 pub fn vanilla_entity_metadata_fox_variant_accessor_for_entity_type(
     entity_type_id: i32,
@@ -5957,6 +5977,35 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_metadata_abstract_fish_from_bucket_accessor_for_entity_type(-1),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_ocelot_trusting_accessor_owns_membership_index_and_default() {
+        let ocelot = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Ocelot);
+        let trusting = ocelot
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_TRUSTING")
+            .expect("generated Ocelot trusting field");
+        let VanillaEntityMetadataDefault::Boolean(default) = trusting.default else {
+            panic!("generated Ocelot trusting default must be BOOLEAN");
+        };
+        assert_eq!(
+            vanilla_entity_metadata_ocelot_trusting_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_OCELOT_ID
+            ),
+            Some((trusting.data_id, default))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_ocelot_trusting_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CAT_ID
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_ocelot_trusting_accessor_for_entity_type(-1),
             None
         );
     }

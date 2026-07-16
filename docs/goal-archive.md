@@ -18216,3 +18216,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   覆盖 Cod/Pufferfish/Salmon/TropicalFish/Tadpole，并以 Axolotl 作为 sibling-family 负例。
 - native F3+I production 与四个鱼类 fixtures 删除固定 wire id/default aliases；generator guard
   覆盖 input facade 与完整 tests，继续保持两个 from-bucket owner 分离。
+
+## 2026-07-16：派生 Ocelot trusting metadata
+
+- world schema 新增 Ocelot-only `DATA_TRUSTING` BOOLEAN/default `false` typed accessor，并以 Cat
+  作为 feline sibling 负例；native F3+I production 与 fixture 删除固定 wire id/default aliases。
+- generator reverse guard 覆盖 native input facade 与完整 tests，禁止 fixed accessor/default
+  aliases 或平行 feline membership 回流。

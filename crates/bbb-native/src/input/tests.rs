@@ -303,6 +303,20 @@ fn abstract_fish_from_bucket_data(
     }
 }
 
+fn ocelot_trusting_data(trusting: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) = vanilla_entity_metadata_ocelot_trusting_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_OCELOT_ID,
+    )
+    .expect("generated Ocelot trusting accessor must resolve");
+    assert!(!default);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(trusting),
+    }
+}
+
 fn mushroom_cow_variant_data(variant: i32) -> ProtocolEntityDataValue {
     let (data_id, _) = vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
@@ -5527,11 +5541,7 @@ fn shift_f3_i_with_permission_copies_local_ocelot_save_nbt_to_clipboard() {
             mob_flags_data(&world, 59, true, true),
             baby_data(VANILLA_ENTITY_TYPE_OCELOT_ID, true),
             age_locked_data(&world, 59, true),
-            ProtocolEntityDataValue {
-                data_id: OCELOT_TRUSTING_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            ocelot_trusting_data(true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

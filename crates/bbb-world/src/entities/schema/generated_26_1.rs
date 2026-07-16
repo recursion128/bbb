@@ -25585,6 +25585,28 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn ocelot_trusting_consumers_do_not_restore_accessor_constants() {
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [native_input, native_input_tests] {
+            assert!(
+                source.contains("vanilla_entity_metadata_ocelot_trusting_accessor_for_entity_type")
+            );
+            for removed in [
+                "OCELOT_TRUSTING_DATA_ID",
+                "OCELOT_DEFAULT_TRUSTING",
+                "VANILLA_OCELOT_TRUSTING_DATA_ID",
+                "VANILLA_OCELOT_DEFAULT_TRUSTING",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Ocelot trusting projection restored {removed}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn mushroom_cow_variant_consumers_do_not_restore_accessor_constants() {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");

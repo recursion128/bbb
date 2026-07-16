@@ -103,6 +103,7 @@ use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type
 use bbb_world::vanilla_entity_metadata_llama_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_ocelot_trusting_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_phantom_size_accessor_for_entity_type;
@@ -137,8 +138,6 @@ use bbb_world::{
     vanilla_painting_variant_resource_id,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
     VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
-    VANILLA_OCELOT_DEFAULT_TRUSTING as OCELOT_DEFAULT_TRUSTING,
-    VANILLA_OCELOT_TRUSTING_DATA_ID as OCELOT_TRUSTING_DATA_ID,
     VANILLA_ZOGLIN_BABY_DATA_ID as ZOGLIN_BABY_DATA_ID,
     VANILLA_ZOGLIN_DEFAULT_BABY as ZOGLIN_DEFAULT_BABY,
 };
@@ -7632,8 +7631,12 @@ fn debug_push_neutral_mob_additional_save_data_with_end_time(
 }
 
 fn debug_push_ocelot_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let trusting = debug_entity_data_bool_present(entity, OCELOT_TRUSTING_DATA_ID)
-        .unwrap_or(OCELOT_DEFAULT_TRUSTING);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_ocelot_trusting_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    let trusting = debug_entity_data_bool_present(entity, data_id).unwrap_or(default);
     fields.push(format!("Trusting: {}", debug_snbt_bool(trusting)));
 }
 
