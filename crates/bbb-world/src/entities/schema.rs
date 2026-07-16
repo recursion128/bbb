@@ -466,13 +466,13 @@ pub struct VanillaAbstractBoatMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct VanillaVehicleMetadataAccessors {
-    pub(crate) hurt_time_data_id: u8,
-    pub(crate) hurt_time_default: i32,
-    pub(crate) hurt_dir_data_id: u8,
-    pub(crate) hurt_dir_default: i32,
-    pub(crate) damage_data_id: u8,
-    pub(crate) damage_default: f32,
+pub struct VanillaVehicleMetadataAccessors {
+    pub hurt_time_data_id: u8,
+    pub hurt_time_default: i32,
+    pub hurt_dir_data_id: u8,
+    pub hurt_dir_default: i32,
+    pub damage_data_id: u8,
+    pub damage_default: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -2203,7 +2203,7 @@ pub fn vanilla_entity_metadata_abstract_boat_accessors_for_entity_type(
 }
 
 /// Resolves the inherited VehicleEntity hurt-roll accessors with typed defaults.
-pub(crate) fn vanilla_entity_metadata_vehicle_accessors_for_entity_type(
+pub fn vanilla_entity_metadata_vehicle_accessors_for_entity_type(
     entity_type_id: i32,
 ) -> Option<VanillaVehicleMetadataAccessors> {
     let hurt_time =
@@ -6247,12 +6247,12 @@ mod tests {
     #[test]
     fn generated_vehicle_accessors_own_inherited_membership_indices_and_defaults() {
         let expected = VanillaVehicleMetadataAccessors {
-            hurt_time_data_id: 8,
-            hurt_time_default: 0,
-            hurt_dir_data_id: 9,
-            hurt_dir_default: 1,
-            damage_data_id: 10,
-            damage_default: 0.0,
+            hurt_time_data_id: VANILLA_VEHICLE_HURT_TIME_DATA_ID,
+            hurt_time_default: VANILLA_VEHICLE_DEFAULT_HURT_TIME,
+            hurt_dir_data_id: VANILLA_VEHICLE_HURT_DIR_DATA_ID,
+            hurt_dir_default: VANILLA_VEHICLE_DEFAULT_HURT_DIR,
+            damage_data_id: VANILLA_VEHICLE_DAMAGE_DATA_ID,
+            damage_default: VANILLA_VEHICLE_DEFAULT_DAMAGE,
         };
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_OAK_BOAT_ID,

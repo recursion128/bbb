@@ -23815,9 +23815,13 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_vehicle_accessors_do_not_restore_fixed_metadata_facts() {
+    fn vehicle_consumers_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
-        assert!(animations.contains("vanilla_entity_metadata_vehicle_accessors_for_entity_type"));
+        let vehicle_tests = include_str!("../tests/vehicle_and_block_entity_projection.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        for source in [animations, vehicle_tests, native_scene_tests] {
+            assert!(source.contains("vanilla_entity_metadata_vehicle_accessors_for_entity_type"));
+        }
         for removed in [
             "VEHICLE_HURT_TIME_DATA_ID",
             "VEHICLE_DEFAULT_HURT_TIME",
@@ -23826,10 +23830,12 @@ mod generated_catalog_guards {
             "VEHICLE_DAMAGE_DATA_ID",
             "VEHICLE_DEFAULT_DAMAGE",
         ] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
+            for source in [animations, vehicle_tests, native_scene_tests] {
+                assert!(
+                    !source.contains(removed),
+                    "VehicleEntity projection restored {removed}"
+                );
+            }
         }
         let entities = include_str!("../../entities.rs");
         assert!(entities.contains("vanilla_entity_metadata_vehicle_accessors_for_entity_type"));

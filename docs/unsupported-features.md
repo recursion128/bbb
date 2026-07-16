@@ -323,8 +323,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   metadata aliases or hand-written wire indices.
   VehicleEntity hurt-time, hurt-direction and damage membership, inherited wire indices and typed
   defaults must remain derived from generated `DATA_ID_HURT`, `DATA_ID_HURTDIR` and
-  `DATA_ID_DAMAGE`; vehicle animation and event dispatch must not restore fixed metadata aliases or
-  a parallel boat/minecart membership union.
+  `DATA_ID_DAMAGE`; vehicle animation, event dispatch and world/native fixtures must not restore
+  fixed metadata aliases, hand-written wire indices or a parallel boat/minecart membership union.
   Creeper swell-direction, powered and ignited membership, wire indices and typed defaults must
   remain derived together from generated `DATA_SWELL_DIR`, `DATA_IS_POWERED` and
   `DATA_IS_IGNITED`; world animation plus native model/debug consumers must not restore fixed

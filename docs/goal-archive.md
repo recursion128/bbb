@@ -17247,3 +17247,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   rowing/bubble/damage 与 native render-state fixtures 不再维护 11/12/13 wire index aliases。
 - schema expected bundle 改由 generated constants 组装；generator 反向守卫覆盖 production
   animation 以及 world/native 语义 fixtures。
+
+## 2026-07-16：派生 VehicleEntity metadata fixtures
+
+- VehicleEntity hurt-time、hurt-direction 与 damage bundle 提升为公开 typed accessor；world
+  boat/minecart damage、hurt-event 与 native render-state fixtures 不再维护 8/9/10 wire index
+  aliases，而是按实际 Oak Boat 或 Minecart entity type 解析父类 bundle。
+- schema expected bundle 改由 generated constants 组装；generator 反向守卫覆盖 production
+  animation 以及 world/native 语义 fixtures，既有 hurt-roll 行为保持不变。

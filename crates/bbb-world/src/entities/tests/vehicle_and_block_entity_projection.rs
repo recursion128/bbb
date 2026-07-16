@@ -5,6 +5,11 @@ fn abstract_boat_metadata_accessors() -> VanillaAbstractBoatMetadataAccessors {
         .expect("generated AbstractBoat metadata accessors must resolve")
 }
 
+fn vehicle_metadata_accessors(entity_type_id: i32) -> VanillaVehicleMetadataAccessors {
+    vanilla_entity_metadata_vehicle_accessors_for_entity_type(entity_type_id)
+        .expect("generated VehicleEntity metadata accessors must resolve")
+}
+
 #[test]
 fn entity_model_sources_project_narrow_render_state_from_model_targets() {
     const AGEABLE_BABY_DATA_ID: u8 = 16;
@@ -153,10 +158,8 @@ fn entity_model_sources_project_boat_rowing_times_from_paddles_and_passengers() 
 
 #[test]
 fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
-    const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
-    const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
-    const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
     let boat_accessors = abstract_boat_metadata_accessors();
+    let vehicle_accessors = vehicle_metadata_accessors(VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
 
     let assert_close = |actual: f32, expected: f32, label: &str| {
         assert!(
@@ -185,9 +188,9 @@ fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 21,
         values: vec![
-            protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 10),
-            protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, -1),
-            protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
+            protocol_int_data(vehicle_accessors.hurt_time_data_id, 10),
+            protocol_int_data(vehicle_accessors.hurt_dir_data_id, -1),
+            protocol_float_data(vehicle_accessors.damage_data_id, 20.0),
         ],
     }));
 
@@ -221,9 +224,7 @@ fn entity_model_sources_project_boat_damage_roll_from_vehicle_metadata() {
 
 #[test]
 fn entity_model_sources_project_minecart_damage_roll_from_vehicle_metadata() {
-    const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
-    const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
-    const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
+    let accessors = vehicle_metadata_accessors(VANILLA_ENTITY_TYPE_MINECART_ID);
 
     let damage = |store: &WorldStore, partial_tick: f32| -> (f32, i32, f32) {
         let source = store
@@ -246,9 +247,9 @@ fn entity_model_sources_project_minecart_damage_roll_from_vehicle_metadata() {
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 22,
         values: vec![
-            protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 10),
-            protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, -1),
-            protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
+            protocol_int_data(accessors.hurt_time_data_id, 10),
+            protocol_int_data(accessors.hurt_dir_data_id, -1),
+            protocol_float_data(accessors.damage_data_id, 20.0),
         ],
     }));
 
@@ -261,22 +262,19 @@ fn entity_model_sources_project_minecart_damage_roll_from_vehicle_metadata() {
 
 #[test]
 fn hurt_animation_dispatches_to_boat_and_minecart_vehicle_wobble() {
-    const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
-    const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
-    const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
-
     let mut store = WorldStore::new();
     for (id, entity_type_id) in [
         (23, VANILLA_ENTITY_TYPE_OAK_BOAT_ID),
         (24, VANILLA_ENTITY_TYPE_MINECART_ID),
     ] {
+        let accessors = vehicle_metadata_accessors(entity_type_id);
         store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id,
             values: vec![
-                protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 2),
-                protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, 1),
-                protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 2.0),
+                protocol_int_data(accessors.hurt_time_data_id, 2),
+                protocol_int_data(accessors.hurt_dir_data_id, 1),
+                protocol_float_data(accessors.damage_data_id, 2.0),
             ],
         }));
         assert!(store.apply_hurt_animation(ProtocolHurtAnimation { id, yaw: 45.0 }));

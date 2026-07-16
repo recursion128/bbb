@@ -78,6 +78,7 @@ pub use schema::VanillaShulkerMetadataAccessors;
 pub use schema::VanillaTamableAnimalMetadataAccessors;
 pub use schema::VanillaThrownTridentMetadataAccessors;
 pub use schema::VanillaTurtleMetadataAccessors;
+pub use schema::VanillaVehicleMetadataAccessors;
 pub use schema::VanillaZombieMetadataAccessors;
 pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
@@ -158,6 +159,7 @@ pub use schema::{
     vanilla_entity_metadata_type_is_guardian, vanilla_entity_metadata_type_is_leashable,
     vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
+    vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_villager_data_accessor_for_entity_type,
     vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,

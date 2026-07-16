@@ -53,6 +53,11 @@ fn abstract_boat_metadata_accessors() -> bbb_world::VanillaAbstractBoatMetadataA
     .expect("generated AbstractBoat metadata accessors must resolve")
 }
 
+fn vehicle_metadata_accessors(entity_type_id: i32) -> bbb_world::VanillaVehicleMetadataAccessors {
+    bbb_world::vanilla_entity_metadata_vehicle_accessors_for_entity_type(entity_type_id)
+        .expect("generated VehicleEntity metadata accessors must resolve")
+}
+
 fn armor_stand_default_model_pose() -> ArmorStandModelPose {
     let accessors = armor_stand_metadata_accessors();
     ArmorStandModelPose {
@@ -1550,11 +1555,9 @@ fn entity_model_instances_project_auto_spin_attack() {
 
 #[test]
 fn entity_model_instances_project_boat_rowing_and_damage_times() {
-    const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
-    const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
-    const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
     const ADVANCE: f32 = std::f32::consts::PI / 8.0;
     let boat_accessors = abstract_boat_metadata_accessors();
+    let vehicle_accessors = vehicle_metadata_accessors(VANILLA_ENTITY_TYPE_OAK_BOAT_ID);
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -1574,9 +1577,9 @@ fn entity_model_instances_project_boat_rowing_and_damage_times() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 90,
         values: vec![
-            protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 10),
-            protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, -1),
-            protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
+            protocol_int_data(vehicle_accessors.hurt_time_data_id, 10),
+            protocol_int_data(vehicle_accessors.hurt_dir_data_id, -1),
+            protocol_float_data(vehicle_accessors.damage_data_id, 20.0),
             protocol_bool_data(boat_accessors.paddle_left_data_id, true),
             protocol_bool_data(boat_accessors.paddle_right_data_id, true),
             protocol_int_data(boat_accessors.bubble_time_data_id, 60),
@@ -1604,9 +1607,7 @@ fn entity_model_instances_project_boat_rowing_and_damage_times() {
 
 #[test]
 fn entity_model_instances_project_minecart_damage_times() {
-    const VEHICLE_HURT_TIME_DATA_ID: u8 = 8;
-    const VEHICLE_HURT_DIR_DATA_ID: u8 = 9;
-    const VEHICLE_DAMAGE_DATA_ID: u8 = 10;
+    let accessors = vehicle_metadata_accessors(VANILLA_ENTITY_TYPE_MINECART_ID);
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -1617,9 +1618,9 @@ fn entity_model_instances_project_minecart_damage_times() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 93,
         values: vec![
-            protocol_int_data(VEHICLE_HURT_TIME_DATA_ID, 10),
-            protocol_int_data(VEHICLE_HURT_DIR_DATA_ID, -1),
-            protocol_float_data(VEHICLE_DAMAGE_DATA_ID, 20.0),
+            protocol_int_data(accessors.hurt_time_data_id, 10),
+            protocol_int_data(accessors.hurt_dir_data_id, -1),
+            protocol_float_data(accessors.damage_data_id, 20.0),
         ],
     }));
 
