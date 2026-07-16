@@ -17939,3 +17939,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `state.isBaby` 选择 baby texture/model 的行为一致。
 - baby reverse guard 精确覆盖该测试；PolarBear/Panda adult/baby model 与 Panda 默认 gene
   variant 回归保持不变。
+
+## 2026-07-16：统一 native Villager/WanderingTrader baby fixtures
+
+- Villager 与 WanderingTrader model-kind fixtures 删除 2 处全局 AgeableMob baby alias，按各自
+  type 查询 generated nearest-baby helper；vanilla `AbstractVillager` 继承 AgeableMob，而
+  WanderingTrader renderer 不以 baby state 切换 model。
+- baby reverse guard 精确覆盖该测试；Villager adult/baby 与 WanderingTrader 忽略 baby metadata
+  的模型选择回归保持不变。

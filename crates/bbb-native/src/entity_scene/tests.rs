@@ -9611,7 +9611,7 @@ fn entity_model_kind_uses_exact_models_for_villagers() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_VILLAGER_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_VILLAGER_ID, true)]
         ),
         EntityModelKind::Villager { baby: true }
     );
@@ -9622,7 +9622,7 @@ fn entity_model_kind_uses_exact_models_for_villagers() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-            &[protocol_bool_data(AGEABLE_MOB_BABY_DATA_ID, true)]
+            &[baby_data(VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, true)]
         ),
         EntityModelKind::WanderingTrader
     );
