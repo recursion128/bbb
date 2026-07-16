@@ -17125,3 +17125,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   ready-texture 与 F3+I save-debug 不再维护固定 accessor/default aliases。
 - native scene/input/variant-texture fixtures 同步复用该 accessor；schema generator 新增跨
   consumer 反向守卫，同时保留 session registry holder 重排与 typed presentation 解析行为。
+
+## 2026-07-16：派生 Frog variant metadata accessor
+
+- Frog variant holder 的 metadata membership、serializer、wire index 与 registry-resource
+  virtual default 统一由 generated schema accessor 提供；native model、ready-texture 与 F3+I
+  save-debug 不再维护固定 accessor/default aliases。
+- native scene/input/variant-texture fixtures 同步复用该 accessor；schema generator 新增跨
+  consumer 反向守卫，并保持 tongue-target optional entity-reference 行为为独立后续缺口。

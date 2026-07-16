@@ -91,6 +91,7 @@ use bbb_world::vanilla_entity_metadata_entity_accessors;
 use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_frog_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_horse_variant_accessor_for_entity_type;
@@ -212,10 +213,6 @@ use bbb_world::{
     VANILLA_FOX_FLAG_SLEEPING as FOX_FLAG_SLEEPING,
     VANILLA_FOX_TRUSTED_DATA_ID_0 as FOX_TRUSTED_DATA_ID_0,
     VANILLA_FOX_TRUSTED_DATA_ID_1 as FOX_TRUSTED_DATA_ID_1,
-};
-use bbb_world::{
-    VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_FROG_VARIANT_DATA_ID as FROG_VARIANT_DATA_ID,
 };
 #[cfg(test)]
 use bbb_world::{
@@ -7370,9 +7367,14 @@ fn debug_push_frog_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    let Some((variant_data_id, variant_default_resource_id)) =
+        vanilla_entity_metadata_frog_variant_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
     let variant = debug_entity_data_registry_id_present(
         entity,
-        FROG_VARIANT_DATA_ID,
+        variant_data_id,
         EntityDataRegistryHolder::FrogVariant,
     )
     .and_then(|id| {
@@ -7380,7 +7382,7 @@ fn debug_push_frog_additional_save_data(
             FrogModelVariant::for_vanilla_registry_id(id).map(FrogModelVariant::resource_id)
         })
     })
-    .unwrap_or(FROG_DEFAULT_VARIANT_RESOURCE_ID);
+    .unwrap_or(variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
 }
 

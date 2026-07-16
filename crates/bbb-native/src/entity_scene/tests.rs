@@ -11596,8 +11596,11 @@ fn protocol_zombie_nautilus_variant_data(id: i32) -> EntityDataValue {
 
 fn protocol_frog_variant_data(id: i32) -> EntityDataValue {
     // Vanilla `EntityDataSerializers.FROG_VARIANT` is serializer id 27.
+    let (data_id, _) =
+        vanilla_entity_metadata_frog_variant_accessor_for_entity_type(VANILLA_ENTITY_TYPE_FROG_ID)
+            .expect("generated Frog variant metadata accessor must resolve");
     EntityDataValue {
-        data_id: FROG_VARIANT_DATA_ID,
+        data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
         value: EntityDataValueKind::RegistryId {
             serializer: EntityDataRegistryHolder::FrogVariant,

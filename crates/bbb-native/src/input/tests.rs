@@ -4970,6 +4970,9 @@ fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
 fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let (frog_variant_data_id, _) =
+        vanilla_entity_metadata_frog_variant_accessor_for_entity_type(VANILLA_ENTITY_TYPE_FROG_ID)
+            .expect("generated Frog variant metadata accessor must resolve");
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
         "minecraft:frog_variant",
@@ -5014,7 +5017,7 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
-                data_id: FROG_VARIANT_DATA_ID,
+                data_id: frog_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::FrogVariant,

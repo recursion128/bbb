@@ -479,9 +479,11 @@ pub(super) fn ready_frog_variant_texture(
     {
         return None;
     }
+    let (variant_data_id, _) =
+        vanilla_entity_metadata_frog_variant_accessor_for_entity_type(entity_type_id)?;
     let holder_id = entity_data_registry_holder_id(
         values,
-        FROG_VARIANT_DATA_ID,
+        variant_data_id,
         EntityDataRegistryHolder::FrogVariant,
     )?;
     let registries = registries?;
@@ -1602,10 +1604,13 @@ pub(super) fn frog_model_variant(
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> FrogModelVariant {
+    let (variant_data_id, variant_default_resource_id) =
+        vanilla_entity_metadata_frog_variant_accessor_for_entity_type(VANILLA_ENTITY_TYPE_FROG_ID)
+            .expect("generated Frog variant metadata accessor must resolve");
     values
         .iter()
         .rev()
-        .find(|value| value.data_id == FROG_VARIANT_DATA_ID)
+        .find(|value| value.data_id == variant_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::FrogVariant,
@@ -1616,17 +1621,17 @@ pub(super) fn frog_model_variant(
         .map(|id| {
             if let Some(registries) = registries {
                 frog_variant_from_registry_id(registries, id)
-                    .unwrap_or_else(frog_default_model_variant)
+                    .unwrap_or_else(|| frog_default_model_variant(variant_default_resource_id))
             } else {
                 FrogModelVariant::for_vanilla_registry_id(id)
-                    .unwrap_or_else(frog_default_model_variant)
+                    .unwrap_or_else(|| frog_default_model_variant(variant_default_resource_id))
             }
         })
-        .unwrap_or_else(frog_default_model_variant)
+        .unwrap_or_else(|| frog_default_model_variant(variant_default_resource_id))
 }
 
-fn frog_default_model_variant() -> FrogModelVariant {
-    FrogModelVariant::for_resource_id(FROG_DEFAULT_VARIANT_RESOURCE_ID)
+fn frog_default_model_variant(default_resource_id: &str) -> FrogModelVariant {
+    FrogModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla frog default variant must map to a model")
 }
 

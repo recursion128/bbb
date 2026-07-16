@@ -51,6 +51,7 @@ use bbb_world::vanilla_entity_metadata_copper_golem_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_entity_accessors;
 use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_frog_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_ghast_charging_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_goat_accessors_for_entity_type;
@@ -167,10 +168,6 @@ use bbb_world::{
 pub(crate) use bbb_world::{
     VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID as END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID as END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_FROG_VARIANT_DATA_ID as FROG_VARIANT_DATA_ID,
 };
 #[cfg(test)]
 use bbb_world::{

@@ -193,6 +193,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   derived from generated `ZombieNautilus.DATA_VARIANT_ID`; native model/ready-texture/F3+I
   consumers and fixtures must not restore fixed accessor/default aliases. Session holder order and
   typed variant payload decoding remain owned by the dynamic `RegistryAccess` work above.
+  Frog variant membership, wire index and registry-resource virtual default must likewise remain
+  derived from generated `Frog.DATA_VARIANT_ID`; native model/ready-texture/F3+I consumers and
+  fixtures must not restore fixed accessor/default aliases. Frog tongue-target entity resolution is
+  separate unfinished metadata behavior and must use generated `DATA_TONGUE_TARGET_ID` when added.
   Goat and PolarBear specialized bounds must query that generated accessor instead of restoring
   fixed `AgeableMob.DATA_BABY_ID` aliases; their vanilla 0.55/0.5 age scales and Goat long-jump /
   PolarBear standing composition remain dimensions-owned behavior.
