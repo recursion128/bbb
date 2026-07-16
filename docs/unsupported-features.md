@@ -187,6 +187,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   derived together from generated `DATA_BEAM_TARGET` and `DATA_SHOW_BOTTOM`; world beam, native
   model and debug consumers must not restore fixed accessor/default aliases or a parallel crystal
   type gate. EnderDragon's nearby-crystal search remains a separate runtime-instance type check.
+  Ghast charging texture membership, wire index and typed default must remain derived from
+  generated `Ghast.DATA_IS_CHARGING`; native model projection must not restore fixed
+  accessor/default aliases or read a same-named boolean from another entity family.
   HangingEntity direction membership, inherited wire index and typed default must remain derived
   from generated `DATA_DIRECTION`; ItemFrame item/rotation membership, wire indices and rotation
   default must remain derived together from generated `DATA_ITEM`/`DATA_ROTATION`. World bounds,

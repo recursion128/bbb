@@ -272,13 +272,13 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             entity_type_bounds_placeholder("fishing_bobber_entity_type_bounds", 0.25, 0.25)
         }
         VANILLA_ENTITY_TYPE_FROG_ID => frog_model_kind(data_values, variant_registries),
-        VANILLA_ENTITY_TYPE_GHAST_ID => EntityModelKind::Ghast {
-            charging: entity_data_bool(
-                data_values,
-                GHAST_IS_CHARGING_DATA_ID,
-                GHAST_DEFAULT_CHARGING,
-            ),
-        },
+        VANILLA_ENTITY_TYPE_GHAST_ID => {
+            let charging =
+                vanilla_entity_metadata_ghast_charging_accessor_for_entity_type(entity_type_id)
+                    .map(|(data_id, default)| entity_data_bool(data_values, data_id, default))
+                    .unwrap_or_default();
+            EntityModelKind::Ghast { charging }
+        }
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
         // Item frames render via the 3D item-model pass (border + framed item, native `item_frames`),

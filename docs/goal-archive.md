@@ -16645,3 +16645,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   IDLE typed default；状态名称与 SCARED 判定继续消费生成 ordinal。
 - `entity_scene` 与 debug 生产路径删除固定 accessor/default aliases；既有 model/SNBT 语义
   测试继续锁定行为，metadata generator reverse guard 扩展到 world/native 全路径。
+
+## 2026-07-16：统一推导 Ghast charging metadata accessor
+
+- native Ghast 模型现在从生成 schema 的 `Ghast.DATA_IS_CHARGING` 解析 membership、wire id
+  16 与 BOOLEAN default false，不再固定 accessor/default aliases；既有模型测试继续锁定
+  charging 对 shooting texture 状态的投影。
+- schema membership 测试拒绝 HappyGhast 对同名状态的误用，metadata generator reverse
+  guard 禁止生产模型路径恢复平行事实源。

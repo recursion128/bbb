@@ -22004,6 +22004,28 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_ghast_charging_uses_generated_accessor() {
+        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let body = source
+            .split("VANILLA_ENTITY_TYPE_GHAST_ID")
+            .nth(1)
+            .and_then(|source| source.split("VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID").next())
+            .expect("Ghast model projection source");
+        assert!(body.contains("vanilla_entity_metadata_ghast_charging_accessor_for_entity_type"));
+        for removed in [
+            "GHAST_IS_CHARGING_DATA_ID",
+            "GHAST_DEFAULT_CHARGING",
+            "VANILLA_GHAST_CHARGING_DATA_ID",
+            "VANILLA_GHAST_DEFAULT_CHARGING",
+        ] {
+            assert!(
+                !body.contains(removed),
+                "Ghast projection restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_block_attached_metadata_uses_generated_accessors() {
         let dimensions = include_str!("../dimensions.rs");
         assert!(dimensions.contains("vanilla_entity_metadata_item_frame_accessors_for_entity_type"));
