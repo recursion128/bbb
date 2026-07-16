@@ -315,38 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn native_presentation_tests_use_generated_serializer_ids() {
-        for source in [
-            include_str!("../../bbb-native/src/item_models/tests.rs"),
-            include_str!("../../bbb-native/src/entity_scene/tests.rs"),
-            include_str!("../../bbb-native/src/entity_variant_textures.rs"),
-            include_str!("../../bbb-native/src/item_frames.rs"),
-            include_str!("../../bbb-native/src/crosshair.rs"),
-        ] {
-            let aliases = source
-                .lines()
-                .filter(|line| line.contains("SERIALIZER_ID: i32 ="))
-                .collect::<Vec<_>>();
-            let numeric_fields = source
-                .lines()
-                .filter(|line| {
-                    line.trim()
-                        .strip_prefix("serializer_id:")
-                        .and_then(|value| value.strip_suffix(","))
-                        .is_some_and(|value| {
-                            value
-                                .trim()
-                                .chars()
-                                .all(|character| character.is_ascii_digit() || character == '_')
-                        })
-                })
-                .collect::<Vec<_>>();
-            assert!(aliases.is_empty() && numeric_fields.is_empty(), "native presentation tests restored serializer ids:\naliases={aliases:?}\nfields={numeric_fields:?}");
-        }
-    }
-
-    #[test]
-    fn native_runtime_tests_use_generated_serializer_ids() {
+    fn native_consumers_use_generated_serializer_ids() {
         fn visit(path: &Path, violations: &mut Vec<String>) {
             if path.is_dir() {
                 for entry in fs::read_dir(path).unwrap() {
@@ -377,15 +346,15 @@ mod tests {
                 }
             }
         }
-        let runtime = Path::new(env!("CARGO_MANIFEST_DIR"))
+        let native = Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .unwrap()
-            .join("bbb-native/src/runtime");
+            .join("bbb-native/src");
         let mut violations = Vec::new();
-        visit(&runtime, &mut violations);
+        visit(&native, &mut violations);
         assert!(
             violations.is_empty(),
-            "native runtime tests restored serializer ids:\n{}",
+            "native consumers restored serializer ids:\n{}",
             violations.join("\n")
         );
     }

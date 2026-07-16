@@ -169,11 +169,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generator reject those bridges from production sources.
   Native test setup must also consume generated entity-type constants rather than
   restoring version-number aliases for catalog ids.
-  Native presentation metadata fixtures across item models, entity scenes, variant textures,
-  item frames, and crosshair projection must consume the generated entity-data serializer
-  constants rather than numeric fields or local aliases.
-  Native runtime and event integration fixtures must consume the same generated identities;
-  input integration fixtures remain the next homogeneous migration family.
+  All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
+  than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test
   submodules; protocol wire samples remain separately owned evidence.
   Baby-capable entity membership and the per-family wire index/default must remain derived from

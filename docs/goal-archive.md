@@ -16980,3 +16980,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - gameplay-id generator 新增对整个 `bbb-native/src/runtime` 的递归反向扫描，
   拒绝 numeric `serializer_id` 或本地 serializer alias 在主测试、event root 或
   任一 event 子模块回流。
+
+## 2026-07-16：统一 native input fixture serializer 身份
+
+- `bbb-native` input/debug/inventory integration 测试的 278 个 metadata `serializer_id`
+  写入点，现按载荷 kind 以及 RegistryId/EnumId 的 holder 语义直接消费
+  `EntityDataSerializers.java` 注册顺序生成的 typed constants。
+- 审计修正 F3+I Camel 保存数据 fixture 中 Component id `5` 与 Long 载荷的
+  旧错配；vanilla 26.1 `Camel.LAST_POSE_CHANGE_TICK` 明确使用
+  `EntityDataSerializers.LONG`。
+- presentation、runtime 与 input 三类反向检查现合并为对整个
+  `bbb-native/src` 的递归扫描，拒绝 numeric `serializer_id` 或本地 serializer alias
+  在任一 native 语义消费面回流。

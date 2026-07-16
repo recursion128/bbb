@@ -671,7 +671,8 @@ fn world_with_sleeping_local_player(player_id: i32) -> WorldStore {
         id: player_id,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_ENTITY_DATA_POSE_ID,
-            serializer_id: 20,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
             value: EntityDataValueKind::Pose(VANILLA_ENTITY_POSE_SLEEPING_ID),
         }],
     }));
@@ -2986,52 +2987,52 @@ fn shift_f3_i_with_permission_copies_local_creeper_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_GLOWING),
             },
             ProtocolEntityDataValue {
                 data_id: ENTITY_AIR_SUPPLY_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(123),
             },
             ProtocolEntityDataValue {
                 data_id: ENTITY_CUSTOM_NAME_DATA_ID,
-                serializer_id: 6,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_COMPONENT_ID,
                 value: EntityDataValueKind::OptionalComponent(Some("Bob \"Prime\"".to_string())),
             },
             ProtocolEntityDataValue {
                 data_id: ENTITY_CUSTOM_NAME_VISIBLE_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ENTITY_SILENT_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ENTITY_NO_GRAVITY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ENTITY_TICKS_FROZEN_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(42),
             },
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: CREEPER_POWERED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: CREEPER_IGNITED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -3188,12 +3189,12 @@ fn shift_f3_i_with_permission_copies_local_creaking_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: CREAKING_HOME_POS_DATA_ID,
-                serializer_id: 11,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
                 value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
                     x: 4,
                     y: 5,
@@ -3272,22 +3273,22 @@ fn shift_f3_i_with_permission_copies_local_shulker_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: SHULKER_ATTACH_FACE_DATA_ID,
-                serializer_id: 12,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
                 value: EntityDataValueKind::Direction(5),
             },
             ProtocolEntityDataValue {
                 data_id: SHULKER_PEEK_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(30),
             },
             ProtocolEntityDataValue {
                 data_id: SHULKER_COLOR_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(11),
             },
         ],
@@ -3367,12 +3368,12 @@ fn shift_f3_i_with_permission_copies_local_slime_family_save_nbt_to_clipboard() 
             values: vec![
                 ProtocolEntityDataValue {
                     data_id: MOB_FLAGS_DATA_ID,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
                 },
                 ProtocolEntityDataValue {
                     data_id: SLIME_SIZE_DATA_ID,
-                    serializer_id: 1,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                     value: EntityDataValueKind::Int(4),
                 },
             ],
@@ -3446,12 +3447,14 @@ fn shift_f3_i_with_permission_copies_local_snow_golem_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: SNOW_GOLEM_PUMPKIN_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(0),
             },
         ],
@@ -3526,12 +3529,14 @@ fn shift_f3_i_with_permission_copies_local_bat_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: BAT_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(1),
             },
         ],
@@ -3606,17 +3611,17 @@ fn shift_f3_i_with_permission_copies_local_armadillo_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ARMADILLO_STATE_DATA_ID,
-                serializer_id: 36,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ARMADILLO_STATE_ID,
                 value: EntityDataValueKind::EnumId {
                     serializer: EntityDataEnumSerializer::ArmadilloState,
                     id: 2,
@@ -3695,12 +3700,12 @@ fn shift_f3_i_with_permission_copies_local_copper_golem_save_nbt_to_clipboard() 
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: COPPER_GOLEM_WEATHER_STATE_DATA_ID,
-                serializer_id: 38,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WEATHERING_COPPER_STATE_ID,
                 value: EntityDataValueKind::EnumId {
                     serializer: EntityDataEnumSerializer::WeatheringCopperState,
                     id: 2,
@@ -3779,22 +3784,22 @@ fn shift_f3_i_with_permission_copies_local_bee_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: BEE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(BEE_FLAG_HAS_NECTAR | BEE_FLAG_HAS_STUNG),
             },
             ProtocolEntityDataValue {
                 data_id: BEE_ANGER_END_TIME_DATA_ID,
-                serializer_id: 2,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
                 value: EntityDataValueKind::Long(240),
             },
         ],
@@ -3870,7 +3875,8 @@ fn shift_f3_i_with_permission_copies_local_blaze_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -3943,7 +3949,8 @@ fn shift_f3_i_with_permission_copies_local_breeze_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -4017,12 +4024,12 @@ fn shift_f3_i_with_permission_copies_local_cod_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -4097,17 +4104,17 @@ fn shift_f3_i_with_permission_copies_local_pufferfish_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: PUFFERFISH_PUFF_STATE_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(2),
             },
         ],
@@ -4183,17 +4190,17 @@ fn shift_f3_i_with_permission_copies_local_salmon_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: SALMON_VARIANT_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(2),
             },
         ],
@@ -4269,17 +4276,17 @@ fn shift_f3_i_with_permission_copies_local_tropical_fish_save_nbt_to_clipboard()
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: TROPICAL_FISH_VARIANT_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(0x0405_0001),
             },
         ],
@@ -4355,17 +4362,17 @@ fn shift_f3_i_with_permission_copies_local_turtle_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: TURTLE_HAS_EGG_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -4443,12 +4450,12 @@ fn shift_f3_i_with_permission_copies_local_tadpole_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: TADPOLE_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -4524,27 +4531,27 @@ fn shift_f3_i_with_permission_copies_local_axolotl_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AXOLOTL_VARIANT_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(9),
             },
             ProtocolEntityDataValue {
                 data_id: AXOLOTL_FROM_BUCKET_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -4620,22 +4627,22 @@ fn shift_f3_i_with_permission_copies_local_nautilus_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
             },
         ],
@@ -4719,22 +4726,22 @@ fn shift_f3_i_with_permission_copies_local_zombie_nautilus_save_nbt_to_clipboard
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
             },
             ProtocolEntityDataValue {
                 data_id: ZOMBIE_NAUTILUS_VARIANT_DATA_ID,
-                serializer_id: 32,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ZOMBIE_NAUTILUS_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ZombieNautilusVariant,
                     id: 0,
@@ -4836,27 +4843,27 @@ fn shift_f3_i_with_permission_copies_local_dolphin_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: DOLPHIN_GOT_FISH_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: DOLPHIN_MOISTNESS_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(1234),
             },
         ],
@@ -4941,22 +4948,22 @@ fn shift_f3_i_with_permission_copies_local_frog_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: FROG_VARIANT_DATA_ID,
-                serializer_id: 27,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FROG_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::FrogVariant,
                     id: 0,
@@ -5055,22 +5062,22 @@ fn shift_f3_i_with_permission_copies_local_rabbit_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: RABBIT_TYPE_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(99),
             },
         ],
@@ -5146,22 +5153,22 @@ fn shift_f3_i_with_permission_copies_local_ocelot_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: OCELOT_TRUSTING_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -5237,22 +5244,22 @@ fn shift_f3_i_with_permission_copies_local_sheep_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: SHEEP_WOOL_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte((SHEEP_WOOL_SHEARED_FLAG | 14) as i8),
             },
         ],
@@ -5346,22 +5353,22 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: PIG_VARIANT_DATA_ID,
-                serializer_id: 28,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PIG_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::PigVariant,
                     id: 0,
@@ -5369,7 +5376,7 @@ fn shift_f3_i_with_permission_copies_local_pig_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: PIG_SOUND_VARIANT_DATA_ID,
-                serializer_id: 29,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PIG_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::PigSoundVariant,
                     id: 0,
@@ -5530,22 +5537,22 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: CHICKEN_VARIANT_DATA_ID,
-                serializer_id: 30,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ChickenVariant,
                     id: 0,
@@ -5553,7 +5560,7 @@ fn shift_f3_i_with_permission_copies_local_chicken_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: CHICKEN_SOUND_VARIANT_DATA_ID,
-                serializer_id: 31,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::ChickenSoundVariant,
                     id: 0,
@@ -5679,22 +5686,22 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: COW_VARIANT_DATA_ID,
-                serializer_id: 23,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CowVariant,
                     id: 0,
@@ -5702,7 +5709,7 @@ fn shift_f3_i_with_permission_copies_local_cow_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: COW_SOUND_VARIANT_DATA_ID,
-                serializer_id: 24,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CowSoundVariant,
                     id: 0,
@@ -5817,22 +5824,22 @@ fn shift_f3_i_with_permission_copies_local_mooshroom_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: MOOSHROOM_TYPE_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(1),
             },
         ],
@@ -5908,32 +5915,32 @@ fn shift_f3_i_with_permission_copies_local_goat_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: GOAT_SCREAMING_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: GOAT_LEFT_HORN_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(false),
             },
             ProtocolEntityDataValue {
                 data_id: GOAT_RIGHT_HORN_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -6012,22 +6019,22 @@ fn shift_f3_i_with_permission_copies_local_polar_bear_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: POLAR_BEAR_STANDING_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -6112,42 +6119,42 @@ fn shift_f3_i_with_permission_copies_local_panda_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: PANDA_UNHAPPY_COUNTER_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(12),
             },
             ProtocolEntityDataValue {
                 data_id: PANDA_EAT_COUNTER_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(4),
             },
             ProtocolEntityDataValue {
                 data_id: PANDA_MAIN_GENE_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(4),
             },
             ProtocolEntityDataValue {
                 data_id: PANDA_HIDDEN_GENE_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(1),
             },
             ProtocolEntityDataValue {
                 data_id: PANDA_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     PANDA_FLAG_ROLLING | PANDA_FLAG_SITTING | PANDA_FLAG_ON_BACK,
                 ),
@@ -6231,27 +6238,27 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
             },
             ProtocolEntityDataValue {
                 data_id: PARROT_VARIANT_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(3),
             },
         ],
@@ -6330,17 +6337,17 @@ fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: ALLAY_DANCING_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ALLAY_CAN_DUPLICATE_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(false),
             },
         ],
@@ -6419,22 +6426,22 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: SNIFFER_STATE_DATA_ID,
-                serializer_id: 35,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
                 value: EntityDataValueKind::EnumId {
                     serializer: EntityDataEnumSerializer::SnifferState,
                     id: SNIFFER_STATE_DIGGING_ID,
@@ -6442,7 +6449,7 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: SNIFFER_DROP_SEED_AT_TICK_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(1234),
             },
         ],
@@ -6521,27 +6528,27 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: STRIDER_BOOST_TIME_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(40),
             },
             ProtocolEntityDataValue {
                 data_id: STRIDER_SUFFOCATING_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -6619,22 +6626,22 @@ fn shift_f3_i_with_permission_copies_local_hoglin_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -6711,17 +6718,17 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     ABSTRACT_HORSE_FLAG_EATING
                         | ABSTRACT_HORSE_FLAG_BRED
@@ -6730,7 +6737,7 @@ fn shift_f3_i_with_permission_copies_local_horse_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: HORSE_VARIANT_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(4 | (2 << 8)),
             },
         ],
@@ -6807,22 +6814,22 @@ fn shift_f3_i_with_permission_copies_local_camel_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_TAME),
             },
             ProtocolEntityDataValue {
                 data_id: CAMEL_LAST_POSE_CHANGE_TICK_DATA_ID,
-                serializer_id: 5,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
                 value: EntityDataValueKind::Long(140),
             },
         ],
@@ -6899,12 +6906,12 @@ fn shift_f3_i_with_permission_copies_local_camel_husk_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -6996,22 +7003,22 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
             },
             ProtocolEntityDataValue {
                 data_id: CAT_VARIANT_DATA_ID,
-                serializer_id: 21,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatVariant,
                     id: 0,
@@ -7019,7 +7026,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: CAT_SOUND_VARIANT_DATA_ID,
-                serializer_id: 22,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatSoundVariant,
                     id: 0,
@@ -7027,7 +7034,7 @@ fn shift_f3_i_with_permission_copies_local_cat_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: CAT_COLLAR_COLOR_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(5),
             },
         ],
@@ -7149,32 +7156,32 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: TAMABLE_ANIMAL_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
             },
             ProtocolEntityDataValue {
                 data_id: WOLF_COLLAR_COLOR_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(11),
             },
             ProtocolEntityDataValue {
                 data_id: WOLF_ANGER_END_TIME_DATA_ID,
-                serializer_id: 2,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
                 value: EntityDataValueKind::Long(200),
             },
             ProtocolEntityDataValue {
                 data_id: WOLF_VARIANT_DATA_ID,
-                serializer_id: 25,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfVariant,
                     id: 0,
@@ -7182,7 +7189,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: WOLF_SOUND_VARIANT_DATA_ID,
-                serializer_id: 26,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfSoundVariant,
                     id: 0,
@@ -7292,36 +7299,36 @@ fn shift_f3_i_with_permission_copies_local_fox_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: FOX_TYPE_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(1),
             },
             ProtocolEntityDataValue {
                 data_id: FOX_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     FOX_FLAG_SITTING | FOX_FLAG_CROUCHING | FOX_FLAG_SLEEPING,
                 ),
             },
             ProtocolEntityDataValue {
                 data_id: FOX_TRUSTED_DATA_ID_0,
-                serializer_id: 13,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
                 value: EntityDataValueKind::OptionalLivingEntityReference(Some(Uuid::from_u128(
                     0x00000001000000020000000300000004
                 ),)),
             },
             ProtocolEntityDataValue {
                 data_id: FOX_TRUSTED_DATA_ID_1,
-                serializer_id: 13,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_LIVING_ENTITY_REFERENCE_ID,
                 value: EntityDataValueKind::OptionalLivingEntityReference(Some(Uuid::from_u128(
                     0x00000005000000060000000700000008
                 ),)),
@@ -7401,24 +7408,24 @@ fn shift_f3_i_with_permission_copies_local_donkey_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     ABSTRACT_HORSE_FLAG_EATING | ABSTRACT_HORSE_FLAG_TAME,
                 ),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -7495,17 +7502,17 @@ fn shift_f3_i_with_permission_copies_local_mule_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_BRED),
             },
         ],
@@ -7582,34 +7589,34 @@ fn shift_f3_i_with_permission_copies_local_llama_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     ABSTRACT_HORSE_FLAG_BRED | ABSTRACT_HORSE_FLAG_TAME,
                 ),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_CHESTED_HORSE_CHEST_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: LLAMA_STRENGTH_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(5),
             },
             ProtocolEntityDataValue {
                 data_id: LLAMA_VARIANT_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(2),
             },
         ],
@@ -7687,27 +7694,27 @@ fn shift_f3_i_with_permission_copies_local_trader_llama_save_nbt_to_clipboard() 
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_TAME),
             },
             ProtocolEntityDataValue {
                 data_id: LLAMA_STRENGTH_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(4),
             },
             ProtocolEntityDataValue {
                 data_id: LLAMA_VARIANT_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(3),
             },
         ],
@@ -7785,17 +7792,17 @@ fn shift_f3_i_with_permission_copies_local_skeleton_horse_save_nbt_to_clipboard(
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_TAME),
             },
         ],
@@ -7872,17 +7879,17 @@ fn shift_f3_i_with_permission_copies_local_zombie_horse_save_nbt_to_clipboard() 
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_HORSE_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_HORSE_FLAG_BRED),
             },
         ],
@@ -7961,12 +7968,12 @@ fn shift_f3_i_with_permission_copies_local_piglin_brute_save_nbt_to_clipboard() 
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -8045,17 +8052,17 @@ fn shift_f3_i_with_permission_copies_local_piglin_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: PIGLIN_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -8135,7 +8142,8 @@ fn shift_f3_i_with_permission_copies_local_spider_family_save_nbt_to_clipboard()
             id: 50,
             values: vec![ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             }],
         }));
@@ -8207,7 +8215,8 @@ fn shift_f3_i_with_permission_copies_local_skeleton_save_nbt_to_clipboard() {
         id: 55,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -8288,7 +8297,8 @@ fn shift_f3_i_with_permission_copies_local_nonconverting_skeleton_family_save_nb
             id: 56,
             values: vec![ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             }],
         }));
@@ -8368,12 +8378,12 @@ fn shift_f3_i_with_permission_copies_local_zombie_family_save_nbt_to_clipboard()
             values: vec![
                 ProtocolEntityDataValue {
                     data_id: MOB_FLAGS_DATA_ID,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
                 },
                 ProtocolEntityDataValue {
                     data_id: ZOMBIE_BABY_DATA_ID,
-                    serializer_id: 8,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: EntityDataValueKind::Boolean(true),
                 },
             ],
@@ -8450,12 +8460,12 @@ fn shift_f3_i_with_permission_copies_local_zombified_piglin_save_nbt_to_clipboar
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: ZOMBIE_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -8531,12 +8541,12 @@ fn shift_f3_i_with_permission_copies_local_bogged_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: BOGGED_SHEARED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -8611,7 +8621,7 @@ fn shift_f3_i_with_permission_copies_local_end_crystal_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: END_CRYSTAL_BEAM_TARGET_DATA_ID,
-                serializer_id: 11,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
                 value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
                     x: 1,
                     y: 2,
@@ -8620,7 +8630,7 @@ fn shift_f3_i_with_permission_copies_local_end_crystal_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(false),
             },
         ],
@@ -8940,7 +8950,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
         values: vec![
             ProtocolEntityDataValue {
                 data_id: FIREWORK_ROCKET_ITEM_DATA_ID,
-                serializer_id: 7,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
                     item_id: Some(42),
                     count: 2,
@@ -8949,7 +8959,7 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
             },
             ProtocolEntityDataValue {
                 data_id: FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -8973,7 +8983,8 @@ fn local_firework_save_uses_parent_lifecycle_synced_item_codec_and_client_life()
         id: 91,
         values: vec![ProtocolEntityDataValue {
             data_id: FIREWORK_ROCKET_ITEM_DATA_ID,
-            serializer_id: 7,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
                 item_id: Some(42),
                 count: 1,
@@ -10606,7 +10617,8 @@ fn shift_f3_i_skips_unpickable_wither_skull_but_direct_copy_encodes_save_nbt() {
         id: 53,
         values: vec![ProtocolEntityDataValue {
             data_id: WITHER_SKULL_DANGEROUS_DATA_ID,
-            serializer_id: 8,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],
     }));
@@ -10734,12 +10746,14 @@ fn shift_f3_i_skips_unpickable_arrow_but_direct_copy_encodes_save_nbt() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(3),
             },
         ],
@@ -10808,12 +10822,14 @@ fn shift_f3_i_skips_unpickable_spectral_arrow_but_direct_copy_encodes_save_nbt()
         values: vec![
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(2),
             },
         ],
@@ -10882,12 +10898,14 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_ARROW_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
             },
             ProtocolEntityDataValue {
                 data_id: ABSTRACT_ARROW_PIERCE_LEVEL_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(4),
             },
         ],
@@ -10934,7 +10952,8 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
         id: 60,
         values: vec![ProtocolEntityDataValue {
             data_id: ABSTRACT_ARROW_IN_GROUND_DATA_ID,
-            serializer_id: 8,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),
         }],
     }));
@@ -11057,12 +11076,12 @@ fn shift_f3_i_with_permission_copies_local_minecart_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MINECART_CUSTOM_DISPLAY_BLOCK_DATA_ID,
-                serializer_id: 15,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
                 value: EntityDataValueKind::OptionalBlockState(Some(grass_state_id)),
             },
             ProtocolEntityDataValue {
                 data_id: MINECART_DISPLAY_OFFSET_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(3),
             },
         ],
@@ -11143,7 +11162,8 @@ fn shift_f3_i_with_permission_copies_local_chest_minecart_save_nbt_to_clipboard(
         id: 63,
         values: vec![ProtocolEntityDataValue {
             data_id: MINECART_DISPLAY_OFFSET_DATA_ID,
-            serializer_id: 1,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(6),
         }],
     }));
@@ -11217,7 +11237,8 @@ fn shift_f3_i_with_permission_copies_local_command_block_minecart_save_nbt_to_cl
         id: 63,
         values: vec![ProtocolEntityDataValue {
             data_id: COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
-            serializer_id: 4,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_STRING_ID,
             value: EntityDataValueKind::String("say hi".to_string()),
         }],
     }));
@@ -11355,7 +11376,8 @@ fn shift_f3_i_with_permission_copies_local_hopper_minecart_save_nbt_to_clipboard
         id: 63,
         values: vec![ProtocolEntityDataValue {
             data_id: MINECART_DISPLAY_OFFSET_DATA_ID,
-            serializer_id: 1,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(6),
         }],
     }));
@@ -11598,17 +11620,17 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: HANGING_ENTITY_DIRECTION_DATA_ID,
-                serializer_id: 12,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_DIRECTION_ID,
                 value: EntityDataValueKind::Direction(3),
             },
             ProtocolEntityDataValue {
                 data_id: ITEM_FRAME_ROTATION_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(11),
             },
             ProtocolEntityDataValue {
                 data_id: ITEM_FRAME_ITEM_DATA_ID,
-                serializer_id: 7,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(ProtocolItemStackSummary {
                     item_id: Some(0),
                     count: 1,
@@ -11639,7 +11661,7 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_INVISIBLE),
             },
         ],
@@ -11803,7 +11825,7 @@ fn local_painting_save_nbt_and_bounds_follow_synchronized_holder_order() {
         id: 64,
         values: vec![ProtocolEntityDataValue {
             data_id: PAINTING_VARIANT_DATA_ID,
-            serializer_id: 34,
+            serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_PAINTING_VARIANT_ID,
             value: EntityDataValueKind::PaintingVariant(
                 bbb_protocol::packets::PaintingVariantData {
                     registry_id: Some(0),
@@ -12122,7 +12144,8 @@ fn shift_f3_i_with_permission_copies_local_primed_tnt_save_nbt_to_clipboard() {
         id: 61,
         values: vec![ProtocolEntityDataValue {
             data_id: PRIMED_TNT_FUSE_DATA_ID,
-            serializer_id: 1,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(37),
         }],
     }));
@@ -12262,12 +12285,12 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: ENTITY_SHARED_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(ENTITY_SHARED_FLAG_INVISIBLE),
             },
             ProtocolEntityDataValue {
                 data_id: ARMOR_STAND_CLIENT_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(
                     ARMOR_STAND_CLIENT_FLAG_SMALL
                         | ARMOR_STAND_CLIENT_FLAG_SHOW_ARMS
@@ -12276,7 +12299,7 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: ARMOR_STAND_BODY_POSE_DATA_ID,
-                serializer_id: 9,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
                 value: EntityDataValueKind::Rotations {
                     x: 0.0,
                     y: 15.0,
@@ -12285,7 +12308,7 @@ fn shift_f3_i_with_permission_copies_local_armor_stand_save_nbt_to_clipboard() {
             },
             ProtocolEntityDataValue {
                 data_id: ARMOR_STAND_LEFT_ARM_POSE_DATA_ID,
-                serializer_id: 9,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ROTATIONS_ID,
                 value: EntityDataValueKind::Rotations {
                     x: -30.0,
                     y: 0.0,
@@ -12365,7 +12388,8 @@ fn shift_f3_i_skips_unpickable_experience_orb_but_direct_copy_encodes_save_nbt()
         id: 59,
         values: vec![ProtocolEntityDataValue {
             data_id: VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID,
-            serializer_id: 1,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(149),
         }],
     }));
@@ -12432,7 +12456,8 @@ fn shift_f3_i_with_permission_copies_local_endermite_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -12505,7 +12530,8 @@ fn shift_f3_i_with_permission_copies_local_enderman_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -12578,7 +12604,8 @@ fn shift_f3_i_with_permission_copies_local_silverfish_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -12658,7 +12685,8 @@ fn shift_f3_i_with_permission_copies_local_guardian_family_save_nbt_to_clipboard
             id: 50,
             values: vec![ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             }],
         }));
@@ -12731,12 +12759,12 @@ fn shift_f3_i_with_permission_copies_local_happy_ghast_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -12811,7 +12839,8 @@ fn shift_f3_i_with_permission_copies_local_ghast_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -12884,7 +12913,8 @@ fn shift_f3_i_with_permission_copies_local_giant_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -12958,17 +12988,17 @@ fn shift_f3_i_with_permission_copies_local_glow_squid_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: GLOW_SQUID_DARK_TICKS_DATA_ID,
-                serializer_id: 1,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(77),
             },
         ],
@@ -13044,17 +13074,17 @@ fn shift_f3_i_with_permission_copies_local_squid_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -13130,17 +13160,17 @@ fn shift_f3_i_with_permission_copies_local_interaction_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: INTERACTION_WIDTH_DATA_ID,
-                serializer_id: 3,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(1.5),
             },
             ProtocolEntityDataValue {
                 data_id: INTERACTION_HEIGHT_DATA_ID,
-                serializer_id: 3,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
                 value: EntityDataValueKind::Float(2.0),
             },
             ProtocolEntityDataValue {
                 data_id: INTERACTION_RESPONSE_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -13216,12 +13246,14 @@ fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: IRON_GOLEM_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(IRON_GOLEM_PLAYER_CREATED_FLAG),
             },
         ],
@@ -13296,12 +13328,14 @@ fn shift_f3_i_with_permission_copies_local_phantom_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: PHANTOM_SIZE_DATA_ID,
-                serializer_id: 1,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(5),
             },
         ],
@@ -13375,7 +13409,8 @@ fn shift_f3_i_with_permission_copies_local_ravager_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -13456,7 +13491,8 @@ fn shift_f3_i_with_permission_copies_local_pillager_save_nbt_to_clipboard() {
         id: 51,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -13530,17 +13566,17 @@ fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboar
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
             ProtocolEntityDataValue {
                 data_id: AGEABLE_MOB_AGE_LOCKED_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -13618,12 +13654,12 @@ fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: WITCH_USING_ITEM_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -13708,12 +13744,12 @@ fn shift_f3_i_with_permission_copies_local_spellcaster_illager_save_nbt_to_clipb
             values: vec![
                 ProtocolEntityDataValue {
                     data_id: MOB_FLAGS_DATA_ID,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
                 },
                 ProtocolEntityDataValue {
                     data_id: SPELLCASTER_ILLAGER_CASTING_DATA_ID,
-                    serializer_id: 0,
+                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(2),
                 },
             ],
@@ -13789,12 +13825,12 @@ fn shift_f3_i_with_permission_copies_local_vindicator_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: RAIDER_IS_CELEBRATING_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],
@@ -13868,7 +13904,8 @@ fn shift_f3_i_with_permission_copies_local_vex_save_nbt_to_clipboard() {
         id: 50,
         values: vec![ProtocolEntityDataValue {
             data_id: MOB_FLAGS_DATA_ID,
-            serializer_id: 0,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
         }],
     }));
@@ -13942,12 +13979,14 @@ fn shift_f3_i_with_permission_copies_local_wither_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: WITHER_INVULNERABLE_TICKS_DATA_ID,
-                serializer_id: 1,
+                serializer_id:
+                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(220),
             },
         ],
@@ -14022,12 +14061,12 @@ fn shift_f3_i_with_permission_copies_local_zoglin_save_nbt_to_clipboard() {
         values: vec![
             ProtocolEntityDataValue {
                 data_id: MOB_FLAGS_DATA_ID,
-                serializer_id: 0,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
                 data_id: ZOGLIN_BABY_DATA_ID,
-                serializer_id: 8,
+                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },
         ],

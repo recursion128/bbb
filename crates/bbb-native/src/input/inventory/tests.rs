@@ -8103,7 +8103,8 @@ fn add_entity_with_type(id: i32, entity_type_id: i32) -> AddEntity {
 fn byte_entity_data(data_id: u8, value: i8) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 0,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(value),
     }
 }
@@ -8111,7 +8112,8 @@ fn byte_entity_data(data_id: u8, value: i8) -> EntityDataValue {
 fn bool_entity_data(data_id: u8, value: bool) -> EntityDataValue {
     EntityDataValue {
         data_id,
-        serializer_id: 8,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
         value: EntityDataValueKind::Boolean(value),
     }
 }
