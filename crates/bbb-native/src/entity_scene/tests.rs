@@ -1660,10 +1660,6 @@ fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
 
 #[test]
 fn entity_model_instances_project_auto_spin_attack() {
-    // Vanilla LivingEntity.DATA_LIVING_ENTITY_FLAGS id and the spin-attack bit.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         86,
@@ -1693,9 +1689,11 @@ fn entity_model_instances_project_auto_spin_attack() {
     // setupRotations then reads the lerped ageInTicks (tickCount + partial).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 86,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_SPIN_ATTACK | 0x01,
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            true,
+            false,
+            true,
         )],
     }));
     world.advance_entity_client_animations(3);
@@ -1704,9 +1702,11 @@ fn entity_model_instances_project_auto_spin_attack() {
     // Clearing the spin bit (other living flags still set) stops the spin.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 86,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            0x01
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            true,
+            false,
+            false,
         )],
     }));
     assert_eq!(auto_spin(&world, 86, 0.5), None);
@@ -1715,9 +1715,11 @@ fn entity_model_instances_project_auto_spin_attack() {
     // if a stray flags byte is present.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 87,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_SPIN_ATTACK,
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_CHICKEN_ID,
+            false,
+            false,
+            true,
         )],
     }));
     assert_eq!(auto_spin(&world, 87, 0.5), None);
@@ -3243,9 +3245,6 @@ fn entity_model_instances_project_player_spear_use_kinetic_state() {
     // Vanilla `AvatarRenderer.getArmPose` returns `SPEAR` while a player uses a spear, and
     // `SpearAnimations` reads the default `KineticWeapon` from the resolved item prototype. The same
     // pose has `affectsOffhandPose`, so an off-hand spear use suppresses the main-hand ITEM fallback.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-    const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
     const WOODEN_SPEAR_ID: i32 = 0;
     const IRON_SPEAR_ID: i32 = 1;
     const PLAIN_ITEM_ID: i32 = 2;
@@ -3282,11 +3281,13 @@ fn entity_model_instances_project_player_spear_use_kinetic_state() {
             },
         }],
     };
-    let using = |id: i32, flags: i8| SetEntityData {
+    let using = |id: i32, off_hand: bool| SetEntityData {
         id,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            flags,
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            off_hand,
+            false,
         )],
     };
     let state = |world: &WorldStore, id: i32| {
@@ -3304,7 +3305,7 @@ fn entity_model_instances_project_player_spear_use_kinetic_state() {
         [1.0, 64.0, -9.0],
     ));
     assert!(world.apply_set_equipment(equip(241, EquipmentSlot::MainHand, WOODEN_SPEAR_ID)));
-    assert!(world.apply_set_entity_data(using(241, LIVING_ENTITY_FLAG_IS_USING)));
+    assert!(world.apply_set_entity_data(using(241, false)));
     let main = state(&world, 241);
     assert_eq!(
         main.player_using_spear,
@@ -3340,10 +3341,7 @@ fn entity_model_instances_project_player_spear_use_kinetic_state() {
     ));
     assert!(world.apply_set_equipment(equip(242, EquipmentSlot::MainHand, PLAIN_ITEM_ID)));
     assert!(world.apply_set_equipment(equip(242, EquipmentSlot::OffHand, IRON_SPEAR_ID)));
-    assert!(world.apply_set_entity_data(using(
-        242,
-        LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND,
-    )));
+    assert!(world.apply_set_entity_data(using(242, true)));
     let off = state(&world, 242);
     assert!(off.use_item_off_hand);
     assert_eq!(
@@ -3610,9 +3608,6 @@ fn entity_model_instances_spyglass_pose_needs_a_resolved_spyglass() {
     // The SPYGLASS use-item pose needs the using-hand item resolved through the item registry to
     // confirm a spyglass; without an item runtime it can never resolve, so the projection defaults
     // off even for a player flagged as using an item.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         250,
@@ -3622,9 +3617,11 @@ fn entity_model_instances_spyglass_pose_needs_a_resolved_spyglass() {
     // Flag the player as using an item (so only the missing runtime, not the flag, gates the pose off).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 250,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     }));
     let spyglass = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
@@ -3641,9 +3638,6 @@ fn entity_model_instances_horn_pose_needs_a_resolved_goat_horn() {
     // The TOOT_HORN use-item pose needs the using-hand item resolved through the item registry to
     // confirm a goat horn; without an item runtime it can never resolve, so the projection defaults
     // off even for a player flagged as using an item.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         251,
@@ -3652,9 +3646,11 @@ fn entity_model_instances_horn_pose_needs_a_resolved_goat_horn() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 251,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     }));
     let tooting = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
@@ -3671,9 +3667,6 @@ fn entity_model_instances_brush_pose_needs_a_resolved_brush() {
     // The BRUSH use-item pose needs the using-hand item resolved through the item registry to confirm
     // a brush; without an item runtime it can never resolve, so the projection defaults off even for a
     // player flagged as using an item.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         252,
@@ -3682,9 +3675,11 @@ fn entity_model_instances_brush_pose_needs_a_resolved_brush() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 252,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     }));
     let brushing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
@@ -3701,8 +3696,6 @@ fn entity_model_instances_block_pose_uses_shield_or_blocks_attacks_component() {
     // The BLOCK use-item pose needs a non-consumable `BLOCKS_ATTACKS` item. Vanilla shields resolve from
     // the item registry, while datapack/patch-granted blockers are visible in `added_type_ids` and work
     // without an item runtime.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
     const PLAIN_ITEM_ID: i32 = 730;
 
     let mut world = WorldStore::new();
@@ -3722,9 +3715,11 @@ fn entity_model_instances_block_pose_uses_shield_or_blocks_attacks_component() {
     };
     let set_using = |id: i32| SetEntityData {
         id,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING,
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     };
     let blocking = |world: &WorldStore, id: i32| {
@@ -3779,9 +3774,6 @@ fn entity_model_instances_throw_trident_pose_needs_a_resolved_trident() {
     // The THROW_TRIDENT use-item pose needs the using-hand item resolved through the item registry to
     // confirm a trident; without an item runtime it can never resolve, so the projection defaults off
     // even for a player flagged as using an item.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         254,
@@ -3790,9 +3782,11 @@ fn entity_model_instances_throw_trident_pose_needs_a_resolved_trident() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 254,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     }));
     let throwing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
@@ -3809,9 +3803,6 @@ fn entity_model_instances_bow_draw_pose_needs_a_resolved_bow() {
     // The BOW_AND_ARROW use-item pose needs the using-hand item resolved through the item registry to
     // confirm a bow; without an item runtime it can never resolve, so the projection defaults off even
     // for a player flagged as using an item.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         255,
@@ -3820,9 +3811,11 @@ fn entity_model_instances_bow_draw_pose_needs_a_resolved_bow() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 255,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     }));
     let drawing = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
@@ -3839,9 +3832,6 @@ fn entity_model_instances_crossbow_charge_pose_needs_a_resolved_crossbow() {
     // The CROSSBOW_CHARGE use-item pose needs the using-hand item resolved through the item registry to
     // confirm a crossbow; without an item runtime it can never resolve, so the projection defaults off
     // even for a player flagged as using an item.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         256,
@@ -3850,9 +3840,11 @@ fn entity_model_instances_crossbow_charge_pose_needs_a_resolved_crossbow() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 256,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     }));
     let charging = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0)
@@ -3889,9 +3881,6 @@ fn entity_model_instances_project_off_hand_bow_and_crossbow_player_poses() {
     // Vanilla `AvatarRenderer.getArmPose` selects the BOW/CROSSBOW use pose from the used hand, and
     // `CROSSBOW_HOLD` before the use-item branch from either hand. The renderer owns the exact arm math;
     // this test proves native projects the correct using-hand/off-hand booleans from resolved items.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-    const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
     const BOW_ID: i32 = 0;
     const CROSSBOW_ID: i32 = 1;
 
@@ -3934,9 +3923,11 @@ fn entity_model_instances_project_off_hand_bow_and_crossbow_player_poses() {
     };
     let use_off_hand = |id: i32| SetEntityData {
         id,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND,
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            true,
+            false,
         )],
     };
     let state = |world: &WorldStore, id: i32| {
@@ -4017,8 +4008,6 @@ fn entity_model_instances_project_player_main_hand_item_pose() {
     // Vanilla `AvatarRenderer.getArmPose` fallback `ITEM`: a player holding a plain main-hand item, not
     // using it, lowers/halves the arm. Gated to the player kind, a non-empty main hand, and not using an
     // item; an empty hand, a using-item player, or a non-player mob never reaches the `ITEM` fallback.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
     // Any item id resolves the same way without a runtime — only "main hand non-empty" drives the gate.
     const PLAIN_ITEM_ID: i32 = 710;
 
@@ -4072,9 +4061,11 @@ fn entity_model_instances_project_player_main_hand_item_pose() {
     assert!(world.apply_set_equipment(plain_main_hand(262)));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 262,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     }));
     assert!(posing(&world, 262));
@@ -4094,9 +4085,6 @@ fn entity_model_instances_project_player_off_hand_item_pose() {
     // Vanilla `AvatarRenderer.getArmPose(_, OFF_HAND)` fallback `ITEM`: a player holding a plain off-hand
     // item lowers/halves the OFF arm. Gated to the player kind + a non-empty off hand, suppressed only
     // when USING the off hand (its use poses win); using the MAIN hand leaves the off hand on `ITEM`.
-    const VANILLA_LIVING_ENTITY_FLAGS_DATA_ID: u8 = 8;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-    const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
     const PLAIN_ITEM_ID: i32 = 720;
 
     let plain_off_hand = |entity_id: i32| SetEquipment {
@@ -4148,9 +4136,11 @@ fn entity_model_instances_project_player_off_hand_item_pose() {
     assert!(world.apply_set_equipment(plain_off_hand(272)));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 272,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            true,
+            false,
         )],
     }));
     assert!(posing(&world, 272));
@@ -4164,9 +4154,11 @@ fn entity_model_instances_project_player_off_hand_item_pose() {
     assert!(world.apply_set_equipment(plain_off_hand(273)));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 273,
-        values: vec![protocol_byte_data(
-            VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-            LIVING_ENTITY_FLAG_IS_USING
+        values: vec![living_entity_flags_data(
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            true,
+            false,
+            false,
         )],
     }));
     assert!(posing(&world, 273));
@@ -11581,6 +11573,28 @@ fn living_entity_health_data(entity_type_id: i32, health: f32) -> EntityDataValu
         .expect("generated LivingEntity metadata accessors");
     assert_eq!(accessors.health_default, 1.0);
     protocol_float_data(accessors.health_data_id, health)
+}
+
+fn living_entity_flags_data(
+    entity_type_id: i32,
+    is_using: bool,
+    off_hand: bool,
+    spin_attack: bool,
+) -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .expect("generated LivingEntity metadata accessors");
+    assert_eq!(accessors.flags_default, 0);
+    let mut flags = 0;
+    if is_using {
+        flags |= accessors.is_using_mask;
+    }
+    if off_hand {
+        flags |= accessors.off_hand_mask;
+    }
+    if spin_attack {
+        flags |= accessors.spin_attack_mask;
+    }
+    protocol_byte_data(accessors.flags_data_id, flags)
 }
 
 fn entity_metadata_accessors() -> bbb_world::VanillaEntityMetadataAccessors {

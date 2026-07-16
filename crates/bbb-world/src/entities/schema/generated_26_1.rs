@@ -23427,7 +23427,17 @@ mod generated_catalog_guards {
         let store = include_str!("../store.rs");
         let entity_data = include_str!("../../../../bbb-native/src/entity_scene/entity_data.rs");
         let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
-        for source in [metadata, animations, store, entity_data, variants] {
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        for source in [
+            metadata,
+            animations,
+            store,
+            entity_data,
+            variants,
+            native_scene,
+            native_scene_tests,
+        ] {
             assert!(
                 source.contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type")
             );
@@ -23448,23 +23458,6 @@ mod generated_catalog_guards {
                 assert!(
                     !source.contains(removed),
                     "LivingEntity projection restored {removed}"
-                );
-            }
-        }
-        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
-        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
-        for source in [native_scene, native_scene_tests] {
-            assert!(
-                source.contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type")
-            );
-            for removed in [
-                "VANILLA_LIVING_ENTITY_HEALTH_DATA_ID",
-                "VANILLA_ENTITY_HEALTH_DATA_ID",
-                "LIVING_ENTITY_HEALTH_DATA_ID",
-            ] {
-                assert!(
-                    !source.contains(removed),
-                    "LivingEntity health fixture restored {removed}"
                 );
             }
         }

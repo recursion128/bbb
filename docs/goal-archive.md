@@ -17735,3 +17735,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   复用 generated LivingEntity health helper；death-time 2.25 与 red-overlay 行为保持不变。
 - LivingEntity health reverse guard 新增该历史别名拼写，和固定/`VANILLA_LIVING_*` alias 一并
   禁止在整份 entity-scene fixture 回流。
+
+## 2026-07-16：统一 LivingEntity flags entity-scene fixture accessor 消费
+
+- auto-spin、玩家物品使用手及其 spyglass/horn/brush/block/trident/bow/crossbow/item-pose
+  semantic fixtures 删除固定 flags wire id 与三个手写 bit mask，按实际 living entity type 查询
+  generated LivingEntity bundle，并从 named masks 组合 payload。
+- LivingEntity generator 守卫把 entity-scene 父模块与整份 semantic fixture 纳入完整 flags、
+  health、sleeping-pos alias 禁止集；非 living boat 的 stray-field 负例仍以 Chicken accessor 构造
+  精确的继承槽位，继续证明 renderer projection fail closed。
