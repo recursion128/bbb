@@ -371,9 +371,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   PolarBear standing membership, wire index and typed default must remain derived from generated
   `PolarBear.DATA_STANDING_ID`; world animation consumers must not restore fixed accessor/default
   aliases or read the standing flag without generated PolarBear membership.
-  Wolf interested membership, wire index and typed default must remain derived from generated
-  `Wolf.DATA_INTERESTED_ID`; world animation consumers must not restore fixed accessor/default
-  aliases or read another entity family's slot 20 as the interested flag.
+  Wolf interested/collar-color/anger-end-time membership, wire indices and typed defaults must
+  remain derived together from generated `Wolf.DATA_INTERESTED_ID`, `DATA_COLLAR_COLOR` and
+  `DATA_ANGER_END_TIME`; world head-roll plus native model/tail/F3+I consumers and fixtures must not
+  restore fixed accessor/default aliases or read same-index metadata from another entity family.
   Cat lie-down and relax-state-one membership, wire indices and typed defaults must remain derived
   from generated `Cat.IS_LYING` and `Cat.RELAX_STATE_ONE`; world animation and sleeping-player
   projection must not restore fixed accessor/default aliases or parallel Cat membership gates.

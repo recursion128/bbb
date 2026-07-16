@@ -179,6 +179,9 @@ pub use crate::entities::{
     VanillaItemFrameMetadataAccessors, VANILLA_END_CRYSTAL_BEAM_TARGET_DATA_ID,
     VANILLA_END_CRYSTAL_DEFAULT_SHOW_BOTTOM, VANILLA_END_CRYSTAL_SHOW_BOTTOM_DATA_ID,
 };
+pub use crate::entities::{
+    vanilla_entity_metadata_wolf_accessors_for_entity_type, VanillaWolfMetadataAccessors,
+};
 pub use crate::entities::{vanilla_entity_scale_sanitizer, VanillaEntityScaleSanitizer};
 pub use crate::entities::{
     vanilla_minecart_default_display_offset,

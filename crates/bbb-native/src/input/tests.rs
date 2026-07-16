@@ -7174,6 +7174,13 @@ fn local_cat_save_uses_generated_resource_and_collar_defaults() {
 fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
+    let accessors =
+        vanilla_entity_metadata_wolf_accessors_for_entity_type(VANILLA_ENTITY_TYPE_WOLF_ID)
+            .expect("generated Wolf metadata accessors must resolve");
+    let variant_accessors = vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_WOLF_ID,
+    )
+    .expect("generated Wolf variant metadata accessors must resolve");
     grant_debug_recreate_nbt_permission(&mut world);
     world.record_registry_entries(
         "minecraft:wolf_variant",
@@ -7225,17 +7232,17 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(TAMABLE_ANIMAL_SITTING_FLAG),
             },
             ProtocolEntityDataValue {
-                data_id: WOLF_COLLAR_COLOR_DATA_ID,
+                data_id: accessors.collar_color_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(11),
             },
             ProtocolEntityDataValue {
-                data_id: WOLF_ANGER_END_TIME_DATA_ID,
+                data_id: accessors.anger_end_time_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_LONG_ID,
                 value: EntityDataValueKind::Long(200),
             },
             ProtocolEntityDataValue {
-                data_id: WOLF_VARIANT_DATA_ID,
+                data_id: variant_accessors.variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfVariant,
@@ -7243,7 +7250,7 @@ fn shift_f3_i_with_permission_copies_local_wolf_save_nbt_to_clipboard() {
                 },
             },
             ProtocolEntityDataValue {
-                data_id: WOLF_SOUND_VARIANT_DATA_ID,
+                data_id: variant_accessors.sound_variant_data_id,
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_WOLF_SOUND_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfSoundVariant,

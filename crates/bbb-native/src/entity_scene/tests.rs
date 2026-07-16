@@ -9661,7 +9661,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
             VANILLA_ENTITY_TYPE_WOLF_ID,
             &[
                 protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
-                protocol_int_data(WOLF_COLLAR_COLOR_DATA_ID, 11),
+                protocol_int_data(wolf_metadata_accessors().collar_color_data_id, 11),
             ]
         ),
         EntityModelKind::Wolf {
@@ -9678,7 +9678,7 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
             &[
                 protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
                 protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
-                protocol_int_data(WOLF_COLLAR_COLOR_DATA_ID, 11),
+                protocol_int_data(wolf_metadata_accessors().collar_color_data_id, 11),
             ]
         ),
         EntityModelKind::Wolf {
@@ -9692,7 +9692,10 @@ fn entity_model_kind_uses_exact_models_for_wolves() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_WOLF_ID,
-            &[protocol_int_data(WOLF_COLLAR_COLOR_DATA_ID, 11)]
+            &[protocol_int_data(
+                wolf_metadata_accessors().collar_color_data_id,
+                11,
+            )]
         ),
         EntityModelKind::Wolf {
             baby: false,
@@ -10300,7 +10303,10 @@ fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
     assert_eq!(
         entity_model_kind_with_time_and_registries(
             VANILLA_ENTITY_TYPE_WOLF_ID,
-            &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
+            &[protocol_long_data(
+                wolf_metadata_accessors().anger_end_time_data_id,
+                200,
+            )],
             0.0,
             199,
             None,
@@ -10316,7 +10322,10 @@ fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
     assert_eq!(
         entity_model_kind_with_time_and_registries(
             VANILLA_ENTITY_TYPE_WOLF_ID,
-            &[protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200)],
+            &[protocol_long_data(
+                wolf_metadata_accessors().anger_end_time_data_id,
+                200,
+            )],
             0.0,
             200,
             None,
@@ -10334,7 +10343,7 @@ fn entity_model_kind_uses_vanilla_wolf_anger_end_time_metadata() {
             VANILLA_ENTITY_TYPE_WOLF_ID,
             &[
                 protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
-                protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 200),
+                protocol_long_data(wolf_metadata_accessors().anger_end_time_data_id, 200),
             ],
             0.0,
             199,
@@ -10360,7 +10369,10 @@ fn entity_model_instances_project_wolf_anger_from_world_game_time() {
     ));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 148,
-        values: vec![protocol_long_data(WOLF_ANGER_END_TIME_DATA_ID, 130)],
+        values: vec![protocol_long_data(
+            wolf_metadata_accessors().anger_end_time_data_id,
+            130,
+        )],
     }));
     world.apply_world_time(PlayTime {
         game_time: 120,
@@ -10426,7 +10438,7 @@ fn entity_model_instances_project_wolf_invisible_shared_flag_from_world() {
         values: vec![
             protocol_byte_data(ENTITY_SHARED_FLAGS_DATA_ID, ENTITY_SHARED_FLAG_INVISIBLE),
             protocol_byte_data(TAMABLE_ANIMAL_FLAGS_DATA_ID, TAMABLE_ANIMAL_TAME_FLAG),
-            protocol_int_data(WOLF_COLLAR_COLOR_DATA_ID, 11),
+            protocol_int_data(wolf_metadata_accessors().collar_color_data_id, 11),
         ],
     }));
 
@@ -11576,6 +11588,11 @@ fn protocol_pig_variant_data(id: i32) -> EntityDataValue {
             id,
         },
     }
+}
+
+fn wolf_metadata_accessors() -> bbb_world::VanillaWolfMetadataAccessors {
+    vanilla_entity_metadata_wolf_accessors_for_entity_type(VANILLA_ENTITY_TYPE_WOLF_ID)
+        .expect("generated Wolf metadata accessors must resolve")
 }
 
 fn protocol_zombie_nautilus_variant_data(id: i32) -> EntityDataValue {

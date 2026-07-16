@@ -17133,3 +17133,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   save-debug 不再维护固定 accessor/default aliases。
 - native scene/input/variant-texture fixtures 同步复用该 accessor；schema generator 新增跨
   consumer 反向守卫，并保持 tongue-target optional entity-reference 行为为独立后续缺口。
+
+## 2026-07-16：派生 Wolf metadata accessor bundle
+
+- Wolf interested、collar-color 与 anger-end-time 三项 metadata identity 组合为 typed bundle；
+  既有 interested 窄 helper 委托该 bundle，world head-roll、native model/tail 与 F3+I
+  save-debug 不再维护固定 wire index/default aliases。
+- world/native/input fixtures 同步复用 bundle；schema generator 的 Wolf 反向守卫扩展到
+  animations/store/scene/input，同时保留 companion variant/sound holder bundle 的职责边界。

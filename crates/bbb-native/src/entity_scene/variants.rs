@@ -732,6 +732,8 @@ pub(super) fn wolf_model_kind(
     game_time: i64,
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
+    let accessors = vanilla_entity_metadata_wolf_accessors_for_entity_type(entity_type_id)
+        .expect("generated Wolf metadata accessors must resolve");
     let tame =
         vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type(entity_type_id)
             .is_some_and(|(data_id, default)| {
@@ -740,12 +742,12 @@ pub(super) fn wolf_model_kind(
     EntityModelKind::Wolf {
         baby: ageable_baby(values),
         tame,
-        angry: wolf_is_angry(values, game_time),
+        angry: wolf_is_angry(entity_type_id, values, game_time),
         collar_color: tame.then(|| {
             EntityDyeColor::from_vanilla_id(entity_data_int(
                 values,
-                WOLF_COLLAR_COLOR_DATA_ID,
-                WOLF_DEFAULT_COLLAR_COLOR_ID,
+                accessors.collar_color_data_id,
+                accessors.collar_color_default,
             ))
         }),
         variant: wolf_model_variant(entity_type_id, values, registries),
@@ -817,13 +819,18 @@ pub(super) fn entity_invisible(values: &[bbb_protocol::packets::EntityDataValue]
 }
 
 pub(super) fn wolf_is_angry(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     game_time: i64,
 ) -> bool {
+    let Some(accessors) = vanilla_entity_metadata_wolf_accessors_for_entity_type(entity_type_id)
+    else {
+        return false;
+    };
     let end_time = entity_data_long(
         values,
-        WOLF_ANGER_END_TIME_DATA_ID,
-        WOLF_DEFAULT_ANGER_END_TIME,
+        accessors.anger_end_time_data_id,
+        accessors.anger_end_time_default,
     );
     end_time > 0 && end_time - game_time > 0
 }
@@ -969,7 +976,7 @@ pub(super) fn wolf_tail_angle(
     if entity_type_id != VANILLA_ENTITY_TYPE_WOLF_ID {
         return WILD_TAIL_ANGLE;
     }
-    if wolf_is_angry(values, game_time) {
+    if wolf_is_angry(entity_type_id, values, game_time) {
         // `Wolf.getTailAngle()` angry branch returns this exact constant.
         return 1.5393804;
     }

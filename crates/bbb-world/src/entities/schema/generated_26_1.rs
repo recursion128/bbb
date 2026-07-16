@@ -24288,21 +24288,49 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_wolf_interested_does_not_restore_accessor_constants() {
+    fn production_wolf_accessors_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let entity_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let wolf_model = variants
+            .split("pub(super) fn wolf_model_kind")
+            .nth(1)
+            .and_then(|source| source.split("pub(super) fn entity_invisible").next())
+            .expect("Wolf model projection source");
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        let wolf_debug = input
+            .split("fn debug_push_wolf_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_zombie_nautilus_additional_save_data")
+                    .next()
+            })
+            .expect("Wolf debug projection source");
         assert!(
             animations.contains("vanilla_entity_metadata_wolf_interested_accessor_for_entity_type")
         );
         assert!(
             store.contains("wolf_is_interested(identity.entity_type_id, &metadata.data_values)")
         );
-        for removed in ["WOLF_INTERESTED_DATA_ID", "WOLF_DEFAULT_INTERESTED"] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
-            assert!(!store.contains(removed), "store restored {removed}");
+        for source in [wolf_model, wolf_debug] {
+            assert!(source.contains("vanilla_entity_metadata_wolf_accessors_for_entity_type"));
+        }
+        for source in [animations, store, entity_scene, variants, input] {
+            for removed in [
+                "WOLF_INTERESTED_DATA_ID",
+                "WOLF_DEFAULT_INTERESTED",
+                "WOLF_COLLAR_COLOR_DATA_ID",
+                "WOLF_DEFAULT_COLLAR_COLOR",
+                "WOLF_ANGER_END_TIME_DATA_ID",
+                "WOLF_DEFAULT_ANGER_END_TIME",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "Wolf projection restored {removed}"
+                );
+            }
         }
     }
 

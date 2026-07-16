@@ -78,6 +78,7 @@ use bbb_world::vanilla_entity_metadata_vex_flags_accessor_for_entity_type;
 #[cfg(test)]
 use bbb_world::vanilla_entity_metadata_villager_data_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_wolf_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type;
 #[cfg(test)]
@@ -216,13 +217,6 @@ use bbb_world::{
     VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID,
     VANILLA_TURTLE_LAYING_EGG_DATA_ID as TURTLE_LAYING_EGG_DATA_ID,
 };
-use bbb_world::{
-    VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
-    VANILLA_WOLF_COLLAR_COLOR_DATA_ID as WOLF_COLLAR_COLOR_DATA_ID,
-    VANILLA_WOLF_DEFAULT_ANGER_END_TIME as WOLF_DEFAULT_ANGER_END_TIME,
-    VANILLA_WOLF_DEFAULT_COLLAR_COLOR as WOLF_DEFAULT_COLLAR_COLOR_ID,
-};
-
 trait EntityVariantRegistryLookup {
     fn resource_id_by_holder_id(&self, registry: &str, holder_id: i32) -> Option<&str>;
 

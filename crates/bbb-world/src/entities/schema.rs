@@ -306,6 +306,16 @@ pub struct VanillaCompanionVariantMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaWolfMetadataAccessors {
+    pub interested_data_id: u8,
+    pub interested_default: bool,
+    pub collar_color_data_id: u8,
+    pub collar_color_default: i32,
+    pub anger_end_time_data_id: u8,
+    pub anger_end_time_default: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaMobMetadataAccessors {
     pub flags_data_id: u8,
     pub flags_default: i8,
@@ -1775,24 +1785,67 @@ pub fn vanilla_entity_metadata_polar_bear_standing_accessor_for_entity_type(
     }
 }
 
+/// Resolves Wolf's generated interested, collar-color, and anger-end-time accessors.
+pub fn vanilla_entity_metadata_wolf_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaWolfMetadataAccessors> {
+    let interested =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_INTERESTED_ID")?;
+    let collar_color =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_COLLAR_COLOR")?;
+    let anger_end_time =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ANGER_END_TIME")?;
+    match (
+        (
+            interested.owner,
+            interested.serializer_name,
+            interested.typed_default,
+        ),
+        (
+            collar_color.owner,
+            collar_color.serializer_name,
+            collar_color.typed_default,
+        ),
+        (
+            anger_end_time.owner,
+            anger_end_time.serializer_name,
+            anger_end_time.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.wolf.Wolf",
+                "BOOLEAN",
+                Some(VanillaEntityMetadataDefault::Boolean(interested_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.wolf.Wolf",
+                "INT",
+                Some(VanillaEntityMetadataDefault::Int(collar_color_default)),
+            ),
+            (
+                "net.minecraft.world.entity.animal.wolf.Wolf",
+                "LONG",
+                Some(VanillaEntityMetadataDefault::Long(anger_end_time_default)),
+            ),
+        ) => Some(VanillaWolfMetadataAccessors {
+            interested_data_id: interested.data_id,
+            interested_default,
+            collar_color_data_id: collar_color.data_id,
+            collar_color_default,
+            anger_end_time_data_id: anger_end_time.data_id,
+            anger_end_time_default,
+        }),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Wolf interested accessor and its typed default.
 pub fn vanilla_entity_metadata_wolf_interested_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, bool)> {
-    let accessor =
-        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_INTERESTED_ID")?;
-    match (
-        accessor.owner,
-        accessor.serializer_name,
-        accessor.typed_default,
-    ) {
-        (
-            "net.minecraft.world.entity.animal.wolf.Wolf",
-            "BOOLEAN",
-            Some(VanillaEntityMetadataDefault::Boolean(default)),
-        ) => Some((accessor.data_id, default)),
-        _ => None,
-    }
+    vanilla_entity_metadata_wolf_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| (accessors.interested_data_id, accessors.interested_default))
 }
 
 /// Resolves the inherited TamableAnimal flags accessor and its typed default.
@@ -5504,21 +5557,31 @@ mod tests {
     }
 
     #[test]
-    fn generated_wolf_interested_accessor_owns_membership_index_and_default() {
+    fn generated_wolf_accessors_own_membership_indices_and_defaults() {
+        let expected = VanillaWolfMetadataAccessors {
+            interested_data_id: VANILLA_WOLF_INTERESTED_DATA_ID,
+            interested_default: VANILLA_WOLF_DEFAULT_INTERESTED,
+            collar_color_data_id: VANILLA_WOLF_COLLAR_COLOR_DATA_ID,
+            collar_color_default: VANILLA_WOLF_DEFAULT_COLLAR_COLOR,
+            anger_end_time_data_id: VANILLA_WOLF_ANGER_END_TIME_DATA_ID,
+            anger_end_time_default: VANILLA_WOLF_DEFAULT_ANGER_END_TIME,
+        };
+        assert_eq!(
+            vanilla_entity_metadata_wolf_accessors_for_entity_type(VANILLA_ENTITY_TYPE_WOLF_ID),
+            Some(expected)
+        );
         assert_eq!(
             vanilla_entity_metadata_wolf_interested_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_WOLF_ID
             ),
-            Some((20, false))
+            Some((expected.interested_data_id, expected.interested_default))
         );
         assert_eq!(
-            vanilla_entity_metadata_wolf_interested_accessor_for_entity_type(
-                VANILLA_ENTITY_TYPE_CAT_ID
-            ),
+            vanilla_entity_metadata_wolf_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID),
             None
         );
         assert_eq!(
-            vanilla_entity_metadata_wolf_interested_accessor_for_entity_type(-1),
+            vanilla_entity_metadata_wolf_accessors_for_entity_type(-1),
             None
         );
     }
