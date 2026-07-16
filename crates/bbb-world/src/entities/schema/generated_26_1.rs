@@ -24178,6 +24178,47 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_piglin_metadata_does_not_restore_accessor_constants() {
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        assert!(native_variants
+            .contains("vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type"));
+        assert!(native_variants.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        assert!(native_kind.contains("piglin_baby(entity_type_id, data_values)"));
+        assert!(native_input
+            .contains("vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type"));
+        assert!(native_input.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
+        for removed in [
+            "PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID",
+            "ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID",
+            "ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION",
+            "PIGLIN_BABY_DATA_ID",
+            "PIGLIN_DEFAULT_BABY",
+            "PIGLIN_IS_DANCING_DATA_ID",
+            "PIGLIN_DEFAULT_DANCING",
+        ] {
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_variants.contains(removed),
+                "native variants restored {removed}"
+            );
+            assert!(
+                !native_kind.contains(removed),
+                "native kind restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_copper_golem_state_does_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");

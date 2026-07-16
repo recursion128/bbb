@@ -268,7 +268,6 @@ pub(crate) mod text_edit;
 use crate::camera_pose::camera_pose_from_world;
 use crate::crosshair::protocol_block_pos_from_world;
 use crate::crosshair::{crosshair_target_from_camera_at_partial_tick, CrosshairTarget};
-use crate::entity_scene::PIGLIN_BABY_DATA_ID;
 #[cfg(test)]
 use crate::entity_scene::{END_CRYSTAL_BEAM_TARGET_DATA_ID, END_CRYSTAL_SHOW_BOTTOM_DATA_ID};
 use crate::terrain_runtime::TerrainUploadState;
@@ -291,8 +290,6 @@ use bbb_world::{
     VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID as ABSTRACT_FISH_FROM_BUCKET_DATA_ID,
 };
 use bbb_world::{
-    VANILLA_ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION as ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
-    VANILLA_ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
     VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION as HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION,
     VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
 };
@@ -7590,9 +7587,15 @@ fn debug_push_hoglin_additional_save_data(entity: &EntityState, fields: &mut Vec
 }
 
 fn debug_push_abstract_piglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
+    let Some((data_id, default)) =
+        bbb_world::vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
     let immune_to_zombification =
-        debug_entity_data_bool_present(entity, ABSTRACT_PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID)
-            .unwrap_or(ABSTRACT_PIGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION);
+        debug_entity_data_bool_present(entity, data_id).unwrap_or(default);
     fields.push(format!(
         "IsImmuneToZombification: {}",
         debug_snbt_bool(immune_to_zombification)
@@ -7600,7 +7603,12 @@ fn debug_push_abstract_piglin_additional_save_data(entity: &EntityState, fields:
 }
 
 fn debug_push_piglin_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    if let Some(is_baby) = debug_entity_data_bool_present(entity, PIGLIN_BABY_DATA_ID) {
+    let Some((data_id, _default)) =
+        bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type(entity.entity_type_id)
+    else {
+        return;
+    };
+    if let Some(is_baby) = debug_entity_data_bool_present(entity, data_id) {
         fields.push(format!("IsBaby: {}", debug_snbt_bool(is_baby)));
     }
 }

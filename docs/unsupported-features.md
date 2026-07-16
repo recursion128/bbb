@@ -361,6 +361,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Creaking can-move and tearing-down membership, wire indices and typed defaults must remain derived
   from generated `Creaking.CAN_MOVE` and `Creaking.IS_TEARING_DOWN`; world animation/model
   consumers must not restore fixed accessor/default aliases or a parallel Creaking type gate.
+  AbstractPiglin zombification immunity plus Piglin baby/dancing membership, wire indices and typed
+  defaults must remain derived from generated `AbstractPiglin.DATA_IMMUNE_TO_ZOMBIFICATION`,
+  `Piglin.DATA_BABY_ID`, and `Piglin.DATA_IS_DANCING`; native model/pose and F3+I save-debug
+  consumers must not restore fixed aliases or project Piglin-only fields onto PiglinBrute.
   Pillager and Piglin charging-crossbow membership, wire indices and typed defaults must remain
   derived from generated `Pillager.IS_CHARGING_CROSSBOW` and
   `Piglin.DATA_IS_CHARGING_CROSSBOW`; world animation and native hand-pose consumers must not restore fixed

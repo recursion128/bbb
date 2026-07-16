@@ -1024,16 +1024,17 @@ pub(super) fn illager_celebrating(
         )
 }
 
-/// Vanilla `Piglin.isDancing()` (the synced `DATA_IS_DANCING` boolean, id 19): drives the piglin's
+/// Vanilla `Piglin.isDancing()` (the synced `DATA_IS_DANCING` boolean): drives the piglin's
 /// `DANCING` arm pose (the soul-campfire celebration — swaying ears, raised arms, bobbing head/body).
-/// Only `Piglin.getArmPose` returns `DANCING`; the piglin brute and zombified piglin never dance, so the
-/// projection is gated to the regular piglin type.
+/// The generated accessor owns regular-Piglin membership, wire index and typed default; PiglinBrute
+/// and ZombifiedPiglin therefore cannot read unrelated metadata as this flag.
 pub(super) fn piglin_is_dancing(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_PIGLIN_ID
-        && entity_data_bool(values, PIGLIN_IS_DANCING_DATA_ID, PIGLIN_DEFAULT_DANCING)
+    bbb_world::vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(values, data_id, default))
+        .unwrap_or_default()
 }
 
 /// Vanilla `PandaRenderState.isUnhappy = Panda.getUnhappyCounter() > 0` (the synced
@@ -1740,8 +1741,13 @@ pub(super) fn zombie_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> 
     entity_data_bool(values, ZOMBIE_BABY_DATA_ID, ZOMBIE_DEFAULT_BABY)
 }
 
-pub(super) fn piglin_baby(values: &[bbb_protocol::packets::EntityDataValue]) -> bool {
-    entity_data_bool(values, PIGLIN_BABY_DATA_ID, PIGLIN_DEFAULT_BABY)
+pub(super) fn piglin_baby(
+    entity_type_id: i32,
+    values: &[bbb_protocol::packets::EntityDataValue],
+) -> bool {
+    bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+        .map(|(data_id, default)| entity_data_bool(values, data_id, default))
+        .unwrap_or_default()
 }
 
 pub(super) fn bogged_sheared(

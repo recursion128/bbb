@@ -2770,7 +2770,7 @@ pub(crate) fn vanilla_entity_metadata_wither_side_head_target_accessors_for_enti
 /// Vanilla declares this accessor independently on `AgeableMob`, `Zombie`, `Piglin`, and
 /// `Zoglin`; walking the generated schema hierarchy preserves their distinct wire indices without
 /// maintaining a parallel entity-type membership table.
-pub(crate) fn vanilla_entity_metadata_baby_accessor_for_entity_type(
+pub fn vanilla_entity_metadata_baby_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, bool)> {
     let accessor =
@@ -2779,6 +2779,26 @@ pub(crate) fn vanilla_entity_metadata_baby_accessor_for_entity_type(
         ("BOOLEAN", Some(VanillaEntityMetadataDefault::Boolean(default))) => {
             Some((accessor.data_id, default))
         }
+        _ => None,
+    }
+}
+
+/// Resolves the generated Piglin dancing accessor and its typed default.
+pub fn vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_IS_DANCING")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.piglin.Piglin",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
         _ => None,
     }
 }
@@ -5006,7 +5026,7 @@ mod tests {
     }
 
     #[test]
-    fn generated_crossbow_charging_accessors_separate_pillager_and_piglin_membership() {
+    fn generated_crossbow_and_dancing_accessors_separate_pillager_and_piglin_membership() {
         assert_eq!(
             vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PILLAGER_ID
@@ -5018,6 +5038,12 @@ mod tests {
                 VANILLA_ENTITY_TYPE_PIGLIN_ID
             ),
             Some((18, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PIGLIN_ID
+            ),
+            Some((19, false))
         );
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
@@ -5034,6 +5060,10 @@ mod tests {
                 vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
                     entity_type_id
                 ),
+                None
+            );
+            assert_eq!(
+                vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(entity_type_id),
                 None
             );
         }

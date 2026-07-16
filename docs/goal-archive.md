@@ -17049,3 +17049,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   仍由各 accessor 的生成 owner 判定排除。
 - native 语义测试从同一生成 accessor 取得 fixture index 并核对 typed default；schema generator
   的跨 crate 反向测试现同时扫描 world animation/store 与 native scene/hands，拒绝四个旧固定别名回流。
+
+## 2026-07-16：派生 Piglin family metadata accessor bundle
+
+- AbstractPiglin immunity 及 Piglin baby/dancing 的 native 消费统一改从生成 schema hierarchy
+  取得成员、wire index 与 boolean default；entity model/arm pose 和 F3+I save-debug 不再维护
+  这三个字段的固定别名，PiglinBrute 仅继承 AbstractPiglin immunity。
+- native entity/input 与 world pick-bounds 的相关 semantic fixtures 同样从生成 accessor 取得
+  metadata identity；schema generator 新增跨 crate 反向守卫，拒绝旧 Piglin aliases 或平行
+  type gate 回流。

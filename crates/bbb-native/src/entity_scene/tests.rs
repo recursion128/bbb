@@ -1408,14 +1408,14 @@ fn entity_model_instances_shake_piglins_and_hoglins_while_zombifying() {
     assert!(overworld.apply_set_entity_data(SetEntityData {
         id: 87,
         values: vec![protocol_bool_data(
-            PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+            piglin_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_ID),
             true,
         )],
     }));
     assert!(overworld.apply_set_entity_data(SetEntityData {
         id: 88,
         values: vec![protocol_bool_data(
-            PIGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID,
+            piglin_immunity_data_id(VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
             true,
         )],
     }));
@@ -2290,7 +2290,7 @@ fn entity_model_instances_project_piglin_dancing() {
     // Piglin.DATA_IS_DANCING (data id 19) projects the dance for the regular piglin.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 180,
-        values: vec![protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true)],
+        values: vec![protocol_bool_data(piglin_dancing_data_id(), true)],
     }));
     assert!(dancing(&world, 180));
 
@@ -2298,7 +2298,7 @@ fn entity_model_instances_project_piglin_dancing() {
     // is not even defined on it).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 181,
-        values: vec![protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true)],
+        values: vec![protocol_bool_data(piglin_dancing_data_id(), true)],
     }));
     assert!(!dancing(&world, 181));
 }
@@ -4094,7 +4094,7 @@ fn entity_model_instances_project_piglin_melee_attack_pose() {
         id: 215,
         values: vec![
             protocol_byte_data(VANILLA_MOB_FLAGS_DATA_ID, MOB_FLAG_AGGRESSIVE),
-            protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true),
+            protocol_bool_data(piglin_dancing_data_id(), true),
         ],
     }));
     assert!(!attacking(&world, 215));
@@ -4186,7 +4186,7 @@ fn entity_model_instances_project_piglin_admiring_a_loved_offhand_item() {
     assert!(world.apply_set_equipment(equip(223, EquipmentSlot::OffHand, LOVED_ITEM_ID, false)));
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 223,
-        values: vec![protocol_bool_data(PIGLIN_IS_DANCING_DATA_ID, true)],
+        values: vec![protocol_bool_data(piglin_dancing_data_id(), true)],
     }));
     assert!(!admiring(&world, 223));
 
@@ -7639,7 +7639,7 @@ fn entity_model_kind_uses_exact_models_for_base_zombie_and_skeleton() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_PIGLIN_ID,
-            &[protocol_bool_data(PIGLIN_BABY_DATA_ID, true)]
+            &[protocol_bool_data(piglin_baby_data_id(), true)]
         ),
         EntityModelKind::Piglin {
             family: PiglinModelFamily::Piglin,
@@ -11338,6 +11338,35 @@ fn protocol_add_entity_with_rotation(
         y_head_rot,
         data: 0,
     }
+}
+
+fn piglin_immunity_data_id(entity_type_id: i32) -> u8 {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .expect("generated AbstractPiglin immunity accessor");
+    assert!(!default);
+    data_id
+}
+
+fn piglin_baby_data_id() -> u8 {
+    let (data_id, default) = bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_PIGLIN_ID,
+    )
+    .expect("generated Piglin baby accessor");
+    assert!(!default);
+    data_id
+}
+
+fn piglin_dancing_data_id() -> u8 {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_piglin_dancing_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        )
+        .expect("generated Piglin dancing accessor");
+    assert!(!default);
+    data_id
 }
 
 fn protocol_bool_data(data_id: u8, value: bool) -> EntityDataValue {

@@ -73,7 +73,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_PIGLIN_ID => EntityModelKind::Piglin {
             family: PiglinModelFamily::Piglin,
-            baby: piglin_baby(data_values),
+            baby: piglin_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_SKELETON_ID => EntityModelKind::Skeleton,
         VANILLA_ENTITY_TYPE_STRAY_ID => EntityModelKind::SkeletonVariant {
