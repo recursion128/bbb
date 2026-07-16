@@ -2190,7 +2190,10 @@ fn entity_model_instances_project_illager_celebrating() {
     for id in [170, 171] {
         assert!(world.apply_set_entity_data(SetEntityData {
             id,
-            values: vec![protocol_bool_data(RAIDER_IS_CELEBRATING_DATA_ID, true)],
+            values: vec![protocol_bool_data(
+                raider_celebrating_data_id(VANILLA_ENTITY_TYPE_VINDICATOR_ID),
+                true,
+            )],
         }));
         assert!(celebrating(&world, id));
     }
@@ -2198,7 +2201,10 @@ fn entity_model_instances_project_illager_celebrating() {
     // The same flag on a pillager does NOT project celebrating (it never returns CELEBRATING).
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 172,
-        values: vec![protocol_bool_data(RAIDER_IS_CELEBRATING_DATA_ID, true)],
+        values: vec![protocol_bool_data(
+            raider_celebrating_data_id(VANILLA_ENTITY_TYPE_PILLAGER_ID),
+            true,
+        )],
     }));
     assert!(!celebrating(&world, 172));
 }
@@ -11365,6 +11371,16 @@ fn piglin_dancing_data_id() -> u8 {
             VANILLA_ENTITY_TYPE_PIGLIN_ID,
         )
         .expect("generated Piglin dancing accessor");
+    assert!(!default);
+    data_id
+}
+
+fn raider_celebrating_data_id(entity_type_id: i32) -> u8 {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .expect("generated Raider celebrating accessor");
     assert!(!default);
     data_id
 }

@@ -405,8 +405,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   behavior, including `DragonHoverPhase`'s direct override, rather than a parallel phase-id table.
   Hoglin/Zoglin shared attack-animation event and tick membership must remain derived from the
   generated `HoglinBase` interface graph rather than parallel entity-type tables.
-  Illager celebrating-arm-pose membership must remain derived from the nearest generated
-  `getArmPose` class behavior rather than an Evoker/Vindicator entity-type table.
+  Illager celebrating-arm-pose membership must combine the generated Raider `IS_CELEBRATING`
+  accessor with the nearest generated `getArmPose` class behavior rather than fixed metadata aliases
+  or an Evoker/Vindicator entity-type table. Spellcaster casting and Pillager charging fixtures must
+  likewise use their generated accessors instead of hand-written wire indices.
   Debug entity save-data dispatch for Camel, Guardian, and Slime families must consume their
   generated class memberships rather than parallel base/subclass type pairs.
   The shared AbstractChestedHorse debug save chain must consume its generated four-type class

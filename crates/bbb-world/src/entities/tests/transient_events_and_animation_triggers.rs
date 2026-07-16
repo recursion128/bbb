@@ -907,9 +907,13 @@ fn allay_main_hand_equipment_drives_holding_item_progress() {
 
 #[test]
 fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
-    const PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID: u8 = 17;
-
     let mut store = WorldStore::new();
+    let (charging_data_id, charging_default) =
+        super::schema::vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        )
+        .expect("generated Pillager charging accessor");
+    assert!(!charging_default);
     store.apply_add_entity(protocol_add_entity_with_type(
         77,
         VANILLA_ENTITY_TYPE_PILLAGER_ID,
@@ -926,7 +930,7 @@ fn pillager_charging_crossbow_flag_drives_the_use_item_tick_counter() {
         assert!(store.apply_set_entity_data(ProtocolSetEntityData {
             id: 77,
             values: vec![ProtocolEntityDataValue {
-                data_id: PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
+                data_id: charging_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(charging),
             }],

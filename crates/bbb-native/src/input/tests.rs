@@ -174,6 +174,26 @@ fn piglin_baby_data_id() -> u8 {
     data_id
 }
 
+fn spellcaster_casting_data_id(entity_type_id: i32) -> u8 {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .expect("generated SpellcasterIllager casting accessor");
+    assert_eq!(default, 0);
+    data_id
+}
+
+fn raider_celebrating_data_id(entity_type_id: i32) -> u8 {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .expect("generated Raider celebrating accessor");
+    assert!(!default);
+    data_id
+}
+
 fn handle_key_input_without_world(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -13723,8 +13743,6 @@ fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_spellcaster_illager_save_nbt_to_clipboard() {
-    const SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
-
     for (index, (entity_type_id, entity_type)) in [
         (VANILLA_ENTITY_TYPE_EVOKER_ID, "minecraft:evoker"),
         (VANILLA_ENTITY_TYPE_ILLUSIONER_ID, "minecraft:illusioner"),
@@ -13760,7 +13778,7 @@ fn shift_f3_i_with_permission_copies_local_spellcaster_illager_save_nbt_to_clipb
                     value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
                 },
                 ProtocolEntityDataValue {
-                    data_id: SPELLCASTER_ILLAGER_CASTING_DATA_ID,
+                    data_id: spellcaster_casting_data_id(entity_type_id),
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
                     value: EntityDataValueKind::Byte(2),
                 },
@@ -13812,8 +13830,6 @@ fn shift_f3_i_with_permission_copies_local_spellcaster_illager_save_nbt_to_clipb
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_vindicator_save_nbt_to_clipboard() {
-    const RAIDER_IS_CELEBRATING_DATA_ID: u8 = 16;
-
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -13841,7 +13857,7 @@ fn shift_f3_i_with_permission_copies_local_vindicator_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(MOB_FLAG_NO_AI | MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: RAIDER_IS_CELEBRATING_DATA_ID,
+                data_id: raider_celebrating_data_id(VANILLA_ENTITY_TYPE_VINDICATOR_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                 value: EntityDataValueKind::Boolean(true),
             },

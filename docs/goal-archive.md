@@ -17058,3 +17058,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native entity/input 与 world pick-bounds 的相关 semantic fixtures 同样从生成 accessor 取得
   metadata identity；schema generator 新增跨 crate 反向守卫，拒绝旧 Piglin aliases 或平行
   type gate 回流。
+
+## 2026-07-16：派生 Illager metadata accessor bundle
+
+- native celebrating arm-pose 现把生成的 Raider `IS_CELEBRATING` accessor 与最近
+  `getArmPose` class behavior 组合，wire index/default 和 Evoker/Vindicator pose membership
+  分属各自生成事实，不再依赖固定 Raider aliases。
+- world/native 的 Spellcaster casting、Pillager charging 与 Raider celebrating semantic fixtures
+  全部从生成 accessor 取得 metadata identity；生成反向守卫同步拒绝 celebrating 固定别名或
+  平行 entity-type membership 回流。

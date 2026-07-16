@@ -22416,13 +22416,31 @@ mod generated_catalog_guards {
     #[test]
     fn production_illager_celebrating_does_not_restore_entity_type_membership() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let body = source
             .split("fn illager_celebrating")
             .nth(1)
             .and_then(|source| source.split_once("\n}"))
             .map(|(body, _)| body)
             .expect("illager celebrating projection source");
+        assert!(
+            body.contains("vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type")
+        );
+        assert!(body.contains("vanilla_entity_type_illager_arm_pose_uses_celebrating"));
         assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        for removed in [
+            "RAIDER_IS_CELEBRATING_DATA_ID",
+            "RAIDER_DEFAULT_CELEBRATING",
+        ] {
+            assert!(
+                !body.contains(removed),
+                "celebrating projection restored {removed}"
+            );
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+        }
     }
 
     #[test]

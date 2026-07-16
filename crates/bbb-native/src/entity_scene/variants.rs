@@ -1007,21 +1007,20 @@ pub(super) fn parrot_sitting(
             })
 }
 
-/// Vanilla `Raider.isCelebrating()` (the synced `IS_CELEBRATING` boolean, id 16): drives the evoker and
-/// vindicator `CELEBRATING` victory-dance arm pose. The generated class-behavior catalog resolves
-/// the nearest `getArmPose`: the illusioner override omits celebrating and the pillager never returns
-/// it. The renderer additionally suppresses the projection while casting / aggressive (which take
-/// priority in vanilla `getArmPose`).
+/// Vanilla `Raider.isCelebrating()` (the synced `IS_CELEBRATING` boolean): drives the evoker and
+/// vindicator `CELEBRATING` victory-dance arm pose. Generated metadata supplies Raider membership,
+/// wire index and typed default; generated class behavior resolves the nearest `getArmPose`, where
+/// the illusioner override omits celebrating and the pillager never returns it. The renderer also
+/// suppresses the projection while casting / aggressive, which take priority in vanilla.
 pub(super) fn illager_celebrating(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     vanilla_entity_type_illager_arm_pose_uses_celebrating(entity_type_id)
-        && entity_data_bool(
-            values,
-            RAIDER_IS_CELEBRATING_DATA_ID,
-            RAIDER_DEFAULT_CELEBRATING,
+        && bbb_world::vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type(
+            entity_type_id,
         )
+        .is_some_and(|(data_id, default)| entity_data_bool(values, data_id, default))
 }
 
 /// Vanilla `Piglin.isDancing()` (the synced `DATA_IS_DANCING` boolean): drives the piglin's
