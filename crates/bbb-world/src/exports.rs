@@ -2,6 +2,7 @@ pub use crate::advancements::*;
 pub use crate::client::state::*;
 pub use crate::entities::state::*;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
+pub use crate::entities::VanillaFarmAnimalVariantMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
 pub use crate::entities::VanillaLlamaMetadataAccessors;
@@ -32,6 +33,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
+    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_field, vanilla_entity_metadata_fox_flags_accessor_for_entity_type,
     vanilla_entity_metadata_fox_variant_accessor_for_entity_type,
     vanilla_entity_metadata_ghast_charging_accessor_for_entity_type,

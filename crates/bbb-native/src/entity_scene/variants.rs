@@ -293,31 +293,34 @@ pub(super) fn boat(family: BoatModelFamily, chest: bool) -> EntityModelKind {
 }
 
 pub(super) fn chicken_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     EntityModelKind::Chicken {
-        variant: chicken_model_variant(values, registries),
+        variant: chicken_model_variant(entity_type_id, values, registries),
         baby: ageable_baby(values),
     }
 }
 
 pub(super) fn pig_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     EntityModelKind::Pig {
-        variant: pig_model_variant(values, registries),
+        variant: pig_model_variant(entity_type_id, values, registries),
         baby: ageable_baby(values),
     }
 }
 
 pub(super) fn cow_model_kind(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> EntityModelKind {
     EntityModelKind::Cow {
-        variant: cow_model_variant(values, registries),
+        variant: cow_model_variant(entity_type_id, values, registries),
         baby: ageable_baby(values),
     }
 }
@@ -332,6 +335,8 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> Option<EntityDynamicTexture> {
     let registries = registries?;
+    let accessors =
+        vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(entity_type_id)?;
     let (registry, holder_id, baby) = match kind {
         EntityModelKind::Chicken { baby, .. }
             if entity_type_id == VANILLA_ENTITY_TYPE_CHICKEN_ID =>
@@ -340,7 +345,7 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
                 CHICKEN_VARIANT_REGISTRY,
                 entity_data_registry_holder_id(
                     values,
-                    CHICKEN_VARIANT_DATA_ID,
+                    accessors.variant_data_id,
                     EntityDataRegistryHolder::ChickenVariant,
                 )?,
                 *baby,
@@ -350,7 +355,7 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
             COW_VARIANT_REGISTRY,
             entity_data_registry_holder_id(
                 values,
-                COW_VARIANT_DATA_ID,
+                accessors.variant_data_id,
                 EntityDataRegistryHolder::CowVariant,
             )?,
             *baby,
@@ -359,7 +364,7 @@ pub(super) fn apply_ready_farm_animal_variant_presentation(
             PIG_VARIANT_REGISTRY,
             entity_data_registry_holder_id(
                 values,
-                PIG_VARIANT_DATA_ID,
+                accessors.variant_data_id,
                 EntityDataRegistryHolder::PigVariant,
             )?,
             *baby,
@@ -1479,13 +1484,19 @@ pub(super) fn armadillo_rolled_up(
 }
 
 pub(super) fn chicken_model_variant(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> ChickenModelVariant {
+    let Some(accessors) =
+        vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(entity_type_id)
+    else {
+        return ChickenModelVariant::Temperate;
+    };
     values
         .iter()
         .rev()
-        .find(|value| value.data_id == CHICKEN_VARIANT_DATA_ID)
+        .find(|value| value.data_id == accessors.variant_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::ChickenVariant,
@@ -1495,18 +1506,20 @@ pub(super) fn chicken_model_variant(
         })
         .map(|id| {
             if let Some(registries) = registries {
-                chicken_variant_from_registry_id(registries, id)
-                    .unwrap_or_else(chicken_default_model_variant)
+                chicken_variant_from_registry_id(registries, id).unwrap_or_else(|| {
+                    chicken_default_model_variant(accessors.variant_default_resource_id)
+                })
             } else {
-                ChickenModelVariant::for_vanilla_registry_id(id)
-                    .unwrap_or_else(chicken_default_model_variant)
+                ChickenModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
+                    chicken_default_model_variant(accessors.variant_default_resource_id)
+                })
             }
         })
-        .unwrap_or_else(chicken_default_model_variant)
+        .unwrap_or_else(|| chicken_default_model_variant(accessors.variant_default_resource_id))
 }
 
-fn chicken_default_model_variant() -> ChickenModelVariant {
-    ChickenModelVariant::for_resource_id(CHICKEN_DEFAULT_VARIANT_RESOURCE_ID)
+fn chicken_default_model_variant(default_resource_id: &str) -> ChickenModelVariant {
+    ChickenModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla chicken default variant must map to a model")
 }
 
@@ -1570,13 +1583,19 @@ pub(super) fn frog_variant_from_registry_id(
 }
 
 pub(super) fn pig_model_variant(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> PigModelVariant {
+    let Some(accessors) =
+        vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(entity_type_id)
+    else {
+        return PigModelVariant::Temperate;
+    };
     values
         .iter()
         .rev()
-        .find(|value| value.data_id == PIG_VARIANT_DATA_ID)
+        .find(|value| value.data_id == accessors.variant_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::PigVariant,
@@ -1586,18 +1605,20 @@ pub(super) fn pig_model_variant(
         })
         .map(|id| {
             if let Some(registries) = registries {
-                pig_variant_from_registry_id(registries, id)
-                    .unwrap_or_else(pig_default_model_variant)
+                pig_variant_from_registry_id(registries, id).unwrap_or_else(|| {
+                    pig_default_model_variant(accessors.variant_default_resource_id)
+                })
             } else {
-                PigModelVariant::for_vanilla_registry_id(id)
-                    .unwrap_or_else(pig_default_model_variant)
+                PigModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
+                    pig_default_model_variant(accessors.variant_default_resource_id)
+                })
             }
         })
-        .unwrap_or_else(pig_default_model_variant)
+        .unwrap_or_else(|| pig_default_model_variant(accessors.variant_default_resource_id))
 }
 
-fn pig_default_model_variant() -> PigModelVariant {
-    PigModelVariant::for_resource_id(PIG_DEFAULT_VARIANT_RESOURCE_ID)
+fn pig_default_model_variant(default_resource_id: &str) -> PigModelVariant {
+    PigModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla pig default variant must map to a model")
 }
 
@@ -1611,13 +1632,19 @@ pub(super) fn pig_variant_from_registry_id(
 }
 
 pub(super) fn cow_model_variant(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> CowModelVariant {
+    let Some(accessors) =
+        vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(entity_type_id)
+    else {
+        return CowModelVariant::Temperate;
+    };
     values
         .iter()
         .rev()
-        .find(|value| value.data_id == COW_VARIANT_DATA_ID)
+        .find(|value| value.data_id == accessors.variant_data_id)
         .and_then(|value| match &value.value {
             EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::CowVariant,
@@ -1627,18 +1654,20 @@ pub(super) fn cow_model_variant(
         })
         .map(|id| {
             if let Some(registries) = registries {
-                cow_variant_from_registry_id(registries, id)
-                    .unwrap_or_else(cow_default_model_variant)
+                cow_variant_from_registry_id(registries, id).unwrap_or_else(|| {
+                    cow_default_model_variant(accessors.variant_default_resource_id)
+                })
             } else {
-                CowModelVariant::for_vanilla_registry_id(id)
-                    .unwrap_or_else(cow_default_model_variant)
+                CowModelVariant::for_vanilla_registry_id(id).unwrap_or_else(|| {
+                    cow_default_model_variant(accessors.variant_default_resource_id)
+                })
             }
         })
-        .unwrap_or_else(cow_default_model_variant)
+        .unwrap_or_else(|| cow_default_model_variant(accessors.variant_default_resource_id))
 }
 
-fn cow_default_model_variant() -> CowModelVariant {
-    CowModelVariant::for_resource_id(COW_DEFAULT_VARIANT_RESOURCE_ID)
+fn cow_default_model_variant(default_resource_id: &str) -> CowModelVariant {
+    CowModelVariant::for_resource_id(default_resource_id)
         .expect("generated vanilla cow default variant must map to a model")
 }
 

@@ -84,6 +84,7 @@ use bbb_world::vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_
 use bbb_world::vanilla_entity_metadata_chested_horse_chest_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
+use bbb_world::vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
@@ -200,11 +201,14 @@ use bbb_world::{
     VANILLA_CAT_SOUND_VARIANT_DATA_ID as CAT_SOUND_VARIANT_DATA_ID,
     VANILLA_CAT_VARIANT_DATA_ID as CAT_VARIANT_DATA_ID,
 };
+#[cfg(test)]
 use bbb_world::{
-    VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID as CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
-    VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID as CHICKEN_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID as CHICKEN_SOUND_VARIANT_DATA_ID,
     VANILLA_CHICKEN_VARIANT_DATA_ID as CHICKEN_VARIANT_DATA_ID,
+    VANILLA_COW_SOUND_VARIANT_DATA_ID as COW_SOUND_VARIANT_DATA_ID,
+    VANILLA_COW_VARIANT_DATA_ID as COW_VARIANT_DATA_ID,
+    VANILLA_PIG_SOUND_VARIANT_DATA_ID as PIG_SOUND_VARIANT_DATA_ID,
+    VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_COPPER_GOLEM_DEFAULT_WEATHER_STATE as COPPER_GOLEM_DEFAULT_WEATHER_STATE,
@@ -212,12 +216,6 @@ use bbb_world::{
     VANILLA_COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID as COPPER_GOLEM_WEATHER_STATE_EXPOSED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID as COPPER_GOLEM_WEATHER_STATE_OXIDIZED_ID,
     VANILLA_COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID as COPPER_GOLEM_WEATHER_STATE_WEATHERED_ID,
-};
-use bbb_world::{
-    VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID as COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
-    VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID as COW_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_COW_SOUND_VARIANT_DATA_ID as COW_SOUND_VARIANT_DATA_ID,
-    VANILLA_COW_VARIANT_DATA_ID as COW_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_FOX_FLAG_CROUCHING as FOX_FLAG_CROUCHING, VANILLA_FOX_FLAG_SITTING as FOX_FLAG_SITTING,
@@ -234,12 +232,6 @@ use bbb_world::{
     VANILLA_GOAT_LEFT_HORN_DATA_ID as GOAT_LEFT_HORN_DATA_ID,
     VANILLA_GOAT_RIGHT_HORN_DATA_ID as GOAT_RIGHT_HORN_DATA_ID,
     VANILLA_GOAT_SCREAMING_DATA_ID as GOAT_SCREAMING_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID as PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
-    VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID as PIG_DEFAULT_VARIANT_RESOURCE_ID,
-    VANILLA_PIG_SOUND_VARIANT_DATA_ID as PIG_SOUND_VARIANT_DATA_ID,
-    VANILLA_PIG_VARIANT_DATA_ID as PIG_VARIANT_DATA_ID,
 };
 use bbb_world::{
     VANILLA_WOLF_ANGER_END_TIME_DATA_ID as WOLF_ANGER_END_TIME_DATA_ID,
@@ -7221,9 +7213,14 @@ fn debug_push_chicken_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    let Some(accessors) = vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+        entity.entity_type_id,
+    ) else {
+        return;
+    };
     let variant = debug_entity_data_registry_id_present(
         entity,
-        CHICKEN_VARIANT_DATA_ID,
+        accessors.variant_data_id,
         EntityDataRegistryHolder::ChickenVariant,
     )
     .and_then(|id| {
@@ -7231,10 +7228,10 @@ fn debug_push_chicken_additional_save_data(
             ChickenModelVariant::for_vanilla_registry_id(id).map(ChickenModelVariant::resource_id)
         })
     })
-    .unwrap_or(CHICKEN_DEFAULT_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.variant_default_resource_id);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
-        CHICKEN_SOUND_VARIANT_DATA_ID,
+        accessors.sound_variant_data_id,
         EntityDataRegistryHolder::ChickenSoundVariant,
     )
     .and_then(|id| {
@@ -7243,7 +7240,7 @@ fn debug_push_chicken_additional_save_data(
                 .map(ChickenSoundVariantIdentity::resource_id)
         })
     })
-    .unwrap_or(CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.sound_variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",
@@ -7256,9 +7253,14 @@ fn debug_push_cow_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    let Some(accessors) = vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+        entity.entity_type_id,
+    ) else {
+        return;
+    };
     let variant = debug_entity_data_registry_id_present(
         entity,
-        COW_VARIANT_DATA_ID,
+        accessors.variant_data_id,
         EntityDataRegistryHolder::CowVariant,
     )
     .and_then(|id| {
@@ -7266,10 +7268,10 @@ fn debug_push_cow_additional_save_data(
             CowModelVariant::for_vanilla_registry_id(id).map(CowModelVariant::resource_id)
         })
     })
-    .unwrap_or(COW_DEFAULT_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.variant_default_resource_id);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
-        COW_SOUND_VARIANT_DATA_ID,
+        accessors.sound_variant_data_id,
         EntityDataRegistryHolder::CowSoundVariant,
     )
     .and_then(|id| {
@@ -7278,7 +7280,7 @@ fn debug_push_cow_additional_save_data(
                 .map(CowSoundVariantIdentity::resource_id)
         })
     })
-    .unwrap_or(COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.sound_variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",
@@ -7644,9 +7646,14 @@ fn debug_push_pig_additional_save_data(
     entity: &EntityState,
     fields: &mut Vec<String>,
 ) {
+    let Some(accessors) = vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+        entity.entity_type_id,
+    ) else {
+        return;
+    };
     let variant = debug_entity_data_registry_id_present(
         entity,
-        PIG_VARIANT_DATA_ID,
+        accessors.variant_data_id,
         EntityDataRegistryHolder::PigVariant,
     )
     .and_then(|id| {
@@ -7654,10 +7661,10 @@ fn debug_push_pig_additional_save_data(
             PigModelVariant::for_vanilla_registry_id(id).map(PigModelVariant::resource_id)
         })
     })
-    .unwrap_or(PIG_DEFAULT_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.variant_default_resource_id);
     let sound_variant = debug_entity_data_registry_id_present(
         entity,
-        PIG_SOUND_VARIANT_DATA_ID,
+        accessors.sound_variant_data_id,
         EntityDataRegistryHolder::PigSoundVariant,
     )
     .and_then(|id| {
@@ -7666,7 +7673,7 @@ fn debug_push_pig_additional_save_data(
                 .map(PigSoundVariantIdentity::resource_id)
         })
     })
-    .unwrap_or(PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID);
+    .unwrap_or(accessors.sound_variant_default_resource_id);
     fields.push(format!("variant: {}", debug_snbt_string(variant)));
     fields.push(format!(
         "sound_variant: {}",

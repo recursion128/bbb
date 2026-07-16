@@ -22920,6 +22920,85 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn production_farm_animal_variant_accessors_do_not_restore_fixed_metadata_facts() {
+        let variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
+        let model_body = variants
+            .split("pub(super) fn chicken_model_kind")
+            .nth(1)
+            .and_then(|source| source.split("pub(super) fn goat_model_kind").next())
+            .expect("farm-animal model projection source");
+        let variant_body = variants
+            .split("pub(super) fn chicken_model_variant")
+            .nth(1)
+            .and_then(|source| source.split("pub(super) fn chested_horse_has_chest").next())
+            .expect("farm-animal variant projection source");
+        let audio = include_str!("../../client/audio.rs");
+        let audio_body = audio
+            .split("pub fn living_death_sound_for_entity")
+            .nth(1)
+            .and_then(|source| source.split("fn sound_variant_death_sound").next())
+            .expect("farm-animal death-sound projection source");
+        let input = include_str!("../../../../bbb-native/src/input.rs");
+        let chicken_debug = input
+            .split("fn debug_push_chicken_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_cow_additional_save_data")
+                    .next()
+            })
+            .expect("Chicken debug projection source");
+        let cow_debug = input
+            .split("fn debug_push_cow_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_mooshroom_additional_save_data")
+                    .next()
+            })
+            .expect("Cow debug projection source");
+        let pig_debug = input
+            .split("fn debug_push_pig_additional_save_data")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split("fn debug_push_pufferfish_additional_save_data")
+                    .next()
+            })
+            .expect("Pig debug projection source");
+        for source in [
+            model_body,
+            variant_body,
+            audio_body,
+            chicken_debug,
+            cow_debug,
+            pig_debug,
+        ] {
+            assert!(source
+                .contains("vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type"));
+            for removed in [
+                "CHICKEN_VARIANT_DATA_ID",
+                "CHICKEN_DEFAULT_VARIANT_RESOURCE_ID",
+                "CHICKEN_SOUND_VARIANT_DATA_ID",
+                "CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID",
+                "COW_VARIANT_DATA_ID",
+                "COW_DEFAULT_VARIANT_RESOURCE_ID",
+                "COW_SOUND_VARIANT_DATA_ID",
+                "COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID",
+                "PIG_VARIANT_DATA_ID",
+                "PIG_DEFAULT_VARIANT_RESOURCE_ID",
+                "PIG_SOUND_VARIANT_DATA_ID",
+                "PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "farm-animal projection restored {removed}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn production_tamable_animal_flags_do_not_restore_accessor_constants() {
         let store = include_str!("../store.rs");
         let inventory = include_str!("../../client/inventory.rs");

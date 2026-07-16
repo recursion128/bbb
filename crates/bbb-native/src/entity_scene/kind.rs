@@ -39,7 +39,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         return EntityModelKind::NoRender;
     }
     match entity_type_id {
-        VANILLA_ENTITY_TYPE_CHICKEN_ID => chicken_model_kind(data_values, variant_registries),
+        VANILLA_ENTITY_TYPE_CHICKEN_ID => {
+            chicken_model_kind(entity_type_id, data_values, variant_registries)
+        }
         VANILLA_ENTITY_TYPE_PLAYER_ID | VANILLA_ENTITY_TYPE_MANNEQUIN_ID => {
             player_model_kind(entity_type_id, data_values)
         }
@@ -112,8 +114,12 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             weathering: copper_golem_weathering(data_values),
         },
         VANILLA_ENTITY_TYPE_CREEPER_ID => EntityModelKind::Creeper,
-        VANILLA_ENTITY_TYPE_PIG_ID => pig_model_kind(data_values, variant_registries),
-        VANILLA_ENTITY_TYPE_COW_ID => cow_model_kind(data_values, variant_registries),
+        VANILLA_ENTITY_TYPE_PIG_ID => {
+            pig_model_kind(entity_type_id, data_values, variant_registries)
+        }
+        VANILLA_ENTITY_TYPE_COW_ID => {
+            cow_model_kind(entity_type_id, data_values, variant_registries)
+        }
         VANILLA_ENTITY_TYPE_MOOSHROOM_ID => mooshroom_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_PANDA_ID => panda_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_SNIFFER_ID => EntityModelKind::Sniffer {

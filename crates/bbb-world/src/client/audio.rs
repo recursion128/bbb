@@ -18,14 +18,17 @@ use bbb_protocol::{
 use serde::{Deserialize, Serialize};
 
 use crate::entities::{
+    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
     ChickenSoundVariantIdentity, CowSoundVariantIdentity, PigSoundVariantIdentity,
     VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
     VANILLA_CAT_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_CAT_SOUND_VARIANT_DATA_ID,
-    VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
-    VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_COW_SOUND_VARIANT_DATA_ID,
-    VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_PIG_SOUND_VARIANT_DATA_ID,
     VANILLA_WOLF_DEFAULT_SOUND_VARIANT_RESOURCE_ID, VANILLA_WOLF_SOUND_VARIANT_DATA_ID,
+};
+#[cfg(test)]
+use crate::entities::{
+    VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID, VANILLA_COW_SOUND_VARIANT_DATA_ID,
+    VANILLA_PIG_SOUND_VARIANT_DATA_ID,
 };
 use crate::registries::{
     DamageTypeEffects, RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY,
@@ -602,12 +605,16 @@ impl WorldStore {
             }
             VANILLA_ENTITY_TYPE_CHICKEN_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
                 let sound = self.sound_variant_death_sound(
                     entity_id,
                     CHICKEN_SOUND_VARIANT_REGISTRY,
-                    VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
+                    accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::ChickenSoundVariant,
-                    VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    accessors.sound_variant_default_resource_id,
                     ChickenSoundVariantIdentity::for_vanilla_registry_id,
                     ChickenSoundVariantIdentity::for_resource_id,
                     ChickenSoundVariantIdentity::builtin_death_sound_event,
@@ -617,12 +624,16 @@ impl WorldStore {
             }
             VANILLA_ENTITY_TYPE_COW_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
                 let sound = self.sound_variant_death_sound(
                     entity_id,
                     COW_SOUND_VARIANT_REGISTRY,
-                    VANILLA_COW_SOUND_VARIANT_DATA_ID,
+                    accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::CowSoundVariant,
-                    VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    accessors.sound_variant_default_resource_id,
                     CowSoundVariantIdentity::for_vanilla_registry_id,
                     CowSoundVariantIdentity::for_resource_id,
                     CowSoundVariantIdentity::builtin_death_sound_event,
@@ -632,12 +643,16 @@ impl WorldStore {
             }
             VANILLA_ENTITY_TYPE_PIG_ID => {
                 let baby = self.entities.is_baby(entity_id)?;
+                let accessors =
+                    vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                        transform.entity_type_id,
+                    )?;
                 let sound = self.sound_variant_death_sound(
                     entity_id,
                     PIG_SOUND_VARIANT_REGISTRY,
-                    VANILLA_PIG_SOUND_VARIANT_DATA_ID,
+                    accessors.sound_variant_data_id,
                     EntityDataRegistryHolder::PigSoundVariant,
-                    VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                    accessors.sound_variant_default_resource_id,
                     PigSoundVariantIdentity::for_vanilla_registry_id,
                     PigSoundVariantIdentity::for_resource_id,
                     PigSoundVariantIdentity::builtin_death_sound_event,

@@ -290,6 +290,14 @@ pub struct VanillaLlamaMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaFarmAnimalVariantMetadataAccessors {
+    pub variant_data_id: u8,
+    pub variant_default_resource_id: &'static str,
+    pub sound_variant_data_id: u8,
+    pub sound_variant_default_resource_id: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaTurtleMetadataAccessors {
     pub has_egg_data_id: u8,
     pub has_egg_default: bool,
@@ -2255,6 +2263,83 @@ pub fn vanilla_entity_metadata_llama_accessors_for_entity_type(
             strength_default,
             variant_data_id: variant.data_id,
             variant_default,
+        }),
+        _ => None,
+    }
+}
+
+/// Resolves Chicken/Cow/Pig synchronized presentation and sound holders with virtual defaults.
+pub fn vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaFarmAnimalVariantMetadataAccessors> {
+    let variant =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_VARIANT_ID")?;
+    let sound_variant =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_SOUND_VARIANT_ID")?;
+    match (
+        (
+            variant.owner,
+            variant.serializer_name,
+            variant.typed_default,
+        ),
+        (
+            sound_variant.owner,
+            sound_variant.serializer_name,
+            sound_variant.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.animal.chicken.Chicken",
+                "CHICKEN_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    variant_default_resource_id,
+                )),
+            ),
+            (
+                "net.minecraft.world.entity.animal.chicken.Chicken",
+                "CHICKEN_SOUND_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    sound_variant_default_resource_id,
+                )),
+            ),
+        )
+        | (
+            (
+                "net.minecraft.world.entity.animal.cow.Cow",
+                "COW_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    variant_default_resource_id,
+                )),
+            ),
+            (
+                "net.minecraft.world.entity.animal.cow.Cow",
+                "COW_SOUND_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    sound_variant_default_resource_id,
+                )),
+            ),
+        )
+        | (
+            (
+                "net.minecraft.world.entity.animal.pig.Pig",
+                "PIG_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    variant_default_resource_id,
+                )),
+            ),
+            (
+                "net.minecraft.world.entity.animal.pig.Pig",
+                "PIG_SOUND_VARIANT",
+                Some(VanillaEntityMetadataDefault::RegistryHolderResource(
+                    sound_variant_default_resource_id,
+                )),
+            ),
+        ) => Some(VanillaFarmAnimalVariantMetadataAccessors {
+            variant_data_id: variant.data_id,
+            variant_default_resource_id,
+            sound_variant_data_id: sound_variant.data_id,
+            sound_variant_default_resource_id,
         }),
         _ => None,
     }
@@ -5133,6 +5218,61 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_HORSE_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_llama_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_farm_animal_variant_accessors_own_membership_indices_and_defaults() {
+        for (entity_type_id, expected) in [
+            (
+                VANILLA_ENTITY_TYPE_CHICKEN_ID,
+                VanillaFarmAnimalVariantMetadataAccessors {
+                    variant_data_id: VANILLA_CHICKEN_VARIANT_DATA_ID,
+                    variant_default_resource_id: VANILLA_CHICKEN_DEFAULT_VARIANT_RESOURCE_ID,
+                    sound_variant_data_id: VANILLA_CHICKEN_SOUND_VARIANT_DATA_ID,
+                    sound_variant_default_resource_id:
+                        VANILLA_CHICKEN_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                },
+            ),
+            (
+                VANILLA_ENTITY_TYPE_COW_ID,
+                VanillaFarmAnimalVariantMetadataAccessors {
+                    variant_data_id: VANILLA_COW_VARIANT_DATA_ID,
+                    variant_default_resource_id: VANILLA_COW_DEFAULT_VARIANT_RESOURCE_ID,
+                    sound_variant_data_id: VANILLA_COW_SOUND_VARIANT_DATA_ID,
+                    sound_variant_default_resource_id:
+                        VANILLA_COW_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                },
+            ),
+            (
+                VANILLA_ENTITY_TYPE_PIG_ID,
+                VanillaFarmAnimalVariantMetadataAccessors {
+                    variant_data_id: VANILLA_PIG_VARIANT_DATA_ID,
+                    variant_default_resource_id: VANILLA_PIG_DEFAULT_VARIANT_RESOURCE_ID,
+                    sound_variant_data_id: VANILLA_PIG_SOUND_VARIANT_DATA_ID,
+                    sound_variant_default_resource_id:
+                        VANILLA_PIG_DEFAULT_SOUND_VARIANT_RESOURCE_ID,
+                },
+            ),
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                    entity_type_id
+                ),
+                Some(expected)
+            );
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+            VANILLA_ENTITY_TYPE_LLAMA_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type(
+                    entity_type_id
+                ),
                 None
             );
         }
