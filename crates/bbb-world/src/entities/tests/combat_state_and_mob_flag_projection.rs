@@ -597,7 +597,7 @@ fn entity_model_sources_project_aggressive_for_piglin_and_illager_arm_poses() {
 
 #[test]
 fn entity_model_sources_project_spellcaster_illager_casting() {
-    // Vanilla SpellcasterIllager.DATA_SPELL_CASTING_ID (BYTE id 17) stores the spell ordinal;
+    // Vanilla SpellcasterIllager.DATA_SPELL_CASTING_ID stores the spell ordinal;
     // EvokerRenderer and IllusionerRenderer copy `isCastingSpell()` into their render states.
     let (casting_data_id, casting_default) =
         super::schema::vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(

@@ -4531,28 +4531,15 @@ mod tests {
                 .count(),
             2
         );
-        assert_eq!(
-            VANILLA_ENTITY_TYPE_METADATA_26_1
-                .iter()
-                .filter(|entry| entry.illager_arm_pose_uses_celebrating)
-                .map(|entry| entry.entity_type_id)
-                .collect::<Vec<_>>(),
-            vec![
-                VANILLA_ENTITY_TYPE_EVOKER_ID,
-                VANILLA_ENTITY_TYPE_VINDICATOR_ID
-            ]
-        );
-        assert!(
-            !vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(
-                VANILLA_ENTITY_TYPE_ILLUSIONER_ID
-            )
-        );
-        assert!(
-            !vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(
-                VANILLA_ENTITY_TYPE_PILLAGER_ID
-            )
-        );
+        assert!(VANILLA_ENTITY_TYPE_METADATA_26_1
+            .iter()
+            .any(|entry| entry.illager_arm_pose_uses_celebrating));
         assert!(!vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(-1));
+        assert!(
+            !vanilla_entity_metadata_type_illager_arm_pose_uses_celebrating(
+                VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32
+            )
+        );
         assert_eq!(
             VANILLA_ENTITY_TYPE_METADATA_26_1
                 .iter()
@@ -9291,14 +9278,12 @@ mod tests {
         assert_eq!(pillager.parent, Some(VanillaEntityMetadataFamily::Raider));
         assert_eq!(pillager.inherited_field_count, 17);
         assert_eq!(pillager.own_fields.len(), 1);
-        assert_eq!(VANILLA_RAIDER_CELEBRATING_DATA_ID, 16);
         let (charging_data_id, charging_default) =
             vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_PILLAGER_ID,
             )
             .expect("generated Pillager charging-crossbow accessor");
         assert_eq!(charging_data_id, pillager.own_fields[0].data_id);
-        assert!(!VANILLA_RAIDER_DEFAULT_CELEBRATING);
         assert_eq!(
             VanillaEntityMetadataDefault::Boolean(charging_default),
             pillager.own_fields[0].default
@@ -9311,8 +9296,6 @@ mod tests {
         );
         assert_eq!(spellcaster.inherited_field_count, 17);
         assert_eq!(spellcaster.own_fields.len(), 1);
-        assert_eq!(VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID, 17);
-        assert_eq!(VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING, 0);
         let abstract_fish =
             vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractFish);
         assert_eq!(abstract_fish.parent, Some(VanillaEntityMetadataFamily::Mob));

@@ -17533,3 +17533,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   递减是否符合 `HoglinBase` interface graph；删除 Hoglin/Zoglin/Chicken 代表 type fixture。
 - schema 仅保留 unknown-id fail-closed 边界；metadata generator 守卫锁定 event/tick 两处 production
   graph 查询与全 catalog fixture，并禁止恢复 Hoglin/Zoglin type 常量表。
+
+## 2026-07-16：统一 Illager arm-pose metadata/class 消费
+
+- celebrating fixture 遍历完整 entity-type catalog，逐项组合 generated Raider
+  `IS_CELEBRATING` accessor 与最近 `getArmPose` class 行为；删除 Evoker/Vindicator/Pillager 代表表。
+- Spellcaster casting fixture 删除本地 wire index；Pillager charging 与 non-baby fixtures 清理固定
+  slot/数值并消费 accessor。移除 Raider/Spellcaster 固定 data-id/default 公开别名，generator 守卫
+  分别检查这些具体 fixture。

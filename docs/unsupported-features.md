@@ -480,7 +480,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Illager celebrating-arm-pose membership must combine the generated Raider `IS_CELEBRATING`
   accessor with the nearest generated `getArmPose` class behavior rather than fixed metadata aliases
   or an Evoker/Vindicator entity-type table. Spellcaster casting and Pillager charging fixtures must
-  likewise use their generated accessors instead of hand-written wire indices.
+  likewise use their generated accessors instead of hand-written wire indices; generated guards
+  must inspect those specific fixtures rather than rely on whole-file matches.
   Debug entity save-data dispatch for Camel, Guardian, and Slime families must consume their
   generated class memberships rather than parallel base/subclass type pairs.
   The shared AbstractChestedHorse debug save chain must consume its generated four-type class

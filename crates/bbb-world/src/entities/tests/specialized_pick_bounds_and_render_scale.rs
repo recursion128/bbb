@@ -35,15 +35,30 @@ fn generated_baby_accessor_membership_covers_all_ageable_families() {
         );
     }
 
-    // Pillager.IS_CHARGING_CROSSBOW is also BOOLEAN id 17 and Raider.IS_CELEBRATING is BOOLEAN id
-    // 16, but the class hierarchy has no DATA_BABY_ID accessor, so neither can make it a baby.
+    // Pillager owns charging and inherited celebrating booleans, but its class hierarchy has no
+    // DATA_BABY_ID accessor, so neither generated metadata field can make it a baby.
     store.apply_add_entity(protocol_add_entity_with_type(
         187,
         VANILLA_ENTITY_TYPE_PILLAGER_ID,
     ));
+    let (celebrating_data_id, celebrating_default) =
+        vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        )
+        .expect("generated Pillager inherited celebrating accessor");
+    let (charging_data_id, charging_default) =
+        vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        )
+        .expect("generated Pillager charging accessor");
+    assert!(!celebrating_default);
+    assert!(!charging_default);
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 187,
-        values: vec![protocol_bool_data(16, true), protocol_bool_data(17, true),],
+        values: vec![
+            protocol_bool_data(celebrating_data_id, true),
+            protocol_bool_data(charging_data_id, true),
+        ],
     }));
     assert_eq!(store.entities.is_baby(187), Some(false));
 }

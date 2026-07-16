@@ -289,11 +289,6 @@ pub const VANILLA_ZOGLIN_BABY_DATA_ID: u8 = GENERATED_VANILLA_ZOGLIN_BABY_DATA_I
 const GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 = 18;
 pub const VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID: u8 =
     GENERATED_VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
-const GENERATED_VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = 16;
-pub const VANILLA_RAIDER_CELEBRATING_DATA_ID: u8 = GENERATED_VANILLA_RAIDER_CELEBRATING_DATA_ID;
-const GENERATED_VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 = 17;
-pub const VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID: u8 =
-    GENERATED_VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID;
 const GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 = 16;
 pub const VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID: u8 =
     GENERATED_VANILLA_ABSTRACT_FISH_FROM_BUCKET_DATA_ID;
@@ -858,11 +853,6 @@ pub const VANILLA_ZOGLIN_DEFAULT_BABY: bool = GENERATED_VANILLA_ZOGLIN_DEFAULT_B
 const GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool = false;
 pub const VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION: bool =
     GENERATED_VANILLA_HOGLIN_DEFAULT_IMMUNE_TO_ZOMBIFICATION;
-const GENERATED_VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = false;
-pub const VANILLA_RAIDER_DEFAULT_CELEBRATING: bool = GENERATED_VANILLA_RAIDER_DEFAULT_CELEBRATING;
-const GENERATED_VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING: i8 = 0;
-pub const VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING: i8 =
-    GENERATED_VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING;
 const GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool = false;
 pub const VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET: bool =
     GENERATED_VANILLA_ABSTRACT_FISH_DEFAULT_FROM_BUCKET;
@@ -22288,7 +22278,7 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_spellcaster_projection_uses_generated_accessor() {
+    fn spellcaster_projection_consumers_use_generated_accessor() {
         let source = include_str!("../store.rs");
         let body = source
             .split("let illager_spellcasting")
@@ -22302,6 +22292,16 @@ mod generated_catalog_guards {
         assert!(!body.contains("vanilla_entity_metadata_type_is_spellcaster_illager"));
         assert!(!body.contains("VANILLA_SPELLCASTER_ILLAGER_CASTING_DATA_ID"));
         assert!(!body.contains("VANILLA_SPELLCASTER_ILLAGER_DEFAULT_CASTING"));
+        let native_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let fixture = native_tests
+            .split("fn entity_model_instances_project_illager_spellcasting_flag_from_world")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("spellcaster projection fixture source");
+        assert!(fixture.contains("spellcaster_casting_data_id"));
+        assert!(!fixture.contains("const VANILLA_SPELLCASTER_CASTING_DATA_ID"));
+        assert!(native_tests
+            .contains("vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type"));
     }
 
     #[test]
@@ -22525,9 +22525,10 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_illager_celebrating_does_not_restore_entity_type_membership() {
+    fn illager_celebrating_consumers_do_not_restore_parallel_metadata_or_types() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_instance = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
         let body = source
             .split("fn illager_celebrating")
             .nth(1)
@@ -22539,6 +22540,19 @@ mod generated_catalog_guards {
         );
         assert!(body.contains("vanilla_entity_type_illager_arm_pose_uses_celebrating"));
         assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        assert!(native_instance.contains(".with_illager_celebrating(illager_celebrating("));
+        let tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let fixture = tests
+            .split("fn illager_celebrating_matches_generated_accessor_and_arm_pose_catalogs")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("illager celebrating fixture source");
+        assert!(fixture.contains("VANILLA_ENTITY_TYPES"));
+        assert!(
+            fixture.contains("vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type")
+        );
+        assert!(fixture.contains("vanilla_entity_type_illager_arm_pose_uses_celebrating"));
+        assert!(!fixture.contains("VANILLA_ENTITY_TYPE_"));
         for removed in [
             "RAIDER_IS_CELEBRATING_DATA_ID",
             "RAIDER_DEFAULT_CELEBRATING",
@@ -22550,6 +22564,10 @@ mod generated_catalog_guards {
             assert!(
                 !native_scene.contains(removed),
                 "native scene restored {removed}"
+            );
+            assert!(
+                !native_instance.contains(removed),
+                "native instance restored {removed}"
             );
         }
     }
@@ -24984,6 +25002,7 @@ mod generated_catalog_guards {
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_hands = include_str!("../../../../bbb-native/src/entity_scene/hands.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let baby_tests = include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");
         assert!(animations.contains(
             "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
         ));
@@ -25010,9 +25029,30 @@ mod generated_catalog_guards {
         ));
         assert!(native_scene_tests
             .contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));
+        let baby_fixture = baby_tests
+            .split("fn generated_baby_accessor_membership_covers_all_ageable_families")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("Pillager non-baby fixture source");
+        assert!(baby_fixture
+            .contains("vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type"));
+        assert!(baby_fixture.contains(
+            "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
+        ));
+        assert!(!baby_fixture.contains("protocol_bool_data(16"));
+        assert!(!baby_fixture.contains("protocol_bool_data(17"));
         assert!(!world_tests.contains("id (18 vs 17)"));
         assert!(!native_scene_tests.contains("BOOLEAN id 18"));
         assert!(!native_scene_tests.contains("slot 18"));
+        let pillager_fixture = native_scene_tests
+            .split("fn entity_model_instances_project_pillager_charging_crossbow")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("pillager charging fixture source");
+        assert!(pillager_fixture.contains(
+            "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
+        ));
+        assert!(!pillager_fixture.contains("const PILLAGER"));
         for removed in [
             "PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID",
             "PILLAGER_CHARGING_CROSSBOW_DATA_ID",
@@ -25041,6 +25081,10 @@ mod generated_catalog_guards {
             assert!(
                 !native_scene_tests.contains(removed),
                 "native scene fixtures restored {removed}"
+            );
+            assert!(
+                !baby_tests.contains(removed),
+                "baby fixtures restored {removed}"
             );
         }
     }

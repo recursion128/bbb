@@ -2219,10 +2219,9 @@ fn entity_model_instances_project_turtle_has_egg() {
 
 #[test]
 fn entity_model_instances_project_pillager_charging_crossbow() {
-    // Vanilla Pillager.IS_CHARGING_CROSSBOW (BOOLEAN data id 17, after Raider.IS_CELEBRATING 16)
-    // and Pillager.getArmPose: a charging pillager renders CROSSBOW_CHARGE, suppressing the
-    // CROSSBOW_HOLD pose. The evoker reuses data id 17 for DATA_SPELL_CASTING_ID, so the
-    // projection must be gated to the pillager type.
+    // Vanilla Pillager.IS_CHARGING_CROSSBOW and Pillager.getArmPose: a charging pillager renders
+    // CROSSBOW_CHARGE, suppressing CROSSBOW_HOLD. SpellcasterIllager owns a different accessor at
+    // the reused wire slot, so generated Pillager membership must gate the projection.
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         160,
@@ -2253,14 +2252,14 @@ fn entity_model_instances_project_pillager_charging_crossbow() {
     // A pillager without the flag is not charging.
     assert!(!charging(&world, 160));
 
-    // Setting IS_CHARGING_CROSSBOW (data id 17) projects the charge state.
+    // Setting the generated IS_CHARGING_CROSSBOW accessor projects the charge state.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 160,
         values: vec![protocol_bool_data(charging_data_id, true)],
     }));
     assert!(charging(&world, 160));
 
-    // The same data id 17 on an evoker (its spell-casting byte slot) does NOT project charging.
+    // The same wire slot on an evoker does NOT project charging.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 161,
         values: vec![protocol_bool_data(charging_data_id, true)],
@@ -2332,60 +2331,30 @@ fn entity_model_instances_project_pillager_crossbow_hold_from_either_hand() {
 }
 
 #[test]
-fn entity_model_instances_project_illager_celebrating() {
-    // Vanilla Raider.IS_CELEBRATING (BOOLEAN data id 16) and SpellcasterIllager/Vindicator
-    // .getArmPose: the evoker and vindicator render the CELEBRATING dance while it is set. The
-    // pillager never returns CELEBRATING, so the projection is gated to the evoker/vindicator.
-    let mut world = WorldStore::new();
-    world.apply_add_entity(protocol_add_entity(
-        170,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        [1.0, 64.0, -2.0],
-    ));
-    world.apply_add_entity(protocol_add_entity(
-        171,
-        VANILLA_ENTITY_TYPE_EVOKER_ID,
-        [2.0, 64.0, -2.0],
-    ));
-    world.apply_add_entity(protocol_add_entity(
-        172,
-        VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        [3.0, 64.0, -2.0],
-    ));
-
-    let celebrating = |world: &WorldStore, id: i32| {
-        entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state
-            .illager_celebrating
-    };
-
-    // No flag → not celebrating.
-    assert!(!celebrating(&world, 170));
-
-    // Raider.IS_CELEBRATING (data id 16) projects the dance for the vindicator and evoker.
-    for id in [170, 171] {
-        assert!(world.apply_set_entity_data(SetEntityData {
-            id,
-            values: vec![protocol_bool_data(
-                raider_celebrating_data_id(VANILLA_ENTITY_TYPE_VINDICATOR_ID),
-                true,
-            )],
-        }));
-        assert!(celebrating(&world, id));
+fn illager_celebrating_matches_generated_accessor_and_arm_pose_catalogs() {
+    // Raider.IS_CELEBRATING supplies the instance flag; the nearest getArmPose implementation
+    // decides whether that flag can reach CELEBRATING. Compare their intersection over every type.
+    for entry in VANILLA_ENTITY_TYPES {
+        let accessor =
+            bbb_world::vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type(
+                entry.id,
+            );
+        let values = accessor
+            .map(|(data_id, default)| {
+                assert!(!default, "{} celebrating default", entry.resource_id);
+                vec![protocol_bool_data(data_id, true)]
+            })
+            .unwrap_or_default();
+        let expected = accessor.is_some()
+            && bbb_world::vanilla_entity_type_illager_arm_pose_uses_celebrating(entry.id);
+        assert_eq!(
+            illager_celebrating(entry.id, &values),
+            expected,
+            "{}",
+            entry.resource_id
+        );
     }
-
-    // The same flag on a pillager does NOT project celebrating (it never returns CELEBRATING).
-    assert!(world.apply_set_entity_data(SetEntityData {
-        id: 172,
-        values: vec![protocol_bool_data(
-            raider_celebrating_data_id(VANILLA_ENTITY_TYPE_PILLAGER_ID),
-            true,
-        )],
-    }));
-    assert!(!celebrating(&world, 172));
+    assert!(!illager_celebrating(-1, &[]));
 }
 
 #[test]
@@ -10856,11 +10825,9 @@ fn entity_model_instances_preserve_parrot_party_from_world_source() {
 #[test]
 fn entity_model_instances_project_illager_spellcasting_flag_from_world() {
     // Vanilla `SpellcasterIllager.isCastingSpell()` = the synced `DATA_SPELL_CASTING_ID`
-    // byte > 0 (id 17, the byte holds the spell id). A casting evoker/illusioner projects
+    // byte > 0 (the byte holds the spell id). A casting evoker/illusioner projects
     // `illager_spellcasting`; the projection is gated to the spellcaster illagers, so the
     // same byte on a vindicator never sets it.
-    const VANILLA_SPELLCASTER_CASTING_DATA_ID: u8 = 17;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         160,
@@ -10894,20 +10861,29 @@ fn entity_model_instances_project_illager_spellcasting_flag_from_world() {
     // Setting the spell-casting byte > 0 (here 2 = FANGS) projects through to the cast pose.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 160,
-        values: vec![protocol_byte_data(VANILLA_SPELLCASTER_CASTING_DATA_ID, 2)],
+        values: vec![protocol_byte_data(
+            spellcaster_casting_data_id(VANILLA_ENTITY_TYPE_EVOKER_ID),
+            2,
+        )],
     }));
     assert!(casting(&world, 160));
     // Any non-zero spell id (1 = SUMMON_VEX, the lowest) also counts as casting.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 161,
-        values: vec![protocol_byte_data(VANILLA_SPELLCASTER_CASTING_DATA_ID, 1)],
+        values: vec![protocol_byte_data(
+            spellcaster_casting_data_id(VANILLA_ENTITY_TYPE_ILLUSIONER_ID),
+            1,
+        )],
     }));
     assert!(casting(&world, 161));
 
     // The same byte on a non-spellcaster (vindicator) does NOT project illager_spellcasting.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 162,
-        values: vec![protocol_byte_data(VANILLA_SPELLCASTER_CASTING_DATA_ID, 2)],
+        values: vec![protocol_byte_data(
+            spellcaster_casting_data_id(VANILLA_ENTITY_TYPE_EVOKER_ID),
+            2,
+        )],
     }));
     assert!(!casting(&world, 162));
 }
@@ -11571,13 +11547,13 @@ fn piglin_dancing_data_id() -> u8 {
     data_id
 }
 
-fn raider_celebrating_data_id(entity_type_id: i32) -> u8 {
+fn spellcaster_casting_data_id(entity_type_id: i32) -> u8 {
     let (data_id, default) =
-        bbb_world::vanilla_entity_metadata_raider_celebrating_accessor_for_entity_type(
+        bbb_world::vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(
             entity_type_id,
         )
-        .expect("generated Raider celebrating accessor");
-    assert!(!default);
+        .expect("generated SpellcasterIllager casting accessor");
+    assert_eq!(default, 0);
     data_id
 }
 
