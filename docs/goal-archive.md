@@ -17761,3 +17761,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   boolean default false；透传的 `data_values` 断言复用同一 payload helper。
 - baby projection reverse guard 扩展到该测试模块，和 specialized pick-bounds fixture 一并禁止
   Ageable baby 固定别名回流。
+
+## 2026-07-16：统一 small-mob animation baby fixture accessor 消费
+
+- Panda sit/lie/roll 与 Cow baby walk-position scaling fixtures 删除固定 AgeableMob baby wire id
+  及手写 BOOLEAN payload，分别按 Panda/Cow type 查询 generated nearest baby accessor 并校验
+  default false。
+- baby projection reverse guard 扩展到 small-mob/walk-animation 测试模块，禁止两种历史
+  Ageable baby 固定别名回流；原有 Panda 0.5 倍 roll-time 与 baby walk-position 3 倍行为不变。

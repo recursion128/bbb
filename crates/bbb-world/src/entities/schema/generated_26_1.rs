@@ -22384,6 +22384,7 @@ mod generated_catalog_guards {
         let source = include_str!("../dimensions.rs");
         let fixture = include_str!("../tests/specialized_pick_bounds_and_render_scale.rs");
         let model_source_fixture = include_str!("../tests/vehicle_and_block_entity_projection.rs");
+        let animation_fixture = include_str!("../tests/small_mob_and_walk_animation.rs");
         let body = source
             .split("fn vanilla_is_baby")
             .nth(1)
@@ -22405,8 +22406,9 @@ mod generated_catalog_guards {
         assert!(
             model_source_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type")
         );
+        assert!(animation_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         for removed in ["AGEABLE_BABY_DATA_ID", "AGEABLE_MOB_BABY_DATA_ID"] {
-            for fixture in [fixture, model_source_fixture] {
+            for fixture in [fixture, model_source_fixture, animation_fixture] {
                 assert!(
                     !fixture.contains(removed),
                     "baby fixture restored {removed}"

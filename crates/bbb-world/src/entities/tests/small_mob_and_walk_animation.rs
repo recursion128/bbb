@@ -6,6 +6,13 @@ use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_USING_TONGUE_ID,
 };
 
+fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+        .expect("generated nearest baby accessor must resolve");
+    assert!(!default);
+    protocol_bool_data(data_id, is_baby)
+}
+
 fn sniffer_state_data(state_id: i32) -> ProtocolEntityDataValue {
     let (data_id, _) = vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_SNIFFER_ID,
@@ -461,7 +468,6 @@ fn entity_model_sources_project_bee_roll_amount() {
 
 #[test]
 fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
-    const AGEABLE_BABY_DATA_ID: u8 = 16;
     let accessors =
         vanilla_entity_metadata_panda_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PANDA_ID)
             .expect("generated Panda metadata accessors must resolve");
@@ -493,7 +499,7 @@ fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
     ));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 83,
-        values: vec![protocol_bool_data(AGEABLE_BABY_DATA_ID, true)],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_PANDA_ID, true)],
     }));
 
     let rest = source(&store, 82, 1.0);
@@ -1409,8 +1415,6 @@ fn entity_model_sources_project_walk_animation_limb_swing() {
 
 #[test]
 fn entity_model_sources_walk_animation_scales_position_for_babies() {
-    const AGEABLE_MOB_BABY_DATA_ID: u8 = 16;
-
     let walk = |store: &WorldStore| -> (f32, f32) {
         let source = store
             .entity_model_sources_at_partial_tick(1.0)
@@ -1429,11 +1433,7 @@ fn entity_model_sources_walk_animation_scales_position_for_babies() {
     // scale, so a baby's limb-swing position is tripled (the speed is unscaled).
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 61,
-        values: vec![ProtocolEntityDataValue {
-            data_id: AGEABLE_MOB_BABY_DATA_ID,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-            value: EntityDataValueKind::Boolean(true),
-        }],
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_COW_ID, true)],
     }));
     assert!(
         store.apply_entity_position_sync(ProtocolEntityPositionSync {
