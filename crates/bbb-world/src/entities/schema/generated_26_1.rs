@@ -23398,6 +23398,7 @@ mod generated_catalog_guards {
         let creature_bounds_tests = include_str!("../tests/creature_pick_bounds_projection.rs");
         let transient_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
         let aquatic_tests = include_str!("../tests/aquatic_and_beam_creature_animation.rs");
+        let small_mob_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
         for source in [
             dimensions,
             animations,
@@ -23414,6 +23415,7 @@ mod generated_catalog_guards {
             creature_bounds_tests,
             transient_tests,
             aquatic_tests,
+            small_mob_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [
@@ -23467,6 +23469,8 @@ mod generated_catalog_guards {
         assert!(!transient_tests.contains("protocol_pose_data(6"));
         assert!(!transient_tests.contains("const POSE_"));
         assert!(!aquatic_tests.contains("protocol_pose_data(6"));
+        assert!(!small_mob_tests.contains("protocol_pose_data(6"));
+        assert!(!small_mob_tests.contains("const POSE_"));
     }
 
     #[test]

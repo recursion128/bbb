@@ -2,9 +2,17 @@ use super::*;
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROAKING_ID, VANILLA_ENTITY_POSE_DIGGING_ID,
     VANILLA_ENTITY_POSE_EMERGING_ID, VANILLA_ENTITY_POSE_LONG_JUMPING_ID,
-    VANILLA_ENTITY_POSE_ROARING_ID, VANILLA_ENTITY_POSE_SNIFFING_ID,
+    VANILLA_ENTITY_POSE_ROARING_ID, VANILLA_ENTITY_POSE_SITTING_ID,
+    VANILLA_ENTITY_POSE_SLEEPING_ID, VANILLA_ENTITY_POSE_SNIFFING_ID,
     VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_USING_TONGUE_ID,
 };
+
+fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert_eq!(accessors.pose_default, VANILLA_ENTITY_POSE_STANDING_ID);
+    protocol_pose_data(accessors.pose_data_id, pose_id)
+}
 
 fn baby_data(entity_type_id: i32, is_baby: bool) -> ProtocolEntityDataValue {
     let (data_id, default) = vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
@@ -577,7 +585,7 @@ fn entity_model_sources_project_panda_sit_lie_and_roll_amounts() {
 
 #[test]
 fn entity_model_sources_project_frog_croak_seconds() {
-    // Vanilla `Pose.CROAKING(8, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated` starts
+    // Vanilla `Pose.CROAKING` synced via Entity `DATA_POSE`; `Frog.onSyncedDataUpdated` starts
     // `croakAnimationState` when the pose becomes CROAKING and stops it otherwise.
     let croak = |store: &WorldStore, partial: f32| {
         store
@@ -601,7 +609,7 @@ fn entity_model_sources_project_frog_croak_seconds() {
     // `0` (plus the partial tick): vanilla `((ageInTicks - startTick)) / 20`.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 55,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_CROAKING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_CROAKING_ID)],
     }));
     assert!((croak(&store, 0.0) - 0.0).abs() < 1.0e-6);
     // The partial tick folds into the live age (`(0 + 0.5) / 20`).
@@ -617,14 +625,14 @@ fn entity_model_sources_project_frog_croak_seconds() {
     // Leaving `Pose.CROAKING` stops the animation, returning the `-1.0` sentinel.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 55,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_STANDING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     assert_eq!(croak(&store, 1.0), -1.0);
 }
 
 #[test]
 fn entity_model_sources_project_frog_tongue_seconds() {
-    // Vanilla `Pose.USING_TONGUE(9, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated`
+    // Vanilla `Pose.USING_TONGUE` synced via Entity `DATA_POSE`; `Frog.onSyncedDataUpdated`
     // starts `tongueAnimationState` when the pose becomes USING_TONGUE and stops it otherwise.
     let tongue = |store: &WorldStore, partial: f32| {
         store
@@ -648,7 +656,7 @@ fn entity_model_sources_project_frog_tongue_seconds() {
     // startTick) / 20`, so the elapsed seconds begin at `0` (plus the partial tick).
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 55,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_USING_TONGUE_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_USING_TONGUE_ID)],
     }));
     assert!((tongue(&store, 0.0) - 0.0).abs() < 1.0e-6);
     assert!((tongue(&store, 0.5) - 0.025).abs() < 1.0e-6);
@@ -662,14 +670,14 @@ fn entity_model_sources_project_frog_tongue_seconds() {
     // Leaving `Pose.USING_TONGUE` stops the animation, returning the `-1.0` sentinel.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 55,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_STANDING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     assert_eq!(tongue(&store, 1.0), -1.0);
 }
 
 #[test]
 fn entity_model_sources_project_frog_jump_seconds() {
-    // Vanilla `Pose.LONG_JUMPING(6, …)` synced via `DATA_POSE` (id 6); `Frog.onSyncedDataUpdated`
+    // Vanilla `Pose.LONG_JUMPING` synced via Entity `DATA_POSE`; `Frog.onSyncedDataUpdated`
     // starts `jumpAnimationState` when the pose becomes LONG_JUMPING and stops it otherwise.
     let jump = |store: &WorldStore, partial: f32| {
         store
@@ -693,7 +701,7 @@ fn entity_model_sources_project_frog_jump_seconds() {
     // at `0` (plus the partial tick): vanilla `((ageInTicks - startTick)) / 20`.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 55,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_LONG_JUMPING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_LONG_JUMPING_ID)],
     }));
     assert!((jump(&store, 0.0) - 0.0).abs() < 1.0e-6);
     // The partial tick folds into the live age (`(0 + 0.5) / 20`).
@@ -709,7 +717,7 @@ fn entity_model_sources_project_frog_jump_seconds() {
     // Leaving `Pose.LONG_JUMPING` stops the animation, returning the `-1.0` sentinel.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 55,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_STANDING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     assert_eq!(jump(&store, 1.0), -1.0);
 }
@@ -915,7 +923,7 @@ fn entity_model_sources_project_armadillo_state_animation() {
 
 #[test]
 fn entity_model_sources_project_warden_combat_animations() {
-    // Vanilla `Pose.ROARING(11)` / `Pose.SNIFFING(12)` synced via `DATA_POSE` (id 6);
+    // Vanilla `Pose.ROARING` / `Pose.SNIFFING` synced via Entity `DATA_POSE`;
     // `Warden.onSyncedDataUpdated` `.start()`s the matching one-shot when the pose CHANGES to it.
     // Vanilla `Warden.handleEntityEvent`: id 4 starts the attack (and stops the roar); id 62 starts
     // the sonic boom.
@@ -948,7 +956,7 @@ fn entity_model_sources_project_warden_combat_animations() {
     // `0` (plus the partial tick), advancing `1 / 20` per tick. Only the roar activates.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 142,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_ROARING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_ROARING_ID)],
     }));
     let (roar, sniff, attack, sonic) = combat(&store, 0.0);
     assert!((roar - 0.0).abs() < 1.0e-6);
@@ -962,7 +970,7 @@ fn entity_model_sources_project_warden_combat_animations() {
     // non-looping keyframe just holds its final frame, so the timer keeps advancing.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 142,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_STANDING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     store.advance_entity_client_animations(1);
     assert!((combat(&store, 0.0).0 - 0.25).abs() < 1.0e-6);
@@ -991,7 +999,7 @@ fn entity_model_sources_project_warden_combat_animations() {
     // Entering `Pose.SNIFFING` starts the sniff timer; the other three keep their running timers.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 142,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_SNIFFING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SNIFFING_ID)],
     }));
     let (_, sniff, _, _) = combat(&store, 0.0);
     assert!((sniff - 0.0).abs() < 1.0e-6, "the sniff starts at 0");
@@ -999,7 +1007,7 @@ fn entity_model_sources_project_warden_combat_animations() {
 
 #[test]
 fn entity_model_sources_project_warden_emerge_and_dig() {
-    // Vanilla `Pose.EMERGING(13)` / `Pose.DIGGING(14)` synced via `DATA_POSE` (id 6); like the
+    // Vanilla `Pose.EMERGING` / `Pose.DIGGING` synced via Entity `DATA_POSE`; like the
     // roar/sniff poses, `Warden.onSyncedDataUpdated` `.start()`s the spawn/despawn one-shot when the
     // pose CHANGES to it. These are the 6.68s `WARDEN_EMERGE` and 5.0s `WARDEN_DIG` keyframes.
     let spawn = |store: &WorldStore, partial: f32| {
@@ -1024,7 +1032,7 @@ fn entity_model_sources_project_warden_emerge_and_dig() {
     // plus the partial tick, advancing `1 / 20` per tick). The dig stays stopped.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 142,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_EMERGING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_EMERGING_ID)],
     }));
     let (emerge, dig) = spawn(&store, 0.0);
     assert!((emerge - 0.0).abs() < 1.0e-6, "the emerge starts at 0");
@@ -1040,7 +1048,7 @@ fn entity_model_sources_project_warden_emerge_and_dig() {
     // non-looping keyframe just holds its final frame, so the timer keeps advancing.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 142,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_STANDING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     store.advance_entity_client_animations(1);
     assert!((spawn(&store, 0.0).0 - 0.25).abs() < 1.0e-6);
@@ -1048,7 +1056,7 @@ fn entity_model_sources_project_warden_emerge_and_dig() {
     // Entering `Pose.DIGGING` starts the dig timer; the emerge keeps holding its running timer.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 142,
-        values: vec![protocol_pose_data(6, VANILLA_ENTITY_POSE_DIGGING_ID)],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_DIGGING_ID)],
     }));
     let (emerge, dig) = spawn(&store, 0.0);
     assert!((dig - 0.0).abs() < 1.0e-6, "the dig starts at 0");
@@ -1228,9 +1236,6 @@ fn entity_model_sources_project_cat_lying_on_sleeping_player() {
     let accessors =
         vanilla_entity_metadata_cat_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CAT_ID)
             .expect("generated Cat metadata accessors must resolve");
-    const POSE_STANDING: i32 = 0;
-    const POSE_SLEEPING: i32 = 2;
-
     let add = |id, entity_type_id, position: [f64; 3]| ProtocolAddEntity {
         position: ProtocolVec3d {
             x: position[0],
@@ -1256,21 +1261,11 @@ fn entity_model_sources_project_cat_lying_on_sleeping_player() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 95,
-        values: vec![protocol_pose_data(
-            super::vanilla_entity_metadata_entity_accessors()
-                .expect("generated base Entity metadata accessors must resolve")
-                .pose_data_id,
-            POSE_SLEEPING,
-        )],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID)],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 96,
-        values: vec![protocol_pose_data(
-            super::vanilla_entity_metadata_entity_accessors()
-                .expect("generated base Entity metadata accessors must resolve")
-                .pose_data_id,
-            POSE_SLEEPING,
-        )],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_SLEEPING_ID)],
     }));
     assert!(
         !lying_on_player(&store, 94),
@@ -1288,12 +1283,7 @@ fn entity_model_sources_project_cat_lying_on_sleeping_player() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 95,
-        values: vec![protocol_pose_data(
-            super::vanilla_entity_metadata_entity_accessors()
-                .expect("generated base Entity metadata accessors must resolve")
-                .pose_data_id,
-            POSE_STANDING,
-        )],
+        values: vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)],
     }));
     assert!(
         !lying_on_player(&store, 94),
@@ -1587,8 +1577,6 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
     // `targetSpeed = min(distance * 6, 1)` and `WalkAnimationState.update(..., factor = 0.2)`.
     // Non-standing or dashing camels target zero. This differs from the base cow mapping
     // (`min(distance * 4, 1)`, factor 0.4) for the same movement.
-    const POSE_STANDING: i32 = 0;
-    const POSE_SITTING: i32 = 10;
     let (camel_dash_data_id, _) =
         vanilla_entity_metadata_camel_dash_accessor_for_entity_type(VANILLA_ENTITY_TYPE_CAMEL_ID)
             .expect("generated Camel dash accessor must resolve");
@@ -1639,7 +1627,7 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
     assert_eq!(
         run_case(
             VANILLA_ENTITY_TYPE_CAMEL_ID,
-            vec![protocol_pose_data(6, POSE_STANDING)]
+            vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)]
         ),
         (0.2, 0.2),
         "the standing camel uses the vanilla camel factor 0.2 override"
@@ -1647,7 +1635,7 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
     assert_eq!(
         run_case(
             VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
-            vec![protocol_pose_data(6, POSE_STANDING)]
+            vec![entity_pose_data(VANILLA_ENTITY_POSE_STANDING_ID)]
         ),
         (0.2, 0.2),
         "CamelHusk inherits the Camel walk override through the generated class membership"
@@ -1655,7 +1643,7 @@ fn camel_walk_animation_uses_vanilla_update_override_and_gates() {
     assert_eq!(
         run_case(
             VANILLA_ENTITY_TYPE_CAMEL_ID,
-            vec![protocol_pose_data(6, POSE_SITTING)]
+            vec![entity_pose_data(VANILLA_ENTITY_POSE_SITTING_ID)]
         ),
         (0.0, 0.0),
         "a sitting camel targets zero walk speed"

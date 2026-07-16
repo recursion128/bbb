@@ -17826,3 +17826,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   accessor/default，并继续使用 protocol pose catalog 的 `LONG_JUMPING` 命名 ordinal。
 - Entity reverse guard 纳入 aquatic/beam 测试模块并禁止固定 pose 写入回流；long-jump 期间目标
   walk speed 归零、既有速度按 0.4 low-pass 衰减并继续积分的回归保持不变。
+
+## 2026-07-16：统一 small-mob animation pose fixture accessor 消费
+
+- small-mob/walk-animation 中 Frog、Warden、sleeping-player 与 Camel fixtures 删除固定 Entity
+  pose wire id 6 和 standing/sleeping/sitting 局部 ordinal，统一使用 generated Entity bundle 与
+  protocol pose catalog。
+- Entity reverse guard 纳入整份 small-mob 测试并禁止固定 pose 写入和局部 `POSE_*` 常量回流；
+  Frog/Warden one-shot、Cat sleeping-player 探测及 Camel walk gate 回归保持不变。
