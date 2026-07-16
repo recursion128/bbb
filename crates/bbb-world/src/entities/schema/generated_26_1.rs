@@ -24137,6 +24137,8 @@ mod generated_catalog_guards {
     fn production_crossbow_charging_does_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_hands = include_str!("../../../../bbb-native/src/entity_scene/hands.rs");
         assert!(animations.contains(
             "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
         ));
@@ -24148,6 +24150,11 @@ mod generated_catalog_guards {
         assert!(store.contains(
             "piglin_is_charging_crossbow(identity.entity_type_id, &metadata.data_values)"
         ));
+        assert!(native_hands.contains(
+            "vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"
+        ));
+        assert!(native_hands
+            .contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));
         for removed in [
             "PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID",
             "PILLAGER_DEFAULT_CHARGING_CROSSBOW",
@@ -24159,6 +24166,14 @@ mod generated_catalog_guards {
                 "animations restored {removed}"
             );
             assert!(!store.contains(removed), "store restored {removed}");
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_hands.contains(removed),
+                "native hands restored {removed}"
+            );
         }
     }
 

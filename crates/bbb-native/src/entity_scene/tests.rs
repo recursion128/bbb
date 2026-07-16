@@ -2055,6 +2055,12 @@ fn entity_model_instances_project_pillager_charging_crossbow() {
         VANILLA_ENTITY_TYPE_EVOKER_ID,
         [2.0, 64.0, -2.0],
     ));
+    let (charging_data_id, charging_default) =
+        bbb_world::vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        )
+        .expect("generated Pillager charging accessor");
+    assert!(!charging_default);
 
     let charging = |world: &WorldStore, id: i32| {
         entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
@@ -2071,20 +2077,14 @@ fn entity_model_instances_project_pillager_charging_crossbow() {
     // Setting IS_CHARGING_CROSSBOW (data id 17) projects the charge state.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 160,
-        values: vec![protocol_bool_data(
-            PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
-            true
-        )],
+        values: vec![protocol_bool_data(charging_data_id, true)],
     }));
     assert!(charging(&world, 160));
 
     // The same data id 17 on an evoker (its spell-casting byte slot) does NOT project charging.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 161,
-        values: vec![protocol_bool_data(
-            PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
-            true
-        )],
+        values: vec![protocol_bool_data(charging_data_id, true)],
     }));
     assert!(!charging(&world, 161));
 }
@@ -2308,10 +2308,13 @@ fn piglin_is_charging_crossbow_is_gated_to_the_regular_piglin() {
     // Vanilla Piglin.DATA_IS_CHARGING_CROSSBOW (BOOLEAN id 18): getArmPose returns CROSSBOW_CHARGE
     // (the pull-back draw) while true, suppressing CROSSBOW_HOLD. Only the regular piglin defines the
     // accessor, so the projection is type-gated.
-    let charging = vec![protocol_bool_data(
-        PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
-        true,
-    )];
+    let (charging_data_id, charging_default) =
+        bbb_world::vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        )
+        .expect("generated Piglin charging accessor");
+    assert!(!charging_default);
+    let charging = vec![protocol_bool_data(charging_data_id, true)];
     assert!(piglin_is_charging_crossbow(
         VANILLA_ENTITY_TYPE_PIGLIN_ID,
         &charging
@@ -2343,6 +2346,12 @@ fn entity_model_instances_project_piglin_crossbow_charge() {
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
         [2.0, 64.0, -4.0],
     ));
+    let (charging_data_id, charging_default) =
+        bbb_world::vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        )
+        .expect("generated Piglin charging accessor");
+    assert!(!charging_default);
 
     let charging = |world: &WorldStore, id: i32| {
         entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
@@ -2360,20 +2369,14 @@ fn entity_model_instances_project_piglin_crossbow_charge() {
     // runtime needed.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 190,
-        values: vec![protocol_bool_data(
-            PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
-            true
-        )],
+        values: vec![protocol_bool_data(charging_data_id, true)],
     }));
     assert!(charging(&world, 190));
 
     // The same data id on a piglin brute does NOT project a draw.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 191,
-        values: vec![protocol_bool_data(
-            PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
-            true
-        )],
+        values: vec![protocol_bool_data(charging_data_id, true)],
     }));
     assert!(!charging(&world, 191));
 }

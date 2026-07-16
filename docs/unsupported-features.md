@@ -363,7 +363,7 @@ Owner: `scripts/` + each generated catalog's semantic crate
   consumers must not restore fixed accessor/default aliases or a parallel Creaking type gate.
   Pillager and Piglin charging-crossbow membership, wire indices and typed defaults must remain
   derived from generated `Pillager.IS_CHARGING_CROSSBOW` and
-  `Piglin.DATA_IS_CHARGING_CROSSBOW`; world animation consumers must not restore fixed
+  `Piglin.DATA_IS_CHARGING_CROSSBOW`; world animation and native hand-pose consumers must not restore fixed
   accessor/default aliases or treat PiglinBrute as owning the regular Piglin accessor.
   CopperGolem animation-state membership, wire index and typed default must remain derived from
   generated `CopperGolem.COPPER_GOLEM_STATE`; world animation consumers must resolve it once per

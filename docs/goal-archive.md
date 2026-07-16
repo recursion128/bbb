@@ -17041,3 +17041,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native `sheep_head_eat_pose` 改为消费该 renderer membership，不再直接门控 Sheep type id；
   generator 输出的跨 crate 反向测试锁定 consumer，现有 eatAnimationTick 公式与 partial-tick
   语义保持不变。
+
+## 2026-07-16：统一弩蓄力 metadata accessor 消费
+
+- native Piglin/Pillager hand-pose 投影改为消费 entity metadata schema 生成的 accessor，成员判定、
+  wire index 与 boolean 默认值不再由 `entity_scene.rs` 固定别名维护；PiglinBrute 与其他 illager
+  仍由各 accessor 的生成 owner 判定排除。
+- native 语义测试从同一生成 accessor 取得 fixture index 并核对 typed default；schema generator
+  的跨 crate 反向测试现同时扫描 world animation/store 与 native scene/hands，拒绝四个旧固定别名回流。

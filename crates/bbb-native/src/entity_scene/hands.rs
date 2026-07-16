@@ -435,32 +435,32 @@ pub(super) fn entity_offhand_holds_loved_item(world: &WorldStore, entity_id: i32
     world.registry_holder_is_in_tag("minecraft:item", PIGLIN_LOVED_ITEM_TAG, item_id)
 }
 
-/// Vanilla `Piglin.isChargingCrossbow()` (the synced `DATA_IS_CHARGING_CROSSBOW` boolean, id 18): the
+/// Vanilla `Piglin.isChargingCrossbow()` (the synced `DATA_IS_CHARGING_CROSSBOW` boolean): the
 /// piglin is drawing its crossbow, so `getArmPose` returns `CROSSBOW_CHARGE` rather than `CROSSBOW_HOLD`.
-/// Only the regular piglin defines that accessor, so the projection is gated to its type.
+/// The generated accessor supplies regular-Piglin membership, wire index and typed default, excluding
+/// PiglinBrute and unrelated metadata at the same slot.
 pub(super) fn piglin_is_charging_crossbow(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_PIGLIN_ID
-        && entity_data_bool(
-            values,
-            PIGLIN_IS_CHARGING_CROSSBOW_DATA_ID,
-            PIGLIN_DEFAULT_CHARGING_CROSSBOW,
-        )
+    bbb_world::vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type(
+        entity_type_id,
+    )
+    .map(|(data_id, default)| entity_data_bool(values, data_id, default))
+    .unwrap_or_default()
 }
 
-/// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean, id 17): the
+/// Vanilla `Pillager.isChargingCrossbow()` (the synced `IS_CHARGING_CROSSBOW` boolean): the
 /// pillager is drawing its crossbow, so `getArmPose` returns `CROSSBOW_CHARGE` rather than
-/// `CROSSBOW_HOLD`. Only the pillager defines that accessor, so the projection is gated to its type.
+/// `CROSSBOW_HOLD`. The generated accessor supplies Pillager membership, wire index and typed default,
+/// excluding other illagers with unrelated metadata at the same slot.
 pub(super) fn pillager_is_charging_crossbow(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_PILLAGER_ID
-        && entity_data_bool(
-            values,
-            PILLAGER_IS_CHARGING_CROSSBOW_DATA_ID,
-            PILLAGER_DEFAULT_CHARGING_CROSSBOW,
-        )
+    bbb_world::vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type(
+        entity_type_id,
+    )
+    .map(|(data_id, default)| entity_data_bool(values, data_id, default))
+    .unwrap_or_default()
 }
