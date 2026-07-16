@@ -6366,11 +6366,28 @@ mod tests {
 
     #[test]
     fn generated_guardian_accessors_own_inherited_membership_indices_and_defaults() {
+        let guardian_schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Guardian);
+        let moving = guardian_schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_ID_MOVING")
+            .expect("generated Guardian moving field");
+        let attack_target = guardian_schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_ID_ATTACK_TARGET")
+            .expect("generated Guardian attack-target field");
+        let VanillaEntityMetadataDefault::Boolean(moving_default) = moving.default else {
+            panic!("generated Guardian moving default must be boolean")
+        };
+        let VanillaEntityMetadataDefault::Int(attack_target_default) = attack_target.default else {
+            panic!("generated Guardian attack-target default must be int")
+        };
         let expected = VanillaGuardianMetadataAccessors {
-            moving_data_id: 16,
-            moving_default: false,
-            attack_target_data_id: 17,
-            attack_target_default: 0,
+            moving_data_id: moving.data_id,
+            moving_default,
+            attack_target_data_id: attack_target.data_id,
+            attack_target_default,
         };
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_GUARDIAN_ID,

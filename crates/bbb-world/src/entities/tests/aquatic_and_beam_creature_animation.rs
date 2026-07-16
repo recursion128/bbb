@@ -1,12 +1,17 @@
+use super::super::schema::{
+    vanilla_entity_metadata_guardian_accessors_for_entity_type, VanillaGuardianMetadataAccessors,
+};
 use super::*;
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_LONG_JUMPING_ID;
-
-const VANILLA_GUARDIAN_MOVING_DATA_ID: u8 = 16;
-const VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID: u8 = 17;
 
 fn creeper_metadata_accessors() -> VanillaCreeperMetadataAccessors {
     vanilla_entity_metadata_creeper_accessors_for_entity_type(VANILLA_ENTITY_TYPE_CREEPER_ID)
         .expect("generated Creeper metadata accessors must resolve")
+}
+
+fn guardian_metadata_accessors() -> VanillaGuardianMetadataAccessors {
+    vanilla_entity_metadata_guardian_accessors_for_entity_type(VANILLA_ENTITY_TYPE_GUARDIAN_ID)
+        .expect("generated Guardian metadata accessors must resolve")
 }
 
 #[test]
@@ -275,6 +280,7 @@ fn squid_tentacle_speed_is_seeded_by_entity_id() {
 
 #[test]
 fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
+    let accessors = guardian_metadata_accessors();
     // Vanilla `Guardian.aiStep` ramps `clientSideTailAnimationSpeed` differently per
     // tick depending on `isInWater()` and the synced `isMoving()` (`DATA_ID_MOVING`),
     // then integrates `clientSideTailAnimation += speed`. The projected
@@ -333,7 +339,7 @@ fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
         if moving {
             assert!(store.apply_set_entity_data(ProtocolSetEntityData {
                 id: 80,
-                values: vec![protocol_bool_data(VANILLA_GUARDIAN_MOVING_DATA_ID, true)],
+                values: vec![protocol_bool_data(accessors.moving_data_id, true)],
             }));
         }
         store
@@ -374,6 +380,7 @@ fn guardian_tail_animation_speed_branches_match_vanilla_ai_step() {
 
 #[test]
 fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
+    let accessors = guardian_metadata_accessors();
     // Vanilla `Guardian.aiStep` eases `clientSideSpikesAnimation` (spawn `0`): in water toward `1`
     // while idle (by `0.06`, spikes extend) or toward `0` while moving (by `0.25`, spikes retract);
     // out of water it randomizes — deferred, so the value is HELD. `GuardianRenderState.spikesAnimation`
@@ -442,11 +449,11 @@ fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
         "the idle spikes keep extending toward 1: {extended}"
     );
 
-    // Flag the guardian moving (synced `DATA_ID_MOVING`, idx 16): in water the spikes now RETRACT,
+    // Flag the guardian moving (synced `DATA_ID_MOVING`): in water the spikes now RETRACT,
     // easing toward `0` by `0.25` — one tick gives `0.75 · extended`.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 80,
-        values: vec![protocol_bool_data(VANILLA_GUARDIAN_MOVING_DATA_ID, true)],
+        values: vec![protocol_bool_data(accessors.moving_data_id, true)],
     }));
     store.advance_entity_client_animations(1);
     let retracting = spikes(&store);
@@ -468,8 +475,9 @@ fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
 
 #[test]
 fn entity_model_sources_project_guardian_attack_beam() {
+    let accessors = guardian_metadata_accessors();
     // Vanilla `GuardianRenderer.extractRenderState`: a guardian whose synced `DATA_ID_ATTACK_TARGET`
-    // (idx 17) names a live target projects the world eye→target vector and the ramping attack timing;
+    // names a live target projects the world eye→target vector and the ramping attack timing;
     // with no target it projects no beam.
     let add_at = |id: i32, type_id: i32, x: f64| ProtocolAddEntity {
         id,
@@ -507,10 +515,7 @@ fn entity_model_sources_project_guardian_attack_beam() {
     // Lock onto the zombie (id 71) and ramp the client-side attack time over five ticks.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![protocol_int_data(
-            VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID,
-            71,
-        )],
+        values: vec![protocol_int_data(accessors.attack_target_data_id, 71)],
     }));
     store.advance_entity_client_animations(5);
     let projected = beam(&store).expect("a guardian locked onto a live target beams");
@@ -531,7 +536,7 @@ fn entity_model_sources_project_guardian_attack_beam() {
     // Clearing the target stops the beam (and resets the counter, vanilla `onSyncedDataUpdated`).
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![protocol_int_data(VANILLA_GUARDIAN_ATTACK_TARGET_DATA_ID, 0,)],
+        values: vec![protocol_int_data(accessors.attack_target_data_id, 0)],
     }));
     assert!(beam(&store).is_none());
 }

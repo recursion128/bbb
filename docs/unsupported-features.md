@@ -332,8 +332,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   projection must not restore a Creeper type predicate alongside the accessor membership.
   Guardian moving and attack-target membership, inherited wire indices and typed defaults must
   remain derived together from generated `DATA_ID_MOVING` and `DATA_ID_ATTACK_TARGET`; world
-  animation/beam consumers must not restore fixed metadata aliases or read those slots without
-  generated Guardian membership.
+  animation/beam consumers and their semantic fixtures must not restore fixed metadata aliases,
+  hand-written wire indices or reads without generated Guardian membership.
   Shulker attach-face, peek and color membership, wire indices and typed defaults must remain
   derived together from generated `DATA_ATTACH_FACE_ID`, `DATA_PEEK_ID` and `DATA_COLOR_ID`;
   world bounds/animation/state and native model/debug consumers must not restore fixed metadata

@@ -17263,3 +17263,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   index aliases。
 - schema expected bundle 改由 generated constants 组装；generator 反向守卫扩展到 production
   consumers 与 world/native 语义 fixtures，既有 fuse、overlay 与 save 行为保持不变。
+
+## 2026-07-16：统一 Guardian metadata accessor 消费
+
+- world tail/spike animation 与 attack-beam 语义 fixtures 统一按 Guardian entity type 解析
+  moving/attack-target typed bundle，不再维护固定 wire index aliases。
+- schema expected bundle 改由 generated Guardian family schema 组装；generator 反向守卫扩展到 world
+  production consumers 与语义 fixtures，既有水中动画和 beam target 行为保持不变。

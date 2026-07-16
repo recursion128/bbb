@@ -23705,10 +23705,13 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_guardian_accessors_do_not_restore_fixed_metadata_facts() {
+    fn guardian_consumers_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
-        assert!(animations.contains("vanilla_entity_metadata_guardian_accessors_for_entity_type"));
+        let world_tests = include_str!("../tests/aquatic_and_beam_creature_animation.rs");
+        for source in [animations, world_tests] {
+            assert!(source.contains("vanilla_entity_metadata_guardian_accessors_for_entity_type"));
+        }
         assert!(store.contains("guardian_is_moving(identity.entity_type_id"));
         assert!(store.contains("guardian_attack_target_id(identity.entity_type_id"));
         for removed in [
@@ -23717,10 +23720,12 @@ mod generated_catalog_guards {
             "GUARDIAN_ATTACK_TARGET_DATA_ID",
             "GUARDIAN_DEFAULT_ATTACK_TARGET",
         ] {
-            assert!(
-                !animations.contains(removed),
-                "animations restored {removed}"
-            );
+            for source in [animations, world_tests] {
+                assert!(
+                    !source.contains(removed),
+                    "Guardian projection restored {removed}"
+                );
+            }
         }
     }
 
