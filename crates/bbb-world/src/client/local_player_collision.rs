@@ -12,10 +12,10 @@ use super::local_player::LocalPlayerPoseState;
 use crate::entities::VANILLA_HAPPY_GHAST_IS_LEASH_HOLDER_DATA_ID;
 use crate::entities::{
     is_vanilla_boat_type, is_vanilla_minecart_type,
+    vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type,
     vanilla_entity_metadata_type_collidability_kind, vanilla_entity_metadata_type_pushability_kind,
     vanilla_living_entity_type, EntitySupportingBlock, VanillaEntityCollidabilityKind,
-    VanillaEntityPushabilityKind, VANILLA_CREAKING_CAN_MOVE_DATA_ID,
-    VANILLA_CREAKING_DEFAULT_CAN_MOVE, VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
+    VanillaEntityPushabilityKind, VANILLA_HAPPY_GHAST_DEFAULT_STAYS_STILL,
     VANILLA_HAPPY_GHAST_STAYS_STILL_DATA_ID,
 };
 use crate::terrain::{
@@ -756,17 +756,17 @@ impl WorldStore {
         {
             return false;
         }
-        if kind == VanillaEntityPushabilityKind::LivingCanMove
-            && !self
-                .entities
-                .metadata_bool_for_entity(
-                    target_id,
-                    VANILLA_CREAKING_CAN_MOVE_DATA_ID,
-                    VANILLA_CREAKING_DEFAULT_CAN_MOVE,
-                )
-                .unwrap_or(VANILLA_CREAKING_DEFAULT_CAN_MOVE)
-        {
-            return false;
+        if kind == VanillaEntityPushabilityKind::LivingCanMove {
+            let can_move =
+                vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(target_type)
+                    .is_some_and(|(data_id, default)| {
+                        self.entities
+                            .metadata_bool_for_entity(target_id, data_id, default)
+                            .unwrap_or(default)
+                    });
+            if !can_move {
+                return false;
+            }
         }
         true
     }
@@ -4998,6 +4998,12 @@ mod tests {
     #[test]
     fn generated_pushability_kinds_preserve_warden_and_creaking_instance_gates() {
         let mut world = empty_world();
+        let (creaking_can_move_data_id, creaking_can_move_default) =
+            vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID,
+            )
+            .expect("generated Creaking can-move accessor");
+        assert!(creaking_can_move_default);
         add_collision_test_entity(
             &mut world,
             41,
@@ -5039,7 +5045,7 @@ mod tests {
             world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
                 id: 42,
                 values: vec![bbb_protocol::packets::EntityDataValue {
-                    data_id: VANILLA_CREAKING_CAN_MOVE_DATA_ID,
+                    data_id: creaking_can_move_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                     value: bbb_protocol::packets::EntityDataValueKind::Boolean(false),
                 }],

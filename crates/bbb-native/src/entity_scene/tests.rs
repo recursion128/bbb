@@ -8014,7 +8014,7 @@ fn entity_model_kind_maps_creaking_to_real_model() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_CREAKING_ID,
-            &[protocol_bool_data(CREAKING_IS_ACTIVE_DATA_ID, true)]
+            &[protocol_bool_data(creaking_active_data_id(), true)]
         ),
         EntityModelKind::Creaking { eyes_glowing: true }
     );
@@ -11381,6 +11381,16 @@ fn raider_celebrating_data_id(entity_type_id: i32) -> u8 {
             entity_type_id,
         )
         .expect("generated Raider celebrating accessor");
+    assert!(!default);
+    data_id
+}
+
+fn creaking_active_data_id() -> u8 {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_creaking_active_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+        )
+        .expect("generated Creaking active accessor");
     assert!(!default);
     data_id
 }

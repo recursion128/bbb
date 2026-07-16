@@ -17067,3 +17067,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - world/native 的 Spellcaster casting、Pillager charging 与 Raider celebrating semantic fixtures
   全部从生成 accessor 取得 metadata identity；生成反向守卫同步拒绝 celebrating 固定别名或
   平行 entity-type membership 回流。
+
+## 2026-07-16：派生 Creaking metadata accessor bundle
+
+- Creaking 的 can-move、active、tearing-down 与 home-position 四项 metadata identity 统一由
+  generated schema accessor 提供；world collision/animation、native emissive eyes 与 F3+I
+  save-debug 不再维护固定 wire index/default。
+- entity/native/input/collision semantic fixtures 同步改从生成 accessor 取得 identity；schema
+  generator 的跨 crate 反向守卫扩展到四个 consumer surface，拒绝旧 Creaking aliases 或
+  平行 type gate 回流。

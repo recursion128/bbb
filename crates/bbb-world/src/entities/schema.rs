@@ -1444,6 +1444,25 @@ pub fn vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Creaking active accessor and its typed default.
+pub fn vanilla_entity_metadata_creaking_active_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IS_ACTIVE")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.creaking.Creaking",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Creaking tearing-down accessor and its typed default.
 pub fn vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
     entity_type_id: i32,
@@ -1460,6 +1479,25 @@ pub fn vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
             "BOOLEAN",
             Some(VanillaEntityMetadataDefault::Boolean(default)),
         ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
+/// Resolves the generated Creaking home-position accessor with its empty optional default.
+pub fn vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<u8> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "HOME_POS")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.creaking.Creaking",
+            "OPTIONAL_BLOCK_POS",
+            Some(VanillaEntityMetadataDefault::OptionalBlockPosNone),
+        ) => Some(accessor.data_id),
         _ => None,
     }
 }
@@ -4918,7 +4956,7 @@ mod tests {
     }
 
     #[test]
-    fn generated_creaking_animation_accessors_own_membership_indices_and_defaults() {
+    fn generated_creaking_accessors_own_membership_indices_and_defaults() {
         assert_eq!(
             vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_CREAKING_ID
@@ -4926,10 +4964,22 @@ mod tests {
             Some((16, true))
         );
         assert_eq!(
+            vanilla_entity_metadata_creaking_active_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID
+            ),
+            Some((17, false))
+        );
+        assert_eq!(
             vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_CREAKING_ID
             ),
             Some((18, false))
+        );
+        assert_eq!(
+            vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_CREAKING_ID
+            ),
+            Some(19)
         );
         for entity_type_id in [VANILLA_ENTITY_TYPE_WARDEN_ID, -1] {
             assert_eq!(
@@ -4937,9 +4987,17 @@ mod tests {
                 None
             );
             assert_eq!(
+                vanilla_entity_metadata_creaking_active_accessor_for_entity_type(entity_type_id),
+                None
+            );
+            assert_eq!(
                 vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
                     entity_type_id
                 ),
+                None
+            );
+            assert_eq!(
+                vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(entity_type_id),
                 None
             );
         }

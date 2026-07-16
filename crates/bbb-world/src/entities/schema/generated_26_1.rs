@@ -24129,6 +24129,10 @@ mod generated_catalog_guards {
     fn production_creaking_animation_does_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
+        let collision = include_str!("../../client/local_player_collision.rs");
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
         assert!(animations
             .contains("vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type"));
         assert!(animations
@@ -24137,17 +24141,44 @@ mod generated_catalog_guards {
         assert!(store
             .contains("creaking_is_tearing_down(identity.entity_type_id, &metadata.data_values)"));
         assert!(!store.contains("identity.entity_type_id != VANILLA_ENTITY_TYPE_CREAKING_ID"));
+        assert!(collision
+            .contains("vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type"));
+        assert!(native_kind
+            .contains("vanilla_entity_metadata_creaking_active_accessor_for_entity_type"));
+        assert!(native_input
+            .contains("vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type"));
         for removed in [
             "CREAKING_CAN_MOVE_DATA_ID",
             "CREAKING_DEFAULT_CAN_MOVE",
+            "VANILLA_CREAKING_CAN_MOVE_DATA_ID",
+            "VANILLA_CREAKING_DEFAULT_CAN_MOVE",
             "CREAKING_IS_TEARING_DOWN_DATA_ID",
             "CREAKING_DEFAULT_TEARING_DOWN",
+            "CREAKING_IS_ACTIVE_DATA_ID",
+            "CREAKING_DEFAULT_ACTIVE",
+            "VANILLA_CREAKING_ACTIVE_DATA_ID",
+            "VANILLA_CREAKING_DEFAULT_ACTIVE",
+            "CREAKING_HOME_POS_DATA_ID",
+            "VANILLA_CREAKING_HOME_POS_DATA_ID",
         ] {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
             );
             assert!(!store.contains(removed), "store restored {removed}");
+            assert!(!collision.contains(removed), "collision restored {removed}");
+            assert!(
+                !native_scene.contains(removed),
+                "native scene restored {removed}"
+            );
+            assert!(
+                !native_kind.contains(removed),
+                "native kind restored {removed}"
+            );
+            assert!(
+                !native_input.contains(removed),
+                "native input restored {removed}"
+            );
         }
     }
 

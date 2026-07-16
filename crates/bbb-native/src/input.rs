@@ -159,7 +159,6 @@ use bbb_world::{
     VANILLA_BEE_FLAG_HAS_NECTAR as BEE_FLAG_HAS_NECTAR,
     VANILLA_BEE_FLAG_HAS_STUNG as BEE_FLAG_HAS_STUNG,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
-    VANILLA_CREAKING_HOME_POS_DATA_ID as CREAKING_HOME_POS_DATA_ID,
     VANILLA_DOLPHIN_DEFAULT_GOT_FISH as DOLPHIN_DEFAULT_GOT_FISH,
     VANILLA_DOLPHIN_DEFAULT_MOISTNESS as DOLPHIN_DEFAULT_MOISTNESS,
     VANILLA_DOLPHIN_GOT_FISH_DATA_ID as DOLPHIN_GOT_FISH_DATA_ID,
@@ -7438,9 +7437,14 @@ fn debug_push_creeper_additional_save_data(entity: &EntityState, fields: &mut Ve
 }
 
 fn debug_push_creaking_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    if let Some(home_pos) =
-        debug_entity_data_optional_block_pos_present(entity, CREAKING_HOME_POS_DATA_ID)
-    {
+    let Some(data_id) =
+        bbb_world::vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    if let Some(home_pos) = debug_entity_data_optional_block_pos_present(entity, data_id) {
         fields.push(format!(
             "home_pos: [I; {}, {}, {}]",
             home_pos.x, home_pos.y, home_pos.z

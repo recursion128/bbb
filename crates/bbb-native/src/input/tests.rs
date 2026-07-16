@@ -194,6 +194,13 @@ fn raider_celebrating_data_id(entity_type_id: i32) -> u8 {
     data_id
 }
 
+fn creaking_home_pos_data_id() -> u8 {
+    bbb_world::vanilla_entity_metadata_creaking_home_pos_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_CREAKING_ID,
+    )
+    .expect("generated Creaking home-position accessor")
+}
+
 fn handle_key_input_without_world(
     input: &mut ClientInputState,
     counters: &mut NetCounters,
@@ -3232,7 +3239,7 @@ fn shift_f3_i_with_permission_copies_local_creaking_save_nbt_to_clipboard() {
                 value: EntityDataValueKind::Byte(MOB_FLAG_LEFT_HANDED),
             },
             ProtocolEntityDataValue {
-                data_id: CREAKING_HOME_POS_DATA_ID,
+                data_id: creaking_home_pos_data_id(),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_POS_ID,
                 value: EntityDataValueKind::OptionalBlockPos(Some(ProtocolBlockPos {
                     x: 4,

@@ -1348,8 +1348,18 @@ fn entity_model_sources_project_arrow_impact_shake() {
 fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
     const CREAKING_ATTACK_EVENT_ID: i8 = 4;
     const CREAKING_INVULNERABLE_EVENT_ID: i8 = 66;
-    const CREAKING_CAN_MOVE_DATA_ID: u8 = 16;
-    const CREAKING_IS_TEARING_DOWN_DATA_ID: u8 = 18;
+    let (can_move_data_id, can_move_default) =
+        super::schema::vanilla_entity_metadata_creaking_can_move_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+        )
+        .expect("generated Creaking can-move accessor");
+    assert!(can_move_default);
+    let (tearing_down_data_id, tearing_down_default) =
+        super::schema::vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_CREAKING_ID,
+        )
+        .expect("generated Creaking tearing-down accessor");
+    assert!(!tearing_down_default);
 
     let creaking_bool = |data_id: u8, value: bool| ProtocolEntityDataValue {
         data_id,
@@ -1384,12 +1394,12 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
     // The synced `CAN_MOVE = false` freezes the walk (a creaking observed mid-step turns to a statue).
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![creaking_bool(CREAKING_CAN_MOVE_DATA_ID, false)],
+        values: vec![creaking_bool(can_move_data_id, false)],
     }));
     assert!(!source(&store, 70, 1.0).creaking_can_move);
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![creaking_bool(CREAKING_CAN_MOVE_DATA_ID, true)],
+        values: vec![creaking_bool(can_move_data_id, true)],
     }));
 
     // Vanilla `Creaking.handleEntityEvent(4)`: `attackAnimationRemainingTicks = 15`. The one-shot is
@@ -1442,7 +1452,7 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
     // death one-shot on the next tick; clearing it stops the timer.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![creaking_bool(CREAKING_IS_TEARING_DOWN_DATA_ID, true)],
+        values: vec![creaking_bool(tearing_down_data_id, true)],
     }));
     store.advance_entity_client_animations(1);
     assert!((source(&store, 70, 0.0).creaking_death_seconds - 0.0).abs() < 1.0e-6);
@@ -1450,7 +1460,7 @@ fn creaking_combat_events_and_tearing_down_drive_the_keyframes() {
     assert!((source(&store, 70, 0.0).creaking_death_seconds - 0.25).abs() < 1.0e-6);
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 70,
-        values: vec![creaking_bool(CREAKING_IS_TEARING_DOWN_DATA_ID, false)],
+        values: vec![creaking_bool(tearing_down_data_id, false)],
     }));
     store.advance_entity_client_animations(1);
     assert_eq!(

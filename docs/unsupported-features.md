@@ -358,9 +358,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Cat lie-down and relax-state-one membership, wire indices and typed defaults must remain derived
   from generated `Cat.IS_LYING` and `Cat.RELAX_STATE_ONE`; world animation and sleeping-player
   projection must not restore fixed accessor/default aliases or parallel Cat membership gates.
-  Creaking can-move and tearing-down membership, wire indices and typed defaults must remain derived
-  from generated `Creaking.CAN_MOVE` and `Creaking.IS_TEARING_DOWN`; world animation/model
-  consumers must not restore fixed accessor/default aliases or a parallel Creaking type gate.
+  Creaking can-move, active, tearing-down and home-position membership, wire indices and typed
+  defaults must remain derived from generated `Creaking.CAN_MOVE`, `Creaking.IS_ACTIVE`,
+  `Creaking.IS_TEARING_DOWN` and `Creaking.HOME_POS`; world animation/collision, native model and
+  F3+I save-debug consumers must not restore fixed accessor/default aliases or a parallel Creaking
+  type gate.
   AbstractPiglin zombification immunity plus Piglin baby/dancing membership, wire indices and typed
   defaults must remain derived from generated `AbstractPiglin.DATA_IMMUNE_TO_ZOMBIFICATION`,
   `Piglin.DATA_BABY_ID`, and `Piglin.DATA_IS_DANCING`; native model/pose and F3+I save-debug
