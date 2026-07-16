@@ -17652,3 +17652,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - bootstrap generated guard 精确检查 block-name parser、full-catalog fixture 与 native
   hanging-sign GUI background loader 的函数体；loader 必须逐项消费 generated name，且禁止恢复
   `HANGING_SIGN_BACKGROUNDS` 或代表性 wood variant 表。
+
+## 2026-07-16：强化 synchronized animal-variant RegistryAccess 消费
+
+- core-registry generated guard 现在逐项检查 farm/cat/frog/wolf/zombie-nautilus 五种 payload
+  query：world 必须按 session holder order 取得 entry 并调用对应 typed decoder，禁止在同步 payload
+  路径使用 `for_vanilla_registry_id`。
+- 同一守卫锁定 native `EntityVariantRenderContext` adapter、7-registry texture synchronization
+  与五个 ready/apply presentation consumer 的完整委托链；已有 custom server-order、资源上传及
+  model/texture 原子切换端到端回归继续覆盖运行时行为，fixed order 只保留无 session 时的身份 fallback。

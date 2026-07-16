@@ -1191,6 +1191,110 @@ mod tests {
             "fn synchronize_with_uploader",
             "fn record_rejected_presentation",
         );
+        let world_variants = include_str!("../../bbb-world/src/registries/animal_variants.rs");
+        let world_queries = function_body(
+            world_variants,
+            "impl WorldStore {",
+            "fn decode_farm_animal_variant",
+        );
+        for (query, decoder) in [
+            (
+                "pub fn synchronized_farm_animal_variant_presentation",
+                "decode_farm_animal_variant",
+            ),
+            (
+                "pub fn synchronized_cat_variant_presentation",
+                "decode_cat_variant",
+            ),
+            (
+                "pub fn synchronized_frog_variant_presentation",
+                "decode_frog_variant",
+            ),
+            (
+                "pub fn synchronized_wolf_variant_presentation",
+                "decode_wolf_variant",
+            ),
+            (
+                "pub fn synchronized_zombie_nautilus_variant_presentation",
+                "decode_zombie_nautilus_variant",
+            ),
+        ] {
+            let body = world_queries
+                .split(query)
+                .nth(1)
+                .and_then(|source| source.split("\n    ///").next())
+                .unwrap_or_else(|| panic!("missing {query}"));
+            assert!(
+                body.contains("registry_entry_by_holder_id"),
+                "{query} stopped using session holder order"
+            );
+            assert!(
+                body.contains(decoder),
+                "{query} stopped decoding its typed payload"
+            );
+            assert!(
+                !body.contains("for_vanilla_registry_id"),
+                "{query} restored fixed ordinal payload lookup"
+            );
+        }
+        let entity_scene = include_str!("../../bbb-native/src/entity_scene.rs");
+        let registry_access = function_body(
+            entity_scene,
+            "impl EntityVariantRegistryLookup for EntityVariantRenderContext",
+            "const ENTITY_HITBOX_COLOR",
+        );
+        let scene_variants = include_str!("../../bbb-native/src/entity_scene/variants.rs");
+        for (query, consumer, next) in [
+            (
+                "synchronized_farm_animal_variant_presentation",
+                "pub(super) fn apply_ready_farm_animal_variant_presentation",
+                "/// Selects the synchronized cat",
+            ),
+            (
+                "synchronized_cat_variant_presentation",
+                "pub(super) fn ready_cat_variant_texture",
+                "/// Selects the synchronized frog",
+            ),
+            (
+                "synchronized_frog_variant_presentation",
+                "pub(super) fn ready_frog_variant_texture",
+                "/// Selects the synchronized wolf",
+            ),
+            (
+                "synchronized_wolf_variant_presentation",
+                "pub(super) fn ready_wolf_variant_texture",
+                "/// Applies the synchronized zombie-nautilus",
+            ),
+            (
+                "synchronized_zombie_nautilus_variant_presentation",
+                "pub(super) fn apply_ready_zombie_nautilus_variant_presentation",
+                "fn entity_data_registry_holder_id",
+            ),
+        ] {
+            assert_eq!(
+                registry_access.matches(query).count(),
+                1,
+                "RegistryAccess adapter must delegate {query} once"
+            );
+            assert_eq!(
+                texture_sync.matches(query).count(),
+                1,
+                "texture sync must consume {query} once"
+            );
+            let presentation_query = query
+                .strip_prefix("synchronized_")
+                .expect("synchronized query prefix");
+            let body = function_body(scene_variants, consumer, next);
+            assert_eq!(
+                body.matches(presentation_query).count(),
+                1,
+                "{consumer} must consume typed {presentation_query} once"
+            );
+            assert!(
+                !body.contains("for_vanilla_registry_id"),
+                "{consumer} restored fixed ordinal payload lookup"
+            );
+        }
         for (name, body, query) in [
             (
                 "item registry keys",
