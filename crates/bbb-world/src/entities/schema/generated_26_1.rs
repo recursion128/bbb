@@ -22364,6 +22364,8 @@ mod generated_catalog_guards {
     #[test]
     fn production_villager_unhappy_projection_uses_generated_accessor() {
         let source = include_str!("../store.rs");
+        let world_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        let native_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let body = source
             .split("let villager_unhappy")
             .nth(1)
@@ -22376,6 +22378,13 @@ mod generated_catalog_guards {
         assert!(!body.contains("vanilla_entity_metadata_accessor_for_entity_type"));
         assert!(!body.contains("VANILLA_ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID"));
         assert!(!body.contains("VANILLA_ABSTRACT_VILLAGER_DEFAULT_UNHAPPY_COUNTER"));
+        for tests in [world_tests, native_tests] {
+            assert!(tests.contains(
+                "vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type"
+            ));
+            assert!(tests.contains("abstract_villager_unhappy_collision_data"));
+            assert!(!tests.contains("ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID"));
+        }
     }
 
     #[test]

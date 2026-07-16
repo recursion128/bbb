@@ -47,6 +47,19 @@ fn mob_flags_collision_data(flags: i8) -> ProtocolEntityDataValue {
     mob_flags_data(VANILLA_ENTITY_TYPE_ZOMBIE_ID, flags)
 }
 
+fn abstract_villager_unhappy_data(entity_type_id: i32, counter: i32) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type(entity_type_id)
+            .expect("generated inherited AbstractVillager unhappy accessor must resolve");
+    assert_eq!(default, 0);
+    protocol_int_data(data_id, counter)
+}
+
+/// Deliberately sends an AbstractVillager counter to a non-member to cover data-id/type gating.
+fn abstract_villager_unhappy_collision_data(counter: i32) -> ProtocolEntityDataValue {
+    abstract_villager_unhappy_data(VANILLA_ENTITY_TYPE_VILLAGER_ID, counter)
+}
+
 fn wither_side_head_target_data(target_b: i32, target_c: i32) -> Vec<ProtocolEntityDataValue> {
     let accessors =
         crate::entities::schema::vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type(
@@ -665,9 +678,8 @@ fn entity_model_sources_project_spellcaster_illager_casting() {
 
 #[test]
 fn entity_model_sources_project_villager_unhappy() {
-    // Vanilla AbstractVillager.DATA_UNHAPPY_COUNTER (INT id 18): read by
-    // VillagerRenderer and WanderingTraderRenderer as `getUnhappyCounter() > 0`.
-    const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
+    // Vanilla VillagerRenderer and WanderingTraderRenderer project
+    // `AbstractVillager.getUnhappyCounter() > 0` through the inherited generated accessor.
 
     let source = |store: &WorldStore, id: i32| {
         store
@@ -700,31 +712,25 @@ fn entity_model_sources_project_villager_unhappy() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 86,
-        values: vec![protocol_int_data(
-            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-            12
+        values: vec![abstract_villager_unhappy_data(
+            VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            12,
         )],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 87,
-        values: vec![protocol_int_data(
-            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-            1
+        values: vec![abstract_villager_unhappy_data(
+            VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+            1,
         )],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 88,
-        values: vec![protocol_int_data(
-            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-            12
-        )],
+        values: vec![abstract_villager_unhappy_collision_data(12)],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 89,
-        values: vec![protocol_int_data(
-            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-            12
-        )],
+        values: vec![abstract_villager_unhappy_collision_data(12)],
     }));
 
     assert!(source(&store, 86).villager_unhappy);
@@ -740,9 +746,9 @@ fn entity_model_sources_project_villager_unhappy() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 86,
-        values: vec![protocol_int_data(
-            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-            0
+        values: vec![abstract_villager_unhappy_data(
+            VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            0,
         )],
     }));
     assert!(!source(&store, 86).villager_unhappy);

@@ -18096,3 +18096,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native input tests 统一通过 `VanillaEntityMetadataAccessors` 构造 sleeping pose 与两处
   invisibility payload；Creeper debug-save 的 shared flags/air/name/visibility/silent/no-gravity/
   frozen 字段删除 7 个固定 id/mask。Entity reverse guard 纳入两份整文件和精确调用计数。
+
+## 2026-07-16：统一 AbstractVillager unhappy fixtures
+
+- 将现有 generated inherited AbstractVillager unhappy counter accessor 公开给 native；world
+  combat-state 与 native entity-scene fixtures 删除 9 处固定 wire id，Villager/WanderingTrader
+  均按实际类型查询并校验 default 0。
+- ZombieVillager/Panda 的同 id 负例保留为显式 collision helper；reverse guard 纳入两份整文件，
+  防止固定 alias 或无类型语义的 sibling 替代回流。

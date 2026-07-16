@@ -3496,7 +3496,7 @@ pub fn vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type(
 }
 
 /// Resolves the inherited AbstractVillager unhappy-counter accessor and its typed default.
-pub(crate) fn vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type(
+pub fn vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type(
     entity_type_id: i32,
 ) -> Option<(u8, i32)> {
     let accessor =

@@ -64,6 +64,20 @@ fn baby_data(entity_type_id: i32, is_baby: bool) -> EntityDataValue {
     protocol_bool_data(data_id, is_baby)
 }
 
+fn abstract_villager_unhappy_data(entity_type_id: i32, counter: i32) -> EntityDataValue {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_abstract_villager_unhappy_accessor_for_entity_type(
+            entity_type_id,
+        )
+        .expect("generated inherited AbstractVillager unhappy accessor must resolve");
+    assert_eq!(default, 0);
+    protocol_int_data(data_id, counter)
+}
+
+fn abstract_villager_unhappy_collision_data(counter: i32) -> EntityDataValue {
+    abstract_villager_unhappy_data(VANILLA_ENTITY_TYPE_VILLAGER_ID, counter)
+}
+
 fn mob_aggressive_data(entity_type_id: i32) -> EntityDataValue {
     let accessors =
         bbb_world::vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id)
@@ -4482,7 +4496,6 @@ fn entity_model_instances_project_panda_unhappy_and_sneezing() {
 
 #[test]
 fn entity_model_instances_project_villager_unhappy() {
-    const ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID: u8 = 18;
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         191,
@@ -4512,15 +4525,19 @@ fn entity_model_instances_project_villager_unhappy() {
     assert!(!villager_unhappy(&world, 191));
     assert!(!villager_unhappy(&world, 192));
 
-    for id in [191, 192, 193] {
+    for (id, entity_type_id) in [
+        (191, VANILLA_ENTITY_TYPE_VILLAGER_ID),
+        (192, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID),
+    ] {
         assert!(world.apply_set_entity_data(SetEntityData {
             id,
-            values: vec![protocol_int_data(
-                ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-                12,
-            )],
+            values: vec![abstract_villager_unhappy_data(entity_type_id, 12)],
         }));
     }
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 193,
+        values: vec![abstract_villager_unhappy_collision_data(12)],
+    }));
     assert!(villager_unhappy(&world, 191));
     assert!(villager_unhappy(&world, 192));
     assert!(
@@ -4530,9 +4547,9 @@ fn entity_model_instances_project_villager_unhappy() {
 
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 191,
-        values: vec![protocol_int_data(
-            ABSTRACT_VILLAGER_UNHAPPY_COUNTER_DATA_ID,
-            0
+        values: vec![abstract_villager_unhappy_data(
+            VANILLA_ENTITY_TYPE_VILLAGER_ID,
+            0,
         )],
     }));
     assert!(!villager_unhappy(&world, 191));
