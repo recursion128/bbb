@@ -131,8 +131,6 @@ use bbb_world::VANILLA_LLAMA_VARIANT_DATA_ID as LLAMA_VARIANT_DATA_ID;
 use bbb_world::VANILLA_TURTLE_HAS_EGG_DATA_ID as TURTLE_HAS_EGG_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_WITHER_INVULNERABLE_TICKS_DATA_ID as WITHER_INVULNERABLE_TICKS_DATA_ID;
-#[cfg(test)]
-use bbb_world::VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID as WITHER_SKULL_DANGEROUS_DATA_ID;
 use bbb_world::{
     vanilla_entity_metadata_dolphin_accessors_for_entity_type,
     vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type,

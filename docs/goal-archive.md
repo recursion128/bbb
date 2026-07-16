@@ -17704,3 +17704,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - metadata generator 守卫从 production light/debug 函数体扩到 entity-scene/input 父模块及两份
   fixture，禁止固定 id/default（含 `VANILLA_*` compatibility alias）回流；既有 0/5/10/100 tick
   光照 ramp 和 save-data 77 tick 回归保持不变。
+
+## 2026-07-16：统一 WitherSkull dangerous fixture accessor 消费
+
+- WitherSkull model texture 选择与 F3+I direct-copy fixture 删除固定 `DATA_DANGEROUS` wire id，
+  按 WitherSkull entity type 查询 generated accessor 并校验 boolean default false。
+- metadata generator 守卫从 production model/debug 函数体扩到 entity-scene/input 父模块及两份
+  semantic fixture，禁止固定 id/default 和 `VANILLA_*` compatibility alias 回流；unpickable
+  crosshair 与 direct-copy `dangerous: 1b` 行为保持不变。

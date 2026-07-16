@@ -22192,6 +22192,31 @@ mod generated_catalog_guards {
                 );
             }
         }
+        let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [
+            native_scene,
+            native_scene_tests,
+            native_input,
+            native_input_tests,
+        ] {
+            assert!(source.contains(
+                "vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type"
+            ));
+            for removed in [
+                "WITHER_SKULL_DANGEROUS_DATA_ID",
+                "WITHER_SKULL_DEFAULT_DANGEROUS",
+                "VANILLA_WITHER_SKULL_DANGEROUS_DATA_ID",
+                "VANILLA_WITHER_SKULL_DEFAULT_DANGEROUS",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "WitherSkull fixture restored {removed}"
+                );
+            }
+        }
     }
 
     #[test]

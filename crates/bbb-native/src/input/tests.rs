@@ -400,6 +400,16 @@ fn glow_squid_dark_ticks_data_id() -> u8 {
     data_id
 }
 
+fn wither_skull_dangerous_data_id() -> u8 {
+    let (data_id, default) =
+        vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        )
+        .expect("generated WitherSkull dangerous accessor");
+    assert!(!default);
+    data_id
+}
+
 fn piglin_baby_data_id() -> u8 {
     let (data_id, default) = bbb_world::vanilla_entity_metadata_baby_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_PIGLIN_ID,
@@ -10886,7 +10896,7 @@ fn shift_f3_i_skips_unpickable_wither_skull_but_direct_copy_encodes_save_nbt() {
     assert!(world.apply_set_entity_data(ProtocolSetEntityData {
         id: 53,
         values: vec![ProtocolEntityDataValue {
-            data_id: WITHER_SKULL_DANGEROUS_DATA_ID,
+            data_id: wither_skull_dangerous_data_id(),
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(true),

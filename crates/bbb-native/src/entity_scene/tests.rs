@@ -9497,7 +9497,7 @@ fn entity_model_kind_maps_wither_skull_to_real_model() {
     assert_eq!(
         entity_model_kind(
             VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-            &[protocol_bool_data(WITHER_SKULL_DANGEROUS_DATA_ID, true)]
+            &[wither_skull_dangerous_data(true)]
         ),
         EntityModelKind::WitherSkull { dangerous: true }
     );
@@ -11602,6 +11602,16 @@ fn glow_squid_dark_ticks_data(ticks: i32) -> EntityDataValue {
         .expect("generated GlowSquid dark-ticks accessor");
     assert_eq!(default, 0);
     protocol_int_data(data_id, ticks)
+}
+
+fn wither_skull_dangerous_data(dangerous: bool) -> EntityDataValue {
+    let (data_id, default) =
+        vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        )
+        .expect("generated WitherSkull dangerous accessor");
+    assert!(!default);
+    protocol_bool_data(data_id, dangerous)
 }
 
 fn zombification_immunity_data(entity_type_id: i32, immune: bool) -> EntityDataValue {
