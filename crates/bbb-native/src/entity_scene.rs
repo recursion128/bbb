@@ -39,6 +39,7 @@ use bbb_world::vanilla_entity_metadata_bee_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_bogged_sheared_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_ghast_charging_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_panda_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_parrot_variant_accessor_for_entity_type;
@@ -65,6 +66,8 @@ use bbb_world::VANILLA_COPPER_GOLEM_STATE_DATA_ID as COPPER_GOLEM_STATE_DATA_ID;
 use bbb_world::VANILLA_ENTITY_SHARED_FLAG_GLOWING as ENTITY_SHARED_FLAG_GLOWING;
 #[cfg(test)]
 use bbb_world::VANILLA_GHAST_CHARGING_DATA_ID as GHAST_IS_CHARGING_DATA_ID;
+#[cfg(test)]
+use bbb_world::VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID;
 #[cfg(test)]
 use bbb_world::VANILLA_HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID as HOGLIN_IMMUNE_TO_ZOMBIFICATION_DATA_ID;
 #[cfg(test)]
@@ -158,10 +161,6 @@ pub(crate) use bbb_world::{
 use bbb_world::{
     VANILLA_FROG_DEFAULT_VARIANT_RESOURCE_ID as FROG_DEFAULT_VARIANT_RESOURCE_ID,
     VANILLA_FROG_VARIANT_DATA_ID as FROG_VARIANT_DATA_ID,
-};
-use bbb_world::{
-    VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID,
-    VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS as GLOW_SQUID_DEFAULT_DARK_TICKS,
 };
 use bbb_world::{
     VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN as GOAT_DEFAULT_HAS_LEFT_HORN,

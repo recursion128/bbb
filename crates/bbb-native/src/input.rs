@@ -84,6 +84,7 @@ use bbb_world::vanilla_entity_metadata_creeper_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_end_crystal_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_fox_variant_accessor_for_entity_type;
+use bbb_world::vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_interaction_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_mushroom_cow_variant_accessor_for_entity_type;
@@ -98,6 +99,8 @@ use bbb_world::vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_ty
 use bbb_world::vanilla_entity_metadata_tamable_animal_flags_accessor_for_entity_type;
 use bbb_world::vanilla_entity_metadata_tropical_fish_variant_accessor_for_entity_type;
 use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
+#[cfg(test)]
+use bbb_world::VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID;
 use bbb_world::VANILLA_TAMABLE_ANIMAL_FLAG_SITTING as TAMABLE_ANIMAL_SITTING_FLAG;
 use bbb_world::{
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
@@ -149,8 +152,6 @@ use bbb_world::{
     VANILLA_FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID as FIREWORK_ROCKET_DEFAULT_ITEM_RESOURCE_ID,
     VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID as FIREWORK_ROCKET_ITEM_DATA_ID,
     VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID as FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID,
-    VANILLA_GLOW_SQUID_DARK_TICKS_DATA_ID as GLOW_SQUID_DARK_TICKS_DATA_ID,
-    VANILLA_GLOW_SQUID_DEFAULT_DARK_TICKS as GLOW_SQUID_DEFAULT_DARK_TICKS_REMAINING,
     VANILLA_GOAT_DEFAULT_HAS_LEFT_HORN as GOAT_DEFAULT_HAS_LEFT_HORN,
     VANILLA_GOAT_DEFAULT_HAS_RIGHT_HORN as GOAT_DEFAULT_HAS_RIGHT_HORN,
     VANILLA_GOAT_DEFAULT_SCREAMING as GOAT_DEFAULT_SCREAMING,
@@ -7489,8 +7490,14 @@ fn debug_push_end_crystal_additional_save_data(entity: &EntityState, fields: &mu
 fn debug_push_ghast_additional_save_data(_fields: &mut Vec<String>) {}
 
 fn debug_push_glow_squid_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let dark_ticks = debug_entity_data_int_present(entity, GLOW_SQUID_DARK_TICKS_DATA_ID)
-        .unwrap_or(GLOW_SQUID_DEFAULT_DARK_TICKS_REMAINING);
+    let Some((data_id, default)) =
+        vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(
+            entity.entity_type_id,
+        )
+    else {
+        return;
+    };
+    let dark_ticks = debug_entity_data_int_present(entity, data_id).unwrap_or(default);
     fields.push(format!("DarkTicksRemaining: {dark_ticks}"));
 }
 

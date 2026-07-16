@@ -1011,12 +1011,10 @@ pub(super) fn entity_light_coords(
     // `max(blockLight, (int)clampedLerp(1 − darkTicks/10, 0, 15))`. Undamaged (`darkTicks == 0`) it is fully
     // bright (`15`); a hurt drops `darkTicks` to `100` (dark), and it ramps back to full over the final 10
     // ticks. The vanilla `glow == 15 ? 15 : max(glow, super)` ternary is just `max(super, glow)` (super ≤ 15).
-    if entity_type_id == VANILLA_ENTITY_TYPE_GLOW_SQUID_ID {
-        let dark_ticks = entity_data_int(
-            data_values,
-            GLOW_SQUID_DARK_TICKS_DATA_ID,
-            GLOW_SQUID_DEFAULT_DARK_TICKS,
-        );
+    if let Some((data_id, default)) =
+        vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(entity_type_id)
+    {
+        let dark_ticks = entity_data_int(data_values, data_id, default);
         let glow = clamped_lerp(1.0 - dark_ticks as f32 / 10.0, 0.0, 15.0) as u32;
         block = block.max(glow);
     }

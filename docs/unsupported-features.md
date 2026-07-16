@@ -190,6 +190,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Ghast charging texture membership, wire index and typed default must remain derived from
   generated `Ghast.DATA_IS_CHARGING`; native model projection must not restore fixed
   accessor/default aliases or read a same-named boolean from another entity family.
+  GlowSquid dark-ticks light/debug membership, wire index and typed default must remain derived
+  from generated `GlowSquid.DATA_DARK_TICKS_REMAINING`; native consumers must not restore fixed
+  accessor/default aliases or a separate GlowSquid type gate for renderer light projection.
   HangingEntity direction membership, inherited wire index and typed default must remain derived
   from generated `DATA_DIRECTION`; ItemFrame item/rotation membership, wire indices and rotation
   default must remain derived together from generated `DATA_ITEM`/`DATA_ROTATION`. World bounds,
