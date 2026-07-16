@@ -67,13 +67,13 @@ use super::schema::{
     VANILLA_SNIFFER_STATE_SNIFFING_ID as SNIFFER_STATE_SNIFFING_ID,
 };
 use super::{
-    is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid,
+    is_vanilla_boat_type, is_vanilla_vehicle_entity_type,
+    vanilla_entity_metadata_living_entity_accessors_for_entity_type, vanilla_entity_type_is_squid,
     EntityTransform, EntityVec3, VANILLA_ABSTRACT_HORSE_FLAG_EATING as ABSTRACT_HORSE_FLAG_EATING,
     VANILLA_ABSTRACT_HORSE_FLAG_OPEN_MOUTH as ABSTRACT_HORSE_FLAG_OPEN_MOUTH,
     VANILLA_ABSTRACT_HORSE_FLAG_STANDING as ABSTRACT_HORSE_FLAG_STANDING,
     VANILLA_ENTITY_SHARED_FLAGS_DATA_ID, VANILLA_ENTITY_SHARED_FLAG_FALL_FLYING,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-    VANILLA_LIVING_ENTITY_FLAG_IS_USING, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
 };
 use bbb_protocol::entity_types::*;
 
@@ -3873,9 +3873,11 @@ impl EntityClientAnimationState {
         // entity whose synced health has reached zero begins the death animation;
         // restoring health clears it. Only living entities carry the health float,
         // so the per-type model animations below are unaffected.
+        let living_accessors =
+            vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id);
         if vanilla_living_entity_type(entity_type_id) {
-            if let Some(health) =
-                entity_data_float(data_values, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID)
+            if let Some(health) = living_accessors
+                .and_then(|accessors| entity_data_float(data_values, accessors.health_data_id))
             {
                 if health <= 0.0 {
                     self.death
@@ -3897,8 +3899,8 @@ impl EntityClientAnimationState {
             }
         }
         if entity_type_id == VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID {
-            if let Some(health) =
-                entity_data_float(data_values, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID)
+            if let Some(health) = living_accessors
+                .and_then(|accessors| entity_data_float(data_values, accessors.health_data_id))
             {
                 self.ender_dragon
                     .get_or_insert_with(EnderDragonAnimationState::default)
@@ -6022,16 +6024,24 @@ pub(crate) fn piglin_is_charging_crossbow(
         .unwrap_or_default()
 }
 
-/// Vanilla `LivingEntity.isUsingItem()` (`DATA_LIVING_ENTITY_FLAGS & 1`, synced byte id `8`): true while the
-/// entity holds right-click on a usable item. For the player this drives the shared crossbow-draw counter
+/// Vanilla `LivingEntity.isUsingItem()` (the named using-item bit in
+/// `DATA_LIVING_ENTITY_FLAGS`): true while the entity holds right-click on a usable item. For the
+/// player this drives the shared crossbow-draw counter
 /// (the client's `getTicksUsingItem` reconstruction, which is item-agnostic in vanilla); the native layer
 /// then applies the `CROSSBOW_CHARGE` pose only when the using item is actually an uncharged crossbow. Read
 /// straight from the entity metadata in the tick loop; the type gate in `advance_client_tick` keeps this on
 /// the player.
-pub(crate) fn player_is_using_item(data_values: &[EntityDataValue]) -> bool {
-    entity_data_byte(data_values, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID, 0)
-        & VANILLA_LIVING_ENTITY_FLAG_IS_USING
-        != 0
+pub(crate) fn player_is_using_item(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id).is_some_and(
+        |accessors| {
+            entity_data_byte(
+                data_values,
+                accessors.flags_data_id,
+                accessors.flags_default,
+            ) & accessors.is_using_mask
+                != 0
+        },
+    )
 }
 
 /// Vanilla `Allay.isDancing()` (`entityData.get(DATA_DANCING)`): the synced boolean that drives the

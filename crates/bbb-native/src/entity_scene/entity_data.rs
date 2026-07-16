@@ -143,19 +143,28 @@ pub(super) fn wither_powered(
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
     const WITHER_MAX_HEALTH: f32 = 300.0;
-    entity_type_id == VANILLA_ENTITY_TYPE_WITHER_ID
-        && entity_data_float(values, LIVING_ENTITY_HEALTH_DATA_ID, WITHER_MAX_HEALTH)
-            <= WITHER_MAX_HEALTH / 2.0
+    if entity_type_id != VANILLA_ENTITY_TYPE_WITHER_ID {
+        return false;
+    }
+    vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id).is_some_and(
+        |accessors| {
+            entity_data_float(values, accessors.health_data_id, WITHER_MAX_HEALTH)
+                <= WITHER_MAX_HEALTH / 2.0
+        },
+    )
 }
 
 /// Vanilla `IronGolem.getCrackiness()` = `Crackiness.GOLEM.byFraction(getHealth() / getMaxHealth())`,
 /// the iron golem's base `Attributes.MAX_HEALTH` being the constant `100.0`. The synced
-/// `LivingEntity.DATA_HEALTH_ID` (index 9) drives the damage-crack overlay tier.
+/// `LivingEntity.DATA_HEALTH_ID` drives the damage-crack overlay tier.
 pub(super) fn iron_golem_crackiness(
+    entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> IronGolemCrackiness {
     const IRON_GOLEM_MAX_HEALTH: f32 = 100.0;
-    let health = entity_data_float(values, LIVING_ENTITY_HEALTH_DATA_ID, IRON_GOLEM_MAX_HEALTH);
+    let health = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| entity_data_float(values, accessors.health_data_id, IRON_GOLEM_MAX_HEALTH))
+        .unwrap_or(IRON_GOLEM_MAX_HEALTH);
     IronGolemCrackiness::from_health_fraction(health / IRON_GOLEM_MAX_HEALTH)
 }
 

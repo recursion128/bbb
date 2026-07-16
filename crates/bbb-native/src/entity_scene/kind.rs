@@ -107,7 +107,7 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_WITCH_ID => EntityModelKind::Witch,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID => EntityModelKind::Enderman,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => EntityModelKind::IronGolem {
-            crackiness: iron_golem_crackiness(data_values),
+            crackiness: iron_golem_crackiness(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID => EntityModelKind::SnowGolem,
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID => EntityModelKind::CopperGolem {

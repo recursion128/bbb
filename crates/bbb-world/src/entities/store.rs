@@ -111,6 +111,7 @@ use crate::entities::renderer_catalog::{
     vanilla_entity_renderer_uses_mob_item_in_hand_layer,
 };
 use crate::entities::schema::{
+    vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
@@ -125,14 +126,9 @@ use crate::entities::schema::{
     VANILLA_ENTITY_SHARED_FLAG_SPRINTING as ENTITY_SHARED_FLAG_SPRINTING,
     VANILLA_FIREWORK_ROCKET_ATTACHED_TO_TARGET_DATA_ID, VANILLA_FIREWORK_ROCKET_ITEM_DATA_ID,
     VANILLA_FIREWORK_ROCKET_SHOT_AT_ANGLE_DATA_ID, VANILLA_HUMANOID_ARM_LEFT_ID,
-    VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-    VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
-    VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
-    VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK as LIVING_ENTITY_FLAG_SPIN_ATTACK,
-    VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID,
-    VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID, VANILLA_PLAYER_ABSORPTION_DATA_ID,
-    VANILLA_PLAYER_DEFAULT_ABSORPTION, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
-    VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+    VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID,
+    VANILLA_PLAYER_ABSORPTION_DATA_ID, VANILLA_PLAYER_DEFAULT_ABSORPTION,
+    VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
@@ -587,7 +583,10 @@ impl EntityStore {
     /// defaulting to the define-time `1.0F` (LivingEntity.java:314) while the
     /// server has not synced the spawn-time health.
     pub(crate) fn living_entity_health(&self, id: i32) -> Option<f32> {
-        self.metadata_float(id, VANILLA_LIVING_ENTITY_HEALTH_DATA_ID, 1.0)
+        let entity_type_id = self.entity_type_id(id)?;
+        let accessors =
+            vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)?;
+        self.metadata_float(id, accessors.health_data_id, accessors.health_default)
     }
 
     pub(crate) fn is_baby(&self, id: i32) -> Option<bool> {
@@ -698,11 +697,15 @@ impl EntityStore {
     /// sleeping in (`SLEEPING_POS_ID`), or `None` when it is not in a bed.
     pub(crate) fn sleeping_pos(&self, id: i32) -> Option<crate::BlockPos> {
         let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            identity.entity_type_id,
+        )?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
         metadata
             .data_values
             .iter()
-            .find(|value| value.data_id == VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID)
+            .find(|value| value.data_id == accessors.sleeping_pos_data_id)
             .and_then(|value| match &value.value {
                 EntityDataValueKind::OptionalBlockPos(Some(pos)) => Some(crate::BlockPos {
                     x: pos.x,
@@ -1752,26 +1755,34 @@ impl EntityStore {
             } else {
                 0.0
             };
-        // Vanilla `LivingEntity.isAutoSpinAttack` (`DATA_LIVING_ENTITY_FLAGS & 4`):
+        // Vanilla `LivingEntity.isAutoSpinAttack` (the named spin-attack bit in
+        // `DATA_LIVING_ENTITY_FLAGS`):
         // a living entity mid riptide-trident spin. Non-living entities have no
         // living-entity flags byte, so they never spin.
-        let is_auto_spin_attack = vanilla_living_entity_type(identity.entity_type_id)
-            && self
-                .metadata_byte(id, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID, 0)
-                .unwrap_or(0)
-                & LIVING_ENTITY_FLAG_SPIN_ATTACK
-                != 0;
-        // Vanilla `LivingEntity.isUsingItem` (`DATA_LIVING_ENTITY_FLAGS & 1`) + `getUsedItemHand`
-        // (`& 2` → off hand): the use-item arm poses (spyglass / horn / brush) read both. Non-living
+        let living_accessors = vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+            identity.entity_type_id,
+        );
+        let is_auto_spin_attack = living_accessors.is_some_and(|accessors| {
+            self.metadata_byte(id, accessors.flags_data_id, accessors.flags_default)
+                .unwrap_or(accessors.flags_default)
+                & accessors.spin_attack_mask
+                != 0
+        });
+        // Vanilla `LivingEntity.isUsingItem` plus `getUsedItemHand` read the named using/off-hand
+        // bits in `DATA_LIVING_ENTITY_FLAGS`; use-item arm poses (spyglass / horn / brush) read both. Non-living
         // entities have no flags byte, so they never count as using an item.
-        let living_entity_flags = vanilla_living_entity_type(identity.entity_type_id)
-            .then(|| {
-                self.metadata_byte(id, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID, 0)
-                    .unwrap_or(0)
+        let (living_entity_flags, is_using_mask, off_hand_mask) = living_accessors
+            .map(|accessors| {
+                (
+                    self.metadata_byte(id, accessors.flags_data_id, accessors.flags_default)
+                        .unwrap_or(accessors.flags_default),
+                    accessors.is_using_mask,
+                    accessors.off_hand_mask,
+                )
             })
-            .unwrap_or(0);
-        let is_using_item = living_entity_flags & LIVING_ENTITY_FLAG_IS_USING != 0;
-        let use_item_off_hand = living_entity_flags & LIVING_ENTITY_FLAG_OFF_HAND != 0;
+            .unwrap_or((0, 0, 0));
+        let is_using_item = living_entity_flags & is_using_mask != 0;
+        let use_item_off_hand = living_entity_flags & off_hand_mask != 0;
         let main_arm_left = self.entity_main_arm_left(id, identity.entity_type_id);
         // Vanilla `LivingEntityRenderer.isEntityUpsideDown`: a non-player living
         // entity whose custom name is `Dinnerbone`/`Grumm`. The player variant
@@ -3536,7 +3547,8 @@ impl EntityStore {
                     pillager_is_charging_crossbow(identity.entity_type_id, &metadata.data_values);
                 let piglin_is_charging_crossbow =
                     piglin_is_charging_crossbow(identity.entity_type_id, &metadata.data_values);
-                let player_is_using_item = player_is_using_item(&metadata.data_values);
+                let player_is_using_item =
+                    player_is_using_item(identity.entity_type_id, &metadata.data_values);
                 let wolf_is_interested =
                     wolf_is_interested(identity.entity_type_id, &metadata.data_values);
                 let cat_is_lying = cat_is_lying(identity.entity_type_id, &metadata.data_values);

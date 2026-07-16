@@ -16779,3 +16779,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - world 主手/攻击姿态投影与 native F3+I `LeftHanded`/`NoAI` 保存投影删除固定 id/default/
   mask aliases；既有主手、renderer aggressive、piglin/illager arm pose 与 Creeper debug
   语义测试继续锁定行为，metadata generator reverse guard 覆盖两条生产消费面。
+
+## 2026-07-16：批量推导 LivingEntity metadata accessors
+
+- `bbb-world` 现在从生成 schema 解析 LivingEntity flags、health 与 sleeping-position 的
+  继承 membership、serializer、typed defaults，以及 using/off-hand/spin 三个命名 bit mask。
+- world metadata apply、动画目标与模型状态、native Wither/IronGolem/Wolf health 投影删除
+  固定 id/default/mask aliases；既有 local using-hand、death、spin、sleeping、powered/crackiness/
+  tail 语义测试继续锁定行为，metadata generator reverse guard 覆盖五条生产消费面。

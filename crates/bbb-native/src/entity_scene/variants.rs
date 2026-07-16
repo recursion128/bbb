@@ -960,7 +960,10 @@ pub(super) fn wolf_tail_angle(
         return WILD_TAIL_ANGLE;
     }
     const TAME_MAX_HEALTH: f32 = 40.0;
-    let health = entity_data_float(values, LIVING_ENTITY_HEALTH_DATA_ID, TAME_MAX_HEALTH).max(0.0);
+    let health = vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)
+        .map(|accessors| entity_data_float(values, accessors.health_data_id, TAME_MAX_HEALTH))
+        .unwrap_or(TAME_MAX_HEALTH)
+        .max(0.0);
     let damage_ratio = (TAME_MAX_HEALTH - health) / TAME_MAX_HEALTH;
     (0.55 - damage_ratio * 0.4) * std::f32::consts::PI
 }

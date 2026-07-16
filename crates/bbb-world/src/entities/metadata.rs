@@ -9,10 +9,9 @@ use crate::WorldStore;
 
 use super::dimensions::vanilla_living_entity_type;
 use super::schema::{
+    vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_painting_variant_accessor_for_entity_type,
-    vanilla_entity_metadata_type_is_living, VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
-    VANILLA_LIVING_ENTITY_FLAG_IS_USING as LIVING_ENTITY_FLAG_IS_USING,
-    VANILLA_LIVING_ENTITY_FLAG_OFF_HAND as LIVING_ENTITY_FLAG_OFF_HAND,
+    vanilla_entity_metadata_type_is_living,
 };
 
 impl WorldStore {
@@ -21,6 +20,10 @@ impl WorldStore {
         self.counters.entity_data_values_received += packet.values.len();
         let id = packet.id;
         let is_local_player = self.local_player_id == Some(id);
+        let local_living_entity_accessors = is_local_player
+            .then(|| self.entities.entity_type_id(id))
+            .flatten()
+            .and_then(vanilla_entity_metadata_living_entity_accessors_for_entity_type);
         let updated_values = packet.values.clone();
         let painting_variant_projection = self.entities.entity_type_id(id).and_then(|type_id| {
             self.painting_variant_projection_from_metadata(type_id, &updated_values)
@@ -28,9 +31,12 @@ impl WorldStore {
         let mut local_living_entity_flags = None;
         let Some(()) = self.entities.with_metadata_mut(id, |metadata| {
             for value in packet.values {
-                if is_local_player && value.data_id == VANILLA_LIVING_ENTITY_FLAGS_DATA_ID {
+                if local_living_entity_accessors
+                    .is_some_and(|accessors| value.data_id == accessors.flags_data_id)
+                {
                     if let EntityDataValueKind::Byte(flags) = &value.value {
-                        local_living_entity_flags = Some(*flags);
+                        local_living_entity_flags =
+                            local_living_entity_accessors.map(|accessors| (*flags, accessors));
                     }
                 }
                 if let Some(existing) = metadata
@@ -58,8 +64,8 @@ impl WorldStore {
             .entities
             .sync_client_animation_events_from_metadata_update(id, &updated_values);
         let _ = self.entities.refresh_client_position_from_entity_data(id);
-        if let Some(flags) = local_living_entity_flags {
-            self.sync_local_using_item_from_living_entity_flags(flags);
+        if let Some((flags, accessors)) = local_living_entity_flags {
+            self.sync_local_using_item_from_living_entity_flags(flags, accessors);
         }
         self.counters.entity_data_updates_applied += 1;
         true
@@ -99,8 +105,12 @@ impl WorldStore {
         })
     }
 
-    fn sync_local_using_item_from_living_entity_flags(&mut self, flags: i8) {
-        let server_using_item = flags & LIVING_ENTITY_FLAG_IS_USING != 0;
+    fn sync_local_using_item_from_living_entity_flags(
+        &mut self,
+        flags: i8,
+        accessors: super::schema::VanillaLivingEntityMetadataAccessors,
+    ) {
+        let server_using_item = flags & accessors.is_using_mask != 0;
         if !server_using_item {
             if self.local_player.interaction.using_item {
                 self.take_local_using_item();
@@ -112,7 +122,7 @@ impl WorldStore {
             return;
         }
 
-        let hand = if flags & LIVING_ENTITY_FLAG_OFF_HAND != 0 {
+        let hand = if flags & accessors.off_hand_mask != 0 {
             InteractionHand::OffHand
         } else {
             InteractionHand::MainHand

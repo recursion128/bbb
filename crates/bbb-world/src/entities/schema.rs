@@ -314,6 +314,18 @@ pub struct VanillaMobMetadataAccessors {
     pub aggressive_mask: i8,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VanillaLivingEntityMetadataAccessors {
+    pub flags_data_id: u8,
+    pub flags_default: i8,
+    pub is_using_mask: i8,
+    pub off_hand_mask: i8,
+    pub spin_attack_mask: i8,
+    pub health_data_id: u8,
+    pub health_default: f32,
+    pub sleeping_pos_data_id: u8,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaTurtleMetadataAccessors {
     pub has_egg_data_id: u8,
@@ -2455,6 +2467,66 @@ pub fn vanilla_entity_metadata_mob_accessors_for_entity_type(
         no_ai_mask: mask("MOB_FLAG_NO_AI")?,
         left_handed_mask: mask("MOB_FLAG_LEFTHANDED")?,
         aggressive_mask: mask("MOB_FLAG_AGGRESSIVE")?,
+    })
+}
+
+/// Resolves generated LivingEntity flags/health/sleep fields and named bit masks.
+pub fn vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+    entity_type_id: i32,
+) -> Option<VanillaLivingEntityMetadataAccessors> {
+    let flags = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_LIVING_ENTITY_FLAGS",
+    )?;
+    let health =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_HEALTH_ID")?;
+    let sleeping_pos =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "SLEEPING_POS_ID")?;
+    let (flags_default, health_default) = match (
+        (flags.owner, flags.serializer_name, flags.typed_default),
+        (health.owner, health.serializer_name, health.typed_default),
+        (
+            sleeping_pos.owner,
+            sleeping_pos.serializer_name,
+            sleeping_pos.typed_default,
+        ),
+    ) {
+        (
+            (
+                "net.minecraft.world.entity.LivingEntity",
+                "BYTE",
+                Some(VanillaEntityMetadataDefault::Byte(flags_default)),
+            ),
+            (
+                "net.minecraft.world.entity.LivingEntity",
+                "FLOAT",
+                Some(VanillaEntityMetadataDefault::Float(health_default)),
+            ),
+            (
+                "net.minecraft.world.entity.LivingEntity",
+                "OPTIONAL_BLOCK_POS",
+                Some(VanillaEntityMetadataDefault::OptionalBlockPosNone),
+            ),
+        ) => (flags_default, health_default),
+        _ => return None,
+    };
+    let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::LivingEntity);
+    let mask = |name| {
+        schema
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == name && flag.data_id == flags.data_id)
+            .map(|flag| flag.mask)
+    };
+    Some(VanillaLivingEntityMetadataAccessors {
+        flags_data_id: flags.data_id,
+        flags_default,
+        is_using_mask: mask("LIVING_ENTITY_FLAG_IS_USING")?,
+        off_hand_mask: mask("LIVING_ENTITY_FLAG_OFF_HAND")?,
+        spin_attack_mask: mask("LIVING_ENTITY_FLAG_SPIN_ATTACK")?,
+        health_data_id: health.data_id,
+        health_default,
+        sleeping_pos_data_id: sleeping_pos.data_id,
     })
 }
 
@@ -5457,6 +5529,41 @@ mod tests {
         ] {
             assert_eq!(
                 vanilla_entity_metadata_mob_accessors_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_living_entity_accessors_own_membership_indices_defaults_and_masks() {
+        let expected = VanillaLivingEntityMetadataAccessors {
+            flags_data_id: VANILLA_LIVING_ENTITY_FLAGS_DATA_ID,
+            flags_default: 0,
+            is_using_mask: VANILLA_LIVING_ENTITY_FLAG_IS_USING,
+            off_hand_mask: VANILLA_LIVING_ENTITY_FLAG_OFF_HAND,
+            spin_attack_mask: VANILLA_LIVING_ENTITY_FLAG_SPIN_ATTACK,
+            health_data_id: VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
+            health_default: 1.0,
+            sleeping_pos_data_id: VANILLA_LIVING_ENTITY_SLEEPING_POS_DATA_ID,
+        };
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id),
+                Some(expected)
+            );
+        }
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id),
                 None
             );
         }
