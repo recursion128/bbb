@@ -6184,11 +6184,20 @@ mod tests {
 
     #[test]
     fn generated_warden_anger_accessor_owns_membership_index_and_default() {
+        let warden = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Warden);
+        let anger = warden
+            .own_fields
+            .iter()
+            .find(|field| field.name == "CLIENT_ANGER_LEVEL")
+            .expect("generated Warden client-anger field");
+        let VanillaEntityMetadataDefault::Int(anger_default) = anger.default else {
+            panic!("generated Warden client-anger default must be INT");
+        };
         assert_eq!(
             vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_WARDEN_ID
             ),
-            Some((16, 0))
+            Some((anger.data_id, anger_default))
         );
         assert_eq!(
             vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type(
@@ -7559,8 +7568,16 @@ mod tests {
         assert_eq!(warden.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(warden.inherited_field_count, 16);
         assert_eq!(warden.own_fields.len(), 1);
-        assert_eq!(VANILLA_WARDEN_ANGER_LEVEL_DATA_ID, 16);
-        assert_eq!(VANILLA_WARDEN_DEFAULT_ANGER_LEVEL, 0);
+        let (anger_data_id, anger_default) =
+            vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_WARDEN_ID,
+            )
+            .expect("generated Warden client-anger accessor");
+        assert_eq!(anger_data_id, warden.own_fields[0].data_id);
+        assert_eq!(
+            VanillaEntityMetadataDefault::Int(anger_default),
+            warden.own_fields[0].default
+        );
         let wither = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::WitherBoss);
         assert_eq!(wither.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(wither.inherited_field_count, 16);

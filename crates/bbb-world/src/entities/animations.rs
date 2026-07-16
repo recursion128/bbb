@@ -216,9 +216,8 @@ const WARDEN_TENDRIL_EVENT_ID: i8 = 61;
 /// and decrements it toward `0` each tick; `getHeartAnimation` divides the lerped
 /// value by `10`. Shares the `tendrilAnimation` range, hence the same `10` cap.
 const WARDEN_HEART_ANIMATION_TICKS: i32 = 10;
-/// Vanilla `Warden.CLIENT_ANGER_LEVEL` (`getClientAngerLevel()`): the warden's
-/// first own synced accessor after `Entity` (`0..=7`), `LivingEntity` (`8..=14`)
-/// and `Mob` (`15`); `Monster` adds none. An `Integer`, default `0`.
+/// Vanilla `Warden.CLIENT_ANGER_LEVEL` (`getClientAngerLevel()`); membership, wire index and typed
+/// default come from the generated Warden accessor.
 /// Vanilla `AngerLevel.ANGRY.getMinimumAnger()`: the anger at which the heartbeat
 /// reaches its fastest, used to normalise `getHeartBeatDelay`.
 const WARDEN_ANGRY_MINIMUM_ANGER: i32 = 80;

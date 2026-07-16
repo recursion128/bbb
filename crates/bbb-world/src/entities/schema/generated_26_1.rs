@@ -54,8 +54,6 @@ const GENERATED_VANILLA_CREEPER_POWERED_DATA_ID: u8 = 17;
 pub const VANILLA_CREEPER_POWERED_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_POWERED_DATA_ID;
 const GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID: u8 = 18;
 pub const VANILLA_CREEPER_IGNITED_DATA_ID: u8 = GENERATED_VANILLA_CREEPER_IGNITED_DATA_ID;
-const GENERATED_VANILLA_WARDEN_ANGER_LEVEL_DATA_ID: u8 = 16;
-pub const VANILLA_WARDEN_ANGER_LEVEL_DATA_ID: u8 = GENERATED_VANILLA_WARDEN_ANGER_LEVEL_DATA_ID;
 const GENERATED_VANILLA_WITHER_TARGET_A_DATA_ID: u8 = 16;
 pub const VANILLA_WITHER_TARGET_A_DATA_ID: u8 = GENERATED_VANILLA_WITHER_TARGET_A_DATA_ID;
 const GENERATED_VANILLA_WITHER_TARGET_B_DATA_ID: u8 = 17;
@@ -592,8 +590,6 @@ const GENERATED_VANILLA_CREEPER_DEFAULT_POWERED: bool = false;
 pub const VANILLA_CREEPER_DEFAULT_POWERED: bool = GENERATED_VANILLA_CREEPER_DEFAULT_POWERED;
 const GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED: bool = false;
 pub const VANILLA_CREEPER_DEFAULT_IGNITED: bool = GENERATED_VANILLA_CREEPER_DEFAULT_IGNITED;
-const GENERATED_VANILLA_WARDEN_DEFAULT_ANGER_LEVEL: i32 = 0;
-pub const VANILLA_WARDEN_DEFAULT_ANGER_LEVEL: i32 = GENERATED_VANILLA_WARDEN_DEFAULT_ANGER_LEVEL;
 const GENERATED_VANILLA_WITHER_DEFAULT_TARGET_A: i32 = 0;
 pub const VANILLA_WITHER_DEFAULT_TARGET_A: i32 = GENERATED_VANILLA_WITHER_DEFAULT_TARGET_A;
 const GENERATED_VANILLA_WITHER_DEFAULT_TARGET_B: i32 = 0;
@@ -25131,19 +25127,31 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn production_warden_anger_does_not_restore_accessor_constants() {
+    fn warden_anger_consumers_do_not_restore_accessor_constants() {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
         assert!(animations
             .contains("vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type"));
         assert!(store
             .contains("warden_heartbeat_delay(identity.entity_type_id, &metadata.data_values)"));
+        assert!(!animations.contains("first own synced accessor"));
+        let world_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
+        let heartbeat_fixture = world_tests
+            .split("fn warden_client_anger_drives_heartbeat_period")
+            .nth(1)
+            .and_then(|source| source.split("#[test]").next())
+            .expect("Warden heartbeat fixture source");
+        assert!(heartbeat_fixture.contains("warden_anger_data("));
         for removed in ["WARDEN_ANGER_LEVEL_DATA_ID", "WARDEN_DEFAULT_ANGER_LEVEL"] {
             assert!(
                 !animations.contains(removed),
                 "animations restored {removed}"
             );
             assert!(!store.contains(removed), "store restored {removed}");
+            assert!(
+                !heartbeat_fixture.contains(removed),
+                "heartbeat fixture restored {removed}"
+            );
         }
     }
 

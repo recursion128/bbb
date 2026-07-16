@@ -50,6 +50,14 @@ fn camel_dash_data(dashing: bool) -> ProtocolEntityDataValue {
     }
 }
 
+fn warden_anger_data(anger: i32) -> ProtocolEntityDataValue {
+    let (data_id, _) = vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_WARDEN_ID,
+    )
+    .expect("generated Warden client-anger accessor must resolve");
+    protocol_int_data(data_id, anger)
+}
+
 #[test]
 fn tracks_entity_transient_events() {
     let mut store = WorldStore::new();
@@ -1666,7 +1674,6 @@ fn warden_tendril_event_drives_client_animation_pulse() {
 
 #[test]
 fn warden_client_anger_drives_heartbeat_period() {
-    const WARDEN_CLIENT_ANGER_LEVEL_DATA_ID: u8 = 16;
     const WARDEN_ANGRY_MINIMUM_ANGER: i32 = 80;
 
     let heart = |store: &WorldStore, id: i32, partial: f32| {
@@ -1696,10 +1703,7 @@ fn warden_client_anger_drives_heartbeat_period() {
     ));
     assert!(angry.apply_set_entity_data(ProtocolSetEntityData {
         id: 83,
-        values: vec![protocol_int_data(
-            WARDEN_CLIENT_ANGER_LEVEL_DATA_ID,
-            WARDEN_ANGRY_MINIMUM_ANGER,
-        )],
+        values: vec![warden_anger_data(WARDEN_ANGRY_MINIMUM_ANGER)],
     }));
     angry.advance_entity_client_animations(9);
     assert_eq!(heart(&angry, 83, 1.0), 0.0);

@@ -17450,3 +17450,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   fixtures 共享该入口。
 - 删除 state data/default 两个 facade，保留四个 generated `ArmadilloState` ordinal 与事件
   `64`；world/native fixtures 移除固定 slot/ordinal，generator 反向守卫覆盖所有消费面。
+
+## 2026-07-16：统一 Warden client-anger metadata 消费
+
+- heartbeat delay 的 membership、wire index 与 typed default 统一由 generated
+  `Warden.CLIENT_ANGER_LEVEL` accessor 提供；per-tick store 路径持续携带 entity type，非
+  Warden 不会把同号 slot 误读为 anger。
+- 删除 anger data/default 两个 facade，heartbeat fixture 改由 generated accessor 构造；
+  generator 反向守卫覆盖 production/fixture，并禁止恢复手写继承索引说明。

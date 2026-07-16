@@ -440,8 +440,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   and their semantic fixtures must not restore fixed accessor/default aliases, hand-written wire
   indices, or duplicate the generated `ArmadilloState` ordinals; event `64` remains behavioral.
   Warden client-anger membership, wire index and typed default must remain derived from generated
-  `Warden.CLIENT_ANGER_LEVEL`; heartbeat consumers must carry entity type and must not restore fixed
-  accessor/default aliases or read another family's slot 16 as anger.
+  `Warden.CLIENT_ANGER_LEVEL`; heartbeat production and fixtures must carry entity type, must not
+  restore fixed accessor/default aliases or hand-written wire indices, and must not read another
+  family's slot 16 as anger.
   EnderDragon phase membership, wire index and typed default must remain derived from generated
   `EnderDragon.DATA_PHASE`; metadata animation consumers must not restore fixed accessor/default
   aliases or duplicate generated phase ordinals and sitting membership.
