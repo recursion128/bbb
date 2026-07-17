@@ -157,42 +157,16 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 123,
-        values: vec![
-            ProtocolEntityDataValue {
-                data_id: 0,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(0x20),
-            },
-            ProtocolEntityDataValue {
-                data_id: 2,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(300),
-            },
-        ],
+        values: vec![entity_invisible_data(), entity_air_supply_data(300)],
     }));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 123,
-        values: vec![ProtocolEntityDataValue {
-            data_id: 2,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-            value: EntityDataValueKind::Int(301),
-        }],
+        values: vec![entity_air_supply_data(301)],
     }));
     let entity = store.probe_entity(123).unwrap();
     assert_eq!(
         entity.data_values,
-        vec![
-            ProtocolEntityDataValue {
-                data_id: 0,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(0x20),
-            },
-            ProtocolEntityDataValue {
-                data_id: 2,
-                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(301),
-            },
-        ]
+        vec![entity_invisible_data(), entity_air_supply_data(301)]
     );
     assert_eq!(
         store.entities.metadata(123).unwrap().data_values,
@@ -662,11 +636,7 @@ fn set_entity_data_ignores_unknown_entities() {
 
     assert!(!store.apply_set_entity_data(ProtocolSetEntityData {
         id: 999,
-        values: vec![ProtocolEntityDataValue {
-            data_id: 0,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(0x20),
-        }],
+        values: vec![entity_invisible_data()],
     }));
 
     assert_eq!(store.counters().entity_data_updates_received, 1);

@@ -24332,6 +24332,8 @@ mod generated_catalog_guards {
             include_str!("../tests/visibility_equipment_and_mount_projection.rs");
         let item_frame_tests = include_str!("../../../../bbb-native/src/item_frames.rs");
         let audio_tests = include_str!("../../client/audio.rs");
+        let entity_world_tests = include_str!("../tests.rs");
+        let lifecycle_tests = include_str!("../tests/lifecycle_and_queries.rs");
         let native_runtime_tests =
             include_str!("../../../../bbb-native/src/runtime/events/tests.rs");
         let native_particle_tests = include_str!(
@@ -24369,6 +24371,7 @@ mod generated_catalog_guards {
             visibility_tests,
             item_frame_tests,
             audio_tests,
+            entity_world_tests,
             native_runtime_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
@@ -24445,6 +24448,8 @@ mod generated_catalog_guards {
         assert!(audio_tests.contains("entity_silent_data(true)"));
         assert!(local_player_collision.contains("entity_shift_key_down_data()"));
         assert!(local_player_collision.contains("entity_pose_data(VANILLA_ENTITY_POSE_DIGGING_ID)"));
+        assert!(lifecycle_tests.contains("entity_invisible_data()"));
+        assert!(lifecycle_tests.contains("entity_air_supply_data(301)"));
     }
 
     #[test]
