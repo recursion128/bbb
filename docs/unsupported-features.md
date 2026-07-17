@@ -1327,8 +1327,9 @@ back into a todo. Do not delete these.
   targets, timers, RNG, AI, and authoritative save fields must remain absent or
   carry a narrow vanilla-backed not-applicable decision.
 
-- **Armor trims on non-humanoid equipment layers and the remaining mob-specific
-  armor models.**
+- **Armor trims on wings; horse, llama, happy-ghast, and nautilus body equipment;
+  pig, strider, camel, equine, and nautilus saddle equipment; and the remaining
+  mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
   resolved vanilla spear ids.
 - **Exact humanoid arm-pose idle-bob ordering.** The halved `arm.xRot` folds

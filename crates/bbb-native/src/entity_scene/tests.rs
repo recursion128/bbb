@@ -6039,6 +6039,7 @@ struct ReadyFarmAnimalPresentationLookup {
 struct ReadyArmorTrimLookup {
     asset_id: &'static str,
     texture: EntityDynamicTexture,
+    missing_texture: Option<EntityDynamicTexture>,
 }
 
 impl EntityVariantRegistryLookup for ReadyArmorTrimLookup {
@@ -6047,7 +6048,13 @@ impl EntityVariantRegistryLookup for ReadyArmorTrimLookup {
     }
 
     fn ready_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
-        (asset_id == self.asset_id).then_some(self.texture)
+        if asset_id == self.asset_id {
+            Some(self.texture)
+        } else if asset_id == "minecraft:missingno" {
+            self.missing_texture
+        } else {
+            None
+        }
     }
 }
 
@@ -6061,6 +6068,13 @@ fn armor_trim_crosses_native_boundary_only_after_texture_is_ready() {
     let ready = ReadyArmorTrimLookup {
         asset_id: "example:trims/entity/humanoid/spire_opal",
         texture,
+        missing_texture: None,
+    };
+    let missing_texture = EntityDynamicTexture { handle: 42_4301 };
+    let missing = ReadyArmorTrimLookup {
+        asset_id: "example:some_other_sprite",
+        texture,
+        missing_texture: Some(missing_texture),
     };
 
     assert_eq!(armor_trim(Some(&trim), None), None);
@@ -6070,6 +6084,14 @@ fn armor_trim_crosses_native_boundary_only_after_texture_is_ready() {
             texture,
             decal: true,
         })
+    );
+    assert_eq!(
+        armor_trim(Some(&trim), Some(&missing)),
+        Some(EntityArmorTrim {
+            texture: missing_texture,
+            decal: true,
+        }),
+        "vanilla's atlas lookup preserves the trim layer with the ready missing sprite"
     );
 }
 
@@ -6937,6 +6959,12 @@ fn entity_model_instances_project_horse_body_armor_render_state() {
 fn entity_model_instances_project_wolf_body_armor_render_state() {
     const WOLF_ARMOR_ITEM_ID: i32 = 751;
     const WOLF_ARMOR_DYE: i32 = 0x0033_66CC;
+    let trim_texture = EntityDynamicTexture { handle: 42_4310 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/wolf_body/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
 
     let body_armor =
         |entity_id: i32, damage: i32, enchantment_glint_override: Option<bool>| SetEquipment {
@@ -6954,19 +6982,27 @@ fn entity_model_instances_project_wolf_body_armor_render_state() {
                             level: 1,
                         }],
                         enchantment_glint_override,
+                        armor_trim_material_id: Some(1), // iron
+                        armor_trim_pattern_id: Some(0),  // sentry
                         ..Default::default()
                     },
                 },
             }],
         };
     let wolf_body_armor = |world: &WorldStore, id: i32| {
-        let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state;
+        let render_state = entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state;
         (
             render_state.wolf_body_armor,
+            render_state.wolf_body_armor_trim,
             render_state.wolf_body_armor_dye,
             render_state.wolf_body_armor_crackiness,
             render_state.wolf_body_armor_foil,
@@ -7007,6 +7043,10 @@ fn entity_model_instances_project_wolf_body_armor_render_state() {
         wolf_body_armor(&world, 130),
         (
             Some(EntityArmorMaterial::ArmadilloScute),
+            Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }),
             Some(WOLF_ARMOR_DYE as u32),
             Some(WolfArmorCrackiness::Medium),
             true
@@ -7016,6 +7056,10 @@ fn entity_model_instances_project_wolf_body_armor_render_state() {
         wolf_body_armor(&world, 132),
         (
             Some(EntityArmorMaterial::ArmadilloScute),
+            Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }),
             Some(WOLF_ARMOR_DYE as u32),
             Some(WolfArmorCrackiness::Medium),
             false
@@ -7024,7 +7068,7 @@ fn entity_model_instances_project_wolf_body_armor_render_state() {
     );
     assert_eq!(
         wolf_body_armor(&world, 131),
-        (None, None, None, false),
+        (None, None, None, None, false),
         "baby wolves skip the adult-only WolfArmorLayer"
     );
 }

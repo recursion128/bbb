@@ -3,6 +3,7 @@ use super::*;
 use crate::entity_models::model::EntityModel;
 use crate::entity_models::model::ModelCube;
 use crate::entity_models::textured::EntityModelRenderSubmission;
+use crate::DynamicEntityTextureImage;
 
 // The adult wolf tail bind pose, mirrored from the model file so the tail pose-math tests can run
 // without the deleted `ADULT_WOLF_PARTS` const tree. The layer rests the tail at the π/5 wild droop.
@@ -725,6 +726,14 @@ fn wet_wolf_textured_base_tints_like_vanilla_model_tint_without_shading_collar()
 #[test]
 fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     let (atlas, _) = build_entity_model_texture_atlas(&wolf_armor_texture_images()).unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 91_101 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 32],
+        rgba: vec![0xff; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
     let dye = 0x0033_66CC;
     let dyed_tint = [
         0x33 as f32 / 255.0,
@@ -746,12 +755,21 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     .with_wolf_body_armor_dye(Some(dye))
     .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::Medium))
     .with_wolf_body_armor_foil(true)
+    .with_wolf_body_armor_trim(Some(EntityArmorTrim {
+        texture: trim_texture,
+        decal: false,
+    }))
     .with_light_coords((6_u32 << 4) | (10_u32 << 20))
     .with_white_overlay_progress(0.8)
     .with_has_red_overlay(true);
-    let meshes = entity_model_textured_meshes(&[wolf], &atlas);
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[wolf],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
 
-    assert_eq!(meshes.submissions.len(), 6);
+    assert_eq!(meshes.submissions.len(), 7);
     assert_eq!(meshes.submissions[0].texture, WOLF_TAME_TEXTURE_REF);
     assert_eq!(
         meshes.submissions[0].render_type,
@@ -813,7 +831,28 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     assert_eq!(armor_overlay.light, meshes.submissions[0].light);
     assert_eq!(armor_overlay.overlay, [0.0, 10.0]);
 
-    let cracks = meshes.submissions[4];
+    let trim = meshes.submissions[4];
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!(trim.tint, [1.0; 4]);
+    assert_eq!((trim.order, trim.submit_sequence), (4, 4));
+    assert_eq!(trim.transform, meshes.submissions[0].transform);
+    assert_eq!(trim.light, meshes.submissions[0].light);
+    assert_eq!(trim.overlay, [0.0, 10.0]);
+    assert_eq!(
+        meshes.dynamic_player_texture_armor_trim.vertices.len(),
+        264,
+        "the trim reuses the posed adult WOLF_ARMOR model"
+    );
+    assert!(meshes
+        .dynamic_player_texture_armor_trim_decal
+        .vertices
+        .is_empty());
+
+    let cracks = meshes.submissions[5];
     assert_eq!(cracks.texture, WOLF_ARMOR_CRACKINESS_MEDIUM_TEXTURE_REF);
     assert_eq!(
         cracks.render_type,
@@ -821,7 +860,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
     );
     assert_eq!(cracks.render_type.vanilla_name(), "armorTranslucent");
     assert_eq!(cracks.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!((cracks.order, cracks.submit_sequence), (0, 4));
+    assert_eq!((cracks.order, cracks.submit_sequence), (0, 5));
     assert_eq!(cracks.transform, meshes.submissions[0].transform);
     assert_eq!(cracks.light, meshes.submissions[0].light);
     assert_eq!(cracks.overlay, [0.0, 10.0]);
@@ -830,11 +869,11 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         "armorTranslucent cracks should emit into the dedicated armor translucent bucket"
     );
     assert!(meshes.translucent.vertices.is_empty());
-    let collar = meshes.submissions[5];
+    let collar = meshes.submissions[6];
     assert_eq!(collar.texture, WOLF_COLLAR_TEXTURE_REF);
     assert_eq!(collar.render_type, EntityModelLayerRenderType::EntityCutout);
     assert_eq!(collar.tint, EntityDyeColor::Blue.texture_diffuse_color());
-    assert_eq!((collar.order, collar.submit_sequence), (1, 5));
+    assert_eq!((collar.order, collar.submit_sequence), (1, 6));
     assert_eq!(collar.light, meshes.submissions[0].light);
     assert_eq!(collar.overlay, [0.0, 10.0]);
     assert_ne!(collar.overlay, meshes.submissions[0].overlay);
@@ -864,7 +903,7 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
         .any(|submit| submit.texture == WOLF_BODY_ARMADILLO_SCUTE_OVERLAY_TEXTURE_REF));
     assert!(undyed.translucent.vertices.is_empty());
 
-    let baby = entity_model_textured_meshes(
+    let baby = entity_model_textured_meshes_with_dynamic_textures(
         &[EntityModelInstance::wolf_state(
             310,
             [0.0, 64.0, 0.0],
@@ -876,17 +915,81 @@ fn wolf_body_armor_submissions_match_vanilla_equipment_layers() {
             Some(EntityDyeColor::Red),
         )
         .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+        .with_wolf_body_armor_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        }))
         .with_wolf_body_armor_dye(Some(dye))
         .with_wolf_body_armor_crackiness(Some(WolfArmorCrackiness::High))],
         &atlas,
+        None,
+        Some(&dynamic_atlas),
     );
     assert_eq!(baby.submissions.len(), 2);
     assert!(!baby.submissions.iter().any(|submit| matches!(
         submit.render_type,
         EntityModelLayerRenderType::ArmorCutoutNoCull
             | EntityModelLayerRenderType::ArmorEntityGlint
+            | EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            | EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
             | EntityModelLayerRenderType::ArmorTranslucent
     )));
+}
+
+#[test]
+fn invisible_wolf_body_armor_keeps_decal_trim_submission() {
+    let (atlas, _) = build_entity_model_texture_atlas(&wolf_armor_texture_images()).unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 91_102 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 32],
+        rgba: vec![0xff; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let invisible = EntityModelInstance::wolf_state(
+        311,
+        [0.0, 64.0, 0.0],
+        0.0,
+        false,
+        false,
+        false,
+        true,
+        None,
+    )
+    .with_wolf_body_armor(Some(EntityArmorMaterial::ArmadilloScute))
+    .with_wolf_body_armor_trim(Some(EntityArmorTrim {
+        texture: trim_texture,
+        decal: true,
+    }));
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[invisible],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    assert_eq!(meshes.submissions.len(), 2);
+    assert_eq!(
+        meshes.submissions[0].render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    let trim = meshes.submissions[1];
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+    );
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!((trim.order, trim.submit_sequence), (2, 1));
+    assert_eq!(
+        meshes
+            .dynamic_player_texture_armor_trim_decal
+            .vertices
+            .len(),
+        264
+    );
+    assert!(meshes.cutout.vertices.is_empty());
 }
 
 #[test]

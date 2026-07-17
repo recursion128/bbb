@@ -1508,6 +1508,8 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
                 unbreakable,
                 enchantments,
                 enchantment_glint_override,
+                armor_trim_material_id: Some(1), // iron
+                armor_trim_pattern_id: Some(0),  // sentry
                 ..Default::default()
             },
         }
@@ -1520,6 +1522,7 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
         Option<i32>,
         WolfArmorCrackiness,
         bool,
+        Option<ArmorTrimSprite>,
     ) {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
@@ -1531,6 +1534,7 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
             source.wolf_body_armor_dye,
             source.wolf_body_armor_crackiness,
             source.wolf_body_armor_foil,
+            source.wolf_body_armor_trim,
         )
     }
 
@@ -1574,7 +1578,7 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
     }
     assert_eq!(
         wolf_body_armor(&store, 87),
-        (None, None, WolfArmorCrackiness::None, false),
+        (None, None, WolfArmorCrackiness::None, false, None),
         "without the item registry's wolf armor material map, a raw body item id is not enough"
     );
 
@@ -1589,17 +1593,21 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
             Some(ArmorMaterialKind::ArmadilloScute),
             Some(WOLF_ARMOR_DYE),
             WolfArmorCrackiness::Low,
-            true
+            true,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/wolf_body/sentry_iron".to_string(),
+                decal: false,
+            })
         )
     );
     assert_eq!(
         wolf_body_armor(&store, 88),
-        (None, None, WolfArmorCrackiness::None, false),
+        (None, None, WolfArmorCrackiness::None, false, None),
         "non-wolf entities do not project wolf body armor"
     );
     assert_eq!(
         wolf_body_armor(&store, 89),
-        (None, None, WolfArmorCrackiness::None, false),
+        (None, None, WolfArmorCrackiness::None, false, None),
         "baby wolves skip WolfArmorLayer because vanilla supplies only the adult WOLF_ARMOR layer"
     );
 
@@ -1663,7 +1671,7 @@ fn entity_model_sources_project_wolf_body_armor_from_body_slot() {
     }));
     assert_eq!(
         wolf_body_armor(&store, 87),
-        (None, None, WolfArmorCrackiness::None, false)
+        (None, None, WolfArmorCrackiness::None, false, None)
     );
 }
 

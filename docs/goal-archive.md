@@ -18576,3 +18576,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   foil; non-decal trims use armor cutout state, decal patterns use equal-depth/no-write state, and
   vanilla's `HUMANOID_BABY` trim suppression remains intact. The same ordering and runtime atlas
   path also feed the smithing/HUD entity preview.
+
+# 2026-07-17: Render wolf body armor trims
+
+- Extended the world trim-layer projection with vanilla's `WOLF_BODY` atlas prefix and carried an
+  adult wolf body item's resolved trim through native into the shared runtime trim atlas.
+- Wolf armor now submits its white regular/decal trim after both equipment layers and the optional
+  first-layer foil, but before the damage crack overlay; baby wolves suppress the entire layer while
+  invisible adults retain it with the rest of `WolfArmorLayer`.
+- Native trim lookup now mirrors `TextureAtlas.getSprite` by falling back to the ready
+  `minecraft:missingno` sprite. This preserves vanilla's visible missing-texture submission for
+  absent custom and non-generated trim sprites instead of silently dropping the layer.

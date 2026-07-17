@@ -36,14 +36,34 @@ struct TrimPatternPresentation {
     decal: bool,
 }
 
+/// Vanilla `EquipmentClientInfo.LayerType` values currently consumed by native armor-trim
+/// projection. Keeping the serialized layer id here prevents callers from reconstructing atlas
+/// paths ad hoc as non-humanoid equipment renderers are added.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ArmorTrimLayer {
+    Humanoid,
+    HumanoidLeggings,
+    WolfBody,
+}
+
+impl ArmorTrimLayer {
+    const fn asset_id(self) -> &'static str {
+        match self {
+            Self::Humanoid => "humanoid",
+            Self::HumanoidLeggings => "humanoid_leggings",
+            Self::WolfBody => "wolf_body",
+        }
+    }
+}
+
 /// Resolves vanilla `ArmorTrim.layerAssetId(layerType.trimAssetPrefix(), equipmentAsset)` for one
-/// humanoid armor slot. Named holders use the synchronized registry payload when present; only a
+/// equipment layer. Named holders use the synchronized registry payload when present; only a
 /// session with no synchronized trim registry uses the source-generated vanilla bootstrap fallback.
 pub(crate) fn armor_trim_sprite(
     registries: &RegistrySet,
     item: &ItemStackSummary,
     equipment_asset: &str,
-    leggings: bool,
+    layer: ArmorTrimLayer,
 ) -> Option<ArmorTrimSprite> {
     let patch = &item.component_patch;
     let material = if let Some(material) = patch.armor_trim_material_direct.as_deref() {
@@ -61,13 +81,11 @@ pub(crate) fn armor_trim_sprite(
         .get(equipment_asset)
         .map_or(material.asset_name.as_str(), String::as_str);
     let (namespace, pattern_path) = pattern.asset_id.split_once(':')?;
-    let layer = if leggings {
-        "humanoid_leggings"
-    } else {
-        "humanoid"
-    };
     Some(ArmorTrimSprite {
-        sprite_id: format!("{namespace}:trims/entity/{layer}/{pattern_path}_{material_suffix}"),
+        sprite_id: format!(
+            "{namespace}:trims/entity/{}/{pattern_path}_{material_suffix}",
+            layer.asset_id()
+        ),
         decal: pattern.decal,
     })
 }
@@ -109,8 +127,8 @@ fn named_material(registries: &RegistrySet, holder_id: i32) -> Option<TrimMateri
 }
 
 fn material_override_map(material: VanillaTrimMaterialIdentity) -> BTreeMap<String, String> {
-    // The generated catalog owns the exact suffix lookup. Probe the finite set of humanoid armor
-    // equipment assets that this projection can receive, retaining only real overrides.
+    // The generated catalog owns the exact suffix lookup. Probe the finite set of armor equipment
+    // assets that current trim projections can receive, retaining only real overrides.
     [
         "minecraft:leather",
         "minecraft:copper",

@@ -57,8 +57,14 @@ pub(super) fn armor_trim(
     registries: Option<&dyn EntityVariantRegistryLookup>,
 ) -> Option<EntityArmorTrim> {
     let trim = trim?;
+    let registries = registries?;
     Some(EntityArmorTrim {
-        texture: registries?.ready_texture(&trim.sprite_id)?,
+        // Vanilla `TextureAtlas.getSprite` returns the atlas missing sprite when a requested trim
+        // sprite is absent. The startup armor-trim atlas always uploads `minecraft:missingno`, so
+        // preserve the trim submission instead of silently dropping custom/non-generated layers.
+        texture: registries
+            .ready_texture(&trim.sprite_id)
+            .or_else(|| registries.ready_texture("minecraft:missingno"))?,
         decal: trim.decal,
     })
 }

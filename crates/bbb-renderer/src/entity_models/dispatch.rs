@@ -791,8 +791,13 @@ impl EntityModelSink for TexturedSink<'_> {
         let mut model = WolfModel::new(baby, angry);
         model.prepare(instance);
         render_textured_layers(self.meshes, &model, transform, [passes[0]], self.atlas);
-        let next_submit_sequence =
-            render_wolf_body_armor_layer(self.meshes, *instance, self.atlas, 1);
+        let next_submit_sequence = render_wolf_body_armor_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+            1,
+        );
         if let Some(collar_pass) = passes.get(1) {
             let mut collar_pass = *collar_pass;
             collar_pass.submit_sequence = next_submit_sequence;
@@ -833,7 +838,13 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
         submit_sequence_start: u32,
     ) -> u32 {
-        render_wolf_body_armor_layer(self.meshes, *instance, self.atlas, submit_sequence_start)
+        render_wolf_body_armor_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+            submit_sequence_start,
+        )
     }
 
     fn worn_humanoid_armor(&mut self, instance: &EntityModelInstance) {

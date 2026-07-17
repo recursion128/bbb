@@ -125,8 +125,7 @@ use crate::entities::schema::{
     VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
     VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
-use crate::registries::armor_trim_sprite;
-use crate::registries::RegistrySet;
+use crate::registries::{armor_trim_sprite, ArmorTrimLayer, RegistrySet};
 use crate::ItemEquipmentSlot;
 use bbb_protocol::entity_types::*;
 
@@ -1598,7 +1597,11 @@ impl EntityStore {
                 registries,
                 armor_item(slot)?,
                 material.equipment_asset_id(),
-                slot == ProtocolEquipmentSlot::Legs,
+                if slot == ProtocolEquipmentSlot::Legs {
+                    ArmorTrimLayer::HumanoidLeggings
+                } else {
+                    ArmorTrimLayer::Humanoid
+                },
             )
         };
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
@@ -1680,6 +1683,14 @@ impl EntityStore {
         } else {
             None
         };
+        let wolf_body_armor_trim = wolf_body_armor.and_then(|material| {
+            armor_trim_sprite(
+                registries,
+                body_slot_item()?,
+                material.equipment_asset_id(),
+                ArmorTrimLayer::WolfBody,
+            )
+        });
         let wolf_body_armor_dye = wolf_body_armor.and_then(|_| body_slot_armor_dye());
         let wolf_body_armor_crackiness = wolf_body_armor
             .and_then(|_| body_slot_item())
@@ -2495,6 +2506,7 @@ impl EntityStore {
             legs_armor_foil: armor_foil(ProtocolEquipmentSlot::Legs),
             feet_armor_foil: armor_foil(ProtocolEquipmentSlot::Feet),
             wolf_body_armor,
+            wolf_body_armor_trim,
             wolf_body_armor_dye,
             wolf_body_armor_crackiness,
             wolf_body_armor_foil,

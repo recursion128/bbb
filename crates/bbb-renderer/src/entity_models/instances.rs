@@ -1062,6 +1062,9 @@ entity_render_state! {
     /// asset provides a `WOLF_BODY` layer. The renderer maps `ArmadilloScute` to the wolf armor
     /// equipment textures and skips babies.
     (with_wolf_body_armor) wolf_body_armor: Option<EntityArmorMaterial> = None;
+    /// Vanilla armor trim over the adult `WOLF_BODY` equipment model. The texture is a resolved
+    /// runtime trim-atlas sprite; `decal` selects the equal-depth/no-write trim pipeline.
+    (with_wolf_body_armor_trim) wolf_body_armor_trim: Option<EntityArmorTrim> = None;
     /// Vanilla `DyedItemColor.getOrDefault` for the wolf body armor item: a packed RGB dye. The
     /// `armadillo_scute_overlay` wolf-body layer renders only when this is present.
     (with_wolf_body_armor_dye) wolf_body_armor_dye: Option<u32> = None;
@@ -3068,6 +3071,7 @@ mod tests {
                 equine_body_armor: None,
                 equine_body_armor_dye: None,
                 wolf_body_armor: None,
+                wolf_body_armor_trim: None,
                 wolf_body_armor_dye: None,
                 wolf_body_armor_crackiness: None,
                 wolf_body_armor_foil: false,

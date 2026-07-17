@@ -635,6 +635,10 @@ pub(super) fn entity_model_instance(
         .with_equine_body_armor(armor_material(source.equine_body_armor))
         .with_equine_body_armor_dye(armor_dye(source.equine_body_armor_dye))
         .with_wolf_body_armor(armor_material(source.wolf_body_armor))
+        .with_wolf_body_armor_trim(armor_trim(
+            source.wolf_body_armor_trim.as_ref(),
+            variant_registries,
+        ))
         .with_wolf_body_armor_dye(armor_dye(source.wolf_body_armor_dye))
         .with_wolf_body_armor_crackiness(wolf_armor_crackiness(source.wolf_body_armor_crackiness))
         .with_nautilus_body_armor(armor_material(source.nautilus_body_armor))

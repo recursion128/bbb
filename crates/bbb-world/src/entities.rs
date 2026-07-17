@@ -1589,6 +1589,10 @@ entity_model_source_state! {
     /// `ModelLayers.WOLF_ARMOR` model.
     #[serde(default)]
     pub wolf_body_armor: Option<ArmorMaterialKind>,
+    /// Vanilla `ArmorTrim.layerAssetId` for the adult wolf's `WOLF_BODY` equipment layer. The
+    /// resolved sprite uses `trims/entity/wolf_body`; native binds it from the startup trim atlas.
+    #[serde(default)]
+    pub wolf_body_armor_trim: Option<ArmorTrimSprite>,
     /// Vanilla `DyedItemColor.getOrDefault` for the wolf body armor item: a packed RGB dye. The
     /// `armadillo_scute_overlay` wolf-body equipment layer renders only when this is present.
     #[serde(default)]

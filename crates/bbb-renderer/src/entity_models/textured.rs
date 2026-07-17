@@ -4279,11 +4279,13 @@ pub(in crate::entity_models) fn render_pig_saddle_layer(
 /// Vanilla `WolfArmorLayer`: adult wolves with a body armor item render the `WOLF_BODY` equipment
 /// asset over `AdultWolfModel(ModelLayers.WOLF_ARMOR)`, baked with `CubeDeformation(0.2)`. The
 /// armadillo-scute asset has a white base layer plus a dye-only overlay; damaged armor then adds an
-/// `armorTranslucent` crack texture.
+/// `armorTranslucent` crack texture. `EquipmentLayerRenderer` inserts an optional runtime-atlas
+/// trim after all base/foil layers and before those cracks.
 pub(in crate::entity_models) fn render_wolf_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     first_submit_sequence: u32,
 ) -> u32 {
     let Some(material) = instance.render_state.wolf_body_armor else {
@@ -4336,6 +4338,42 @@ pub(in crate::entity_models) fn render_wolf_body_armor_layer(
             next_order += 1;
             submit_sequence += 1;
             foil_pending = false;
+        }
+    }
+
+    if let Some(trim) = instance.render_state.wolf_body_armor_trim {
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
+            let render_type = if trim.decal {
+                EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+            } else {
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            };
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::WolfBodyArmor,
+                render_type,
+                MODEL_LAYER_WOLF_ARMOR,
+                layers[0].texture,
+                [1.0; 4],
+                next_order,
+                submit_sequence,
+            );
+            let submit =
+                no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| {
+                    model.root().render_textured(
+                        mesh,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                    );
+                },
+            );
+            submit_sequence += 1;
         }
     }
 
