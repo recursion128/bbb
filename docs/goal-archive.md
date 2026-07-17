@@ -18455,3 +18455,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native 删除 Hoglin/Zoglin type arms，统一消费 renderer kind；两者的 baby 状态继续通过
   generated nearest-owner accessor 解析。
 - renderer generator 输出反向守卫，禁止 native kind dispatch 恢复两个 entity-type 分支。
+
+## 2026-07-17：生成 Guardian model-kind dispatch
+
+- world renderer owner 将 source-generated `GuardianRenderer`/`ElderGuardianRenderer` provider
+  class 映射为 typed guardian renderer kind，并以 Dolphin 作为非成员负例。
+- native 删除 Guardian/ElderGuardian type arms，统一从 renderer kind 投影 elder 标志；共享的
+  moving/attack-target metadata bundle 与 beam 动画保持独立。
+- renderer generator 输出反向守卫，禁止 native kind dispatch 恢复两个 entity-type 分支。

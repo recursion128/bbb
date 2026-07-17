@@ -93,6 +93,12 @@ pub enum VanillaHoglinRendererKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaGuardianRendererKind {
+    Guardian,
+    ElderGuardian,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaBoatRendererFamily {
     Acacia,
     Bamboo,
@@ -307,6 +313,16 @@ pub fn vanilla_entity_renderer_hoglin_kind(
     }
 }
 
+pub fn vanilla_entity_renderer_guardian_kind(
+    entity_type_id: i32,
+) -> Option<VanillaGuardianRendererKind> {
+    match vanilla_entity_renderer_registration(entity_type_id)?.renderer_class {
+        "GuardianRenderer" => Some(VanillaGuardianRendererKind::Guardian),
+        "ElderGuardianRenderer" => Some(VanillaGuardianRendererKind::ElderGuardian),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -316,14 +332,16 @@ mod tests {
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
         VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
-        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
-        VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
-        VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
+        VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+        VANILLA_ENTITY_TYPE_DONKEY_ID, VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID,
+        VANILLA_ENTITY_TYPE_DROWNED_ID, VANILLA_ENTITY_TYPE_EGG_ID,
+        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID, VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
         VANILLA_ENTITY_TYPE_EVOKER_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_BOTTLE_ID,
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
         VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
         VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
@@ -694,6 +712,22 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_renderer_hoglin_kind(VANILLA_ENTITY_TYPE_PIGLIN_ID),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_guardian_kinds_match_provider_classes() {
+        assert_eq!(
+            vanilla_entity_renderer_guardian_kind(VANILLA_ENTITY_TYPE_GUARDIAN_ID),
+            Some(VanillaGuardianRendererKind::Guardian)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_guardian_kind(VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID),
+            Some(VanillaGuardianRendererKind::ElderGuardian)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_guardian_kind(VANILLA_ENTITY_TYPE_DOLPHIN_ID),
             None
         );
     }

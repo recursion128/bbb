@@ -191,6 +191,14 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(entity_type_id, data_values),
         };
     }
+    if let Some(guardian_kind) = bbb_world::vanilla_entity_renderer_guardian_kind(entity_type_id) {
+        return EntityModelKind::Guardian {
+            elder: matches!(
+                guardian_kind,
+                bbb_world::VanillaGuardianRendererKind::ElderGuardian
+            ),
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -319,7 +327,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_DOLPHIN_ID => EntityModelKind::Dolphin {
             baby: ageable_baby(entity_type_id, data_values),
         },
-        VANILLA_ENTITY_TYPE_ELDER_GUARDIAN_ID => EntityModelKind::Guardian { elder: true },
         VANILLA_ENTITY_TYPE_ENDERMITE_ID => EntityModelKind::Endermite,
         VANILLA_ENTITY_TYPE_END_CRYSTAL_ID => EntityModelKind::EndCrystal,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID => EntityModelKind::EvokerFangs,
@@ -343,7 +350,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             glow: true,
             baby: ageable_baby(entity_type_id, data_values),
         },
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID => EntityModelKind::Guardian { elder: false },
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
         }

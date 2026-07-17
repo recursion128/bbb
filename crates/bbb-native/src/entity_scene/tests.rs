@@ -8249,8 +8249,8 @@ fn entity_model_kind_projects_dolphin_baby_from_data() {
 #[test]
 fn entity_model_kind_maps_guardian_and_elder_guardian_to_real_model() {
     // Both guardians were placeholder render boxes; they now resolve to the real
-    // `GuardianModel`. The variant is keyed purely off the entity type id (the elder is the
-    // same mesh scaled 2.35×), with no synced data. The procedural spike pulse / withdrawal,
+    // `GuardianModel`. The variant follows the registered renderer class (the elder is the same
+    // mesh scaled 2.35×), with no synced data. The procedural spike pulse / withdrawal,
     // eye tracking, tail sway, and attack beam are deferred entity-side state.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_GUARDIAN_ID, &[]),
