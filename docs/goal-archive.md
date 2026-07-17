@@ -18708,3 +18708,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - `BatAnimation.BAT_FLYING` now samples the projected elapsed seconds while a stopped state leaves
   the model in its bind pose. Focused tests lock first-tick timing, partial-tick interpolation,
   rest/takeoff transitions, and distinct flap phases for bats with the same absolute age.
+
+# 2026-07-17: Classify armor-stand pose interpolation as not needed
+
+- Verified that vanilla 26.1 `ArmorStandRenderer.extractRenderState` copies the six synchronized
+  `Rotations` poses directly; it has no previous-pose state and does not use `partialTicks` for
+  those fields. The existing bbb projection therefore correctly changes poses without a lerp.
+- Preserved the separately applicable interpolation paths: entity yaw follows the shared transform
+  interpolation and hit `wiggle` includes the render partial tick. The native semantic fixture now
+  explicitly proves that armor-stand pose selection is identical at partial ticks zero and one.

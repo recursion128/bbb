@@ -768,7 +768,10 @@ Living-entity render state:
   server-side only.
 - Project guardian eye target tracking (`lookAtPosition` / `lookDirection` /
   `eyePosition`) from entity-side state.
-- Implement armor-stand animation interpolation.
+- Armor-stand pose interpolation is `not-needed`: vanilla 26.1
+  `ArmorStandRenderer.extractRenderState` copies all six synced `Rotations`
+  getters directly without partial-tick interpolation. Only `yRot` uses
+  `Mth.rotLerp`, and hit `wiggle` adds `partialTicks`; bbb already covers both.
 
 Models and layers:
 

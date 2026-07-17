@@ -7540,7 +7540,7 @@ fn entity_model_instances_project_happy_ghast_harness_render_state() {
 }
 
 #[test]
-fn entity_model_instances_project_armor_stand_flags_and_pose() {
+fn entity_model_instances_project_armor_stand_flags_and_pose_without_pose_lerp() {
     let mut world = WorldStore::new();
     let accessors = armor_stand_metadata_accessors();
     world.apply_add_entity(protocol_add_entity(
@@ -7566,7 +7566,12 @@ fn entity_model_instances_project_armor_stand_flags_and_pose() {
         ],
     }));
 
+    let start_instances = entity_model_instances_from_world_at_partial_tick(&world, None, 0.0);
     let instances = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0);
+    assert_eq!(
+        start_instances[0].kind, instances[0].kind,
+        "vanilla copies each synced ArmorStand Rotations pose directly at every partial tick"
+    );
 
     assert_eq!(
         instances,
