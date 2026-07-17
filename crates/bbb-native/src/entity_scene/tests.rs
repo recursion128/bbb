@@ -8618,8 +8618,8 @@ fn entity_model_kind_projects_tropical_fish_pattern_and_pattern_color_from_packe
 #[test]
 fn entity_model_kind_projects_squid_glow_and_baby_from_data() {
     // The squid and glow squid were placeholder render boxes; they now resolve to the
-    // real `SquidModel`. The glow variant is keyed off the entity type id and the baby
-    // flag is the synced `AgeableMob.DATA_BABY_ID` (index 16, default adult). The
+    // real `SquidModel`. The glow variant follows the registered renderer class and the baby
+    // flag uses the generated inherited `AgeableMob.DATA_BABY_ID` accessor. The
     // tentacle sweep / body tilt are projected by the world-side squid animation accumulator.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_SQUID_ID, &[]),

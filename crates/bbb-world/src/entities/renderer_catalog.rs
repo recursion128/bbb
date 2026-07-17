@@ -99,6 +99,12 @@ pub enum VanillaGuardianRendererKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaSquidRendererKind {
+    Squid,
+    GlowSquid,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaBoatRendererFamily {
     Acacia,
     Bamboo,
@@ -323,6 +329,14 @@ pub fn vanilla_entity_renderer_guardian_kind(
     }
 }
 
+pub fn vanilla_entity_renderer_squid_kind(entity_type_id: i32) -> Option<VanillaSquidRendererKind> {
+    match vanilla_entity_renderer_registration(entity_type_id)?.renderer_class {
+        "SquidRenderer" => Some(VanillaSquidRendererKind::Squid),
+        "GlowSquidRenderer" => Some(VanillaSquidRendererKind::GlowSquid),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -340,8 +354,8 @@ mod tests {
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
         VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
         VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
@@ -355,9 +369,10 @@ mod tests {
         VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_SQUID_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
         VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
@@ -728,6 +743,22 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_renderer_guardian_kind(VANILLA_ENTITY_TYPE_DOLPHIN_ID),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_squid_kinds_match_provider_classes() {
+        assert_eq!(
+            vanilla_entity_renderer_squid_kind(VANILLA_ENTITY_TYPE_SQUID_ID),
+            Some(VanillaSquidRendererKind::Squid)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_squid_kind(VANILLA_ENTITY_TYPE_GLOW_SQUID_ID),
+            Some(VanillaSquidRendererKind::GlowSquid)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_squid_kind(VANILLA_ENTITY_TYPE_GUARDIAN_ID),
             None
         );
     }

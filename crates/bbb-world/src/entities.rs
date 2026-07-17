@@ -68,6 +68,7 @@ pub use renderer_catalog::{
 pub use renderer_catalog::{vanilla_entity_renderer_guardian_kind, VanillaGuardianRendererKind};
 pub use renderer_catalog::{vanilla_entity_renderer_hoglin_kind, VanillaHoglinRendererKind};
 pub use renderer_catalog::{vanilla_entity_renderer_piglin_kind, VanillaPiglinRendererKind};
+pub use renderer_catalog::{vanilla_entity_renderer_squid_kind, VanillaSquidRendererKind};
 pub use schema::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type;
 pub use schema::vanilla_entity_metadata_type_is_llama;
 pub use schema::VanillaAbstractBoatMetadataAccessors;

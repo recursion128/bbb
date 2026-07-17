@@ -5,6 +5,7 @@ pub use crate::entities::vanilla_entity_metadata_experience_orb_value_accessor_f
 pub use crate::entities::vanilla_entity_renderer_guardian_kind;
 pub use crate::entities::vanilla_entity_renderer_hoglin_kind;
 pub use crate::entities::vanilla_entity_renderer_piglin_kind;
+pub use crate::entities::vanilla_entity_renderer_squid_kind;
 pub use crate::entities::VanillaAbstractBoatMetadataAccessors;
 pub use crate::entities::VanillaAbstractHorseMetadataAccessors;
 pub use crate::entities::VanillaAbstractMinecartMetadataAccessors;
@@ -33,6 +34,7 @@ pub use crate::entities::VanillaPandaMetadataAccessors;
 pub use crate::entities::VanillaPiglinRendererKind;
 pub use crate::entities::VanillaShulkerMetadataAccessors;
 pub use crate::entities::VanillaSkeletonRendererKind;
+pub use crate::entities::VanillaSquidRendererKind;
 pub use crate::entities::VanillaTamableAnimalMetadataAccessors;
 pub use crate::entities::VanillaThrownTridentMetadataAccessors;
 pub use crate::entities::VanillaTropicalFishVariantAccessors;

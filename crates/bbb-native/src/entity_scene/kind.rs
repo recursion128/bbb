@@ -199,6 +199,12 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             ),
         };
     }
+    if let Some(squid_kind) = bbb_world::vanilla_entity_renderer_squid_kind(entity_type_id) {
+        return EntityModelKind::Squid {
+            glow: matches!(squid_kind, bbb_world::VanillaSquidRendererKind::GlowSquid),
+            baby: ageable_baby(entity_type_id, data_values),
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -346,10 +352,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
-        VANILLA_ENTITY_TYPE_GLOW_SQUID_ID => EntityModelKind::Squid {
-            glow: true,
-            baby: ageable_baby(entity_type_id, data_values),
-        },
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)
         }
@@ -376,10 +378,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             size: slime_size(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_SPIDER_ID => EntityModelKind::Spider,
-        VANILLA_ENTITY_TYPE_SQUID_ID => EntityModelKind::Squid {
-            glow: false,
-            baby: ageable_baby(entity_type_id, data_values),
-        },
         VANILLA_ENTITY_TYPE_STRIDER_ID => {
             let cold = vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
                 entity_type_id,
