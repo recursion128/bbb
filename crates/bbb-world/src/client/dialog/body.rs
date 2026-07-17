@@ -5,6 +5,8 @@ use bbb_protocol::data_component_types::{
 #[cfg(test)]
 use bbb_protocol::item_component_value_types::ItemRaritySummary;
 use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
+#[cfg(test)]
+use bbb_protocol::tropical_fish_patterns::VANILLA_TROPICAL_FISH_PATTERN_FLOPPER_PACKED_ID;
 use bbb_protocol::{
     data_component_types::vanilla_data_component_type_for_resource_id,
     item_types::vanilla_item_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
@@ -556,7 +558,7 @@ mod tests {
                         removed: false,
                         value: None,
                         value_data: Some(DialogDataComponentValueState::StringEnum {
-                            value_id: 1,
+                            value_id: VANILLA_TROPICAL_FISH_PATTERN_FLOPPER_PACKED_ID,
                             serialized_name: "flopper".to_string(),
                         }),
                     },
@@ -580,7 +582,10 @@ mod tests {
             summary.component_patch.enchantment_glint_override,
             Some(true)
         );
-        assert_eq!(summary.component_patch.tropical_fish_pattern_id, Some(1));
+        assert_eq!(
+            summary.component_patch.tropical_fish_pattern_id,
+            Some(VANILLA_TROPICAL_FISH_PATTERN_FLOPPER_PACKED_ID)
+        );
 
         let mut lock_patch =
             decode_data_component_patch(&compound(vec![value_entry("lock", compound(Vec::new()))]))

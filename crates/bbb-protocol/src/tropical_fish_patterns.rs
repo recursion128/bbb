@@ -293,6 +293,119 @@ mod tests {
         );
     }
 
+    fn starts_with_numeric_or_optional_numeric(value: &str) -> bool {
+        let value = value.strip_prefix("Some(").unwrap_or(value);
+        let mut characters = value.chars();
+        let Some(first) = characters.next() else {
+            return false;
+        };
+        first.is_ascii_digit()
+            || (first == '-'
+                && characters
+                    .next()
+                    .is_some_and(|character| character.is_ascii_digit()))
+    }
+
+    fn contains_numeric_tropical_fish_pattern_reference(
+        source: &str,
+        include_dialog_value_id: bool,
+    ) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction =
+            compact
+                .match_indices("tropical_fish_pattern_id:")
+                .any(|(offset, _)| {
+                    starts_with_numeric_or_optional_numeric(
+                        &compact[offset + "tropical_fish_pattern_id:".len()..],
+                    )
+                });
+        let numeric_reference =
+            compact
+                .match_indices(".tropical_fish_pattern_id")
+                .any(|(offset, _)| {
+                    let suffix = &compact[offset + ".tropical_fish_pattern_id".len()..];
+                    [",", "==", "!=", "="].iter().any(|separator| {
+                        suffix
+                            .strip_prefix(separator)
+                            .is_some_and(starts_with_numeric_or_optional_numeric)
+                    })
+                });
+        let numeric_dialog_value_id = include_dialog_value_id
+            && compact.match_indices("value_id:").any(|(offset, _)| {
+                starts_with_numeric_or_optional_numeric(&compact[offset + "value_id:".len()..])
+            });
+        numeric_construction || numeric_reference || numeric_dialog_value_id
+    }
+
+    #[test]
+    fn numeric_tropical_fish_pattern_guard_covers_semantic_fixtures() {
+        assert!(contains_numeric_tropical_fish_pattern_reference(
+            "tropical_fish_pattern_id: Some(257),",
+            false
+        ));
+        assert!(contains_numeric_tropical_fish_pattern_reference(
+            "assert_eq!(patch.tropical_fish_pattern_id, Some(1));",
+            false
+        ));
+        assert!(contains_numeric_tropical_fish_pattern_reference(
+            "value_id: 1,",
+            true
+        ));
+        assert!(!contains_numeric_tropical_fish_pattern_reference(
+            "value_id: 1,",
+            false
+        ));
+        assert!(!contains_numeric_tropical_fish_pattern_reference(
+            "tropical_fish_pattern_id: Some(VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID),",
+            false
+        ));
+        assert!(!contains_numeric_tropical_fish_pattern_reference("assert_eq!(patch.tropical_fish_pattern_id, Some(VANILLA_TROPICAL_FISH_PATTERN_FLOPPER_PACKED_ID));", false));
+    }
+
+    #[test]
+    fn semantic_fixtures_do_not_restore_numeric_tropical_fish_pattern_ids() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                let include_dialog_value_id = path
+                    .to_string_lossy()
+                    .ends_with("/bbb-world/src/client/dialog/body.rs");
+                if contains_numeric_tropical_fish_pattern_reference(
+                    &source,
+                    include_dialog_value_id,
+                ) {
+                    violations.push(path.display().to_string());
+                }
+            }
+        }
+        let mut violations = Vec::new();
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        for directory in [
+            "bbb-native/src",
+            "bbb-world/src",
+            "bbb-net/src",
+            "bbb-item-model/src",
+            "bbb-renderer/src",
+        ] {
+            visit(&crates.join(directory), &mut violations);
+        }
+        assert!(
+            violations.is_empty(),
+            "numeric tropical fish pattern ids: {violations:?}"
+        );
+    }
+
     #[test]
     fn production_sources_do_not_redeclare_tropical_fish_pattern_facts() {
         fn visit(directory: &Path, violations: &mut Vec<String>) {

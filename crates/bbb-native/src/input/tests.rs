@@ -91,6 +91,7 @@ use bbb_protocol::packets::{
     WrittenBookContentSummary,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
+use bbb_protocol::tropical_fish_patterns::VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID;
 use bbb_protocol::{
     MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
     MC_RESOURCE_PACK_FORMAT, MC_STABLE, MC_VERSION, PROTOCOL_VERSION,
@@ -9985,7 +9986,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             ticks_in_hive: 40,
             min_ticks_in_hive: 600,
         }],
-        tropical_fish_pattern_id: Some(257),
+        tropical_fish_pattern_id: Some(VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID),
         tropical_fish_base_color_id: Some(1),
         tropical_fish_pattern_color_id: Some(99),
         break_sound: Some(bbb_protocol::packets::SoundEventSummary {

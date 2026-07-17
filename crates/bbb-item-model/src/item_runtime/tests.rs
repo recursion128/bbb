@@ -6,6 +6,9 @@ use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID,
     VANILLA_MOB_EFFECT_WEAKNESS_ID,
 };
+use bbb_protocol::tropical_fish_patterns::{
+    VANILLA_TROPICAL_FISH_PATTERN_KOB_PACKED_ID, VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID,
+};
 use bbb_protocol::{ComponentStyle, StyledTextRun};
 use chrono::TimeZone;
 use std::{
@@ -1097,7 +1100,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
-                tropical_fish_pattern_id: Some(257),
+                tropical_fish_pattern_id: Some(VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID),
                 tropical_fish_base_color_id: Some(1),
                 tropical_fish_pattern_color_id: Some(7),
                 instrument_id: Some(0),
@@ -1115,7 +1118,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             item_id: Some(0),
             count: 1,
             component_patch: DataComponentPatchSummary {
-                tropical_fish_pattern_id: Some(0),
+                tropical_fish_pattern_id: Some(VANILLA_TROPICAL_FISH_PATTERN_KOB_PACKED_ID),
                 tropical_fish_base_color_id: Some(0),
                 tropical_fish_pattern_color_id: Some(14),
                 ..DataComponentPatchSummary::default()
