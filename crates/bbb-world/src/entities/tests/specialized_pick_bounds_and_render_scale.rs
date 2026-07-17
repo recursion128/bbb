@@ -129,7 +129,6 @@ fn turtle_pick_bounds_compose_adult_baby_and_scale_dimensions() {
 
 #[test]
 fn baby_pick_bounds_follow_vanilla_metadata() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(34, 100));
     store.apply_add_entity(protocol_add_entity_with_type(35, 26));
@@ -761,8 +760,6 @@ fn shulker_peek_pick_bounds_advance_toward_metadata_target() {
 
 #[test]
 fn shulker_pick_bounds_apply_vanilla_scale_cap() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         89,
@@ -791,8 +788,6 @@ fn shulker_pick_bounds_apply_vanilla_scale_cap() {
 
 #[test]
 fn generated_sanitize_scale_overrides_apply_to_render_state() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     for (entity_id, entity_type_id, expected) in [
         (189, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, 1.0),
@@ -844,8 +839,6 @@ fn generated_sanitize_scale_overrides_apply_to_render_state() {
 
 #[test]
 fn polar_bear_standing_pick_bounds_follow_client_animation_ticks() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         80,

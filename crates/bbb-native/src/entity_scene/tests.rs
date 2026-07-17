@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SCALE_ID;
 use bbb_protocol::entity_data_serializers::*;
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SITTING_ID,
@@ -5252,8 +5253,6 @@ fn entity_model_instances_project_sleeping_pose() {
 
 #[test]
 fn entity_model_instances_project_scale_attribute() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         97,

@@ -689,8 +689,6 @@ fn entity_model_sources_resolve_sleeping_bed_orientation() {
 
 #[test]
 fn entity_model_sources_project_scale_attribute() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let scale = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)

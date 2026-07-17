@@ -583,8 +583,6 @@ fn slime_pick_bounds_scale_with_vanilla_size_metadata() {
 
 #[test]
 fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         26,
@@ -646,7 +644,6 @@ fn pufferfish_pick_bounds_scale_with_vanilla_puff_state_metadata() {
 
 #[test]
 fn salmon_pick_bounds_scale_with_vanilla_variant_metadata() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         27,
@@ -704,7 +701,6 @@ fn salmon_pick_bounds_scale_with_vanilla_variant_metadata() {
 
 #[test]
 fn phantom_pick_bounds_scale_with_vanilla_size_metadata() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         28,
@@ -749,8 +745,6 @@ fn phantom_pick_bounds_scale_with_vanilla_size_metadata() {
 
 #[test]
 fn living_pick_bounds_scale_with_vanilla_scale_attribute() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(30, 14));
     store.apply_add_entity(protocol_add_entity_with_type(31, 51));
@@ -843,8 +837,6 @@ fn living_pick_bounds_scale_with_vanilla_scale_attribute() {
 
 #[test]
 fn living_pick_bounds_apply_vanilla_entity_specific_scale_caps() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(73, 58));
     store.apply_add_entity(protocol_add_entity_with_type(74, 112));
@@ -899,8 +891,6 @@ fn living_pick_bounds_apply_vanilla_entity_specific_scale_caps() {
 
 #[test]
 fn avatar_pick_bounds_follow_vanilla_pose_metadata() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         32,
@@ -1028,8 +1018,6 @@ fn local_player_is_sleeping_false_for_non_sleeping_pose() {
 
 #[test]
 fn warden_pick_bounds_follow_vanilla_pose_metadata() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(34, 142));
 
@@ -1089,8 +1077,6 @@ fn warden_pick_bounds_follow_vanilla_pose_metadata() {
 
 #[test]
 fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         43,
@@ -1198,8 +1184,6 @@ fn camel_pick_bounds_follow_vanilla_sitting_pose_and_age_scale() {
 
 #[test]
 fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(
         45,
@@ -1337,8 +1321,6 @@ fn camel_body_anchor_y_offset_matches_vanilla_sit_stand_curve() {
 
 #[test]
 fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(41, 62));
 
@@ -1406,8 +1388,6 @@ fn goat_pick_bounds_follow_vanilla_pose_and_age_scale() {
 
 #[test]
 fn sniffer_pick_bounds_follow_vanilla_state_and_age_scale() {
-    const VANILLA_ATTRIBUTE_SCALE_ID: i32 = 25;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(42, 119));
 

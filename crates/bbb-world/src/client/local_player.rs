@@ -775,6 +775,7 @@ fn wrap_degrees_f32(degrees: f32) -> f32 {
 mod tests {
     use super::super::local_player_movement::LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
     use super::*;
+    use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityEvent as ProtocolEntityEvent, PlayerLookAtTarget,
         Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT,
@@ -1815,9 +1816,7 @@ mod tests {
             )
             .expect("generated LivingEntity metadata accessors");
         assert_eq!(living_accessors.health_default, 1.0);
-        // `minecraft:max_health` is `BuiltInRegistries.ATTRIBUTE` registration
-        // index 19 (Attributes.java field order, MAX_HEALTH at :58-60).
-        const VANILLA_ATTRIBUTE_MAX_HEALTH_ID: i32 = 19;
+        // `minecraft:max_health` uses the generated `Attributes.java` registration id.
 
         let add_vehicle = |world: &mut WorldStore, id: i32, entity_type_id: i32| {
             world.apply_add_entity(ProtocolAddEntity {
@@ -1910,10 +1909,8 @@ mod tests {
 
     #[test]
     fn local_player_max_health_reads_the_synced_attribute() {
-        // `minecraft:max_health` is `BuiltInRegistries.ATTRIBUTE` registration
-        // index 19 (Attributes.java field order); the `RangedAttribute` default
-        // is 20.0 (Attributes.java:58-60).
-        const VANILLA_ATTRIBUTE_MAX_HEALTH_ID: i32 = 19;
+        // `minecraft:max_health` uses the generated `Attributes.java` registration id; the
+        // `RangedAttribute` default is 20.0 (Attributes.java:58-60).
 
         // No local player / no synced attribute: the RangedAttribute default.
         assert_eq!(WorldStore::new().local_player_max_health(), 20.0);
