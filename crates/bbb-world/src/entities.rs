@@ -20,6 +20,7 @@ mod animations;
 mod components;
 mod dimensions;
 mod dragon;
+mod events;
 mod metadata;
 mod movement;
 mod passengers;
@@ -49,6 +50,7 @@ pub(crate) use dimensions::{
     vanilla_animal_entity_type, vanilla_living_entity_type, vanilla_pick_bounds_for_type,
 };
 pub use dragon::{DragonFlightHistorySample, DragonFlightHistoryState, EnderDragonAnimationState};
+pub(crate) use events::{vanilla_entity_event_kind, VanillaEntityEventKind};
 use movement::entity_vec3;
 pub use renderer_catalog::{
     vanilla_entity_renderer_boat_kind, vanilla_entity_renderer_camel_kind,

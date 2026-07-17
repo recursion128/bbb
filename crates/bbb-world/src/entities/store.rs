@@ -58,16 +58,16 @@ use super::schema::{
 
 use super::{
     is_vanilla_abstract_nautilus_type, is_vanilla_can_wear_horse_armor_type, is_vanilla_llama_type,
-    is_vanilla_minecart_type, is_vanilla_vehicle_entity_type, vanilla_entity_type_is_squid,
-    ArmorMaterialKind, EntityAttachmentFace, EntityAttributes, EntityBlockModelState,
-    EntityCameraHurtState, EntityCameraPoseState, EntityClientAnimationState,
-    EntityClientAnimations, EntityDamage, EntityEquipment, EntityHurtingProjectile, EntityIdentity,
-    EntityLeash, EntityMetadata, EntityMinecartLerp, EntityMobEffects, EntityModelSourceState,
-    EntityMount, EntityProjectileLifecycle, EntityState, EntitySupportingBlock, EntityTransform,
-    EntityTransformState, EntityTransientEvents, EvokerFangsCritParticleState,
-    FallingBlockModelState, FireworkRocketExplosionParticleState, FireworkRocketItemState,
-    FireworkRocketTrailParticleState, FoxEatParticleState, ItemEntityStackState,
-    ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    is_vanilla_minecart_type, is_vanilla_vehicle_entity_type, vanilla_entity_event_kind,
+    vanilla_entity_type_is_squid, ArmorMaterialKind, EntityAttachmentFace, EntityAttributes,
+    EntityBlockModelState, EntityCameraHurtState, EntityCameraPoseState,
+    EntityClientAnimationState, EntityClientAnimations, EntityDamage, EntityEquipment,
+    EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
+    EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
+    EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
+    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
+    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
     MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
     RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
     VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
@@ -3480,11 +3480,23 @@ impl EntityStore {
     ) -> Option<()> {
         let entity = self.by_protocol_id.get(&id).copied()?;
         let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let event_kind = vanilla_entity_event_kind(entity_type_id, event_id)?;
         let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
         animations
             .animations
-            .handle_entity_event(entity_type_id, id, event_id);
+            .handle_entity_event(entity_type_id, id, event_kind);
         Some(())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn minecart_spawner_spawn_delay(&self, id: i32) -> Option<i32> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if identity.entity_type_id != VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID {
+            return None;
+        }
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        Some(animations.animations.minecart_spawner_spawn_delay())
     }
 
     /// Applies the canonical state mutation from `LivingEntity.handleEntityEvent(3)`.

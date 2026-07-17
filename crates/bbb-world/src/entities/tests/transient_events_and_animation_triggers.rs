@@ -278,6 +278,35 @@ fn living_death_event_sets_non_player_health_and_starts_death_animation() {
 }
 
 #[test]
+fn spawner_minecart_event_resets_delegated_base_spawner_delay() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        71,
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        72,
+        VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    ));
+
+    // Vanilla constructs the embedded BaseSpawner with delay 20/minimum 200. Event 1 is delegated
+    // by MinecartSpawner.handleEntityEvent and resets the client delay to that minimum.
+    assert_eq!(store.entities.minecart_spawner_spawn_delay(71), Some(20));
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 71,
+        event_id: 1,
+    }));
+    assert_eq!(store.entities.minecart_spawner_spawn_delay(71), Some(200));
+
+    // The same wire id on another minecart does not acquire embedded-spawner state.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 72,
+        event_id: 1,
+    }));
+    assert_eq!(store.entities.minecart_spawner_spawn_delay(72), None);
+}
+
+#[test]
 fn sheep_eat_grass_event_drives_client_animation_tick() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

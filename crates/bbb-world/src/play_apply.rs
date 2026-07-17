@@ -9,9 +9,11 @@
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID;
 use bbb_protocol::packets::{
-    ChatAcknowledgement, EquipmentSlot, GameEvent as ProtocolGameEvent,
-    LevelEvent as ProtocolLevelEvent, PlayClientbound, Vec3d as ProtocolVec3d,
+    ChatAcknowledgement, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
+    PlayClientbound, Vec3d as ProtocolVec3d,
 };
+
+use crate::entities::{vanilla_entity_event_kind, VanillaEntityEventKind};
 
 use crate::{
     advance_cobweb_place_particle_randoms,
@@ -41,8 +43,6 @@ const INSTANT_POTION_BREAK_LEVEL_EVENT: i32 = 2007;
 const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
-const RAVAGER_ROAR_EVENT_ID: i8 = 69;
-const FISHING_HOOK_PULL_EVENT_ID: i8 = 31;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT: i32 = 3013;
 const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
@@ -62,41 +62,6 @@ const CRITICAL_HIT_ANIMATION_ACTION: u8 = 4;
 const MAGIC_CRITICAL_HIT_ANIMATION_ACTION: u8 = 5;
 const TRACKING_EMITTER_DEFAULT_LIFETIME_TICKS: u32 = 3;
 const TOTEM_TRACKING_EMITTER_LIFETIME_TICKS: u32 = 30;
-const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
-const ATTACK_SOUND_EVENT_ID: i8 = 4;
-const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
-const LIVING_ENTITY_DEATH_EVENT_ID: i8 = 3;
-const TAMING_FAILED_EVENT_ID: i8 = 6;
-const TAMING_SUCCEEDED_EVENT_ID: i8 = 7;
-const VILLAGER_HEART_EVENT_ID: i8 = 12;
-const VILLAGER_ANGRY_EVENT_ID: i8 = 13;
-const VILLAGER_HAPPY_EVENT_ID: i8 = 14;
-const WITCH_MAGIC_EVENT_ID: i8 = 15;
-const ZOMBIE_VILLAGER_CURE_EVENT_ID: i8 = 16;
-const ANIMAL_LOVE_EVENT_ID: i8 = 18;
-const MOB_SPAWN_EVENT_ID: i8 = 20;
-const GUARDIAN_ATTACK_SOUND_EVENT_ID: i8 = 21;
-const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
-const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
-const OCELOT_TRUSTING_FAILED_EVENT_ID: i8 = 40;
-const OCELOT_TRUSTING_SUCCEEDED_EVENT_ID: i8 = 41;
-const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
-const FOX_EAT_EVENT_ID: i8 = 45;
-const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
-const LIVING_ENTITY_MAIN_HAND_BREAK_EVENT_ID: i8 = 47;
-const LIVING_ENTITY_OFF_HAND_BREAK_EVENT_ID: i8 = 48;
-const LIVING_ENTITY_HEAD_BREAK_EVENT_ID: i8 = 49;
-const LIVING_ENTITY_CHEST_BREAK_EVENT_ID: i8 = 50;
-const LIVING_ENTITY_LEGS_BREAK_EVENT_ID: i8 = 51;
-const LIVING_ENTITY_FEET_BREAK_EVENT_ID: i8 = 52;
-const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
-const HONEY_BLOCK_JUMP_EVENT_ID: i8 = 54;
-const LIVING_ENTITY_POOF_EVENT_ID: i8 = 60;
-const SNIFFER_DIGGING_SOUND_EVENT_ID: i8 = 63;
-const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
-const LIVING_ENTITY_BODY_BREAK_EVENT_ID: i8 = 65;
-const LIVING_ENTITY_DROWN_EVENT_ID: i8 = 67;
-const LIVING_ENTITY_SADDLE_BREAK_EVENT_ID: i8 = 68;
 const HONEY_BLOCK_SLIDE_PARTICLE_COUNT: u32 = 5;
 const HONEY_BLOCK_JUMP_PARTICLE_COUNT: u32 = 10;
 
@@ -426,117 +391,134 @@ impl WorldStore {
                 self.apply_explosion(update);
             }
             PlayClientbound::EntityEvent(update) => {
-                let firework_explosion_particles = if update.event_id == 17 {
-                    self.firework_rocket_explosion_particle_state(update.entity_id)
-                } else {
-                    None
-                };
-                let arrow_effect_particles = if update.event_id == ARROW_EFFECT_CLEAR_EVENT_ID {
-                    self.arrow_effect_particle_state(update.entity_id)
-                } else {
-                    None
-                };
-                let entity_taming_particles = if update.event_id == TAMING_SUCCEEDED_EVENT_ID {
-                    self.entity_taming_particle_state(update.entity_id, true)
-                } else if update.event_id == TAMING_FAILED_EVENT_ID {
-                    self.entity_taming_particle_state(update.entity_id, false)
-                } else {
-                    None
-                };
-                let ocelot_trusting_particles =
-                    if update.event_id == OCELOT_TRUSTING_SUCCEEDED_EVENT_ID {
-                        self.ocelot_trusting_particle_state(update.entity_id, true)
-                    } else if update.event_id == OCELOT_TRUSTING_FAILED_EVENT_ID {
-                        self.ocelot_trusting_particle_state(update.entity_id, false)
+                let event_kind =
+                    self.entities
+                        .entity_type_id(update.entity_id)
+                        .and_then(|entity_type_id| {
+                            vanilla_entity_event_kind(entity_type_id, update.event_id)
+                        });
+                let firework_explosion_particles =
+                    if event_kind == Some(VanillaEntityEventKind::FireworkExplosion) {
+                        self.firework_rocket_explosion_particle_state(update.entity_id)
                     } else {
                         None
                     };
-                let villager_particles =
-                    match update.event_id {
-                        VILLAGER_HEART_EVENT_ID => self
-                            .villager_particle_state(update.entity_id, VillagerParticleKind::Heart),
-                        VILLAGER_ANGRY_EVENT_ID => self
-                            .villager_particle_state(update.entity_id, VillagerParticleKind::Angry),
-                        VILLAGER_HAPPY_EVENT_ID => self
-                            .villager_particle_state(update.entity_id, VillagerParticleKind::Happy),
-                        VILLAGER_SPLASH_EVENT_ID => self.villager_particle_state(
-                            update.entity_id,
-                            VillagerParticleKind::Splash,
-                        ),
-                        _ => None,
+                let arrow_effect_particles =
+                    if event_kind == Some(VanillaEntityEventKind::ArrowEffectClear) {
+                        self.arrow_effect_particle_state(update.entity_id)
+                    } else {
+                        None
                     };
-                let dolphin_happy_particles = if update.event_id == DOLPHIN_HAPPY_EVENT_ID {
-                    self.dolphin_happy_particle_state(update.entity_id)
-                } else {
-                    None
+                let entity_taming_particles = match event_kind {
+                    Some(VanillaEntityEventKind::Taming { succeeded }) => {
+                        self.entity_taming_particle_state(update.entity_id, succeeded)
+                    }
+                    _ => None,
                 };
-                let fox_eat_particles = if update.event_id == FOX_EAT_EVENT_ID {
+                let ocelot_trusting_particles = match event_kind {
+                    Some(VanillaEntityEventKind::OcelotTrusting { succeeded }) => {
+                        self.ocelot_trusting_particle_state(update.entity_id, succeeded)
+                    }
+                    _ => None,
+                };
+                let villager_particles = match event_kind {
+                    Some(VanillaEntityEventKind::VillagerHeart) => {
+                        self.villager_particle_state(update.entity_id, VillagerParticleKind::Heart)
+                    }
+                    Some(VanillaEntityEventKind::VillagerAngry) => {
+                        self.villager_particle_state(update.entity_id, VillagerParticleKind::Angry)
+                    }
+                    Some(VanillaEntityEventKind::VillagerHappy) => {
+                        self.villager_particle_state(update.entity_id, VillagerParticleKind::Happy)
+                    }
+                    Some(VanillaEntityEventKind::VillagerSplash) => {
+                        self.villager_particle_state(update.entity_id, VillagerParticleKind::Splash)
+                    }
+                    _ => None,
+                };
+                let dolphin_happy_particles =
+                    if event_kind == Some(VanillaEntityEventKind::DolphinHappy) {
+                        self.dolphin_happy_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
+                let fox_eat_particles = if event_kind == Some(VanillaEntityEventKind::FoxEat) {
                     self.fox_eat_particle_state(update.entity_id)
                 } else {
                     None
                 };
-                let animal_love_particles = if update.event_id == ANIMAL_LOVE_EVENT_ID {
-                    self.animal_love_particle_state(update.entity_id)
-                } else {
-                    None
-                };
-                let allay_duplication_particles = if update.event_id == ANIMAL_LOVE_EVENT_ID {
-                    self.allay_duplication_particle_state(update.entity_id)
-                } else {
-                    None
-                };
-                let snowball_hit_particles = if update.event_id == THROWN_ITEM_HIT_EVENT_ID {
-                    self.snowball_hit_particle_state(update.entity_id)
-                } else {
-                    None
-                };
-                let thrown_egg_hit_particles = if update.event_id == THROWN_ITEM_HIT_EVENT_ID {
-                    self.thrown_egg_hit_particle_state(update.entity_id)
-                } else {
-                    None
-                };
-                let ravager_roar_particles = if update.event_id == RAVAGER_ROAR_EVENT_ID {
-                    self.ravager_roar_particle_state(update.entity_id)
-                } else {
-                    None
-                };
-                let witch_magic_particles = if update.event_id == WITCH_MAGIC_EVENT_ID {
-                    self.witch_magic_particle_state(update.entity_id)
-                } else {
-                    None
-                };
+                let animal_love_particles =
+                    if event_kind == Some(VanillaEntityEventKind::AnimalLove) {
+                        self.animal_love_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
+                let allay_duplication_particles =
+                    if event_kind == Some(VanillaEntityEventKind::AllayDuplication) {
+                        self.allay_duplication_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
+                let snowball_hit_particles =
+                    if event_kind == Some(VanillaEntityEventKind::SnowballHit) {
+                        self.snowball_hit_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
+                let thrown_egg_hit_particles =
+                    if event_kind == Some(VanillaEntityEventKind::ThrownEggHit) {
+                        self.thrown_egg_hit_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
+                let ravager_roar_particles =
+                    if event_kind == Some(VanillaEntityEventKind::RavagerRoar) {
+                        self.ravager_roar_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
+                let witch_magic_particles =
+                    if event_kind == Some(VanillaEntityEventKind::WitchMagic) {
+                        self.witch_magic_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
                 let living_entity_portal_particles =
-                    if update.event_id == LIVING_ENTITY_PORTAL_EVENT_ID {
+                    if event_kind == Some(VanillaEntityEventKind::LivingPortal) {
                         self.living_entity_portal_particle_state(update.entity_id)
                     } else {
                         None
                     };
-                let living_entity_poof_particles = if update.event_id == LIVING_ENTITY_POOF_EVENT_ID
-                {
-                    self.living_entity_poof_particle_state(update.entity_id)
-                } else {
-                    None
+                let living_entity_poof_particles =
+                    if event_kind == Some(VanillaEntityEventKind::LivingPoof) {
+                        self.living_entity_poof_particle_state(update.entity_id)
+                    } else {
+                        None
+                    };
+                let living_entity_item_break = match event_kind {
+                    Some(VanillaEntityEventKind::LivingItemBreak(slot)) => {
+                        self.living_entity_item_break_state(update.entity_id, slot)
+                    }
+                    _ => None,
                 };
-                let living_entity_item_break = living_entity_item_break_slot(update.event_id)
-                    .and_then(|slot| self.living_entity_item_break_state(update.entity_id, slot));
-                let mob_spawn_particles = if update.event_id == MOB_SPAWN_EVENT_ID {
+                let mob_spawn_particles = if event_kind == Some(VanillaEntityEventKind::MobSpawn) {
                     self.mob_spawn_particle_state(update.entity_id)
                 } else {
                     None
                 };
                 let living_entity_drown_particles =
-                    if update.event_id == LIVING_ENTITY_DROWN_EVENT_ID {
+                    if event_kind == Some(VanillaEntityEventKind::LivingDrown) {
                         self.living_entity_drown_particle_state(update.entity_id)
                     } else {
                         None
                     };
-                let honey_block_particles = match update.event_id {
-                    HONEY_BLOCK_SLIDE_EVENT_ID => self.honey_block_particle_state(
+                let honey_block_particles = match event_kind {
+                    Some(VanillaEntityEventKind::HoneySlide) => self.honey_block_particle_state(
                         update.entity_id,
                         HONEY_BLOCK_SLIDE_PARTICLE_COUNT,
                         false,
                     ),
-                    HONEY_BLOCK_JUMP_EVENT_ID => self.honey_block_particle_state(
+                    Some(VanillaEntityEventKind::HoneyJump) => self.honey_block_particle_state(
                         update.entity_id,
                         HONEY_BLOCK_JUMP_PARTICLE_COUNT,
                         true,
@@ -544,7 +526,7 @@ impl WorldStore {
                     _ => None,
                 };
                 let applied = self.apply_entity_event(update);
-                if applied && update.event_id == FISHING_HOOK_PULL_EVENT_ID {
+                if applied && event_kind == Some(VanillaEntityEventKind::FishingHookPull) {
                     let _ = self.apply_fishing_hook_pull(update.entity_id);
                 }
                 if let Some(state) = firework_explosion_particles {
@@ -621,7 +603,7 @@ impl WorldStore {
                         effects.honey_block_particles(self, state);
                     }
                 }
-                if applied && update.event_id == 35 {
+                if applied && event_kind == Some(VanillaEntityEventKind::TotemUse) {
                     effects.tracking_emitter_particles(
                         self,
                         update.entity_id,
@@ -632,17 +614,12 @@ impl WorldStore {
                         effects.positioned_sound(&state);
                     }
                 }
-                if applied
-                    && matches!(
-                        update.event_id,
-                        GUARDIAN_ATTACK_SOUND_EVENT_ID | SNIFFER_DIGGING_SOUND_EVENT_ID
-                    )
-                {
-                    let state = match update.event_id {
-                        GUARDIAN_ATTACK_SOUND_EVENT_ID => {
+                if applied {
+                    let state = match event_kind {
+                        Some(VanillaEntityEventKind::GuardianAttackSound) => {
                             self.guardian_attack_sound_for_entity(update.entity_id)
                         }
-                        SNIFFER_DIGGING_SOUND_EVENT_ID => {
+                        Some(VanillaEntityEventKind::SnifferDiggingSound) => {
                             self.sniffer_digging_sound_for_entity(update.entity_id)
                         }
                         _ => None,
@@ -655,7 +632,16 @@ impl WorldStore {
                         effects.entity_sound(&state, position);
                     }
                 }
-                if applied && update.event_id == ATTACK_SOUND_EVENT_ID {
+                if applied
+                    && matches!(
+                        event_kind,
+                        Some(
+                            VanillaEntityEventKind::IronGolemAttack
+                                | VanillaEntityEventKind::RavagerAttack
+                                | VanillaEntityEventKind::EvokerFangsAttack
+                        )
+                    )
+                {
                     if let Some(state) = self.entity_attack_event_sound_for_entity(update.entity_id)
                     {
                         effects.positioned_sound(&state);
@@ -668,14 +654,14 @@ impl WorldStore {
                         effects.positioned_sound(&state);
                     }
                 }
-                if applied && update.event_id == LIVING_ENTITY_DEATH_EVENT_ID {
+                if applied && event_kind == Some(VanillaEntityEventKind::LivingDeath) {
                     if let Some(state) =
                         self.living_death_sound_for_entity(update.entity_id, || random.next_float())
                     {
                         effects.positioned_sound(&state);
                     }
                 }
-                if applied && update.event_id == ZOMBIE_VILLAGER_CURE_EVENT_ID {
+                if applied && event_kind == Some(VanillaEntityEventKind::ZombieVillagerCure) {
                     if let Some(state) = self
                         .zombie_villager_cure_sound_for_entity(update.entity_id, || {
                             random.next_float()
@@ -684,12 +670,12 @@ impl WorldStore {
                         effects.positioned_sound(&state);
                     }
                 }
-                if applied && update.event_id == ARMOR_STAND_HIT_EVENT_ID {
+                if applied && event_kind == Some(VanillaEntityEventKind::ArmorStandHit) {
                     if let Some(state) = self.armor_stand_hit_sound_for_entity(update.entity_id) {
                         effects.positioned_sound(&state);
                     }
                 }
-                if applied && update.event_id == ARMADILLO_PEEK_EVENT_ID {
+                if applied && event_kind == Some(VanillaEntityEventKind::ArmadilloPeek) {
                     if let Some(state) = self.armadillo_peek_sound_for_entity(update.entity_id) {
                         effects.positioned_sound(&state);
                     }
@@ -1168,20 +1154,6 @@ impl WorldStore {
     }
 }
 
-fn living_entity_item_break_slot(event_id: i8) -> Option<EquipmentSlot> {
-    match event_id {
-        LIVING_ENTITY_MAIN_HAND_BREAK_EVENT_ID => Some(EquipmentSlot::MainHand),
-        LIVING_ENTITY_OFF_HAND_BREAK_EVENT_ID => Some(EquipmentSlot::OffHand),
-        LIVING_ENTITY_HEAD_BREAK_EVENT_ID => Some(EquipmentSlot::Head),
-        LIVING_ENTITY_CHEST_BREAK_EVENT_ID => Some(EquipmentSlot::Chest),
-        LIVING_ENTITY_LEGS_BREAK_EVENT_ID => Some(EquipmentSlot::Legs),
-        LIVING_ENTITY_FEET_BREAK_EVENT_ID => Some(EquipmentSlot::Feet),
-        LIVING_ENTITY_BODY_BREAK_EVENT_ID => Some(EquipmentSlot::Body),
-        LIVING_ENTITY_SADDLE_BREAK_EVENT_ID => Some(EquipmentSlot::Saddle),
-        _ => None,
-    }
-}
-
 /// Vanilla camera-relative audio position: the current camera entity when it
 /// is not following the player, otherwise the local player's eye position.
 fn camera_audio_position(world: &WorldStore) -> Option<ProtocolVec3d> {
@@ -1644,12 +1616,53 @@ mod tests {
         VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
     use bbb_protocol::item_types::{VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID};
+
+    // Wire-event fixture ids. Production dispatch consumes the source-generated handler catalog
+    // through `VanillaEntityEventKind` and does not own a parallel numeric table.
+    const ARROW_EFFECT_CLEAR_EVENT_ID: i8 = 0;
+    const ATTACK_SOUND_EVENT_ID: i8 = 4;
+    const THROWN_ITEM_HIT_EVENT_ID: i8 = 3;
+    const LIVING_ENTITY_DEATH_EVENT_ID: i8 = 3;
+    const TAMING_FAILED_EVENT_ID: i8 = 6;
+    const TAMING_SUCCEEDED_EVENT_ID: i8 = 7;
+    const VILLAGER_HEART_EVENT_ID: i8 = 12;
+    const VILLAGER_ANGRY_EVENT_ID: i8 = 13;
+    const VILLAGER_HAPPY_EVENT_ID: i8 = 14;
+    const WITCH_MAGIC_EVENT_ID: i8 = 15;
+    const ZOMBIE_VILLAGER_CURE_EVENT_ID: i8 = 16;
+    const ANIMAL_LOVE_EVENT_ID: i8 = 18;
+    const MOB_SPAWN_EVENT_ID: i8 = 20;
+    const GUARDIAN_ATTACK_SOUND_EVENT_ID: i8 = 21;
+    const FISHING_HOOK_PULL_EVENT_ID: i8 = 31;
+    const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
+    const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
+    const OCELOT_TRUSTING_FAILED_EVENT_ID: i8 = 40;
+    const OCELOT_TRUSTING_SUCCEEDED_EVENT_ID: i8 = 41;
+    const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
+    const FOX_EAT_EVENT_ID: i8 = 45;
+    const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
+    const LIVING_ENTITY_MAIN_HAND_BREAK_EVENT_ID: i8 = 47;
+    const LIVING_ENTITY_OFF_HAND_BREAK_EVENT_ID: i8 = 48;
+    const LIVING_ENTITY_HEAD_BREAK_EVENT_ID: i8 = 49;
+    const LIVING_ENTITY_CHEST_BREAK_EVENT_ID: i8 = 50;
+    const LIVING_ENTITY_LEGS_BREAK_EVENT_ID: i8 = 51;
+    const LIVING_ENTITY_FEET_BREAK_EVENT_ID: i8 = 52;
+    const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
+    const HONEY_BLOCK_JUMP_EVENT_ID: i8 = 54;
+    const LIVING_ENTITY_POOF_EVENT_ID: i8 = 60;
+    const SNIFFER_DIGGING_SOUND_EVENT_ID: i8 = 63;
+    const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
+    const LIVING_ENTITY_BODY_BREAK_EVENT_ID: i8 = 65;
+    const LIVING_ENTITY_DROWN_EVENT_ID: i8 = 67;
+    const LIVING_ENTITY_SADDLE_BREAK_EVENT_ID: i8 = 68;
+    const RAVAGER_ROAR_EVENT_ID: i8 = 69;
 
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, DamageEvent, EntityAnimation,
@@ -5128,6 +5141,24 @@ mod tests {
                     z: -2.5,
                 },
             )),
+            PlayClientbound::AddEntity(add_entity(
+                98,
+                VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+                Vec3d {
+                    x: 2.0,
+                    y: 64.0,
+                    z: 3.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                99,
+                VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+                Vec3d {
+                    x: 3.0,
+                    y: 64.0,
+                    z: 4.0,
+                },
+            )),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 96,
                 event_id: HONEY_BLOCK_SLIDE_EVENT_ID,
@@ -5139,6 +5170,16 @@ mod tests {
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 96,
                 event_id: HONEY_BLOCK_JUMP_EVENT_ID,
+            }),
+            // Snowball and MinecartSpawner do not forward unhandled ids to Entity, so event 53
+            // cannot reach Entity's honey-slide consumer for either runtime class.
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 98,
+                event_id: HONEY_BLOCK_SLIDE_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 99,
+                event_id: HONEY_BLOCK_SLIDE_EVENT_ID,
             }),
             PlayClientbound::EntityEvent(EntityEvent {
                 entity_id: 404,
@@ -5191,7 +5232,7 @@ mod tests {
                 z: -2.5,
             }
         );
-        assert_eq!(store.counters().entity_events_applied, 3);
+        assert_eq!(store.counters().entity_events_applied, 5);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

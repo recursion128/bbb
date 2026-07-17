@@ -18536,3 +18536,17 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   declaration's nearest superclass handler. World can now resolve a runtime entity/event pair to
   the exact direct or delegated declaration while honoring `super` forwarding and the
   non-forwarding Snowball, ThrownEgg, and MinecartSpawner cutoffs.
+
+# 2026-07-17: Close entity event consumer reverse coverage
+
+- Added a single semantic `VanillaEntityEventKind` classifier over the generated 35-declaration
+  catalog. All 66 direct/delegated declaration-event pairs and the three
+  `ClientPacketListener` special ids now have a consumer, and a reverse test fails when a generated
+  declaration/id lacks one.
+- World animation/state and shared play side effects consume resolved kinds rather than dispatching
+  directly on raw ids. This preserves inherited Entity/Living/Mob behavior, prevents Snowball,
+  ThrownEgg, and MinecartSpawner from leaking unhandled ids into superclass particle consumers, and
+  keeps packet fixture ids out of production dispatch.
+- `MinecartSpawner.handleEntityEvent(1)` now closes the only missing delegated state mutation by
+  applying `BaseSpawner.onEventTriggered`'s client-side `spawnDelay = minSpawnDelay` over the
+  vanilla 20/200 defaults.

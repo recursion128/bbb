@@ -4016,28 +4016,12 @@ pub(crate) fn vanilla_entity_metadata_handle_entity_event_owner_for_event(
     }
 }
 
-/// Returns whether entity event dispatch reaches `Squid.handleEntityEvent(byte)` first.
-pub(crate) fn vanilla_entity_metadata_type_uses_squid_entity_event_handler(
-    entity_type_id: i32,
-) -> bool {
-    vanilla_entity_metadata_handle_entity_event_owner(entity_type_id)
-        == Some("net.minecraft.world.entity.animal.squid.Squid")
-}
-
 /// Returns whether entity event dispatch reaches `Ocelot.handleEntityEvent(byte)` first.
 pub(crate) fn vanilla_entity_metadata_type_uses_ocelot_entity_event_handler(
     entity_type_id: i32,
 ) -> bool {
     vanilla_entity_metadata_handle_entity_event_owner(entity_type_id)
         == Some("net.minecraft.world.entity.animal.feline.Ocelot")
-}
-
-/// Returns whether entity event dispatch reaches `Wolf.handleEntityEvent(byte)` first.
-pub(crate) fn vanilla_entity_metadata_type_uses_wolf_entity_event_handler(
-    entity_type_id: i32,
-) -> bool {
-    vanilla_entity_metadata_handle_entity_event_owner(entity_type_id)
-        == Some("net.minecraft.world.entity.animal.wolf.Wolf")
 }
 
 /// Returns whether entity event dispatch reaches `FishingHook.handleEntityEvent(byte)` first.
@@ -4725,16 +4709,14 @@ mod tests {
             ]
         );
         for entity_type_id in squid_dispatch_types {
-            assert!(vanilla_entity_metadata_type_uses_squid_entity_event_handler(entity_type_id));
             assert_eq!(
                 vanilla_entity_metadata_handle_entity_event_owner(entity_type_id),
                 Some(SQUID_OWNER)
             );
         }
-        assert!(
-            !vanilla_entity_metadata_type_uses_squid_entity_event_handler(
-                VANILLA_ENTITY_TYPE_GUARDIAN_ID
-            )
+        assert_ne!(
+            vanilla_entity_metadata_handle_entity_event_owner(VANILLA_ENTITY_TYPE_GUARDIAN_ID),
+            Some(SQUID_OWNER)
         );
         assert_eq!(vanilla_entity_metadata_handle_entity_event_owner(-1), None);
         assert_eq!(
@@ -4761,13 +4743,9 @@ mod tests {
             vanilla_entity_metadata_handle_entity_event_owner(VANILLA_ENTITY_TYPE_WOLF_ID),
             Some(WOLF_OWNER)
         );
-        assert!(vanilla_entity_metadata_type_uses_wolf_entity_event_handler(
-            VANILLA_ENTITY_TYPE_WOLF_ID
-        ));
-        assert!(
-            !vanilla_entity_metadata_type_uses_wolf_entity_event_handler(
-                VANILLA_ENTITY_TYPE_CAT_ID
-            )
+        assert_ne!(
+            vanilla_entity_metadata_handle_entity_event_owner(VANILLA_ENTITY_TYPE_CAT_ID),
+            Some(WOLF_OWNER)
         );
         assert_eq!(
             vanilla_entity_metadata_handle_entity_event_owner(

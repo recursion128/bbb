@@ -11,23 +11,12 @@ use super::schema::{
     vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_type_uses_player_entity_event_handler,
 };
+use super::{vanilla_entity_event_kind, VanillaEntityEventKind};
 
 /// Vanilla `ClientboundAnimatePacket.SWING_MAIN_HAND` action id: the entity swings its main hand.
 const SWING_MAIN_HAND_ACTION: u8 = 0;
 /// Vanilla `ClientboundAnimatePacket.SWING_OFF_HAND` action id: the entity swings its off hand.
 const SWING_OFF_HAND_ACTION: u8 = 3;
-/// Vanilla `LivingEntity.handleEntityEvent(55)` swaps the main- and off-hand equipment stacks.
-const LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID: i8 = 55;
-/// Vanilla `LivingEntity.handleEntityEvent(3)` plays the death sound and, for every non-Player
-/// living entity, sets health to zero before entering the client death sequence.
-const LIVING_ENTITY_DEATH_EVENT_ID: i8 = 3;
-/// Vanilla `Player.handleEntityEvent(9)` completes the local player's active item use.
-const PLAYER_FINISH_USING_ITEM_EVENT_ID: i8 = 9;
-/// Vanilla `Player.handleEntityEvent(22)` enables the local player's reduced-debug gate.
-const PLAYER_ENABLE_REDUCED_DEBUG_EVENT_ID: i8 = 22;
-/// Vanilla `Player.handleEntityEvent(23)` disables the local player's reduced-debug gate.
-const PLAYER_DISABLE_REDUCED_DEBUG_EVENT_ID: i8 = 23;
-
 impl WorldStore {
     pub fn apply_entity_animation(&mut self, packet: ProtocolEntityAnimation) -> bool {
         self.counters.entity_animation_updates_received += 1;
@@ -76,10 +65,14 @@ impl WorldStore {
             self.counters.entity_events_ignored += 1;
             return false;
         };
+        let event_kind = self
+            .entities
+            .entity_type_id(packet.entity_id)
+            .and_then(|entity_type_id| vanilla_entity_event_kind(entity_type_id, packet.event_id));
         let _ = self
             .entities
             .apply_client_animation_entity_event(packet.entity_id, packet.event_id);
-        if packet.event_id == LIVING_ENTITY_DEATH_EVENT_ID {
+        if event_kind == Some(VanillaEntityEventKind::LivingDeath) {
             let _ = self
                 .entities
                 .apply_client_living_death_entity_event(packet.entity_id);
@@ -89,8 +82,8 @@ impl WorldStore {
             .entity_type_id(packet.entity_id)
             .is_some_and(vanilla_entity_metadata_type_uses_player_entity_event_handler)
         {
-            match packet.event_id {
-                PLAYER_FINISH_USING_ITEM_EVENT_ID
+            match event_kind {
+                Some(VanillaEntityEventKind::PlayerFinishUsingItem)
                     if self.local_player_id() == Some(packet.entity_id) =>
                 {
                     // `ServerPlayer.completeUsingItem` sends event 9 only to the completing
@@ -98,13 +91,13 @@ impl WorldStore {
                     // their own packets; this event closes the local use/movement/render gates.
                     let _ = self.take_local_using_item();
                 }
-                PLAYER_ENABLE_REDUCED_DEBUG_EVENT_ID => {
+                Some(VanillaEntityEventKind::PlayerEnableReducedDebug) => {
                     let _ = self.set_local_player_reduced_debug_info_from_entity_event(
                         packet.entity_id,
                         true,
                     );
                 }
-                PLAYER_DISABLE_REDUCED_DEBUG_EVENT_ID => {
+                Some(VanillaEntityEventKind::PlayerDisableReducedDebug) => {
                     let _ = self.set_local_player_reduced_debug_info_from_entity_event(
                         packet.entity_id,
                         false,
@@ -113,7 +106,7 @@ impl WorldStore {
                 _ => {}
             }
         }
-        if packet.event_id == LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID {
+        if event_kind == Some(VanillaEntityEventKind::LivingSwapHandItems) {
             let _ = self.apply_living_swap_hand_items_event(packet.entity_id);
         }
         self.counters.entity_events_applied += 1;

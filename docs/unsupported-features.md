@@ -146,14 +146,8 @@ Owner: `bbb-protocol`
 Owner: `scripts/` + each generated catalog's semantic crate
 
 - Complete the remaining cross-crate ordinal/serializer-id and entity
-  renderer-class/event-dispatch membership discovery audit.
+  renderer-class membership discovery audit.
   Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
-  The nearest `handleEntityEvent(byte)` declaration owner for every fixed entity runtime class must
-  remain extracted into the metadata class catalog; inherited event-family dispatch must consume
-  that owner rather than borrowing a renderer/model membership or restoring entity-type lists. The
-  source-generated event-handler catalog also inventories all 35 declarations, their direct fixed
-  event ids, `super` fallback, and the `MinecartSpawner -> BaseSpawner.onEventTriggered` delegated
-  event id; future reverse coverage must consume that catalog rather than maintaining another list.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression
@@ -1326,38 +1320,6 @@ back into a todo. Do not delete these.
   including Turtle packets forced by server state; retaining `SetEntityLink` state
   without the visible rope does not close the presentation gap.
 
-### Entity coverage matrix events particles and audio
-
-- Complete the reverse audit from every client-side entity event override and
-  listener special case to canonical state plus applicable animation, particle,
-  and audio side effects.
-- `VANILLA_ENTITY_EVENT_HANDLERS_26_1` now provides the authoritative declaration
-  side of that audit: 35 source-derived handlers with direct ids, delegated ids,
-  and `super` fallback. The remaining declaration-to-consumer ownership audit is
-  still open, so this catalog alone does not close the reverse audit.
-  The consumer-side guard must also prove inherited superclass events remain reachable only
-  through declarations that forward unhandled ids to `super`, while non-forwarding handlers
-  mask the superclass fallback; every resolved declaration/id still needs an actual bbb consumer
-  owner rather than mere reachability.
-- All three `ClientPacketListener.handleEntityEvent` special cases now have native
-  consumers. Event `21` starts Guardian's hostile, looping, non-attenuated attack
-  instance and updates its squared attack-scale volume plus `0.7 + 0.5 * scale`
-  pitch each audio tick. Event `63` starts Sniffer's neutral, entity-following
-  digging instance and stops it when the synced state leaves DIGGING/SEARCHING.
-  Both honor the entity silent gate and removal; event `35` retains the totem
-  tracking emitter, entity-source sound, and local activation presentation.
-- `FishingHook.handleEntityEvent(31)` now resolves the generated override owner,
-  the synced `entityId + 1` hooked target, and the add-entity owner id before
-  adding vanilla's `(ownerPos - hookPos) * 0.1` pull to the hooked local player.
-  This closes that override only; the full reverse audit remains open.
-- `Player.handleEntityEvent(9/22/23)` now follows the generated Player override
-  owner. Event `9`, sent only to the completing `ServerPlayer` connection,
-  clears the local canonical item-use hand/timer and its movement/render gates;
-  authoritative stack and effect changes remain packet-owned. Events `22/23`
-  update the local reduced-debug gate, immediately filtering the existing
-  debug-entry, hitbox, chunk-border, inspect, and location-copy consumers.
-  Remote-player events change neither local gate.
-
 ### Entity coverage matrix save and debug
 
 - Close family-specific Shift-local F3+I projections using only synced,
@@ -1365,12 +1327,6 @@ back into a todo. Do not delete these.
   targets, timers, RNG, AI, and authoritative save fields must remain absent or
   carry a narrow vanilla-backed not-applicable decision.
 
-- **Entity-event subclass dispatch audit.** Map every entry in the generated
-  vanilla 26.1 `handleEntityEvent(byte)` declaration catalog plus the listener-special
-  cases to bbb's animation/particle/audio/presentation owner, and add a consumer-side
-  reverse coverage test. Existing focused mappings and the declaration inventory are
-  not proof that every subclass event is covered; server-authoritative effects stay
-  out of this client-only matrix.
 - **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
   distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**

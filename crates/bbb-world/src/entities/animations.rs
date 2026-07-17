@@ -40,8 +40,6 @@ use super::schema::{
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
-    vanilla_entity_metadata_type_uses_squid_entity_event_handler,
-    vanilla_entity_metadata_type_uses_wolf_entity_event_handler,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,
     vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type,
@@ -65,7 +63,7 @@ use super::schema::{
 use super::{
     is_vanilla_boat_type, is_vanilla_vehicle_entity_type, vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type, vanilla_entity_type_is_squid,
-    EntityTransform, EntityVec3, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    EntityTransform, EntityVec3, VanillaEntityEventKind, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
 };
 use bbb_protocol::entity_types::*;
 
@@ -78,8 +76,6 @@ const BOAT_PADDLE_ADVANCE_PER_TICK: f32 = std::f32::consts::PI / 8.0;
 /// `PIERCE_LEVEL` (`9`). `onSyncedDataUpdated(IN_GROUND)` starts `shakeTime = 7`
 /// when the arrow is no longer on its first tick and the current shake has settled.
 const ARROW_SHAKE_TICKS: i32 = 7;
-/// Vanilla `ArmorStand.handleEntityEvent(32)`: client-side hit wobble.
-const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
 /// Vanilla `ArmorStand.WOBBLE_TIME`.
 const ARMOR_STAND_WOBBLE_TIME: i32 = 5;
 // Vanilla `EntityType.ELDER_GUARDIAN` / `EntityType.GUARDIAN` both share
@@ -104,9 +100,6 @@ const PANDA_ROLL_COUNTER_MAX: i32 = 32;
 /// Vanilla `Armadillo.ArmadilloState.SCARED.animationDuration()`; the first SCARED
 /// setup tick starts `peekAnimationState` and `fastForward`s it by this many ticks.
 const ARMADILLO_STATE_SCARED_ANIMATION_TICKS: i32 = 50;
-/// Vanilla `Armadillo.handleEntityEvent(64)`: the client marks `peekReceivedClient`
-/// so the next `setupAnimationStates()` restarts the peek animation.
-const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
 const POLAR_BEAR_STAND_ANIMATION_TICKS: f32 = 6.0;
 /// Vanilla `Creeper.DATA_SWELL_DIR` (synced fuse direction, default `-1`) and
 /// `DATA_IS_IGNITED`; the client advances `swell` toward `maxSwell` while the
@@ -154,7 +147,6 @@ const PLAYER_CLOAK_WALK_DISTANCE_SCALE: f32 = 0.6;
 /// Vanilla `Rabbit.handleEntityEvent`: event `1` (`spawnSprintParticle`) also seeds the client-side
 /// hop reconstruction — `jumpDuration = 15; jumpTicks = 0;` — so the `hopAnimationState` plays for
 /// one 15-tick (0.75s, exactly one loop of `RabbitAnimation.HOP`) jump arc.
-const RABBIT_JUMP_EVENT_ID: i8 = 1;
 /// Vanilla `Rabbit.startJumping` / `handleEntityEvent(1)`: `this.jumpDuration = 15`.
 const RABBIT_JUMP_DURATION: i32 = 15;
 /// Vanilla `Axolotl`'s four animators are each `BinaryAnimator(10, IN_OUT_SINE)`, so every factor
@@ -181,8 +173,6 @@ const FOX_MAX_CROUCH_AMOUNT: f32 = 5.0;
 /// Vanilla `LivingEntity.hurtDuration`: the hurt animation (and red damage
 /// overlay) runs for 10 client ticks after a hurt animation or damage event.
 const HURT_ANIMATION_DURATION: i32 = 10;
-/// Vanilla `LivingEntity.handleEntityEvent(2)`: start kinetic weapon hit feedback.
-const LIVING_ENTITY_KINETIC_HIT_EVENT_ID: i8 = 2;
 /// Vanilla `LivingEntity.onKineticHit`: ignore repeated hit feedback until more
 /// than ten game ticks have elapsed since the last accepted hit.
 const KINETIC_HIT_FEEDBACK_RETRIGGER_TICKS: i32 = 10;
@@ -205,15 +195,9 @@ const ENDER_DRAGON_DEATH_ANIMATION_MAX_TICKS: i32 = 200;
 /// Vanilla `Sheep.EAT_ANIMATION_TICKS`: the eat-grass animation runs for 40
 /// client ticks after entity event `10`.
 const SHEEP_EAT_ANIMATION_TICKS: i32 = 40;
-/// Vanilla `Sheep.handleEntityEvent` triggers the eat-grass animation on event
-/// id `10` (`EntityEvent.EAT_GRASS`).
-const SHEEP_EAT_GRASS_EVENT_ID: i8 = 10;
 /// Vanilla `Warden`: the client decrements `tendrilAnimation` from `10` toward
 /// `0` each tick; `getTendrilAnimation` divides the lerped value by `10`.
 const WARDEN_TENDRIL_ANIMATION_TICKS: i32 = 10;
-/// Vanilla `Warden.handleEntityEvent` resets `tendrilAnimation` to `10` on event
-/// id `61` (a received vibration signal).
-const WARDEN_TENDRIL_EVENT_ID: i8 = 61;
 /// Vanilla `Warden`: the client resets `heartAnimation` to `10` on each heartbeat
 /// and decrements it toward `0` each tick; `getHeartAnimation` divides the lerped
 /// value by `10`. Shares the `tendrilAnimation` range, hence the same `10` cap.
@@ -223,58 +207,34 @@ const WARDEN_HEART_ANIMATION_TICKS: i32 = 10;
 /// Vanilla `AngerLevel.ANGRY.getMinimumAnger()`: the anger at which the heartbeat
 /// reaches its fastest, used to normalise `getHeartBeatDelay`.
 const WARDEN_ANGRY_MINIMUM_ANGER: i32 = 80;
-/// Vanilla `Warden.handleEntityEvent(4)`: `roarAnimationState.stop()` then
-/// `attackAnimationState.start(tickCount)` — the melee attack swing (the 0.33333s
-/// `WARDEN_ATTACK` keyframe animation), which also cancels any running roar.
-const WARDEN_ATTACK_EVENT_ID: i8 = 4;
-/// Vanilla `Warden.handleEntityEvent(62)`: `sonicBoomAnimationState.start(tickCount)`
-/// — the sonic-boom charge/blast (the 3.0s `WARDEN_SONIC_BOOM` keyframe animation).
-const WARDEN_SONIC_BOOM_EVENT_ID: i8 = 62;
 /// The "not in a triggered pose" sentinel for [`WardenCombatAnimationState::prev_pose`]:
 /// no synced `DATA_POSE` has been observed yet, so the first ROARING/SNIFFING pose is a
 /// fresh transition that starts the matching timer.
 const WARDEN_POSE_UNSET: i32 = -1;
-/// Vanilla `Squid.handleEntityEvent` resets `tentacleMovement` to `0` on event id
-/// `19` (`EntityEvent.SQUID_RESET_MOVEMENT`, broadcast each time the server-side
-/// `tentacleMovement` wraps past `2π`). Without it the client tentacles freeze at
-/// `2π` after the first cycle.
-const SQUID_RESET_MOVEMENT_EVENT_ID: i8 = 19;
-/// Vanilla `Wolf.handleEntityEvent`: event `8` starts the drying shake and event `56` cancels it.
-const WOLF_START_SHAKING_EVENT_ID: i8 = 8;
-const WOLF_CANCEL_SHAKING_EVENT_ID: i8 = 56;
 /// Vanilla `Goat.handleEntityEvent`: event `58` sets `isLoweringHead = true` (the goat begins a ram),
 /// event `59` clears it. The client `aiStep` then advances `lowerHeadTick` toward / away from the cap.
-const GOAT_LOWER_HEAD_EVENT_ID: i8 = 58;
-const GOAT_RAISE_HEAD_EVENT_ID: i8 = 59;
 /// Vanilla `Goat.aiStep` clamps `lowerHeadTick` to `[0, 20]`: `++` while lowering, `-= 2` otherwise.
 /// `getRammingXHeadRot` normalises it by this cap.
 const GOAT_LOWER_HEAD_MAX_TICKS: i32 = 20;
 /// Vanilla `IronGolem.handleEntityEvent`: event `4` sets `attackAnimationTick = 10` (the two-fisted
 /// smash), event `11` sets `offerFlowerTick = 400` (offering a poppy to a villager), event `34` clears
 /// it. Both counters decrement each client `aiStep` toward `0`.
-const IRON_GOLEM_ATTACK_EVENT_ID: i8 = 4;
-const IRON_GOLEM_OFFER_FLOWER_EVENT_ID: i8 = 11;
-const IRON_GOLEM_STOP_OFFER_FLOWER_EVENT_ID: i8 = 34;
 const IRON_GOLEM_ATTACK_TICKS: i32 = 10;
 const IRON_GOLEM_OFFER_FLOWER_TICKS: i32 = 400;
 /// Vanilla `Ravager.handleEntityEvent`: event `4` sets `attackTick = 10` (the bite), event `39` sets
 /// `stunnedTick = 40` (a shield-block stun). The roar is not event-driven — when `stunnedTick` decays to
 /// `0` the client `aiStep` sets `roarTick = 20`, so a roar always follows a stun.
-const RAVAGER_ATTACK_EVENT_ID: i8 = 4;
-const RAVAGER_STUN_EVENT_ID: i8 = 39;
 const RAVAGER_ATTACK_TICKS: i32 = 10;
 const RAVAGER_STUN_TICKS: i32 = 40;
 const RAVAGER_ROAR_TICKS: i32 = 20;
 const RAVAGER_STUN_PARTICLE_RANDOM_SALT: i64 = 0x5A17;
 /// Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event `4` sets `attackAnimationRemainingTicks = 10` (the
 /// headbutt), decremented each client tick. `HoglinModel.setupAnim` drives the head-down ram from it.
-const HOGLIN_ATTACK_EVENT_ID: i8 = 4;
 const HOGLIN_ATTACK_TICKS: i32 = 10;
 
 /// Vanilla `EvokerFangs.handleEntityEvent`: event `4` sets `clientSideAttackStarted = true`, after which
 /// `EvokerFangs.tick` decrements `lifeTicks` (field initializer `22`) each client tick. The
 /// `getAnimationProgress` ramp built from `lifeTicks` drives `EvokerFangsModel.setupAnim`.
-const EVOKER_FANGS_ATTACK_EVENT_ID: i8 = 4;
 const EVOKER_FANGS_LIFE_TICKS: i32 = 22;
 const EVOKER_FANGS_CRIT_PARTICLE_TICK: i32 = 14;
 const EVOKER_FANGS_CRIT_PARTICLE_COUNT: usize = 12;
@@ -296,14 +256,11 @@ const COPPER_GOLEM_IDLE_TIMEOUT_BASE_TICKS: i32 = 200;
 /// lunge), event `66` sets `invulnerabilityAnimationRemainingTicks = 8` (the heart-bound stagger).
 /// Both decrement each client tick in `aiStep`, and `setupAnimationStates` `animateWhen`s the
 /// matching keyframe one-shot on `ticks > 0`.
-const CREAKING_ATTACK_EVENT_ID: i8 = 4;
-const CREAKING_INVULNERABLE_EVENT_ID: i8 = 66;
 const CREAKING_ATTACK_DURATION: i32 = 15;
 const CREAKING_INVULNERABLE_DURATION: i32 = 8;
 /// Vanilla `MinecartTNT.handleEntityEvent(10)` calls `primeFuse`, which sets the client-side
 /// `fuse` counter to 80. `TntMinecartRenderer.extractRenderState` projects it as
 /// `fuse - partialTicks + 1.0`.
-const TNT_MINECART_PRIME_EVENT_ID: i8 = 10;
 const TNT_MINECART_FUSE_TICKS: i32 = 80;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -464,6 +421,16 @@ pub struct EntityClientAnimationState {
     pub walk_animation: Option<WalkAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub minecart_tnt_fuse: Option<MinecartTntFuseAnimationState>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub minecart_spawner: Option<MinecartSpawnerClientState>,
+}
+
+/// The client-observable `BaseSpawner` state owned by `MinecartSpawner`. Vanilla constructs it
+/// with delay `20` / minimum delay `200`; delegated entity event `1` resets delay to the minimum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MinecartSpawnerClientState {
+    pub spawn_delay: i32,
+    pub min_spawn_delay: i32,
 }
 
 /// Vanilla `VehicleEntity` hurt-roll state as consumed by `AbstractBoatRenderer` and
@@ -4149,82 +4116,81 @@ impl EntityClientAnimationState {
         &mut self,
         entity_type_id: i32,
         entity_id: i32,
-        event_id: i8,
+        event_kind: VanillaEntityEventKind,
     ) {
-        if vanilla_living_entity_type(entity_type_id)
-            && event_id == LIVING_ENTITY_KINETIC_HIT_EVENT_ID
-        {
-            // Vanilla `LivingEntity.handleEntityEvent(2)` calls `onKineticHit()`, which
-            // refreshes `lastKineticHitFeedbackTime` only when more than ten game ticks
-            // elapsed since the previous accepted feedback.
-            if self
-                .kinetic_hit_feedback
-                .is_none_or(|state| state.elapsed_ticks > KINETIC_HIT_FEEDBACK_RETRIGGER_TICKS)
-            {
-                self.kinetic_hit_feedback =
-                    Some(KineticHitFeedbackAnimationState { elapsed_ticks: 0 });
+        match event_kind {
+            VanillaEntityEventKind::LivingKineticHit => {
+                // Vanilla `LivingEntity.handleEntityEvent(2)` calls `onKineticHit()`, which
+                // refreshes `lastKineticHitFeedbackTime` only when more than ten game ticks
+                // elapsed since the previous accepted feedback.
+                if self
+                    .kinetic_hit_feedback
+                    .is_none_or(|state| state.elapsed_ticks > KINETIC_HIT_FEEDBACK_RETRIGGER_TICKS)
+                {
+                    self.kinetic_hit_feedback =
+                        Some(KineticHitFeedbackAnimationState { elapsed_ticks: 0 });
+                }
             }
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
-            && event_id == ARMOR_STAND_HIT_EVENT_ID
-        {
-            // Vanilla `ArmorStand.handleEntityEvent(32)`: `lastHit = level.getGameTime()`;
-            // the renderer derives `wiggle = gameTime - lastHit + partialTicks`.
-            self.armor_stand_wiggle = Some(ArmorStandWiggleAnimationState { elapsed_ticks: 0 });
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_SHEEP_ID
-            && event_id == SHEEP_EAT_GRASS_EVENT_ID
-        {
-            self.sheep_eat = Some(SheepEatAnimationState {
-                eat_animation_tick: SHEEP_EAT_ANIMATION_TICKS,
-            });
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_TNT_MINECART_ID
-            && event_id == TNT_MINECART_PRIME_EVENT_ID
-        {
-            self.minecart_tnt_fuse = Some(MinecartTntFuseAnimationState {
-                fuse_remaining_ticks: TNT_MINECART_FUSE_TICKS,
-            });
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
-            && event_id == WARDEN_TENDRIL_EVENT_ID
-        {
-            // Vanilla `Warden.handleEntityEvent(61)`: `tendrilAnimation = 10`. Only
-            // `tendrilAnimation` (`current`) is set; `tendrilAnimationO` (`previous`)
-            // is untouched, so the lerp fades in from the prior frame.
-            self.warden_tendril
-                .get_or_insert(WardenTendrilAnimationState {
-                    previous: 0,
-                    current: 0,
-                })
-                .current = WARDEN_TENDRIL_ANIMATION_TICKS;
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
-            && event_id == WARDEN_ATTACK_EVENT_ID
-        {
-            // Vanilla `Warden.handleEntityEvent(4)`: `roarAnimationState.stop()` then
-            // `attackAnimationState.start(tickCount)` — the melee swing also cancels any roar.
-            self.warden_combat
-                .get_or_insert_with(WardenCombatAnimationState::default)
-                .start_attack(self.age_ticks);
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_WARDEN_ID
-            && event_id == WARDEN_SONIC_BOOM_EVENT_ID
-        {
-            // Vanilla `Warden.handleEntityEvent(62)`: `sonicBoomAnimationState.start(tickCount)`.
-            self.warden_combat
-                .get_or_insert_with(WardenCombatAnimationState::default)
-                .start_sonic_boom(self.age_ticks);
-        } else if vanilla_entity_metadata_type_uses_squid_entity_event_handler(entity_type_id)
-            && event_id == SQUID_RESET_MOVEMENT_EVENT_ID
-        {
-            // Vanilla `Squid.handleEntityEvent(19)`: `tentacleMovement = 0`. Only an
-            // already-ticked squid has a state; if the event arrives first the
-            // animation will start fresh on the next tick anyway, so nothing to do.
-            if let Some(squid) = self.squid.as_mut() {
-                squid.reset_movement();
+            VanillaEntityEventKind::ArmorStandHit => {
+                // Vanilla `ArmorStand.handleEntityEvent(32)`: `lastHit = level.getGameTime()`;
+                // the renderer derives `wiggle = gameTime - lastHit + partialTicks`.
+                self.armor_stand_wiggle = Some(ArmorStandWiggleAnimationState { elapsed_ticks: 0 });
             }
-        } else if vanilla_entity_metadata_type_uses_wolf_entity_event_handler(entity_type_id)
-            && matches!(
-                event_id,
-                WOLF_START_SHAKING_EVENT_ID | WOLF_CANCEL_SHAKING_EVENT_ID
-            )
-        {
-            if event_id == WOLF_START_SHAKING_EVENT_ID {
+            VanillaEntityEventKind::SheepEatGrass => {
+                self.sheep_eat = Some(SheepEatAnimationState {
+                    eat_animation_tick: SHEEP_EAT_ANIMATION_TICKS,
+                });
+            }
+            VanillaEntityEventKind::MinecartTntPrime => {
+                self.minecart_tnt_fuse = Some(MinecartTntFuseAnimationState {
+                    fuse_remaining_ticks: TNT_MINECART_FUSE_TICKS,
+                });
+            }
+            VanillaEntityEventKind::MinecartSpawnerDelayReset => {
+                // `MinecartSpawner.handleEntityEvent` delegates every id to
+                // `BaseSpawner.onEventTriggered`; id 1 on the client sets
+                // `spawnDelay = minSpawnDelay`. Minecart spawners start with the BaseSpawner defaults.
+                let spawner = self
+                    .minecart_spawner
+                    .get_or_insert(MinecartSpawnerClientState {
+                        spawn_delay: 20,
+                        min_spawn_delay: 200,
+                    });
+                spawner.spawn_delay = spawner.min_spawn_delay;
+            }
+            VanillaEntityEventKind::WardenTendril => {
+                // Vanilla `Warden.handleEntityEvent(61)`: `tendrilAnimation = 10`. Only
+                // `tendrilAnimation` (`current`) is set; `tendrilAnimationO` (`previous`)
+                // is untouched, so the lerp fades in from the prior frame.
+                self.warden_tendril
+                    .get_or_insert(WardenTendrilAnimationState {
+                        previous: 0,
+                        current: 0,
+                    })
+                    .current = WARDEN_TENDRIL_ANIMATION_TICKS;
+            }
+            VanillaEntityEventKind::WardenAttack => {
+                // Vanilla `Warden.handleEntityEvent(4)`: `roarAnimationState.stop()` then
+                // `attackAnimationState.start(tickCount)` — the melee swing also cancels any roar.
+                self.warden_combat
+                    .get_or_insert_with(WardenCombatAnimationState::default)
+                    .start_attack(self.age_ticks);
+            }
+            VanillaEntityEventKind::WardenSonicBoom => {
+                // Vanilla `Warden.handleEntityEvent(62)`: `sonicBoomAnimationState.start(tickCount)`.
+                self.warden_combat
+                    .get_or_insert_with(WardenCombatAnimationState::default)
+                    .start_sonic_boom(self.age_ticks);
+            }
+            VanillaEntityEventKind::SquidResetMovement => {
+                // Vanilla `Squid.handleEntityEvent(19)`: `tentacleMovement = 0`. Only an
+                // already-ticked squid has a state; if the event arrives first the
+                // animation will start fresh on the next tick anyway, so nothing to do.
+                if let Some(squid) = self.squid.as_mut() {
+                    squid.reset_movement();
+                }
+            }
+            VanillaEntityEventKind::WolfStartShaking => {
                 self.wolf_wet
                     .get_or_insert(WolfWetAnimationState {
                         is_wet: false,
@@ -4233,121 +4199,111 @@ impl EntityClientAnimationState {
                         current_shake_anim: 0.0,
                     })
                     .start_shaking();
-            } else if let Some(wolf_wet) = self.wolf_wet.as_mut() {
-                wolf_wet.cancel_shake();
-                if wolf_wet.is_settled() {
-                    self.wolf_wet = None;
+            }
+            VanillaEntityEventKind::WolfCancelShaking => {
+                if let Some(wolf_wet) = self.wolf_wet.as_mut() {
+                    wolf_wet.cancel_shake();
+                    if wolf_wet.is_settled() {
+                        self.wolf_wet = None;
+                    }
                 }
             }
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID
-            && matches!(
-                event_id,
-                GOAT_LOWER_HEAD_EVENT_ID | GOAT_RAISE_HEAD_EVENT_ID
-            )
-        {
-            // Vanilla `Goat.handleEntityEvent`: event 58 → `isLoweringHead = true`, 59 → `false`. The
-            // `aiStep` counter advances from there; an idle goat with no state is created on the first
-            // lower so its `lowerHeadTick` can climb (a raise event before any state is a no-op rest).
-            self.goat_ramming
-                .get_or_insert(GoatRammingAnimationState {
-                    lowering_head: false,
-                    lower_head_tick: 0,
-                })
-                .lowering_head = event_id == GOAT_LOWER_HEAD_EVENT_ID;
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_IRON_GOLEM_ID
-            && matches!(
-                event_id,
-                IRON_GOLEM_ATTACK_EVENT_ID
-                    | IRON_GOLEM_OFFER_FLOWER_EVENT_ID
-                    | IRON_GOLEM_STOP_OFFER_FLOWER_EVENT_ID
-            )
-        {
-            // Vanilla `IronGolem.handleEntityEvent`: event 4 → `attackAnimationTick = 10`, 11 →
-            // `offerFlowerTick = 400`, 34 → `offerFlowerTick = 0`. The `aiStep` decrements both.
-            let golem = self.iron_golem.get_or_insert(IronGolemAnimationState {
-                attack_animation_tick: 0,
-                offer_flower_tick: 0,
-            });
-            match event_id {
-                IRON_GOLEM_ATTACK_EVENT_ID => golem.attack_animation_tick = IRON_GOLEM_ATTACK_TICKS,
-                IRON_GOLEM_OFFER_FLOWER_EVENT_ID => {
-                    golem.offer_flower_tick = IRON_GOLEM_OFFER_FLOWER_TICKS
-                }
-                _ => golem.offer_flower_tick = 0,
+            VanillaEntityEventKind::GoatLowerHead | VanillaEntityEventKind::GoatRaiseHead => {
+                // Vanilla `Goat.handleEntityEvent`: event 58 → `isLoweringHead = true`, 59 → `false`. The
+                // `aiStep` counter advances from there; an idle goat with no state is created on the first
+                // lower so its `lowerHeadTick` can climb (a raise event before any state is a no-op rest).
+                self.goat_ramming
+                    .get_or_insert(GoatRammingAnimationState {
+                        lowering_head: false,
+                        lower_head_tick: 0,
+                    })
+                    .lowering_head = event_kind == VanillaEntityEventKind::GoatLowerHead;
             }
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_RAVAGER_ID
-            && matches!(event_id, RAVAGER_ATTACK_EVENT_ID | RAVAGER_STUN_EVENT_ID)
-        {
-            // Vanilla `Ravager.handleEntityEvent`: event 4 → `attackTick = 10`, 39 → `stunnedTick = 40`.
-            // The `aiStep` decrements them and arms the post-stun roar.
-            let ravager = self
-                .ravager
-                .get_or_insert_with(|| RavagerAnimationState::new(entity_id));
-            if event_id == RAVAGER_ATTACK_EVENT_ID {
-                ravager.attack_tick = RAVAGER_ATTACK_TICKS;
-            } else {
-                ravager.stunned_tick = RAVAGER_STUN_TICKS;
-            }
-        } else if vanilla_entity_metadata_type_is_hoglin_base(entity_type_id)
-            && event_id == HOGLIN_ATTACK_EVENT_ID
-        {
-            // Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event 4 → `attackAnimationRemainingTicks = 10`.
-            self.hoglin
-                .get_or_insert(HoglinAnimationState {
+            VanillaEntityEventKind::IronGolemAttack
+            | VanillaEntityEventKind::IronGolemOfferFlower
+            | VanillaEntityEventKind::IronGolemStopOfferFlower => {
+                // Vanilla `IronGolem.handleEntityEvent`: event 4 → `attackAnimationTick = 10`, 11 →
+                // `offerFlowerTick = 400`, 34 → `offerFlowerTick = 0`. The `aiStep` decrements both.
+                let golem = self.iron_golem.get_or_insert(IronGolemAnimationState {
                     attack_animation_tick: 0,
-                })
-                .attack_animation_tick = HOGLIN_ATTACK_TICKS;
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_RABBIT_ID
-            && event_id == RABBIT_JUMP_EVENT_ID
-        {
-            // Vanilla `Rabbit.handleEntityEvent(1)`: seed the hop reconstruction (`jumpDuration = 15;
-            // jumpTicks = 0`); the next tick's `setupAnimationStates` starts the hop keyframe.
-            self.rabbit_hop
-                .get_or_insert(RabbitHopAnimationState {
-                    jump_ticks: 0,
-                    jump_duration: 0,
-                    hop: KeyframeAnimationState { start_age: None },
-                })
-                .start_jump();
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_ARMADILLO_ID
-            && event_id == ARMADILLO_PEEK_EVENT_ID
-        {
-            // Vanilla `Armadillo.handleEntityEvent(64)`: set `peekReceivedClient`; the next
-            // `setupAnimationStates()` consumes it by stopping the old peek and immediately
-            // restarting it for the current SCARED state.
-            let age_ticks = self.age_ticks;
-            if let Some((_, default)) =
-                vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(entity_type_id)
-            {
-                self.armadillo
-                    .get_or_insert_with(|| ArmadilloAnimationState::new(default, age_ticks))
-                    .peek_received_client = true;
+                    offer_flower_tick: 0,
+                });
+                match event_kind {
+                    VanillaEntityEventKind::IronGolemAttack => {
+                        golem.attack_animation_tick = IRON_GOLEM_ATTACK_TICKS
+                    }
+                    VanillaEntityEventKind::IronGolemOfferFlower => {
+                        golem.offer_flower_tick = IRON_GOLEM_OFFER_FLOWER_TICKS
+                    }
+                    _ => golem.offer_flower_tick = 0,
+                }
             }
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_CREAKING_ID
-            && matches!(
-                event_id,
-                CREAKING_ATTACK_EVENT_ID | CREAKING_INVULNERABLE_EVENT_ID
-            )
-        {
-            // Vanilla `Creaking.handleEntityEvent`: event 4 → `attackAnimationRemainingTicks = 15`,
-            // 66 → `invulnerabilityAnimationRemainingTicks = 8`. The `aiStep` countdown advances from
-            // there; the next tick's `setupAnimationStates` starts the matching keyframe one-shot.
-            let creaking = self
-                .creaking
-                .get_or_insert_with(CreakingAnimationState::default);
-            if event_id == CREAKING_ATTACK_EVENT_ID {
-                creaking.start_attack();
-            } else {
-                creaking.start_invulnerable();
+            VanillaEntityEventKind::RavagerAttack | VanillaEntityEventKind::RavagerStun => {
+                // Vanilla `Ravager.handleEntityEvent`: event 4 → `attackTick = 10`, 39 → `stunnedTick = 40`.
+                // The `aiStep` decrements them and arms the post-stun roar.
+                let ravager = self
+                    .ravager
+                    .get_or_insert_with(|| RavagerAnimationState::new(entity_id));
+                if event_kind == VanillaEntityEventKind::RavagerAttack {
+                    ravager.attack_tick = RAVAGER_ATTACK_TICKS;
+                } else {
+                    ravager.stunned_tick = RAVAGER_STUN_TICKS;
+                }
             }
-        } else if entity_type_id == VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID
-            && event_id == EVOKER_FANGS_ATTACK_EVENT_ID
-        {
-            // Vanilla `EvokerFangs.handleEntityEvent`: event 4 → `clientSideAttackStarted = true`,
-            // arming the `lifeTicks` countdown that `tick` runs.
-            self.evoker_fangs
-                .get_or_insert_with(|| EvokerFangsAnimationState::new(entity_id))
-                .started = true;
+            VanillaEntityEventKind::HoglinAttack | VanillaEntityEventKind::ZoglinAttack => {
+                // Vanilla `Hoglin`/`Zoglin.handleEntityEvent`: event 4 → `attackAnimationRemainingTicks = 10`.
+                self.hoglin
+                    .get_or_insert(HoglinAnimationState {
+                        attack_animation_tick: 0,
+                    })
+                    .attack_animation_tick = HOGLIN_ATTACK_TICKS;
+            }
+            VanillaEntityEventKind::RabbitJump => {
+                // Vanilla `Rabbit.handleEntityEvent(1)`: seed the hop reconstruction (`jumpDuration = 15;
+                // jumpTicks = 0`); the next tick's `setupAnimationStates` starts the hop keyframe.
+                self.rabbit_hop
+                    .get_or_insert(RabbitHopAnimationState {
+                        jump_ticks: 0,
+                        jump_duration: 0,
+                        hop: KeyframeAnimationState { start_age: None },
+                    })
+                    .start_jump();
+            }
+            VanillaEntityEventKind::ArmadilloPeek => {
+                // Vanilla `Armadillo.handleEntityEvent(64)`: set `peekReceivedClient`; the next
+                // `setupAnimationStates()` consumes it by stopping the old peek and immediately
+                // restarting it for the current SCARED state.
+                let age_ticks = self.age_ticks;
+                if let Some((_, default)) =
+                    vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(entity_type_id)
+                {
+                    self.armadillo
+                        .get_or_insert_with(|| ArmadilloAnimationState::new(default, age_ticks))
+                        .peek_received_client = true;
+                }
+            }
+            VanillaEntityEventKind::CreakingAttack
+            | VanillaEntityEventKind::CreakingInvulnerable => {
+                // Vanilla `Creaking.handleEntityEvent`: event 4 → `attackAnimationRemainingTicks = 15`,
+                // 66 → `invulnerabilityAnimationRemainingTicks = 8`. The `aiStep` countdown advances from
+                // there; the next tick's `setupAnimationStates` starts the matching keyframe one-shot.
+                let creaking = self
+                    .creaking
+                    .get_or_insert_with(CreakingAnimationState::default);
+                if event_kind == VanillaEntityEventKind::CreakingAttack {
+                    creaking.start_attack();
+                } else {
+                    creaking.start_invulnerable();
+                }
+            }
+            VanillaEntityEventKind::EvokerFangsAttack => {
+                // Vanilla `EvokerFangs.handleEntityEvent`: event 4 → `clientSideAttackStarted = true`,
+                // arming the `lifeTicks` countdown that `tick` runs.
+                self.evoker_fangs
+                    .get_or_insert_with(|| EvokerFangsAnimationState::new(entity_id))
+                    .started = true;
+            }
+            _ => {}
         }
     }
 
@@ -4571,6 +4527,10 @@ impl EntityClientAnimationState {
     pub fn minecart_tnt_fuse_remaining_in_ticks(&self, partial_tick: f32) -> f32 {
         self.minecart_tnt_fuse
             .map_or(-1.0, |state| state.fuse_remaining_in_ticks(partial_tick))
+    }
+
+    pub fn minecart_spawner_spawn_delay(&self) -> i32 {
+        self.minecart_spawner.map_or(20, |state| state.spawn_delay)
     }
 
     /// Vanilla `Shulker.getClientPeekAmount(partialTick)`, exposed for the renderer
