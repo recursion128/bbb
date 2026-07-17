@@ -1530,11 +1530,15 @@ mod tests {
         let old_aliases = [
             ["VANILLA_", "PROFILE_COMPONENT_ID"].concat(),
             ["VANILLA_", "ATTACK_RANGE_COMPONENT_ID"].concat(),
+            "TEST_MAX_DAMAGE_COMPONENT_ID".to_string(),
+            "TEST_DAMAGE_COMPONENT_ID".to_string(),
+            "TEST_MAP_ID_COMPONENT_ID".to_string(),
         ];
         let sources = [
             crates.join("bbb-world/src/client/inventory/tests.rs"),
             crates.join("bbb-native/src/crosshair.rs"),
             crates.join("bbb-native/src/input/mouse.rs"),
+            crates.join("bbb-native/src/input/inventory/tests.rs"),
         ];
         for path in sources {
             let source = fs::read_to_string(&path).unwrap();
@@ -1545,6 +1549,18 @@ mod tests {
                     path.display()
                 );
             }
+        }
+        let inventory_tests =
+            fs::read_to_string(crates.join("bbb-native/src/input/inventory/tests.rs")).unwrap();
+        for required in [
+            "VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID",
+            "VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID",
+        ] {
+            assert!(
+                inventory_tests.contains(required),
+                "inventory fixture missing {required}"
+            );
         }
     }
 

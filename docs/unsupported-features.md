@@ -476,6 +476,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   merchant menu id alias must not return.
   Inventory profile and native attack-range component fixtures must consume the generated
   DataComponentType catalog ids; local profile/attack-range component aliases must not return.
+  Native inventory hash/prediction fixtures must consume generated max-damage, damage and map-id
+  component ids; local 2/3/46 component aliases must not return.
   Player inventory equipment-slot indices must remain derived from `Inventory.java` through the
   generated equipment-slot catalog; world/native 36-42 aliases (including movement/destroy
   fixtures) and offhand button literals must not return.

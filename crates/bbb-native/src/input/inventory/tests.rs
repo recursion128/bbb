@@ -1,6 +1,10 @@
 use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+    VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID,
+};
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_DONKEY_ID;
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_NAUTILUS_ID;
 use bbb_protocol::mob_effect_types::{
@@ -19,9 +23,6 @@ use bbb_protocol::packets::{
 };
 use uuid::Uuid;
 
-const TEST_MAX_DAMAGE_COMPONENT_ID: i32 = 2;
-const TEST_DAMAGE_COMPONENT_ID: i32 = 3;
-const TEST_MAP_ID_COMPONENT_ID: i32 = 46;
 const TEST_HASH_OPS_INT_7_HASH: i32 = -1_726_626_450;
 const TEST_MAP_ID_7_HASH: i32 = TEST_HASH_OPS_INT_7_HASH;
 
@@ -6642,7 +6643,7 @@ fn cartography_table_shift_click_player_map_id_removed_component_item_queues_pre
     map_stack
         .component_patch
         .removed_type_ids
-        .push(TEST_MAX_DAMAGE_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID);
     items[3] = map_stack.clone();
     world.apply_container_set_content(ContainerSetContent {
         container_id: 7,
@@ -6678,7 +6679,7 @@ fn cartography_table_shift_click_player_map_id_removed_component_item_queues_pre
                         42,
                         1,
                         7,
-                        TEST_MAX_DAMAGE_COMPONENT_ID
+                        VANILLA_DATA_COMPONENT_MAX_DAMAGE_TYPE_ID
                     ))
                 ),
                 (3, HashedStack::Empty),
@@ -7191,7 +7192,7 @@ fn inventory_mouse_click_hashes_integer_component_patch() {
             carried_item: HashedStack::Item(hashed_int_component_item(
                 42,
                 1,
-                TEST_DAMAGE_COMPONENT_ID,
+                VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID,
                 7
             )),
         })
@@ -8222,7 +8223,7 @@ fn map_id_item_stack(item_id: i32, count: i32, map_id: i32) -> ItemStackSummary 
     item.component_patch.added = 1;
     item.component_patch
         .added_type_ids
-        .push(TEST_MAP_ID_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID);
     item.component_patch.map_id = Some(map_id);
     item
 }
@@ -8232,7 +8233,7 @@ fn damage_item_stack(item_id: i32, count: i32, damage: i32) -> ItemStackSummary 
     item.component_patch.added = 1;
     item.component_patch
         .added_type_ids
-        .push(TEST_DAMAGE_COMPONENT_ID);
+        .push(VANILLA_DATA_COMPONENT_DAMAGE_TYPE_ID);
     item.component_patch.damage = Some(damage);
     item
 }
@@ -8323,7 +8324,10 @@ fn hashed_map_id_item(item_id: i32, count: i32, map_id: i32) -> HashedItemStack 
         item_id,
         count,
         components: HashedComponentPatch {
-            added_components: BTreeMap::from([(TEST_MAP_ID_COMPONENT_ID, map_id_hash)]),
+            added_components: BTreeMap::from([(
+                VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+                map_id_hash,
+            )]),
             removed_components: BTreeSet::new(),
         },
     }
@@ -8343,7 +8347,10 @@ fn hashed_map_id_removed_component_item(
         item_id,
         count,
         components: HashedComponentPatch {
-            added_components: BTreeMap::from([(TEST_MAP_ID_COMPONENT_ID, map_id_hash)]),
+            added_components: BTreeMap::from([(
+                VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID,
+                map_id_hash,
+            )]),
             removed_components: BTreeSet::from([component_type_id]),
         },
     }
