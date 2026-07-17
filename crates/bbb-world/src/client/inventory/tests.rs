@@ -3,6 +3,7 @@ use crate::entities::{
     vanilla_entity_metadata_baby_accessor_for_entity_type, VANILLA_ENTITY_TYPE_DONKEY_ID,
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
 };
+use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, CraftingRecipeDisplaySummary,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, IngredientSummary,
@@ -9351,9 +9352,8 @@ fn item_stack_with_component_summary(
 }
 
 fn profiled_item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
-    const VANILLA_PROFILE_COMPONENT_ID: i32 = 70;
-
-    let mut stack = item_stack_with_component_summary(item_id, count, VANILLA_PROFILE_COMPONENT_ID);
+    let mut stack =
+        item_stack_with_component_summary(item_id, count, VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID);
     stack.component_patch.profile = Some(ResolvableProfileSummary {
         kind: ResolvableProfileKindSummary::Partial,
         uuid: Some(Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678)),

@@ -1050,6 +1050,7 @@ fn look_direction_from_crosshair_ray(ray: CrosshairRay) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
     use bbb_protocol::entity_data_serializers::{
         VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID, VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
@@ -1065,8 +1066,6 @@ mod tests {
     };
     use uuid::Uuid;
 
-    const VANILLA_ATTACK_RANGE_COMPONENT_ID: i32 =
-        bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
     const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
 
@@ -1912,7 +1911,7 @@ mod tests {
             component_patch: Default::default(),
         };
         stack.component_patch.added = 1;
-        stack.component_patch.added_type_ids = vec![VANILLA_ATTACK_RANGE_COMPONENT_ID];
+        stack.component_patch.added_type_ids = vec![VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID];
         stack.component_patch.attack_range = Some(AttackRangeSummary {
             min_reach,
             max_reach,
