@@ -15,6 +15,8 @@ use super::schema::{
 const SWING_MAIN_HAND_ACTION: u8 = 0;
 /// Vanilla `ClientboundAnimatePacket.SWING_OFF_HAND` action id: the entity swings its off hand.
 const SWING_OFF_HAND_ACTION: u8 = 3;
+/// Vanilla `LivingEntity.handleEntityEvent(55)` swaps the main- and off-hand equipment stacks.
+const LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID: i8 = 55;
 
 impl WorldStore {
     pub fn apply_entity_animation(&mut self, packet: ProtocolEntityAnimation) -> bool {
@@ -67,6 +69,9 @@ impl WorldStore {
         let _ = self
             .entities
             .apply_client_animation_entity_event(packet.entity_id, packet.event_id);
+        if packet.event_id == LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID {
+            let _ = self.apply_living_swap_hand_items_event(packet.entity_id);
+        }
         self.counters.entity_events_applied += 1;
         true
     }

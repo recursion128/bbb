@@ -129,6 +129,101 @@ fn tracks_entity_transient_events() {
 }
 
 #[test]
+fn living_entity_swap_hand_event_updates_canonical_equipment() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        68,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        69,
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+    ));
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 68,
+        slots: vec![
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: item_stack(42, 1),
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::OffHand,
+                item: item_stack(51, 2),
+            },
+        ],
+    }));
+
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 68,
+        event_id: 55,
+    }));
+    assert_eq!(
+        store
+            .equipment_item(68, EquipmentSlot::MainHand)
+            .expect("swapped main hand"),
+        item_stack(51, 2)
+    );
+    assert_eq!(
+        store
+            .equipment_item(68, EquipmentSlot::OffHand)
+            .expect("swapped off hand"),
+        item_stack(42, 1)
+    );
+
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 68,
+        event_id: 55,
+    }));
+    assert_eq!(
+        store
+            .equipment_item(68, EquipmentSlot::MainHand)
+            .expect("restored main hand"),
+        item_stack(42, 1)
+    );
+    assert_eq!(
+        store
+            .equipment_item(68, EquipmentSlot::OffHand)
+            .expect("restored off hand"),
+        item_stack(51, 2)
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 70,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::MainHand,
+            item: item_stack(63, 1),
+        }],
+    }));
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 70,
+        event_id: 55,
+    }));
+    assert!(store.equipment_item(70, EquipmentSlot::MainHand).is_none());
+    assert_eq!(
+        store
+            .equipment_item(70, EquipmentSlot::OffHand)
+            .expect("absent off hand receives main-hand item"),
+        item_stack(63, 1)
+    );
+
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 69,
+        event_id: 55,
+    }));
+    assert!(store.equipment_item(69, EquipmentSlot::MainHand).is_none());
+    assert!(!store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 999,
+        event_id: 55,
+    }));
+    assert_eq!(store.counters().entity_events_applied, 4);
+    assert_eq!(store.counters().entity_events_ignored, 1);
+}
+
+#[test]
 fn sheep_eat_grass_event_drives_client_animation_tick() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

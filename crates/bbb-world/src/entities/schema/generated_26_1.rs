@@ -23564,6 +23564,23 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn living_swap_hand_event_uses_generated_class_membership() {
+        let source = include_str!("../metadata.rs");
+        let body = source
+            .split("pub(crate) fn apply_living_swap_hand_items_event")
+            .nth(1)
+            .and_then(|source| source.split("    pub fn ").next())
+            .expect("living swap-hand event source");
+        assert!(body.contains("vanilla_entity_metadata_type_is_living"));
+        assert!(body.contains("ProtocolEquipmentSlot::MainHand"));
+        assert!(body.contains("ProtocolEquipmentSlot::OffHand"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        let updates = include_str!("../updates.rs");
+        assert!(updates.contains("LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID"));
+        assert!(updates.contains("apply_living_swap_hand_items_event(packet.entity_id)"));
+    }
+
+    #[test]
     fn illager_celebrating_consumers_do_not_restore_parallel_metadata_or_types() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");

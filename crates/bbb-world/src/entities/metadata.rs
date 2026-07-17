@@ -1,6 +1,8 @@
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::packets::{
-    EntityDataValueKind, InteractionHand, SetEntityData as ProtocolSetEntityData,
+    EntityDataValueKind, EquipmentSlot as ProtocolEquipmentSlot,
+    EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, InteractionHand,
+    ItemStackSummary as ProtocolItemStackSummary, SetEntityData as ProtocolSetEntityData,
     SetEquipment as ProtocolSetEquipment, UpdateAttributes as ProtocolUpdateAttributes,
 };
 
@@ -173,6 +175,47 @@ impl WorldStore {
         };
         self.counters.entity_equipment_updates_applied += 1;
         self.refresh_entity_active_swing_duration(packet.entity_id);
+        true
+    }
+
+    /// Applies vanilla `LivingEntity.handleEntityEvent(55)` / `swapHandItems` to synced equipment.
+    pub(crate) fn apply_living_swap_hand_items_event(&mut self, entity_id: i32) -> bool {
+        let Some(entity_type_id) = self.entities.entity_type_id(entity_id) else {
+            return false;
+        };
+        if !vanilla_entity_metadata_type_is_living(entity_type_id) {
+            return false;
+        }
+        let main_hand = self
+            .equipment_item(entity_id, ProtocolEquipmentSlot::MainHand)
+            .unwrap_or_else(ProtocolItemStackSummary::empty);
+        let off_hand = self
+            .equipment_item(entity_id, ProtocolEquipmentSlot::OffHand)
+            .unwrap_or_else(ProtocolItemStackSummary::empty);
+        let Some(()) = self.entities.with_equipment_mut(entity_id, |equipment| {
+            for (slot, item) in [
+                (ProtocolEquipmentSlot::MainHand, off_hand),
+                (ProtocolEquipmentSlot::OffHand, main_hand),
+            ] {
+                if let Some(existing) = equipment
+                    .equipment
+                    .iter_mut()
+                    .find(|existing| existing.slot == slot)
+                {
+                    existing.item = item;
+                } else {
+                    equipment
+                        .equipment
+                        .push(ProtocolEquipmentSlotUpdate { slot, item });
+                }
+            }
+            equipment
+                .equipment
+                .sort_by_key(|update| update.slot.ordinal());
+        }) else {
+            return false;
+        };
+        self.refresh_entity_active_swing_duration(entity_id);
         true
     }
 

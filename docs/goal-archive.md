@@ -18513,3 +18513,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - 事件 20 与 LivingEntity 事件 60 调用同一个 vanilla 方法，因此复用现有 typed poof state
   和 native resolver；world/native tests 锁定 AABB 尺寸、sink 路由与计数，generator guard
   禁止恢复实体 type-id membership。
+
+## 2026-07-17：LivingEntity swap-hand entity event
+
+- 依据 vanilla 26.1 `LivingEntity.handleEntityEvent(55)` / `swapHandItems`，world 现在原子交换
+  canonical `MAINHAND` / `OFFHAND` equipment stack，并刷新进行中 swing 的 item-derived duration。
+- membership 直接消费 generated LivingEntity class flag；Zombie 与 ArmorStand 适用，Item
+  实体不改 equipment，未知 id 保持 ignored。缺失 hand slot 按 vanilla EMPTY stack 参与交换。
+- world 测试锁定双非空往返交换、单 hand 向空 hand 交换、非 Living 负例和 packet counters；
+  metadata generator reverse guard 禁止恢复 entity type-id 分支或遗漏任一 hand slot。
