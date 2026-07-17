@@ -194,6 +194,11 @@ impl WorldStore {
         self.commands.command_requires_signed_arguments(command)
     }
 
+    pub(crate) fn reset_command_tree_for_new_listener(&mut self) {
+        self.commands = CommandTreeState::default();
+        self.update_command_tree_counters();
+    }
+
     fn update_command_tree_counters(&mut self) {
         self.counters.command_nodes_tracked = self.commands.nodes.len();
         self.counters.command_literal_nodes_tracked = self
@@ -226,7 +231,8 @@ impl WorldStore {
             .iter()
             .filter(|node| node.restricted)
             .count();
-        self.counters.last_command_root_index = Some(self.commands.root_index);
+        self.counters.last_command_root_index =
+            (!self.commands.nodes.is_empty()).then_some(self.commands.root_index);
     }
 }
 
@@ -265,6 +271,24 @@ mod tests {
         assert_eq!(counters.command_restricted_nodes_tracked, 1);
         assert_eq!(counters.command_redirect_nodes_tracked, 0);
         assert_eq!(counters.last_command_root_index, Some(0));
+    }
+
+    #[test]
+    fn configuration_reentry_rebuilds_command_tree_and_preserves_packet_counters() {
+        let mut store = WorldStore::new();
+        store.apply_commands(command_tree("say", "minecraft:message"));
+
+        store.clear_client_level();
+
+        assert_eq!(store.commands(), &CommandTreeState::default());
+        assert_eq!(store.counters().command_tree_packets, 1);
+        assert_eq!(store.counters().command_nodes_tracked, 0);
+        assert_eq!(store.counters().command_literal_nodes_tracked, 0);
+        assert_eq!(store.counters().command_argument_nodes_tracked, 0);
+        assert_eq!(store.counters().command_redirect_nodes_tracked, 0);
+        assert_eq!(store.counters().command_executable_nodes_tracked, 0);
+        assert_eq!(store.counters().command_restricted_nodes_tracked, 0);
+        assert_eq!(store.counters().last_command_root_index, None);
     }
 
     #[test]

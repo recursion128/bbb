@@ -168,6 +168,12 @@ impl WorldStore {
             .and_then(|id| self.command_suggestions.by_id.get(&id))
     }
 
+    pub(crate) fn reset_command_suggestions_for_new_listener(&mut self) {
+        self.command_suggestions = CommandSuggestionsState::default();
+        self.update_command_suggestion_count();
+        self.update_custom_completion_count();
+    }
+
     fn update_command_suggestion_count(&mut self) {
         self.counters.command_suggestion_entries_tracked = self
             .command_suggestions
@@ -333,6 +339,38 @@ mod tests {
         let restored: WorldStore = serde_json::from_value(serde_json::to_value(&store).unwrap())
             .expect("rich command suggestions should survive world JSON round trip");
         assert_eq!(restored.command_suggestions_by_id(7), Some(&result));
+    }
+
+    #[test]
+    fn configuration_reentry_rebuilds_suggestion_provider_and_preserves_packet_counters() {
+        let mut store = WorldStore::new();
+        let request = store.next_command_suggestion_request("/give");
+        store.apply_command_suggestions(CommandSuggestions {
+            id: request.id,
+            start: 1,
+            length: 4,
+            suggestions: vec![CommandSuggestion {
+                text: "give".to_string(),
+                tooltip: None,
+                tooltip_styled: None,
+                tooltip_component: None,
+            }],
+        });
+        store.apply_custom_chat_completions(CustomChatCompletions {
+            action: CustomChatCompletionsAction::Set,
+            entries: vec!["/home".to_string()],
+        });
+
+        store.clear_client_level();
+
+        assert_eq!(
+            store.command_suggestions(),
+            &CommandSuggestionsState::default()
+        );
+        assert_eq!(store.counters().command_suggestion_packets, 1);
+        assert_eq!(store.counters().custom_chat_completion_packets, 1);
+        assert_eq!(store.counters().command_suggestion_entries_tracked, 0);
+        assert_eq!(store.counters().custom_chat_completions_tracked, 0);
     }
 
     #[test]

@@ -18786,3 +18786,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   waypoint count returns to zero.
 - Added focused world regressions for both manager boundaries and kept the remaining fresh-listener
   command, recipe, advancement, debug, and command-suggestion reset work explicit in the ledger.
+
+# 2026-07-17: Rebuild listener command state on reconfiguration
+
+- Reset the command dispatcher projection and `ClientSuggestionProvider` projection when play
+  re-enters configuration, matching the fresh instances created by the next
+  `ClientPacketListener`.
+- Cleared cached and pending server suggestions, the request sequence, and custom chat completions;
+  reset all derived command/suggestion counters while preserving cumulative packet counters.
+- Focused tests lock both reset boundaries, including the absence of a last root for the empty
+  dispatcher and the next listener's zero-based first suggestion request.

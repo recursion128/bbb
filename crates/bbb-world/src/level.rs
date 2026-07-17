@@ -524,6 +524,8 @@ impl WorldStore {
         self.scoreboard = crate::ScoreboardState::default();
         self.waypoints = crate::ClientWaypointsState::default();
         self.counters.waypoints_tracked = 0;
+        self.reset_command_tree_for_new_listener();
+        self.reset_command_suggestions_for_new_listener();
         self.clear_level_bound_state();
     }
 
