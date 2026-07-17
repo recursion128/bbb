@@ -245,6 +245,9 @@ impl WorldStore {
 mod tests {
     use super::*;
     use crate::RegistryPacketEntry;
+    use bbb_protocol::mob_effect_types::{
+        VANILLA_MOB_EFFECT_MINING_FATIGUE_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
+    };
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, Cooldown as ProtocolCooldown,
         DamageEvent as ProtocolDamageEvent, MobEffectFlags, RemoveMobEffect, UpdateMobEffect,
@@ -341,7 +344,7 @@ mod tests {
 
         let updated = store.apply_update_mob_effect(UpdateMobEffect {
             entity_id: 7,
-            effect_id: 3,
+            effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
             amplifier: 2,
             duration_ticks: 400,
             flags: MobEffectFlags {
@@ -354,7 +357,9 @@ mod tests {
         });
 
         assert!(updated);
-        let effect = store.entity_effect(7, 3).unwrap();
+        let effect = store
+            .entity_effect(7, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID)
+            .unwrap();
         assert_eq!(effect.amplifier, 2);
         assert_eq!(effect.duration_ticks, 400);
         assert!(effect.ambient);
@@ -362,7 +367,12 @@ mod tests {
         assert!(!effect.show_icon);
         assert!(effect.blend);
         assert_eq!(
-            store.entities.mob_effects(7).unwrap().effects.get(&3),
+            store
+                .entities
+                .mob_effects(7)
+                .unwrap()
+                .effects
+                .get(&VANILLA_MOB_EFFECT_MINING_FATIGUE_ID),
             Some(&effect)
         );
         assert_eq!(store.counters().update_mob_effect_packets, 1);
@@ -370,7 +380,7 @@ mod tests {
 
         assert!(!store.apply_update_mob_effect(UpdateMobEffect {
             entity_id: 99,
-            effect_id: 4,
+            effect_id: VANILLA_MOB_EFFECT_STRENGTH_ID,
             amplifier: 0,
             duration_ticks: 100,
             flags: MobEffectFlags::default(),
@@ -381,7 +391,7 @@ mod tests {
 
         assert!(!store.apply_update_mob_effect(UpdateMobEffect {
             entity_id: 8,
-            effect_id: 4,
+            effect_id: VANILLA_MOB_EFFECT_STRENGTH_ID,
             amplifier: 0,
             duration_ticks: 100,
             flags: MobEffectFlags::default(),
@@ -393,16 +403,18 @@ mod tests {
 
         assert!(store.apply_remove_mob_effect(RemoveMobEffect {
             entity_id: 7,
-            effect_id: 3,
+            effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
         }));
-        assert!(store.entity_effect(7, 3).is_none());
+        assert!(store
+            .entity_effect(7, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID)
+            .is_none());
         assert!(store.entities.mob_effects(7).unwrap().effects.is_empty());
         assert_eq!(store.counters().remove_mob_effect_packets, 1);
         assert_eq!(store.counters().active_mob_effects_tracked, 0);
 
         assert!(!store.apply_remove_mob_effect(RemoveMobEffect {
             entity_id: 8,
-            effect_id: 4,
+            effect_id: VANILLA_MOB_EFFECT_STRENGTH_ID,
         }));
         assert_eq!(store.counters().remove_mob_effect_packets, 2);
         assert_eq!(store.counters().remove_mob_effects_ignored, 1);

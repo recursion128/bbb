@@ -1,4 +1,7 @@
 use super::*;
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_MINING_FATIGUE_ID, VANILLA_MOB_EFFECT_TYPES,
+};
 
 fn living_health_data(entity_type_id: i32, health: f32) -> EntityDataValue {
     let accessors =
@@ -692,7 +695,7 @@ fn entity_status_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::UpdateMobEffect(
         bbb_protocol::packets::UpdateMobEffect {
             entity_id,
-            effect_id: 3,
+            effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
             amplifier: 2,
             duration_ticks: 400,
             flags: bbb_protocol::packets::MobEffectFlags {
@@ -705,10 +708,11 @@ fn entity_status_events_update_world_and_world_counters() {
         },
     )))
     .unwrap();
+    let unknown_effect_id = i32::try_from(VANILLA_MOB_EFFECT_TYPES.len()).unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::RemoveMobEffect(
         bbb_protocol::packets::RemoveMobEffect {
             entity_id,
-            effect_id: 99,
+            effect_id: unknown_effect_id,
         },
     )))
     .unwrap();
@@ -737,14 +741,16 @@ fn entity_status_events_update_world_and_world_counters() {
         })
     );
 
-    let effect = world.entity_effect(entity_id, 3).unwrap();
+    let effect = world
+        .entity_effect(entity_id, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID)
+        .unwrap();
     assert_eq!(effect.amplifier, 2);
     assert_eq!(effect.duration_ticks, 400);
     assert!(effect.ambient);
     assert!(effect.visible);
     assert!(!effect.show_icon);
     assert!(effect.blend);
-    assert!(world.entity_effect(entity_id, 99).is_none());
+    assert!(world.entity_effect(entity_id, unknown_effect_id).is_none());
 
     let world_counters = world.counters();
     assert_eq!(world_counters.cooldown_packets, 1);

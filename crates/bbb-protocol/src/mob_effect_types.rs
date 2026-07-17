@@ -629,4 +629,148 @@ mod tests {
             "local-movement fixture restored {removed}"
         );
     }
+
+    fn starts_with_integer_literal(value: &str) -> bool {
+        let mut characters = value.chars();
+        let Some(first) = characters.next() else {
+            return false;
+        };
+        first.is_ascii_digit()
+            || (first == '-'
+                && characters
+                    .next()
+                    .is_some_and(|character| character.is_ascii_digit()))
+    }
+
+    fn contains_numeric_mob_effect_id_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction = compact.match_indices("effect_id:").any(|(offset, _)| {
+            let boundary = offset == 0
+                || compact[..offset]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|character| {
+                        !character.is_ascii_alphanumeric() && character != '_'
+                    });
+            boundary && starts_with_integer_literal(&compact[offset + "effect_id:".len()..])
+        });
+        let numeric_field_reference = compact.match_indices(".effect_id").any(|(offset, _)| {
+            let suffix = &compact[offset + ".effect_id".len()..];
+            [",", "==", "!=", "="].iter().any(|separator| {
+                suffix
+                    .strip_prefix(separator)
+                    .is_some_and(starts_with_integer_literal)
+            })
+        });
+        let numeric_holder_reference =
+            compact
+                .match_indices(".effect.holder_id")
+                .any(|(offset, _)| {
+                    let suffix = &compact[offset + ".effect.holder_id".len()..];
+                    [",", "==", "!=", "="].iter().any(|separator| {
+                        suffix
+                            .strip_prefix(separator)
+                            .is_some_and(starts_with_integer_literal)
+                    })
+                });
+        let numeric_holder_construction =
+            compact.match_indices("effect:holder(").any(|(offset, _)| {
+                starts_with_integer_literal(&compact[offset + "effect:holder(".len()..])
+            });
+        let numeric_query = compact.match_indices("entity_effect(").any(|(offset, _)| {
+            compact[offset + "entity_effect(".len()..]
+                .split(')')
+                .next()
+                .and_then(|arguments| arguments.split(',').nth(1))
+                .is_some_and(starts_with_integer_literal)
+        });
+        let numeric_map_lookup = compact.match_indices(".effects.get(&").any(|(offset, _)| {
+            let prefix = &compact[..offset];
+            let belongs_to_mob_effects = prefix
+                .rfind("mob_effects(")
+                .is_some_and(|start| !prefix[start..].contains(';'));
+            belongs_to_mob_effects
+                && starts_with_integer_literal(&compact[offset + ".effects.get(&".len()..])
+        });
+        numeric_construction
+            || numeric_field_reference
+            || numeric_holder_reference
+            || numeric_holder_construction
+            || numeric_query
+            || numeric_map_lookup
+    }
+
+    #[test]
+    fn numeric_mob_effect_id_guard_covers_construction_queries_and_comparison() {
+        assert!(contains_numeric_mob_effect_id_reference("effect_id: 18,"));
+        assert!(contains_numeric_mob_effect_id_reference(
+            "snapshot.effect_id = 40;"
+        ));
+        assert!(contains_numeric_mob_effect_id_reference(
+            "effect: holder(18, \"minecraft:poison\")"
+        ));
+        assert!(contains_numeric_mob_effect_id_reference(
+            "effect.effect.holder_id == 2"
+        ));
+        assert!(contains_numeric_mob_effect_id_reference(
+            "world.entity_effect(entity_id,\n 3)"
+        ));
+        assert!(contains_numeric_mob_effect_id_reference(
+            "snapshot.mob_effects(entity_id).unwrap().effects.get(&3)"
+        ));
+        assert!(!contains_numeric_mob_effect_id_reference(
+            "other.effects.get(&3)"
+        ));
+        assert!(!contains_numeric_mob_effect_id_reference(
+            "block_effect_id: 3,"
+        ));
+        assert!(!contains_numeric_mob_effect_id_reference(
+            "effect_id: VANILLA_MOB_EFFECT_POISON_ID,"
+        ));
+        assert!(!contains_numeric_mob_effect_id_reference(
+            "world.entity_effect(entity_id, unknown_effect_id)"
+        ));
+    }
+
+    #[test]
+    fn semantic_sources_do_not_restore_numeric_mob_effect_ids() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                if contains_numeric_mob_effect_id_reference(&source) {
+                    violations.push(format!(
+                        "{}: numeric mob-effect id reference",
+                        path.display()
+                    ));
+                }
+            }
+        }
+        let mut violations = Vec::new();
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        for directory in [
+            "bbb-native/src",
+            "bbb-world/src",
+            "bbb-net/src",
+            "bbb-item-model/src",
+            "bbb-renderer/src",
+        ] {
+            visit(&crates.join(directory), &mut violations);
+        }
+        assert!(
+            violations.is_empty(),
+            "semantic consumers restored numeric mob-effect ids:\n{}",
+            violations.join("\n")
+        );
+    }
 }

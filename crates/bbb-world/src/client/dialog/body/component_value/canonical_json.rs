@@ -1874,6 +1874,9 @@ mod tests {
     use bbb_protocol::item_component_value_types::{
         FireworkExplosionShapeSummary, SwingAnimationTypeSummary,
     };
+    use bbb_protocol::mob_effect_types::{
+        VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID,
+    };
     use bbb_protocol::packets::chunks::BlockPos;
     use bbb_protocol::packets::inventory::{
         LodestoneTargetSummary, PlayerSkinPatchSummary, ResolvableProfileKindSummary,
@@ -2458,11 +2461,11 @@ mod tests {
             DialogDataComponentValueState::SuspiciousStewEffects {
                 effects: vec![
                     super::super::holder_set::DialogSuspiciousStewEffectState {
-                        effect: holder(0, "minecraft:speed"),
+                        effect: holder(VANILLA_MOB_EFFECT_SPEED_ID, "minecraft:speed"),
                         duration: 160,
                     },
                     super::super::holder_set::DialogSuspiciousStewEffectState {
-                        effect: holder(18, "minecraft:poison"),
+                        effect: holder(VANILLA_MOB_EFFECT_POISON_ID, "minecraft:poison"),
                         duration: -20,
                     },
                 ],

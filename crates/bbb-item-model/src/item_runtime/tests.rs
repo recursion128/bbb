@@ -2,6 +2,10 @@ use super::*;
 use crate::skin_runtime::{
     AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
 };
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID,
+    VANILLA_MOB_EFFECT_WEAKNESS_ID,
+};
 use bbb_protocol::{ComponentStyle, StyledTextRun};
 use chrono::TimeZone;
 use std::{
@@ -1371,7 +1375,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                             ]),
                             container_loot: true,
                             potion_custom_effects: vec![MobEffectInstanceSummary {
-                                effect_id: 18,
+                                effect_id: VANILLA_MOB_EFFECT_POISON_ID,
                                 amplifier: 1,
                                 duration: 200,
                                 ambient: false,
@@ -1439,7 +1443,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             count: 1,
             component_patch: DataComponentPatchSummary {
                 potion_custom_effects: vec![MobEffectInstanceSummary {
-                    effect_id: 18,
+                    effect_id: VANILLA_MOB_EFFECT_POISON_ID,
                     amplifier: 1,
                     duration: 200,
                     ambient: false,
@@ -1464,7 +1468,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 count: 1,
                 component_patch: DataComponentPatchSummary {
                     potion_custom_effects: vec![MobEffectInstanceSummary {
-                        effect_id: 18,
+                        effect_id: VANILLA_MOB_EFFECT_POISON_ID,
                         amplifier: 1,
                         duration: 200,
                         ambient: false,
@@ -1493,7 +1497,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             count: 1,
             component_patch: DataComponentPatchSummary {
                 potion_custom_effects: vec![MobEffectInstanceSummary {
-                    effect_id: 0,
+                    effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
                     amplifier: 1,
                     duration: 1200,
                     ambient: false,
@@ -1520,7 +1524,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             count: 1,
             component_patch: DataComponentPatchSummary {
                 potion_custom_effects: vec![MobEffectInstanceSummary {
-                    effect_id: 17,
+                    effect_id: VANILLA_MOB_EFFECT_WEAKNESS_ID,
                     amplifier: 0,
                     duration: 1800,
                     ambient: false,
@@ -1583,7 +1587,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             component_patch: DataComponentPatchSummary {
                 potion_id: Some(4),
                 potion_custom_effects: vec![MobEffectInstanceSummary {
-                    effect_id: 18,
+                    effect_id: VANILLA_MOB_EFFECT_POISON_ID,
                     amplifier: 0,
                     duration: 200,
                     ambient: false,
@@ -1624,7 +1628,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         count: 1,
         component_patch: DataComponentPatchSummary {
             suspicious_stew_effects: vec![SuspiciousStewEffectSummary {
-                effect_id: 18,
+                effect_id: VANILLA_MOB_EFFECT_POISON_ID,
                 duration: 160,
             }],
             lore: vec!["Before creative stew details".to_string()],
@@ -6466,7 +6470,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         uv("component_condition_bundle_exact_custom_data_absent")
     );
     let exact_potion_effect = MobEffectInstanceSummary {
-        effect_id: 2,
+        effect_id: VANILLA_MOB_EFFECT_HASTE_ID,
         amplifier: 1,
         duration: 200,
         ambient: false,

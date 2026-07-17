@@ -1855,6 +1855,9 @@ mod tests {
     use std::collections::HashSet;
 
     use super::*;
+    use bbb_protocol::mob_effect_types::{
+        VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_TYPES,
+    };
 
     #[test]
     fn production_encoder_matches_do_not_use_raw_component_type_ids() {
@@ -2484,14 +2487,15 @@ mod tests {
 
     #[test]
     fn suspicious_stew_effects_use_codec_defaults_and_omit_unknown_holders() {
+        let unknown_effect_id = i32::try_from(VANILLA_MOB_EFFECT_TYPES.len()).unwrap();
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             suspicious_stew_effects: vec![
                 bbb_protocol::packets::SuspiciousStewEffectSummary {
-                    effect_id: 0,
+                    effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
                     duration: 160,
                 },
                 bbb_protocol::packets::SuspiciousStewEffectSummary {
-                    effect_id: 18,
+                    effect_id: VANILLA_MOB_EFFECT_POISON_ID,
                     duration: 200,
                 },
             ],
@@ -2505,7 +2509,7 @@ mod tests {
             )
         );
 
-        patch.suspicious_stew_effects[1].effect_id = 40;
+        patch.suspicious_stew_effects[1].effect_id = unknown_effect_id;
         assert_eq!(encode_added_component_value_snbt(53, &patch, None), None);
 
         patch.suspicious_stew_effects.clear();

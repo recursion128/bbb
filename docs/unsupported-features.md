@@ -157,6 +157,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Native component serialization and world dialog component fixtures that use the built-in
   Attribute registry must follow the same generated-id rule; explicit resolver reorder/unknown-id
   fixtures remain outside that built-in guard.
+  Built-in mob-effect holder construction, lookup, assignment, and dialog projection fixtures must
+  likewise use the generated MobEffect registry constants; unknown-holder fixtures derive the
+  first invalid id from the generated catalog length, while protocol wire samples remain separately
+  owned evidence.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Zoglin's independently declared `DATA_BABY_ID` must use that nearest-owner resolver in native

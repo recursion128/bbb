@@ -60,6 +60,10 @@ use bbb_protocol::entity_types::{
 };
 use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_CHEST_SLOT;
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_SPEED_ID,
+    VANILLA_MOB_EFFECT_TYPES,
+};
 use bbb_protocol::packets::AwardStats;
 use bbb_protocol::packets::BlockEntityData;
 use bbb_protocol::packets::{
@@ -9218,7 +9222,7 @@ fn item_stack_snbt_preserves_vanilla_consume_effects() {
     let effects = vec![
         ConsumeEffectSummary::ApplyEffects {
             effects: vec![MobEffectInstanceSummary {
-                effect_id: 9,
+                effect_id: VANILLA_MOB_EFFECT_REGENERATION_ID,
                 amplifier: 1,
                 duration: 200,
                 ambient: false,
@@ -9300,9 +9304,10 @@ fn item_stack_snbt_preserves_vanilla_consume_effects() {
     };
     assert_eq!(debug_consumable_component_snbt(&patch), None);
 
+    let unknown_effect_id = i32::try_from(VANILLA_MOB_EFFECT_TYPES.len()).unwrap();
     patch.death_protection_effects = vec![ConsumeEffectSummary::ApplyEffects {
         effects: vec![MobEffectInstanceSummary {
-            effect_id: 40,
+            effect_id: unknown_effect_id,
             amplifier: 0,
             duration: 0,
             ambient: false,
@@ -9551,7 +9556,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         consumable_effects: vec![
             ConsumeEffectSummary::ApplyEffects {
                 effects: vec![MobEffectInstanceSummary {
-                    effect_id: 9,
+                    effect_id: VANILLA_MOB_EFFECT_REGENERATION_ID,
                     amplifier: 0,
                     duration: 100,
                     ambient: false,
@@ -9833,7 +9838,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         potion_custom_color: Some(0x77_88_99),
         potion_custom_effect_count: Some(1),
         potion_custom_effects: vec![MobEffectInstanceSummary {
-            effect_id: 0,
+            effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
             amplifier: 1,
             duration: 600,
             ambient: true,
@@ -9845,11 +9850,11 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         potion_duration_scale_bits: Some(1.5_f32.to_bits()),
         suspicious_stew_effects: vec![
             bbb_protocol::packets::SuspiciousStewEffectSummary {
-                effect_id: 0,
+                effect_id: VANILLA_MOB_EFFECT_SPEED_ID,
                 duration: 160,
             },
             bbb_protocol::packets::SuspiciousStewEffectSummary {
-                effect_id: 18,
+                effect_id: VANILLA_MOB_EFFECT_POISON_ID,
                 duration: 200,
             },
         ],

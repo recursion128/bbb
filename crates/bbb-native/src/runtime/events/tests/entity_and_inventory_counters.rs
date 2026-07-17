@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
 
 #[test]
 fn transient_entity_event_ignored_counters_update_world_counters() {
@@ -227,7 +228,7 @@ fn mob_effect_ignored_counters_update_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::RemoveMobEffect(
         bbb_protocol::packets::RemoveMobEffect {
             entity_id: 124,
-            effect_id: 3,
+            effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
         },
     )))
     .unwrap();

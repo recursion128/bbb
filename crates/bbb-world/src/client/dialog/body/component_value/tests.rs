@@ -12,6 +12,10 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID, VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
     VANILLA_DATA_COMPONENT_WOLF_VARIANT_TYPE_ID,
 };
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SLOWNESS_ID,
+    VANILLA_MOB_EFFECT_SPEED_ID,
+};
 
 use super::*;
 
@@ -2051,12 +2055,12 @@ fn decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration() {
         panic!("expected suspicious-stew-effects component");
     };
     assert_eq!(effects.len(), 3);
-    assert_eq!(effects[0].effect.holder_id, 0);
+    assert_eq!(effects[0].effect.holder_id, VANILLA_MOB_EFFECT_SPEED_ID);
     assert_eq!(effects[0].effect.resource_id, "minecraft:speed");
     assert_eq!(effects[0].duration, 160);
-    assert_eq!(effects[1].effect.holder_id, 18);
+    assert_eq!(effects[1].effect.holder_id, VANILLA_MOB_EFFECT_POISON_ID);
     assert_eq!(effects[1].duration, -20);
-    assert_eq!(effects[2].effect.holder_id, 2);
+    assert_eq!(effects[2].effect.holder_id, VANILLA_MOB_EFFECT_HASTE_ID);
     assert_eq!(effects[2].duration, 160);
 
     let mut registries = RegistrySet::default();
@@ -2078,7 +2082,7 @@ fn decodes_suspicious_stew_effects_with_builtin_holders_and_lenient_duration() {
     assert!(matches!(
         overridden,
         Some(DialogDataComponentValueState::SuspiciousStewEffects { effects })
-            if effects[0].effect.holder_id == 0
+            if effects[0].effect.holder_id == VANILLA_MOB_EFFECT_SPEED_ID
     ));
 
     for (value, expected) in [
@@ -2342,7 +2346,7 @@ fn projects_holder_backed_component_values_into_protocol_summary() {
         VANILLA_DATA_COMPONENT_SUSPICIOUS_STEW_EFFECTS_TYPE_ID,
         &DialogDataComponentValueState::SuspiciousStewEffects {
             effects: vec![DialogSuspiciousStewEffectState {
-                effect: holder(1, "minecraft:speed"),
+                effect: holder(VANILLA_MOB_EFFECT_SLOWNESS_ID, "minecraft:slowness"),
                 duration: 160,
             }],
         },
@@ -2389,7 +2393,7 @@ fn projects_holder_backed_component_values_into_protocol_summary() {
     assert_eq!(
         patch.suspicious_stew_effects,
         vec![SuspiciousStewEffectSummary {
-            effect_id: 1,
+            effect_id: VANILLA_MOB_EFFECT_SLOWNESS_ID,
             duration: 160,
         }]
     );

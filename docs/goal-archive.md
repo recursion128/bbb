@@ -18958,3 +18958,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Derived the custom attack-damage, scale, and unknown holder ids from the fixture's explicit
   `attribute_keys` order, and added a generator-emitted guard against restoring numeric helper
   arguments or the old literal unknown id.
+
+# 2026-07-17: Derive semantic mob-effect holder ids
+
+- Replaced built-in MobEffect holder ordinals in native, world, net, and item-model semantic
+  fixtures with the constants generated from vanilla `MobEffects` bootstrap order.
+- Derived unknown-holder samples from the generated catalog length and extended the mob-effect
+  generator with a reverse guard over construction, assignment, lookup, comparison, and dialog
+  holder projection paths outside protocol-owned wire samples.

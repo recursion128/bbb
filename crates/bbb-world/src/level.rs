@@ -1152,6 +1152,7 @@ fn positive_tick_steps(tick_steps: i32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
         AttributeSnapshot as ProtocolAttributeSnapshot,
@@ -2303,7 +2304,7 @@ mod tests {
         }));
         assert!(store.apply_update_mob_effect(ProtocolUpdateMobEffect {
             entity_id: 123,
-            effect_id: 3,
+            effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
             amplifier: 1,
             duration_ticks: 200,
             flags: MobEffectFlags::default(),

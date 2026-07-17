@@ -185,6 +185,7 @@ mod tests {
     use crate::connection::RawConnection;
     use bbb_protocol::entity_types::*;
     use bbb_protocol::menu_types::VANILLA_MENU_TYPE_MERCHANT_ID;
+    use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::packets::{
         AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary,
         AdvancementSummary, AttributeModifier, AttributeSnapshot, AwardStats, BlockChangedAck,
@@ -2412,7 +2413,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::UpdateMobEffect(UpdateMobEffect {
                 entity_id: 123,
-                effect_id: 3,
+                effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
                 amplifier: 1,
                 duration_ticks: 200,
                 flags: MobEffectFlags {
@@ -2426,7 +2427,11 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            probe.world.entity_effect(123, 3).unwrap().duration_ticks,
+            probe
+                .world
+                .entity_effect(123, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID)
+                .unwrap()
+                .duration_ticks,
             200
         );
         probe
@@ -2446,7 +2451,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::RemoveMobEffect(RemoveMobEffect {
                 entity_id: 123,
-                effect_id: 3,
+                effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
             }))
             .await
             .unwrap();
@@ -2496,7 +2501,10 @@ mod tests {
             report.world.probe_entity(300).unwrap().data_values,
             vec![item_stack_entity_data(item_stack(99, 1))]
         );
-        assert!(report.world.entity_effect(123, 3).is_none());
+        assert!(report
+            .world
+            .entity_effect(123, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID)
+            .is_none());
         let damage = report.world.entity_last_damage(123).unwrap();
         assert_eq!(damage.source_type_id, 5);
         assert_eq!(damage.source_cause_id, 456);
@@ -4726,14 +4734,17 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::UpdateMobEffect(UpdateMobEffect {
                 entity_id: 9,
-                effect_id: 3,
+                effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
                 amplifier: 1,
                 duration_ticks: 200,
                 flags: MobEffectFlags::default(),
             }))
             .await
             .unwrap();
-        assert!(probe.world.entity_effect(9, 3).is_some());
+        assert!(probe
+            .world
+            .entity_effect(9, VANILLA_MOB_EFFECT_MINING_FATIGUE_ID)
+            .is_some());
 
         probe
             .handle_play_packet(PlayClientbound::Respawn(Respawn {

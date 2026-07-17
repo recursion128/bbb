@@ -314,6 +314,7 @@ fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::{
         codec::{Decoder, Encoder},
         ids,
@@ -1620,7 +1621,7 @@ mod tests {
 
         let mob_effect = packets::UpdateMobEffect {
             entity_id: 123,
-            effect_id: 3,
+            effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
             amplifier: 1,
             duration_ticks: 200,
             flags: packets::MobEffectFlags {
@@ -1656,7 +1657,7 @@ mod tests {
 
         let remove_effect = packets::RemoveMobEffect {
             entity_id: 123,
-            effect_id: 3,
+            effect_id: VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
         };
         assert_matching_event!(
             PlayClientbound::RemoveMobEffect(remove_effect),
