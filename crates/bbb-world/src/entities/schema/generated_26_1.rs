@@ -24298,6 +24298,7 @@ mod generated_catalog_guards {
         let animations = include_str!("../animations.rs");
         let store = include_str!("../store.rs");
         let local_player_movement = include_str!("../../client/local_player_movement.rs");
+        let local_player_collision = include_str!("../../client/local_player_collision.rs");
         let play_apply = include_str!("../../play_apply.rs");
         let input = include_str!("../../../../bbb-native/src/input.rs");
         let input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
@@ -24335,6 +24336,7 @@ mod generated_catalog_guards {
             animations,
             store,
             local_player_movement,
+            local_player_collision,
             play_apply,
             input,
             input_tests,
@@ -24426,6 +24428,8 @@ mod generated_catalog_guards {
         assert!(native_session_tests.contains("entity_shift_key_down_data()"));
         assert!(native_audio_tests.contains("entity_silent_data()"));
         assert!(audio_tests.contains("entity_silent_data(true)"));
+        assert!(local_player_collision.contains("entity_shift_key_down_data()"));
+        assert!(local_player_collision.contains("entity_pose_data(VANILLA_ENTITY_POSE_DIGGING_ID)"));
     }
 
     #[test]

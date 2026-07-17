@@ -3875,6 +3875,7 @@ impl BlockCollisionBox {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::vanilla_entity_metadata_entity_accessors;
     use crate::{
         ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
         PalettedContainerData, WorldDimension,
@@ -3884,6 +3885,29 @@ mod tests {
         VANILLA_ENTITY_TYPE_CREAKING_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
         VANILLA_ENTITY_TYPE_SHULKER_ID, VANILLA_ENTITY_TYPE_WARDEN_ID,
     };
+
+    fn entity_shift_key_down_data() -> bbb_protocol::packets::EntityDataValue {
+        let accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        assert_eq!(accessors.shared_flags_default, 0);
+        bbb_protocol::packets::EntityDataValue {
+            data_id: accessors.shared_flags_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: bbb_protocol::packets::EntityDataValueKind::Byte(accessors.shift_key_down_mask),
+        }
+    }
+
+    fn entity_pose_data(pose_id: i32) -> bbb_protocol::packets::EntityDataValue {
+        let accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        bbb_protocol::packets::EntityDataValue {
+            data_id: accessors.pose_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
+            value: bbb_protocol::packets::EntityDataValueKind::Pose(pose_id),
+        }
+    }
 
     #[test]
     fn leaves_collision_membership_rejects_suffix_lookalikes() {
@@ -4666,11 +4690,7 @@ mod tests {
         assert!(
             world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
                 id: 53,
-                values: vec![bbb_protocol::packets::EntityDataValue {
-                    data_id: 0,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: bbb_protocol::packets::EntityDataValueKind::Byte(1 << 1),
-                }],
+                values: vec![entity_shift_key_down_data()],
             })
         );
 
@@ -5101,13 +5121,7 @@ mod tests {
         assert!(
             world.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
                 id: 41,
-                values: vec![bbb_protocol::packets::EntityDataValue {
-                    data_id: 6,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_POSE_ID,
-                    value: bbb_protocol::packets::EntityDataValueKind::Pose(
-                        VANILLA_ENTITY_POSE_DIGGING_ID,
-                    ),
-                }],
+                values: vec![entity_pose_data(VANILLA_ENTITY_POSE_DIGGING_ID)],
             })
         );
         assert!(!world.debug_entity_is_pushable(
