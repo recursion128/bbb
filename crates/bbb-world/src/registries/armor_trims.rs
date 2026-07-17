@@ -43,15 +43,20 @@ struct TrimPatternPresentation {
 pub(crate) enum ArmorTrimLayer {
     CamelHuskSaddle,
     CamelSaddle,
+    DonkeySaddle,
+    HorseSaddle,
     Humanoid,
     HumanoidLeggings,
     HorseBody,
     LlamaBody,
+    MuleSaddle,
     NautilusBody,
     PigSaddle,
+    SkeletonHorseSaddle,
     StriderSaddle,
     Wings,
     WolfBody,
+    ZombieHorseSaddle,
 }
 
 impl ArmorTrimLayer {
@@ -59,15 +64,20 @@ impl ArmorTrimLayer {
         match self {
             Self::CamelHuskSaddle => "camel_husk_saddle",
             Self::CamelSaddle => "camel_saddle",
+            Self::DonkeySaddle => "donkey_saddle",
+            Self::HorseSaddle => "horse_saddle",
             Self::Humanoid => "humanoid",
             Self::HumanoidLeggings => "humanoid_leggings",
             Self::HorseBody => "horse_body",
             Self::LlamaBody => "llama_body",
+            Self::MuleSaddle => "mule_saddle",
             Self::NautilusBody => "nautilus_body",
             Self::PigSaddle => "pig_saddle",
+            Self::SkeletonHorseSaddle => "skeleton_horse_saddle",
             Self::StriderSaddle => "strider_saddle",
             Self::Wings => "wings",
             Self::WolfBody => "wolf_body",
+            Self::ZombieHorseSaddle => "zombie_horse_saddle",
         }
     }
 }

@@ -2144,6 +2144,12 @@ entity_model_source_state! {
     /// zombie-horse carries a non-empty saddle item in `EquipmentSlot.SADDLE`.
     #[serde(default)]
     pub equine_saddle: bool,
+    /// Vanilla armor-trim sprite for the family-specific equine saddle equipment layer.
+    #[serde(default)]
+    pub equine_saddle_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for the equine saddle item.
+    #[serde(default)]
+    pub equine_saddle_foil: bool,
     /// Vanilla `EquineRenderState.isRidden`: true when an equine saddle wearer has passengers, which
     /// makes `EquineSaddleModel` show the two bridle line parts.
     #[serde(default)]

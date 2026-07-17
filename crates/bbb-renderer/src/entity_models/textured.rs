@@ -4474,6 +4474,7 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
     submit_sequence: u32,
 ) {
     if !instance.render_state.equine_saddle {
@@ -4582,6 +4583,74 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
         instance,
         atlas,
     );
+
+    let mut next_order = order + 1;
+    let mut next_submit_sequence = submit_sequence + 1;
+    if instance.render_state.equine_saddle_foil {
+        let pass = equipment_layer_pass(
+            EntityModelLayerKind::EquineSaddle,
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            model_layer,
+            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+            [1.0; 4],
+            next_order,
+            next_submit_sequence,
+        );
+        emit_equine_textured_submission(
+            meshes,
+            parts,
+            [2, 3, 4, 5],
+            1,
+            0.0,
+            1.0,
+            no_overlay_layer_submission(pass, transform),
+            instance,
+            atlas,
+        );
+        next_order += 1;
+        next_submit_sequence += 1;
+    }
+
+    if let Some(trim) = instance.render_state.equine_saddle_trim {
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
+            let render_type = if trim.decal {
+                EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+            } else {
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            };
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::EquineSaddle,
+                render_type,
+                model_layer,
+                texture,
+                [1.0; 4],
+                next_order,
+                next_submit_sequence,
+            );
+            let submit =
+                no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| {
+                    emit_equine_textured_posed(
+                        mesh,
+                        parts,
+                        [2, 3, 4, 5],
+                        1,
+                        0.0,
+                        1.0,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                        instance,
+                    );
+                },
+            );
+        }
+    }
 }
 
 /// Vanilla `HorseRenderer` / `UndeadHorseRenderer` `SimpleEquipmentLayer(HORSE_BODY)`: an adult horse

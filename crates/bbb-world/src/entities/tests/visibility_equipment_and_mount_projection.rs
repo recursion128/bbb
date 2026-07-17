@@ -902,13 +902,35 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
             component_patch: Default::default(),
         }
     }
-    fn equine_saddle_state(store: &WorldStore, entity_id: i32) -> (bool, bool) {
+    fn equine_saddle_state(
+        store: &WorldStore,
+        entity_id: i32,
+    ) -> (bool, bool, Option<ArmorTrimSprite>, bool) {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
             .unwrap();
-        (source.equine_saddle, source.equine_saddle_ridden)
+        (
+            source.equine_saddle,
+            source.equine_saddle_ridden,
+            source.equine_saddle_trim,
+            source.equine_saddle_foil,
+        )
+    }
+    fn trimmed_saddle(item_id: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                armor_trim_material_id: Some(1), // iron
+                armor_trim_pattern_id: Some(0),  // sentry
+                ..Default::default()
+            },
+            ..stack(item_id, 1)
+        }
     }
 
     let mut store = WorldStore::new();
@@ -932,32 +954,84 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
         65,
         VANILLA_ENTITY_TYPE_COW_ID,
     ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        66,
+        VANILLA_ENTITY_TYPE_MULE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        67,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        68,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+    ));
 
-    assert_eq!(equine_saddle_state(&store, 62), (false, false));
+    assert_eq!(equine_saddle_state(&store, 62), (false, false, None, false));
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 62,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Saddle,
-            item: stack(SADDLE_ITEM_ID, 1),
+            item: trimmed_saddle(SADDLE_ITEM_ID),
         }],
     }));
-    assert_eq!(equine_saddle_state(&store, 62), (true, false));
+    assert_eq!(
+        equine_saddle_state(&store, 62),
+        (
+            true,
+            false,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/horse_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
 
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 62,
         passenger_ids: vec![65],
     }));
-    assert_eq!(equine_saddle_state(&store, 62), (true, true));
+    assert_eq!(
+        equine_saddle_state(&store, 62),
+        (
+            true,
+            true,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/horse_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
 
-    assert!(store.apply_set_equipment(ProtocolSetEquipment {
-        entity_id: 63,
-        slots: vec![EquipmentSlotUpdate {
-            slot: EquipmentSlot::Saddle,
-            item: stack(SADDLE_ITEM_ID, 1),
-        }],
-    }));
-    assert_eq!(equine_saddle_state(&store, 63), (true, false));
+    for (entity_id, layer) in [
+        (63, "donkey_saddle"),
+        (66, "mule_saddle"),
+        (67, "skeleton_horse_saddle"),
+        (68, "zombie_horse_saddle"),
+    ] {
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Saddle,
+                item: trimmed_saddle(SADDLE_ITEM_ID),
+            }],
+        }));
+        assert_eq!(
+            equine_saddle_state(&store, entity_id),
+            (
+                true,
+                false,
+                Some(ArmorTrimSprite {
+                    sprite_id: format!("minecraft:trims/entity/{layer}/sentry_iron"),
+                    decal: false,
+                }),
+                true,
+            )
+        );
+    }
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 64,
@@ -968,7 +1042,7 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
     }));
     assert_eq!(
         equine_saddle_state(&store, 64),
-        (false, false),
+        (false, false, None, false),
         "the pig saddle projects through its own render-state flag, not the equine one"
     );
 
@@ -979,7 +1053,7 @@ fn entity_model_sources_project_equine_saddle_and_ridden_state() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert_eq!(equine_saddle_state(&store, 62), (false, false));
+    assert_eq!(equine_saddle_state(&store, 62), (false, false, None, false));
 }
 
 #[test]

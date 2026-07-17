@@ -1041,6 +1041,10 @@ entity_render_state! {
     /// `EquineSaddleModel` equipment layer; babies do not render it because vanilla supplies no baby
     /// saddle model.
     (with_equine_saddle) equine_saddle: bool = false;
+    /// Vanilla armor-trim atlas sprite for the family-specific equine saddle equipment model.
+    (with_equine_saddle_trim) equine_saddle_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for the equine saddle item.
+    (with_equine_saddle_foil) equine_saddle_foil: bool = false;
     /// Vanilla `EquineRenderState.isRidden`: the equine saddle layer shows its two bridle line parts
     /// only while the entity is a vehicle. `false` for unridden equines and every non-equine entity.
     (with_equine_saddle_ridden) equine_saddle_ridden: bool = false;
@@ -3099,6 +3103,8 @@ mod tests {
                 pig_saddle_trim: None,
                 pig_saddle_foil: false,
                 equine_saddle: false,
+                equine_saddle_trim: None,
+                equine_saddle_foil: false,
                 equine_saddle_ridden: false,
                 equine_animate_tail: false,
                 equine_eat_animation: 0.0,

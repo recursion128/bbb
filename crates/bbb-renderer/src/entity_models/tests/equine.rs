@@ -2836,6 +2836,168 @@ fn equine_saddle_layer_uses_family_specific_models_and_textures() {
     );
 }
 
+#[test]
+fn equine_saddle_foil_and_trim_keep_family_models_and_vanilla_order() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        HORSE_WHITE_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF,
+        DONKEY_TEXTURE_REF,
+        DONKEY_SADDLE_TEXTURE_REF,
+        MULE_TEXTURE_REF,
+        MULE_SADDLE_TEXTURE_REF,
+        SKELETON_HORSE_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_HORSE_TEXTURE_REF,
+        ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+    ]))
+    .unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 91_202 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 64],
+        rgba: vec![0xff; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let trim = Some(EntityArmorTrim {
+        texture: trim_texture,
+        decal: false,
+    });
+    let cases = [
+        (
+            EntityModelInstance::horse(190, [0.0, 64.0, 0.0], 0.0, false),
+            HORSE_SADDLE_TEXTURE_REF,
+            2,
+            2,
+            408,
+        ),
+        (
+            EntityModelInstance::donkey(
+                191,
+                [0.0, 64.0, 0.0],
+                0.0,
+                DonkeyModelFamily::Donkey,
+                false,
+                false,
+            ),
+            DONKEY_SADDLE_TEXTURE_REF,
+            0,
+            1,
+            456,
+        ),
+        (
+            EntityModelInstance::donkey(
+                192,
+                [0.0, 64.0, 0.0],
+                0.0,
+                DonkeyModelFamily::Mule,
+                false,
+                false,
+            ),
+            MULE_SADDLE_TEXTURE_REF,
+            0,
+            1,
+            456,
+        ),
+        (
+            EntityModelInstance::undead_horse(
+                193,
+                [0.0, 64.0, 0.0],
+                0.0,
+                UndeadHorseModelFamily::Skeleton,
+                false,
+            ),
+            SKELETON_HORSE_SADDLE_TEXTURE_REF,
+            0,
+            1,
+            408,
+        ),
+        (
+            EntityModelInstance::undead_horse(
+                194,
+                [0.0, 64.0, 0.0],
+                0.0,
+                UndeadHorseModelFamily::Zombie,
+                false,
+            ),
+            ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+            0,
+            1,
+            408,
+        ),
+    ];
+
+    for (instance, saddle_texture, base_order, base_sequence, vertex_count) in cases {
+        let instance = instance
+            .with_equine_saddle(true)
+            .with_equine_saddle_foil(true)
+            .with_equine_saddle_trim(trim);
+        let meshes = entity_model_textured_meshes_with_dynamic_textures(
+            &[instance],
+            &atlas,
+            None,
+            Some(&dynamic_atlas),
+        );
+
+        assert_eq!(meshes.submissions.len(), 4);
+        let base = meshes.submissions[1];
+        let foil = meshes.submissions[2];
+        let trim = meshes.submissions[3];
+        assert_eq!(
+            (
+                base.texture,
+                base.render_type,
+                base.order,
+                base.submit_sequence
+            ),
+            (
+                saddle_texture,
+                EntityModelLayerRenderType::ArmorCutoutNoCull,
+                base_order,
+                base_sequence,
+            )
+        );
+        assert_eq!(
+            (foil.render_type, foil.order, foil.submit_sequence),
+            (
+                EntityModelLayerRenderType::ArmorEntityGlint,
+                base_order + 1,
+                base_sequence + 1,
+            )
+        );
+        assert_eq!(foil.texture, ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+        assert_eq!(
+            (
+                trim.texture,
+                trim.render_type,
+                trim.dynamic_texture,
+                trim.order,
+                trim.submit_sequence,
+            ),
+            (
+                saddle_texture,
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull,
+                Some(trim_texture),
+                base_order + 2,
+                base_sequence + 2,
+            )
+        );
+        assert_eq!(meshes.armor_cutout.vertices.len(), vertex_count);
+        assert_eq!(meshes.armor_entity_glint.vertices.len(), vertex_count);
+        assert_eq!(
+            meshes.dynamic_player_texture_armor_trim.vertices.len(),
+            vertex_count,
+            "trim must reuse the selected family saddle model"
+        );
+        assert_textured_vertices_match_submission(&meshes.armor_cutout.vertices, base);
+        assert_textured_vertices_match_submission(
+            &meshes.dynamic_player_texture_armor_trim.vertices,
+            trim,
+        );
+    }
+}
+
 fn donkey_texture_images() -> Vec<EntityModelTextureImage> {
     donkey_entity_texture_refs()
         .iter()

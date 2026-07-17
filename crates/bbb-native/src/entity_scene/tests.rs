@@ -6538,6 +6538,12 @@ fn entity_model_instances_project_snow_golem_pumpkin_render_state() {
 #[test]
 fn entity_model_instances_project_equine_saddle_and_ridden_render_state() {
     const SADDLE_ITEM_ID: i32 = 741;
+    let trim_texture = EntityDynamicTexture { handle: 42_4313 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/horse_saddle/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
 
     let saddle = |entity_id: i32| SetEquipment {
         entity_id,
@@ -6546,19 +6552,34 @@ fn entity_model_instances_project_equine_saddle_and_ridden_render_state() {
             item: ItemStackSummary {
                 item_id: Some(SADDLE_ITEM_ID),
                 count: 1,
-                component_patch: DataComponentPatchSummary::default(),
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
             },
         }],
     };
     let equine_saddle = |world: &WorldStore, id: i32| {
-        let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state;
+        let render_state = entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state;
         (
             render_state.equine_saddle,
             render_state.equine_saddle_ridden,
+            render_state.equine_saddle_trim,
+            render_state.equine_saddle_foil,
         )
     };
 
@@ -6576,7 +6597,7 @@ fn entity_model_instances_project_equine_saddle_and_ridden_render_state() {
     assert!(world.apply_set_equipment(saddle(111)));
     assert_eq!(
         equine_saddle(&world, 111),
-        (false, false),
+        (false, false, None, false),
         "without the item registry's saddle-slot map, a raw item id is not enough"
     );
 
@@ -6584,13 +6605,35 @@ fn entity_model_instances_project_equine_saddle_and_ridden_render_state() {
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
     )]));
-    assert_eq!(equine_saddle(&world, 111), (true, false));
+    assert_eq!(
+        equine_saddle(&world, 111),
+        (
+            true,
+            false,
+            Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }),
+            true,
+        )
+    );
 
     assert!(world.apply_set_passengers(SetPassengers {
         vehicle_id: 111,
         passenger_ids: vec![112],
     }));
-    assert_eq!(equine_saddle(&world, 111), (true, true));
+    assert_eq!(
+        equine_saddle(&world, 111),
+        (
+            true,
+            true,
+            Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }),
+            true,
+        )
+    );
 }
 
 #[test]

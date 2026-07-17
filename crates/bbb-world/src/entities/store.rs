@@ -1641,6 +1641,17 @@ impl EntityStore {
                 && saddle_slot_contains_saddle_item()
         };
         let equine_saddle = equine_saddle();
+        let equine_saddle_trim_layer = match identity.entity_type_id {
+            VANILLA_ENTITY_TYPE_HORSE_ID => Some(ArmorTrimLayer::HorseSaddle),
+            VANILLA_ENTITY_TYPE_DONKEY_ID => Some(ArmorTrimLayer::DonkeySaddle),
+            VANILLA_ENTITY_TYPE_MULE_ID => Some(ArmorTrimLayer::MuleSaddle),
+            VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID => Some(ArmorTrimLayer::SkeletonHorseSaddle),
+            VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => Some(ArmorTrimLayer::ZombieHorseSaddle),
+            _ => None,
+        };
+        let equine_saddle_trim =
+            equine_saddle_trim_layer.and_then(|layer| saddle_trim(equine_saddle, layer));
+        let equine_saddle_foil = saddle_foil(equine_saddle);
         let equine_saddle_ridden = equine_saddle
             && mount
                 .as_ref()
@@ -2582,6 +2593,8 @@ impl EntityStore {
             pig_saddle_trim,
             pig_saddle_foil,
             equine_saddle,
+            equine_saddle_trim,
+            equine_saddle_foil,
             equine_saddle_ridden,
             equine_animate_tail: client_animations.animations.equine_animate_tail(),
             equine_eat_animation: client_animations

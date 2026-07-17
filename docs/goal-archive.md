@@ -18664,3 +18664,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   complete saddle layer because vanilla supplies no baby saddle model.
 - Focused world, native, and renderer tests lock both trim prefixes, family-specific base textures,
   runtime-atlas resolution, exact collector order, ridden state, and adult-only geometry.
+
+# 2026-07-17: Render equine saddle armor trims and foil
+
+- Extended saddle trim projection across horse, donkey, mule, skeleton-horse, and zombie-horse
+  renderers with each vanilla `EquipmentClientInfo.LayerType` prefix and the shared
+  `minecraft:saddle` equipment asset.
+- Every adult family-specific saddle model now submits base → foil → regular/decal trim while
+  retaining its existing texture, scale, ridden bridle-line pose, layer order, and collector
+  sequence. Baby equines continue to suppress the complete saddle layer.
+- Focused world, native, and renderer tests lock all five trim sprite ids, runtime-atlas handoff,
+  exact submission order, and reuse of the correct 408- or 456-vertex family saddle model.

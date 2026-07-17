@@ -596,6 +596,10 @@ pub(super) fn entity_model_instance(
             source.pig_saddle_trim.as_ref(),
             variant_registries,
         ))
+        .with_equine_saddle_trim(armor_trim(
+            source.equine_saddle_trim.as_ref(),
+            variant_registries,
+        ))
         .with_strider_saddle_trim(armor_trim(
             source.strider_saddle_trim.as_ref(),
             variant_registries,
@@ -816,6 +820,7 @@ pub(super) fn entity_model_instance(
         with_pig_saddle pig_saddle,
         with_pig_saddle_foil pig_saddle_foil,
         with_equine_saddle equine_saddle,
+        with_equine_saddle_foil equine_saddle_foil,
         with_equine_saddle_ridden equine_saddle_ridden,
         with_equine_animate_tail equine_animate_tail,
         with_equine_eat_animation equine_eat_animation,
