@@ -90,7 +90,7 @@ Owner: `bbb-protocol`
 - Complete play Login session initialization beyond the current player-id and
   partial dimension/gameplay projection: acquire the services profile-key set,
   validate signed profile keys, and reset the remaining level-bound
-  debug/chat/camera/player state.
+  debug/camera/player state.
 - Complete play Respawn lifecycle from
   `ClientPacketListener.handleRespawn`: reconstruct the local player according
   to both keep bits and reset music/debug-subscriber state. The current world

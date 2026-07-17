@@ -18764,3 +18764,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   priority and a pending low-disk warning begins after it finishes.
 - Added renderer support for `SystemToast.multiline`: messages wrap at 200 font pixels, the
   background grows by 12 pixels per line, and each line uses Vanilla's title/message offsets.
+
+# 2026-07-17: Reset Login chat signing state
+
+- Matched `ClientPacketListener.handleLogin` by resetting the expected global chat index,
+  signature cache, last-seen tracker, and pending acknowledgement window for the new play
+  session.
+- Preserved displayed messages and delayed deletion diagnostics across reconfiguration, matching
+  the `ChatComponent.State` carried by the common-listener cookie. The explicit Reset Chat packet
+  remains the full display-and-protocol reset path.
+- Added focused world coverage for the reset boundary and kept play Login partial while narrowing
+  its remaining session-initialization gap to profile-key validation and debug/camera/player state.

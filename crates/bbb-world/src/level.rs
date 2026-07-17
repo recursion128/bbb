@@ -286,6 +286,7 @@ impl WorldStore {
     pub fn apply_login(&mut self, login: &ProtocolPlayLogin) {
         self.counters.play_logins_received += 1;
         self.advance_client_level_generation();
+        self.reset_chat_session_state();
         self.available_levels = login.levels.iter().cloned().collect();
         self.server_enforces_secure_chat = Some(login.enforces_secure_chat);
         if !self.seen_insecure_chat_warning && !self.effectively_enforces_secure_chat() {

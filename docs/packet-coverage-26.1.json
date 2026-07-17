@@ -9162,7 +9162,9 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/level.rs#apply_login",
+            "crates/bbb-world/src/client/chat.rs#reset_chat_session_state",
             "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info",
+            "crates/bbb-world/src/client/chat.rs#login_resets_chat_session_trackers_and_preserves_display_state",
             "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleLogin"
           ],
@@ -9190,6 +9192,7 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/level.rs#apply_login",
+            "crates/bbb-world/src/client/chat.rs#reset_chat_session_state",
             "crates/bbb-native/src/runtime.rs#hud_system_toast",
             "crates/bbb-native/src/runtime.rs#vanilla_lightmap_dimension_kind",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world",
@@ -9203,6 +9206,7 @@
             "crates/bbb-protocol/src/packets/tests.rs#decodes_play_login_spawn_info",
             "crates/bbb-net/src/event_stream.rs#play_session_and_player_info_packets_emit_matching_events_without_responses",
             "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info",
+            "crates/bbb-world/src/client/chat.rs#login_resets_chat_session_trackers_and_preserves_display_state",
             "crates/bbb-world/src/level.rs#dimension_type_registry_shape_overrides_builtin_and_rejects_invalid_shape",
             "crates/bbb-native/src/runtime/tests.rs#insecure_chat_warning_projects_multiline_toast_before_low_disk_queue",
             "crates/bbb-native/src/runtime/tests.rs#lightmap_dimension_kind_prefers_registry_identity_over_bootstrap_holder_id",

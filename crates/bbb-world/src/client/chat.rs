@@ -167,6 +167,14 @@ impl WorldStore {
         refresh_chat_counters(self);
     }
 
+    pub(crate) fn reset_chat_session_state(&mut self) {
+        self.client_chat.expected_player_chat_global_index = 0;
+        self.client_chat.signature_cache = vec![None; SIGNATURE_CACHE_CAPACITY];
+        self.client_chat.acknowledgement = ChatAcknowledgementState::default();
+        self.client_chat.last_seen_messages = LastSeenMessagesTrackerState::default();
+        refresh_chat_counters(self);
+    }
+
     pub fn push_client_system_chat_message(&mut self, content: impl Into<String>) {
         let content = content.into();
         let styled_content = plain_chat_styled_content(&content);
@@ -572,8 +580,8 @@ fn refresh_chat_counters(store: &mut WorldStore) {
 mod tests {
     use super::*;
     use bbb_protocol::packets::{
-        ChatTypeBound, ChatTypeHolder, FilterMask, FilterMaskKind, MessageSignature,
-        PackedMessageSignature, SignedMessageBody,
+        ChatTypeBound, ChatTypeHolder, CommonPlayerSpawnInfo, FilterMask, FilterMaskKind,
+        MessageSignature, PackedMessageSignature, PlayLogin, SignedMessageBody,
     };
 
     #[test]
@@ -1059,6 +1067,55 @@ mod tests {
         );
     }
 
+    #[test]
+    fn login_resets_chat_session_trackers_and_preserves_display_state() {
+        let mut store = WorldStore::new();
+        let _ = store.apply_player_chat(player_chat_with_signature(0, signature(9)));
+        store.apply_delete_chat(ProtocolDeleteChat {
+            message_signature: PackedMessageSignature {
+                cache_id: Some(0),
+                full_signature: None,
+            },
+        });
+        assert_eq!(store.client_chat().messages.len(), 1);
+        assert_eq!(store.client_chat().deleted_messages.len(), 1);
+        assert_eq!(store.client_chat().expected_player_chat_global_index, 1);
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+
+        store.apply_login(&login_packet());
+
+        assert_eq!(store.client_chat().messages.len(), 1);
+        assert_eq!(store.client_chat().deleted_messages.len(), 1);
+        assert_eq!(store.client_chat().expected_player_chat_global_index, 0);
+        assert!(store
+            .client_chat()
+            .signature_cache
+            .iter()
+            .all(Option::is_none));
+        assert!(store
+            .client_chat()
+            .last_seen_messages
+            .entries
+            .iter()
+            .all(Option::is_none));
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 0);
+        assert!(store
+            .client_chat()
+            .acknowledgement
+            .last_processed_signature
+            .is_none());
+        assert_eq!(store.counters().reset_chat_packets, 0);
+        assert_eq!(store.counters().player_chat_packets, 1);
+        assert_eq!(store.counters().delete_chat_packets, 1);
+        assert_eq!(store.counters().chat_messages_tracked, 1);
+        assert_eq!(store.counters().deleted_chat_messages_tracked, 1);
+        assert_eq!(store.counters().chat_signature_cache_entries, 0);
+        assert_eq!(
+            store.counters().player_chat_acknowledgement_pending_offset,
+            0
+        );
+    }
+
     fn signature(byte: u8) -> MessageSignature {
         MessageSignature {
             bytes: vec![byte; 256],
@@ -1099,6 +1156,33 @@ mod tests {
             chat_type: ChatTypeHolder::Registry { id: 0 },
             name: name.to_string(),
             target_name: None,
+        }
+    }
+
+    fn login_packet() -> PlayLogin {
+        PlayLogin {
+            player_id: 42,
+            hardcore: false,
+            levels: vec!["minecraft:overworld".to_string()],
+            max_players: 20,
+            chunk_radius: 8,
+            simulation_distance: 6,
+            reduced_debug_info: false,
+            show_death_screen: true,
+            do_limited_crafting: false,
+            common_spawn_info: CommonPlayerSpawnInfo {
+                dimension_type_id: 0,
+                dimension: "minecraft:overworld".to_string(),
+                seed: 12345,
+                game_type: 0,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 0,
+                sea_level: 63,
+            },
+            enforces_secure_chat: true,
         }
     }
 }
