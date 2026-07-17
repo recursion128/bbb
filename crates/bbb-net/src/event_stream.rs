@@ -1587,7 +1587,7 @@ mod tests {
                 modifiers: vec![packets::AttributeModifier {
                     id: "minecraft:health_bonus".to_string(),
                     amount: 4.0,
-                    operation_id: 0,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                 }],
             }],
         };

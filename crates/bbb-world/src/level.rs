@@ -1639,7 +1639,7 @@ mod tests {
             vec![ProtocolAttributeModifier {
                 id: "minecraft:test_speed".to_string(),
                 amount: 0.25,
-                operation_id: 1,
+                operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
             }]
         );
     }
@@ -2297,7 +2297,7 @@ mod tests {
                 modifiers: vec![ProtocolAttributeModifier {
                     id: "minecraft:test_speed".to_string(),
                     amount: 0.25,
-                    operation_id: 1,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
                 }],
             }],
         }));

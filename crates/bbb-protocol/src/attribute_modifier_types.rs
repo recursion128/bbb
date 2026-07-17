@@ -150,8 +150,49 @@ mod tests {
         );
     }
 
+    fn contains_numeric_attribute_modifier_operation_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction = compact.match_indices("operation_id:").any(|(offset, _)| {
+            compact[offset + "operation_id:".len()..]
+                .chars()
+                .next()
+                .is_some_and(|character| character.is_ascii_digit())
+        });
+        numeric_construction
+            || compact.match_indices(".operation_id").any(|(offset, _)| {
+                let suffix = &compact[offset + ".operation_id".len()..];
+                [",", "==", "!=", "="].iter().any(|separator| {
+                    suffix.strip_prefix(separator).is_some_and(|value| {
+                        value
+                            .chars()
+                            .next()
+                            .is_some_and(|character| character.is_ascii_digit())
+                    })
+                })
+            })
+    }
+
     #[test]
-    fn production_sources_do_not_redeclare_attribute_modifier_types() {
+    fn numeric_attribute_modifier_operation_guard_covers_construction_and_comparison() {
+        assert!(contains_numeric_attribute_modifier_operation_reference(
+            "operation_id: 0,"
+        ));
+        assert!(contains_numeric_attribute_modifier_operation_reference(
+            "assert_eq!(modifier.operation_id,\n 2);"
+        ));
+        assert!(!contains_numeric_attribute_modifier_operation_reference(
+            "operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,"
+        ));
+        assert!(!contains_numeric_attribute_modifier_operation_reference(
+            "assert_eq!(modifier.operation_id, VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID);"
+        ));
+    }
+
+    #[test]
+    fn semantic_sources_do_not_redeclare_attribute_modifier_types() {
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();
@@ -163,13 +204,16 @@ mod tests {
                     continue;
                 }
                 let display = path.to_string_lossy();
-                if display.ends_with("/attribute_modifier_types.rs")
-                    || display.ends_with("/tests.rs")
-                    || display.contains("/tests/")
-                {
+                if display.ends_with("/attribute_modifier_types.rs") {
                     continue;
                 }
                 let source = fs::read_to_string(&path).unwrap();
+                if contains_numeric_attribute_modifier_operation_reference(&source) {
+                    violations.push(format!(
+                        "{}: numeric operation_id reference",
+                        path.display()
+                    ));
+                }
                 let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
                 if production.contains("fn decode_attribute_modifier_operation_id")
                     || production.contains("fn attribute_modifier_operation_id")
@@ -182,10 +226,16 @@ mod tests {
             }
         }
         let mut violations = Vec::new();
-        visit(
-            Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap(),
-            &mut violations,
-        );
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        for directory in [
+            "bbb-native/src",
+            "bbb-world/src",
+            "bbb-net/src",
+            "bbb-item-model/src",
+            "bbb-renderer/src",
+        ] {
+            visit(&crates.join(directory), &mut violations);
+        }
         assert!(
             violations.is_empty(),
             "parallel attribute modifier type owners: {violations:?}"

@@ -783,17 +783,17 @@ fn living_pick_bounds_scale_with_vanilla_scale_attribute() {
                 ProtocolAttributeModifier {
                     id: "minecraft:add_scale".to_string(),
                     amount: 1.0,
-                    operation_id: 0,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                 },
                 ProtocolAttributeModifier {
                     id: "minecraft:add_base_scale".to_string(),
                     amount: 0.5,
-                    operation_id: 1,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
                 },
                 ProtocolAttributeModifier {
                     id: "minecraft:multiply_total_scale".to_string(),
                     amount: 1.0,
-                    operation_id: 2,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
                 },
             ],
         }],

@@ -18923,3 +18923,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Extended the gameplay-id generator's reverse guard to normalize whitespace and reject numeric
   `.serializer_id` construction, assignment, equality, and inequality references across native,
   world, and net sources. Protocol decoder wire samples retain their separately audited boundary.
+
+# 2026-07-17: Derive attribute-modifier operation ordinals
+
+- Replaced every numeric `AttributeModifier.Operation` construction in native, world, net,
+  item-model, and their semantic fixtures with the generated `ADD_VALUE`,
+  `ADD_MULTIPLIED_BASE`, or `ADD_MULTIPLIED_TOTAL` catalog constant.
+- Extended the gameplay-id generator's reverse guard to scan those semantic owners, including
+  split test modules and inline tests, for numeric operation construction, assignment, or
+  comparison. Protocol codec wire samples remain outside this semantic guard.

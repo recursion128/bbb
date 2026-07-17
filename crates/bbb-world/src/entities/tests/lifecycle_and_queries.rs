@@ -249,7 +249,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
                 modifiers: vec![ProtocolAttributeModifier {
                     id: "minecraft:health_bonus".to_string(),
                     amount: 4.0,
-                    operation_id: 0,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                 }],
             },
             ProtocolAttributeSnapshot {
@@ -267,7 +267,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
             modifiers: vec![ProtocolAttributeModifier {
                 id: "minecraft:speed_bonus".to_string(),
                 amount: 0.2,
-                operation_id: 2,
+                operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
             }],
         }],
     }));
@@ -289,7 +289,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
                 modifiers: vec![ProtocolAttributeModifier {
                     id: "minecraft:health_bonus".to_string(),
                     amount: 4.0,
-                    operation_id: 0,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                 }],
             },
             ProtocolAttributeSnapshot {
@@ -298,7 +298,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
                 modifiers: vec![ProtocolAttributeModifier {
                     id: "minecraft:speed_bonus".to_string(),
                     amount: 0.2,
-                    operation_id: 2,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
                 }],
             },
         ]

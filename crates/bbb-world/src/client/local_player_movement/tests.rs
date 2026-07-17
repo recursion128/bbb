@@ -3976,7 +3976,7 @@ fn local_player_powder_snow_speed_modifier_does_not_double_apply_synced_attribut
             modifiers: vec![ProtocolAttributeModifier {
                 id: VANILLA_POWDER_SNOW_SPEED_MODIFIER_ID.to_string(),
                 amount: -0.025,
-                operation_id: 0,
+                operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
             }],
         }],
     }));
@@ -4626,7 +4626,7 @@ fn local_player_speed_effect_does_not_double_apply_synced_attribute_modifier() {
             modifiers: vec![ProtocolAttributeModifier {
                 id: VANILLA_SPEED_EFFECT_MODIFIER_ID.to_string(),
                 amount: 0.4,
-                operation_id: 2,
+                operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
             }],
         }],
     }));

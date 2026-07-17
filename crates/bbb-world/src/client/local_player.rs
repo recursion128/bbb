@@ -1731,17 +1731,17 @@ mod tests {
                 bbb_protocol::packets::AttributeModifier {
                     id: "test:add".to_string(),
                     amount: 2.0,
-                    operation_id: 0,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                 },
                 bbb_protocol::packets::AttributeModifier {
                     id: "test:multiply_base".to_string(),
                     amount: 0.5,
-                    operation_id: 1,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
                 },
                 bbb_protocol::packets::AttributeModifier {
                     id: "test:multiply_total".to_string(),
                     amount: 0.1,
-                    operation_id: 2,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
                 },
             ],
             4.0,

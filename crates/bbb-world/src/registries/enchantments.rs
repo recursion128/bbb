@@ -546,14 +546,14 @@ mod tests {
                     attribute: "minecraft:mining_efficiency".to_string(),
                     modifier_id: "example:linear/mainhand".to_string(),
                     amount: 2.0,
-                    operation_id: 0,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                     slot: "mainhand".to_string(),
                 },
                 EnchantmentAttributeModifier {
                     attribute: "minecraft:sweeping_damage_ratio".to_string(),
                     modifier_id: "example:fraction/mainhand".to_string(),
                     amount: 0.75,
-                    operation_id: 2,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
                     slot: "mainhand".to_string(),
                 },
             ]

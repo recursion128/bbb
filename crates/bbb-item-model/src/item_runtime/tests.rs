@@ -1000,7 +1000,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
         attribute: "minecraft:mining_efficiency".to_string(),
         modifier_id: "minecraft:enchantment.efficiency/mainhand".to_string(),
         amount: 10.0,
-        operation_id: 0,
+        operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
         slot: "mainhand".to_string(),
     }];
     let efficiency_enchantment_keys = ["minecraft:efficiency".to_string()];
@@ -6911,7 +6911,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 attribute_id: 0,
                 modifier_id: "minecraft:test/attack".to_string(),
                 amount_bits: 2.5f64.to_bits(),
-                operation_id: 0,
+                operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                 slot_id: 1,
                 display_id: 1,
                 display_text: None,
@@ -6921,7 +6921,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 attribute_id: 1,
                 modifier_id: "minecraft:test/scale".to_string(),
                 amount_bits: 1.25f64.to_bits(),
-                operation_id: 1,
+                operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
                 slot_id: 3,
                 display_id: 2,
                 display_text: Some("Heavy hit".to_string()),

@@ -146,6 +146,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   assignment, and comparison even when formatting splits a field access across lines. Numeric
   `serializer_id` fields are confined to the 18 audited raw-decoder
   assertions in `bbb-protocol/src/packets/entities/tests.rs`, identified by its wire-sample marker.
+  Attribute-modifier semantic consumers and fixtures must likewise use the generated
+  `AttributeModifier.Operation` constants; the generator guard must cover numeric construction,
+  assignment, and comparison outside separately owned protocol wire samples.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Zoglin's independently declared `DATA_BABY_ID` must use that nearest-owner resolver in native

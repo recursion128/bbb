@@ -2374,7 +2374,7 @@ mod tests {
                     modifiers: vec![AttributeModifier {
                         id: "minecraft:health_bonus".to_string(),
                         amount: 4.0,
-                        operation_id: 0,
+                        operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                     }],
                 }],
             }))
@@ -2485,7 +2485,7 @@ mod tests {
                 modifiers: vec![AttributeModifier {
                     id: "minecraft:health_bonus".to_string(),
                     amount: 4.0,
-                    operation_id: 0,
+                    operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                 }],
             }]
         );
@@ -4717,7 +4717,7 @@ mod tests {
                     modifiers: vec![AttributeModifier {
                         id: "minecraft:test_speed".to_string(),
                         amount: 0.25,
-                        operation_id: 1,
+                        operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
                     }],
                 }],
             }))
@@ -4787,7 +4787,7 @@ mod tests {
             vec![AttributeModifier {
                 id: "minecraft:test_speed".to_string(),
                 amount: 0.25,
-                operation_id: 1,
+                operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
             }]
         );
 
