@@ -24,6 +24,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     extracts_parrot_pose: bool,
     undead_horse_kind: Option<VanillaUndeadHorseRendererKind>,
     horse_kind: Option<VanillaHorseRendererKind>,
+    llama_kind: Option<VanillaLlamaRendererKind>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,6 +61,12 @@ pub enum VanillaHorseRendererKind {
     Horse,
     Donkey,
     Mule,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaLlamaRendererKind {
+    Llama,
+    TraderLlama,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -221,6 +228,10 @@ pub fn vanilla_entity_renderer_horse_kind(entity_type_id: i32) -> Option<Vanilla
     vanilla_entity_renderer_registration(entity_type_id)?.horse_kind
 }
 
+pub fn vanilla_entity_renderer_llama_kind(entity_type_id: i32) -> Option<VanillaLlamaRendererKind> {
+    vanilla_entity_renderer_registration(entity_type_id)?.llama_kind
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -241,8 +252,9 @@ mod tests {
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
-        VANILLA_ENTITY_TYPE_MARKER_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_MANNEQUIN_ID, VANILLA_ENTITY_TYPE_MARKER_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
         VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
         VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
@@ -251,13 +263,14 @@ mod tests {
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
         VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
-        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
+        VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
 
     use super::*;
@@ -481,6 +494,22 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_renderer_horse_kind(VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_llama_kinds_match_provider_constructor_layers() {
+        assert_eq!(
+            vanilla_entity_renderer_llama_kind(VANILLA_ENTITY_TYPE_LLAMA_ID),
+            Some(VanillaLlamaRendererKind::Llama)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_llama_kind(VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID),
+            Some(VanillaLlamaRendererKind::TraderLlama)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_llama_kind(VANILLA_ENTITY_TYPE_HORSE_ID),
             None
         );
     }

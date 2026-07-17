@@ -30,6 +30,7 @@ PARROT_RENDERER_CLASS = RENDERER_PACKAGE + ".ParrotRenderer"
 UNDEAD_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".UndeadHorseRenderer"
 HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".HorseRenderer"
 DONKEY_RENDERER_CLASS = RENDERER_PACKAGE + ".DonkeyRenderer"
+LLAMA_RENDERER_CLASS = RENDERER_PACKAGE + ".LlamaRenderer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
@@ -60,6 +61,7 @@ class EntityRendererRegistration:
     extracts_parrot_pose: bool
     undead_horse_kind: str | None
     horse_kind: str | None
+    llama_kind: str | None
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -691,6 +693,28 @@ def extract_entity_renderer_registrations(
                     "unsupported DonkeyRenderer constructor arguments",
                 )
 
+        llama_kind = None
+        if renderer_class == LLAMA_RENDERER_CLASS:
+            arguments = tuple(argument.canonical for argument in constructor_arguments)
+            llama_kind = {
+                (
+                    "context",
+                    "ModelLayers.LLAMA",
+                    "ModelLayers.LLAMA_BABY",
+                ): "Llama",
+                (
+                    "context",
+                    "ModelLayers.TRADER_LLAMA",
+                    "ModelLayers.TRADER_LLAMA_BABY",
+                ): "TraderLlama",
+            }.get(arguments)
+            if llama_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported LlamaRenderer constructor arguments",
+                )
+
         registrations.append(
             EntityRendererRegistration(
                 entity_type_id,
@@ -776,6 +800,7 @@ def extract_entity_renderer_registrations(
                 ),
                 undead_horse_kind,
                 horse_kind,
+                llama_kind,
             )
         )
 

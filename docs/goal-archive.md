@@ -18411,3 +18411,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   仍分别复用现有的花色、斑纹、幼体与驮箱投影逻辑。
 - extractor fixture 锁定三种 provider，renderer generator 输出 reverse guard，防止 native
   恢复三个 entity-type 分支。
+
+## 2026-07-17：生成 Llama provider kind
+
+- entity renderer extractor 严格解析 `LlamaRenderer` 三参 provider constructor，以 adult/baby
+  `ModelLayers` tuple 归一化 Llama 与 TraderLlama；未知 layer 组合显式失败，不依赖实体常量名。
+- checked-in registration 新增 typed llama kind；native 删除 Llama/TraderLlama type arms，
+  并继续复用现有 variant、幼体与驮箱元数据投影。
+- extractor fixture 锁定两组 layer tuple，renderer generator 输出 reverse guard，防止 native
+  恢复两个 entity-type 分支。

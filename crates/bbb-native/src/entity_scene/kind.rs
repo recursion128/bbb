@@ -114,6 +114,16 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             }
         };
     }
+    if let Some(llama_kind) = bbb_world::vanilla_entity_renderer_llama_kind(entity_type_id) {
+        return llama_model_kind(
+            entity_type_id,
+            match llama_kind {
+                bbb_world::VanillaLlamaRendererKind::Llama => LlamaModelFamily::Llama,
+                bbb_world::VanillaLlamaRendererKind::TraderLlama => LlamaModelFamily::TraderLlama,
+            },
+            data_values,
+        );
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -188,12 +198,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_SHEEP_ID => {
             sheep_model_kind(entity_type_id, data_values, entity_age_ticks)
-        }
-        VANILLA_ENTITY_TYPE_LLAMA_ID => {
-            llama_model_kind(entity_type_id, LlamaModelFamily::Llama, data_values)
-        }
-        VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID => {
-            llama_model_kind(entity_type_id, LlamaModelFamily::TraderLlama, data_values)
         }
         VANILLA_ENTITY_TYPE_GOAT_ID => goat_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_NAUTILUS_ID => nautilus_model_kind(entity_type_id, data_values),

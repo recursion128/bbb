@@ -118,6 +118,14 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                             ModelLayers.MULE_SADDLE,
                             DonkeyRenderer.Type.MULE,
                             DonkeyRenderer.Type.MULE_BABY));
+                    register(EntityType.LLAMA,
+                        context -> new LlamaRenderer(
+                            context, ModelLayers.LLAMA, ModelLayers.LLAMA_BABY));
+                    register(EntityType.TRADER_LLAMA,
+                        context -> new LlamaRenderer(
+                            context,
+                            ModelLayers.TRADER_LLAMA,
+                            ModelLayers.TRADER_LLAMA_BABY));
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -285,6 +293,13 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 """,
             ),
             java(
+                "net/minecraft/client/renderer/entity/LlamaRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class LlamaRenderer extends MobRenderer {}
+                """,
+            ),
+            java(
                 "net/minecraft/client/renderer/entity/CatRenderer.java",
                 """
                 package net.minecraft.client.renderer.entity;
@@ -428,6 +443,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "ZOMBIE_HORSE",
                 "DONKEY",
                 "MULE",
+                "LLAMA",
+                "TRADER_LLAMA",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -478,6 +495,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (23, "ZOMBIE_HORSE", "UndeadHorseRenderer", False, None, None, False, True, False, False, False, False),
                 (24, "DONKEY", "DonkeyRenderer", False, None, None, False, True, False, False, False, False),
                 (25, "MULE", "DonkeyRenderer", False, None, None, False, True, False, False, False, False),
+                (26, "LLAMA", "LlamaRenderer", False, None, None, False, False, False, False, False, False),
+                (27, "TRADER_LLAMA", "LlamaRenderer", False, None, None, False, False, False, False, False, False),
             ],
         )
         self.assertEqual(
@@ -515,6 +534,14 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 if entry.horse_kind is not None
             ],
             [("HORSE", "Horse"), ("DONKEY", "Donkey"), ("MULE", "Mule")],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.llama_kind)
+                for entry in entries
+                if entry.llama_kind is not None
+            ],
+            [("LLAMA", "Llama"), ("TRADER_LLAMA", "TraderLlama")],
         )
 
 
