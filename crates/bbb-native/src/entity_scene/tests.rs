@@ -15,6 +15,7 @@ use bbb_protocol::packets::{
     UpdateAttributes, UpdateTags, Vec3d,
 };
 use bbb_world::{
+    vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
 };
@@ -2138,10 +2139,10 @@ fn entity_model_instances_project_aggressive_for_pillager_attacking_pose() {
 
 #[test]
 fn entity_model_instances_project_enderman_carrying_and_creepy() {
-    // Vanilla Enderman accessors: DATA_CARRY_STATE (16, OPTIONAL_BLOCK_STATE serializer
-    // 15), DATA_CREEPY (17, BOOLEAN serializer 8).
-    const CARRY_STATE_DATA_ID: u8 = 16;
-    const CREEPY_DATA_ID: u8 = 17;
+    let accessors = vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+    )
+    .expect("generated EnderMan render metadata accessors");
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -2169,11 +2170,11 @@ fn entity_model_instances_project_enderman_carrying_and_creepy() {
         id: 94,
         values: vec![
             EntityDataValue {
-                data_id: CARRY_STATE_DATA_ID,
+                data_id: accessors.carried_block_state_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
                 value: EntityDataValueKind::OptionalBlockState(Some(10)),
             },
-            protocol_bool_data(CREEPY_DATA_ID, true),
+            protocol_bool_data(accessors.creepy_data_id, true),
         ],
     }));
     let primed = state(&world, 94);

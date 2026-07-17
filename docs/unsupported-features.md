@@ -309,8 +309,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generated `WitherBoss.DATA_ID_INV` accessor; world/native debug consumers and fixtures must not
   restore a Wither type predicate or fixed accessor/default aliases.
   EnderMan carried-block/creepy render membership, wire indices and defaults must remain derived
-  together from generated `DATA_CARRY_STATE`/`DATA_CREEPY`; world projection must not restore an
-  EnderMan type predicate or fixed accessor aliases.
+  together from generated `DATA_CARRY_STATE`/`DATA_CREEPY`; world/native projection and item-model
+  fixtures must not restore an EnderMan type predicate or fixed accessor/default aliases.
   Bat resting/debug membership, wire index, default and named resting mask must remain derived from
   generated `Bat.DATA_ID_FLAGS`; world projection and native debug must not restore a Bat type
   predicate, fixed accessor/default aliases or a hand-copied flag mask.

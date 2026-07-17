@@ -15,6 +15,7 @@ use bbb_renderer::{
     EntityDefaultPlayerSkin, EntityPlayerSkin, ParticleItemOptionState, PlayerModelPartVisibility,
 };
 use bbb_world::{
+    vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type, ChunkColumn,
     ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
@@ -24,7 +25,6 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
-const ENDERMAN_CARRY_STATE_DATA_ID: u8 = 16;
 const AIR_BLOCK_STATE_ID: i32 = 0;
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 
@@ -195,6 +195,10 @@ fn protocol_block_state_data(data_id: u8, block_state: i32) -> EntityDataValue {
 }
 
 fn world_with_enderman_carried_grass_block(entity_id: i32) -> WorldStore {
+    let accessors = vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+    )
+    .expect("generated EnderMan render metadata accessors");
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
         entity_id,
@@ -203,7 +207,7 @@ fn world_with_enderman_carried_grass_block(entity_id: i32) -> WorldStore {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: entity_id,
         values: vec![protocol_optional_block_state_data(
-            ENDERMAN_CARRY_STATE_DATA_ID,
+            accessors.carried_block_state_data_id,
             Some(GRASS_BLOCK_STATE_ID),
         )],
     }));

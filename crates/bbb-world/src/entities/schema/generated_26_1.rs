@@ -23696,14 +23696,30 @@ mod generated_catalog_guards {
         assert!(
             source.contains("vanilla_entity_metadata_enderman_render_accessors_for_entity_type")
         );
+        let world_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
+        let native_item_model_tests =
+            include_str!("../../../../bbb-native/src/item_models/tests.rs");
+        for fixture in [world_tests, native_scene_tests, native_item_model_tests] {
+            assert!(fixture
+                .contains("vanilla_entity_metadata_enderman_render_accessors_for_entity_type"));
+        }
         for removed in [
             "vanilla_is_enderman",
             "ENDERMAN_CARRY_STATE_DATA_ID",
             "ENDERMAN_CREEPY_DATA_ID",
             "ENDERMAN_DEFAULT_CARRY_STATE",
             "ENDERMAN_DEFAULT_CREEPY",
+            "CARRY_STATE_DATA_ID",
+            "CREEPY_DATA_ID",
         ] {
             assert!(!source.contains(removed), "restored {removed}");
+            for fixture in [world_tests, native_scene_tests, native_item_model_tests] {
+                assert!(
+                    !fixture.contains(removed),
+                    "EnderMan fixture restored {removed}"
+                );
+            }
         }
         let dimensions = include_str!("../dimensions.rs");
         assert!(!dimensions.contains("fn vanilla_is_enderman"));

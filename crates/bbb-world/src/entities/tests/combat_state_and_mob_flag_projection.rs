@@ -795,11 +795,11 @@ fn entity_model_sources_project_villager_unhappy() {
 
 #[test]
 fn entity_model_sources_project_enderman_carrying_and_creepy() {
-    // Vanilla Enderman accessors: DATA_CARRY_STATE (16, OPTIONAL_BLOCK_STATE serializer 15),
-    // DATA_CREEPY (17, BOOLEAN serializer 8).
-    const CARRY_STATE_DATA_ID: u8 = 16;
-    const CREEPY_DATA_ID: u8 = 17;
     const GRASS_BLOCK_STATE_ID: i32 = 9;
+    let accessors = vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_ENDERMAN_ID,
+    )
+    .expect("generated EnderMan render metadata accessors");
 
     let source = |store: &WorldStore, id: i32| {
         store
@@ -814,12 +814,12 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
                 id,
                 values: vec![
                     ProtocolEntityDataValue {
-                        data_id: CARRY_STATE_DATA_ID,
+                        data_id: accessors.carried_block_state_data_id,
                         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_OPTIONAL_BLOCK_STATE_ID,
                         value: EntityDataValueKind::OptionalBlockState(block),
                     },
                     ProtocolEntityDataValue {
-                        data_id: CREEPY_DATA_ID,
+                        data_id: accessors.creepy_data_id,
                         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
                         value: EntityDataValueKind::Boolean(creepy),
                     },

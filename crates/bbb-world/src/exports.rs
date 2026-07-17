@@ -9,6 +9,7 @@ pub use crate::entities::VanillaArrowMetadataAccessors;
 pub use crate::entities::VanillaCompanionVariantMetadataAccessors;
 pub use crate::entities::VanillaCopperGolemMetadataAccessors;
 pub use crate::entities::VanillaCreeperMetadataAccessors;
+pub use crate::entities::VanillaEndermanRenderMetadataAccessors;
 pub use crate::entities::VanillaFarmAnimalVariantMetadataAccessors;
 pub use crate::entities::VanillaFoxMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
@@ -64,6 +65,7 @@ pub use crate::entities::{
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
+    vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_field, vanilla_entity_metadata_fox_accessors_for_entity_type,

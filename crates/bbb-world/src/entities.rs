@@ -66,6 +66,7 @@ pub use schema::VanillaArrowMetadataAccessors;
 pub use schema::VanillaCompanionVariantMetadataAccessors;
 pub use schema::VanillaCopperGolemMetadataAccessors;
 pub use schema::VanillaCreeperMetadataAccessors;
+pub use schema::VanillaEndermanRenderMetadataAccessors;
 pub use schema::VanillaFarmAnimalVariantMetadataAccessors;
 pub use schema::VanillaFoxMetadataAccessors;
 pub use schema::VanillaGoatMetadataAccessors;
@@ -120,6 +121,7 @@ pub use schema::{
     vanilla_entity_metadata_creaking_tearing_down_accessor_for_entity_type,
     vanilla_entity_metadata_creeper_accessors_for_entity_type,
     vanilla_entity_metadata_ender_dragon_phase_accessor_for_entity_type,
+    vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_field, vanilla_entity_metadata_fox_accessors_for_entity_type,

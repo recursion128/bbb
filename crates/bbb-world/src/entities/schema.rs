@@ -249,11 +249,11 @@ pub enum VanillaEntityScaleSanitizer {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct VanillaEndermanRenderMetadataAccessors {
-    pub(crate) carried_block_state_data_id: u8,
-    pub(crate) carried_block_state_default: Option<i32>,
-    pub(crate) creepy_data_id: u8,
-    pub(crate) creepy_default: bool,
+pub struct VanillaEndermanRenderMetadataAccessors {
+    pub carried_block_state_data_id: u8,
+    pub carried_block_state_default: Option<i32>,
+    pub creepy_data_id: u8,
+    pub creepy_default: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -829,7 +829,7 @@ pub fn vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type(
 /// `EndermanRenderer.extractRenderState` reads both carried-block and creepy state, so this
 /// descriptor keeps their membership, wire indices, serializers, and defaults on one schema-owned
 /// path instead of a parallel entity-type predicate and fixed aliases.
-pub(crate) fn vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
+pub fn vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
     entity_type_id: i32,
 ) -> Option<VanillaEndermanRenderMetadataAccessors> {
     let carried =
@@ -5266,15 +5266,33 @@ mod tests {
 
     #[test]
     fn generated_enderman_render_accessors_own_membership_indices_and_defaults() {
+        let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::EnderMan);
+        let carried = schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_CARRY_STATE")
+            .expect("generated EnderMan carried-block field");
+        let creepy = schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_CREEPY")
+            .expect("generated EnderMan creepy field");
+        assert_eq!(
+            carried.default,
+            VanillaEntityMetadataDefault::OptionalBlockStateNone
+        );
+        let VanillaEntityMetadataDefault::Boolean(creepy_default) = creepy.default else {
+            panic!("generated EnderMan creepy default must be BOOLEAN");
+        };
         assert_eq!(
             vanilla_entity_metadata_enderman_render_accessors_for_entity_type(
                 VANILLA_ENTITY_TYPE_ENDERMAN_ID
             ),
             Some(VanillaEndermanRenderMetadataAccessors {
-                carried_block_state_data_id: 16,
+                carried_block_state_data_id: carried.data_id,
                 carried_block_state_default: None,
-                creepy_data_id: 17,
-                creepy_default: false,
+                creepy_data_id: creepy.data_id,
+                creepy_default,
             })
         );
         assert_eq!(

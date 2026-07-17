@@ -18265,3 +18265,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   pickup shrink 与 native bake fixtures 删除固定 slot 8，OminousItemSpawner/Cow 保持负例。
 - Snowball/Egg raw hit-particle stack 改按各自 generated owner 的 unique ITEM_STACK accessor
   读取/构造；reverse guard 覆盖 world production、fixtures、play apply 与 native bake tests。
+
+## 2026-07-16：统一 EnderMan carried/creepy fixtures
+
+- 既有 EnderMan render bundle 公开为跨 world/native 的 schema-owned descriptor；schema 测试
+  从 generated `DATA_CARRY_STATE`/`DATA_CREEPY` 字段派生 indices/defaults，不再手抄 16/17。
+- world model-source、native entity-scene 与 item-model carried-block fixtures 统一消费 bundle；
+  EnderMan reverse guard 覆盖三份完整 fixtures，禁止固定 accessor/default aliases 回流。
