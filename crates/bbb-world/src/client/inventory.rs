@@ -2363,6 +2363,14 @@ impl WorldStore {
         self.items.set_item_armor_materials(armor_materials)
     }
 
+    pub fn set_default_item_wings_equipment_assets(
+        &mut self,
+        equipment_assets: BTreeMap<i32, String>,
+    ) {
+        self.items
+            .set_default_item_wings_equipment_assets(equipment_assets)
+    }
+
     pub fn set_default_mount_body_armor_kinds(
         &mut self,
         armor_kinds: BTreeMap<i32, MountArmorSlotKind>,

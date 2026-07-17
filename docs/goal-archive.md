@@ -18619,3 +18619,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   foil.
 - Focused tests lock ordinary and trader carpet rendering, baby suppression, the 216-vertex trim
   model, and exact collector order.
+
+# 2026-07-17: Render elytra armor trims and foil
+
+- Added a pack-derived item-id → normalized WINGS equipment-asset table so world trim projection
+  uses the exact asset identity without reconstructing resource ids in native or renderer code.
+- `WingsLayer` now carries the chest item's foil and WINGS trim through native into the existing
+  dynamic trim atlas, submitting base → foil → regular/decal trim with the posed adult or baby
+  elytra model. Player profile elytra/cape texture overrides remain the base layer while trim keeps
+  its independent atlas sprite.
+- Focused tests lock static and profile-textured wings, baby trim retention, missing base-atlas
+  submission behavior, exact layer order, and startup map installation.

@@ -336,6 +336,30 @@ impl NativeItemRuntime {
         self.item_equipment_asset_has_layer(protocol_id, EquipmentLayerType::Wings)
     }
 
+    pub fn item_wings_equipment_assets_by_protocol_id(&self) -> BTreeMap<i32, String> {
+        let mut assets = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return assets;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(asset_id) = registry.equippable_asset(resource_id) else {
+                continue;
+            };
+            if self
+                .equipment_assets
+                .asset(asset_id)
+                .is_none_or(|asset| asset.layers(EquipmentLayerType::Wings).is_empty())
+            {
+                continue;
+            }
+            let Ok(asset_id) = ResourceLocation::parse(asset_id) else {
+                continue;
+            };
+            assets.insert(protocol_id as i32, asset_id.id());
+        }
+        assets
+    }
+
     pub fn item_equipment_wings_layer(
         &self,
         protocol_id: i32,

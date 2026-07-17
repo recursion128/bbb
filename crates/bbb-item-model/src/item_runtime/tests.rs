@@ -3285,6 +3285,10 @@ fn humanoid_armor_asset_query_excludes_head_equippable_non_armor() {
     assert!(!runtime.item_equipment_asset_has_wings_layer(chestplate_id));
     assert!(runtime.item_equipment_asset_has_wings_layer(elytra_id));
     assert_eq!(
+        runtime.item_wings_equipment_assets_by_protocol_id(),
+        BTreeMap::from([(elytra_id, "minecraft:elytra".to_string())])
+    );
+    assert_eq!(
         runtime.item_equipment_wings_layer(elytra_id),
         Some(EntityEquipmentLayerTexture {
             texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,

@@ -492,6 +492,77 @@ fn entity_model_sources_project_named_and_direct_armor_trim_sprites() {
 }
 
 #[test]
+fn entity_model_sources_project_wings_trim_and_foil_from_chest_asset() {
+    use std::collections::BTreeMap;
+
+    const ELYTRA_ITEM_ID: i32 = 806;
+    const CHESTPLATE_ITEM_ID: i32 = 807;
+
+    fn trimmed_item(item_id: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            item_id: Some(item_id),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                armor_trim_material_id: Some(1), // iron
+                armor_trim_pattern_id: Some(0),  // sentry
+                ..Default::default()
+            },
+        }
+    }
+    fn wings(store: &WorldStore) -> (Option<ArmorTrimSprite>, bool) {
+        let source = store
+            .entity_model_source_at_partial_tick(53, 1.0)
+            .expect("zombie source");
+        (source.chest_wings_trim, source.chest_wings_foil)
+    }
+
+    let mut store = WorldStore::new();
+    store.set_default_item_wings_equipment_assets(BTreeMap::from([(
+        ELYTRA_ITEM_ID,
+        "minecraft:elytra".to_string(),
+    )]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        53,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 53,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Chest,
+            item: trimmed_item(ELYTRA_ITEM_ID),
+        }],
+    }));
+    assert_eq!(
+        wings(&store),
+        (
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/wings/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 53,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Chest,
+            item: trimmed_item(CHESTPLATE_ITEM_ID),
+        }],
+    }));
+    assert_eq!(
+        wings(&store),
+        (None, false),
+        "a chest item without a WINGS equipment asset cannot project wings trim or foil"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_synchronized_custom_armor_trim_payloads() {
     use std::collections::BTreeMap;
 

@@ -588,6 +588,10 @@ pub(super) fn entity_model_instance(
         .with_chest_wings_layer(chest_wings_layer)
         .with_chest_equipment_has_wings(chest_equipment_has_wings)
         .with_chest_equipment_has_humanoid(chest_equipment_has_humanoid)
+        .with_chest_wings_trim(armor_trim(
+            source.chest_wings_trim.as_ref(),
+            variant_registries,
+        ))
         .with_player_left_shoulder_parrot(
             source
                 .player_left_shoulder_parrot
@@ -794,6 +798,7 @@ pub(super) fn entity_model_instance(
         with_wither_y_head_rots wither_y_head_rots,
         with_head_armor_foil head_armor_foil,
         with_chest_armor_foil chest_armor_foil,
+        with_chest_wings_foil chest_wings_foil,
         with_legs_armor_foil legs_armor_foil,
         with_feet_armor_foil feet_armor_foil,
         with_pig_saddle pig_saddle,

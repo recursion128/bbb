@@ -658,3 +658,197 @@ fn baby_zombie_wings_layer_uses_baby_elytra_model() {
         "baby zombie elytra should use the half-scale baby layer"
     );
 }
+
+#[test]
+fn wings_trim_follows_foil_for_static_and_profile_textures() {
+    let atlas = atlas_for(&[
+        ZOMBIE_TEXTURE_REF,
+        PLAYER_WIDE_STEVE_TEXTURE_REF,
+        ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+    ]);
+    let trim_texture = EntityDynamicTexture { handle: 91_501 };
+    let profile_elytra = EntityDynamicPlayerTexture {
+        handle: 91_502,
+        kind: EntityDynamicPlayerTextureKind::Elytra,
+    };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[
+        DynamicPlayerTextureImage {
+            handle: trim_texture.handle,
+            size: [64, 32],
+            rgba: vec![0xff; 64 * 32 * 4],
+        },
+        DynamicPlayerTextureImage {
+            handle: profile_elytra.handle,
+            size: [64, 32],
+            rgba: vec![0x77; 64 * 32 * 4],
+        },
+    ])
+    .unwrap()
+    .0;
+    let layer = Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    });
+    let trim = Some(EntityArmorTrim {
+        texture: trim_texture,
+        decal: false,
+    });
+
+    let zombie = EntityModelInstance::zombie(86, [0.0, 64.0, 0.0], 0.0, false)
+        .with_chest_wings_layer(layer)
+        .with_chest_equipment_has_wings(true)
+        .with_chest_wings_foil(true)
+        .with_chest_wings_trim(trim);
+    let zombie_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[zombie],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    let base = zombie_meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+        .expect("static wings base");
+    assert_eq!((base.order, base.submit_sequence), (0, 2));
+    let foil = zombie_meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.render_type == EntityModelLayerRenderType::ArmorEntityGlint)
+        .expect("wings foil");
+    assert_eq!((foil.order, foil.submit_sequence), (1, 2));
+    let trim_submit = zombie_meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.dynamic_texture == Some(trim_texture))
+        .expect("wings trim");
+    assert_eq!(
+        trim_submit.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!(trim_submit.texture, ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF);
+    assert_eq!((trim_submit.order, trim_submit.submit_sequence), (2, 2));
+    assert_eq!(zombie_meshes.armor_entity_glint.vertices.len(), 48);
+    assert_eq!(
+        zombie_meshes
+            .dynamic_player_texture_armor_trim
+            .vertices
+            .len(),
+        48
+    );
+
+    let player = EntityModelInstance::player_with_skin(
+        87,
+        [0.0, 64.0, 0.0],
+        0.0,
+        EntityPlayerSkin::Default(EntityDefaultPlayerSkin::WideSteve),
+        PLAYER_MODEL_PARTS_ALL_VISIBLE,
+    )
+    .with_chest_wings_layer(layer)
+    .with_chest_equipment_has_wings(true)
+    .with_chest_wings_foil(true)
+    .with_chest_wings_trim(trim)
+    .with_player_elytra_texture(Some(profile_elytra));
+    let player_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[player],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    let profile_base = player_meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.dynamic_player_texture == Some(profile_elytra))
+        .expect("profile wings base");
+    assert_eq!((profile_base.order, profile_base.submit_sequence), (0, 4));
+    let profile_trim = player_meshes
+        .submissions
+        .iter()
+        .find(|submit| submit.dynamic_texture == Some(trim_texture))
+        .expect("profile wings trim");
+    assert_eq!(profile_trim.texture, PLAYER_PROFILE_ELYTRA_TEXTURE_REF);
+    assert_eq!((profile_trim.order, profile_trim.submit_sequence), (2, 4));
+    assert_eq!(player_meshes.armor_entity_glint.vertices.len(), 48);
+    assert_eq!(
+        player_meshes
+            .dynamic_player_texture_armor_trim
+            .vertices
+            .len(),
+        48
+    );
+}
+
+#[test]
+fn baby_wings_trim_uses_baby_model_and_survives_missing_base_texture() {
+    let atlas = atlas_for(&[ZOMBIE_TEXTURE_REF, ZOMBIE_BABY_TEXTURE_REF]);
+    let trim_texture = EntityDynamicTexture { handle: 91_503 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicPlayerTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 32],
+        rgba: vec![0xff; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let layer = Some(EntityEquipmentLayerTexture {
+        texture: ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF,
+        use_player_texture: true,
+    });
+    let trimmed = |entity_id, baby| {
+        EntityModelInstance::zombie(entity_id, [0.0, 64.0, 0.0], 0.0, baby)
+            .with_chest_wings_layer(layer)
+            .with_chest_equipment_has_wings(true)
+            .with_chest_wings_trim(Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }))
+    };
+
+    let adult = trimmed(88, false);
+    let baby = trimmed(89, true);
+    let adult_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[adult],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    let baby_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[baby],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    for meshes in [&adult_meshes, &baby_meshes] {
+        let base = meshes
+            .submissions
+            .iter()
+            .find(|submit| submit.texture == ELYTRA_EQUIPMENT_WINGS_TEXTURE_REF)
+            .expect("missing-atlas wings base submission");
+        assert_eq!((base.order, base.submit_sequence), (0, 2));
+        let trim_submit = meshes
+            .submissions
+            .iter()
+            .find(|submit| submit.dynamic_texture == Some(trim_texture))
+            .expect("wings trim submission");
+        assert_eq!((trim_submit.order, trim_submit.submit_sequence), (1, 2));
+        assert_eq!(meshes.dynamic_player_texture_armor_trim.vertices.len(), 48);
+        assert!(meshes.armor_cutout.vertices.is_empty());
+    }
+
+    let adult_positions: Vec<_> = adult_meshes
+        .dynamic_player_texture_armor_trim
+        .vertices
+        .iter()
+        .map(|vertex| vertex.position)
+        .collect();
+    let baby_positions: Vec<_> = baby_meshes
+        .dynamic_player_texture_armor_trim
+        .vertices
+        .iter()
+        .map(|vertex| vertex.position)
+        .collect();
+    assert!(
+        (y_extent(&adult_positions) * 0.5 - y_extent(&baby_positions)).abs() < 1.0e-5,
+        "WINGS trims are retained on the half-scale baby elytra model"
+    );
+}

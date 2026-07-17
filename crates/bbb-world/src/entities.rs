@@ -2122,6 +2122,13 @@ entity_model_source_state! {
     pub legs_armor_foil: bool,
     #[serde(default)]
     pub feet_armor_foil: bool,
+    /// Vanilla WINGS `ArmorTrim.layerAssetId`, resolved from a non-empty chest item's equipment
+    /// asset. Unlike `HUMANOID_BABY`, the WINGS layer retains trims on baby elytra models.
+    #[serde(default)]
+    pub chest_wings_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for a chest item whose equipment asset has a WINGS layer.
+    #[serde(default)]
+    pub chest_wings_foil: bool,
     /// Vanilla `PigRenderState.saddle`: true when a pig carries a non-empty saddle item in
     /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `PIG_SADDLE` equipment layer.
     #[serde(default)]
@@ -3213,6 +3220,7 @@ impl WorldStore {
             &self.registries,
             &self.items.default_item_max_damage,
             &self.items.default_item_armor_materials,
+            &self.items.default_item_wings_equipment_assets,
             &self.items.default_item_equipment_slots,
             &self.items.default_llama_body_decor_colors,
             &self.items.default_nautilus_body_armor_materials,

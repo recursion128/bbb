@@ -46,6 +46,7 @@ pub(crate) enum ArmorTrimLayer {
     HorseBody,
     LlamaBody,
     NautilusBody,
+    Wings,
     WolfBody,
 }
 
@@ -57,6 +58,7 @@ impl ArmorTrimLayer {
             Self::HorseBody => "horse_body",
             Self::LlamaBody => "llama_body",
             Self::NautilusBody => "nautilus_body",
+            Self::Wings => "wings",
             Self::WolfBody => "wolf_body",
         }
     }

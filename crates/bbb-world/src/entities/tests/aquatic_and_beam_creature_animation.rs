@@ -675,6 +675,7 @@ fn entity_model_sources_project_ender_dragon_nearest_crystal_beam() {
                 &store.registries,
                 &store.items.default_item_max_damage,
                 &store.items.default_item_armor_materials,
+                &store.items.default_item_wings_equipment_assets,
                 &store.items.default_item_equipment_slots,
                 &store.items.default_llama_body_decor_colors,
                 &store.items.default_nautilus_body_armor_materials,

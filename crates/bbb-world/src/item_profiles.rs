@@ -35,6 +35,10 @@ pub struct ItemProfiles {
     /// projecting worn armor onto the entity render source.
     #[serde(default)]
     pub(crate) default_item_armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
+    /// Item protocol id → normalized equipment asset id for assets with a WINGS layer. The world
+    /// combines this pack-derived identity with synchronized trim registries when projecting elytra.
+    #[serde(default)]
+    pub(crate) default_item_wings_equipment_assets: BTreeMap<i32, String>,
     #[serde(default)]
     pub(crate) default_mount_body_armor_kinds: BTreeMap<i32, MountArmorSlotKind>,
     #[serde(default)]
@@ -255,6 +259,16 @@ impl ItemProfiles {
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     ) {
         self.default_item_armor_materials = filter_item_id_keys(armor_materials);
+    }
+
+    pub(crate) fn set_default_item_wings_equipment_assets(
+        &mut self,
+        equipment_assets: BTreeMap<i32, String>,
+    ) {
+        self.default_item_wings_equipment_assets = equipment_assets
+            .into_iter()
+            .filter(|(item_id, asset_id)| *item_id >= 0 && !asset_id.is_empty())
+            .collect();
     }
 
     pub(crate) fn set_default_mount_body_armor_kinds(

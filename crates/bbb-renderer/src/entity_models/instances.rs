@@ -656,6 +656,10 @@ entity_render_state! {
     /// The native side resolves the pack layer texture to a renderer atlas texture and preserves
     /// `use_player_texture` for the player-only profile elytra/cape override selection.
     (with_chest_wings_layer) chest_wings_layer: Option<EntityEquipmentLayerTexture> = None;
+    /// Vanilla armor trim over the chest item's WINGS equipment model.
+    (with_chest_wings_trim) chest_wings_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for the WINGS equipment item.
+    (with_chest_wings_foil) chest_wings_foil: bool = false;
     /// Whether `HumanoidRenderState.chestEquipment` has an equipment asset with a WINGS layer. Vanilla
     /// player `CapeLayer` suppresses the cape when this is true because the wings layer owns the back
     /// slot.
@@ -2991,6 +2995,8 @@ mod tests {
                 player_right_shoulder_parrot: None,
                 show_extra_ears: false,
                 chest_wings_layer: None,
+                chest_wings_trim: None,
+                chest_wings_foil: false,
                 chest_equipment_has_wings: false,
                 chest_equipment_has_humanoid: false,
                 player_cape_flap: 0.0,

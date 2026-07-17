@@ -75,16 +75,17 @@ use super::{
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN,
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MODEL_LAYER_CAMEL_HUSK_SADDLE, MODEL_LAYER_CAMEL_SADDLE,
-        MODEL_LAYER_DONKEY_SADDLE, MODEL_LAYER_HORSE_ARMOR, MODEL_LAYER_HORSE_SADDLE,
-        MODEL_LAYER_LLAMA_BABY_DECOR, MODEL_LAYER_LLAMA_DECOR, MODEL_LAYER_MULE_SADDLE,
-        MODEL_LAYER_NAUTILUS_ARMOR, MODEL_LAYER_NAUTILUS_SADDLE, MODEL_LAYER_PIG_SADDLE,
-        MODEL_LAYER_SKELETON_HORSE_SADDLE, MODEL_LAYER_STRIDER_SADDLE,
-        MODEL_LAYER_UNDEAD_HORSE_ARMOR, MODEL_LAYER_WOLF_ARMOR, MODEL_LAYER_ZOMBIE_HORSE_SADDLE,
-        MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF, PIGLIN_OUTER_ARMOR_DEFORMATION,
-        PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF, PLAYER_PROFILE_CAPE_TEXTURE_REF,
-        PLAYER_PROFILE_ELYTRA_TEXTURE_REF, SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF,
-        STANDARD_OUTER_ARMOR_DEFORMATION, STRIDER_SADDLE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF,
-        ZOMBIE_HORSE_SADDLE_TEXTURE_REF, ZOMBIE_TEXTURE_REF,
+        MODEL_LAYER_DONKEY_SADDLE, MODEL_LAYER_ELYTRA, MODEL_LAYER_ELYTRA_BABY,
+        MODEL_LAYER_HORSE_ARMOR, MODEL_LAYER_HORSE_SADDLE, MODEL_LAYER_LLAMA_BABY_DECOR,
+        MODEL_LAYER_LLAMA_DECOR, MODEL_LAYER_MULE_SADDLE, MODEL_LAYER_NAUTILUS_ARMOR,
+        MODEL_LAYER_NAUTILUS_SADDLE, MODEL_LAYER_PIG_SADDLE, MODEL_LAYER_SKELETON_HORSE_SADDLE,
+        MODEL_LAYER_STRIDER_SADDLE, MODEL_LAYER_UNDEAD_HORSE_ARMOR, MODEL_LAYER_WOLF_ARMOR,
+        MODEL_LAYER_ZOMBIE_HORSE_SADDLE, MULE_SADDLE_TEXTURE_REF, NAUTILUS_SADDLE_TEXTURE_REF,
+        PIGLIN_OUTER_ARMOR_DEFORMATION, PIGLIN_TEXTURE_REF, PIG_SADDLE_TEXTURE_REF,
+        PLAYER_PROFILE_CAPE_TEXTURE_REF, PLAYER_PROFILE_ELYTRA_TEXTURE_REF,
+        SKELETON_HORSE_SADDLE_TEXTURE_REF, SKELETON_TEXTURE_REF, STANDARD_OUTER_ARMOR_DEFORMATION,
+        STRIDER_SADDLE_TEXTURE_REF, WITHER_SKELETON_TEXTURE_REF, ZOMBIE_HORSE_SADDLE_TEXTURE_REF,
+        ZOMBIE_TEXTURE_REF,
     },
     player_model_root_transform, wither_skeleton_model_root_transform, HUSK_SCALE,
 };
@@ -5304,7 +5305,8 @@ pub(in crate::entity_models) fn render_wings_layer(
     let mut model = ElytraModel::new(baby);
     model.prepare(&instance);
 
-    if let Some(profile_texture) = player_wings_profile_texture(&instance, layer) {
+    let base_texture = if let Some(profile_texture) = player_wings_profile_texture(&instance, layer)
+    {
         let Some(entry) =
             dynamic_player_texture_atlas_entry(dynamic_player_texture_atlas, profile_texture)
         else {
@@ -5326,20 +5328,85 @@ pub(in crate::entity_models) fn render_wings_layer(
                 submit.tint,
             );
         });
-        return;
-    }
+        pass.texture
+    } else {
+        let pass = wings_layer_pass(layer.texture, baby, submit_sequence);
+        let submit = textured_layer_submission(meshes, pass, transform);
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+            model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+        pass.texture
+    };
 
-    let pass = wings_layer_pass(layer.texture, baby, submit_sequence);
-    let submit = textured_layer_submission(meshes, pass, transform);
-    render_textured_submission(meshes, submit, atlas, |mesh, entry| {
-        model.root().render_textured(
-            mesh,
-            submit.transform,
-            submit.texture,
-            entry.uv,
-            submit.tint,
+    let model_layer = if baby {
+        MODEL_LAYER_ELYTRA_BABY
+    } else {
+        MODEL_LAYER_ELYTRA
+    };
+    let mut next_order = 1;
+    if instance.render_state.chest_wings_foil {
+        let pass = equipment_layer_pass(
+            EntityModelLayerKind::Wings,
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            model_layer,
+            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+            [1.0; 4],
+            next_order,
+            submit_sequence,
         );
-    });
+        let submit = no_overlay_layer_submission(pass, transform);
+        render_textured_submission(meshes, submit, atlas, |mesh, entry| {
+            model.root().render_textured(
+                mesh,
+                submit.transform,
+                submit.texture,
+                entry.uv,
+                submit.tint,
+            );
+        });
+        next_order += 1;
+    }
+    if let Some(trim) = instance.render_state.chest_wings_trim {
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_player_texture_atlas, trim.texture)
+        {
+            let render_type = if trim.decal {
+                EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+            } else {
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            };
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::Wings,
+                render_type,
+                model_layer,
+                base_texture,
+                [1.0; 4],
+                next_order,
+                submit_sequence,
+            );
+            let submit =
+                no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| {
+                    model.root().render_textured(
+                        mesh,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                    );
+                },
+            );
+        }
+    }
 }
 
 pub(in crate::entity_models) fn render_player_spin_attack_effect_layer(

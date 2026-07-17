@@ -7658,6 +7658,12 @@ fn entity_model_instances_forward_player_shoulder_parrots_from_world_source() {
 fn entity_model_instances_project_chest_equipment_layers() {
     const CHESTPLATE_ID: i32 = 0;
     const ELYTRA_ID: i32 = 1;
+    let trim_texture = EntityDynamicTexture { handle: 42_4312 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/wings/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
 
     let registry: bbb_pack::ItemRegistryCatalog = serde_json::from_value(serde_json::json!({
         "resource_ids": [
@@ -7714,6 +7720,9 @@ fn entity_model_instances_project_chest_equipment_layers() {
 
     let mut world = WorldStore::new();
     world.set_item_armor_materials(runtime.item_armor_materials_by_protocol_id());
+    world.set_default_item_wings_equipment_assets(
+        runtime.item_wings_equipment_assets_by_protocol_id(),
+    );
     world.apply_add_entity(protocol_add_entity(
         1553,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -7750,19 +7759,46 @@ fn entity_model_instances_project_chest_equipment_layers() {
         )
     };
     let state = |world: &WorldStore, id: i32| {
-        entity_model_instances_from_world_at_partial_tick(world, Some(&runtime), 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state
+        entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            Some(&runtime),
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state
     };
 
-    assert!(world.apply_set_equipment(equip(1553, Some(ELYTRA_ID), 1)));
+    let trimmed_foil = DataComponentPatchSummary {
+        enchantments: vec![ItemEnchantmentSummary {
+            holder_id: 12,
+            level: 1,
+        }],
+        armor_trim_material_id: Some(1), // iron
+        armor_trim_pattern_id: Some(0),  // sentry
+        ..Default::default()
+    };
+    assert!(world.apply_set_equipment(equip_with_patch(
+        1553,
+        Some(ELYTRA_ID),
+        1,
+        trimmed_foil.clone(),
+    )));
     let with_elytra = state(&world, 1553);
     assert!(with_elytra.chest_equipment_has_wings);
     assert!(!with_elytra.chest_equipment_has_humanoid);
     assert_eq!(with_elytra.chest_armor, None);
     assert!(!with_elytra.chest_armor_foil);
+    assert!(with_elytra.chest_wings_foil);
+    assert_eq!(
+        with_elytra.chest_wings_trim,
+        Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        })
+    );
     assert_eq!(
         with_elytra.chest_wings_layer,
         Some(EntityEquipmentLayerTexture {
@@ -7794,6 +7830,8 @@ fn entity_model_instances_project_chest_equipment_layers() {
         Some(EntityArmorMaterial::Diamond)
     );
     assert!(with_chestplate.chest_armor_foil);
+    assert!(!with_chestplate.chest_wings_foil);
+    assert_eq!(with_chestplate.chest_wings_trim, None);
     assert_eq!(with_chestplate.chest_wings_layer, None);
 
     assert!(world.apply_set_equipment(equip(1553, None, 0)));
@@ -7802,14 +7840,24 @@ fn entity_model_instances_project_chest_equipment_layers() {
     assert!(!empty_chest.chest_equipment_has_humanoid);
     assert_eq!(empty_chest.chest_armor, None);
     assert!(!empty_chest.chest_armor_foil);
+    assert!(!empty_chest.chest_wings_foil);
+    assert_eq!(empty_chest.chest_wings_trim, None);
     assert_eq!(empty_chest.chest_wings_layer, None);
 
-    assert!(world.apply_set_equipment(equip(1554, Some(ELYTRA_ID), 1)));
+    assert!(world.apply_set_equipment(equip_with_patch(1554, Some(ELYTRA_ID), 1, trimmed_foil,)));
     let zombie = state(&world, 1554);
     assert!(zombie.chest_equipment_has_wings);
     assert!(!zombie.chest_equipment_has_humanoid);
     assert_eq!(zombie.chest_armor, None);
     assert!(!zombie.chest_armor_foil);
+    assert!(zombie.chest_wings_foil);
+    assert_eq!(
+        zombie.chest_wings_trim,
+        Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        })
+    );
     assert_eq!(
         zombie.chest_wings_layer,
         Some(EntityEquipmentLayerTexture {

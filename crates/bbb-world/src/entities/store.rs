@@ -1530,6 +1530,7 @@ impl EntityStore {
         registries: &RegistrySet,
         default_item_max_damage: &BTreeMap<i32, i32>,
         armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
+        wings_equipment_assets: &BTreeMap<i32, String>,
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
         llama_body_decor_colors: &BTreeMap<i32, LlamaBodyDecorColor>,
         nautilus_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
@@ -1604,6 +1605,21 @@ impl EntityStore {
                 },
             )
         };
+        let chest_wings_equipment_asset = armor_item(ProtocolEquipmentSlot::Chest)
+            .filter(|item| item.count > 0)
+            .and_then(|item| item.item_id)
+            .and_then(|item_id| wings_equipment_assets.get(&item_id));
+        let chest_wings_trim = chest_wings_equipment_asset.and_then(|equipment_asset| {
+            armor_trim_sprite(
+                registries,
+                armor_item(ProtocolEquipmentSlot::Chest)?,
+                equipment_asset,
+                ArmorTrimLayer::Wings,
+            )
+        });
+        let chest_wings_foil = chest_wings_equipment_asset
+            .and_then(|_| armor_item(ProtocolEquipmentSlot::Chest))
+            .is_some_and(ItemStackSummary::has_foil);
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
         // then render only a non-empty equippable saddle item. bbb resolves the default saddle item
         // from the item equipment-slot map.
@@ -2538,6 +2554,8 @@ impl EntityStore {
             chest_armor_foil: armor_foil(ProtocolEquipmentSlot::Chest),
             legs_armor_foil: armor_foil(ProtocolEquipmentSlot::Legs),
             feet_armor_foil: armor_foil(ProtocolEquipmentSlot::Feet),
+            chest_wings_trim,
+            chest_wings_foil,
             wolf_body_armor,
             wolf_body_armor_trim,
             wolf_body_armor_dye,
