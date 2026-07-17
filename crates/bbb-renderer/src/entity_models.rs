@@ -58,7 +58,8 @@ use glam::{Mat4, Vec3};
 pub(crate) use gpu::build_entity_model_texture_atlas;
 pub(crate) use gpu::{
     build_dynamic_player_skin_atlas, build_dynamic_player_texture_atlas,
-    create_entity_model_armor_cutout_pipeline, create_entity_model_armor_entity_glint_pipeline,
+    create_entity_model_armor_cutout_pipeline, create_entity_model_armor_decal_pipeline,
+    create_entity_model_armor_entity_glint_pipeline,
     create_entity_model_armor_translucent_pipeline, create_entity_model_cutout_z_offset_pipeline,
     create_entity_model_dissolve_pipeline, create_entity_model_dragon_rays_depth_pipeline,
     create_entity_model_dragon_rays_pipeline, create_entity_model_end_gateway_pipeline,

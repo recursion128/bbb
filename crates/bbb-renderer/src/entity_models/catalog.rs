@@ -24,7 +24,7 @@ pub(in crate::entity_models) use selection::{
 // Pure value types that also project into `bbb-item-model` live in `bbb-render-types`; re-export
 // them here so every existing `crate::entity_models::...` path keeps working.
 pub use bbb_render_types::{
-    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
+    EntityArmorTrim, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
     EntityDynamicTexture, EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin,
     EntityPlayerSkinModel,

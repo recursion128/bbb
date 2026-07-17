@@ -32,8 +32,8 @@ use bbb_protocol::packets::{
     SetPlayerTeam as ProtocolSetPlayerTeam, SwingAnimationSummary, SwingAnimationTypeSummary,
     TakeItemEntity as ProtocolTakeItemEntity, TeamCollisionRule as ProtocolTeamCollisionRule,
     TeamVisibility as ProtocolTeamVisibility, TeleportEntity as ProtocolTeleportEntity,
-    UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect, Vec3d as ProtocolVec3d,
-    PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
+    TrimMaterialSummary, TrimPatternSummary, UpdateAttributes as ProtocolUpdateAttributes,
+    UpdateMobEffect, Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_Y, PLAYER_RELATIVE_X,
 };
 
 mod aquatic_and_beam_creature_animation;

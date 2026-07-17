@@ -13,7 +13,7 @@ mod villager_model_types;
 
 pub use banner_pattern_types::BannerPatternKind;
 pub use entity_textures::{
-    EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
+    EntityArmorTrim, EntityCustomHeadSkull, EntityDefaultPlayerSkin, EntityDynamicPlayerSkin,
     EntityDynamicPlayerSkinStatus, EntityDynamicPlayerTexture, EntityDynamicPlayerTextureKind,
     EntityDynamicTexture, EntityEquipmentLayerTexture, EntityModelTextureRef, EntityPlayerSkin,
     EntityPlayerSkinModel,

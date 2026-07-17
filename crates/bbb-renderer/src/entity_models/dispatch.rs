@@ -837,7 +837,12 @@ impl EntityModelSink for TexturedSink<'_> {
     }
 
     fn worn_humanoid_armor(&mut self, instance: &EntityModelInstance) {
-        render_worn_humanoid_armor(self.meshes, *instance, self.atlas);
+        render_worn_humanoid_armor(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+        );
     }
 
     fn custom_head_skull_layer(&mut self, instance: &EntityModelInstance) {

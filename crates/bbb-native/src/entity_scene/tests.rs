@@ -6036,6 +6036,43 @@ struct ReadyFarmAnimalPresentationLookup {
     texture: EntityDynamicTexture,
 }
 
+struct ReadyArmorTrimLookup {
+    asset_id: &'static str,
+    texture: EntityDynamicTexture,
+}
+
+impl EntityVariantRegistryLookup for ReadyArmorTrimLookup {
+    fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
+        None
+    }
+
+    fn ready_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
+        (asset_id == self.asset_id).then_some(self.texture)
+    }
+}
+
+#[test]
+fn armor_trim_crosses_native_boundary_only_after_texture_is_ready() {
+    let trim = WorldArmorTrimSprite {
+        sprite_id: "example:trims/entity/humanoid/spire_opal".to_string(),
+        decal: true,
+    };
+    let texture = EntityDynamicTexture { handle: 42_4300 };
+    let ready = ReadyArmorTrimLookup {
+        asset_id: "example:trims/entity/humanoid/spire_opal",
+        texture,
+    };
+
+    assert_eq!(armor_trim(Some(&trim), None), None);
+    assert_eq!(
+        armor_trim(Some(&trim), Some(&ready)),
+        Some(EntityArmorTrim {
+            texture,
+            decal: true,
+        })
+    );
+}
+
 impl EntityVariantRegistryLookup for ReadyFarmAnimalPresentationLookup {
     fn resource_id_by_holder_id(&self, _registry: &str, _holder_id: i32) -> Option<&str> {
         Some(self.registry_resource_id)

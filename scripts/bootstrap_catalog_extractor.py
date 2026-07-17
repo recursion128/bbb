@@ -115,6 +115,8 @@ class TrimMaterialEntry:
     constant_name: str
     resource_id: str
     description_color: int
+    asset_name: str
+    override_armor_assets: tuple[tuple[str, str], ...]
 
 
 @dataclass(frozen=True)
@@ -1573,8 +1575,63 @@ def potion_entries(
 
 def trim_material_entries(
     source: JavaSource,
+    material_asset_groups_source: JavaSource,
     expected_count: int = 11,
 ) -> list[TrimMaterialEntry]:
+    asset_groups: dict[str, tuple[str, tuple[tuple[str, str], ...]]] = {}
+    for field in material_asset_groups_source.fields:
+        if field.type_spelling.replace(" ", "") != "MaterialAssetGroup":
+            continue
+        if field.initializer is None:
+            _fail(
+                material_asset_groups_source,
+                JavaExpression("", field.span, field.node),
+                f"trim material asset group {field.name} lacks initializer",
+            )
+        _, arguments = _invocation(
+            material_asset_groups_source, field.initializer, {"create"}
+        )
+        if len(arguments) not in {1, 2}:
+            _fail(
+                material_asset_groups_source,
+                field.initializer,
+                "trim material asset group create call changed",
+            )
+        asset_name = _string(material_asset_groups_source, arguments[0])
+        overrides: list[tuple[str, str]] = []
+        if len(arguments) == 2:
+            map_expression = arguments[1]
+            map_object = map_expression.node.child_by_field_name("object")
+            _, map_arguments = _invocation(
+                material_asset_groups_source, map_expression, {"of"}
+            )
+            if (
+                map_object is None
+                or material_asset_groups_source.expression(map_object).canonical != "Map"
+                or len(map_arguments) % 2 != 0
+            ):
+                _fail(
+                    material_asset_groups_source,
+                    map_expression,
+                    "trim material override table must be Map.of(key, suffix, ...)",
+                )
+            for index in range(0, len(map_arguments), 2):
+                equipment_asset = map_arguments[index]
+                prefix = "EquipmentAssets."
+                if not equipment_asset.canonical.startswith(prefix):
+                    _fail(
+                        material_asset_groups_source,
+                        equipment_asset,
+                        "trim material override key is not an EquipmentAssets constant",
+                    )
+                resource_id = (
+                    "minecraft:"
+                    + equipment_asset.canonical.removeprefix(prefix).lower()
+                )
+                suffix = _string(material_asset_groups_source, map_arguments[index + 1])
+                overrides.append((resource_id, suffix))
+        asset_groups[field.name] = (asset_name, tuple(overrides))
+
     resources = _declared_resource_keys(source, "TrimMaterial", {"registryKey"})
     method = _bootstrap_method(source)
     context_name = _bootstrap_context_name(source, method)
@@ -1621,8 +1678,18 @@ def trim_material_entries(
                 assets,
                 "trim material asset group must match the registered key",
             )
+        try:
+            asset_name, overrides = asset_groups[key.canonical]
+        except KeyError:
+            _fail(source, assets, "trim material asset group definition is missing")
         entries.append(
-            TrimMaterialEntry(key.canonical, resources[key.canonical], color)
+            TrimMaterialEntry(
+                key.canonical,
+                resources[key.canonical],
+                color,
+                asset_name,
+                overrides,
+            )
         )
     if len(entries) != expected_count:
         raise BootstrapCatalogExtractionError(

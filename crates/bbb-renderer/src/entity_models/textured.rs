@@ -15,8 +15,8 @@ use super::model_layers::PLAYER_WIDE_STEVE_TEXTURE_REF;
 use super::{
     catalog::{
         ArrowModelTexture, CamelModelFamily, DonkeyModelFamily, EndGatewayBeamRenderState,
-        EndPortalModelFace, EndPortalModelKind, EntityArmorMaterial, EntityCustomHeadSkull,
-        EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
+        EndPortalModelFace, EndPortalModelKind, EntityArmorMaterial, EntityArmorTrim,
+        EntityCustomHeadSkull, EntityDynamicPlayerSkin, EntityDynamicPlayerSkinAtlasEntry,
         EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerSkinStatus,
         EntityDynamicPlayerTexture, EntityDynamicPlayerTextureAtlasLayout, EntityDynamicTexture,
         EntityEquipmentLayerTexture, EntityModelKind, EntityModelTextureAtlasEntry,
@@ -325,6 +325,10 @@ pub(super) struct EntityModelTexturedMeshes {
     /// Vanilla `armorCutoutNoCull` geometry keeps the entity lightmap and per-face lighting, but
     /// uses the armor pipeline's no-overlay shader state.
     pub(super) armor_cutout: EntityModelTexturedMesh,
+    /// Armor-trim geometry is separated from ordinary equipment cutout so it can draw after the
+    /// armor foil pass while still sampling the shared runtime entity texture atlas.
+    pub(super) armor_trim: EntityModelTexturedMesh,
+    pub(super) armor_trim_decal: EntityModelTexturedMesh,
     pub(super) translucent: EntityModelTexturedMesh,
     /// Vanilla `armorTranslucent` geometry uses the dedicated armor translucent pipeline instead
     /// of the generic `entityTranslucent` shader.
@@ -355,6 +359,8 @@ pub(super) struct EntityModelTexturedMeshes {
     pub(super) dynamic_player_texture_cutout_cull: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_cutout_z_offset: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_armor_cutout: EntityModelTexturedMesh,
+    pub(super) dynamic_player_texture_armor_trim: EntityModelTexturedMesh,
+    pub(super) dynamic_player_texture_armor_trim_decal: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_translucent: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_item_entity_translucent: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_item_entity_translucent_cull: EntityModelTexturedMesh,
@@ -413,6 +419,8 @@ impl EntityModelTexturedMeshes {
             dissolve: EntityModelDissolveMesh::new(),
             cutout_z_offset: EntityModelTexturedMesh::new(),
             armor_cutout: EntityModelTexturedMesh::new(),
+            armor_trim: EntityModelTexturedMesh::new(),
+            armor_trim_decal: EntityModelTexturedMesh::new(),
             translucent: EntityModelTexturedMesh::new(),
             armor_translucent: EntityModelTexturedMesh::new(),
             translucent_emissive: EntityModelTexturedMesh::new(),
@@ -431,6 +439,8 @@ impl EntityModelTexturedMeshes {
             dynamic_player_texture_cutout_cull: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout_z_offset: EntityModelTexturedMesh::new(),
             dynamic_player_texture_armor_cutout: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_armor_trim: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_armor_trim_decal: EntityModelTexturedMesh::new(),
             dynamic_player_texture_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_texture_item_entity_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_texture_item_entity_translucent_cull: EntityModelTexturedMesh::new(),
@@ -468,6 +478,10 @@ impl EntityModelTexturedMeshes {
         match render_type {
             EntityModelLayerRenderType::EntityCutoutZOffset => return &mut self.cutout_z_offset,
             EntityModelLayerRenderType::ArmorCutoutNoCull => return &mut self.armor_cutout,
+            EntityModelLayerRenderType::ArmorTrimCutoutNoCull => return &mut self.armor_trim,
+            EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull => {
+                return &mut self.armor_trim_decal;
+            }
             EntityModelLayerRenderType::ArmorTranslucent => return &mut self.armor_translucent,
             _ => {}
         }
@@ -548,6 +562,12 @@ impl EntityModelTexturedMeshes {
     ) -> &mut EntityModelTexturedMesh {
         if render_type == EntityModelLayerRenderType::ArmorCutoutNoCull {
             return &mut self.dynamic_player_texture_armor_cutout;
+        }
+        if render_type == EntityModelLayerRenderType::ArmorTrimCutoutNoCull {
+            return &mut self.dynamic_player_texture_armor_trim;
+        }
+        if render_type == EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull {
+            return &mut self.dynamic_player_texture_armor_trim_decal;
         }
         match render_type.mesh_bucket() {
             EntityModelLayerRenderBucket::Cutout => {
@@ -3397,7 +3417,8 @@ fn emit_crystal_beam_submission(
 /// pieces render in the vanilla order (chest, legs, feet, head). `transform` is the host entity's root
 /// transform so the armor sits exactly on the body. Enchanted armor records the vanilla
 /// `armorEntityGlint` submission at `order(2)` with the same slot-order `submit_sequence` as that
-/// slot's `order(1)` armor layer; armor-trim passes are deferred coverage.
+/// slot's `order(1)` armor layer; adult humanoid trims follow at the next order and baby humanoid
+/// layer types suppress them.
 fn emit_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
@@ -3407,32 +3428,44 @@ fn emit_humanoid_armor(
     baby_kind: Option<HumanoidBabyArmorKind>,
     armor_model_layers: HumanoidArmorModelLayerSet,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     let render_state = &instance.render_state;
-    for (slot, material, dye, foil) in [
+    let trim_visible = match instance.kind {
+        EntityModelKind::Humanoid { baby, .. }
+        | EntityModelKind::Zombie { baby }
+        | EntityModelKind::ZombieVariant { baby, .. }
+        | EntityModelKind::Piglin { baby, .. } => !baby,
+        _ => true,
+    };
+    for (slot, material, dye, foil, trim) in [
         (
             HumanoidArmorSlot::Chest,
             render_state.chest_armor,
             render_state.chest_armor_dye,
             render_state.chest_armor_foil,
+            render_state.chest_armor_trim,
         ),
         (
             HumanoidArmorSlot::Legs,
             render_state.legs_armor,
             render_state.legs_armor_dye,
             render_state.legs_armor_foil,
+            render_state.legs_armor_trim,
         ),
         (
             HumanoidArmorSlot::Feet,
             render_state.feet_armor,
             render_state.feet_armor_dye,
             render_state.feet_armor_foil,
+            render_state.feet_armor_trim,
         ),
         (
             HumanoidArmorSlot::Head,
             render_state.head_armor,
             render_state.head_armor_dye,
             render_state.head_armor_foil,
+            render_state.head_armor_trim,
         ),
     ] {
         let Some(material) = material else {
@@ -3497,13 +3530,72 @@ fn emit_humanoid_armor(
                 );
             });
         }
+        if trim_visible {
+            if let Some(trim) = trim {
+                emit_humanoid_armor_trim(
+                    meshes,
+                    &tree,
+                    transform,
+                    armor_model_layers,
+                    slot,
+                    texture,
+                    trim,
+                    foil,
+                    submit_sequence,
+                    dynamic_texture_atlas,
+                );
+            }
+        }
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_humanoid_armor_trim(
+    meshes: &mut EntityModelTexturedMeshes,
+    tree: &ModelPart,
+    transform: Mat4,
+    armor_model_layers: HumanoidArmorModelLayerSet,
+    slot: HumanoidArmorSlot,
+    base_texture: EntityModelTextureRef,
+    trim: EntityArmorTrim,
+    foil: bool,
+    submit_sequence: u32,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) {
+    let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) else {
+        return;
+    };
+    let render_type = if trim.decal {
+        EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+    } else {
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    };
+    let pass = equipment_layer_pass(
+        EntityModelLayerKind::HumanoidArmor,
+        render_type,
+        armor_model_layers.model_layer(slot),
+        base_texture,
+        [1.0; 4],
+        if foil { 3 } else { 2 },
+        submit_sequence,
+    );
+    let submit = no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+    render_textured_dynamic_player_texture_submission(meshes, submit, entry, |mesh, entry| {
+        tree.render_textured(
+            mesh,
+            submit.transform,
+            submit.texture,
+            entry.uv,
+            submit.tint,
+        );
+    });
 }
 
 fn emit_worn_armor_stand_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     let EntityModelKind::ArmorStand {
         small,
@@ -3531,30 +3623,34 @@ fn emit_worn_armor_stand_armor(
     } else {
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND
     };
-    for (slot, material, dye, foil) in [
+    for (slot, material, dye, foil, trim) in [
         (
             HumanoidArmorSlot::Chest,
             render_state.chest_armor,
             render_state.chest_armor_dye,
             render_state.chest_armor_foil,
+            render_state.chest_armor_trim,
         ),
         (
             HumanoidArmorSlot::Legs,
             render_state.legs_armor,
             render_state.legs_armor_dye,
             render_state.legs_armor_foil,
+            render_state.legs_armor_trim,
         ),
         (
             HumanoidArmorSlot::Feet,
             render_state.feet_armor,
             render_state.feet_armor_dye,
             render_state.feet_armor_foil,
+            render_state.feet_armor_trim,
         ),
         (
             HumanoidArmorSlot::Head,
             render_state.head_armor,
             render_state.head_armor_dye,
             render_state.head_armor_foil,
+            render_state.head_armor_trim,
         ),
     ] {
         let Some(material) = material else {
@@ -3610,6 +3706,20 @@ fn emit_worn_armor_stand_armor(
                 );
             });
         }
+        if let Some(trim) = trim {
+            emit_humanoid_armor_trim(
+                meshes,
+                &tree,
+                transform,
+                armor_model_layers,
+                slot,
+                texture,
+                trim,
+                foil,
+                submit_sequence,
+                dynamic_texture_atlas,
+            );
+        }
     }
 }
 
@@ -3620,12 +3730,14 @@ fn emit_worn_armor_stand_armor(
 /// armor pieces on it ([`emit_humanoid_armor`]). Covered: the adult zombie family (zombie, husk,
 /// drowned, zombie villager), standard baby zombie/husk/drowned/zombie-villager armor, the skeleton
 /// family (skeleton, stray, wither/normal/bogged), the player, the adult piglin family (piglin,
-/// piglin brute, zombified piglin), and baby piglin / zombified-piglin armor models. DEFERRED:
-/// armor-trim and any remaining mob-specific armor models.
+/// piglin brute, zombified piglin), and baby piglin / zombified-piglin armor models. Adult
+/// humanoid and armor-stand armor trims share these posed meshes; remaining mob-specific armor
+/// models are deferred.
 pub(in crate::entity_models) fn render_worn_humanoid_armor(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     let render_state = &instance.render_state;
     if render_state.head_armor.is_none()
@@ -3637,7 +3749,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
     }
     match instance.kind {
         EntityModelKind::ArmorStand { .. } => {
-            emit_worn_armor_stand_armor(meshes, instance, atlas);
+            emit_worn_armor_stand_armor(meshes, instance, atlas, dynamic_texture_atlas);
         }
         EntityModelKind::Zombie { baby: false } => {
             let mut host = ZombieModel::new(false);
@@ -3652,6 +3764,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::Zombie { baby: true } => {
@@ -3667,6 +3780,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 Some(HumanoidBabyArmorKind::Standard),
                 HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_BABY,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::Giant => {
@@ -3682,6 +3796,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::ZombieVariant {
@@ -3714,6 +3829,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 armor_model_layers,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::ZombieVariant {
@@ -3741,6 +3857,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 Some(HumanoidBabyArmorKind::Standard),
                 armor_model_layers,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::ZombieVariant {
@@ -3759,6 +3876,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 Some(HumanoidBabyArmorKind::Standard),
                 HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIE_VILLAGER_BABY,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::Skeleton => {
@@ -3774,6 +3892,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 HUMANOID_ARMOR_MODEL_LAYERS_SKELETON,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::SkeletonVariant { family } => {
@@ -3799,6 +3918,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 armor_model_layers,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::Player { skin, .. } => {
@@ -3819,6 +3939,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                     HUMANOID_ARMOR_MODEL_LAYERS_PLAYER
                 },
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::Piglin {
@@ -3846,6 +3967,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 armor_model_layers,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::Piglin { family, baby: true }
@@ -3870,6 +3992,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 Some(HumanoidBabyArmorKind::Piglin),
                 armor_model_layers,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         EntityModelKind::Piglin {
@@ -3888,6 +4011,7 @@ pub(in crate::entity_models) fn render_worn_humanoid_armor(
                 None,
                 HUMANOID_ARMOR_MODEL_LAYERS_PIGLIN_BRUTE,
                 atlas,
+                dynamic_texture_atlas,
             );
         }
         _ => {}

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::terrain::{block_name_is_bed, block_name_is_rail};
-use crate::{BlockPos, PaintingVariantClientProjection, TerrainLight, WorldStore};
+use crate::{ArmorTrimSprite, BlockPos, PaintingVariantClientProjection, TerrainLight, WorldStore};
 
 mod animations;
 mod components;
@@ -2085,6 +2085,17 @@ entity_model_source_state! {
     pub legs_armor: Option<ArmorMaterialKind>,
     #[serde(default)]
     pub feet_armor: Option<ArmorMaterialKind>,
+    /// Vanilla `ArmorTrim.layerAssetId` per worn humanoid armor slot. The world resolves the trim
+    /// holders, equipment-asset suffix override, and humanoid/leggings atlas prefix while native
+    /// resolves this resource id to the startup pack's generated armor-trim sprite handle.
+    #[serde(default)]
+    pub head_armor_trim: Option<ArmorTrimSprite>,
+    #[serde(default)]
+    pub chest_armor_trim: Option<ArmorTrimSprite>,
+    #[serde(default)]
+    pub legs_armor_trim: Option<ArmorTrimSprite>,
+    #[serde(default)]
+    pub feet_armor_trim: Option<ArmorTrimSprite>,
     /// Vanilla `DyedItemColor` per worn armor slot: the worn item's `dyed_color` component (a packed
     /// RGB), projected alongside the slot's material. Only leather is dyeable, so the renderer applies
     /// this as the leather layer's tint; `None` leaves leather at its default undyed brown and is
@@ -2304,6 +2315,21 @@ impl ArmorMaterialKind {
             "armadillo_scute" => Self::ArmadilloScute,
             _ => return None,
         })
+    }
+
+    /// The vanilla equipment-asset registry key consumed by armor-trim material overrides.
+    pub const fn equipment_asset_id(self) -> &'static str {
+        match self {
+            Self::Leather => "minecraft:leather",
+            Self::Copper => "minecraft:copper",
+            Self::Chainmail => "minecraft:chainmail",
+            Self::Iron => "minecraft:iron",
+            Self::Gold => "minecraft:gold",
+            Self::Diamond => "minecraft:diamond",
+            Self::TurtleScute => "minecraft:turtle_scute",
+            Self::Netherite => "minecraft:netherite",
+            Self::ArmadilloScute => "minecraft:armadillo_scute",
+        }
     }
 }
 

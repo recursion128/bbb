@@ -52,6 +52,17 @@ pub(crate) fn armor_material(
     })
 }
 
+pub(super) fn armor_trim(
+    trim: Option<&WorldArmorTrimSprite>,
+    registries: Option<&dyn EntityVariantRegistryLookup>,
+) -> Option<EntityArmorTrim> {
+    let trim = trim?;
+    Some(EntityArmorTrim {
+        texture: registries?.ready_texture(&trim.sprite_id)?,
+        decal: trim.decal,
+    })
+}
+
 pub(super) fn wolf_armor_crackiness(
     crackiness: WorldWolfArmorCrackiness,
 ) -> Option<WolfArmorCrackiness> {

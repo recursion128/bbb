@@ -1689,6 +1689,8 @@ const ENTITY_MODEL_ARMOR_CUTOUT_BLEND: Option<wgpu::BlendState> = None;
 const ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND: Option<wgpu::BlendState> =
     Some(wgpu::BlendState::ALPHA_BLENDING);
 const ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED: bool = true;
+const ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED: bool = false;
+const ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE: wgpu::CompareFunction = wgpu::CompareFunction::Equal;
 const ENTITY_MODEL_ARMOR_CULL_MODE: Option<wgpu::Face> = None;
 
 pub(crate) fn create_entity_model_armor_cutout_pipeline(
@@ -1708,6 +1710,34 @@ pub(crate) fn create_entity_model_armor_cutout_pipeline(
         ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_ARMOR_CULL_MODE,
     )
+}
+
+/// Vanilla `RenderPipelines.ARMOR_DECAL_CUTOUT_NO_CULL`: the armor shader and view-offset
+/// transform, with alpha cutout, no cull, `EQUAL` depth comparison, and depth writes disabled.
+pub(crate) fn create_entity_model_armor_decal_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    RenderPipelineBuilder::new(device, "bbb-entity-model-armor-decal-pipeline")
+        .shader(
+            "bbb-entity-model-armor-decal-shader",
+            ENTITY_MODEL_ARMOR_SHADER,
+        )
+        .layout(
+            "bbb-entity-model-armor-decal-pipeline-layout",
+            &[bind_group_layout, lightmap_bind_group_layout],
+        )
+        .vertex_buffers(&[entity_model_textured_vertex_layout()])
+        .color_target(format, ENTITY_MODEL_ARMOR_CUTOUT_BLEND)
+        .cull_mode(ENTITY_MODEL_ARMOR_CULL_MODE)
+        .depth_stencil(depth_stencil_state(
+            DEPTH_FORMAT,
+            ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED,
+            ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE,
+        ))
+        .build()
 }
 
 pub(crate) fn create_entity_model_armor_translucent_pipeline(
@@ -2312,14 +2342,30 @@ impl Renderer {
         &mut self,
         image: DynamicEntityTextureImage,
     ) -> Result<()> {
-        validate_dynamic_player_texture_image(&image)?;
-        match self
-            .entity_dynamic_player_texture_images
-            .iter_mut()
-            .find(|texture| texture.handle == image.handle)
-        {
-            Some(existing) => *existing = image,
-            None => self.entity_dynamic_player_texture_images.push(image),
+        self.upload_dynamic_entity_textures(vec![image])
+    }
+
+    /// Uploads or replaces a batch of variable-size entity textures, rebuilding the shared runtime
+    /// atlas exactly once. Armor-trim paletted permutations use this path for their generated atlas.
+    pub fn upload_dynamic_entity_textures(
+        &mut self,
+        images: Vec<DynamicEntityTextureImage>,
+    ) -> Result<()> {
+        if images.is_empty() {
+            return Ok(());
+        }
+        for image in &images {
+            validate_dynamic_player_texture_image(image)?;
+        }
+        for image in images {
+            match self
+                .entity_dynamic_player_texture_images
+                .iter_mut()
+                .find(|texture| texture.handle == image.handle)
+            {
+                Some(existing) => *existing = image,
+                None => self.entity_dynamic_player_texture_images.push(image),
+            }
         }
         self.entity_dynamic_player_texture_images
             .sort_by_key(|texture| texture.handle);
@@ -2435,6 +2481,17 @@ impl Renderer {
                 meshes.armor_cutout,
                 "bbb-entity-model-armor-cutout",
             );
+            self.entity_model_armor_trim_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
+                &self.device,
+                meshes.armor_trim,
+                "bbb-entity-model-armor-trim",
+            );
+            self.entity_model_armor_trim_decal_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.armor_trim_decal,
+                    "bbb-entity-model-armor-trim-decal",
+                );
             self.entity_model_eyes_mesh = create_entity_model_textured_mesh_gpu_from_mesh(
                 &self.device,
                 meshes.eyes,
@@ -2559,6 +2616,18 @@ impl Renderer {
                     meshes.dynamic_player_texture_armor_cutout,
                     "bbb-entity-dynamic-player-texture-armor-cutout",
                 );
+            self.entity_dynamic_player_texture_armor_trim_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_armor_trim,
+                    "bbb-entity-dynamic-player-texture-armor-trim",
+                );
+            self.entity_dynamic_player_texture_armor_trim_decal_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_armor_trim_decal,
+                    "bbb-entity-dynamic-player-texture-armor-trim-decal",
+                );
             self.entity_dynamic_player_texture_translucent_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -2604,6 +2673,8 @@ impl Renderer {
             self.entity_model_dissolve_mesh = None;
             self.entity_model_cutout_z_offset_mesh = None;
             self.entity_model_armor_cutout_mesh = None;
+            self.entity_model_armor_trim_mesh = None;
+            self.entity_model_armor_trim_decal_mesh = None;
             self.entity_model_translucent_mesh = None;
             self.entity_model_armor_translucent_mesh = None;
             self.entity_model_translucent_emissive_mesh = None;
@@ -2629,6 +2700,8 @@ impl Renderer {
             self.entity_dynamic_player_texture_cutout_cull_mesh = None;
             self.entity_dynamic_player_texture_cutout_z_offset_mesh = None;
             self.entity_dynamic_player_texture_armor_cutout_mesh = None;
+            self.entity_dynamic_player_texture_armor_trim_mesh = None;
+            self.entity_dynamic_player_texture_armor_trim_decal_mesh = None;
             self.entity_dynamic_player_texture_translucent_mesh = None;
             self.entity_dynamic_player_texture_item_entity_translucent_mesh = None;
             self.entity_dynamic_player_texture_item_entity_translucent_cull_mesh = None;
@@ -2655,6 +2728,12 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_armor_cutout_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_armor_trim_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_armor_trim_decal_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_translucent_mesh
@@ -2721,6 +2800,12 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_armor_cutout_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_armor_trim_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_armor_trim_decal_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_translucent_mesh
@@ -3558,6 +3643,7 @@ mod tests {
     use super::{
         entity_model_cutout_z_offset_shader, entity_model_glint_shader, entity_model_portal_shader,
         ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
+        ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE, ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
         ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_DISSOLVE_SHADER,
         ENTITY_MODEL_DRAGON_RAYS_BLEND, ENTITY_MODEL_DRAGON_RAYS_CULL_MODE,
@@ -3820,6 +3906,11 @@ mod tests {
             "vanilla BlendFunction.TRANSLUCENT uses DestFactor.ONE_MINUS_SRC_ALPHA for alpha"
         );
         assert!(ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED);
+        assert!(!ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED);
+        assert_eq!(
+            ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE,
+            wgpu::CompareFunction::Equal
+        );
         assert_eq!(ENTITY_MODEL_ARMOR_CULL_MODE, None);
     }
 

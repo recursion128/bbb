@@ -410,6 +410,197 @@ fn entity_model_sources_project_worn_armor_materials() {
 }
 
 #[test]
+fn entity_model_sources_project_named_and_direct_armor_trim_sprites() {
+    use std::collections::BTreeMap;
+
+    let iron_helmet = 804;
+    let diamond_leggings = 805;
+    let mut store = WorldStore::new();
+    store.set_item_armor_materials(BTreeMap::from([
+        (iron_helmet, ArmorMaterialKind::Iron),
+        (diamond_leggings, ArmorMaterialKind::Diamond),
+    ]));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        52,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+
+    let named = ItemStackSummary {
+        item_id: Some(iron_helmet),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            armor_trim_material_id: Some(1), // iron
+            armor_trim_pattern_id: Some(0),  // sentry
+            ..Default::default()
+        },
+    };
+    let direct = ItemStackSummary {
+        item_id: Some(diamond_leggings),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            armor_trim_material_direct: Some(Box::new(TrimMaterialSummary {
+                asset_name: "ruby".to_string(),
+                override_armor_assets: BTreeMap::from([(
+                    "minecraft:diamond".to_string(),
+                    "ruby_darker".to_string(),
+                )]),
+                description: String::new(),
+                description_styled: None,
+            })),
+            armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
+                asset_id: "example:spiral".to_string(),
+                description: String::new(),
+                description_styled: None,
+                decal: true,
+            })),
+            ..Default::default()
+        },
+    };
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 52,
+        slots: vec![
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Head,
+                item: named,
+            },
+            EquipmentSlotUpdate {
+                slot: EquipmentSlot::Legs,
+                item: direct,
+            },
+        ],
+    }));
+
+    let source = store
+        .entity_model_source_at_partial_tick(52, 1.0)
+        .expect("trimmed zombie source");
+    assert_eq!(
+        source.head_armor_trim,
+        Some(ArmorTrimSprite {
+            sprite_id: "minecraft:trims/entity/humanoid/sentry_iron_darker".to_string(),
+            decal: false,
+        })
+    );
+    assert_eq!(
+        source.legs_armor_trim,
+        Some(ArmorTrimSprite {
+            sprite_id: "example:trims/entity/humanoid_leggings/spiral_ruby_darker".to_string(),
+            decal: true,
+        })
+    );
+    assert_eq!(source.chest_armor_trim, None);
+    assert_eq!(source.feet_armor_trim, None);
+}
+
+#[test]
+fn entity_model_sources_project_synchronized_custom_armor_trim_payloads() {
+    use std::collections::BTreeMap;
+
+    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+        let bytes = value.as_bytes();
+        out.extend((bytes.len() as u16).to_be_bytes());
+        out.extend(bytes);
+    }
+    fn write_nbt_string_tag(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_nbt_string(out, name);
+        write_nbt_string(out, value);
+    }
+    fn material_nbt() -> Vec<u8> {
+        let mut out = vec![10];
+        write_nbt_string_tag(&mut out, "asset_name", "opal");
+        out.push(10);
+        write_nbt_string(&mut out, "override_armor_assets");
+        write_nbt_string_tag(&mut out, "minecraft:iron", "opal_darker");
+        out.push(0);
+        out.push(0);
+        out
+    }
+    fn pattern_nbt() -> Vec<u8> {
+        let mut out = vec![10];
+        write_nbt_string_tag(&mut out, "asset_id", "example:spire");
+        out.push(1);
+        write_nbt_string(&mut out, "decal");
+        out.push(1);
+        out.push(0);
+        out
+    }
+
+    let iron_helmet = 806;
+    let mut store = WorldStore::new();
+    store.set_item_armor_materials(BTreeMap::from([(iron_helmet, ArmorMaterialKind::Iron)]));
+    store.record_registry_entries(
+        crate::TRIM_MATERIAL_REGISTRY,
+        0,
+        vec![crate::RegistryPacketEntry::with_raw_data(
+            "example:opal",
+            material_nbt(),
+        )],
+    );
+    store.record_registry_entries(
+        crate::TRIM_PATTERN_REGISTRY,
+        0,
+        vec![crate::RegistryPacketEntry::with_raw_data(
+            "example:spire",
+            pattern_nbt(),
+        )],
+    );
+    store.apply_add_entity(protocol_add_entity_with_type(
+        53,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+    ));
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 53,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Head,
+            item: ItemStackSummary {
+                item_id: Some(iron_helmet),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    armor_trim_material_id: Some(0),
+                    armor_trim_pattern_id: Some(0),
+                    ..Default::default()
+                },
+            },
+        }],
+    }));
+
+    let source = store
+        .entity_model_source_at_partial_tick(53, 1.0)
+        .expect("custom trimmed zombie source");
+    assert_eq!(
+        source.head_armor_trim,
+        Some(ArmorTrimSprite {
+            sprite_id: "example:trims/entity/humanoid/spire_opal_darker".to_string(),
+            decal: true,
+        })
+    );
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 53,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Head,
+            item: ItemStackSummary {
+                item_id: Some(iron_helmet),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    armor_trim_material_id: Some(1),
+                    armor_trim_pattern_id: Some(0),
+                    ..Default::default()
+                },
+            },
+        }],
+    }));
+    assert_eq!(
+        store
+            .entity_model_source_at_partial_tick(53, 1.0)
+            .unwrap()
+            .head_armor_trim,
+        None,
+        "a synchronized registry owns holder order; an out-of-range id must not fall back to vanilla"
+    );
+}
+
+#[test]
 fn entity_model_sources_project_worn_armor_dye_colors() {
     use std::collections::BTreeMap;
     let leather_chestplate = 810;

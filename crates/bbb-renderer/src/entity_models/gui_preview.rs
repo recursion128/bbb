@@ -53,6 +53,8 @@ pub(crate) enum HudEntityPreviewPipPipeline {
     CutoutCull,
     CutoutZOffset,
     ArmorCutout,
+    ArmorTrim,
+    ArmorTrimDecal,
     Translucent,
     ArmorTranslucent,
     TranslucentEmissive,
@@ -76,6 +78,12 @@ pub(crate) struct HudEntityPreviewPipScrollDraw {
     pub(crate) index_count: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HudEntityPreviewPipDrawOrder {
+    Textured(usize),
+    Scroll(usize),
+}
+
 /// CPU geometry for one preview frame: every textured bucket the preview's entity model produces,
 /// concatenated (indices rebased) into one vertex/index stream per vertex layout, with per-bucket
 /// draw ranges in the world path's bucket order.
@@ -87,6 +95,7 @@ pub(crate) struct HudEntityPreviewPipGeometry {
     scroll_vertices: Vec<EntityModelScrollVertex>,
     pub(crate) scroll_indices: Vec<u32>,
     pub(crate) scroll_draws: Vec<HudEntityPreviewPipScrollDraw>,
+    draw_order: Vec<HudEntityPreviewPipDrawOrder>,
     colored_vertices: Vec<EntityModelVertex>,
     pub(crate) colored_indices: Vec<u32>,
 }
@@ -135,12 +144,15 @@ impl HudEntityPreviewPipGeometry {
         self.textured_vertices.extend_from_slice(&mesh.vertices);
         self.textured_indices
             .extend(mesh.indices.iter().map(|index| index + vertex_base));
+        let draw_index = self.textured_draws.len();
         self.textured_draws.push(HudEntityPreviewPipTexturedDraw {
             pipeline,
             atlas,
             index_start,
             index_count,
         });
+        self.draw_order
+            .push(HudEntityPreviewPipDrawOrder::Textured(draw_index));
     }
 
     fn append_scroll(&mut self, armor: bool, mesh: EntityModelScrollMesh) {
@@ -156,11 +168,14 @@ impl HudEntityPreviewPipGeometry {
         self.scroll_vertices.extend_from_slice(&mesh.vertices);
         self.scroll_indices
             .extend(mesh.indices.iter().map(|index| index + vertex_base));
+        let draw_index = self.scroll_draws.len();
         self.scroll_draws.push(HudEntityPreviewPipScrollDraw {
             armor,
             index_start,
             index_count,
         });
+        self.draw_order
+            .push(HudEntityPreviewPipDrawOrder::Scroll(draw_index));
     }
 
     fn set_colored(&mut self, mesh: EntityModelMesh) {
@@ -254,8 +269,20 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
         DynamicPlayerTexture,
         meshes.dynamic_player_texture_armor_cutout,
     );
-    // Glint scroll overlays (foil armor / foil hand items on the armor-stand preview).
+    // Vanilla EquipmentLayerRenderer draws armor foil before the trim, then later entity glints.
     geometry.append_scroll(true, meshes.armor_entity_glint);
+    geometry.append_textured(ArmorTrim, Static, meshes.armor_trim);
+    geometry.append_textured(
+        ArmorTrim,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_armor_trim,
+    );
+    geometry.append_textured(ArmorTrimDecal, Static, meshes.armor_trim_decal);
+    geometry.append_textured(
+        ArmorTrimDecal,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_armor_trim_decal,
+    );
     geometry.append_scroll(false, meshes.entity_glint);
     // Translucent family, in draw_entity_translucent_features order.
     geometry.append_textured(Translucent, Static, meshes.translucent);
@@ -628,93 +655,108 @@ impl Renderer {
             draw_calls += 1;
         }
 
-        if has_textured {
-            let (Some(vertex_buffer), Some(index_buffer)) = (
-                target.textured_vertices.buffer(),
-                target.textured_indices.buffer(),
-            ) else {
-                unreachable!("textured buffers uploaded above");
-            };
-            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            for draw in &geometry.textured_draws {
-                let bind_group = match draw.atlas {
-                    EntityModelTexturedDrawAtlas::Static => static_bind_group,
-                    EntityModelTexturedDrawAtlas::DynamicPlayerSkin => {
-                        match &dynamic_skin_bind_group {
-                            Some(bind_group) => bind_group,
-                            None => continue,
+        for ordered_draw in &geometry.draw_order {
+            match *ordered_draw {
+                HudEntityPreviewPipDrawOrder::Textured(draw_index) => {
+                    if !has_textured {
+                        continue;
+                    }
+                    let (Some(vertex_buffer), Some(index_buffer)) = (
+                        target.textured_vertices.buffer(),
+                        target.textured_indices.buffer(),
+                    ) else {
+                        unreachable!("textured buffers uploaded above");
+                    };
+                    let draw = &geometry.textured_draws[draw_index];
+                    let bind_group = match draw.atlas {
+                        EntityModelTexturedDrawAtlas::Static => static_bind_group,
+                        EntityModelTexturedDrawAtlas::DynamicPlayerSkin => {
+                            match &dynamic_skin_bind_group {
+                                Some(bind_group) => bind_group,
+                                None => continue,
+                            }
                         }
-                    }
-                    EntityModelTexturedDrawAtlas::DynamicPlayerTexture => {
-                        match &dynamic_texture_bind_group {
-                            Some(bind_group) => bind_group,
-                            None => continue,
+                        EntityModelTexturedDrawAtlas::DynamicPlayerTexture => {
+                            match &dynamic_texture_bind_group {
+                                Some(bind_group) => bind_group,
+                                None => continue,
+                            }
                         }
+                    };
+                    let (pipeline, uses_lightmap) = match draw.pipeline {
+                        HudEntityPreviewPipPipeline::Cutout => {
+                            (&self.entity_model_textured_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::CutoutCull => {
+                            (&self.entity_model_textured_cull_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::CutoutZOffset => {
+                            (&self.entity_model_cutout_z_offset_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::ArmorCutout => {
+                            (&self.entity_model_armor_cutout_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::ArmorTrim => {
+                            (&self.entity_model_armor_cutout_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::ArmorTrimDecal => {
+                            (&self.entity_model_armor_decal_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::Translucent => {
+                            (&self.entity_model_translucent_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::ArmorTranslucent => {
+                            (&self.entity_model_armor_translucent_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::TranslucentEmissive => {
+                            (&self.entity_model_translucent_emissive_pipeline, false)
+                        }
+                        HudEntityPreviewPipPipeline::Eyes => {
+                            (&self.entity_model_eyes_pipeline, false)
+                        }
+                    };
+                    pass.set_pipeline(pipeline);
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, bind_group, &[]);
+                    if uses_lightmap {
+                        pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
                     }
-                };
-                let (pipeline, uses_lightmap) = match draw.pipeline {
-                    HudEntityPreviewPipPipeline::Cutout => {
-                        (&self.entity_model_textured_pipeline, true)
-                    }
-                    HudEntityPreviewPipPipeline::CutoutCull => {
-                        (&self.entity_model_textured_cull_pipeline, true)
-                    }
-                    HudEntityPreviewPipPipeline::CutoutZOffset => {
-                        (&self.entity_model_cutout_z_offset_pipeline, true)
-                    }
-                    HudEntityPreviewPipPipeline::ArmorCutout => {
-                        (&self.entity_model_armor_cutout_pipeline, true)
-                    }
-                    HudEntityPreviewPipPipeline::Translucent => {
-                        (&self.entity_model_translucent_pipeline, true)
-                    }
-                    HudEntityPreviewPipPipeline::ArmorTranslucent => {
-                        (&self.entity_model_armor_translucent_pipeline, true)
-                    }
-                    HudEntityPreviewPipPipeline::TranslucentEmissive => {
-                        (&self.entity_model_translucent_emissive_pipeline, false)
-                    }
-                    HudEntityPreviewPipPipeline::Eyes => (&self.entity_model_eyes_pipeline, false),
-                };
-                pass.set_pipeline(pipeline);
-                pipeline_switches += 1;
-                pass.set_bind_group(0, bind_group, &[]);
-                if uses_lightmap {
-                    pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(
+                        draw.index_start..draw.index_start + draw.index_count,
+                        0,
+                        0..1,
+                    );
+                    draw_calls += 1;
                 }
-                pass.draw_indexed(
-                    draw.index_start..draw.index_start + draw.index_count,
-                    0,
-                    0..1,
-                );
-                draw_calls += 1;
-            }
-        }
-
-        if has_scroll {
-            let (Some(vertex_buffer), Some(index_buffer)) = (
-                target.scroll_vertices.buffer(),
-                target.scroll_indices.buffer(),
-            ) else {
-                unreachable!("scroll buffers uploaded above");
-            };
-            pass.set_vertex_buffer(0, vertex_buffer.slice(..));
-            pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-            for draw in &geometry.scroll_draws {
-                if draw.armor {
-                    pass.set_pipeline(&self.entity_model_armor_entity_glint_pipeline);
-                } else {
-                    pass.set_pipeline(&self.entity_model_entity_glint_pipeline);
+                HudEntityPreviewPipDrawOrder::Scroll(draw_index) => {
+                    if !has_scroll {
+                        continue;
+                    }
+                    let (Some(vertex_buffer), Some(index_buffer)) = (
+                        target.scroll_vertices.buffer(),
+                        target.scroll_indices.buffer(),
+                    ) else {
+                        unreachable!("scroll buffers uploaded above");
+                    };
+                    let draw = &geometry.scroll_draws[draw_index];
+                    if draw.armor {
+                        pass.set_pipeline(&self.entity_model_armor_entity_glint_pipeline);
+                    } else {
+                        pass.set_pipeline(&self.entity_model_entity_glint_pipeline);
+                    }
+                    pipeline_switches += 1;
+                    pass.set_bind_group(0, static_bind_group, &[]);
+                    pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                    pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(
+                        draw.index_start..draw.index_start + draw.index_count,
+                        0,
+                        0..1,
+                    );
+                    draw_calls += 1;
                 }
-                pipeline_switches += 1;
-                pass.set_bind_group(0, static_bind_group, &[]);
-                pass.draw_indexed(
-                    draw.index_start..draw.index_start + draw.index_count,
-                    0,
-                    0..1,
-                );
-                draw_calls += 1;
             }
         }
 
@@ -724,12 +766,13 @@ impl Renderer {
 
 #[cfg(test)]
 mod tests {
-    use super::super::gpu::build_entity_model_texture_atlas;
+    use super::super::gpu::{build_dynamic_player_texture_atlas, build_entity_model_texture_atlas};
     use super::super::model_layers::armor_stand_entity_texture_refs;
     use super::super::{
         EntityArmorMaterial, EntityModelTextureImage, DEFAULT_ARMOR_STAND_MODEL_POSE,
     };
     use super::*;
+    use crate::{DynamicEntityTextureImage, EntityArmorTrim, EntityDynamicTexture};
 
     fn armor_stand_preview_instance() -> EntityModelInstance {
         EntityModelInstance::armor_stand(
@@ -824,6 +867,64 @@ mod tests {
             .scroll_indices
             .iter()
             .all(|index| *index < scroll_vertex_count));
+    }
+
+    #[test]
+    fn bake_draws_runtime_armor_trim_after_armor_foil() {
+        let images: Vec<EntityModelTextureImage> =
+            super::super::model_layers::entity_model_texture_refs()
+                .iter()
+                .map(|texture| {
+                    let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+                    EntityModelTextureImage::new(*texture, vec![0xff; len])
+                })
+                .collect();
+        let atlas = build_entity_model_texture_atlas(&images).expect("atlas").0;
+        let trim_texture = EntityDynamicTexture { handle: 81_001 };
+        let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+            handle: trim_texture.handle,
+            size: [64, 32],
+            rgba: vec![0xff; 64 * 32 * 4],
+        }])
+        .expect("dynamic trim atlas")
+        .0;
+        let mut instance = armor_stand_preview_instance();
+        instance.render_state.chest_armor = Some(EntityArmorMaterial::Iron);
+        instance.render_state.chest_armor_foil = true;
+        instance.render_state.chest_armor_trim = Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        });
+
+        let geometry =
+            bake_hud_entity_preview_pip_geometry(&instance, &atlas, None, Some(&dynamic_atlas));
+        let armor_glint = geometry
+            .draw_order
+            .iter()
+            .position(|draw| {
+                matches!(
+                    draw,
+                    HudEntityPreviewPipDrawOrder::Scroll(index)
+                        if geometry.scroll_draws[*index].armor
+                )
+            })
+            .expect("armor foil draw");
+        let trim = geometry
+            .draw_order
+            .iter()
+            .position(|draw| {
+                matches!(
+                    draw,
+                    HudEntityPreviewPipDrawOrder::Textured(index)
+                        if geometry.textured_draws[*index].pipeline
+                            == HudEntityPreviewPipPipeline::ArmorTrim
+                            && geometry.textured_draws[*index].atlas
+                                == EntityModelTexturedDrawAtlas::DynamicPlayerTexture
+                )
+            })
+            .expect("runtime trim draw");
+
+        assert!(armor_glint < trim, "vanilla draws foil before armor trim");
     }
 
     #[test]

@@ -24,20 +24,33 @@ struct EntityVariantTextureEntry {
 
 trait DynamicEntityTextureUploader {
     fn upload_dynamic_entity_texture(&mut self, image: DynamicEntityTextureImage) -> Result<()>;
+    fn upload_dynamic_entity_textures(
+        &mut self,
+        images: Vec<DynamicEntityTextureImage>,
+    ) -> Result<()>;
 }
 
 impl DynamicEntityTextureUploader for Renderer {
     fn upload_dynamic_entity_texture(&mut self, image: DynamicEntityTextureImage) -> Result<()> {
         Renderer::upload_dynamic_entity_texture(self, image)
     }
+
+    fn upload_dynamic_entity_textures(
+        &mut self,
+        images: Vec<DynamicEntityTextureImage>,
+    ) -> Result<()> {
+        Renderer::upload_dynamic_entity_textures(self, images)
+    }
 }
 
-/// Owns the startup-pack-backed texture state used by synchronized animal presentations.
-/// Entries never become visible to entity extraction until their image upload succeeds.
+/// Owns startup-pack-backed runtime entity textures for synchronized animal presentations and the
+/// generated armor-trim atlas. Entries never become visible to entity extraction until their image
+/// upload succeeds.
 pub(crate) struct NativeEntityVariantTextureRuntime {
     pack_roots: Option<PackRoots>,
     entries: HashMap<String, EntityVariantTextureEntry>,
     rejected_presentations: HashSet<(String, i32)>,
+    armor_trim_atlas_synchronized: bool,
 }
 
 impl NativeEntityVariantTextureRuntime {
@@ -46,6 +59,7 @@ impl NativeEntityVariantTextureRuntime {
             pack_roots,
             entries: HashMap::new(),
             rejected_presentations: HashSet::new(),
+            armor_trim_atlas_synchronized: false,
         }
     }
 
@@ -68,6 +82,7 @@ impl NativeEntityVariantTextureRuntime {
         world: &WorldStore,
         uploader: &mut impl DynamicEntityTextureUploader,
     ) {
+        self.synchronize_armor_trim_atlas(uploader);
         for (_, registry) in vanilla_data_component_animal_texture_variant_registries() {
             let Some(entry_count) = world
                 .registry_resource_ids_in_holder_order(registry)
@@ -135,6 +150,73 @@ impl NativeEntityVariantTextureRuntime {
                     }
                 }
             }
+        }
+    }
+
+    fn synchronize_armor_trim_atlas(&mut self, uploader: &mut impl DynamicEntityTextureUploader) {
+        if self.armor_trim_atlas_synchronized {
+            return;
+        }
+        self.armor_trim_atlas_synchronized = true;
+        let images = match self
+            .pack_roots
+            .as_ref()
+            .ok_or_else(|| anyhow!("pack roots are unavailable"))
+            .and_then(|roots| roots.load_atlas_texture_images("armor_trims"))
+        {
+            Ok(images) => images,
+            Err(error) => {
+                tracing::warn!(?error, "continuing without armor-trim atlas sprites");
+                return;
+            }
+        };
+
+        let mut ids = Vec::with_capacity(images.len());
+        let mut uploads = Vec::with_capacity(images.len());
+        for image in images {
+            if self.entries.contains_key(&image.id) {
+                continue;
+            }
+            let texture = EntityDynamicTexture {
+                handle: self.unique_texture_handle(&image.id),
+            };
+            ids.push(image.id.clone());
+            uploads.push(DynamicEntityTextureImage {
+                handle: texture.handle,
+                size: [image.width, image.height],
+                rgba: image.rgba,
+            });
+            self.entries.insert(
+                image.id,
+                EntityVariantTextureEntry {
+                    texture,
+                    status: EntityVariantTextureStatus::Pending,
+                },
+            );
+        }
+
+        let result = uploader.upload_dynamic_entity_textures(uploads);
+        for id in &ids {
+            let entry = self
+                .entries
+                .get_mut(id)
+                .expect("pending armor-trim texture entry must remain present");
+            entry.status = if result.is_ok() {
+                EntityVariantTextureStatus::Ready
+            } else {
+                EntityVariantTextureStatus::Failed
+            };
+        }
+        match result {
+            Ok(()) => tracing::info!(
+                textures = ids.len(),
+                "loaded generated armor-trim atlas sprites"
+            ),
+            Err(error) => tracing::warn!(
+                ?error,
+                textures = ids.len(),
+                "continuing without armor-trim atlas sprites"
+            ),
         }
     }
 
@@ -274,6 +356,7 @@ mod tests {
     struct TestUploader {
         images: Vec<DynamicEntityTextureImage>,
         fail_after: Option<usize>,
+        batch_calls: usize,
     }
 
     impl DynamicEntityTextureUploader for TestUploader {
@@ -290,6 +373,17 @@ mod tests {
             } else {
                 Ok(())
             }
+        }
+
+        fn upload_dynamic_entity_textures(
+            &mut self,
+            images: Vec<DynamicEntityTextureImage>,
+        ) -> Result<()> {
+            self.batch_calls += 1;
+            for image in images {
+                self.upload_dynamic_entity_texture(image)?;
+            }
+            Ok(())
         }
     }
 
@@ -318,6 +412,7 @@ mod tests {
         let mut uploader = TestUploader {
             images: Vec::new(),
             fail_after: Some(1),
+            batch_calls: 0,
         };
         let mut world = WorldStore::new();
         world.record_registry_entries(
@@ -355,6 +450,50 @@ mod tests {
             2,
             "ready and failed assets must both stay deduplicated across frames"
         );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn armor_trim_atlas_uploads_as_one_batch_and_stays_deduplicated() {
+        let root = unique_temp_dir("armor-trim-texture-runtime");
+        let sources = root.join("sources/26.1");
+        let atlas_path = sources.join("assets/minecraft/atlases/armor_trims.json");
+        std::fs::create_dir_all(atlas_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &atlas_path,
+            r#"{"sources":[{"type":"minecraft:single","resource":"example:trims/entity/humanoid/spiral_ruby"}]}"#,
+        )
+        .unwrap();
+        write_png(
+            &sources.join("assets/example/textures/trims/entity/humanoid/spiral_ruby.png"),
+            64,
+            32,
+        );
+        let roots = PackRoots {
+            mc_code_root: root.clone(),
+            sources_dir: sources.clone(),
+            assets_dir: sources.join("assets/minecraft"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+        let world = WorldStore::new();
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.images.len(), 2, "missingno plus the trim sprite");
+        assert_eq!(uploader.images[1].size, [64, 32]);
+        let trim = runtime
+            .ready_texture("example:trims/entity/humanoid/spiral_ruby")
+            .expect("successful batch publishes the trim texture handle");
+        assert_eq!(uploader.images[1].handle, trim.handle);
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.images.len(), 2);
 
         std::fs::remove_dir_all(root).unwrap();
     }

@@ -829,26 +829,47 @@ class TrimMaterials {
 }
 """,
         )
+        material_asset_groups = parse_source(
+            "fixture/MaterialAssetGroup.java",
+            b"""
+package fixture;
+class MaterialAssetGroup {
+  static final MaterialAssetGroup FIRST = create("first");
+  static final MaterialAssetGroup SECOND = create(
+      "second", Map.of(EquipmentAssets.IRON, "second_darker"));
+}
+""",
+        )
         with self.assertRaisesRegex(
             BootstrapCatalogExtractionError,
             "expected a decimal integer literal",
         ):
-            trim_material_entries(source, expected_count=2)
+            trim_material_entries(source, material_asset_groups, expected_count=2)
 
         source = parse_source(
             "fixture/TrimMaterials.java",
             source.source.replace(b"0x12", b"18"),
         )
+        entries = trim_material_entries(
+            source, material_asset_groups, expected_count=2
+        )
         self.assertEqual(
             [
                 (entry.constant_name, entry.resource_id, entry.description_color)
-                for entry in trim_material_entries(source, expected_count=2)
+                for entry in entries
             ],
             [
                 ("SECOND", "minecraft:second", 18),
                 ("FIRST", "minecraft:first", 34),
             ],
         )
+        self.assertEqual(entries[0].asset_name, "second")
+        self.assertEqual(
+            entries[0].override_armor_assets,
+            (("minecraft:iron", "second_darker"),),
+        )
+        self.assertEqual(entries[1].asset_name, "first")
+        self.assertEqual(entries[1].override_armor_assets, ())
 
     def test_decorated_pot_patterns_join_items_map_and_bootstrap(self) -> None:
         patterns = parse_source(

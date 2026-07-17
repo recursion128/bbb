@@ -1,5 +1,6 @@
 use super::*;
 use crate::entity_models::colored::GIANT_SCALE;
+use crate::DynamicEntityTextureImage;
 
 // Build an atlas covering the zombie base texture plus the iron equipment-asset textures and armor
 // glint texture, enough to render an iron-clad zombie.
@@ -515,6 +516,154 @@ fn foiled_humanoid_armor_records_vanilla_armor_entity_glint_submission() {
     assert_eq!(legs.transform, chest.transform);
     assert_eq!(legs.light, chest.light);
     assert_eq!(legs.overlay, [0.0, 10.0]);
+}
+
+#[test]
+fn adult_humanoid_armor_trim_uses_runtime_atlas_after_foil() {
+    let atlas = iron_armor_atlas();
+    let trim_texture = EntityDynamicTexture { handle: 91_001 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 32],
+        rgba: vec![0xff; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let armored = EntityModelInstance::zombie(91_001, [0.0, 64.0, 0.0], 0.0, false)
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor_foil(true)
+        .with_chest_armor_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        }));
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[armored],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    assert_eq!(meshes.submissions.len(), 4);
+    assert_eq!(
+        meshes.submissions[1].render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        meshes.submissions[2].render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    let trim = meshes.submissions[3];
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!(trim.dynamic_player_texture, None);
+    assert_eq!(trim.tint, [1.0; 4]);
+    assert_eq!((trim.order, trim.submit_sequence), (3, 1));
+    assert_eq!(trim.overlay, [0.0, 10.0]);
+    assert_eq!(
+        meshes.dynamic_player_texture_armor_trim.vertices.len(),
+        72,
+        "the trim reuses the posed chestplate body and arm cubes"
+    );
+    assert!(meshes
+        .dynamic_player_texture_armor_trim_decal
+        .vertices
+        .is_empty());
+}
+
+#[test]
+fn baby_humanoid_armor_suppresses_trim_layer() {
+    let atlas = iron_armor_atlas();
+    let trim_texture = EntityDynamicTexture { handle: 91_002 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 32],
+        rgba: vec![0xff; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let armored = EntityModelInstance::zombie(91_002, [0.0, 64.0, 0.0], 0.0, true)
+        .with_chest_armor(Some(EntityArmorMaterial::Iron))
+        .with_chest_armor_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        }));
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[armored],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    assert_eq!(meshes.submissions.len(), 2);
+    assert!(meshes.submissions.iter().all(|submit| {
+        !matches!(
+            submit.render_type,
+            EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+                | EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+        )
+    }));
+    assert!(meshes.dynamic_player_texture_armor_trim.vertices.is_empty());
+    assert!(meshes
+        .dynamic_player_texture_armor_trim_decal
+        .vertices
+        .is_empty());
+}
+
+#[test]
+fn small_armor_stand_keeps_decal_armor_trim_on_adult_texture_layer() {
+    let atlas = armor_stand_iron_armor_atlas();
+    let trim_texture = EntityDynamicTexture { handle: 91_003 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 32],
+        rgba: vec![0xff; 64 * 32 * 4],
+    }])
+    .unwrap()
+    .0;
+    let armored = EntityModelInstance::armor_stand(
+        91_003,
+        [0.0, 64.0, 0.0],
+        0.0,
+        true,
+        true,
+        true,
+        DEFAULT_ARMOR_STAND_MODEL_POSE,
+    )
+    .with_chest_armor(Some(EntityArmorMaterial::Iron))
+    .with_chest_armor_trim(Some(EntityArmorTrim {
+        texture: trim_texture,
+        decal: true,
+    }));
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[armored],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    assert_eq!(meshes.submissions.len(), 3);
+    let trim = meshes.submissions[2];
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+    );
+    assert_eq!(trim.texture, ARMOR_IRON_HUMANOID_TEXTURE_REF);
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!((trim.order, trim.submit_sequence), (2, 1));
+    assert_eq!(
+        meshes
+            .dynamic_player_texture_armor_trim_decal
+            .vertices
+            .len(),
+        72
+    );
+    assert!(meshes.dynamic_player_texture_armor_trim.vertices.is_empty());
 }
 
 #[test]

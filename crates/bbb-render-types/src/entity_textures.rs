@@ -53,6 +53,14 @@ pub struct EntityDynamicTexture {
     pub handle: u64,
 }
 
+/// One resolved armor-trim atlas sprite. `texture` addresses the shared runtime entity atlas;
+/// `decal` selects vanilla's equal-depth, no-depth-write armor decal pipeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EntityArmorTrim {
+    pub texture: EntityDynamicTexture,
+    pub decal: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityDynamicPlayerTextureKind {
     Cape,

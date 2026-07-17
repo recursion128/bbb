@@ -1,4 +1,5 @@
 mod animal_variants;
+mod armor_trims;
 mod biomes;
 mod block_states;
 mod damage_types;
@@ -21,6 +22,8 @@ pub use animal_variants::{
     COW_VARIANT_REGISTRY, FROG_VARIANT_REGISTRY, PIG_VARIANT_REGISTRY, WOLF_VARIANT_REGISTRY,
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
+pub(crate) use armor_trims::armor_trim_sprite;
+pub use armor_trims::{ArmorTrimSprite, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY};
 pub use biomes::{
     BiomeClientProjection, BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier,
 };

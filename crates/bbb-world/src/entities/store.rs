@@ -125,6 +125,7 @@ use crate::entities::schema::{
     VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
     VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
+use crate::registries::armor_trim_sprite;
 use crate::registries::RegistrySet;
 use crate::ItemEquipmentSlot;
 use bbb_protocol::entity_types::*;
@@ -1591,6 +1592,15 @@ impl EntityStore {
                 .and_then(|_| armor_item(slot))
                 .is_some_and(ItemStackSummary::has_foil)
         };
+        let armor_trim = |slot: ProtocolEquipmentSlot| {
+            let material = armor_material(slot)?;
+            armor_trim_sprite(
+                registries,
+                armor_item(slot)?,
+                material.equipment_asset_id(),
+                slot == ProtocolEquipmentSlot::Legs,
+            )
+        };
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
         // then render only a non-empty equippable saddle item. bbb resolves the default saddle item
         // from the item equipment-slot map.
@@ -2472,6 +2482,10 @@ impl EntityStore {
             chest_armor: armor_material(ProtocolEquipmentSlot::Chest),
             legs_armor: armor_material(ProtocolEquipmentSlot::Legs),
             feet_armor: armor_material(ProtocolEquipmentSlot::Feet),
+            head_armor_trim: armor_trim(ProtocolEquipmentSlot::Head),
+            chest_armor_trim: armor_trim(ProtocolEquipmentSlot::Chest),
+            legs_armor_trim: armor_trim(ProtocolEquipmentSlot::Legs),
+            feet_armor_trim: armor_trim(ProtocolEquipmentSlot::Feet),
             head_armor_dye: armor_dye(ProtocolEquipmentSlot::Head),
             chest_armor_dye: armor_dye(ProtocolEquipmentSlot::Chest),
             legs_armor_dye: armor_dye(ProtocolEquipmentSlot::Legs),

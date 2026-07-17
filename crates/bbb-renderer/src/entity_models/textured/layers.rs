@@ -193,6 +193,10 @@ pub(crate) enum EntityModelLayerRenderType {
     EntitySolid,
     /// Vanilla `RenderTypes.armorCutoutNoCull(texture)` used by equipment layers.
     ArmorCutoutNoCull,
+    /// Vanilla armor-trim sheet through `RenderTypes.armorCutoutNoCull`.
+    ArmorTrimCutoutNoCull,
+    /// Vanilla `RenderTypes.createArmorDecalCutoutNoCull` for decal trim patterns.
+    ArmorTrimDecalCutoutNoCull,
     /// Vanilla `RenderTypes.armorTranslucent(texture)` used by translucent armor damage overlays.
     ArmorTranslucent,
     /// Vanilla `RenderTypes.entityCutout(texture)`; this is also the default
@@ -264,9 +268,11 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 23] = [
+    pub(in crate::entity_models) const ALL: [Self; 25] = [
         Self::EntitySolid,
         Self::ArmorCutoutNoCull,
+        Self::ArmorTrimCutoutNoCull,
+        Self::ArmorTrimDecalCutoutNoCull,
         Self::ArmorTranslucent,
         Self::EntityCutout,
         Self::EntityCutoutDissolve,
@@ -294,6 +300,8 @@ impl EntityModelLayerRenderType {
         match self {
             Self::EntitySolid
             | Self::ArmorCutoutNoCull
+            | Self::ArmorTrimCutoutNoCull
+            | Self::ArmorTrimDecalCutoutNoCull
             | Self::EntityCutout
             | Self::EntityCutoutCull => EntityModelLayerRenderBucket::Cutout,
             Self::EntityCutoutDissolve => EntityModelLayerRenderBucket::Dissolve,
@@ -324,6 +332,8 @@ impl EntityModelLayerRenderType {
             self,
             Self::EntitySolid
                 | Self::ArmorCutoutNoCull
+                | Self::ArmorTrimCutoutNoCull
+                | Self::ArmorTrimDecalCutoutNoCull
                 | Self::ArmorTranslucent
                 | Self::EntityCutout
                 | Self::EntityCutoutDissolve
@@ -367,6 +377,8 @@ impl EntityModelLayerRenderType {
         match self {
             Self::EntitySolid => "entitySolid",
             Self::ArmorCutoutNoCull => "armorCutoutNoCull",
+            Self::ArmorTrimCutoutNoCull => "armorTrimsSheet",
+            Self::ArmorTrimDecalCutoutNoCull => "armorTrimsDecalSheet",
             Self::ArmorTranslucent => "armorTranslucent",
             Self::EntityCutout => "entityCutout",
             Self::EntityCutoutDissolve => "entityCutoutDissolve",

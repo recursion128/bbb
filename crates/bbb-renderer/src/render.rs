@@ -495,6 +495,58 @@ impl Renderer {
                 stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_armor_trim_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_armor_cutout_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_texture_armor_trim_mesh,
+                &self.entity_dynamic_player_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_armor_cutout_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_armor_trim_decal_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_armor_decal_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_texture_armor_trim_decal_mesh,
+                &self.entity_dynamic_player_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_armor_decal_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_model_entity_glint_mesh,
                 &self.entity_model_texture_atlas,
             ) {
@@ -5069,23 +5121,68 @@ mod tests {
             .find("self.entity_model_armor_entity_glint_pipeline")
             .map(|index| main_pass + index)
             .expect("armorEntityGlint pipeline is drawn");
+        let armor_glint_draw = source[armor_glint..]
+            .find("pass.draw_indexed")
+            .map(|index| armor_glint + index)
+            .expect("armorEntityGlint draw follows its pipeline");
         let entity_glint = source[armor_glint..]
             .find("self.entity_model_entity_glint_pipeline")
             .map(|index| armor_glint + index)
             .expect("entityGlint pipeline is drawn");
+        let entity_glint_draw = source[entity_glint..]
+            .find("pass.draw_indexed")
+            .map(|index| entity_glint + index)
+            .expect("entityGlint draw follows its pipeline");
         let depth_copy = depth_copy_to(source, "texture: &self.translucent_target.depth._texture");
 
         assert!(
-            main_pass < armor_glint && armor_glint < entity_glint && entity_glint < depth_copy,
+            main_pass < armor_glint
+                && armor_glint < armor_glint_draw
+                && armor_glint_draw < entity_glint
+                && entity_glint < entity_glint_draw
+                && entity_glint_draw < depth_copy,
             "entity glint render types are main-target entity feature draws before target depth copies"
         );
         assert!(
-            !source[armor_glint..entity_glint]
+            !source[armor_glint..armor_glint_draw]
                 .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])")
-                && !source[entity_glint..depth_copy]
+                && !source[entity_glint..entity_glint_draw]
                     .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
             "vanilla glint pipeline does not bind LightTexture"
         );
+    }
+
+    #[test]
+    fn armor_trim_draws_after_foil_with_runtime_atlas_and_decal_pipeline() {
+        let source = include_str!("render.rs");
+        let main_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain/entity pass label is used");
+        let armor_glint = source[main_pass..]
+            .find("self.entity_model_armor_entity_glint_pipeline")
+            .map(|index| main_pass + index)
+            .expect("armor foil draw");
+        let trim = source[armor_glint..]
+            .find("self.entity_dynamic_player_texture_armor_trim_mesh")
+            .map(|index| armor_glint + index)
+            .expect("runtime armor trim draw");
+        let decal_trim = source[trim..]
+            .find("self.entity_dynamic_player_texture_armor_trim_decal_mesh")
+            .map(|index| trim + index)
+            .expect("runtime decal armor trim draw");
+        let entity_glint = source[decal_trim..]
+            .find("self.entity_model_entity_glint_pipeline")
+            .map(|index| decal_trim + index)
+            .expect("later entity glint draw");
+
+        assert!(armor_glint < trim && trim < decal_trim && decal_trim < entity_glint);
+        assert!(source[trim..decal_trim]
+            .contains("pass.set_pipeline(&self.entity_model_armor_cutout_pipeline)"));
+        assert!(source[decal_trim..entity_glint]
+            .contains("pass.set_pipeline(&self.entity_model_armor_decal_pipeline)"));
+        assert!(source[trim..entity_glint].contains("&self.entity_dynamic_player_texture_atlas"));
+        assert!(source[trim..entity_glint]
+            .contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"));
     }
 
     #[test]

@@ -18563,3 +18563,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Humanoid attack anchors, equine tail motion, feline/fox poses, polar-bear standing, sheep eating,
   and wolf sitting now consume the projected value in every repo-native `setupAnim` equivalent.
   Generated reverse guards and world/native/renderer semantic tests lock the full path.
+
+# 2026-07-17: Render humanoid and armor-stand armor trims
+
+- Extended the generated vanilla trim-material catalog with `MaterialAssetGroup` asset suffixes
+  and same-material armor overrides, then resolved direct components, synchronized custom
+  material/pattern payloads, and vanilla holder fallback into exact armor-trim atlas sprite ids.
+- Loaded the generated `armor_trims` pack atlas into the shared variable-size entity texture atlas
+  with one batch rebuild, and kept registry resource ids on the world side until native can resolve
+  a successfully uploaded renderer handle.
+- Adult humanoids and both armor-stand sizes now submit white trim geometry after base armor and
+  foil; non-decal trims use armor cutout state, decal patterns use equal-depth/no-write state, and
+  vanilla's `HUMANOID_BABY` trim suppression remains intact. The same ordering and runtime atlas
+  path also feed the smithing/HUD entity preview.
