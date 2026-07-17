@@ -184,6 +184,7 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::entity_types::*;
+    use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
     use bbb_protocol::menu_types::VANILLA_MENU_TYPE_MERCHANT_ID;
     use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::packets::{
@@ -4984,7 +4985,7 @@ mod tests {
             z: -2,
             chunk_data: LevelChunkData {
                 heightmaps: vec![ChunkHeightmapData {
-                    kind_id: 1,
+                    kind_id: VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
                     data: vec![42],
                 }],
                 section_data: sections.into_inner(),

@@ -6,6 +6,7 @@ use super::params::{
 };
 use super::*;
 use crate::types::{AudioCounters, NetCounters, RecipeBookTypeControl};
+use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
     BlockDestruction, BlockEvent, BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound,
@@ -3958,7 +3959,7 @@ fn single_section_chunk() -> ChunkColumn {
         pos: ChunkPos { x: 1, z: -2 },
         state: ChunkState::Decoded,
         heightmaps: vec![HeightmapData {
-            kind_id: 1,
+            kind_id: VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
             data: vec![0],
         }],
         sections: vec![ChunkSection {

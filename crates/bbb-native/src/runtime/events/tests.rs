@@ -12,6 +12,7 @@ use bbb_net::{NetCommand, NetEvent};
 use bbb_pack::{JukeboxSongRegistry, SoundCatalog, SoundEventRegistry};
 use bbb_protocol::codec::Encoder;
 use bbb_protocol::entity_types::*;
+use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
 use bbb_protocol::packets::PlayClientbound;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
@@ -1097,7 +1098,7 @@ fn synthetic_native_level_chunk_packet() -> LevelChunkWithLight {
         z: -2,
         chunk_data: LevelChunkData {
             heightmaps: vec![ChunkHeightmapData {
-                kind_id: 1,
+                kind_id: VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
                 data: vec![42],
             }],
             section_data: sections.into_inner(),

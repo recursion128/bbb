@@ -8,8 +8,11 @@ use crate::{
 use super::palette::packed_long_len;
 
 pub(super) use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_MOTION_BLOCKING_ID;
+use bbb_protocol::heightmap_types::{
+    vanilla_heightmap_type, HeightmapUsage, VANILLA_HEIGHTMAP_TYPES,
+};
 
-const VANILLA_HEIGHTMAP_KIND_COUNT: usize = 6;
+const VANILLA_HEIGHTMAP_KIND_COUNT: usize = VANILLA_HEIGHTMAP_TYPES.len();
 const VANILLA_HEIGHTMAP_ENTRY_COUNT: usize = 16 * 16;
 
 /// A pre-resolved view of one loaded chunk's vanilla heightmaps.
@@ -314,5 +317,5 @@ fn set_heightmap_value(
 }
 
 fn is_vanilla_final_heightmap(kind_id: i32) -> bool {
-    matches!(kind_id, 1 | 3 | 4 | 5)
+    vanilla_heightmap_type(kind_id).is_some_and(|entry| entry.usage != HeightmapUsage::Worldgen)
 }

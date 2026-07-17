@@ -19056,3 +19056,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Added a recipe-catalog generator guard for numeric category field construction, typed field
   comparisons, and JSON projection comparisons. Raw packet payload samples and deliberately open
   server category ids remain separately owned.
+
+# 2026-07-17: Derive semantic heightmap type ids
+
+- Replaced numeric World Surface, worldgen, Ocean Floor, and Motion Blocking heightmap ids across
+  world sampler tests and net/control/native chunk fixtures with generated `Heightmap.Types`
+  constants; complete and final-kind expectations now derive from the generated catalog.
+- Derived the sampler's fixed array length and final-heightmap fallback membership from the same
+  catalog and `HeightmapUsage`, removing the remaining production `1|3|4|5` table. A
+  generator-emitted reverse guard covers semantic construction, queries, comparisons, helper calls,
+  and the old membership form while leaving protocol wire samples separately owned.

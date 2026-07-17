@@ -6,6 +6,8 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 #[cfg(test)]
+use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
+#[cfg(test)]
 use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID;
 use bbb_protocol::{
     frame::encode_packet,
@@ -3207,7 +3209,7 @@ mod tests {
             z: -2,
             chunk_data: packets::LevelChunkData {
                 heightmaps: vec![packets::ChunkHeightmapData {
-                    kind_id: 1,
+                    kind_id: VANILLA_HEIGHTMAP_WORLD_SURFACE_ID,
                     data: vec![42],
                 }],
                 section_data: vec![0, 1, 2],

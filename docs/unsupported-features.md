@@ -166,6 +166,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   constants in protocol, world, net, control, and native consumers; the recipe catalog generator
   rejects numeric field construction and semantic comparisons while leaving raw wire payload
   samples and intentionally open server-defined category ids under their existing owners.
+  Heightmap sampler membership, semantic packet/state fixtures, queries, and comparisons must
+  consume the generated `Heightmap.Types` catalog and named ids; the gameplay-id generator rejects
+  numeric kind references outside protocol-owned raw codec samples.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test
