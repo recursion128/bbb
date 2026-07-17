@@ -27,6 +27,16 @@ fn painting_variant_collision_data(registry_id: i32) -> ProtocolEntityDataValue 
     painting_variant_data(registry_id)
 }
 
+fn item_frame_item_data(entity_type_id: i32, item: ItemStackSummary) -> ProtocolEntityDataValue {
+    let accessors = vanilla_entity_metadata_item_frame_accessors_for_entity_type(entity_type_id)
+        .expect("generated ItemFrame metadata accessors must resolve");
+    ProtocolEntityDataValue {
+        data_id: accessors.item_data_id,
+        serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
+        value: EntityDataValueKind::ItemStack(item),
+    }
+}
+
 fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
     let accessors = vanilla_entity_metadata_entity_accessors()
         .expect("generated base Entity metadata accessors must resolve");
@@ -452,10 +462,9 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 21,
-        values: vec![ProtocolEntityDataValue {
-            data_id: 9,
-            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
-            value: EntityDataValueKind::ItemStack(ItemStackSummary {
+        values: vec![item_frame_item_data(
+            VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
+            ItemStackSummary {
                 item_id: Some(999),
                 count: 1,
                 component_patch: DataComponentPatchSummary {
@@ -464,8 +473,8 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
                     removed_type_ids: Vec::new(),
                     ..DataComponentPatchSummary::default()
                 },
-            }),
-        }],
+            },
+        )],
     }));
     assert_eq!(
         store.probe_entity_pick_bounds(21),
