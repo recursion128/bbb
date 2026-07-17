@@ -5173,6 +5173,37 @@ mod tests {
     }
 
     #[test]
+    fn player_entity_events_toggle_only_the_local_reduced_debug_gate() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        for entity_id in [7, 8] {
+            store.apply_add_entity(add_entity(
+                entity_id,
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                Vec3d::default(),
+            ));
+        }
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+
+        for (entity_id, event_id, expected) in [(7, 22, true), (8, 23, true), (7, 23, false)] {
+            assert!(store
+                .apply_play_packet(
+                    PlayClientbound::EntityEvent(EntityEvent {
+                        entity_id,
+                        event_id,
+                    }),
+                    &mut random,
+                    &mut NoPlayApplyEffects,
+                )
+                .is_none());
+            assert_eq!(store.local_player_has_reduced_debug_info(), expected);
+        }
+
+        assert_eq!(store.probe_entity(7).unwrap().last_event_id, Some(23));
+        assert_eq!(store.probe_entity(8).unwrap().last_event_id, Some(23));
+    }
+
+    #[test]
     fn sink_less_level_event_advances_particle_randoms_like_online_dispatcher() {
         // Lava extinguish (1501): the else-branch plays the randomized sound
         // first, then advances the sink-less particle random fallback.

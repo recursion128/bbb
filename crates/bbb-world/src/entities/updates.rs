@@ -9,6 +9,7 @@ use crate::WorldStore;
 use super::movement::entity_vec3;
 use super::schema::{
     vanilla_entity_metadata_type_is_leashable, vanilla_entity_metadata_type_is_living,
+    vanilla_entity_metadata_type_uses_player_entity_event_handler,
 };
 
 /// Vanilla `ClientboundAnimatePacket.SWING_MAIN_HAND` action id: the entity swings its main hand.
@@ -17,6 +18,10 @@ const SWING_MAIN_HAND_ACTION: u8 = 0;
 const SWING_OFF_HAND_ACTION: u8 = 3;
 /// Vanilla `LivingEntity.handleEntityEvent(55)` swaps the main- and off-hand equipment stacks.
 const LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID: i8 = 55;
+/// Vanilla `Player.handleEntityEvent(22)` enables the local player's reduced-debug gate.
+const PLAYER_ENABLE_REDUCED_DEBUG_EVENT_ID: i8 = 22;
+/// Vanilla `Player.handleEntityEvent(23)` disables the local player's reduced-debug gate.
+const PLAYER_DISABLE_REDUCED_DEBUG_EVENT_ID: i8 = 23;
 
 impl WorldStore {
     pub fn apply_entity_animation(&mut self, packet: ProtocolEntityAnimation) -> bool {
@@ -69,6 +74,21 @@ impl WorldStore {
         let _ = self
             .entities
             .apply_client_animation_entity_event(packet.entity_id, packet.event_id);
+        let reduced_debug_info = match packet.event_id {
+            PLAYER_ENABLE_REDUCED_DEBUG_EVENT_ID => Some(true),
+            PLAYER_DISABLE_REDUCED_DEBUG_EVENT_ID => Some(false),
+            _ => None,
+        };
+        if let Some(reduced_debug_info) = reduced_debug_info.filter(|_| {
+            self.entities
+                .entity_type_id(packet.entity_id)
+                .is_some_and(vanilla_entity_metadata_type_uses_player_entity_event_handler)
+        }) {
+            let _ = self.set_local_player_reduced_debug_info_from_entity_event(
+                packet.entity_id,
+                reduced_debug_info,
+            );
+        }
         if packet.event_id == LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID {
             let _ = self.apply_living_swap_hand_items_event(packet.entity_id);
         }

@@ -153,7 +153,8 @@ pub struct WorldGameplayState {
     pub show_death_screen: bool,
     pub do_limited_crafting: bool,
     /// Vanilla `LocalPlayer.isReducedDebugInfo`, initialized from
-    /// `ClientboundLoginPacket.reducedDebugInfo`.
+    /// `ClientboundLoginPacket.reducedDebugInfo` and updated by local-player
+    /// `Player.handleEntityEvent(22/23)` dispatch.
     #[serde(default)]
     pub reduced_debug_info: bool,
     /// Vanilla `ClientLevel.Data.isHardcore` from the `ClientboundLoginPacket`
@@ -790,6 +791,21 @@ impl WorldStore {
 
     pub fn local_player_has_reduced_debug_info(&self) -> bool {
         self.local_player_id.is_some() && self.gameplay.reduced_debug_info
+    }
+
+    /// Updates the local player's reduced-debug gate from vanilla `Player.handleEntityEvent`.
+    /// Remote players retain the field on their `Player` instance, but no vanilla client
+    /// consumer reads it; all reduced-debug consumers query the local player.
+    pub(crate) fn set_local_player_reduced_debug_info_from_entity_event(
+        &mut self,
+        entity_id: i32,
+        reduced_debug_info: bool,
+    ) -> bool {
+        if self.local_player_id != Some(entity_id) {
+            return false;
+        }
+        self.gameplay.reduced_debug_info = reduced_debug_info;
+        true
     }
 
     pub fn world_time(&self) -> Option<&WorldTimeState> {
