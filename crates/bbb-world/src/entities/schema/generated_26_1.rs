@@ -23498,6 +23498,40 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn local_player_metadata_consumers_do_not_restore_fixed_accessor_ids() {
+        let local_player = include_str!("../../client/local_player.rs");
+        assert!(local_player.contains("vanilla_entity_metadata_entity_accessors"));
+        assert!(local_player
+            .contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type"));
+        assert!(local_player
+            .contains("vanilla_entity_metadata_player_absorption_accessor_for_entity_type"));
+        for removed in [
+            "const VANILLA_ENTITY_AIR_SUPPLY_DATA_ID",
+            "const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID",
+            "const VANILLA_LIVING_ENTITY_HEALTH_DATA_ID",
+            "const VANILLA_PLAYER_ABSORPTION_DATA_ID",
+        ] {
+            assert!(
+                !local_player.contains(removed),
+                "local-player fixture restored {removed}"
+            );
+        }
+        let store = include_str!("../store.rs");
+        assert!(
+            store.contains("vanilla_entity_metadata_player_absorption_accessor_for_entity_type")
+        );
+        for removed in [
+            "VANILLA_PLAYER_ABSORPTION_DATA_ID",
+            "VANILLA_PLAYER_DEFAULT_ABSORPTION",
+        ] {
+            assert!(
+                !store.contains(removed),
+                "Player absorption projection restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn player_shoulder_parrot_fixtures_do_not_restore_fixed_accessor_ids() {
         let world_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
         let native_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");

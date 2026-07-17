@@ -745,6 +745,28 @@ pub fn vanilla_entity_metadata_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Player absorption accessor and its typed default.
+pub fn vanilla_entity_metadata_player_absorption_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, f32)> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(
+        entity_type_id,
+        "DATA_PLAYER_ABSORPTION_ID",
+    )?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.player.Player",
+            "FLOAT",
+            Some(VanillaEntityMetadataDefault::Float(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the nearest generated `DATA_VILLAGER_DATA` accessor for an entity type.
 ///
 /// Villager and ZombieVillager declare the same semantic field at different wire indices. The
@@ -6287,6 +6309,35 @@ mod tests {
         ] {
             assert_eq!(
                 vanilla_entity_metadata_witch_using_item_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_player_absorption_accessor_owns_membership_index_and_default() {
+        let player = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Player);
+        let absorption = player
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_PLAYER_ABSORPTION_ID")
+            .expect("generated Player absorption field");
+        let VanillaEntityMetadataDefault::Float(default) = absorption.default else {
+            panic!("generated Player absorption default must be FLOAT");
+        };
+        assert_eq!(
+            vanilla_entity_metadata_player_absorption_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_PLAYER_ID
+            ),
+            Some((absorption.data_id, default))
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_player_absorption_accessor_for_entity_type(entity_type_id),
                 None
             );
         }

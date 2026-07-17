@@ -1724,13 +1724,16 @@ mod tests {
         })
     }
 
+    fn entity_metadata_accessors() -> crate::VanillaEntityMetadataAccessors {
+        crate::vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors")
+    }
+
     #[test]
     fn local_player_air_supply_reads_the_synced_air_metadata() {
-        // Vanilla `Entity.DATA_AIR_SUPPLY_ID` is the second `Entity` base-class
-        // accessor (Entity.java:255/263): DATA_SHARED_FLAGS_ID=0 → id 1 (INT,
-        // wire serializer 1). The define-time default is `getMaxAirSupply()` =
-        // 300 (Entity.java:312,2725-2727).
-        const VANILLA_ENTITY_AIR_SUPPLY_DATA_ID: u8 = 1;
+        // Vanilla `Entity.DATA_AIR_SUPPLY_ID` is a generated INT accessor with the virtual
+        // define-time default `getMaxAirSupply()` = 300 (Entity.java:312,2725-2727).
+        let accessors = entity_metadata_accessors();
 
         // No local player at all: the full (hidden-row) supply.
         let world = WorldStore::new();
@@ -1744,7 +1747,7 @@ mod tests {
         assert!(set_entity_data(
             &mut world,
             7,
-            VANILLA_ENTITY_AIR_SUPPLY_DATA_ID,
+            accessors.air_supply_data_id,
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             bbb_protocol::packets::EntityDataValueKind::Int(150),
         ));
@@ -1754,13 +1757,14 @@ mod tests {
 
     #[test]
     fn local_player_absorption_reads_the_synced_player_metadata() {
-        // Vanilla `Player.DATA_PLAYER_ABSORPTION_ID` derivation: Entity ids
-        // 0..=7 (Entity.java:255-271), LivingEntity 8..=14
-        // (LivingEntity.java:178-186), Avatar DATA_PLAYER_MAIN_HAND=15 /
-        // DATA_PLAYER_MODE_CUSTOMISATION=16 (Avatar.java:38-39), then Player's
-        // first own accessor DATA_PLAYER_ABSORPTION_ID=17 (Player.java:134;
-        // FLOAT, wire serializer 3). Define-time default 0.0F (Player.java:224).
-        const VANILLA_PLAYER_ABSORPTION_DATA_ID: u8 = 17;
+        // Vanilla `Player.DATA_PLAYER_ABSORPTION_ID` is a generated Player-only FLOAT accessor
+        // with define-time default 0.0F (Player.java:134,224).
+        let (absorption_data_id, absorption_default) =
+            crate::vanilla_entity_metadata_player_absorption_accessor_for_entity_type(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID,
+            )
+            .expect("generated Player absorption accessor");
+        assert_eq!(absorption_default, 0.0);
 
         let world = WorldStore::new();
         assert_eq!(world.local_player_absorption(), 0.0);
@@ -1771,20 +1775,46 @@ mod tests {
         assert!(set_entity_data(
             &mut world,
             7,
-            VANILLA_PLAYER_ABSORPTION_DATA_ID,
+            absorption_data_id,
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
             bbb_protocol::packets::EntityDataValueKind::Float(8.0),
         ));
         assert_eq!(world.local_player_absorption(), 8.0);
+
+        // A non-Player using the same numeric slot must not project Player absorption.
+        let mut world = WorldStore::new();
+        world.local_player_id = Some(8);
+        world.apply_add_entity(ProtocolAddEntity {
+            id: 8,
+            uuid: Uuid::from_u128(8),
+            entity_type_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_COW_ID,
+            position: vec3(0.5, 1.0, 0.5),
+            delta_movement: ProtocolVec3d::default(),
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
+        });
+        assert!(set_entity_data(
+            &mut world,
+            8,
+            absorption_data_id,
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+            bbb_protocol::packets::EntityDataValueKind::Float(9.0),
+        ));
+        assert_eq!(world.local_player_absorption(), 0.0);
     }
 
     #[test]
     fn local_player_vehicle_health_projects_living_vehicles_only() {
-        // Vanilla `LivingEntity.DATA_HEALTH_ID` derivation: Entity ids 0..=7,
-        // then LivingEntity's second own accessor after
-        // DATA_LIVING_ENTITY_FLAGS=8 → id 9 (LivingEntity.java:178-179; FLOAT,
-        // wire serializer 3), define-time default 1.0F (LivingEntity.java:314).
-        const VANILLA_LIVING_ENTITY_HEALTH_DATA_ID: u8 = 9;
+        // Vanilla `LivingEntity.DATA_HEALTH_ID` is a generated inherited FLOAT accessor with
+        // define-time default 1.0F (LivingEntity.java:179,314).
+        let living_accessors =
+            crate::vanilla_entity_metadata_living_entity_accessors_for_entity_type(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_HORSE_ID,
+            )
+            .expect("generated LivingEntity metadata accessors");
+        assert_eq!(living_accessors.health_default, 1.0);
         // `minecraft:max_health` is `BuiltInRegistries.ATTRIBUTE` registration
         // index 19 (Attributes.java field order, MAX_HEALTH at :58-60).
         const VANILLA_ATTRIBUTE_MAX_HEALTH_ID: i32 = 19;
@@ -1826,7 +1856,7 @@ mod tests {
         assert!(set_entity_data(
             &mut world,
             30,
-            VANILLA_LIVING_ENTITY_HEALTH_DATA_ID,
+            living_accessors.health_data_id,
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
             bbb_protocol::packets::EntityDataValueKind::Float(7.0),
         ));
@@ -1907,8 +1937,9 @@ mod tests {
     #[test]
     fn local_player_is_fully_frozen_tracks_the_freeze_threshold() {
         // Vanilla `isFullyFrozen()` = `getTicksFrozen() >= 140`.
-        // `DATA_TICKS_FROZEN_ID` is `Entity` id 7 (INT, wire serializer 1).
-        const VANILLA_ENTITY_TICKS_FROZEN_DATA_ID: u8 = 7;
+        // `DATA_TICKS_FROZEN_ID` is a generated base Entity INT accessor.
+        let accessors = entity_metadata_accessors();
+        assert_eq!(accessors.ticks_frozen_default, 0);
 
         assert!(!WorldStore::new().local_player_is_fully_frozen());
         let mut world = spawned_player_world();
@@ -1918,7 +1949,7 @@ mod tests {
         assert!(set_entity_data(
             &mut world,
             7,
-            VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+            accessors.ticks_frozen_data_id,
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             bbb_protocol::packets::EntityDataValueKind::Int(139),
         ));
@@ -1928,7 +1959,7 @@ mod tests {
         assert!(set_entity_data(
             &mut world,
             7,
-            VANILLA_ENTITY_TICKS_FROZEN_DATA_ID,
+            accessors.ticks_frozen_data_id,
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             bbb_protocol::packets::EntityDataValueKind::Int(140),
         ));

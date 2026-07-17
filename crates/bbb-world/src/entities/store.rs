@@ -40,6 +40,7 @@ use super::schema::{
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type,
+    vanilla_entity_metadata_player_absorption_accessor_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
     vanilla_entity_metadata_shulker_accessors_for_entity_type,
     vanilla_entity_metadata_snow_golem_pumpkin_accessor_for_entity_type,
@@ -117,8 +118,7 @@ use crate::entities::schema::{
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
     VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID,
     VANILLA_AVATAR_MODEL_PART_CAPE as VANILLA_AVATAR_CAPE_PART_MASK, VANILLA_HUMANOID_ARM_LEFT_ID,
-    VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_PLAYER_ABSORPTION_DATA_ID,
-    VANILLA_PLAYER_DEFAULT_ABSORPTION, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+    VANILLA_HUMANOID_ARM_RIGHT_ID, VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
     VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
 use crate::registries::RegistrySet;
@@ -624,11 +624,10 @@ impl EntityStore {
     /// `DATA_PLAYER_ABSORPTION_ID` float, defaulting to the define-time `0.0F`
     /// (Player.java:224).
     pub(crate) fn player_absorption(&self, id: i32) -> Option<f32> {
-        self.metadata_float(
-            id,
-            VANILLA_PLAYER_ABSORPTION_DATA_ID,
-            VANILLA_PLAYER_DEFAULT_ABSORPTION,
-        )
+        let entity_type_id = self.entity_type_id(id)?;
+        let (data_id, default) =
+            vanilla_entity_metadata_player_absorption_accessor_for_entity_type(entity_type_id)?;
+        self.metadata_float(id, data_id, default)
     }
 
     pub(crate) fn metadata_int_for_entity(

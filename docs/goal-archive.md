@@ -18300,3 +18300,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   常量，统一消费生成的 Player left/right `OPTIONAL_UNSIGNED_INT` accessor ids。
 - metadata generator 新增跨 world/native reverse guard，禁止局部 shoulder-parrot 固定槽位
   aliases 回流。
+
+## 2026-07-16：迁移 local-player metadata accessors
+
+- local-player air、fully-frozen、vehicle-health 与 absorption 测试删除固定 metadata slots，
+  分别消费生成的 Entity/LivingEntity 聚合 accessor 与 Player-only absorption accessor。
+- world schema 新增 Player absorption FLOAT/default 0 typed resolver；EntityStore 投影同步改为
+  按实体类型解析，非 Player 不再读取同槽位。生成 reverse guard 禁止这些 aliases 回流。
