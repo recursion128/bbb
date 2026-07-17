@@ -18942,3 +18942,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Added a generator-emitted reverse guard over those UpdateAttributes owners, including split and
   inline tests, while leaving item-model resolver tests free to express explicit custom
   `attribute_keys` order and unknown-holder samples.
+
+# 2026-07-17: Derive attribute component holder ids
+
+- Replaced numeric attack-damage, knockback-resistance, armor, and movement-speed holder ids in
+  native component serialization and world dialog component fixtures with generated Attribute
+  registry constants.
+- Extended the attribute generator's reverse guard over those built-in component owners without
+  scanning the item-model custom-order/unknown-holder resolver fixtures.

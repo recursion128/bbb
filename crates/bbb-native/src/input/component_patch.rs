@@ -2558,7 +2558,7 @@ mod tests {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             attribute_modifiers: vec![
                 bbb_protocol::packets::AttributeModifierSummary {
-                    attribute_id: 2,
+                    attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
                     modifier_id: "minecraft:base_attack_damage".to_string(),
                     amount_bits: 3.5_f64.to_bits(),
                     operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
@@ -2568,7 +2568,7 @@ mod tests {
                     display_text_styled: None,
                 },
                 bbb_protocol::packets::AttributeModifierSummary {
-                    attribute_id: 16,
+                    attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_KNOCKBACK_RESISTANCE_ID,
                     modifier_id: "minecraft:test/hidden".to_string(),
                     amount_bits: (-0.25_f64).to_bits(),
                     operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
@@ -2592,9 +2592,11 @@ mod tests {
             )
         );
 
-        patch.attribute_modifiers[0].attribute_id = 35;
+        patch.attribute_modifiers[0].attribute_id =
+            i32::try_from(bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_TYPES.len()).unwrap();
         assert_eq!(encode_added_component_value_snbt(16, &patch, None), None);
-        patch.attribute_modifiers[0].attribute_id = 2;
+        patch.attribute_modifiers[0].attribute_id =
+            bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID;
         patch.attribute_modifiers[1].display_id = 2;
         patch.attribute_modifiers[1].display_text = Some("Override".to_string());
         assert_eq!(encode_added_component_value_snbt(16, &patch, None), None);

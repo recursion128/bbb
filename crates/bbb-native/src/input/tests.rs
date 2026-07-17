@@ -9505,7 +9505,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         }),
         attribute_modifiers: vec![
             bbb_protocol::packets::AttributeModifierSummary {
-                attribute_id: 2,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
                 modifier_id: "minecraft:base_attack_damage".to_string(),
                 amount_bits: 3.5_f64.to_bits(),
                 operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
@@ -9515,7 +9515,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 display_text_styled: None,
             },
             bbb_protocol::packets::AttributeModifierSummary {
-                attribute_id: 16,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_KNOCKBACK_RESISTANCE_ID,
                 modifier_id: "minecraft:test/hidden".to_string(),
                 amount_bits: (-0.25_f64).to_bits(),
                 operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,

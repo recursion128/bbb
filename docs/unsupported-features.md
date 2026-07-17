@@ -152,6 +152,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `UpdateAttributes` semantic snapshots in net, world entity/level, and native runtime must use
   generated Attribute registry ids; custom registry-order fixtures stay explicitly scoped to
   their resolver tests rather than being mistaken for built-in holder ids.
+  Native component serialization and world dialog component fixtures that use the built-in
+  Attribute registry must follow the same generated-id rule; explicit resolver reorder/unknown-id
+  fixtures remain outside that built-in guard.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Zoglin's independently declared `DATA_BABY_ID` must use that nearest-owner resolver in native

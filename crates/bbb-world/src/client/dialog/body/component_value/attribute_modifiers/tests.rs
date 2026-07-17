@@ -182,7 +182,7 @@ fn projects_ordered_attribute_modifier_summaries_and_display_text() {
         patch.attribute_modifiers,
         vec![
             AttributeModifierSummary {
-                attribute_id: 2,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
                 modifier_id: "minecraft:base_attack_damage".to_string(),
                 amount_bits: (-2.5f64).to_bits(),
                 operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
@@ -192,7 +192,7 @@ fn projects_ordered_attribute_modifier_summaries_and_display_text() {
                 display_text_styled: None,
             },
             AttributeModifierSummary {
-                attribute_id: 0,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ARMOR_ID,
                 modifier_id: "example:hidden".to_string(),
                 amount_bits: 0.25f64.to_bits(),
                 operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
@@ -202,7 +202,7 @@ fn projects_ordered_attribute_modifier_summaries_and_display_text() {
                 display_text_styled: None,
             },
             AttributeModifierSummary {
-                attribute_id: 22,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
                 modifier_id: "example:override".to_string(),
                 amount_bits: 1.5f64.to_bits(),
                 operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
