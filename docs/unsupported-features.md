@@ -1337,7 +1337,8 @@ back into a todo. Do not delete these.
   still open, so this catalog alone does not close the reverse audit.
   The consumer-side guard must also prove inherited superclass events remain reachable only
   through declarations that forward unhandled ids to `super`, while non-forwarding handlers
-  (Snowball, ThrownEgg, and MinecartSpawner) mask the superclass fallback.
+  mask the superclass fallback; every resolved declaration/id still needs an actual bbb consumer
+  owner rather than mere reachability.
 - All three `ClientPacketListener.handleEntityEvent` special cases now have native
   consumers. Event `21` starts Guardian's hostile, looping, non-attenuated attack
   instance and updates its squared attack-scale volume plus `0.7 + 0.5 * scale`

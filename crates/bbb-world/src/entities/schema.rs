@@ -170,6 +170,7 @@ pub struct VanillaEntityMetadataClassCatalogEntry {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityEventHandlerCatalogEntry {
     pub owner: &'static str,
+    pub super_handler_owner: Option<&'static str>,
     pub source_path: &'static str,
     pub direct_event_ids: &'static [u8],
     pub delegated_event_ids: &'static [u8],
@@ -3990,6 +3991,31 @@ pub fn vanilla_entity_metadata_handle_entity_event_owner(
         .and_then(|entry| entry.handle_entity_event_owner)
 }
 
+/// Resolves the vanilla declaration that consumes one entity event after following the
+/// source-generated `super.handleEntityEvent(id)` chain. Listener-special ids (`21`, `35`, and
+/// `63`) are intercepted by `ClientPacketListener` before this class dispatch and therefore do
+/// not resolve here.
+pub(crate) fn vanilla_entity_metadata_handle_entity_event_owner_for_event(
+    entity_type_id: i32,
+    event_id: u8,
+) -> Option<&'static str> {
+    let mut owner = vanilla_entity_metadata_handle_entity_event_owner(entity_type_id)?;
+    loop {
+        let handler = VANILLA_ENTITY_EVENT_HANDLERS_26_1
+            .iter()
+            .find(|handler| handler.owner == owner)?;
+        if handler.direct_event_ids.contains(&event_id)
+            || handler.delegated_event_ids.contains(&event_id)
+        {
+            return Some(owner);
+        }
+        if !handler.forwards_unhandled_to_super {
+            return None;
+        }
+        owner = handler.super_handler_owner?;
+    }
+}
+
 /// Returns whether entity event dispatch reaches `Squid.handleEntityEvent(byte)` first.
 pub(crate) fn vanilla_entity_metadata_type_uses_squid_entity_event_handler(
     entity_type_id: i32,
@@ -4398,10 +4424,10 @@ mod tests {
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
-        VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_SPIDER_ID,
-        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-        VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SNOW_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_SPIDER_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TADPOLE_ID, VANILLA_ENTITY_TYPE_TNT_ID,
         VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID,
         VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
         VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
@@ -4476,6 +4502,9 @@ mod tests {
         for handler in VANILLA_ENTITY_EVENT_HANDLERS_26_1 {
             assert!(owners.insert(handler.owner));
             assert!(classes.contains(handler.owner));
+            assert!(handler
+                .super_handler_owner
+                .is_none_or(|owner| owners.contains(owner) || classes.contains(owner)));
             assert!(!handler.source_path.is_empty());
             assert!(
                 !handler.direct_event_ids.is_empty() || !handler.delegated_event_ids.is_empty()
@@ -4492,6 +4521,11 @@ mod tests {
                 .all(|event_id| event_ids.insert(*event_id)));
         }
         assert_eq!(owners.len(), 35);
+        for handler in VANILLA_ENTITY_EVENT_HANDLERS_26_1 {
+            assert!(handler
+                .super_handler_owner
+                .is_none_or(|owner| owners.contains(owner)));
+        }
         for owner in VANILLA_ENTITY_TYPE_METADATA_26_1
             .iter()
             .filter_map(|entry| entry.handle_entity_event_owner)
@@ -4539,6 +4573,83 @@ mod tests {
                 "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg",
                 MINECART_SPAWNER,
             ])
+        );
+    }
+
+    #[test]
+    fn generated_entity_event_dispatch_follows_super_and_non_forwarding_handlers() {
+        const ENTITY: &str = "net.minecraft.world.entity.Entity";
+        const LIVING_ENTITY: &str = "net.minecraft.world.entity.LivingEntity";
+        const ANIMAL: &str = "net.minecraft.world.entity.animal.Animal";
+        const TAMABLE_ANIMAL: &str = "net.minecraft.world.entity.TamableAnimal";
+        const ARROW: &str = "net.minecraft.world.entity.projectile.arrow.Arrow";
+        const SNOWBALL: &str =
+            "net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball";
+        const MINECART_SPAWNER: &str =
+            "net.minecraft.world.entity.vehicle.minecart.MinecartSpawner";
+
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                7,
+            ),
+            Some(TAMABLE_ANIMAL)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                18,
+            ),
+            Some(ANIMAL)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                3,
+            ),
+            Some(LIVING_ENTITY)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+                0,
+            ),
+            Some(ARROW)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_ARROW_ID,
+                53,
+            ),
+            Some(ENTITY)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+                3,
+            ),
+            Some(SNOWBALL)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+                53,
+            ),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+                1,
+            ),
+            Some(MINECART_SPAWNER)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner_for_event(
+                VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+                53,
+            ),
+            None
         );
     }
 

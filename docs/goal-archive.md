@@ -18529,3 +18529,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   non-Player living entity now receives health zero and enters the existing client death counter,
   renderer fall rotation, and red-overlay path. Player retains vanilla's sound-only exception, and
   non-living event-3 owners remain unaffected.
+
+# 2026-07-17: Generate entity event superclass dispatch
+
+- Extended the source-generated `handleEntityEvent(byte)` declaration catalog with each
+  declaration's nearest superclass handler. World can now resolve a runtime entity/event pair to
+  the exact direct or delegated declaration while honoring `super` forwarding and the
+  non-forwarding Snowball, ThrownEgg, and MinecartSpawner cutoffs.

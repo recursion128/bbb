@@ -9723,6 +9723,7 @@ pub const VANILLA_ENTITY_METADATA_CLASSES_26_1: &[VanillaEntityMetadataClassCata
 pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalogEntry] = &[
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.Entity",
+        super_handler_owner: None,
         source_path: "net/minecraft/world/entity/Entity.java",
         direct_event_ids: &[53],
         delegated_event_ids: &[],
@@ -9731,6 +9732,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.LivingEntity",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/LivingEntity.java",
         direct_event_ids: &[2, 3, 46, 47, 48, 49, 50, 51, 52, 54, 55, 60, 65, 67, 68],
         delegated_event_ids: &[],
@@ -9739,6 +9741,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.Mob",
+        super_handler_owner: Some("net.minecraft.world.entity.LivingEntity"),
         source_path: "net/minecraft/world/entity/Mob.java",
         direct_event_ids: &[20],
         delegated_event_ids: &[],
@@ -9747,6 +9750,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.TamableAnimal",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/TamableAnimal.java",
         direct_event_ids: &[7, 6],
         delegated_event_ids: &[],
@@ -9755,6 +9759,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.Animal",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/animal/Animal.java",
         direct_event_ids: &[18],
         delegated_event_ids: &[],
@@ -9763,6 +9768,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.allay.Allay",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/animal/allay/Allay.java",
         direct_event_ids: &[18],
         delegated_event_ids: &[],
@@ -9771,6 +9777,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.armadillo.Armadillo",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/animal/armadillo/Armadillo.java",
         direct_event_ids: &[64],
         delegated_event_ids: &[],
@@ -9779,6 +9786,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.dolphin.Dolphin",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/animal/dolphin/Dolphin.java",
         direct_event_ids: &[38],
         delegated_event_ids: &[],
@@ -9787,6 +9795,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.equine.AbstractHorse",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/animal/equine/AbstractHorse.java",
         direct_event_ids: &[7, 6],
         delegated_event_ids: &[],
@@ -9795,6 +9804,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.feline.Ocelot",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/animal/feline/Ocelot.java",
         direct_event_ids: &[41, 40],
         delegated_event_ids: &[],
@@ -9803,6 +9813,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.fox.Fox",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/animal/fox/Fox.java",
         direct_event_ids: &[45],
         delegated_event_ids: &[],
@@ -9811,6 +9822,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.goat.Goat",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/animal/goat/Goat.java",
         direct_event_ids: &[58, 59],
         delegated_event_ids: &[],
@@ -9819,6 +9831,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.golem.IronGolem",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/animal/golem/IronGolem.java",
         direct_event_ids: &[4, 11, 34],
         delegated_event_ids: &[],
@@ -9827,6 +9840,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.rabbit.Rabbit",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/animal/rabbit/Rabbit.java",
         direct_event_ids: &[1],
         delegated_event_ids: &[],
@@ -9835,6 +9849,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.sheep.Sheep",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/animal/sheep/Sheep.java",
         direct_event_ids: &[10],
         delegated_event_ids: &[],
@@ -9843,6 +9858,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.squid.Squid",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/animal/squid/Squid.java",
         direct_event_ids: &[19],
         delegated_event_ids: &[],
@@ -9851,6 +9867,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.animal.wolf.Wolf",
+        super_handler_owner: Some("net.minecraft.world.entity.TamableAnimal"),
         source_path: "net/minecraft/world/entity/animal/wolf/Wolf.java",
         direct_event_ids: &[8, 56],
         delegated_event_ids: &[],
@@ -9859,6 +9876,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.decoration.ArmorStand",
+        super_handler_owner: Some("net.minecraft.world.entity.LivingEntity"),
         source_path: "net/minecraft/world/entity/decoration/ArmorStand.java",
         direct_event_ids: &[32],
         delegated_event_ids: &[],
@@ -9867,6 +9885,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.monster.Ravager",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/monster/Ravager.java",
         direct_event_ids: &[4, 39, 69],
         delegated_event_ids: &[],
@@ -9875,6 +9894,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.monster.Witch",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/monster/Witch.java",
         direct_event_ids: &[15],
         delegated_event_ids: &[],
@@ -9883,6 +9903,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.monster.Zoglin",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/monster/Zoglin.java",
         direct_event_ids: &[4],
         delegated_event_ids: &[],
@@ -9891,6 +9912,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.monster.creaking.Creaking",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/monster/creaking/Creaking.java",
         direct_event_ids: &[66, 4],
         delegated_event_ids: &[],
@@ -9899,6 +9921,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.monster.hoglin.Hoglin",
+        super_handler_owner: Some("net.minecraft.world.entity.animal.Animal"),
         source_path: "net/minecraft/world/entity/monster/hoglin/Hoglin.java",
         direct_event_ids: &[4],
         delegated_event_ids: &[],
@@ -9907,6 +9930,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.monster.warden.Warden",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/monster/warden/Warden.java",
         direct_event_ids: &[4, 61, 62],
         delegated_event_ids: &[],
@@ -9915,6 +9939,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.monster.zombie.ZombieVillager",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/monster/zombie/ZombieVillager.java",
         direct_event_ids: &[16],
         delegated_event_ids: &[],
@@ -9923,6 +9948,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.npc.villager.Villager",
+        super_handler_owner: Some("net.minecraft.world.entity.Mob"),
         source_path: "net/minecraft/world/entity/npc/villager/Villager.java",
         direct_event_ids: &[12, 13, 14, 42],
         delegated_event_ids: &[],
@@ -9931,6 +9957,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.player.Player",
+        super_handler_owner: Some("net.minecraft.world.entity.LivingEntity"),
         source_path: "net/minecraft/world/entity/player/Player.java",
         direct_event_ids: &[9, 23, 22],
         delegated_event_ids: &[],
@@ -9939,6 +9966,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.projectile.EvokerFangs",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/projectile/EvokerFangs.java",
         direct_event_ids: &[4],
         delegated_event_ids: &[],
@@ -9947,6 +9975,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.projectile.FireworkRocketEntity",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/projectile/FireworkRocketEntity.java",
         direct_event_ids: &[17],
         delegated_event_ids: &[],
@@ -9955,6 +9984,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.projectile.FishingHook",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/projectile/FishingHook.java",
         direct_event_ids: &[31],
         delegated_event_ids: &[],
@@ -9963,6 +9993,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.projectile.arrow.Arrow",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/projectile/arrow/Arrow.java",
         direct_event_ids: &[0],
         delegated_event_ids: &[],
@@ -9971,6 +10002,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/Snowball.java",
         direct_event_ids: &[3],
         delegated_event_ids: &[],
@@ -9979,6 +10011,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/projectile/throwableitemprojectile/ThrownEgg.java",
         direct_event_ids: &[3],
         delegated_event_ids: &[],
@@ -9987,6 +10020,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.vehicle.minecart.MinecartSpawner",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartSpawner.java",
         direct_event_ids: &[],
         delegated_event_ids: &[1],
@@ -9995,6 +10029,7 @@ pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalog
     },
     VanillaEntityEventHandlerCatalogEntry {
         owner: "net.minecraft.world.entity.vehicle.minecart.MinecartTNT",
+        super_handler_owner: Some("net.minecraft.world.entity.Entity"),
         source_path: "net/minecraft/world/entity/vehicle/minecart/MinecartTNT.java",
         direct_event_ids: &[10],
         delegated_event_ids: &[],
@@ -23782,6 +23817,37 @@ mod generated_catalog_guards {
         ] {
             assert!(!fixture.contains(removed), "fixture restored {removed}");
         }
+    }
+
+    #[test]
+    fn entity_event_owner_resolution_consumes_generated_super_dispatch() {
+        let source = include_str!("../schema.rs");
+        let body = source
+            .split("pub(crate) fn vanilla_entity_metadata_handle_entity_event_owner_for_event")
+            .nth(1)
+            .and_then(|source| {
+                source
+                    .split(
+                        "
+}
+",
+                    )
+                    .next()
+            })
+            .expect("entity event owner resolution source");
+        for required in [
+            "VANILLA_ENTITY_EVENT_HANDLERS_26_1",
+            "direct_event_ids",
+            "delegated_event_ids",
+            "forwards_unhandled_to_super",
+            "super_handler_owner",
+        ] {
+            assert!(
+                body.contains(required),
+                "missing generated dispatch fact {required}"
+            );
+        }
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
     }
 
     #[test]

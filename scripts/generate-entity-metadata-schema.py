@@ -53,6 +53,7 @@ class CameraPostEffectSpec:
 @dataclass(frozen=True)
 class EntityEventHandlerSpec:
     owner: str
+    super_handler_owner: str | None
     source_path: str
     direct_event_ids: tuple[int, ...]
     delegated_event_ids: tuple[int, ...]
@@ -2448,6 +2449,8 @@ def method_forwards_parameter_to_super(
 def entity_event_handler_specs(
     result: ExtractionResult,
 ) -> tuple[EntityEventHandlerSpec, ...]:
+    class_map = {item.fqcn: item for item in result.classes}
+    nearest_handler_cache: dict[str, str] = {}
     specs: list[EntityEventHandlerSpec] = []
     for java_class in result.classes:
         source = source_for_owner(result, java_class.fqcn)
@@ -2513,6 +2516,18 @@ def entity_event_handler_specs(
         specs.append(
             EntityEventHandlerSpec(
                 owner=java_class.fqcn,
+                super_handler_owner=(
+                    class_nearest_method_owner(
+                        result,
+                        class_map,
+                        java_class.superclass,
+                        "handleEntityEvent",
+                        1,
+                        nearest_handler_cache,
+                    )
+                    if java_class.superclass is not None
+                    else None
+                ),
                 source_path=java_class.source_path,
                 direct_event_ids=direct_event_ids,
                 delegated_event_ids=delegated_event_ids,
@@ -3801,6 +3816,7 @@ def render(result: ExtractionResult) -> str:
             [
                 "    VanillaEntityEventHandlerCatalogEntry {",
                 f"        owner: {rust_string(item.owner)},",
+                f"        super_handler_owner: {option_string(item.super_handler_owner)},",
                 f"        source_path: {rust_string(item.source_path)},",
                 "        direct_event_ids: &["
                 + ", ".join(str(event_id) for event_id in item.direct_event_ids)
@@ -5169,6 +5185,26 @@ def render(result: ExtractionResult) -> str:
             '        for removed in ["VANILLA_ENTITY_TYPE_HOGLIN_ID", "VANILLA_ENTITY_TYPE_ZOGLIN_ID"] {',
             '            assert!(!fixture.contains(removed), "fixture restored {removed}");',
             '        }',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn entity_event_owner_resolution_consumes_generated_super_dispatch() {",
+            '        let source = include_str!("../schema.rs");',
+            '        let body = source',
+            '            .split("pub(crate) fn vanilla_entity_metadata_handle_entity_event_owner_for_event")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split("\n}\n").next())',
+            '            .expect("entity event owner resolution source");',
+            '        for required in [',
+            '            "VANILLA_ENTITY_EVENT_HANDLERS_26_1",',
+            '            "direct_event_ids",',
+            '            "delegated_event_ids",',
+            '            "forwards_unhandled_to_super",',
+            '            "super_handler_owner",',
+            '        ] {',
+            '            assert!(body.contains(required), "missing generated dispatch fact {required}");',
+            "        }",
+            '        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));',
             "    }",
             "",
             "    #[test]",
