@@ -747,13 +747,17 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
             component_patch: Default::default(),
         }
     }
-    fn pig_saddle(store: &WorldStore, entity_id: i32) -> bool {
-        store
+    fn pig_saddle(store: &WorldStore, entity_id: i32) -> (bool, Option<ArmorTrimSprite>, bool) {
+        let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
-            .unwrap()
-            .pig_saddle
+            .unwrap();
+        (
+            source.pig_saddle,
+            source.pig_saddle_trim,
+            source.pig_saddle_foil,
+        )
     }
 
     let mut store = WorldStore::new();
@@ -770,16 +774,37 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
         VANILLA_ENTITY_TYPE_COW_ID,
     ));
 
-    assert!(!pig_saddle(&store, 60));
+    assert_eq!(pig_saddle(&store, 60), (false, None, false));
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 60,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Saddle,
-            item: stack(SADDLE_ITEM_ID, 1),
+            item: ItemStackSummary {
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
+                ..stack(SADDLE_ITEM_ID, 1)
+            },
         }],
     }));
-    assert!(pig_saddle(&store, 60));
+    assert_eq!(
+        pig_saddle(&store, 60),
+        (
+            true,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/pig_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 61,
@@ -788,7 +813,7 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
             item: stack(SADDLE_ITEM_ID, 1),
         }],
     }));
-    assert!(!pig_saddle(&store, 61));
+    assert_eq!(pig_saddle(&store, 61), (false, None, false));
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 60,
@@ -797,7 +822,7 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert!(!pig_saddle(&store, 60));
+    assert_eq!(pig_saddle(&store, 60), (false, None, false));
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 60,
@@ -806,7 +831,7 @@ fn entity_model_sources_project_pig_saddle_from_saddle_slot() {
             item: ItemStackSummary::empty(),
         }],
     }));
-    assert!(!pig_saddle(&store, 60));
+    assert_eq!(pig_saddle(&store, 60), (false, None, false));
 }
 
 #[test]

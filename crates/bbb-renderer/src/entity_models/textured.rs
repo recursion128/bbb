@@ -4251,6 +4251,7 @@ pub(in crate::entity_models) fn render_pig_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     if !instance.render_state.pig_saddle {
         return;
@@ -4275,6 +4276,57 @@ pub(in crate::entity_models) fn render_pig_saddle_layer(
         1,
     );
     render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+
+    let mut next_order = 1;
+    let mut next_submit_sequence = 2;
+    if instance.render_state.pig_saddle_foil {
+        let pass = equipment_layer_pass(
+            EntityModelLayerKind::PigSaddle,
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            MODEL_LAYER_PIG_SADDLE,
+            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+            [1.0; 4],
+            next_order,
+            next_submit_sequence,
+        );
+        render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+        next_order += 1;
+        next_submit_sequence += 1;
+    }
+    if let Some(trim) = instance.render_state.pig_saddle_trim {
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
+            let render_type = if trim.decal {
+                EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+            } else {
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            };
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::PigSaddle,
+                render_type,
+                MODEL_LAYER_PIG_SADDLE,
+                PIG_SADDLE_TEXTURE_REF,
+                [1.0; 4],
+                next_order,
+                next_submit_sequence,
+            );
+            let submit =
+                no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| {
+                    model.root().render_textured(
+                        mesh,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                    );
+                },
+            );
+        }
+    }
 }
 
 /// Vanilla `WolfArmorLayer`: adult wolves with a body armor item render the `WOLF_BODY` equipment

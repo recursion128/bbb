@@ -18630,3 +18630,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   its independent atlas sprite.
 - Focused tests lock static and profile-textured wings, baby trim retention, missing base-atlas
   submission behavior, exact layer order, and startup map installation.
+
+# 2026-07-17: Render pig saddle armor trims and foil
+
+- Extended the existing adult pig saddle equipment path with the saddle item's synchronized foil
+  and armor-trim components. The world resolves the exact
+  `trims/entity/pig_saddle/<pattern>_<material>` sprite from the vanilla `minecraft:saddle`
+  equipment asset and native publishes it only after the runtime atlas texture is ready.
+- The renderer now submits the posed adult saddle model as base → foil → regular/decal trim with
+  no-overlay metadata. Baby pigs continue to suppress the complete equipment layer because vanilla
+  supplies no baby saddle model.
+- Focused world, native, and renderer tests lock saddle-slot filtering, runtime trim resolution,
+  exact collector order, texture/render-type metadata, and adult-only geometry.

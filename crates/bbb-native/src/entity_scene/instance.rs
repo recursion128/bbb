@@ -592,6 +592,10 @@ pub(super) fn entity_model_instance(
             source.chest_wings_trim.as_ref(),
             variant_registries,
         ))
+        .with_pig_saddle_trim(armor_trim(
+            source.pig_saddle_trim.as_ref(),
+            variant_registries,
+        ))
         .with_player_left_shoulder_parrot(
             source
                 .player_left_shoulder_parrot
@@ -802,6 +806,7 @@ pub(super) fn entity_model_instance(
         with_legs_armor_foil legs_armor_foil,
         with_feet_armor_foil feet_armor_foil,
         with_pig_saddle pig_saddle,
+        with_pig_saddle_foil pig_saddle_foil,
         with_equine_saddle equine_saddle,
         with_equine_saddle_ridden equine_saddle_ridden,
         with_equine_animate_tail equine_animate_tail,

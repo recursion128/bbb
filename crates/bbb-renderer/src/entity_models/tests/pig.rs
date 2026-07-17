@@ -532,6 +532,96 @@ fn pig_saddle_submission_survives_missing_texture_atlas_entry() {
 }
 
 #[test]
+fn pig_saddle_foil_and_trim_follow_the_base_equipment_layer() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        PIG_TEMPERATE_TEXTURE_REF,
+        PIG_TEMPERATE_BABY_TEXTURE_REF,
+        PIG_SADDLE_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+    ]))
+    .unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 52_401 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 64],
+        rgba: vec![0xff; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let trimmed_saddle = |entity_id, baby| {
+        EntityModelInstance::pig(
+            entity_id,
+            [0.0, 64.0, 0.0],
+            0.0,
+            PigModelVariant::Temperate,
+            baby,
+        )
+        .with_pig_saddle(true)
+        .with_pig_saddle_foil(true)
+        .with_pig_saddle_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        }))
+    };
+
+    let adult = trimmed_saddle(525, false);
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[adult],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(meshes.submissions.len(), 4);
+    assert_pig_base_submission_at(&meshes, 0, adult);
+    let saddle = meshes.submissions[1];
+    assert_eq!(saddle.texture, PIG_SADDLE_TEXTURE_REF);
+    assert_eq!(
+        saddle.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!((saddle.order, saddle.submit_sequence), (0, 1));
+    let foil = meshes.submissions[2];
+    assert_eq!(foil.texture, ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+    assert_eq!(
+        foil.render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!((foil.order, foil.submit_sequence), (1, 2));
+    let trim = meshes.submissions[3];
+    assert_eq!(trim.texture, PIG_SADDLE_TEXTURE_REF);
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!((trim.order, trim.submit_sequence), (2, 3));
+    for submit in [saddle, foil, trim] {
+        assert_eq!(submit.transform, entity_model_root_transform(adult));
+        assert_eq!(submit.light, adult.render_state.shader_light());
+        assert_eq!(submit.overlay, [0.0, 10.0]);
+    }
+    assert_eq!(meshes.armor_cutout.vertices.len(), 168);
+    assert_eq!(meshes.armor_entity_glint.vertices.len(), 168);
+    assert_eq!(meshes.dynamic_player_texture_armor_trim.vertices.len(), 168);
+
+    let baby = trimmed_saddle(526, true);
+    let baby_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[baby],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    assert_pig_base_submission_at(&baby_meshes, 0, baby);
+    assert!(baby_meshes.armor_cutout.vertices.is_empty());
+    assert!(baby_meshes.armor_entity_glint.vertices.is_empty());
+    assert!(baby_meshes
+        .dynamic_player_texture_armor_trim
+        .vertices
+        .is_empty());
+}
+
+#[test]
 fn pig_textured_mesh_applies_head_look() {
     let (atlas, _) = build_entity_model_texture_atlas(&pig_texture_images()).unwrap();
     let base = EntityModelInstance::pig(

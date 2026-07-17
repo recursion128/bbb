@@ -242,27 +242,27 @@ fn vanilla_camel_saddle_type(entity_type_id: i32) -> bool {
     vanilla_entity_metadata_type_is_camel(entity_type_id)
 }
 
+fn equipment_saddle_item<'a>(
+    equipment: Option<&'a EntityEquipment>,
+    equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
+) -> Option<&'a ItemStackSummary> {
+    let item = equipment?
+        .equipment
+        .iter()
+        .find(|update| update.slot == ProtocolEquipmentSlot::Saddle)
+        .map(|update| &update.item)?;
+    if item.count <= 0 {
+        return None;
+    }
+    let item_id = item.item_id?;
+    (equipment_slots.get(&item_id).copied() == Some(ItemEquipmentSlot::Saddle)).then_some(item)
+}
+
 fn equipment_contains_saddle_item(
     equipment: Option<&EntityEquipment>,
     equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
 ) -> bool {
-    let Some(equipment) = equipment else {
-        return false;
-    };
-    let Some(item) = equipment
-        .equipment
-        .iter()
-        .find(|update| update.slot == ProtocolEquipmentSlot::Saddle)
-        .map(|update| &update.item)
-    else {
-        return false;
-    };
-    if item.count <= 0 {
-        return false;
-    }
-    item.item_id
-        .and_then(|item_id| equipment_slots.get(&item_id).copied())
-        == Some(ItemEquipmentSlot::Saddle)
+    equipment_saddle_item(equipment, equipment_slots).is_some()
 }
 
 /// Vanilla `WitherBoss.DATA_ID_INV` data id (19): the int spawn-invulnerability countdown
@@ -1623,12 +1623,20 @@ impl EntityStore {
         // Vanilla `SimpleEquipmentLayer` saddle users copy `EquipmentSlot.SADDLE` into render state,
         // then render only a non-empty equippable saddle item. bbb resolves the default saddle item
         // from the item equipment-slot map.
-        let saddle_slot_contains_saddle_item =
-            || equipment_contains_saddle_item(equipment, equipment_slots);
-        let pig_saddle = || -> bool {
-            identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID
-                && saddle_slot_contains_saddle_item()
-        };
+        let saddle_slot_item = || equipment_saddle_item(equipment, equipment_slots);
+        let saddle_slot_contains_saddle_item = || saddle_slot_item().is_some();
+        let pig_saddle = identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID
+            && saddle_slot_contains_saddle_item();
+        let pig_saddle_trim = pig_saddle.then_some(()).and_then(|()| {
+            armor_trim_sprite(
+                registries,
+                saddle_slot_item()?,
+                "minecraft:saddle",
+                ArmorTrimLayer::PigSaddle,
+            )
+        });
+        let pig_saddle_foil =
+            pig_saddle && saddle_slot_item().is_some_and(ItemStackSummary::has_foil);
         let equine_saddle = || -> bool {
             vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id)
                 && saddle_slot_contains_saddle_item()
@@ -2561,7 +2569,9 @@ impl EntityStore {
             wolf_body_armor_dye,
             wolf_body_armor_crackiness,
             wolf_body_armor_foil,
-            pig_saddle: pig_saddle(),
+            pig_saddle,
+            pig_saddle_trim,
+            pig_saddle_foil,
             equine_saddle,
             equine_saddle_ridden,
             equine_animate_tail: client_animations.animations.equine_animate_tail(),

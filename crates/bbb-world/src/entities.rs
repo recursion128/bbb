@@ -2133,6 +2133,13 @@ entity_model_source_state! {
     /// `EquipmentSlot.SADDLE`. The renderer consumes this to draw the `PIG_SADDLE` equipment layer.
     #[serde(default)]
     pub pig_saddle: bool,
+    /// Vanilla `ArmorTrim.layerAssetId` for an adult pig's `PIG_SADDLE` equipment layer.
+    #[serde(default)]
+    pub pig_saddle_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for the saddle item. The equipment renderer inserts the glint
+    /// immediately after the saddle base layer and before its optional trim.
+    #[serde(default)]
+    pub pig_saddle_foil: bool,
     /// Vanilla `EquineRenderState.saddle`: true when an adult horse/donkey/mule/skeleton-horse/
     /// zombie-horse carries a non-empty saddle item in `EquipmentSlot.SADDLE`.
     #[serde(default)]

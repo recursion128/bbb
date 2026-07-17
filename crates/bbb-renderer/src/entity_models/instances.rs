@@ -1032,6 +1032,10 @@ entity_render_state! {
     /// renders the adult `PigModel.createBodyLayer(CubeDeformation(0.5F))` equipment layer over the
     /// pig body. Babies do not render this layer because vanilla supplies no baby saddle model.
     (with_pig_saddle) pig_saddle: bool = false;
+    /// Vanilla armor-trim atlas sprite for the `PIG_SADDLE` equipment model.
+    (with_pig_saddle_trim) pig_saddle_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for the saddle item.
+    (with_pig_saddle_foil) pig_saddle_foil: bool = false;
     /// Vanilla `EquineRenderState.saddle`: the item in `EquipmentSlot.SADDLE` for horse, donkey, mule,
     /// skeleton-horse, and zombie-horse renderers. A non-empty saddle item renders the adult
     /// `EquineSaddleModel` equipment layer; babies do not render it because vanilla supplies no baby
@@ -3084,6 +3088,8 @@ mod tests {
                 legs_armor_foil: false,
                 feet_armor_foil: false,
                 pig_saddle: false,
+                pig_saddle_trim: None,
+                pig_saddle_foil: false,
                 equine_saddle: false,
                 equine_saddle_ridden: false,
                 equine_animate_tail: false,

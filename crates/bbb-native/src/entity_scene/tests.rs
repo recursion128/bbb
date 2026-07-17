@@ -6424,6 +6424,12 @@ fn zombie_nautilus_network_model_waits_for_its_matching_texture() {
 #[test]
 fn entity_model_instances_project_pig_saddle_render_state() {
     const SADDLE_ITEM_ID: i32 = 740;
+    let trim_texture = EntityDynamicTexture { handle: 42_4313 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/pig_saddle/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
 
     let saddle = |entity_id: i32| SetEquipment {
         entity_id,
@@ -6432,17 +6438,29 @@ fn entity_model_instances_project_pig_saddle_render_state() {
             item: ItemStackSummary {
                 item_id: Some(SADDLE_ITEM_ID),
                 count: 1,
-                component_patch: DataComponentPatchSummary::default(),
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
             },
         }],
     };
-    let pig_saddle = |world: &WorldStore, id: i32| {
-        entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state
-            .pig_saddle
+    let state = |world: &WorldStore, id: i32| {
+        entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state
     };
 
     let mut world = WorldStore::new();
@@ -6452,16 +6470,28 @@ fn entity_model_instances_project_pig_saddle_render_state() {
         [1.0, 64.0, -3.0],
     ));
     assert!(world.apply_set_equipment(saddle(110)));
+    let unresolved = state(&world, 110);
     assert!(
-        !pig_saddle(&world, 110),
+        !unresolved.pig_saddle,
         "without the item registry's saddle-slot map, a raw item id is not enough"
     );
+    assert_eq!(unresolved.pig_saddle_trim, None);
+    assert!(!unresolved.pig_saddle_foil);
 
     world.set_default_item_equipment_slots(std::collections::BTreeMap::from([(
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
     )]));
-    assert!(pig_saddle(&world, 110));
+    let saddled = state(&world, 110);
+    assert!(saddled.pig_saddle);
+    assert!(saddled.pig_saddle_foil);
+    assert_eq!(
+        saddled.pig_saddle_trim,
+        Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        })
+    );
 }
 
 #[test]
