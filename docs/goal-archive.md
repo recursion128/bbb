@@ -18293,3 +18293,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Raider 分支的 Pillager 及 Cow/非法 id 为 membership 负例。
 - native F3+I fixture 删除固定 slot 17，改由 accessor 构造 using-item metadata；生成 reverse
   guard 禁止 Witch accessor/default aliases 回流。
+
+## 2026-07-16：迁移 Player shoulder-parrot metadata fixtures
+
+- world shoulder-parrot projection 与 native entity-scene fixture 删除各自维护的 slot 19/20
+  常量，统一消费生成的 Player left/right `OPTIONAL_UNSIGNED_INT` accessor ids。
+- metadata generator 新增跨 world/native reverse guard，禁止局部 shoulder-parrot 固定槽位
+  aliases 回流。

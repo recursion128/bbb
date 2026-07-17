@@ -18,6 +18,7 @@ use bbb_world::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
     ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
+    VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
 use uuid::Uuid;
 
@@ -7416,10 +7417,8 @@ fn entity_model_instances_forward_player_cape_cloak_state() {
 
 #[test]
 fn entity_model_instances_forward_player_shoulder_parrots_from_world_source() {
-    // Vanilla Player shoulder parrots are `OPTIONAL_UNSIGNED_INT` metadata ids 19/20. World keeps
+    // Vanilla Player shoulder parrots use generated `OPTIONAL_UNSIGNED_INT` accessors. World keeps
     // the raw `Parrot.Variant` ids; native maps them to renderer `ParrotModelVariant`s.
-    const PLAYER_SHOULDER_PARROT_LEFT_DATA_ID: u8 = 19;
-    const PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
 
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(
@@ -7430,8 +7429,14 @@ fn entity_model_instances_forward_player_shoulder_parrots_from_world_source() {
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 1556,
         values: vec![
-            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, Some(4),),
-            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, Some(1),),
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+                Some(4),
+            ),
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+                Some(1),
+            ),
         ],
     }));
 

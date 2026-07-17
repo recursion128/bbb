@@ -525,10 +525,8 @@ fn sleeping_bed_yaw_and_offset_matches_vanilla() {
 
 #[test]
 fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_int() {
-    // Vanilla `Player.DATA_SHOULDER_PARROT_LEFT/RIGHT` are `OPTIONAL_UNSIGNED_INT` accessors after
-    // Player absorption/score: ids 19 and 20. The decoded value is the `Parrot.Variant` id.
-    const PLAYER_SHOULDER_PARROT_LEFT_DATA_ID: u8 = 19;
-    const PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID: u8 = 20;
+    // Vanilla `Player.DATA_SHOULDER_PARROT_LEFT/RIGHT` are generated `OPTIONAL_UNSIGNED_INT`
+    // accessors after Player absorption/score. The decoded value is the `Parrot.Variant` id.
     const CHICKEN_TYPE_ID: i32 = 26;
 
     let shoulders = |store: &WorldStore, id: i32| {
@@ -554,8 +552,14 @@ fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_i
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 101,
         values: vec![
-            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, Some(4)),
-            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, Some(1)),
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+                Some(4),
+            ),
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+                Some(1),
+            ),
         ],
     }));
     assert_eq!(shoulders(&store, 101), (Some(4), Some(1)));
@@ -563,7 +567,7 @@ fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_i
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 101,
         values: vec![protocol_optional_unsigned_int_data(
-            PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+            VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
             None,
         )],
     }));
@@ -573,8 +577,14 @@ fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_i
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 102,
         values: vec![
-            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, Some(2)),
-            protocol_optional_unsigned_int_data(PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID, Some(3)),
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID,
+                Some(2),
+            ),
+            protocol_optional_unsigned_int_data(
+                VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
+                Some(3),
+            ),
         ],
     }));
     assert_eq!(shoulders(&store, 102), (None, None));

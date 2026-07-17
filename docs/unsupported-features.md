@@ -456,6 +456,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Witch using-item fixture membership, wire index and typed default must remain derived from the
   generated Witch-only `DATA_USING_ITEM` BOOLEAN accessor rather than a fixed slot or another
   Raider-family entity's metadata layout.
+  Player shoulder-parrot world/native fixtures must use the generated left/right
+  `OPTIONAL_UNSIGNED_INT` accessor ids; local slot 19/20 aliases must not return.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
   fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19
