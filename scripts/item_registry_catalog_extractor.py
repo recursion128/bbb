@@ -19,6 +19,7 @@ class ItemRegistryCatalogExtractionError(ValueError):
 
 
 ITEMS_OWNER = "net.minecraft.world.item.Items"
+ITEM_OWNER = "net.minecraft.world.item.Item"
 ITEM_IDS_OWNER = "net.minecraft.references.ItemIds"
 ITEM_FIELD_TYPES = {"Item", "WeatheringCopperItems"}
 
@@ -43,6 +44,15 @@ def _string(source: JavaSource, expression: JavaExpression) -> str:
     return value
 
 
+def _integer(source: JavaSource, expression: JavaExpression) -> int:
+    if expression.node.type != "decimal_integer_literal":
+        _fail(source, expression, "expected a Java decimal integer literal")
+    try:
+        return int(expression.canonical.replace("_", ""), 10)
+    except ValueError:
+        _fail(source, expression, "invalid Java integer literal")
+
+
 def _arguments(source: JavaSource, node) -> list[JavaExpression]:
     arguments = node.child_by_field_name("arguments")
     if arguments is None:
@@ -59,6 +69,7 @@ def _arguments(source: JavaSource, node) -> list[JavaExpression]:
 @dataclass(frozen=True)
 class ExtractedItemRegistryCatalog:
     item_id_constants: dict[str, str]
+    item_constants: dict[str, int]
     declarations: tuple[dict[str, Any], ...]
 
     def as_json_value(self) -> dict[str, Any]:
@@ -69,15 +80,17 @@ class ExtractedItemRegistryCatalog:
             "check_command": "scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py --check",
             "sources": [
                 "net/minecraft/references/ItemIds.java",
+                "net/minecraft/world/item/Item.java",
                 "net/minecraft/world/item/Items.java",
             ],
             "item_id_constants": self.item_id_constants,
+            "item_constants": self.item_constants,
             "declarations": list(self.declarations),
         }
 
 
 def extract_item_registry_catalog(
-    items_source: JavaSource, item_ids_source: JavaSource
+    items_source: JavaSource, item_ids_source: JavaSource, item_source: JavaSource
 ) -> ExtractedItemRegistryCatalog:
     constants: dict[str, str] = {}
     for field in item_ids_source.fields_for(ITEM_IDS_OWNER):
@@ -91,6 +104,30 @@ def extract_item_registry_catalog(
         if name is None or item_ids_source.text(name) != "createKey" or len(arguments) != 1:
             _fail(item_ids_source, initializer, "expected createKey(string) initializer")
         constants[field.name] = _string(item_ids_source, arguments[0])
+
+    item_constant_names = {"DEFAULT_MAX_STACK_SIZE", "ABSOLUTE_MAX_STACK_SIZE"}
+    item_constants = {}
+    for field in item_source.fields_for(ITEM_OWNER):
+        if field.name not in item_constant_names:
+            continue
+        if field.type_spelling != "int" or field.initializer is None:
+            raise ItemRegistryCatalogExtractionError(
+                f"{item_source.relative_path}: Item.{field.name} must be an initialized int"
+            )
+        if not {"public", "static", "final"}.issubset(field.modifiers):
+            raise ItemRegistryCatalogExtractionError(
+                f"{item_source.relative_path}: Item.{field.name} must be public static final"
+            )
+        item_constants[field.name] = _integer(item_source, field.initializer)
+    if set(item_constants) != item_constant_names:
+        raise ItemRegistryCatalogExtractionError(
+            f"{item_source.relative_path}: expected item constants {sorted(item_constant_names)}, "
+            f"extracted {sorted(item_constants)}"
+        )
+    if not 0 < item_constants["DEFAULT_MAX_STACK_SIZE"] <= item_constants["ABSOLUTE_MAX_STACK_SIZE"]:
+        raise ItemRegistryCatalogExtractionError(
+            f"{item_source.relative_path}: invalid item max stack size constants"
+        )
 
     declarations: list[dict[str, Any]] = []
     fields = [
@@ -121,4 +158,4 @@ def extract_item_registry_catalog(
         raise ItemRegistryCatalogExtractionError(
             f"{items_source.relative_path}: failed to close all item declarations"
         )
-    return ExtractedItemRegistryCatalog(constants, tuple(declarations))
+    return ExtractedItemRegistryCatalog(constants, item_constants, tuple(declarations))

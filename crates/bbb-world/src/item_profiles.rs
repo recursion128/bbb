@@ -8,6 +8,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
+use bbb_protocol::item_types::{
+    VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+};
+
 use crate::{
     ItemAttackRange, ItemEquipmentSlot, ItemUseEffects, MountArmorSlotKind,
     WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldItemMiningProfile,
@@ -84,11 +88,8 @@ pub enum FurnaceFuelRule {
     RemoveTag(String),
 }
 
-pub(crate) const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
-pub(crate) const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
-
 pub(crate) fn clamp_vanilla_item_max_stack_size(size: i32) -> i32 {
-    size.clamp(1, VANILLA_ABSOLUTE_MAX_STACK_SIZE)
+    size.clamp(1, VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE)
 }
 
 impl ItemProfiles {
@@ -127,7 +128,7 @@ impl ItemProfiles {
             .get(&item_id)
             .copied()
             .map(clamp_vanilla_item_max_stack_size)
-            .unwrap_or(VANILLA_DEFAULT_MAX_STACK_SIZE)
+            .unwrap_or(VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE)
     }
 
     /// Vanilla `ItemStack.getMaxDamage` reads `DataComponents.MAX_DAMAGE` via

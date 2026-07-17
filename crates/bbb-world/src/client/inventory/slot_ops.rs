@@ -3412,10 +3412,10 @@ pub(super) fn container_slot_max_stack_size(
         match slot_num {
             0 => 0,
             5..=8 => 1,
-            _ => VANILLA_DEFAULT_MAX_STACK_SIZE,
+            _ => VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
         }
     } else {
-        VANILLA_DEFAULT_MAX_STACK_SIZE
+        VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE
     };
     item_max_stack_size.min(slot_max_stack_size)
 }
@@ -3444,7 +3444,7 @@ pub(super) fn item_stack_max_stack_size(
         .item_id
         .and_then(|item_id| default_item_max_stack_sizes.get(&item_id).copied())
         .map(clamp_vanilla_item_max_stack_size)
-        .unwrap_or(VANILLA_DEFAULT_MAX_STACK_SIZE)
+        .unwrap_or(VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE)
 }
 
 pub(super) fn apply_local_selected_bundle_item_index(

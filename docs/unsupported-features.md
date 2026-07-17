@@ -481,6 +481,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   not return.
   World/native air block-state fixtures must resolve the embedded 26.1 block-state report through
   `vanilla_air_block_state_id`; local fixed `AIR=0` aliases must not return.
+  World and item-model max-stack-size logic must consume the generated `Item.java` default and
+  absolute limits; local 64/99 stack-size owners must not return.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
   fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19

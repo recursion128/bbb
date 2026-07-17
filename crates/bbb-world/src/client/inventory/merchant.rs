@@ -556,7 +556,7 @@ fn merchant_modified_cost_a_count(
         .get(&cost.item_id)
         .copied()
         .map(clamp_vanilla_item_max_stack_size)
-        .unwrap_or(VANILLA_DEFAULT_MAX_STACK_SIZE);
+        .unwrap_or(VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE);
     let modified_count = i64::from(cost.count) + demand_diff + i64::from(offer.special_price_diff);
     Some(modified_count.clamp(1, i64::from(max_stack_size)) as i32)
 }

@@ -26,6 +26,14 @@ class ItemIds {
 }
 """
 
+ITEM = """
+package net.minecraft.world.item;
+class Item {
+  public static final int DEFAULT_MAX_STACK_SIZE = 64;
+  public static final int ABSOLUTE_MAX_STACK_SIZE = 99;
+}
+"""
+
 
 class ItemRegistryCatalogExtractorTests(unittest.TestCase):
     def test_extracts_fields_and_nested_builder_cst(self) -> None:
@@ -47,10 +55,16 @@ class Items {
 """,
         )
         extracted = extract_item_registry_catalog(
-            items, parse("net/minecraft/references/ItemIds.java", ITEM_IDS)
+            items,
+            parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
+            parse("net/minecraft/world/item/Item.java", ITEM),
         )
 
         self.assertEqual(extracted.item_id_constants, {"PUMPKIN_SEEDS": "pumpkin_seeds"})
+        self.assertEqual(
+            extracted.item_constants,
+            {"DEFAULT_MAX_STACK_SIZE": 64, "ABSOLUTE_MAX_STACK_SIZE": 99},
+        )
         self.assertEqual([item["field"] for item in extracted.declarations], [
             "AIR", "PUMPKIN_SEEDS", "COPPER_BARS"
         ])
@@ -88,10 +102,14 @@ class Items {
 """,
         )
         compact_fact = extract_item_registry_catalog(
-            compact, parse("net/minecraft/references/ItemIds.java", ITEM_IDS)
+            compact,
+            parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
+            parse("net/minecraft/world/item/Item.java", ITEM),
         ).declarations[0]["initializer"]
         spaced_fact = extract_item_registry_catalog(
-            spaced, parse("net/minecraft/references/ItemIds.java", ITEM_IDS)
+            spaced,
+            parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
+            parse("net/minecraft/world/item/Item.java", ITEM),
         ).declarations[0]["initializer"]
         self.assertEqual(compact_fact, spaced_fact)
 
@@ -106,14 +124,17 @@ class Items { public static final Item AIR = null; }
             ItemRegistryCatalogExtractionError, "item initializer must be a method invocation"
         ):
             extract_item_registry_catalog(
-                items, parse("net/minecraft/references/ItemIds.java", ITEM_IDS)
+                items,
+                parse("net/minecraft/references/ItemIds.java", ITEM_IDS),
+                parse("net/minecraft/world/item/Item.java", ITEM),
             )
 
     def test_local_vanilla_catalog_closes_every_field_when_available(self) -> None:
         root = Path.home() / "Work/mc-code/sources/26.1"
         items_path = root / "net/minecraft/world/item/Items.java"
         ids_path = root / "net/minecraft/references/ItemIds.java"
-        if not items_path.is_file() or not ids_path.is_file():
+        item_path = root / "net/minecraft/world/item/Item.java"
+        if not items_path.is_file() or not ids_path.is_file() or not item_path.is_file():
             self.skipTest("local vanilla 26.1 sources are unavailable")
         extracted = extract_item_registry_catalog(
             parse_source(
@@ -122,6 +143,7 @@ class Items { public static final Item AIR = null; }
             parse_source(
                 "net/minecraft/references/ItemIds.java", ids_path.read_bytes()
             ),
+            parse_source("net/minecraft/world/item/Item.java", item_path.read_bytes()),
         )
         self.assertEqual(len(extracted.declarations), 1485)
         weathering = sum(

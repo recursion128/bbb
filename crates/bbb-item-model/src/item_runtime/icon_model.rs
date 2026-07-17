@@ -11,6 +11,9 @@ use bbb_protocol::attribute_modifier_types::{
 };
 use bbb_protocol::data_component_types as component_id;
 use bbb_protocol::equipment_slots::vanilla_equipment_slot_group_for_serialized_name;
+use bbb_protocol::item_types::{
+    VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE,
+};
 use bbb_protocol::mob_effect_types::vanilla_mob_effect_type;
 use bbb_protocol::packets::{
     AttributeModifierSummary, DataComponentPatchSummary, FireworkExplosionShapeSummary,
@@ -34,9 +37,6 @@ use super::{
     ItemTextureState,
 };
 use bbb_protocol::potion_types::vanilla_potion;
-
-const VANILLA_DEFAULT_MAX_STACK_SIZE: i32 = 64;
-const VANILLA_ABSOLUTE_MAX_STACK_SIZE: i32 = 99;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum ItemIconModelRef {
@@ -640,8 +640,8 @@ fn effective_item_max_stack_size(
     component_patch
         .and_then(|patch| patch.max_stack_size)
         .or(default_max_stack_size)
-        .unwrap_or(VANILLA_DEFAULT_MAX_STACK_SIZE)
-        .clamp(1, VANILLA_ABSOLUTE_MAX_STACK_SIZE)
+        .unwrap_or(VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE)
+        .clamp(1, VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE)
 }
 
 /// Vanilla `RangeSelectItemModel.lastIndexLessOrEqual` (linear path — entry

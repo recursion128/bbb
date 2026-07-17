@@ -61813,12 +61813,17 @@
     }
   ],
   "generated_by": "scripts/generate-item-registry-catalog.py",
+  "item_constants": {
+    "ABSOLUTE_MAX_STACK_SIZE": 99,
+    "DEFAULT_MAX_STACK_SIZE": 64
+  },
   "item_id_constants": {
     "MELON_SEEDS": "melon_seeds",
     "PUMPKIN_SEEDS": "pumpkin_seeds"
   },
   "sources": [
     "net/minecraft/references/ItemIds.java",
+    "net/minecraft/world/item/Item.java",
     "net/minecraft/world/item/Items.java"
   ],
   "update_command": "scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py",

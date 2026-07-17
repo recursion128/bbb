@@ -10,7 +10,7 @@ use bbb_protocol::equipment_slots::{
     VANILLA_PLAYER_INVENTORY_LEGS_SLOT, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
     VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
 };
-use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
+use bbb_protocol::item_types::{VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, VANILLA_ITEM_ELYTRA_ID};
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
     VANILLA_MENU_TYPE_BREWING_STAND_ID, VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
@@ -53,9 +53,7 @@ use crate::entities::{
     vanilla_entity_metadata_tamable_animal_accessors_for_entity_type, EntityStore,
     ATTACK_SWING_DURATION,
 };
-use crate::item_profiles::{
-    clamp_vanilla_item_max_stack_size, ItemProfiles, VANILLA_DEFAULT_MAX_STACK_SIZE,
-};
+use crate::item_profiles::{clamp_vanilla_item_max_stack_size, ItemProfiles};
 use crate::{
     ClientRecipeBookState, ClientRecipesState, ClientUiState, LocalPlayerAbilitiesState,
     LocalPlayerExperienceState, LocalPlayerState, MountScreenState, RegistrySet, RegistryTagState,
