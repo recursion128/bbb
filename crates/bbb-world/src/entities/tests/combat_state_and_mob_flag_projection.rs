@@ -340,9 +340,7 @@ fn entity_model_sources_project_full_freeze_for_living_entities() {
 
 #[test]
 fn entity_model_sources_project_auto_spin_attack_flag() {
-    // Vanilla LivingEntity.LIVING_ENTITY_FLAG_SPIN_ATTACK (4); IS_USING is bit 1.
-    const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
+    let living_flags = living_entity_metadata_accessors();
 
     let auto_spin = |store: &WorldStore, id: i32| {
         store
@@ -372,12 +370,12 @@ fn entity_model_sources_project_auto_spin_attack_flag() {
     assert!(set_flags(
         &mut store,
         72,
-        LIVING_ENTITY_FLAG_SPIN_ATTACK | LIVING_ENTITY_FLAG_IS_USING,
+        living_flags.spin_attack_mask | living_flags.is_using_mask,
     ));
     assert!(auto_spin(&store, 72));
 
     // Clearing the spin bit (other flags still set) stops the spin.
-    assert!(set_flags(&mut store, 72, LIVING_ENTITY_FLAG_IS_USING));
+    assert!(set_flags(&mut store, 72, living_flags.is_using_mask));
     assert!(!auto_spin(&store, 72));
 
     // A non-living entity (boat) never spins even with a stray spin-attack bit at
@@ -386,16 +384,13 @@ fn entity_model_sources_project_auto_spin_attack_flag() {
         73,
         VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
     ));
-    assert!(set_flags(&mut store, 73, LIVING_ENTITY_FLAG_SPIN_ATTACK));
+    assert!(set_flags(&mut store, 73, living_flags.spin_attack_mask));
     assert!(!auto_spin(&store, 73));
 }
 
 #[test]
 fn entity_model_sources_project_using_item_flags() {
-    // Vanilla LivingEntity flags: IS_USING = bit 1, OFF_HAND = bit 2, SPIN_ATTACK = bit 4.
-    const LIVING_ENTITY_FLAG_IS_USING: i8 = 1;
-    const LIVING_ENTITY_FLAG_OFF_HAND: i8 = 2;
-    const LIVING_ENTITY_FLAG_SPIN_ATTACK: i8 = 4;
+    let living_flags = living_entity_metadata_accessors();
 
     let using = |store: &WorldStore, id: i32| {
         let source = store
@@ -424,7 +419,7 @@ fn entity_model_sources_project_using_item_flags() {
     assert!(set_flags(
         &mut store,
         80,
-        LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_SPIN_ATTACK,
+        living_flags.is_using_mask | living_flags.spin_attack_mask,
     ));
     assert_eq!(using(&store, 80), (true, false));
 
@@ -432,12 +427,12 @@ fn entity_model_sources_project_using_item_flags() {
     assert!(set_flags(
         &mut store,
         80,
-        LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND,
+        living_flags.is_using_mask | living_flags.off_hand_mask,
     ));
     assert_eq!(using(&store, 80), (true, true));
 
     // Clearing the using bit stops it (a stray off-hand bit alone is not "using").
-    assert!(set_flags(&mut store, 80, LIVING_ENTITY_FLAG_OFF_HAND));
+    assert!(set_flags(&mut store, 80, living_flags.off_hand_mask));
     assert_eq!(using(&store, 80), (false, true));
 
     // A non-living entity (boat) never reads the flags byte.
@@ -448,7 +443,7 @@ fn entity_model_sources_project_using_item_flags() {
     assert!(set_flags(
         &mut store,
         81,
-        LIVING_ENTITY_FLAG_IS_USING | LIVING_ENTITY_FLAG_OFF_HAND,
+        living_flags.is_using_mask | living_flags.off_hand_mask,
     ));
     assert_eq!(using(&store, 81), (false, false));
 }

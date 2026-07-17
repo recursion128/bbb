@@ -447,9 +447,16 @@ fn item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataV
     }
 }
 
+fn living_entity_metadata_accessors() -> VanillaLivingEntityMetadataAccessors {
+    vanilla_entity_metadata_living_entity_accessors_for_entity_type(VANILLA_ENTITY_TYPE_PLAYER_ID)
+        .expect("generated LivingEntity metadata accessors must resolve")
+}
+
 fn living_entity_flags_data(flags: i8) -> ProtocolEntityDataValue {
+    let accessors = living_entity_metadata_accessors();
+    assert_eq!(accessors.flags_default, 0);
     ProtocolEntityDataValue {
-        data_id: 8,
+        data_id: accessors.flags_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(flags),
     }

@@ -24445,6 +24445,8 @@ mod generated_catalog_guards {
         let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
         let small_mob_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
         let transient_tests = include_str!("../tests/transient_events_and_animation_triggers.rs");
+        let world_tests = include_str!("../tests.rs");
+        let lifecycle_tests = include_str!("../tests/lifecycle_and_queries.rs");
         let runtime_event_tests = include_str!(
             "../../../../bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs"
         );
@@ -24457,6 +24459,7 @@ mod generated_catalog_guards {
             native_scene,
             native_scene_tests,
             transient_tests,
+            world_tests,
         ] {
             assert!(
                 source.contains("vanilla_entity_metadata_living_entity_accessors_for_entity_type")
@@ -24503,6 +24506,11 @@ mod generated_catalog_guards {
             }
         }
         assert!(!player_pose_tests.contains("SLEEPING_POS_DATA_ID"));
+        assert!(world_tests.contains("living_entity_metadata_accessors()"));
+        assert!(lifecycle_tests.contains("accessors.is_using_mask"));
+        assert!(lifecycle_tests.contains("accessors.off_hand_mask"));
+        assert!(combat_tests.contains("living_flags.spin_attack_mask"));
+        assert!(!combat_tests.contains("const LIVING_ENTITY_FLAG_"));
     }
 
     #[test]

@@ -677,6 +677,7 @@ fn set_entity_data_ignores_unknown_entities() {
 
 #[test]
 fn local_player_using_item_tracks_living_entity_flags() {
+    let accessors = living_entity_metadata_accessors();
     let mut store = WorldStore::new();
     store.local_player_id = Some(123);
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -690,7 +691,7 @@ fn local_player_using_item_tracks_living_entity_flags() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 123,
-        values: vec![living_entity_flags_data(0x01)],
+        values: vec![living_entity_flags_data(accessors.is_using_mask)],
     }));
     assert!(store.local_player().interaction.using_item);
     assert_eq!(
@@ -700,7 +701,7 @@ fn local_player_using_item_tracks_living_entity_flags() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 123,
-        values: vec![living_entity_flags_data(0x00)],
+        values: vec![living_entity_flags_data(accessors.flags_default)],
     }));
     assert!(!store.local_player().interaction.using_item);
     assert_eq!(store.local_player().interaction.using_item_hand, None);
@@ -711,7 +712,9 @@ fn local_player_using_item_tracks_living_entity_flags() {
     });
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 123,
-        values: vec![living_entity_flags_data(0x03)],
+        values: vec![living_entity_flags_data(
+            accessors.is_using_mask | accessors.off_hand_mask,
+        )],
     }));
     assert!(store.local_player().interaction.using_item);
     assert_eq!(
@@ -722,6 +725,7 @@ fn local_player_using_item_tracks_living_entity_flags() {
 
 #[test]
 fn local_player_using_item_flags_do_not_start_with_empty_hand() {
+    let accessors = living_entity_metadata_accessors();
     let mut store = WorldStore::new();
     store.local_player_id = Some(123);
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -731,7 +735,7 @@ fn local_player_using_item_flags_do_not_start_with_empty_hand() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 123,
-        values: vec![living_entity_flags_data(0x01)],
+        values: vec![living_entity_flags_data(accessors.is_using_mask)],
     }));
 
     assert!(!store.local_player().interaction.using_item);
@@ -740,6 +744,7 @@ fn local_player_using_item_flags_do_not_start_with_empty_hand() {
 
 #[test]
 fn local_player_using_item_flags_do_not_replace_existing_started_hand() {
+    let accessors = living_entity_metadata_accessors();
     let mut store = WorldStore::new();
     store.local_player_id = Some(123);
     store.apply_add_entity(protocol_add_entity_with_type(
@@ -758,7 +763,9 @@ fn local_player_using_item_flags_do_not_replace_existing_started_hand() {
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 123,
-        values: vec![living_entity_flags_data(0x03)],
+        values: vec![living_entity_flags_data(
+            accessors.is_using_mask | accessors.off_hand_mask,
+        )],
     }));
 
     assert!(store.local_player().interaction.using_item);
