@@ -18430,3 +18430,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   type arms，并继续复用现有真实 boat/raft model dispatch。
 - extractor fixture 覆盖 boat/chest-boat 与 raft/chest-raft，world 测试锁定全部 20 条真实注册，
   renderer generator 输出反向守卫，防止 native 恢复任一 entity-type 分支。
+
+## 2026-07-17：生成 Zombie model-kind dispatch
+
+- world renderer owner 将 source-generated Zombie、Husk、Drowned、ZombieVillager provider
+  class 映射为 typed zombie renderer kind，并以 ZombifiedPiglin 作为非成员负例。
+- native 删除四个 zombie-family type arms，统一消费 renderer kind；各 family 的 baby 状态
+  继续读取 generated Zombie metadata accessor。
+- renderer generator 输出反向守卫，禁止 native kind dispatch 恢复四个 entity-type 分支。

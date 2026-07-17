@@ -141,6 +141,27 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             boat_kind.chest,
         );
     }
+    if let Some(zombie_kind) = bbb_world::vanilla_entity_renderer_zombie_kind(entity_type_id) {
+        return match zombie_kind {
+            bbb_world::VanillaZombieRendererKind::Zombie => EntityModelKind::Zombie {
+                baby: zombie_baby(entity_type_id, data_values),
+            },
+            bbb_world::VanillaZombieRendererKind::Husk => EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Husk,
+                baby: zombie_baby(entity_type_id, data_values),
+            },
+            bbb_world::VanillaZombieRendererKind::Drowned => EntityModelKind::ZombieVariant {
+                family: ZombieVariantModelFamily::Drowned,
+                baby: zombie_baby(entity_type_id, data_values),
+            },
+            bbb_world::VanillaZombieRendererKind::ZombieVillager => {
+                EntityModelKind::ZombieVariant {
+                    family: ZombieVariantModelFamily::ZombieVillager,
+                    baby: zombie_baby(entity_type_id, data_values),
+                }
+            }
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -149,21 +170,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             player_model_kind(entity_type_id, data_values)
         }
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => armor_stand_model_kind(entity_type_id, data_values),
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID => EntityModelKind::Zombie {
-            baby: zombie_baby(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_HUSK_ID => EntityModelKind::ZombieVariant {
-            family: ZombieVariantModelFamily::Husk,
-            baby: zombie_baby(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_DROWNED_ID => EntityModelKind::ZombieVariant {
-            family: ZombieVariantModelFamily::Drowned,
-            baby: zombie_baby(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID => EntityModelKind::ZombieVariant {
-            family: ZombieVariantModelFamily::ZombieVillager,
-            baby: zombie_baby(entity_type_id, data_values),
-        },
         VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => EntityModelKind::Piglin {
             family: PiglinModelFamily::ZombifiedPiglin,
             baby: zombie_baby(entity_type_id, data_values),

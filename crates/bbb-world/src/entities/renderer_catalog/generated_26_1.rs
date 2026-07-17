@@ -3627,6 +3627,20 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn native_model_selection_does_not_restore_zombie_type_membership() {
+        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        assert!(source.contains("vanilla_entity_renderer_zombie_kind"));
+        for removed in [
+            "VANILLA_ENTITY_TYPE_ZOMBIE_ID",
+            "VANILLA_ENTITY_TYPE_HUSK_ID",
+            "VANILLA_ENTITY_TYPE_DROWNED_ID",
+            "VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID",
+        ] {
+            assert!(!source.contains(removed), "restored {removed}");
+        }
+    }
+
+    #[test]
     fn world_projection_does_not_restore_feline_type_membership() {
         let source = include_str!("../dimensions.rs");
         assert!(!source.contains("fn vanilla_feline_family"));

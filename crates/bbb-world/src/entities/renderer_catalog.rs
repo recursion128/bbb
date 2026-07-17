@@ -71,6 +71,14 @@ pub enum VanillaLlamaRendererKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaZombieRendererKind {
+    Zombie,
+    Husk,
+    Drowned,
+    ZombieVillager,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaBoatRendererFamily {
     Acacia,
     Bamboo,
@@ -255,6 +263,18 @@ pub fn vanilla_entity_renderer_llama_kind(entity_type_id: i32) -> Option<Vanilla
 
 pub fn vanilla_entity_renderer_boat_kind(entity_type_id: i32) -> Option<VanillaBoatRendererKind> {
     vanilla_entity_renderer_registration(entity_type_id)?.boat_kind
+}
+
+pub fn vanilla_entity_renderer_zombie_kind(
+    entity_type_id: i32,
+) -> Option<VanillaZombieRendererKind> {
+    match vanilla_entity_renderer_registration(entity_type_id)?.renderer_class {
+        "ZombieRenderer" => Some(VanillaZombieRendererKind::Zombie),
+        "HuskRenderer" => Some(VanillaZombieRendererKind::Husk),
+        "DrownedRenderer" => Some(VanillaZombieRendererKind::Drowned),
+        "ZombieVillagerRenderer" => Some(VanillaZombieRendererKind::ZombieVillager),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -585,6 +605,30 @@ mod tests {
                 ("SPRUCE_BOAT", VanillaBoatRendererFamily::Spruce, false),
                 ("SPRUCE_CHEST_BOAT", VanillaBoatRendererFamily::Spruce, true),
             ]
+        );
+    }
+
+    #[test]
+    fn generated_zombie_kinds_match_provider_classes() {
+        assert_eq!(
+            vanilla_entity_renderer_zombie_kind(VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+            Some(VanillaZombieRendererKind::Zombie)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_zombie_kind(VANILLA_ENTITY_TYPE_HUSK_ID),
+            Some(VanillaZombieRendererKind::Husk)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_zombie_kind(VANILLA_ENTITY_TYPE_DROWNED_ID),
+            Some(VanillaZombieRendererKind::Drowned)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_zombie_kind(VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID),
+            Some(VanillaZombieRendererKind::ZombieVillager)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_zombie_kind(VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID),
+            None
         );
     }
 
