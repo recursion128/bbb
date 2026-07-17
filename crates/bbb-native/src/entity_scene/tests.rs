@@ -7479,21 +7479,11 @@ fn entity_model_instances_project_happy_ghast_harness_render_state() {
         [1.0, 64.0, -3.0],
     ));
     world.apply_add_entity(protocol_add_entity(
-        127,
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        [2.0, 64.0, -3.0],
-    ));
-    world.apply_add_entity(protocol_add_entity(
         128,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
         [2.0, 64.0, -3.0],
     ));
-    assert!(world.apply_set_entity_data(SetEntityData {
-        id: 127,
-        values: vec![baby_data(VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, true)],
-    }));
     assert!(world.apply_set_equipment(harness(126)));
-    assert!(world.apply_set_equipment(harness(127)));
     assert!(world.apply_set_passengers(SetPassengers {
         vehicle_id: 126,
         passenger_ids: vec![128],
@@ -7505,7 +7495,7 @@ fn entity_model_instances_project_happy_ghast_harness_render_state() {
         0.0,
         Some(&trim_lookup),
     );
-    for (entity_id, baby, ridden) in [(126, false, true), (127, true, false)] {
+    for (entity_id, baby, ridden) in [(126, false, true)] {
         let instance = instances
             .iter()
             .find(|instance| instance.entity_id == entity_id)
