@@ -186,6 +186,14 @@ canonical world state.
   through the selected resource-pack language before submitting speech.
 - `NarratorStatus` follows vanilla's off/all/chat/system gates. Interrupting
   system narration clears the active utterance before starting its replacement.
+- Screen projections emit localized narration frames keyed by Vanilla's element
+  kind and nesting depth. The native collector retains one value per key, orders
+  title/position/hint/usage output, and only repeats values after a content change
+  or a generation in which that key was absent.
+- Screen narration timing is native runtime state: opening a screen forces the
+  initial frame, mouse motion restarts the 750 ms delay, mouse/keyboard actions
+  restart the 200 ms delay and clear initialization suppression, and ordinary
+  initialization suppresses delayed repeats for two seconds.
 - The TTS adapter is configured only at startup with `--narrator-command` and
   repeated `--narrator-command-arg` values. An exact `{text}` argument is
   replaced with the utterance; without a placeholder the utterance is appended.

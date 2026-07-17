@@ -18901,3 +18901,17 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Keyboard row focus keeps the selected entry in the pixel-scrolled viewport. Items header and
   Done focused states share their vanilla hovered/focused visual state; localized narration and
   delayed screen collection remain the next StatsScreen slice.
+
+# 2026-07-17: Narrate StatsScreen widgets
+
+- Added the native equivalent of `ScreenNarrationCollector`: localized elements retain Vanilla's
+  title/position/hint/usage order and nesting depth, unchanged consecutive generations stay quiet,
+  and values returning after an absent generation are narrated again.
+- Matched screen timing with an immediate forced opening frame, two-second initialization
+  suppression, a restartable 750 ms mouse-move delay, and restartable 200 ms mouse/keyboard action
+  delays. Closing StatsScreen resets collector and scheduling state before a later reopen.
+- Projected the actual focused/hovered tab, General/Mobs row, Items header button/item widget, and
+  Done button with screen/list/object positions, selected-pack translations, tooltips, and usage
+  hints, then submitted changed utterances to the interrupting system narrator sink. Exact frame
+  tests cover loading, all three tabs, empty-tab hints, headers, items, and rows; the StatsScreen
+  presentation ledger entry is closed.

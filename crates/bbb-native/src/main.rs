@@ -79,7 +79,9 @@ use input::{
     DebugFrustumRequest, DebugProfilingToggleRequest, PauseScreenLinkRequest,
 };
 use level_load_runtime::LevelLoadRuntime;
-use narrator_runtime::{NarratorStatus, NativeNarratorRuntime};
+use narrator_runtime::{
+    NarratorStatus, NativeNarratorRuntime, ScreenNarrationInput, ScreenNarrationRuntime,
+};
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
@@ -514,6 +516,7 @@ fn main() -> Result<()> {
     let frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
+    let mut stats_screen_narration = ScreenNarrationRuntime::default();
 
     *world_shared
         .write()
@@ -580,6 +583,8 @@ fn main() -> Result<()> {
                         cursor_position,
                         window.inner_size(),
                     ) {
+                        stats_screen_narration
+                            .after_input(ScreenNarrationInput::MouseMove, Instant::now());
                         return;
                     }
                     if world.advancements_screen_is_open() {
@@ -887,6 +892,12 @@ fn main() -> Result<()> {
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
+                    if stats_open && matches!(event.state, ElementState::Pressed) {
+                        stats_screen_narration.after_input(
+                            ScreenNarrationInput::KeyboardAction,
+                            Instant::now(),
+                        );
+                    }
                     if !cursor_captured
                         && !container_open
                         && !sign_editor_open
@@ -1038,6 +1049,8 @@ fn main() -> Result<()> {
                     }
                     if world.stats_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
+                        stats_screen_narration
+                            .after_input(ScreenNarrationInput::MouseAction, Instant::now());
                         input.handle_stats_screen_mouse_input(
                             &mut net_counters,
                             &mut world,
@@ -1184,6 +1197,8 @@ fn main() -> Result<()> {
                     }
                     if world.stats_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
+                        stats_screen_narration
+                            .after_input(ScreenNarrationInput::MouseAction, Instant::now());
                         input.handle_stats_screen_mouse_wheel(&world, delta);
                         return;
                     }
@@ -1287,6 +1302,16 @@ fn main() -> Result<()> {
                         target.exit();
                         return;
                     }
+                    stats_screen_narration.tick(
+                        world
+                            .stats_screen_is_open()
+                            .then(|| client_animation_ticks.stats_screen_narration())
+                            .flatten(),
+                        Instant::now(),
+                        narrator_runtime.as_mut().map(|narrator| {
+                            narrator as &mut dyn narrator_runtime::SystemNarrator
+                        }),
+                    );
                     let dialog_preedit = input.dialog_ime_preedit_hud_state();
                     if let Some((position, size)) = dialog_ime_cursor_area(
                         &world,
@@ -1473,6 +1498,16 @@ fn main() -> Result<()> {
                     target.exit();
                     return;
                 }
+                stats_screen_narration.tick(
+                    world
+                        .stats_screen_is_open()
+                        .then(|| client_animation_ticks.stats_screen_narration())
+                        .flatten(),
+                    Instant::now(),
+                    narrator_runtime
+                        .as_mut()
+                        .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+                );
                 input.consume_debug_recreate_server_query_response(
                     &mut world,
                     &mut debug_clipboard,

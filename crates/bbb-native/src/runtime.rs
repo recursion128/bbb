@@ -147,7 +147,7 @@ use crate::{
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
-    narrator_runtime::SystemNarrator,
+    narrator_runtime::{NarratedElementKind, ScreenNarrationFrame, SystemNarrator},
     particle_runtime::ParticleEventSink,
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
@@ -616,11 +616,16 @@ pub(crate) struct ClientAnimationTickState {
     entity_animation_tick_residual: f64,
     insecure_chat_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
+    stats_screen_narration: Option<ScreenNarrationFrame>,
 }
 
 impl ClientAnimationTickState {
     pub(crate) fn entity_partial_tick(&self) -> f32 {
         self.entity_animation_tick_residual.clamp(0.0, 1.0) as f32
+    }
+
+    pub(crate) fn stats_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
+        self.stats_screen_narration.as_ref()
     }
 }
 
@@ -2384,6 +2389,9 @@ pub(crate) fn pump_network_and_terrain(
             surface_size,
         )
     };
+    client_animation_ticks.stats_screen_narration = hud_stats_screen
+        .as_ref()
+        .map(|screen| stats_screen_narration_frame(input, screen, item_runtime, surface_size));
     let (hud_system_toast, hud_system_toast_sound) =
         hud_system_toast(client_animation_ticks, world, item_runtime, now);
     if let (Some(audio_events), Some(sound)) =
@@ -3596,6 +3604,364 @@ fn hud_stats_screen(
             done_focused: input.stats_screen_focus() == StatsScreenFocus::Done,
         }
     })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StatsNarrationWidget {
+    Tabs,
+    List,
+    Done,
+}
+
+fn stats_screen_narration_frame(
+    input: &ClientInputState,
+    screen: &HudStatsScreen,
+    item_runtime: Option<&NativeItemRuntime>,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+) -> ScreenNarrationFrame {
+    let mut frame = ScreenNarrationFrame::default();
+    frame.add(NarratedElementKind::Title, 0, screen.title.clone());
+
+    let focus = input.stats_screen_focus();
+    let focused_widget = match focus {
+        StatsScreenFocus::Tabs => Some(StatsNarrationWidget::Tabs),
+        StatsScreenFocus::List
+        | StatsScreenFocus::GeneralRow(_)
+        | StatsScreenFocus::ItemHeader(_)
+        | StatsScreenFocus::ItemRow(_)
+        | StatsScreenFocus::MobRow(_) => Some(StatsNarrationWidget::List),
+        StatsScreenFocus::Done => Some(StatsNarrationWidget::Done),
+        StatsScreenFocus::None => None,
+    };
+    let hovered_tab = input.stats_screen_hovered_tab(surface_size);
+    let hovered_row = input.stats_screen_hovered_row(surface_size);
+    let list_hovered = hovered_row.is_some() || screen.item_hovered_column.is_some();
+    let selected_widget = focused_widget.or_else(|| {
+        hovered_tab
+            .map(|_| StatsNarrationWidget::Tabs)
+            .or_else(|| list_hovered.then_some(StatsNarrationWidget::List))
+            .or_else(|| screen.done_hovered.then_some(StatsNarrationWidget::Done))
+    });
+    let active_widget_count = if screen.is_loading { 2 } else { 3 };
+    if let Some(widget) = selected_widget {
+        let position = match widget {
+            StatsNarrationWidget::Tabs => 1,
+            StatsNarrationWidget::List => 2,
+            StatsNarrationWidget::Done if screen.is_loading => 2,
+            StatsNarrationWidget::Done => 3,
+        };
+        frame.add(
+            NarratedElementKind::Position,
+            0,
+            localized_gui_text_with_args(
+                item_runtime,
+                "narrator.position.screen",
+                "Screen element %1$s out of %2$s",
+                &[&position.to_string(), &active_widget_count.to_string()],
+            ),
+        );
+        if focused_widget == Some(widget) {
+            frame.add(
+                NarratedElementKind::Usage,
+                0,
+                localized_gui_text(
+                    item_runtime,
+                    "narration.component_list.usage",
+                    "Press Tab to navigate to the next element",
+                ),
+            );
+        }
+        match widget {
+            StatsNarrationWidget::Tabs => stats_screen_tab_narration(
+                &mut frame,
+                screen,
+                item_runtime,
+                hovered_tab.unwrap_or(screen.active_tab),
+                focus == StatsScreenFocus::Tabs,
+            ),
+            StatsNarrationWidget::List if !screen.is_loading => {
+                stats_screen_list_narration(&mut frame, input, screen, item_runtime, hovered_row)
+            }
+            StatsNarrationWidget::Done => stats_screen_done_narration(
+                &mut frame,
+                item_runtime,
+                focus == StatsScreenFocus::Done,
+            ),
+            StatsNarrationWidget::List => {}
+        }
+    } else {
+        frame.add(
+            NarratedElementKind::Usage,
+            0,
+            localized_gui_text(
+                item_runtime,
+                "narrator.screen.usage",
+                "Use mouse cursor or Tab button to select element",
+            ),
+        );
+    }
+    frame
+}
+
+fn stats_screen_tab_narration(
+    frame: &mut ScreenNarrationFrame,
+    screen: &HudStatsScreen,
+    item_runtime: Option<&NativeItemRuntime>,
+    tab: usize,
+    focused: bool,
+) {
+    let tab = tab.min(2);
+    let labels = [
+        screen.general_tab.as_str(),
+        screen.items_tab.as_str(),
+        screen.mobs_tab.as_str(),
+    ];
+    frame.add(
+        NarratedElementKind::Title,
+        1,
+        localized_gui_text_with_args(item_runtime, "gui.narrate.tab", "%1$s tab", &[labels[tab]]),
+    );
+    frame.add(
+        NarratedElementKind::Position,
+        2,
+        localized_gui_text_with_args(
+            item_runtime,
+            "narrator.position.tab",
+            "Selected tab %1$s out of %2$s",
+            &[&(tab + 1).to_string(), "3"],
+        ),
+    );
+    let tab_enabled =
+        tab == 0 || (tab == 1 && screen.items_tab_enabled) || (tab == 2 && screen.mobs_tab_enabled);
+    if screen.is_loading {
+        frame.add(NarratedElementKind::Hint, 1, screen.loading_text.clone());
+    } else if !tab_enabled {
+        frame.add(
+            NarratedElementKind::Hint,
+            1,
+            localized_gui_text(item_runtime, "gui.stats.none_found", "No statistics found"),
+        );
+    }
+    if focused {
+        frame.add(
+            NarratedElementKind::Usage,
+            1,
+            localized_gui_text(
+                item_runtime,
+                "narration.tab_navigation.usage",
+                "Press Ctrl and Tab to switch between tabs",
+            ),
+        );
+    }
+}
+
+fn stats_screen_list_narration(
+    frame: &mut ScreenNarrationFrame,
+    input: &ClientInputState,
+    screen: &HudStatsScreen,
+    item_runtime: Option<&NativeItemRuntime>,
+    hovered_row: Option<usize>,
+) {
+    let list_focused = matches!(
+        input.stats_screen_focus(),
+        StatsScreenFocus::List
+            | StatsScreenFocus::GeneralRow(_)
+            | StatsScreenFocus::ItemHeader(_)
+            | StatsScreenFocus::ItemRow(_)
+            | StatsScreenFocus::MobRow(_)
+    );
+    if screen.active_tab == 1 {
+        let hovered_header = screen.item_hovered_column;
+        if let Some(row) = hovered_row {
+            stats_screen_item_row_narration(frame, screen, item_runtime, row);
+        } else if let Some(column) = hovered_header {
+            let column = match input.stats_screen_focus() {
+                StatsScreenFocus::ItemHeader(focused) => focused,
+                _ => column,
+            };
+            stats_screen_item_header_narration(
+                frame,
+                screen,
+                item_runtime,
+                column,
+                input.stats_screen_focus() == StatsScreenFocus::ItemHeader(column),
+            );
+        } else {
+            match input.stats_screen_focus() {
+                StatsScreenFocus::ItemHeader(column) => {
+                    stats_screen_item_header_narration(frame, screen, item_runtime, column, true)
+                }
+                StatsScreenFocus::ItemRow(row) => {
+                    stats_screen_item_row_narration(frame, screen, item_runtime, row)
+                }
+                _ => {}
+            }
+        }
+        return;
+    }
+
+    let focused_row = match input.stats_screen_focus() {
+        StatsScreenFocus::GeneralRow(row) | StatsScreenFocus::MobRow(row) => Some(row),
+        _ => None,
+    };
+    if let Some(row_index) = hovered_row.or(focused_row) {
+        if let Some(row) = row_index
+            .checked_sub(screen.scroll_row)
+            .and_then(|visible| screen.rows.get(visible))
+        {
+            let selection = match row.secondary_value.as_deref() {
+                Some(secondary) => format!("{}. {}", row.value, secondary),
+                None => format!("{} {}", row.label, row.value),
+            };
+            frame.add(
+                NarratedElementKind::Title,
+                1,
+                localized_gui_text_with_args(
+                    item_runtime,
+                    "narrator.select",
+                    "Selected: %1$s",
+                    &[&selection],
+                ),
+            );
+            add_stats_list_position(frame, item_runtime, row_index + 1, screen.total_rows, 2);
+        }
+    }
+    if list_focused {
+        frame.add(
+            NarratedElementKind::Usage,
+            1,
+            localized_gui_text(
+                item_runtime,
+                "narration.selection.usage",
+                "Press the up and down buttons to move to another entry",
+            ),
+        );
+    }
+}
+
+fn stats_screen_item_header_narration(
+    frame: &mut ScreenNarrationFrame,
+    screen: &HudStatsScreen,
+    item_runtime: Option<&NativeItemRuntime>,
+    column: usize,
+    focused: bool,
+) {
+    let column = column.min(5);
+    add_stats_list_position(frame, item_runtime, 1, screen.total_rows + 1, 1);
+    frame.add(
+        NarratedElementKind::Title,
+        3,
+        localized_gui_text_with_args(
+            item_runtime,
+            "gui.narrate.button",
+            "%1$s button",
+            &[&screen.item_column_labels[column]],
+        ),
+    );
+    frame.add(
+        NarratedElementKind::Position,
+        2,
+        localized_gui_text_with_args(
+            item_runtime,
+            "narrator.position.object_list",
+            "Selected row element %1$s out of %2$s",
+            &[&(column + 1).to_string(), "6"],
+        ),
+    );
+    frame.add(
+        NarratedElementKind::Hint,
+        3,
+        screen.item_column_labels[column].clone(),
+    );
+    frame.add(
+        NarratedElementKind::Usage,
+        3,
+        localized_gui_text(
+            item_runtime,
+            if focused {
+                "narration.button.usage.focused"
+            } else {
+                "narration.button.usage.hovered"
+            },
+            if focused {
+                "Press Enter to activate"
+            } else {
+                "Left click to activate"
+            },
+        ),
+    );
+}
+
+fn stats_screen_item_row_narration(
+    frame: &mut ScreenNarrationFrame,
+    screen: &HudStatsScreen,
+    item_runtime: Option<&NativeItemRuntime>,
+    row: usize,
+) {
+    let Some(item) = row
+        .checked_sub(screen.scroll_row)
+        .and_then(|visible| screen.item_rows.get(visible))
+    else {
+        return;
+    };
+    add_stats_list_position(frame, item_runtime, row + 2, screen.total_rows + 1, 1);
+    frame.add(
+        NarratedElementKind::Title,
+        3,
+        localized_gui_text_with_args(item_runtime, "narration.item", "Item: %1$s", &[&item.label]),
+    );
+}
+
+fn add_stats_list_position(
+    frame: &mut ScreenNarrationFrame,
+    item_runtime: Option<&NativeItemRuntime>,
+    position: usize,
+    total: usize,
+    depth: u8,
+) {
+    if total <= 1 {
+        return;
+    }
+    frame.add(
+        NarratedElementKind::Position,
+        depth,
+        localized_gui_text_with_args(
+            item_runtime,
+            "narrator.position.list",
+            "Selected list row %1$s out of %2$s",
+            &[&position.to_string(), &total.to_string()],
+        ),
+    );
+}
+
+fn stats_screen_done_narration(
+    frame: &mut ScreenNarrationFrame,
+    item_runtime: Option<&NativeItemRuntime>,
+    focused: bool,
+) {
+    let done = localized_gui_text(item_runtime, "gui.done", "Done");
+    frame.add(
+        NarratedElementKind::Title,
+        1,
+        localized_gui_text_with_args(item_runtime, "gui.narrate.button", "%1$s button", &[&done]),
+    );
+    frame.add(
+        NarratedElementKind::Usage,
+        1,
+        localized_gui_text(
+            item_runtime,
+            if focused {
+                "narration.button.usage.focused"
+            } else {
+                "narration.button.usage.hovered"
+            },
+            if focused {
+                "Press Enter to activate"
+            } else {
+                "Left click to activate"
+            },
+        ),
+    );
 }
 
 fn localized_gui_text(

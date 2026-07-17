@@ -7687,6 +7687,236 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
 }
 
 #[test]
+fn stats_screen_narration_matches_tabs_general_items_and_mobs_widgets() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = winit::dpi::PhysicalSize::new(320, 240);
+    let item_runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    let terrain_textures = TerrainTextureState::default();
+    assert!(world.open_stats_screen());
+
+    let loading = hud_stats_screen(
+        &mut input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(
+        stats_screen_narration_frame(&input, &loading, Some(&item_runtime), surface)
+            .all_text_for_test(),
+        "Stats. Use mouse cursor or Tab button to select element"
+    );
+
+    world.apply_award_stats(AwardStats {
+        stats: vec![
+            StatUpdate {
+                stat_type_id: 8,
+                value_id: 6,
+                amount: 12_345,
+            },
+            StatUpdate {
+                stat_type_id: 1,
+                value_id: bbb_protocol::item_types::vanilla_item_type_for_resource_id(
+                    "minecraft:apple",
+                )
+                .unwrap()
+                .id,
+                amount: 2,
+            },
+            StatUpdate {
+                stat_type_id: 6,
+                value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                amount: 2,
+            },
+            StatUpdate {
+                stat_type_id: 7,
+                value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                amount: 1,
+            },
+        ],
+    });
+    let general = hud_stats_screen(
+        &mut input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(
+        stats_screen_narration_frame(&input, &general, Some(&item_runtime), surface)
+            .all_text_for_test(),
+        "Stats. General tab. Screen element 1 out of 3. Selected tab 1 out of 3. Press Tab to navigate to the next element. Press Ctrl and Tab to switch between tabs"
+    );
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 50.0)),
+        surface,
+    ));
+    let general = hud_stats_screen(
+        &mut input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    let row = &general.rows[0];
+    assert_eq!(
+        stats_screen_narration_frame(&input, &general, Some(&item_runtime), surface)
+            .all_text_for_test(),
+        format!(
+            "Stats. Selected: {} {}. Screen element 2 out of 3. Selected list row 1 out of {}. Press Tab to navigate to the next element. Press the up and down buttons to move to another entry",
+            row.label, row.value, general.total_rows
+        )
+    );
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 30.0)),
+        surface,
+    ));
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 50.0)),
+        surface,
+    ));
+    let items = hud_stats_screen(
+        &mut input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(items.active_tab, 1);
+    assert_eq!(
+        stats_screen_narration_frame(&input, &items, Some(&item_runtime), surface)
+            .all_text_for_test(),
+        format!(
+            "Stats. Crafted button. Screen element 2 out of 3. Selected list row 1 out of {}. Selected row element 3 out of 6. Crafted. Press Tab to navigate to the next element. Press Enter to activate",
+            items.total_rows + 1
+        )
+    );
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(25.0, 72.0)),
+        surface,
+    ));
+    let items = hud_stats_screen(
+        &mut input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(
+        stats_screen_narration_frame(&input, &items, Some(&item_runtime), surface)
+            .all_text_for_test(),
+        format!(
+            "Stats. Item: {}. Screen element 2 out of 3. Selected list row 2 out of {}. Press Tab to navigate to the next element",
+            items.item_rows[0].label,
+            items.total_rows + 1
+        )
+    );
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(253.0, 30.0)),
+        surface,
+    ));
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(winit::dpi::PhysicalPosition::new(160.0, 50.0)),
+        surface,
+    ));
+    let mobs = hud_stats_screen(
+        &mut input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    let mob = &mobs.rows[0];
+    assert_eq!(
+        stats_screen_narration_frame(&input, &mobs, Some(&item_runtime), surface)
+            .all_text_for_test(),
+        format!(
+            "Stats. Selected: {}. {}. Screen element 2 out of 3. Press Tab to navigate to the next element. Press the up and down buttons to move to another entry",
+            mob.value,
+            mob.secondary_value.as_deref().unwrap()
+        )
+    );
+
+    crate::input::handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    let done = hud_stats_screen(
+        &mut input,
+        &world,
+        Some(&item_runtime),
+        &terrain_textures,
+        ItemModelKeybindContext::default(),
+        0.0,
+        surface,
+    )
+    .unwrap();
+    assert_eq!(
+        stats_screen_narration_frame(&input, &done, Some(&item_runtime), surface)
+            .all_text_for_test(),
+        "Stats. Done button. Screen element 3 out of 3. Press Tab to navigate to the next element. Press Enter to activate"
+    );
+}
+
+#[test]
 fn hud_stats_screen_reports_empty_tab_tooltip_after_response() {
     let mut input = ClientInputState::new(true);
     let mut world = WorldStore::new();
@@ -7714,6 +7944,10 @@ fn hud_stats_screen_reports_empty_tab_tooltip_after_response() {
     assert_eq!(
         screen.tooltip.as_ref().map(|tooltip| tooltip.text.as_str()),
         Some("No statistics found")
+    );
+    assert_eq!(
+        stats_screen_narration_frame(&input, &screen, None, surface).all_text_for_test(),
+        "Stats. Items tab. Screen element 1 out of 3. Selected tab 2 out of 3. No statistics found"
     );
 }
 

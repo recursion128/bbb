@@ -87,16 +87,6 @@ Owner: `bbb-protocol`
   attributes, timeline/clock holders and their layer ordering; typed `skybox`,
   direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
   complete.
-- Complete StatsScreen presentation parity: connect its focused/hovered widget narration frame to
-  the native screen collector, vanilla trigger delays, and the system narrator sink. General,
-  Items and Mobs now leave loading only after the requested AwardStats response and use
-  selected-pack language. Item/header/empty-tab tooltips and vanilla focus navigation are wired;
-  Items mechanically maps block stats through checked-in `Block.asItem` evidence, renders
-  flat/3D item icons and vanilla header/slot/sort sprites, preserves six-column no-value
-  semantics and the descending/ascending/clear sort cycle. All three lists use vanilla
-  half-row/pixel wheel amounts, content clamping, draggable nine-slice scrollbar and viewport
-  scissor; the Items header scrolls as its first entry. Canonical state retains unresolved
-  identities without guessing.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.

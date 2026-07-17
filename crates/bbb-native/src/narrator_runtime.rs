@@ -1,9 +1,14 @@
 use std::{
-    collections::VecDeque,
+    collections::{BTreeMap, VecDeque},
     ffi::OsString,
     path::PathBuf,
     process::{Child, Command, Stdio},
+    time::{Duration, Instant},
 };
+
+const SCREEN_NARRATION_SUPPRESS_AFTER_INIT: Duration = Duration::from_secs(2);
+const SCREEN_NARRATION_MOUSE_MOVE_DELAY: Duration = Duration::from_millis(750);
+const SCREEN_NARRATION_ACTION_DELAY: Duration = Duration::from_millis(200);
 
 /// Vanilla's four narrator modes. The TTS backend is a runtime/platform concern, while callers
 /// identify whether a message is system or chat narration before submitting it here.
@@ -26,6 +31,173 @@ impl NarratorStatus {
 /// `GameNarrator.saySystemNow` behavior.
 pub(crate) trait SystemNarrator {
     fn say_system_now(&mut self, message: &str);
+}
+
+/// Vanilla orders collected screen narration first by element kind and then by
+/// nesting depth, with at most one value retained for each pair.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum NarratedElementKind {
+    Title,
+    Position,
+    Hint,
+    Usage,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ScreenNarrationElement {
+    kind: NarratedElementKind,
+    depth: u8,
+    text: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct ScreenNarrationFrame {
+    elements: Vec<ScreenNarrationElement>,
+}
+
+impl ScreenNarrationFrame {
+    pub(crate) fn add(&mut self, kind: NarratedElementKind, depth: u8, text: impl Into<String>) {
+        let text = text.into();
+        if !text.is_empty() {
+            self.elements
+                .push(ScreenNarrationElement { kind, depth, text });
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn all_text_for_test(&self) -> String {
+        ScreenNarrationCollector::default()
+            .update_and_collect(self, true)
+            .unwrap_or_default()
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct ScreenNarrationEntry {
+    text: String,
+    generation: u64,
+    already_narrated: bool,
+}
+
+#[derive(Debug, Default)]
+struct ScreenNarrationCollector {
+    generation: u64,
+    entries: BTreeMap<(NarratedElementKind, u8), ScreenNarrationEntry>,
+}
+
+impl ScreenNarrationCollector {
+    fn update_and_collect(&mut self, frame: &ScreenNarrationFrame, force: bool) -> Option<String> {
+        self.generation = self.generation.checked_add(1).unwrap_or_else(|| {
+            self.entries.clear();
+            1
+        });
+        for element in &frame.elements {
+            let entry = self
+                .entries
+                .entry((element.kind, element.depth))
+                .or_default();
+            if entry.text != element.text
+                || entry.generation.checked_add(1) != Some(self.generation)
+            {
+                entry.already_narrated = false;
+            }
+            entry.text.clone_from(&element.text);
+            entry.generation = self.generation;
+        }
+        let narration = self
+            .entries
+            .values_mut()
+            .filter(|entry| {
+                entry.generation == self.generation && (force || !entry.already_narrated)
+            })
+            .map(|entry| {
+                entry.already_narrated = true;
+                entry.text.as_str()
+            })
+            .collect::<Vec<_>>()
+            .join(". ");
+        (!narration.is_empty()).then_some(narration)
+    }
+
+    fn clear(&mut self) {
+        self.generation = 0;
+        self.entries.clear();
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ScreenNarrationInput {
+    MouseMove,
+    MouseAction,
+    KeyboardAction,
+}
+
+/// Per-screen delayed narration owner matching `Screen.scheduleNarration` and
+/// `ScreenNarrationCollector`. The latest localized frame remains in native
+/// runtime state; canonical world and renderer state never own speech timing.
+#[derive(Debug, Default)]
+pub(crate) struct ScreenNarrationRuntime {
+    collector: ScreenNarrationCollector,
+    active: bool,
+    suppress_until: Option<Instant>,
+    narrate_at: Option<Instant>,
+}
+
+impl ScreenNarrationRuntime {
+    pub(crate) fn after_input(&mut self, input: ScreenNarrationInput, now: Instant) {
+        if !self.active {
+            return;
+        }
+        let (delay, ignore_suppression) = match input {
+            ScreenNarrationInput::MouseMove => (SCREEN_NARRATION_MOUSE_MOVE_DELAY, false),
+            ScreenNarrationInput::MouseAction | ScreenNarrationInput::KeyboardAction => {
+                (SCREEN_NARRATION_ACTION_DELAY, true)
+            }
+        };
+        self.narrate_at = now.checked_add(delay);
+        if ignore_suppression {
+            self.suppress_until = None;
+        }
+    }
+
+    pub(crate) fn tick(
+        &mut self,
+        frame: Option<&ScreenNarrationFrame>,
+        now: Instant,
+        narrator: Option<&mut dyn SystemNarrator>,
+    ) {
+        let Some(frame) = frame else {
+            self.reset();
+            return;
+        };
+        if !self.active {
+            self.active = true;
+            self.suppress_until = now.checked_add(SCREEN_NARRATION_SUPPRESS_AFTER_INIT);
+            let text = self.collector.update_and_collect(frame, true);
+            if let (Some(narrator), Some(text)) = (narrator, text) {
+                narrator.say_system_now(&text);
+            }
+            return;
+        }
+        let Some(narrate_at) = self.narrate_at else {
+            return;
+        };
+        if now <= narrate_at || self.suppress_until.is_some_and(|until| now <= until) {
+            return;
+        }
+        self.narrate_at = None;
+        let text = self.collector.update_and_collect(frame, false);
+        if let (Some(narrator), Some(text)) = (narrator, text) {
+            narrator.say_system_now(&text);
+        }
+    }
+
+    fn reset(&mut self) {
+        self.collector.clear();
+        self.active = false;
+        self.suppress_until = None;
+        self.narrate_at = None;
+    }
 }
 
 /// A process-backed TTS adapter. The executable and arguments come only from startup CLI
@@ -169,6 +341,15 @@ impl SystemNarrator for NativeNarratorRuntime {
 mod tests {
     use super::*;
 
+    #[derive(Default)]
+    struct RecordingNarrator(Vec<String>);
+
+    impl SystemNarrator for RecordingNarrator {
+        fn say_system_now(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+    }
+
     #[test]
     fn command_arguments_replace_exact_text_placeholder_or_append_message() {
         assert_eq!(
@@ -204,5 +385,106 @@ mod tests {
         system.say_system_now("spoken");
         assert!(system.speech.pending.is_empty());
         assert!(system.speech.child.is_some());
+    }
+
+    #[test]
+    fn screen_collector_orders_by_kind_and_depth_and_only_repeats_changes() {
+        let mut collector = ScreenNarrationCollector::default();
+        let mut frame = ScreenNarrationFrame::default();
+        frame.add(NarratedElementKind::Usage, 0, "screen usage");
+        frame.add(NarratedElementKind::Position, 2, "row 2");
+        frame.add(NarratedElementKind::Title, 1, "row title");
+        frame.add(NarratedElementKind::Title, 0, "screen title");
+        assert_eq!(
+            collector.update_and_collect(&frame, false).as_deref(),
+            Some("screen title. row title. row 2. screen usage")
+        );
+        assert_eq!(collector.update_and_collect(&frame, false), None);
+
+        let mut changed = frame.clone();
+        changed.add(NarratedElementKind::Title, 1, "replacement title");
+        assert_eq!(
+            collector.update_and_collect(&changed, false).as_deref(),
+            Some("replacement title")
+        );
+        assert_eq!(
+            collector.update_and_collect(&changed, true).as_deref(),
+            Some("screen title. replacement title. row 2. screen usage")
+        );
+
+        let mut absent = ScreenNarrationFrame::default();
+        absent.add(NarratedElementKind::Title, 0, "screen title");
+        assert_eq!(collector.update_and_collect(&absent, false), None);
+        assert_eq!(
+            collector.update_and_collect(&changed, false).as_deref(),
+            Some("replacement title. row 2. screen usage")
+        );
+    }
+
+    #[test]
+    fn screen_runtime_applies_init_suppression_and_vanilla_input_delays() {
+        let start = Instant::now();
+        let mut runtime = ScreenNarrationRuntime::default();
+        let mut narrator = RecordingNarrator::default();
+        let mut first = ScreenNarrationFrame::default();
+        first.add(NarratedElementKind::Title, 0, "Stats");
+        runtime.tick(Some(&first), start, Some(&mut narrator));
+        assert_eq!(narrator.0, ["Stats"]);
+
+        let mut changed = first.clone();
+        changed.add(NarratedElementKind::Title, 1, "General tab");
+        runtime.after_input(
+            ScreenNarrationInput::MouseMove,
+            start + Duration::from_millis(100),
+        );
+        runtime.tick(
+            Some(&changed),
+            start + Duration::from_millis(900),
+            Some(&mut narrator),
+        );
+        assert_eq!(narrator.0, ["Stats"]);
+        runtime.tick(
+            Some(&changed),
+            start + Duration::from_millis(2_001),
+            Some(&mut narrator),
+        );
+        assert_eq!(narrator.0, ["Stats", "General tab"]);
+
+        let mut keyboard_changed = changed.clone();
+        keyboard_changed.add(
+            NarratedElementKind::Position,
+            0,
+            "Screen element 2 out of 3",
+        );
+        runtime.after_input(
+            ScreenNarrationInput::KeyboardAction,
+            start + Duration::from_millis(2_100),
+        );
+        runtime.tick(
+            Some(&keyboard_changed),
+            start + Duration::from_millis(2_300),
+            Some(&mut narrator),
+        );
+        assert_eq!(narrator.0.len(), 2);
+        runtime.tick(
+            Some(&keyboard_changed),
+            start + Duration::from_millis(2_301),
+            Some(&mut narrator),
+        );
+        assert_eq!(
+            narrator.0,
+            ["Stats", "General tab", "Screen element 2 out of 3"]
+        );
+
+        runtime.tick(None, start + Duration::from_secs(3), Some(&mut narrator));
+        runtime.tick(
+            Some(&keyboard_changed),
+            start + Duration::from_secs(4),
+            Some(&mut narrator),
+        );
+        assert_eq!(
+            narrator.0.last().map(String::as_str),
+            Some("Stats. General tab. Screen element 2 out of 3")
+        );
     }
 }
