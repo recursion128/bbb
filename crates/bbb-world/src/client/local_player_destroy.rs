@@ -372,6 +372,7 @@ fn ceil_div_u64(numerator: u64, denominator: u64) -> u64 {
 mod tests {
     use super::super::local_player::LocalPlayerPoseState;
     use super::*;
+    use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_HEAD_SLOT;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeSnapshot as ProtocolAttributeSnapshot,
         BlockPos as ProtocolBlockPos, BlockUpdate,
@@ -393,8 +394,6 @@ mod tests {
 
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
-    const PLAYER_HEAD_EQUIPMENT_SLOT: i32 = 39;
-
     #[test]
     fn fallback_destroy_profile_uses_exact_leaves_membership() {
         let leaves = fallback_local_block_destroy_profile("minecraft:oak_leaves")
@@ -681,7 +680,7 @@ mod tests {
         });
         set_block(&mut world, eye_pos, SOURCE_WATER_BLOCK_STATE_ID);
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-            slot: PLAYER_HEAD_EQUIPMENT_SLOT,
+            slot: VANILLA_PLAYER_INVENTORY_HEAD_SLOT,
             item: enchanted_item_stack(77, 1, vec![(0, 1)]),
         });
 

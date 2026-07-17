@@ -1,6 +1,7 @@
 use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 
+use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_FEET_SLOT;
 use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_BAD_OMEN_ID;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
@@ -121,7 +122,6 @@ const HONEY_BLOCK_STATE_ID: i32 = 21816;
 const POWDER_SNOW_BLOCK_STATE_ID: i32 = 24689;
 const FREEZE_IMMUNE_WEARABLE_ITEM_ID: i32 = 42;
 const LEATHER_BOOTS_ITEM_ID: i32 = 43;
-const PLAYER_FEET_EQUIPMENT_SLOT_ID: i32 = 36;
 const CHEST_SINGLE_NORTH_BLOCK_STATE_ID: i32 = 3988;
 const CHEST_LEFT_NORTH_BLOCK_STATE_ID: i32 = 3990;
 const TRAPPED_CHEST_RIGHT_NORTH_BLOCK_STATE_ID: i32 = 11212;
@@ -4106,7 +4106,7 @@ fn local_player_freeze_immune_wearable_in_powder_snow_thaws_instead_of_freezing(
     set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
     world.set_freeze_immune_wearable_item_ids(BTreeSet::from([FREEZE_IMMUNE_WEARABLE_ITEM_ID]));
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_FEET_EQUIPMENT_SLOT_ID,
+        slot: VANILLA_PLAYER_INVENTORY_FEET_SLOT,
         item: item_stack(FREEZE_IMMUNE_WEARABLE_ITEM_ID, 1),
     });
 
@@ -4129,7 +4129,7 @@ fn local_player_empty_freeze_immune_wearable_stack_in_powder_snow_still_freezes(
     set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
     world.set_freeze_immune_wearable_item_ids(BTreeSet::from([FREEZE_IMMUNE_WEARABLE_ITEM_ID]));
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_FEET_EQUIPMENT_SLOT_ID,
+        slot: VANILLA_PLAYER_INVENTORY_FEET_SLOT,
         item: item_stack(FREEZE_IMMUNE_WEARABLE_ITEM_ID, 0),
     });
 
@@ -4195,7 +4195,7 @@ fn local_player_freeze_immune_non_leather_boots_do_not_walk_on_powder_snow() {
     set_test_block(&mut world, 0, 1, 0, POWDER_SNOW_BLOCK_STATE_ID);
     world.set_freeze_immune_wearable_item_ids(BTreeSet::from([FREEZE_IMMUNE_WEARABLE_ITEM_ID]));
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_FEET_EQUIPMENT_SLOT_ID,
+        slot: VANILLA_PLAYER_INVENTORY_FEET_SLOT,
         item: item_stack(FREEZE_IMMUNE_WEARABLE_ITEM_ID, 1),
     });
     world.set_local_player_pose(LocalPlayerPoseState {
@@ -5103,7 +5103,7 @@ fn item_stack_with_use_effects(
 fn equip_powder_snow_walkable_boots(world: &mut WorldStore, count: i32) {
     world.set_powder_snow_walkable_foot_item_ids(BTreeSet::from([LEATHER_BOOTS_ITEM_ID]));
     world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_FEET_EQUIPMENT_SLOT_ID,
+        slot: VANILLA_PLAYER_INVENTORY_FEET_SLOT,
         item: item_stack(LEATHER_BOOTS_ITEM_ID, count),
     });
 }

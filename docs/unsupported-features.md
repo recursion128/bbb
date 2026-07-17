@@ -477,8 +477,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Inventory profile and native attack-range component fixtures must consume the generated
   DataComponentType catalog ids; local profile/attack-range component aliases must not return.
   Player inventory equipment-slot indices must remain derived from `Inventory.java` through the
-  generated equipment-slot catalog; world/native 36-42 aliases and offhand button literals must
-  not return.
+  generated equipment-slot catalog; world/native 36-42 aliases (including movement/destroy
+  fixtures) and offhand button literals must not return.
   World/native air block-state fixtures must resolve the embedded 26.1 block-state report through
   `vanilla_air_block_state_id`; local fixed `AIR=0` aliases must not return.
   World and item-model max-stack-size logic must consume the generated `Item.java` default and

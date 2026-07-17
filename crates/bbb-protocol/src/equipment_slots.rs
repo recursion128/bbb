@@ -409,6 +409,12 @@ mod tests {
             fs::read_to_string(crates.join("bbb-world/src/client/inventory/slot_ops.rs")).unwrap();
         let input_tests = fs::read_to_string(crates.join("bbb-native/src/input/tests.rs")).unwrap();
         let mouse = fs::read_to_string(crates.join("bbb-native/src/input/mouse.rs")).unwrap();
+        let destroy =
+            fs::read_to_string(crates.join("bbb-world/src/client/local_player_destroy.rs"))
+                .unwrap();
+        let movement =
+            fs::read_to_string(crates.join("bbb-world/src/client/local_player_movement/tests.rs"))
+                .unwrap();
         assert!(slot_ops.contains("VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT"));
         assert!(
             !slot_ops
@@ -418,11 +424,15 @@ mod tests {
         );
         assert!(input_tests.contains("VANILLA_PLAYER_INVENTORY_CHEST_SLOT"));
         assert!(mouse.contains("VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT"));
+        assert!(destroy.contains("VANILLA_PLAYER_INVENTORY_HEAD_SLOT"));
+        assert!(movement.contains("VANILLA_PLAYER_INVENTORY_FEET_SLOT"));
         let consumers = [
             inventory.as_str(),
             slot_ops.as_str(),
             input_tests.as_str(),
             mouse.as_str(),
+            destroy.as_str(),
+            movement.as_str(),
         ];
         for removed in [
             "PLAYER_FEET_EQUIPMENT_SLOT",
