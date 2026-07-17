@@ -22745,16 +22745,17 @@ mod generated_catalog_guards {
         assert!(native_scene_production_helper
             .contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));
         assert_eq!(
+            native_kind.matches("ageable_baby(").count(),
             native_kind
                 .matches("ageable_baby(entity_type_id, data_values)")
-                .count(),
-            15
+                .count()
         );
         assert_eq!(
+            native_variants.matches("ageable_baby(").count(),
             native_variants
                 .matches("ageable_baby(entity_type_id, values)")
-                .count(),
-            17
+                .count()
+                + 1
         );
         assert!(!native_kind.contains("ageable_baby(data_values)"));
         assert!(!native_variants.contains("ageable_baby(values)"));

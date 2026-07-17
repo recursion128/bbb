@@ -18471,3 +18471,5 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native 删除 Squid/GlowSquid type arms，统一从 renderer kind 投影 glow 标志；baby 状态继续
   通过 generated inherited accessor 解析，GlowSquid dark-ticks 光照保持独立。
 - renderer generator 输出反向守卫，禁止 native kind dispatch 恢复两个 entity-type 分支。
+- metadata generator 的 baby projection guard 改为验证所有调用都携带 entity type，而不是
+  锁死会随合法 family 合并变化的调用点数量。
