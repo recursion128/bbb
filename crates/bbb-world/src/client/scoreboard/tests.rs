@@ -185,6 +185,27 @@ fn scoreboard_display_objective_can_be_cleared_by_empty_name() {
 }
 
 #[test]
+fn configuration_reentry_rebuilds_listener_scoreboard_and_preserves_packet_counters() {
+    let mut store = WorldStore::new();
+
+    assert!(store.apply_set_objective(protocol_set_objective(
+        "old_session",
+        SetObjectiveMethod::Add,
+        Some(protocol_objective_parameters(
+            "Old session",
+            ObjectiveRenderType::Integer,
+            None,
+        )),
+    )));
+
+    store.clear_client_level();
+
+    assert_eq!(store.scoreboard(), &ScoreboardState::default());
+    assert_eq!(store.counters().set_objective_packets, 1);
+    assert_eq!(store.counters().set_objective_updates_applied, 1);
+}
+
+#[test]
 fn scoreboard_teams_add_change_join_leave_and_remove() {
     let mut store = WorldStore::new();
 

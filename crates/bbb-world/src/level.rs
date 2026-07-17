@@ -518,6 +518,12 @@ impl WorldStore {
         self.removed_player_vehicle_id = None;
         self.last_projectile_power = None;
         self.clear_active_player_info();
+        // A configuration re-entry constructs a new ClientPacketListener. Its
+        // Scoreboard and ClientWaypointManager are fresh final fields and are
+        // not carried by CommonListenerCookie.
+        self.scoreboard = crate::ScoreboardState::default();
+        self.waypoints = crate::ClientWaypointsState::default();
+        self.counters.waypoints_tracked = 0;
         self.clear_level_bound_state();
     }
 

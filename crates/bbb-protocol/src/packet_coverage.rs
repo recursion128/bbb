@@ -1478,7 +1478,7 @@ mod tests {
     }
 
     #[test]
-    fn play_start_configuration_is_closed() {
+    fn play_start_configuration_keeps_listener_state_reset_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -1487,10 +1487,24 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_START_CONFIGURATION"
             })
             .expect("play start configuration coverage row");
-        assert!(entry
+        let partial = entry
             .coverage
-            .values()
-            .all(|cell| cell.status == PacketCoverageStatus::Complete));
+            .iter()
+            .filter(|(_, cell)| cell.status == PacketCoverageStatus::Partial)
+            .map(|(dimension, _)| dimension.as_str())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            partial,
+            BTreeSet::from(["canonical_apply", "runtime_side_effect", "tests"])
+        );
+        assert_eq!(
+            entry.coverage["decode"].status,
+            PacketCoverageStatus::Complete
+        );
+        assert_eq!(
+            entry.coverage["ownership"].status,
+            PacketCoverageStatus::Complete
+        );
     }
 
     #[test]

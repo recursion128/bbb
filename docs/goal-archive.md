@@ -18775,3 +18775,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   remains the full display-and-protocol reset path.
 - Added focused world coverage for the reset boundary and kept play Login partial while narrowing
   its remaining session-initialization gap to profile-key validation and debug/camera/player state.
+
+# 2026-07-17: Rebuild listener scoreboard and waypoints on reconfiguration
+
+- Matched the fresh `Scoreboard` and `ClientWaypointManager` final fields constructed by each
+  `ClientPacketListener`; neither manager is carried through `CommonListenerCookie` when play
+  re-enters configuration.
+- `clear_client_level` now drops old-session objectives, scores, teams, tracked waypoints, and the
+  last waypoint event while preserving cumulative packet/apply counters. The derived active
+  waypoint count returns to zero.
+- Added focused world regressions for both manager boundaries and kept the remaining fresh-listener
+  command, recipe, advancement, debug, and command-suggestion reset work explicit in the ledger.

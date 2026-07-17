@@ -91,6 +91,10 @@ Owner: `bbb-protocol`
   partial dimension/gameplay projection: acquire the services profile-key set,
   validate signed profile keys, and reset the remaining level-bound
   debug/camera/player state.
+- Rebuild the per-`ClientPacketListener` command tree, server recipe container,
+  advancement manager, debug subscriber, and pending command-suggestion state
+  when play re-enters configuration; these managers are not retained by
+  `CommonListenerCookie`.
 - Complete play Respawn lifecycle from
   `ClientPacketListener.handleRespawn`: reconstruct the local player according
   to both keep bits and reset music/debug-subscriber state. The current world

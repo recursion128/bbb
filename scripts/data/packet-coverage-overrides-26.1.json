@@ -1373,7 +1373,8 @@
           "crates/bbb-world/src/level.rs#clear_client_level",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleConfigurationStart"
         ],
-        "status": "complete"
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
       },
       "decode": {
         "evidence": [
@@ -1395,7 +1396,8 @@
           "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleConfigurationStart"
         ],
-        "status": "complete"
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
       },
       "tests": {
         "evidence": [
@@ -1405,9 +1407,13 @@
           "crates/bbb-net/src/event_stream.rs#play_start_configuration_flushes_pending_chat_acknowledgement_first",
           "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state",
           "crates/bbb-net/src/probe/play.rs#probe_start_configuration_flushes_pending_chat_acknowledgement_first",
-          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#start_configuration_flushes_pending_chat_acknowledgement_before_clearing_level"
+          "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#start_configuration_flushes_pending_chat_acknowledgement_before_clearing_level",
+          "crates/bbb-world/src/client/scoreboard/tests.rs#configuration_reentry_rebuilds_listener_scoreboard_and_preserves_packet_counters",
+          "crates/bbb-world/src/client/waypoints.rs#configuration_reentry_rebuilds_listener_waypoints_and_preserves_packet_counters",
+          "crates/bbb-protocol/src/packet_coverage.rs#play_start_configuration_keeps_listener_state_reset_open"
         ],
-        "status": "complete"
+        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+        "status": "partial"
       }
     },
     "play/clientbound/CLIENTBOUND_STORE_COOKIE": {

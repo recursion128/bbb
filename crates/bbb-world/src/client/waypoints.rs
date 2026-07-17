@@ -285,6 +285,30 @@ mod tests {
     }
 
     #[test]
+    fn configuration_reentry_rebuilds_listener_waypoints_and_preserves_packet_counters() {
+        let mut store = WorldStore::new();
+        let id = Uuid::from_u128(0x00112233445566778899aabbccddeeff);
+
+        assert!(store.apply_waypoint(ProtocolTrackedWaypointPacket {
+            operation: WaypointOperation::Track,
+            waypoint: protocol_waypoint(
+                WaypointIdentifier::Uuid(id),
+                ProtocolWaypointData::Position(WaypointVec3i {
+                    x: 10,
+                    y: 64,
+                    z: -5,
+                }),
+            ),
+        }));
+
+        store.clear_client_level();
+
+        assert_eq!(store.client_waypoints(), &ClientWaypointsState::default());
+        assert_eq!(store.counters().waypoint_packets, 1);
+        assert_eq!(store.counters().waypoints_tracked, 0);
+    }
+
+    #[test]
     fn ignores_missing_or_mismatched_waypoint_changes() {
         let mut store = WorldStore::new();
         let id = Uuid::from_u128(0x11112222333344445555666677778888);
