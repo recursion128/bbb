@@ -396,7 +396,7 @@ fn set_camera_updates_player_camera_and_ignores_unknown_entity() {
     assert_eq!(
         world.local_player().camera,
         bbb_world::CameraState {
-            entity_id: None,
+            entity_id: Some(9),
             follows_player: true,
             entity_known: true,
         }

@@ -72,6 +72,18 @@ fn first_local_boat_mount_projects_yaw_and_dismount_overlay() {
         99,
     ))))
     .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    world.set_local_player_pose(LocalPlayerPoseState {
+        y_rot: 12.0,
+        ..LocalPlayerPoseState::default()
+    });
+
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(AddEntity {
         y_rot: 75.0,
         ..protocol_add_entity_with_type(10, VANILLA_ENTITY_TYPE_OAK_BOAT_ID)
@@ -85,15 +97,9 @@ fn first_local_boat_mount_projects_yaw_and_dismount_overlay() {
     )))
     .unwrap();
 
-    let mut world = WorldStore::new();
-    world.set_local_player_pose(LocalPlayerPoseState {
-        y_rot: 12.0,
-        ..LocalPlayerPoseState::default()
-    });
-    let mut counters = NetCounters::default();
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &None),
-        3
+        2
     );
 
     assert_eq!(world.local_player_pose().unwrap().y_rot, 75.0);
@@ -111,6 +117,15 @@ fn removed_player_vehicle_teleport_queues_forced_player_pos_rot() {
         99,
     ))))
     .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    world.set_local_player_pose(LocalPlayerPoseState::default());
+
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
         protocol_add_entity(10),
     )))
@@ -146,12 +161,9 @@ fn removed_player_vehicle_teleport_queues_forced_player_pos_rot() {
     .unwrap();
 
     let (command_tx, mut command_rx) = mpsc::channel(2);
-    let mut world = WorldStore::new();
-    world.set_local_player_pose(LocalPlayerPoseState::default());
-    let mut counters = NetCounters::default();
     assert_eq!(
         drain_net_events(&mut rx, &mut world, &mut counters, &Some(command_tx),),
-        5
+        4
     );
 
     let NetCommand::MovePlayer(command) = command_rx.try_recv().unwrap() else {
