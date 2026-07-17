@@ -376,6 +376,65 @@ mod tests {
         );
     }
 
+    fn starts_with_integer_literal(source: &str) -> bool {
+        source
+            .trim_start()
+            .strip_prefix('-')
+            .unwrap_or(source.trim_start())
+            .chars()
+            .next()
+            .is_some_and(|character| character.is_ascii_digit())
+    }
+
+    fn contains_numeric_recipe_book_category_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction = compact.match_indices("category_id:").any(|(offset, _)| {
+            starts_with_integer_literal(&compact[offset + "category_id:".len()..])
+        });
+        let numeric_field_comparison = compact.match_indices(".category_id").any(|(offset, _)| {
+            let suffix = &compact[offset + ".category_id".len()..];
+            [",", "==", "!=", "="].iter().any(|separator| {
+                suffix
+                    .strip_prefix(separator)
+                    .is_some_and(starts_with_integer_literal)
+            })
+        });
+        let numeric_json_comparison =
+            compact
+                .match_indices("[\"category_id\"]")
+                .any(|(offset, _)| {
+                    let suffix = &compact[offset + "[\"category_id\"]".len()..];
+                    [",", "==", "!=", "="].iter().any(|separator| {
+                        suffix
+                            .strip_prefix(separator)
+                            .is_some_and(starts_with_integer_literal)
+                    })
+                });
+        numeric_construction || numeric_field_comparison || numeric_json_comparison
+    }
+
+    #[test]
+    fn numeric_recipe_book_category_guard_covers_semantic_fixtures() {
+        assert!(contains_numeric_recipe_book_category_reference(
+            "category_id: 10,"
+        ));
+        assert!(contains_numeric_recipe_book_category_reference(
+            "assert_eq!(entry.category_id, 2);"
+        ));
+        assert!(contains_numeric_recipe_book_category_reference(
+            "assert_eq!(entry[\"category_id\"], 3);"
+        ));
+        assert!(!contains_numeric_recipe_book_category_reference(
+            "category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,"
+        ));
+        assert!(!contains_numeric_recipe_book_category_reference(
+            "category_id: id + 10,"
+        ));
+    }
+
     #[test]
     fn production_sources_do_not_redeclare_recipe_wire_facts() {
         fn visit(directory: &Path, violations: &mut Vec<String>) {
@@ -389,13 +448,19 @@ mod tests {
                     continue;
                 }
                 let display = path.to_string_lossy();
-                if display.ends_with("/recipe_wire_types.rs")
-                    || display.ends_with("/tests.rs")
-                    || display.contains("/tests/")
-                {
+                if display.ends_with("/recipe_wire_types.rs") {
                     continue;
                 }
                 let source = fs::read_to_string(&path).unwrap();
+                if contains_numeric_recipe_book_category_reference(&source) {
+                    violations.push(format!(
+                        "{}: numeric recipe-book category reference",
+                        path.display()
+                    ));
+                }
+                if display.ends_with("/tests.rs") || display.contains("/tests/") {
+                    continue;
+                }
                 let production = source.split("#[cfg(test)]").next().unwrap_or(&source);
                 let old_category_tables = [
                     "CRAFTING_BUILDING_BLOCKS",

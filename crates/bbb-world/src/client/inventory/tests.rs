@@ -17,6 +17,7 @@ use bbb_protocol::packets::{
     UpdateTags as ProtocolUpdateTags, UseEffectsSummary as ProtocolUseEffectsSummary,
     Vec3d as ProtocolVec3d,
 };
+use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID;
 use uuid::Uuid;
 
 fn open_test_container(store: &mut WorldStore, container_id: i32) {
@@ -9108,7 +9109,7 @@ fn recipe_book_crafting_entry_with_optional_requirements(
                 furnace: None,
             },
             group: None,
-            category_id: 10,
+            category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
             crafting_requirements,
         },
         flags: 0,

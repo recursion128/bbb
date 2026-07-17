@@ -40,6 +40,7 @@ use bbb_protocol::packets::{
     WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
 use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID;
+use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID;
 use bbb_world::{
     BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, LightData,
     PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
@@ -2257,7 +2258,10 @@ fn client_recipe_book_reads_canonical_world_state() {
     assert!(known.contains_key("7"));
     assert!(!known.contains_key("8"));
     assert_eq!(recipe_book["known"]["7"]["id"]["index"], 7);
-    assert_eq!(recipe_book["known"]["7"]["category_id"], 10);
+    assert_eq!(
+        recipe_book["known"]["7"]["category_id"],
+        VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID
+    );
     assert_eq!(
         recipe_book["known"]["7"]["crafting_requirements"][0]["item_ids"],
         json!([42])
@@ -4010,7 +4014,7 @@ fn recipe_book_entry(id: i32, notification: bool, highlight: bool) -> RecipeBook
                 furnace: None,
             },
             group: None,
-            category_id: 10,
+            category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
             crafting_requirements: Some(vec![IngredientSummary {
                 tag: None,
                 item_ids: vec![42],

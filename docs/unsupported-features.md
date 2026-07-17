@@ -162,6 +162,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   layers, must use the same generated value constants and are covered by that generator guard.
   Built-in enum component maps must pair generated DataComponentType keys with the generated enum
   value constants on both tuple sides; the gameplay-id generator guards semantic fixtures.
+  Known vanilla recipe-book category fixtures must use the generated `RecipeBookCategories`
+  constants in protocol, world, net, control, and native consumers; the recipe catalog generator
+  rejects numeric field construction and semantic comparisons while leaving raw wire payload
+  samples and intentionally open server-defined category ids under their existing owners.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test

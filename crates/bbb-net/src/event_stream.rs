@@ -5,6 +5,8 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
+#[cfg(test)]
+use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID;
 use bbb_protocol::{
     frame::encode_packet,
     packets::{self, ClientIntent, PlayerPositionState, Transfer},
@@ -3805,7 +3807,7 @@ mod tests {
                         furnace: None,
                     },
                     group: Some(4),
-                    category_id: 2,
+                    category_id: VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID,
                     crafting_requirements: Some(vec![packets::IngredientSummary {
                         tag: None,
                         item_ids: vec![3, 5],

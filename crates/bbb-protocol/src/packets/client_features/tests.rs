@@ -5,6 +5,7 @@ use crate::{
     packets::{
         decode_play_clientbound, DataComponentPatchSummary, ItemStackSummary, PlayClientbound,
     },
+    recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
 };
 
 #[test]
@@ -155,7 +156,7 @@ fn decodes_recipe_book_add_packet_wire_order() {
                         furnace: None,
                     },
                     group: Some(7),
-                    category_id: 10,
+                    category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
                     crafting_requirements: Some(vec![IngredientSummary {
                         tag: None,
                         item_ids: vec![42, 43],

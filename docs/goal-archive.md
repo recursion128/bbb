@@ -19047,3 +19047,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   generated DataComponentType and enum value constants.
 - Added a generator-owned tuple guard that checks both map keys and values, covering DyeColor and
   the eight generated animal enum value catalogs without touching protocol wire samples.
+
+# 2026-07-17: Derive semantic recipe-book category ids
+
+- Replaced known Stonecutter, crafting-equipment, and crafting-misc category ordinals in protocol,
+  world, net, control, and native semantic fixtures with constants generated from vanilla
+  `RecipeBookCategories` registration order.
+- Added a recipe-catalog generator guard for numeric category field construction, typed field
+  comparisons, and JSON projection comparisons. Raw packet payload samples and deliberately open
+  server category ids remain separately owned.

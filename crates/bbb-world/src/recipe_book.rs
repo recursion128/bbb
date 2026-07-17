@@ -6,6 +6,8 @@ use bbb_protocol::packets::{
     RecipeBookTypeSettings as ProtocolRecipeBookTypeSettings,
     RecipeDisplayEntry as ProtocolRecipeDisplayEntry,
 };
+#[cfg(test)]
+use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID;
 use serde::{Deserialize, Serialize};
 
 use crate::WorldStore;
@@ -211,7 +213,7 @@ mod tests {
                     furnace: None,
                 },
                 group: None,
-                category_id: 10,
+                category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
                 crafting_requirements: Some(vec![IngredientSummary {
                     tag: None,
                     item_ids: vec![42],

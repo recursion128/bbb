@@ -47,6 +47,7 @@ use bbb_protocol::packets::{
     WaypointVec3i, WrittenBookContentSummary,
 };
 use bbb_protocol::particle_types::*;
+use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID;
 use bbb_world::{
     advance_cobweb_place_particle_randoms, vanilla_entity_metadata_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
@@ -253,7 +254,7 @@ fn recipe_book_entry(id: i32, notification: bool, highlight: bool) -> RecipeBook
                 furnace: None,
             },
             group: None,
-            category_id: 10,
+            category_id: VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
             crafting_requirements: Some(vec![IngredientSummary {
                 tag: None,
                 item_ids: vec![42],

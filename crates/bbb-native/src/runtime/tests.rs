@@ -28,6 +28,7 @@ use bbb_protocol::packets::{
     SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
     ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
+use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID;
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
@@ -11807,7 +11808,7 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                     furnace: None,
                 },
                 group: None,
-                category_id: 3,
+                category_id: VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID,
                 crafting_requirements: None,
             },
             flags: 0,

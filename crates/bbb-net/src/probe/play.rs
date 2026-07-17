@@ -2869,8 +2869,14 @@ mod tests {
         let recipe_book = report.world.recipe_book();
 
         assert!(!recipe_book.known.contains_key(&7));
-        assert_eq!(recipe_book.known.get(&8).unwrap().category_id, 18);
-        assert_eq!(recipe_book.known.get(&9).unwrap().category_id, 19);
+        assert_eq!(
+            recipe_book.known.get(&8).unwrap().category_id,
+            probe_recipe_category_id(8)
+        );
+        assert_eq!(
+            recipe_book.known.get(&9).unwrap().category_id,
+            probe_recipe_category_id(9)
+        );
         assert!(recipe_book.highlights.is_empty());
         assert_eq!(recipe_book.notification_ids, vec![9]);
         assert_eq!(recipe_book.settings, settings);
@@ -4921,6 +4927,10 @@ mod tests {
         );
     }
 
+    fn probe_recipe_category_id(id: i32) -> i32 {
+        id + 10
+    }
+
     fn probe_recipe_entry(id: i32, notification: bool, highlight: bool) -> RecipeBookAddEntry {
         RecipeBookAddEntry {
             contents: RecipeDisplayEntry {
@@ -4932,7 +4942,7 @@ mod tests {
                     furnace: None,
                 },
                 group: None,
-                category_id: id + 10,
+                category_id: probe_recipe_category_id(id),
                 crafting_requirements: Some(vec![IngredientSummary {
                     tag: None,
                     item_ids: vec![40 + id],
