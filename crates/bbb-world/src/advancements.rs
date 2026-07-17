@@ -164,6 +164,11 @@ impl WorldStore {
         first_root
     }
 
+    pub(crate) fn reset_advancements_for_new_listener(&mut self) {
+        self.advancements = ClientAdvancementsState::default();
+        self.refresh_advancement_counters();
+    }
+
     fn remove_advancement_and_children(&mut self, id: &str) -> usize {
         let children: Vec<String> = self
             .advancements
@@ -455,6 +460,36 @@ mod tests {
         assert_eq!(store.advancements().selected_tab, None);
         assert_eq!(store.selected_advancements_tab(), None);
         assert_eq!(store.counters().select_advancements_tab_packets, 4);
+    }
+
+    #[test]
+    fn configuration_reentry_rebuilds_advancement_manager_and_preserves_packet_counters() {
+        let mut store = WorldStore::new();
+        store.apply_update_advancements(UpdateAdvancements {
+            reset: true,
+            added: vec![advancement("minecraft:story/root", None)],
+            removed: Vec::new(),
+            progress: Vec::new(),
+            show_advancements: false,
+        });
+        store.apply_select_advancements_tab(SelectAdvancementsTab {
+            tab: Some("minecraft:story/root".to_string()),
+        });
+
+        store.clear_client_level();
+
+        assert_eq!(
+            store.client_advancements(),
+            &ClientAdvancementsState::default()
+        );
+        assert_eq!(store.counters().update_advancements_packets, 1);
+        assert_eq!(store.counters().update_advancements_reset_packets, 1);
+        assert_eq!(store.counters().advancements_added_received, 1);
+        assert_eq!(store.counters().select_advancements_tab_packets, 1);
+        assert_eq!(store.counters().advancements_tracked, 0);
+        assert_eq!(store.counters().advancement_roots_tracked, 0);
+        assert_eq!(store.counters().advancement_progress_tracked, 0);
+        assert_eq!(store.counters().advancement_progress_criteria_tracked, 0);
     }
 
     #[test]

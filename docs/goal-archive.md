@@ -18806,3 +18806,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   same projection. The cumulative Update Recipes packet count remains diagnostic history.
 - Added a focused regression with both property-set items and a stonecutter entry, and narrowed the
   remaining fresh-listener reset ledger to advancements and debug subscriptions.
+
+# 2026-07-17: Rebuild listener advancements on reconfiguration
+
+- Reset the advancement tree, progress, root order, and selected tab when play re-enters
+  configuration, matching the fresh `ClientAdvancements` manager owned by the next
+  `ClientPacketListener`.
+- Reused the canonical advancement counter projection so active tree/progress counts return to
+  zero while cumulative update, reset, add, and tab-selection counters remain available.
+- Added a focused regression seeded with a selected root advancement and narrowed the remaining
+  fresh-listener manager gap to the debug subscriber.

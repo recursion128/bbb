@@ -1413,6 +1413,7 @@
           "crates/bbb-world/src/commands.rs#configuration_reentry_rebuilds_command_tree_and_preserves_packet_counters",
           "crates/bbb-world/src/client/command_suggestions.rs#configuration_reentry_rebuilds_suggestion_provider_and_preserves_packet_counters",
           "crates/bbb-world/src/recipes.rs#configuration_reentry_rebuilds_recipe_container_and_preserves_packet_counters",
+          "crates/bbb-world/src/advancements.rs#configuration_reentry_rebuilds_advancement_manager_and_preserves_packet_counters",
           "crates/bbb-protocol/src/packet_coverage.rs#play_start_configuration_keeps_listener_state_reset_open"
         ],
         "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
