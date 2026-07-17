@@ -101,7 +101,13 @@
 
 ## 提交前门禁
 
-统一入口 `scripts/cargo-dev.sh gate`，等价于：
+每个 slice 提交前必须完成：受影响 crate 的 focused tests、
+`cargo fmt --all --check`、`git diff --check`、完整 diff review，以及文档有变化时的
+`scripts/docs-lint.sh`。纯文档/memory slice 没有受影响 crate 的 focused test，但其它
+切片检查不省略。检查通过后以正常提交保持工作树干净；低风险相关 slice 是否立即运行
+完整门禁，由下方 checkpoint 批次规则决定。
+
+完整门禁统一入口 `scripts/cargo-dev.sh gate`，等价于：
 
 - `scripts/docs-lint.sh`
 - `cargo fmt --all --check`
@@ -117,7 +123,6 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
 每次切换代价是整仓重编（实测见 `docs/cargo-build-performance.md`）。
 `cargo check` 一条不可省：test 构建把 test-only 用法算作使用，只跑
 `cargo test` 会漏掉非测试（交付 bin）构建的 unused/dead-code lint。
-纯文档/memory slice 只需 `git diff --check`。
 
 ## Slice 工作流（每轮）
 
@@ -140,14 +145,27 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
    3. 实现 + focused test；随机行为用确定性 seed 或固定样本；
    4. 更新账本条目；已完成描述写入 `docs/goal-archive.md`（不是本文件）；
       本文件对应队列项划掉或改写其剩余部分；
-   5. 过门禁，独立提交（英文祈使句单行 message，沿用仓库风格）。
-      连续同族机械 slice 可用下方批量门禁模式替代逐个完整 gate。
-5. **批量门禁**（仅限连续 ≤5 个同族机械 slice：同一派生/迁移模板、低风险、
-   focused test 覆盖全部改动面）：每个 slice 过 `scripts/docs-lint.sh` +
-   `cargo fmt --all --check` + focused tests + `git diff --check` 后即提交；
-   批次结束、换族或本轮收尾前运行一次完整 gate。完整 gate 失败时用
-   `scripts/cargo-dev.sh batch-gate <last-green>..HEAD` 定位首个坏提交并
-   fix-forward 提交修复；完整 gate 通过前不得开始下一批或结束本轮。
+   5. 运行本节规定的 slice 检查，审查 diff 后独立提交（英文祈使句单行
+      message，沿用仓库风格）；再按下方 checkpoint 规则继续或结束批次。
+5. **Checkpoint 批次**：仍一次只实现一个完整 slice，不并行启动多个功能。
+   连续 2～4 个语义相关且风险可局部界定的低风险 slice 可以组成一个批次；每个
+   slice 各自完成 focused tests、fmt check、diff check、按需 docs lint、diff review
+   和干净提交。正常批次只在最新提交运行一次 `scripts/cargo-dev.sh gate`，通过后批次
+   内所有提交视为已验证，不对每个提交重复完整 workspace gate。
+   - 累计第 4 个提交后立即结束批次。即将切换语义领域，或即将向用户交付、停止、
+     push、merge、发布时，也必须先结束当前批次并在 tip 运行完整门禁。因这些条件
+     提前结束时，实际批次可以只有 1 个提交。
+   - 修改协议编解码、Cargo/workspace 配置、构建脚本、代码生成器、`unsafe`、并发或
+     核心架构属于高风险：开始前先门禁并关闭已有低风险批次；该高风险 slice 自身
+     保持“一 slice、一完整门禁、一提交”，不得并入 checkpoint 批次。focused test
+     异常或风险无法局部界定时同样立即结束批次。
+   - 批次 tip 完整门禁失败时，先依据失败项和 focused tests 定位；仍无法确定引入
+     提交时，才运行 `scripts/cargo-dev.sh batch-gate <last-gated-commit>..HEAD` 查找首个
+     失败提交。`batch-gate` 不是正常批次入口。采用正常 fix-forward 提交修复，不重写
+     历史，然后重新门禁 tip；完整门禁通过前不得开始下一批或交付。
+   - 主 agent 必须记录最近一次通过完整门禁的 commit hash。进度更新和最终交付必须
+     报告本批次提交、focused test 结果、完整门禁结果和最近已门禁 commit。任何准备
+     交付或合并的 HEAD 都必须已通过完整门禁。
 6. **队列维护**：队列消化顺序见"客户端差异优先级"首行；当前命名 milestone
    无可执行项时顺延下一条，垂直依赖只前移能恢复该 milestone/playable 场景的最小
    slice；结转项只在重启判据满足后入队；新发现工作按优先级插队并在账本立条目。
@@ -371,7 +389,7 @@ unsupported 值安全保留或省略且可诊断；连接切换不泄漏旧 regi
 
 目标是用真实 vanilla 26.1 offline-mode server 和可复现 fixture 同时验证跨 crate
 集成，不让大量 focused unit tests 掩盖 protocol→net→world→native→renderer/audio 的
-连接级断裂。标准 pre-commit gate 保持快速；新增 `playable-gate` 作为 P1 milestone、
+连接级断裂。标准 workspace checkpoint gate 保持快速；新增 `playable-gate` 作为 P1 milestone、
 session/registry 大改和队列关闭时的权威慢门禁，CI/本地缺 Java server 时必须运行等价
 recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实现与证据归档见
 `docs/goal-archive.md`；当前命令入口为 `scripts/playable-gate.sh`。
@@ -566,7 +584,7 @@ model/font/sound/texture handle。
 5. **平台与发布面**：明确支持的 OS/GPU/backend/窗口输入矩阵，验证 DPI/fullscreen/
    focus、keyboard/mouse/clipboard/IME、无音频设备和 headless probe；启动配置只走 CLI，
    提供版本/协议/pack-format、日志、诊断快照和可复现启动参数，不增加 in-game options UI。
-6. **分层门禁**：快速 pre-commit gate 保持现状；fuzz corpus、performance benchmark、live
+6. **分层门禁**：快速 workspace checkpoint gate 保持现有命令内容；fuzz corpus、performance benchmark、live
    playable 与 soak 进入可单独执行的 milestone/CI gate，失败产物可归档且命令、seed、
    pack/world fixture 可复现。
 

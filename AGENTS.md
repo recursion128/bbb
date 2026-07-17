@@ -24,7 +24,8 @@ configuration UI.
 - Build/target/cache policy and measured build baselines:
   `docs/cargo-build-performance.md`
 - Current priorities, hard constraints, structural invariants, and the
-  pre-commit gate: `goal.md`; the feature gap ledger: `docs/unsupported-features.md`
+  slice/checkpoint gate policy: `goal.md`; the feature gap ledger:
+  `docs/unsupported-features.md`
 - For packet ids and wire formats, prefer vanilla `GameProtocols.java` and the
   relevant `Clientbound*Packet` / `Serverbound*Packet` class.
 - For client behavior, inspect `ClientPacketListener`, `ClientLevel`,
@@ -36,7 +37,7 @@ configuration UI.
 
 - The main agent owns the complete slice by default: task selection, planning,
   vanilla-source verification, implementation, focused tests, integration, review,
-  the final gate, and the commit.
+  the slice commit, and the applicable checkpoint or high-risk full gate.
 - Subagents are optional concurrency tools, not a default topology. Do not spawn one
   merely because a role or execution slot is available.
 - Explorer agents are useful only for bounded, read-only questions that can be
@@ -56,7 +57,8 @@ on temporary branches and the main agent remains the only merger and final commi
 Use a single-slice pipeline rather than assigning several complete features at once.
 The default path is solo: the main agent verifies the gap and vanilla behavior,
 implements the slice, runs focused tests, updates documentation, reviews the diff,
-runs the gate, and commits without delegation.
+runs the per-slice checks, and commits without delegation. Related low-risk slices
+may share a later checkpoint gate under the policy in `goal.md`.
 
 Spawn a subagent only when the expected critical-path saving is greater than the
 setup, context-transfer, worktree, integration, and review cost. In particular, the
@@ -88,13 +90,14 @@ For a parallel slice, run three stages:
    fewest workers that produce real critical-path savings. Do not start another
    complete slice before the current slice is integrated and committed.
 3. **Review and closeout**: workers run focused tests only. The main agent reviews the
-   integrated diff, runs formatting, diff checks, the authoritative full gate, and
-   the final commit once. Add a read-only reviewer only when diff size, ambiguity, or
-   regression risk justifies the extra pass.
+   integrated diff, runs the required per-slice checks, and makes the slice commit.
+   The main agent then applies the checkpoint/high-risk full-gate policy from
+   `goal.md`. Add a read-only reviewer only when diff size, ambiguity, or regression
+   risk justifies the extra pass.
 
-While the full gate runs, an otherwise idle read-only agent may audit the next slice
-without editing files or launching Cargo, but the next implementation waits for the
-current commit.
+While a checkpoint full gate runs, an otherwise idle read-only agent may audit the
+next slice without editing files or launching Cargo, but the next implementation
+waits for the current commit.
 
 Parallelize by semantic ownership, not by checklist count. When a slice establishes
 a reusable renderer or world surface, prefer the next ledger item that can consume
@@ -129,8 +132,10 @@ reduces repeated architecture work.
    asks for cleanup or the cache is disposable.
 9. Main agent removes temporary worktrees and branches after their diffs are
    integrated or explicitly abandoned.
-10. Run formatting, diff checks, and tests.
-11. Make a normal commit after verification.
+10. Run affected-crate focused tests, formatting and diff checks, documentation lint
+    when documentation changed, and review the complete diff.
+11. Make a normal clean-worktree commit, then either continue the current low-risk
+    checkpoint batch or run the full gate when `goal.md` requires it.
 
 ## Worker Prompt Requirements
 
@@ -189,17 +194,42 @@ Every worker prompt should include:
 
 ## Testing Gate
 
-The authoritative pre-commit gate is defined in `goal.md` under "提交前门禁".
-Do not copy the command list into other files; point at `goal.md` instead.
-`scripts/cargo-dev.sh gate` runs exactly that gate against `/tmp/bbb-target-main`.
+The authoritative per-slice and full-checkpoint policy is defined in `goal.md` under
+"提交前门禁". Do not copy the full gate command list into other files; point at
+`goal.md` instead. `scripts/cargo-dev.sh gate` runs exactly that full gate against
+`/tmp/bbb-target-main`.
 deny-warnings is baked into the workspace lints table; never set
 `RUSTFLAGS='-D warnings'` manually — toggling `RUSTFLAGS` invalidates the whole
 shared target cache in both directions (see `docs/cargo-build-performance.md`).
 Developers may optionally run `scripts/install-hooks.sh` to install the seconds-only local
 pre-commit checks; it is never installed automatically and does not replace the full gate.
 
-Focused crate tests are useful while developing, but the default merge gate is the full
-workspace check + test suite. If a command cannot run, state the reason and the residual risk.
+Every slice must run affected-crate focused tests, `cargo fmt --all --check`,
+`git diff --check`, documentation lint when documentation changed, and a complete
+diff review before its clean commit. A planned checkpoint batch contains two to four
+consecutive, semantically related, low-risk slice commits; it runs the full gate once
+at the batch tip. A forced checkpoint may contain only one commit when work must stop
+or change domains before a second related slice is ready.
+
+End the current batch and run the full gate immediately at four commits, before a
+semantic-domain switch, delivery, stopping, push, merge, or release, and whenever
+focused tests are abnormal or risk cannot be bounded locally. Protocol codecs,
+Cargo/workspace configuration, build scripts, generators, `unsafe`, concurrency, and
+core-architecture changes are high risk: close any prior batch first, then give that
+slice its own full gate and commit.
+
+The normal batch path is one `scripts/cargo-dev.sh gate` at the latest commit.
+`scripts/cargo-dev.sh batch-gate <last-gated>..HEAD` is a failure-localization tool,
+not a routine batch gate: use it only when the tip gate has failed and focused
+diagnosis has not identified the introducing commit. Fix failures with a normal
+follow-up commit; do not rewrite history.
+
+The main agent must track the commit hash covered by the most recent successful full
+gate. Progress updates and final delivery must report the current batch commits,
+focused-test results, full-gate result, and that latest gated commit. Any HEAD being
+delivered or merged must have passed the full gate. If a required command cannot run,
+state the reason and residual risk.
+
 For daily focused tests, agents may use `cargo test --profile fast-test` with an
 assigned external `CARGO_TARGET_DIR`; this does not replace the merge gate.
 Agents may use `scripts/cargo-dev.sh` for focused tests, fast-test, timings,

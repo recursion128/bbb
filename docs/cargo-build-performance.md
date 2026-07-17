@@ -1,7 +1,7 @@
 # Cargo Build Performance
 
 This document records the current Cargo build baseline and the local workflow
-used to keep focused tests fast without weakening the final merge gate.
+used to keep focused tests fast without weakening checkpoint or final merge gates.
 
 ## Goals
 
@@ -24,8 +24,24 @@ to relax correctness checks. The preferred order is:
 3. Evaluate optional `sccache` only when it is installed locally, and compare
    runs with and without `RUSTC_WRAPPER=sccache`.
 4. Use `fast-test` only for daily focused iteration.
-5. Keep the final merge gate on the default profile, running the `goal.md` gate
-   against `CARGO_TARGET_DIR=/tmp/bbb-target-main`.
+5. Keep checkpoint and final merge gates on the default profile, running the
+   `goal.md` gate against `CARGO_TARGET_DIR=/tmp/bbb-target-main`.
+
+## Checkpoint Gate Policy
+
+The authoritative rules live in `goal.md`; this section only explains their build-cache
+impact. Each slice runs affected-crate focused tests and the required cheap checks before
+its clean commit. Two to four related low-risk slice commits may share one full workspace
+gate at the batch tip. Domain changes, delivery/merge boundaries, abnormal focused tests,
+and the high-risk categories named in `goal.md` force an earlier checkpoint. This reduces
+repeated workspace test cost without changing the requirement that delivered or merged
+HEAD has passed the full gate.
+
+For a normal green checkpoint, run `scripts/cargo-dev.sh gate` once at the latest commit.
+Do not run `batch-gate` merely because the checkpoint contains multiple commits.
+`batch-gate` is reserved for a failed tip gate whose introducing commit is still unclear
+after focused diagnosis; after locating the regression, fix it with a normal commit and
+rerun the full gate at the new tip.
 
 ## Current sccache Decision
 
@@ -123,7 +139,6 @@ scripts/cargo-dev.sh check -p bbb-world
 scripts/cargo-dev.sh timings --workspace --timings
 scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings
 scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world command_tree --quiet
-scripts/cargo-dev.sh batch-gate master..HEAD
 scripts/cargo-dev.sh size
 scripts/cargo-dev.sh prune
 scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD
@@ -140,12 +155,14 @@ An explicit `CARGO_TARGET_DIR` still wins.
 selection is honored for isolated worktrees. It is a convenience wrapper, not a
 weaker test path.
 
+After a normal tip gate has failed and focused diagnosis is insufficient,
 `scripts/cargo-dev.sh batch-gate <good>..<bad>` tests a committed first-parent
 range without checking out commits in the caller's worktree. It creates a
 temporary detached worktree and runs the authoritative gate once at `<bad>`.
 When the tip fails, it verifies `<good>` is green and then binary-searches the
-first-parent commits for the first failure. The range must be monotonic (a gate
-failure remains failing through `<bad>`); use a known-green `<good>` endpoint.
+first-parent commits for the first failure. Do not use this command for a normal
+green checkpoint. The range must be monotonic (a gate failure remains failing
+through `<bad>`); use the recorded last-gated commit as `<good>`.
 The command returns 0 when the tip passes, 1 when it finds a failure or the
 baseline is already failing, and 2 for an invalid range or setup error. Per-
 commit logs are retained under a printed `/tmp/bbb-batch-gate-logs.*` path.
@@ -195,8 +212,8 @@ Use these commands as the default local workflow:
   `scripts/cargo-dev.sh timings-clean clean-baseline-YYYYMMDD --workspace --timings`
 - `sccache` evaluation:
   `scripts/cargo-dev.sh sccache-eval YYYYMMDD -p bbb-world command_tree --quiet`
-- Batched commit-range gate:
-  `scripts/cargo-dev.sh batch-gate master..HEAD`
+- Failed-checkpoint regression locator:
+  `scripts/cargo-dev.sh batch-gate <last-gated-commit>..HEAD`
 - Target cache size:
   `scripts/cargo-dev.sh size`
 - Stale target cleanup preview:
@@ -205,7 +222,7 @@ Use these commands as the default local workflow:
   `scripts/cargo-dev.sh prune --force`
 - Disposable target cleanup:
   `scripts/cargo-dev.sh clean-target clean-baseline-YYYYMMDD`
-- Final merge gate:
+- Checkpoint/final merge gate:
   `scripts/cargo-dev.sh gate`
 
 Keep focused/default-profile tests, `fast-test`, timings, target-size checks,
