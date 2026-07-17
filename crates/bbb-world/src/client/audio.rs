@@ -1675,6 +1675,7 @@ fn sound_holder_state(sound: ProtocolSoundEventHolder) -> SoundHolderState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::entities::vanilla_entity_metadata_entity_accessors;
     use bbb_protocol::entity_data_serializers::{
         VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
         VANILLA_ENTITY_DATA_SERIALIZER_CHICKEN_SOUND_VARIANT_ID,
@@ -1688,6 +1689,18 @@ mod tests {
     };
     use std::collections::BTreeMap;
     use uuid::Uuid;
+
+    fn entity_silent_data(value: bool) -> EntityDataValue {
+        let accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        assert!(!accessors.silent_default);
+        EntityDataValue {
+            data_id: accessors.silent_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+            value: EntityDataValueKind::Boolean(value),
+        }
+    }
 
     #[test]
     fn sound_seed_random_is_deterministic_and_non_repeating() {
@@ -1885,11 +1898,7 @@ mod tests {
         assert!(
             store.apply_set_entity_data(bbb_protocol::packets::SetEntityData {
                 id: 123,
-                values: vec![bbb_protocol::packets::EntityDataValue {
-                    data_id: 4,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                    value: bbb_protocol::packets::EntityDataValueKind::Boolean(true),
-                }],
+                values: vec![entity_silent_data(true)],
             })
         );
         assert!(store
