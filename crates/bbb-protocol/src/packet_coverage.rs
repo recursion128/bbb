@@ -2151,21 +2151,17 @@ mod tests {
     }
 
     #[test]
-    fn play_update_tags_keeps_derived_registry_consumers_open() {
+    fn play_update_tags_runtime_consumers_are_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_UPDATE_TAGS")
             .expect("play update tags coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

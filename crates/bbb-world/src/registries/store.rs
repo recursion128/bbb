@@ -196,6 +196,23 @@ impl WorldStore {
             .tag_names_containing_holder_id(registry, holder_id)
     }
 
+    /// Matches the tag-search branch used by CreativeModeInventoryScreen.
+    ///
+    /// Vanilla rebuilds an IdSearchTree after UpdateTags because that tree
+    /// captures ItemStack tag identifiers. bbb keeps no duplicate search-tree
+    /// cache: the future creative screen can filter its display stacks in their
+    /// own order through this live predicate, so every committed tag reload is
+    /// visible immediately.
+    pub fn creative_item_matches_tag_search(&self, item_holder_id: i32, search_term: &str) -> bool {
+        let search_term = search_term.to_lowercase();
+        self.registries
+            .tag_names_containing_holder_id("minecraft:item", item_holder_id)
+            .is_some_and(|tags| {
+                tags.into_iter()
+                    .any(|tag| resource_id_matches_search(tag, &search_term))
+            })
+    }
+
     pub fn registry_resource_ids_for_tag<'a>(
         &'a self,
         registry: &str,
@@ -317,6 +334,18 @@ impl WorldStore {
 
     pub fn registry_tags(&self, registry: &str) -> Option<&RegistryTagState> {
         self.registries.tags.get(registry)
+    }
+}
+
+fn resource_id_matches_search(resource_id: &str, search_term: &str) -> bool {
+    let (namespace, path) = resource_id
+        .split_once(':')
+        .unwrap_or(("minecraft", resource_id));
+    match search_term.split_once(':') {
+        Some((namespace_search, path_search)) => {
+            namespace.contains(namespace_search.trim()) && path.contains(path_search.trim())
+        }
+        None => path.contains(search_term),
     }
 }
 

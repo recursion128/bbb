@@ -87,11 +87,6 @@ Owner: `bbb-protocol`
   attributes, timeline/clock holders and their layer ordering; typed `skybox`,
   direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
   complete.
-- Recompute creative search-tree tag membership after play UpdateTags reloads,
-  following `ClientPacketListener.handleUpdateTags`. Furnace fuel membership is
-  complete: the generated ordered `FuelValues.Builder` rules now rebuild the
-  canonical item-id set from session item tags after immediate play updates and
-  configuration registry transactions, including `NON_FLAMMABLE_WOOD` removal.
 - Complete StatsScreen presentation parity: add narration. General, Items and Mobs now leave
   loading only after the requested AwardStats response and use selected-pack language.
   Item/header/empty-tab tooltips and vanilla Ctrl+digit/Ctrl+Tab navigation are wired;

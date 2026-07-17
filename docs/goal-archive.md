@@ -18863,3 +18863,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Focused world, offline-probe, and native tests cover all four keep-bit combinations, canonical
   reset/preservation, debug lifetime, active-container close, and dimension-gated music stop. The
   Respawn packet coverage row is complete.
+
+# 2026-07-17: Refresh creative tag search after UpdateTags
+
+- Matched `SessionSearchTrees.updateCreativeTags` identifier matching without introducing a second
+  tag cache: a narrow world predicate reads the current item-tag reverse index and matches path-only
+  or namespace-plus-path queries with Vanilla's substring rules.
+- Immediate play reloads replace search membership at once; configuration transactions retain the
+  committed view until their atomic finish and then expose the new tags. The future creative screen
+  can filter its own display-stack order through this predicate without requiring a fabricated
+  CreativeModeTabs catalog in world state.
+- Focused registry tests cover replacement, namespace/path matching, case normalization, and
+  transactional visibility. Together with the existing furnace-fuel and live tag consumers, the
+  play UpdateTags coverage row is complete.

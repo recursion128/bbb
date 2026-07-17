@@ -986,6 +986,55 @@ fn update_tags_recomputes_furnace_fuels_after_immediate_and_transactional_tag_ap
     );
 }
 
+#[test]
+fn creative_tag_search_reads_immediate_and_transactional_tag_reloads() {
+    let mut store = WorldStore::new();
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:building_blocks".to_string(),
+                entries: vec![10],
+            }],
+        }],
+    });
+    assert!(store.creative_item_matches_tag_search(10, "building"));
+    assert!(store.creative_item_matches_tag_search(10, "MINECRAFT:BLOCK"));
+    assert!(store.creative_item_matches_tag_search(10, " minecraft : block "));
+    assert!(!store.creative_item_matches_tag_search(10, " building"));
+    assert!(!store.creative_item_matches_tag_search(11, "building"));
+
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:tools/axes".to_string(),
+                entries: vec![11],
+            }],
+        }],
+    });
+    assert!(!store.creative_item_matches_tag_search(10, "building"));
+    assert!(store.creative_item_matches_tag_search(11, "tools/"));
+    assert!(store.creative_item_matches_tag_search(11, "example:axes"));
+
+    store.begin_registry_configuration();
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:wool".to_string(),
+                entries: vec![12],
+            }],
+        }],
+    });
+    assert!(store.creative_item_matches_tag_search(11, "tools/"));
+    assert!(!store.creative_item_matches_tag_search(12, "wool"));
+
+    store.finish_registry_configuration().unwrap();
+    assert!(!store.creative_item_matches_tag_search(11, "tools/"));
+    assert!(store.creative_item_matches_tag_search(12, "wool"));
+}
+
 fn nbt_compound_with_string(name: &str, value: &str) -> Vec<u8> {
     let mut payload = vec![10, 8];
     write_nbt_string(&mut payload, name);
