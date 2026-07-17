@@ -18876,3 +18876,17 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Focused registry tests cover replacement, namespace/path matching, case normalization, and
   transactional visibility. Together with the existing furnace-fuel and live tag consumers, the
   play UpdateTags coverage row is complete.
+
+# 2026-07-17: Speak command-suggestion selections
+
+- Added a native narrator owner with Vanilla's off/all/chat/system status gate and an explicit
+  startup-configured process TTS adapter. The adapter substitutes an exact `{text}` argument (or
+  appends the utterance), polls children without blocking the event loop, and implements
+  interrupting system speech by clearing the active child and pending queue first.
+- Consumed the existing command-suggestion selection payload exactly once per state change,
+  including the immediate payload produced when Tab reveals a hidden list. Native localizes the
+  tooltip and non-tooltip `narration.suggestion*` forms through the selected resource-pack language
+  before calling the system-now sink.
+- Added CLI, status filtering, command-argument, and localization fixtures. No in-game settings UI
+  was introduced; enabling output requires `--client-narrator all|system` plus
+  `--narrator-command` and optional repeated `--narrator-command-arg` values.

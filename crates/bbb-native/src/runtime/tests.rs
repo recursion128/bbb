@@ -7718,6 +7718,71 @@ fn hud_stats_screen_reports_empty_tab_tooltip_after_response() {
 }
 
 #[test]
+fn command_suggestion_narration_localizes_vanilla_payload_shapes() {
+    assert_eq!(
+        localized_command_suggestion_narration(
+            None,
+            &CommandSuggestionNarrationState {
+                position: 2,
+                total: 4,
+                text: "stone".to_string(),
+                tooltip: None,
+            },
+        ),
+        "Selected suggestion 2 out of 4: stone"
+    );
+    assert_eq!(
+        localized_command_suggestion_narration(
+            None,
+            &CommandSuggestionNarrationState {
+                position: 3,
+                total: 5,
+                text: "stick".to_string(),
+                tooltip: Some("minecraft:stick".to_string()),
+            },
+        ),
+        "Selected suggestion 3 out of 5: stick (minecraft:stick)"
+    );
+    assert_eq!(
+        format_localized_string_arguments("Selected %s (%s), 100%%", &["value %s", "tip"]),
+        "Selected value %s (tip), 100%"
+    );
+}
+
+#[test]
+fn command_suggestion_narration_speaks_once_per_state_change_and_resets() {
+    #[derive(Default)]
+    struct RecordingNarrator(Vec<String>);
+
+    impl SystemNarrator for RecordingNarrator {
+        fn say_system_now(&mut self, message: &str) {
+            self.0.push(message.to_string());
+        }
+    }
+
+    let narration = CommandSuggestionNarrationState {
+        position: 1,
+        total: 2,
+        text: "stone".to_string(),
+        tooltip: None,
+    };
+    let mut last = None;
+    let mut narrator = RecordingNarrator::default();
+    narrate_command_suggestion_change(Some(&narration), &mut last, None, Some(&mut narrator));
+    narrate_command_suggestion_change(Some(&narration), &mut last, None, Some(&mut narrator));
+    narrate_command_suggestion_change(None, &mut last, None, Some(&mut narrator));
+    narrate_command_suggestion_change(Some(&narration), &mut last, None, Some(&mut narrator));
+
+    assert_eq!(
+        narrator.0,
+        [
+            "Selected suggestion 1 out of 2: stone",
+            "Selected suggestion 1 out of 2: stone"
+        ]
+    );
+}
+
+#[test]
 fn stats_screen_pixel_projection_scrolls_item_header_as_first_entry() {
     let surface = winit::dpi::PhysicalSize::new(320, 240);
     assert_eq!(stats_screen_viewport_height(surface, 14), 161);

@@ -113,14 +113,14 @@ use crate::{
         recipe_book_type_settings, recipe_book_visible_tab_indices, release_active_input,
         stats_screen_done_button_contains, sync_beacon_effect_selection_state,
         sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
-        DebugOptionsScreenHudRow, DialogImePreeditHudState, InventoryScreenBackground,
-        RecipeBookOverlayHudState, RecipeBookPageHudState, RecipeBookSearchHudState,
-        RecipeBookTabSelectionHudState, LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT,
-        LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS, LOOM_PATTERN_BUTTON_SIZE,
-        LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y, LOOM_PATTERN_ITEM_PATTERN_COUNT,
-        LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET, LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X,
-        LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID, RECIPE_BOOK_BUTTON_HEIGHT,
-        RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
+        CommandSuggestionNarrationState, DebugOptionsScreenHudRow, DialogImePreeditHudState,
+        InventoryScreenBackground, RecipeBookOverlayHudState, RecipeBookPageHudState,
+        RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
+        LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
+        LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y,
+        LOOM_PATTERN_ITEM_PATTERN_COUNT, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET,
+        LOOM_SCROLLER_WIDTH, LOOM_SCROLLER_X, LOOM_SCROLLER_Y, LOOM_SELECTED_PATTERN_DATA_ID,
+        RECIPE_BOOK_BUTTON_HEIGHT, RECIPE_BOOK_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_HEIGHT,
         RECIPE_BOOK_FILTER_BUTTON_WIDTH, RECIPE_BOOK_FILTER_BUTTON_X, RECIPE_BOOK_FILTER_BUTTON_Y,
         RECIPE_BOOK_PAGE_BACKWARD_BUTTON_X, RECIPE_BOOK_PAGE_BUTTON_HEIGHT,
         RECIPE_BOOK_PAGE_BUTTON_WIDTH, RECIPE_BOOK_PAGE_BUTTON_Y,
@@ -147,6 +147,7 @@ use crate::{
     },
     lectern_book_scene::lectern_book_model_instances_from_world,
     level_load_runtime::LevelLoadRuntime,
+    narrator_runtime::SystemNarrator,
     particle_runtime::ParticleEventSink,
     recipe_book_ui::{
         clamped_recipe_book_page, crafting_recipe_book_collections,
@@ -3666,16 +3667,108 @@ fn localized_gui_text_with_args(
     fallback: &str,
     args: &[&str],
 ) -> String {
-    let mut text = localized_gui_text(item_runtime, translation_key, fallback);
-    for (index, arg) in args.iter().enumerate() {
-        let positional = format!("%{}$s", index + 1);
-        if text.contains(&positional) {
-            text = text.replace(&positional, arg);
+    format_localized_string_arguments(
+        &localized_gui_text(item_runtime, translation_key, fallback),
+        args,
+    )
+}
+
+fn format_localized_string_arguments(template: &str, args: &[&str]) -> String {
+    let bytes = template.as_bytes();
+    let mut result = String::with_capacity(template.len());
+    let mut offset = 0;
+    let mut sequential = 0usize;
+    while offset < bytes.len() {
+        let Some(relative_percent) = bytes[offset..].iter().position(|byte| *byte == b'%') else {
+            result.push_str(&template[offset..]);
+            break;
+        };
+        let percent = offset + relative_percent;
+        result.push_str(&template[offset..percent]);
+        if bytes.get(percent + 1) == Some(&b'%') {
+            result.push('%');
+            offset = percent + 2;
+            continue;
+        }
+        if bytes.get(percent + 1) == Some(&b's') {
+            if let Some(argument) = args.get(sequential) {
+                result.push_str(argument);
+            } else {
+                result.push_str("%s");
+            }
+            sequential += 1;
+            offset = percent + 2;
+            continue;
+        }
+
+        let mut cursor = percent + 1;
+        while bytes.get(cursor).is_some_and(u8::is_ascii_digit) {
+            cursor += 1;
+        }
+        let positional = (cursor > percent + 1
+            && bytes.get(cursor) == Some(&b'$')
+            && bytes.get(cursor + 1) == Some(&b's'))
+        .then(|| {
+            template[percent + 1..cursor]
+                .parse::<usize>()
+                .ok()
+                .and_then(|index| index.checked_sub(1))
+        })
+        .flatten();
+        if let Some(index) = positional {
+            if let Some(argument) = args.get(index) {
+                result.push_str(argument);
+            } else {
+                result.push_str(&template[percent..cursor + 2]);
+            }
+            offset = cursor + 2;
         } else {
-            text = text.replacen("%s", arg, 1);
+            result.push('%');
+            offset = percent + 1;
         }
     }
-    text
+    result
+}
+
+pub(crate) fn localized_command_suggestion_narration(
+    item_runtime: Option<&NativeItemRuntime>,
+    narration: &CommandSuggestionNarrationState,
+) -> String {
+    let position = narration.position.to_string();
+    let total = narration.total.to_string();
+    match narration.tooltip.as_deref() {
+        Some(tooltip) => localized_gui_text_with_args(
+            item_runtime,
+            "narration.suggestion.tooltip",
+            "Selected suggestion %1$s out of %2$s: %3$s (%4$s)",
+            &[&position, &total, &narration.text, tooltip],
+        ),
+        None => localized_gui_text_with_args(
+            item_runtime,
+            "narration.suggestion",
+            "Selected suggestion %1$s out of %2$s: %3$s",
+            &[&position, &total, &narration.text],
+        ),
+    }
+}
+
+pub(crate) fn narrate_command_suggestion_change(
+    narration: Option<&CommandSuggestionNarrationState>,
+    last_narration: &mut Option<CommandSuggestionNarrationState>,
+    item_runtime: Option<&NativeItemRuntime>,
+    narrator: Option<&mut dyn SystemNarrator>,
+) {
+    let current = narration.cloned();
+    if current == *last_narration {
+        return;
+    }
+    if let (Some(narrator), Some(narration)) = (narrator, current.as_ref()) {
+        narrator.say_system_now(&localized_command_suggestion_narration(
+            item_runtime,
+            narration,
+        ));
+    }
+    *last_narration = current;
 }
 
 fn stat_amount_by_resource_identity(

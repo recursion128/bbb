@@ -1286,7 +1286,6 @@ impl ClientInputState {
         true
     }
 
-    #[cfg(test)]
     pub(crate) fn command_suggestion_narration(&self) -> Option<&CommandSuggestionNarrationState> {
         self.chat_entry
             .as_ref()

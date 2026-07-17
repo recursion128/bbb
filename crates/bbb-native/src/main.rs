@@ -45,6 +45,7 @@ mod item_registry_test_fixture;
 mod lectern_book_scene;
 mod level_load_runtime;
 mod map_textures;
+mod narrator_runtime;
 mod particle_runtime;
 mod platform;
 mod recipe_book_ui;
@@ -78,14 +79,15 @@ use input::{
     DebugFrustumRequest, DebugProfilingToggleRequest, PauseScreenLinkRequest,
 };
 use level_load_runtime::LevelLoadRuntime;
+use narrator_runtime::{NarratorStatus, NativeNarratorRuntime};
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
     handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
     handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
-    handle_dialog_text_input_with_measurer, publish_snapshot, pump_network_and_terrain,
-    request_net_disconnect, snapshot_is_running, take_control_screenshot, CameraFovTickState,
-    ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
+    handle_dialog_text_input_with_measurer, narrate_command_suggestion_change, publish_snapshot,
+    pump_network_and_terrain, request_net_disconnect, snapshot_is_running, take_control_screenshot,
+    CameraFovTickState, ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
     DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
     LevelEventSoundRandomState, LightmapTickState,
 };
@@ -239,6 +241,16 @@ fn main() -> Result<()> {
             AudioCounters::disabled("pack roots unavailable for native audio runtime"),
         ),
     };
+    let narrator_status = NarratorStatus::from(args.client_narrator);
+    let mut narrator_runtime = args.narrator_command.clone().map(|command| {
+        NativeNarratorRuntime::new(narrator_status, command, args.narrator_command_args.clone())
+    });
+    if narrator_runtime.is_none() && narrator_status != NarratorStatus::Off {
+        tracing::warn!(
+            ?narrator_status,
+            "narrator requested without --narrator-command; continuing without TTS output"
+        );
+    }
     let mut particle_runtime = pack_roots.as_ref().and_then(|roots| {
         NativeParticleRuntime::load(roots, args.client_particles.into())
             .map_err(|err| {
@@ -501,12 +513,24 @@ fn main() -> Result<()> {
     let mut cursor_captured = false;
     let frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
     let mut next_redraw_at = Instant::now();
+    let mut last_command_suggestion_narration = None;
 
     *world_shared
         .write()
         .expect("world lock poisoned before event loop") = world;
 
     event_loop.run(move |event, target| {
+        if let Some(narrator) = narrator_runtime.as_mut() {
+            narrator.tick();
+        }
+        narrate_command_suggestion_change(
+            input.command_suggestion_narration(),
+            &mut last_command_suggestion_narration,
+            item_runtime.as_ref(),
+            narrator_runtime
+                .as_mut()
+                .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
+        );
         target.set_control_flow(
             frame_interval
                 .map(|_| ControlFlow::WaitUntil(next_redraw_at))

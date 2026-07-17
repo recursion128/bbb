@@ -107,10 +107,6 @@ Owner: `bbb-protocol`
   not proof of complete metadata behavior.
 - Then cover play, movement, inventory, chat, interaction and command suggestion
   end to end.
-- Add a narrator owner/TTS sink and localize/speak the retained
-  command-suggestion selection payload (current/total/text/tooltip), including
-  immediate narration when Tab shows a previously hidden list. Do not treat
-  the deterministic input state as audio output.
 - Build a registry-aware repo-native command dispatcher from the Commands tree,
   matching `CommandBuildContext.simple` argument construction, local parsing,
   validation, redirects and completion rather than retaining only structural
@@ -612,7 +608,7 @@ Movement:
 - Implement `ClientDebugSubscriber`'s subscription value maps and remove an
   entity UUID from every active entity-value map on RemoveEntities. The current
   single last-debug-value diagnostic is not an equivalent substitute.
-- Add a narrator owner and speak the first-local-mount SetPassengers
+- Speak the first-local-mount SetPassengers
   `mount.onboard` message as vanilla system narration. Removed-vehicle recovery
   reset, the pre-packet indirect-passenger once guard, boat body/head yaw
   alignment, and the 60-tick dismount-key HUD overlay are already covered.

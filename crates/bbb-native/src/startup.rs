@@ -24,7 +24,10 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use crate::{code_of_conduct::CodeOfConductAcceptance, debug_entries::DebugScreenProfile};
+use crate::{
+    code_of_conduct::CodeOfConductAcceptance, debug_entries::DebugScreenProfile,
+    narrator_runtime::NarratorStatus,
+};
 
 pub(crate) const VANILLA_UNLIMITED_FRAMERATE_LIMIT: u32 = 260;
 
@@ -61,6 +64,12 @@ pub(crate) struct Args {
     pub(crate) player_skin_cache_dir: Option<PathBuf>,
     #[arg(long = "client-locale", default_value = "en_us")]
     pub(crate) client_locale: String,
+    #[arg(long = "client-narrator", value_enum, default_value = "off")]
+    pub(crate) client_narrator: ClientNarratorArg,
+    #[arg(long = "narrator-command", value_name = "PATH")]
+    pub(crate) narrator_command: Option<PathBuf>,
+    #[arg(long = "narrator-command-arg", value_name = "ARG")]
+    pub(crate) narrator_command_args: Vec<String>,
     #[arg(long = "client-view-distance", default_value_t = 10)]
     pub(crate) client_view_distance: i8,
     #[arg(long = "client-chat-visibility", value_enum, default_value = "full")]
@@ -187,6 +196,25 @@ impl From<ClientChatVisibilityArg> for ClientChatVisibility {
 pub(crate) enum ClientMainHandArg {
     Left,
     Right,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum ClientNarratorArg {
+    Off,
+    All,
+    Chat,
+    System,
+}
+
+impl From<ClientNarratorArg> for NarratorStatus {
+    fn from(value: ClientNarratorArg) -> Self {
+        match value {
+            ClientNarratorArg::Off => Self::Off,
+            ClientNarratorArg::All => Self::All,
+            ClientNarratorArg::Chat => Self::Chat,
+            ClientNarratorArg::System => Self::System,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -565,6 +593,35 @@ mod tests {
         assert_eq!(
             args.player_skin_cache_dir,
             Some(PathBuf::from("/tmp/bbb-skins"))
+        );
+    }
+
+    #[test]
+    fn args_accept_narrator_status_command_and_repeated_arguments() {
+        let default_args = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(default_args.client_narrator, ClientNarratorArg::Off);
+        assert_eq!(default_args.narrator_command, None);
+        assert!(default_args.narrator_command_args.is_empty());
+
+        let args = Args::try_parse_from([
+            "bbb-native",
+            "--client-narrator",
+            "system",
+            "--narrator-command",
+            "/usr/bin/spd-say",
+            "--narrator-command-arg=--wait",
+            "--narrator-command-arg={text}",
+        ])
+        .unwrap();
+        assert_eq!(args.client_narrator, ClientNarratorArg::System);
+        assert_eq!(
+            args.narrator_command,
+            Some(PathBuf::from("/usr/bin/spd-say"))
+        );
+        assert_eq!(args.narrator_command_args, ["--wait", "{text}"]);
+        assert_eq!(
+            NarratorStatus::from(args.client_narrator),
+            NarratorStatus::System
         );
     }
 

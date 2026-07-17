@@ -177,6 +177,22 @@ behind a default `kira` feature and the device backend behind `device`.
 last sound event, last entity sound event, stop sound event, counters, and
 vanilla no-op checks such as unknown sound entity handling.
 
+### `bbb-native` Narrator Runtime
+
+Narration is a native runtime/platform boundary, separate from game audio and
+canonical world state.
+
+- Input owners retain language-neutral narration payloads; native resolves them
+  through the selected resource-pack language before submitting speech.
+- `NarratorStatus` follows vanilla's off/all/chat/system gates. Interrupting
+  system narration clears the active utterance before starting its replacement.
+- The TTS adapter is configured only at startup with `--narrator-command` and
+  repeated `--narrator-command-arg` values. An exact `{text}` argument is
+  replaced with the utterance; without a placeholder the utterance is appended.
+- The process child and pending utterances are runtime state. They must not be
+  stored in `bbb-world`, routed through the Kira audio mixer, or represented as
+  chat/log output when no TTS adapter is configured.
+
 ### `bbb-control`
 
 Owns external control-facing types, reports, and snapshots.
