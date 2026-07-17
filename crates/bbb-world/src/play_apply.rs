@@ -5204,6 +5204,41 @@ mod tests {
     }
 
     #[test]
+    fn player_finish_using_event_stops_only_the_local_item_use() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        for entity_id in [7, 8] {
+            store.apply_add_entity(add_entity(
+                entity_id,
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                Vec3d::default(),
+            ));
+        }
+        store.set_local_using_item(true);
+        store.advance_local_using_item_ticks(4);
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+
+        for entity_id in [8, 7] {
+            assert!(store
+                .apply_play_packet(
+                    PlayClientbound::EntityEvent(EntityEvent {
+                        entity_id,
+                        event_id: 9,
+                    }),
+                    &mut random,
+                    &mut NoPlayApplyEffects,
+                )
+                .is_none());
+            assert_eq!(store.local_player().interaction.using_item, entity_id == 8);
+        }
+
+        assert_eq!(store.local_player().interaction.using_item_hand, None);
+        assert_eq!(store.local_player().interaction.using_item_ticks, 0);
+        assert_eq!(store.probe_entity(7).unwrap().last_event_id, Some(9));
+        assert_eq!(store.probe_entity(8).unwrap().last_event_id, Some(9));
+    }
+
+    #[test]
     fn sink_less_level_event_advances_particle_randoms_like_online_dispatcher() {
         // Lava extinguish (1501): the else-branch plays the randomized sound
         // first, then advances the sink-less particle random fallback.

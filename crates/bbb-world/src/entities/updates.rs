@@ -18,6 +18,8 @@ const SWING_MAIN_HAND_ACTION: u8 = 0;
 const SWING_OFF_HAND_ACTION: u8 = 3;
 /// Vanilla `LivingEntity.handleEntityEvent(55)` swaps the main- and off-hand equipment stacks.
 const LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID: i8 = 55;
+/// Vanilla `Player.handleEntityEvent(9)` completes the local player's active item use.
+const PLAYER_FINISH_USING_ITEM_EVENT_ID: i8 = 9;
 /// Vanilla `Player.handleEntityEvent(22)` enables the local player's reduced-debug gate.
 const PLAYER_ENABLE_REDUCED_DEBUG_EVENT_ID: i8 = 22;
 /// Vanilla `Player.handleEntityEvent(23)` disables the local player's reduced-debug gate.
@@ -74,20 +76,34 @@ impl WorldStore {
         let _ = self
             .entities
             .apply_client_animation_entity_event(packet.entity_id, packet.event_id);
-        let reduced_debug_info = match packet.event_id {
-            PLAYER_ENABLE_REDUCED_DEBUG_EVENT_ID => Some(true),
-            PLAYER_DISABLE_REDUCED_DEBUG_EVENT_ID => Some(false),
-            _ => None,
-        };
-        if let Some(reduced_debug_info) = reduced_debug_info.filter(|_| {
-            self.entities
-                .entity_type_id(packet.entity_id)
-                .is_some_and(vanilla_entity_metadata_type_uses_player_entity_event_handler)
-        }) {
-            let _ = self.set_local_player_reduced_debug_info_from_entity_event(
-                packet.entity_id,
-                reduced_debug_info,
-            );
+        if self
+            .entities
+            .entity_type_id(packet.entity_id)
+            .is_some_and(vanilla_entity_metadata_type_uses_player_entity_event_handler)
+        {
+            match packet.event_id {
+                PLAYER_FINISH_USING_ITEM_EVENT_ID
+                    if self.local_player_id() == Some(packet.entity_id) =>
+                {
+                    // `ServerPlayer.completeUsingItem` sends event 9 only to the completing
+                    // player's connection. The authoritative stack/effect changes arrive through
+                    // their own packets; this event closes the local use/movement/render gates.
+                    let _ = self.take_local_using_item();
+                }
+                PLAYER_ENABLE_REDUCED_DEBUG_EVENT_ID => {
+                    let _ = self.set_local_player_reduced_debug_info_from_entity_event(
+                        packet.entity_id,
+                        true,
+                    );
+                }
+                PLAYER_DISABLE_REDUCED_DEBUG_EVENT_ID => {
+                    let _ = self.set_local_player_reduced_debug_info_from_entity_event(
+                        packet.entity_id,
+                        false,
+                    );
+                }
+                _ => {}
+            }
         }
         if packet.event_id == LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID {
             let _ = self.apply_living_swap_hand_items_event(packet.entity_id);

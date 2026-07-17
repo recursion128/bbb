@@ -23567,7 +23567,7 @@ mod generated_catalog_guards {
     }
 
     #[test]
-    fn player_reduced_debug_events_use_generated_override_dispatch() {
+    fn player_events_use_generated_override_dispatch() {
         let source = include_str!("../updates.rs");
         let body = source
             .split("pub fn apply_entity_event")
@@ -23575,8 +23575,10 @@ mod generated_catalog_guards {
             .and_then(|source| source.split("    pub fn ").next())
             .expect("entity event update source");
         assert!(body.contains("vanilla_entity_metadata_type_uses_player_entity_event_handler"));
+        assert!(body.contains("PLAYER_FINISH_USING_ITEM_EVENT_ID"));
         assert!(body.contains("PLAYER_ENABLE_REDUCED_DEBUG_EVENT_ID"));
         assert!(body.contains("PLAYER_DISABLE_REDUCED_DEBUG_EVENT_ID"));
+        assert!(body.contains("take_local_using_item"));
         assert!(body.contains("set_local_player_reduced_debug_info_from_entity_event"));
         assert!(!body.contains("VANILLA_ENTITY_TYPE_PLAYER_ID"));
     }

@@ -1332,10 +1332,13 @@ back into a todo. Do not delete these.
   the synced `entityId + 1` hooked target, and the add-entity owner id before
   adding vanilla's `(ownerPos - hookPos) * 0.1` pull to the hooked local player.
   This closes that override only; the full reverse audit remains open.
-- `Player.handleEntityEvent(22/23)` now updates the local player's canonical
-  reduced-debug gate, immediately filtering the existing debug-entry, hitbox,
-  chunk-border, inspect, and location-copy consumers. Remote-player events do
-  not change the local gate.
+- `Player.handleEntityEvent(9/22/23)` now follows the generated Player override
+  owner. Event `9`, sent only to the completing `ServerPlayer` connection,
+  clears the local canonical item-use hand/timer and its movement/render gates;
+  authoritative stack and effect changes remain packet-owned. Events `22/23`
+  update the local reduced-debug gate, immediately filtering the existing
+  debug-entry, hitbox, chunk-border, inspect, and location-copy consumers.
+  Remote-player events change neither local gate.
 
 ### Entity coverage matrix save and debug
 
