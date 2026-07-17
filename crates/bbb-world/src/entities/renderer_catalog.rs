@@ -33,6 +33,14 @@ pub enum VanillaSkeletonRendererKind {
     Bogged,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaIllagerRendererKind {
+    Evoker,
+    Illusioner,
+    Pillager,
+    Vindicator,
+}
+
 include!("renderer_catalog/generated_26_1.rs");
 
 pub(super) fn vanilla_living_entity_renderer_name_is_upside_down(name: &str) -> bool {
@@ -162,6 +170,18 @@ pub fn vanilla_entity_renderer_skeleton_kind(
     }
 }
 
+pub fn vanilla_entity_renderer_illager_kind(
+    entity_type_id: i32,
+) -> Option<VanillaIllagerRendererKind> {
+    match vanilla_entity_renderer_registration(entity_type_id)?.renderer_class {
+        "EvokerRenderer" => Some(VanillaIllagerRendererKind::Evoker),
+        "IllusionerRenderer" => Some(VanillaIllagerRendererKind::Illusioner),
+        "PillagerRenderer" => Some(VanillaIllagerRendererKind::Pillager),
+        "VindicatorRenderer" => Some(VanillaIllagerRendererKind::Vindicator),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -193,11 +213,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
         VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
         VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
 
     use super::*;
@@ -345,6 +365,30 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_renderer_skeleton_kind(VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_illager_kinds_match_registered_renderer_classes() {
+        assert_eq!(
+            vanilla_entity_renderer_illager_kind(VANILLA_ENTITY_TYPE_EVOKER_ID),
+            Some(VanillaIllagerRendererKind::Evoker)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_illager_kind(VANILLA_ENTITY_TYPE_ILLUSIONER_ID),
+            Some(VanillaIllagerRendererKind::Illusioner)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_illager_kind(VANILLA_ENTITY_TYPE_PILLAGER_ID),
+            Some(VanillaIllagerRendererKind::Pillager)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_illager_kind(VANILLA_ENTITY_TYPE_VINDICATOR_ID),
+            Some(VanillaIllagerRendererKind::Vindicator)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_illager_kind(VANILLA_ENTITY_TYPE_WITCH_ID),
             None
         );
     }

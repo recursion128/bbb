@@ -18372,3 +18372,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `isSheared` 仍独立读取 generated metadata accessor，避免 presentation 与同步状态混为一表。
 - renderer generator 输出 reverse guard，禁止 native kind dispatch 恢复五个 skeleton type
   常量分支。
+
+## 2026-07-17：生成 illager model-kind dispatch
+
+- world renderer owner 现在把 source-generated Evoker、Illusioner、Pillager、Vindicator
+  provider class 映射为 typed illager renderer kind，并以 Witch 作为非成员负例。
+- native model-kind 选择删除四个 illager entity-type arms，统一从 renderer kind 映射现有
+  `IllagerModelFamily`；spellcasting、aggressive 与 celebrating 仍走各自动态投影。
+- renderer generator 输出 reverse guard，禁止 native kind dispatch 恢复四个 illager type
+  常量分支。

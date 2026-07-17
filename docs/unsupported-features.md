@@ -158,7 +158,7 @@ Owner: `scripts/` + each generated catalog's semantic crate
   must likewise remain renderer-generated; native billboard/model suppression must not restore a
   parallel entity-type/scale table. `LivingEntityRenderer.isUpsideDownName` membership must remain
   renderer-generated and shared by player-profile and non-player custom-name projection. Generate
-  renderer-class-derived native model-kind dispatch for the illager, equine, and boat
+  renderer-class-derived native model-kind dispatch for the equine and boat
   renderer families through that owner. Native entity-model
   suppression for `FallingBlockRenderer`, `FireworkEntityRenderer`, `ItemFrameRenderer`,
   `ItemEntityRenderer`, `LightningBoltRenderer`, `OminousItemSpawnerRenderer`, and `TntRenderer`

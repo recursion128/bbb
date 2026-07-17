@@ -65,6 +65,16 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             },
         };
     }
+    if let Some(illager_kind) = bbb_world::vanilla_entity_renderer_illager_kind(entity_type_id) {
+        return EntityModelKind::Illager {
+            family: match illager_kind {
+                bbb_world::VanillaIllagerRendererKind::Evoker => IllagerModelFamily::Evoker,
+                bbb_world::VanillaIllagerRendererKind::Illusioner => IllagerModelFamily::Illusioner,
+                bbb_world::VanillaIllagerRendererKind::Pillager => IllagerModelFamily::Pillager,
+                bbb_world::VanillaIllagerRendererKind::Vindicator => IllagerModelFamily::Vindicator,
+            },
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -104,18 +114,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         // The inherited AgeableMob baby flag therefore does not select a baby
         // villager layer or texture.
         VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID => EntityModelKind::WanderingTrader,
-        VANILLA_ENTITY_TYPE_EVOKER_ID => EntityModelKind::Illager {
-            family: IllagerModelFamily::Evoker,
-        },
-        VANILLA_ENTITY_TYPE_ILLUSIONER_ID => EntityModelKind::Illager {
-            family: IllagerModelFamily::Illusioner,
-        },
-        VANILLA_ENTITY_TYPE_PILLAGER_ID => EntityModelKind::Illager {
-            family: IllagerModelFamily::Pillager,
-        },
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID => EntityModelKind::Illager {
-            family: IllagerModelFamily::Vindicator,
-        },
         VANILLA_ENTITY_TYPE_WITCH_ID => EntityModelKind::Witch,
         VANILLA_ENTITY_TYPE_ENDERMAN_ID => EntityModelKind::Enderman,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID => EntityModelKind::IronGolem {
