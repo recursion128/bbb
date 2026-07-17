@@ -1061,6 +1061,7 @@ def render_menu_types(entries: list[MenuTypeEntry]) -> str:
             "            crates.join(\"bbb-native/src/runtime.rs\"),",
             "            crates.join(\"bbb-world/src/client/inventory.rs\"),",
             "            crates.join(\"bbb-world/src/client/inventory\"),",
+            "            crates.join(\"bbb-net/src/probe/play.rs\"),",
             "        ] { visit(&path, &mut violations); }",
             "        assert!(violations.is_empty(), \"local menu type aliases:\\n{}\", violations.join(\"\\n\"));",
             "    }",

@@ -470,6 +470,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   a separate native projection boundary.
   Swing-duration mob-effect fixtures must consume the generated Haste, Mining Fatigue and Conduit
   Power ids; local 2/3/28 aliases must not return.
+  Net probe merchant-container fixtures must consume the generated MenuType catalog id; a local
+  merchant menu id alias must not return.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
   fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19

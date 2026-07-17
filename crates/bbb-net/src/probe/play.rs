@@ -184,6 +184,7 @@ mod tests {
     use super::*;
     use crate::connection::RawConnection;
     use bbb_protocol::entity_types::*;
+    use bbb_protocol::menu_types::VANILLA_MENU_TYPE_MERCHANT_ID;
     use bbb_protocol::packets::{
         AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary,
         AdvancementSummary, AttributeModifier, AttributeSnapshot, AwardStats, BlockChangedAck,
@@ -1687,8 +1688,6 @@ mod tests {
 
     #[tokio::test]
     async fn probe_applies_inventory_container_packets_to_world() {
-        const VANILLA_MERCHANT_MENU_TYPE_ID: i32 = 19;
-
         let (client, _server) = raw_connection_pair().await;
         let mut probe = ProbeContext::new(client);
 
@@ -1702,7 +1701,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::OpenScreen(OpenScreen {
                 container_id: 7,
-                menu_type_id: VANILLA_MERCHANT_MENU_TYPE_ID,
+                menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
                 title: "Merchant".to_string(),
                 title_styled: Vec::new(),
             }))
@@ -1753,7 +1752,7 @@ mod tests {
 
         let container = inventory.open_container.as_ref().unwrap();
         assert_eq!(container.container_id, 7);
-        assert_eq!(container.menu_type_id, Some(VANILLA_MERCHANT_MENU_TYPE_ID));
+        assert_eq!(container.menu_type_id, Some(VANILLA_MENU_TYPE_MERCHANT_ID));
         assert_eq!(container.title.as_deref(), Some("Merchant"));
         assert_eq!(container.state_id, 13);
         assert_eq!(container.slots.len(), 2);

@@ -18335,3 +18335,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - world swing-duration / in-flight refresh fixtures 删除 Haste=2、Mining Fatigue=3、Conduit
   Power=28 的四个局部 aliases，统一消费 `MobEffects.java` 生成 catalog 常量。
 - gameplay-id generator 的 mob-effect 输出新增 reverse guard，禁止这些固定 effect ids 回流。
+
+## 2026-07-16：迁移 net probe merchant menu fixture
+
+- net probe inventory/container fixture 删除 `VANILLA_MERCHANT_MENU_TYPE_ID=19` 局部 alias，
+  统一消费 `MenuType.java` 生成的 `VANILLA_MENU_TYPE_MERCHANT_ID`。
+- gameplay-id generator 的 menu consumer reverse scan 纳入 `bbb-net/src/probe/play.rs`，禁止
+  net probe 恢复本地 menu type id。

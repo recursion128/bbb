@@ -245,6 +245,7 @@ mod tests {
             crates.join("bbb-native/src/runtime.rs"),
             crates.join("bbb-world/src/client/inventory.rs"),
             crates.join("bbb-world/src/client/inventory"),
+            crates.join("bbb-net/src/probe/play.rs"),
         ] {
             visit(&path, &mut violations);
         }
