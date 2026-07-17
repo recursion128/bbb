@@ -152,6 +152,13 @@ def render(source_root: Path) -> str:
                 "        extracts_parrot_pose: "
                 + str(entry.extracts_parrot_pose).lower()
                 + ",",
+                "        undead_horse_kind: "
+                + (
+                    f"Some(VanillaUndeadHorseRendererKind::{entry.undead_horse_kind})"
+                    if entry.undead_horse_kind is not None
+                    else "None"
+                )
+                + ",",
                 "    },",
             ]
         )
@@ -235,6 +242,15 @@ def render(source_root: Path) -> str:
             '        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
             '        assert!(source.contains("vanilla_entity_renderer_camel_kind"));',
             '        for removed in ["VANILLA_ENTITY_TYPE_CAMEL_ID", "VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID"] {',
+            '            assert!(!source.contains(removed), "restored {removed}");',
+            '        }',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_model_selection_does_not_restore_undead_horse_type_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
+            '        assert!(source.contains("vanilla_entity_renderer_undead_horse_kind"));',
+            '        for removed in ["VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID", "VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID"] {',
             '            assert!(!source.contains(removed), "restored {removed}");',
             '        }',
             "    }",

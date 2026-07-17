@@ -18391,3 +18391,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - renderer generator 输出 reverse guard，禁止 native kind dispatch 恢复两个 camel type
   常量分支；同用一个 renderer class、必须解析 provider constructor 参数的 undead-horse
   等子族保留为后续独立切片。
+
+## 2026-07-17：生成 UndeadHorse provider kind
+
+- entity renderer extractor 现在严格解析 `UndeadHorseRenderer` 五参 provider constructor，
+  将 saddle layer、model layer 与 adult/baby `Type` tuple 一起归一化为 Skeleton 或 Zombie；
+  未识别 tuple 显式失败，不从 entity 常量名猜测。
+- checked-in registration 新增 typed undead-horse kind；native 删除 SkeletonHorse/ZombieHorse
+  type arms，并继续用各实体的 generated baby accessor 选择 adult/baby model。
+- extractor fixture 锁定两个合法 tuple，renderer generator 输出 reverse guard，防止 native
+  恢复两个 entity-type 分支。

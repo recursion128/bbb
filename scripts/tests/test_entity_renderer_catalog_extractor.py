@@ -90,6 +90,20 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.SHEEP, SheepRenderer::new);
                     register(EntityType.PARROT, ParrotRenderer::new);
                     register(EntityType.WOLF, WolfRenderer::new);
+                    register(EntityType.SKELETON_HORSE,
+                        context -> new UndeadHorseRenderer(
+                            context,
+                            EquipmentClientInfo.LayerType.SKELETON_HORSE_SADDLE,
+                            ModelLayers.SKELETON_HORSE_SADDLE,
+                            UndeadHorseRenderer.Type.SKELETON,
+                            UndeadHorseRenderer.Type.SKELETON_BABY));
+                    register(EntityType.ZOMBIE_HORSE,
+                        context -> new UndeadHorseRenderer(
+                            context,
+                            EquipmentClientInfo.LayerType.ZOMBIE_HORSE_SADDLE,
+                            ModelLayers.ZOMBIE_HORSE_SADDLE,
+                            UndeadHorseRenderer.Type.ZOMBIE,
+                            UndeadHorseRenderer.Type.ZOMBIE_BABY));
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -243,6 +257,13 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 """,
             ),
             java(
+                "net/minecraft/client/renderer/entity/UndeadHorseRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class UndeadHorseRenderer extends AbstractHorseRenderer {}
+                """,
+            ),
+            java(
                 "net/minecraft/client/renderer/entity/CatRenderer.java",
                 """
                 package net.minecraft.client.renderer.entity;
@@ -382,6 +403,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "SHEEP",
                 "PARROT",
                 "WOLF",
+                "SKELETON_HORSE",
+                "ZOMBIE_HORSE",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -428,6 +451,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (19, "SHEEP", "SheepRenderer", False, None, None, False, False, False, False, False, False),
                 (20, "PARROT", "ParrotRenderer", False, None, None, False, False, False, False, False, False),
                 (21, "WOLF", "WolfRenderer", False, None, None, False, False, False, False, False, False),
+                (22, "SKELETON_HORSE", "UndeadHorseRenderer", False, None, None, False, True, False, False, False, False),
+                (23, "ZOMBIE_HORSE", "UndeadHorseRenderer", False, None, None, False, True, False, False, False, False),
             ],
         )
         self.assertEqual(
@@ -449,6 +474,14 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
         self.assertEqual(
             [entry.constant_name for entry in entries if entry.extracts_parrot_pose],
             ["PARROT"],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.undead_horse_kind)
+                for entry in entries
+                if entry.undead_horse_kind is not None
+            ],
+            [("SKELETON_HORSE", "Skeleton"), ("ZOMBIE_HORSE", "Zombie")],
         )
 
 

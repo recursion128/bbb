@@ -27,6 +27,7 @@ pub use crate::entities::VanillaTamableAnimalMetadataAccessors;
 pub use crate::entities::VanillaThrownTridentMetadataAccessors;
 pub use crate::entities::VanillaTropicalFishVariantAccessors;
 pub use crate::entities::VanillaTurtleMetadataAccessors;
+pub use crate::entities::VanillaUndeadHorseRendererKind;
 pub use crate::entities::VanillaVehicleMetadataAccessors;
 pub use crate::entities::VanillaZombieMetadataAccessors;
 pub use crate::entities::VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID;
@@ -140,7 +141,8 @@ pub use crate::entities::{
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_illager_kind,
     vanilla_entity_renderer_is_noop, vanilla_entity_renderer_minimum_block_light,
     vanilla_entity_renderer_skeleton_kind, vanilla_entity_renderer_thrown_item_scale,
-    vanilla_entity_renderer_thrown_item_scales, vanilla_entity_renderer_uses_native_non_model_pass,
+    vanilla_entity_renderer_thrown_item_scales, vanilla_entity_renderer_undead_horse_kind,
+    vanilla_entity_renderer_uses_native_non_model_pass,
     vanilla_entity_type_illager_arm_pose_uses_celebrating, vanilla_entity_type_is_abstract_piglin,
     vanilla_entity_type_is_boat, vanilla_entity_type_is_chest_boat,
     vanilla_entity_type_is_hurting_projectile, vanilla_entity_type_is_item_frame,

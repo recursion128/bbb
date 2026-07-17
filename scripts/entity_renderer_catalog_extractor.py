@@ -27,6 +27,7 @@ ITEM_IN_HAND_LAYER_CLASS = RENDERER_PACKAGE + ".layers.ItemInHandLayer"
 ITEM_FRAME_RENDERER_CLASS = RENDERER_PACKAGE + ".ItemFrameRenderer"
 WOLF_RENDERER_CLASS = RENDERER_PACKAGE + ".WolfRenderer"
 PARROT_RENDERER_CLASS = RENDERER_PACKAGE + ".ParrotRenderer"
+UNDEAD_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".UndeadHorseRenderer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
@@ -55,6 +56,7 @@ class EntityRendererRegistration:
     extracts_zombie_underwater_converting: bool
     extracts_wolf_sitting: bool
     extracts_parrot_pose: bool
+    undead_horse_kind: str | None
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -626,6 +628,32 @@ def extract_entity_renderer_registrations(
                     "unsupported ThrownItemRenderer constructor arguments",
                 )
 
+        undead_horse_kind = None
+        if renderer_class == UNDEAD_HORSE_RENDERER_CLASS:
+            arguments = tuple(argument.canonical for argument in constructor_arguments)
+            undead_horse_kind = {
+                (
+                    "context",
+                    "EquipmentClientInfo.LayerType.SKELETON_HORSE_SADDLE",
+                    "ModelLayers.SKELETON_HORSE_SADDLE",
+                    "UndeadHorseRenderer.Type.SKELETON",
+                    "UndeadHorseRenderer.Type.SKELETON_BABY",
+                ): "Skeleton",
+                (
+                    "context",
+                    "EquipmentClientInfo.LayerType.ZOMBIE_HORSE_SADDLE",
+                    "ModelLayers.ZOMBIE_HORSE_SADDLE",
+                    "UndeadHorseRenderer.Type.ZOMBIE",
+                    "UndeadHorseRenderer.Type.ZOMBIE_BABY",
+                ): "Zombie",
+            }.get(arguments)
+            if undead_horse_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported UndeadHorseRenderer constructor arguments",
+                )
+
         registrations.append(
             EntityRendererRegistration(
                 entity_type_id,
@@ -709,6 +737,7 @@ def extract_entity_renderer_registrations(
                     source_by_type,
                     type_by_name,
                 ),
+                undead_horse_kind,
             )
         )
 

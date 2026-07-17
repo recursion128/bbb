@@ -85,6 +85,20 @@ pub(super) fn entity_model_kind_with_time_and_registries(
                 && ageable_baby(entity_type_id, data_values),
         };
     }
+    if let Some(undead_horse_kind) =
+        bbb_world::vanilla_entity_renderer_undead_horse_kind(entity_type_id)
+    {
+        return undead_horse_model_kind(
+            entity_type_id,
+            match undead_horse_kind {
+                bbb_world::VanillaUndeadHorseRendererKind::Skeleton => {
+                    UndeadHorseModelFamily::Skeleton
+                }
+                bbb_world::VanillaUndeadHorseRendererKind::Zombie => UndeadHorseModelFamily::Zombie,
+            },
+            data_values,
+        );
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -170,14 +184,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         }
         VANILLA_ENTITY_TYPE_MULE_ID => {
             donkey_model_kind(entity_type_id, DonkeyModelFamily::Mule, data_values)
-        }
-        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID => undead_horse_model_kind(
-            entity_type_id,
-            UndeadHorseModelFamily::Skeleton,
-            data_values,
-        ),
-        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
-            undead_horse_model_kind(entity_type_id, UndeadHorseModelFamily::Zombie, data_values)
         }
         VANILLA_ENTITY_TYPE_LLAMA_ID => {
             llama_model_kind(entity_type_id, LlamaModelFamily::Llama, data_values)

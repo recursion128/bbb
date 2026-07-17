@@ -22,6 +22,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     extracts_zombie_underwater_converting: bool,
     extracts_wolf_sitting: bool,
     extracts_parrot_pose: bool,
+    undead_horse_kind: Option<VanillaUndeadHorseRendererKind>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +46,12 @@ pub enum VanillaIllagerRendererKind {
 pub enum VanillaCamelRendererKind {
     Camel,
     CamelHusk,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaUndeadHorseRendererKind {
+    Skeleton,
+    Zombie,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -194,6 +201,12 @@ pub fn vanilla_entity_renderer_camel_kind(entity_type_id: i32) -> Option<Vanilla
         "CamelHuskRenderer" => Some(VanillaCamelRendererKind::CamelHusk),
         _ => None,
     }
+}
+
+pub fn vanilla_entity_renderer_undead_horse_kind(
+    entity_type_id: i32,
+) -> Option<VanillaUndeadHorseRendererKind> {
+    vanilla_entity_renderer_registration(entity_type_id)?.undead_horse_kind
 }
 
 #[cfg(test)]
@@ -420,6 +433,22 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_renderer_camel_kind(VANILLA_ENTITY_TYPE_HORSE_ID),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_undead_horse_kinds_match_provider_constructor_arguments() {
+        assert_eq!(
+            vanilla_entity_renderer_undead_horse_kind(VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID),
+            Some(VanillaUndeadHorseRendererKind::Skeleton)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_undead_horse_kind(VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID),
+            Some(VanillaUndeadHorseRendererKind::Zombie)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_undead_horse_kind(VANILLA_ENTITY_TYPE_HORSE_ID),
             None
         );
     }
