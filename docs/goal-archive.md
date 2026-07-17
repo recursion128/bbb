@@ -18850,3 +18850,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   play Login, so secure-chat enforcement and the insecure-server warning use actual validation
   capability. Local profile key-pair refresh and outbound message signing remain in the signed-chat
   queue.
+
+# 2026-07-17: Rebuild the local player on Respawn
+
+- Matched `ClientPacketListener.handleRespawn` by replacing stale LocalPlayer projections,
+  restoring game-mode abilities, and independently applying the entity-data and attribute-modifier
+  keep bits. Non-copied equipment, effects, mounts, transient events, damage, and animation state
+  now return to fresh-player defaults.
+- Matched dimension replacement by dropping level-bound debug subscription values while retaining
+  independent debug samples, and by routing a music stop through the shared play-effect/audio path.
+  Same-dimension Respawn preserves both owners.
+- Focused world, offline-probe, and native tests cover all four keep-bit combinations, canonical
+  reset/preservation, debug lifetime, active-container close, and dimension-gated music stop. The
+  Respawn packet coverage row is complete.

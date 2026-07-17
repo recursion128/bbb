@@ -211,7 +211,7 @@ impl WorldStore {
             .as_ref()
     }
 
-    pub(crate) fn reset_debug_subscriber_for_new_listener(&mut self) {
+    pub(crate) fn clear_debug_subscriber_values(&mut self) {
         self.client_debug_game.last_debug_block_value = None;
         self.client_debug_game.last_debug_chunk_value = None;
         self.client_debug_game.last_debug_entity_value = None;

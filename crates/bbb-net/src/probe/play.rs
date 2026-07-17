@@ -4750,10 +4750,16 @@ mod tests {
         assert_eq!(
             report.world.local_player_pose(),
             Some(LocalPlayerPoseState {
+                position: Default::default(),
+                delta_movement: old_pose.delta_movement,
                 on_ground: false,
                 horizontal_collision: false,
                 fall_distance: 0.0,
-                ..old_pose
+                sneaking: old_pose.sneaking,
+                swimming: old_pose.swimming,
+                y_rot: old_pose.y_rot,
+                x_rot: old_pose.x_rot,
+                last_teleport_id: 0,
             })
         );
         assert_eq!(

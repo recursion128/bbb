@@ -2969,24 +2969,17 @@ mod tests {
     }
 
     #[test]
-    fn play_respawn_keeps_full_player_and_level_lifecycle_open() {
+    fn play_respawn_lifecycle_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_RESPAWN")
             .expect("play respawn coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect", "tests"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

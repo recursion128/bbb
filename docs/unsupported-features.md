@@ -87,10 +87,6 @@ Owner: `bbb-protocol`
   attributes, timeline/clock holders and their layer ordering; typed `skybox`,
   direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
   complete.
-- Complete play Respawn lifecycle from
-  `ClientPacketListener.handleRespawn`: reconstruct the local player according
-  to both keep bits and reset music/debug-subscriber state. The current world
-  reset/keep-bit baseline is not the full client lifecycle.
 - Recompute creative search-tree tag membership after play UpdateTags reloads,
   following `ClientPacketListener.handleUpdateTags`. Furnace fuel membership is
   complete: the generated ordered `FuelValues.Builder` rules now rebuild the

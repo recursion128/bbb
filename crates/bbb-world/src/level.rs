@@ -253,6 +253,12 @@ pub struct WorldTickingState {
     pub frozen_ticks_to_run: i32,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RespawnApplyResult {
+    pub closed_server_container_id: Option<i32>,
+    pub dimension_changed: bool,
+}
+
 impl Default for WorldTickingState {
     fn default() -> Self {
         Self {
@@ -314,14 +320,31 @@ impl WorldStore {
         self.start_client_level_load();
     }
 
-    pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) -> Option<i32> {
+    pub fn apply_respawn(&mut self, respawn: &ProtocolRespawn) -> RespawnApplyResult {
         self.counters.respawns_received += 1;
         self.advance_client_level_generation();
+        let dimension_changed = self
+            .level
+            .as_ref()
+            .is_some_and(|level| level.dimension != respawn.common_spawn_info.dimension);
         let closed_server_container_id = self.close_container_for_respawn();
-        self.reset_local_player_for_respawn(respawn.data_to_keep);
+        self.reset_local_player_for_respawn(
+            respawn.data_to_keep,
+            i32::from(respawn.common_spawn_info.game_type),
+            dimension_changed,
+        );
+        if dimension_changed {
+            // Vanilla ClientDebugSubscriber.dropLevel clears only values tied
+            // to the replaced ClientLevel, then keeps the active subscription
+            // set. DebugSample and the other listener-owned diagnostics survive.
+            self.clear_debug_subscriber_values();
+        }
         self.apply_spawn_info(&respawn.common_spawn_info);
         self.start_client_level_load();
-        closed_server_container_id
+        RespawnApplyResult {
+            closed_server_container_id,
+            dimension_changed,
+        }
     }
 
     pub fn apply_world_time(&mut self, time: ProtocolPlayTime) -> &WorldTimeState {
@@ -525,7 +548,7 @@ impl WorldStore {
         self.reset_command_suggestions_for_new_listener();
         self.reset_recipes_for_new_listener();
         self.reset_advancements_for_new_listener();
-        self.reset_debug_subscriber_for_new_listener();
+        self.clear_debug_subscriber_values();
         self.clear_level_bound_state();
     }
 
@@ -714,22 +737,39 @@ impl WorldStore {
         }
     }
 
-    fn reset_local_player_for_respawn(&mut self, data_to_keep: i8) {
+    fn reset_local_player_for_respawn(
+        &mut self,
+        data_to_keep: i8,
+        game_type_id: i32,
+        dimension_changed: bool,
+    ) {
         let keep_entity_data = data_to_keep & RESPAWN_KEEP_ENTITY_DATA != 0;
         let keep_attribute_modifiers = data_to_keep & RESPAWN_KEEP_ATTRIBUTE_MODIFIERS != 0;
-        let old_pose = self.local_player.pose;
+        let old_local_player = std::mem::take(&mut self.local_player);
+        let old_pose = old_local_player.pose;
 
-        self.local_player.health = None;
-        self.local_player.experience = None;
-        self.local_player.camera = crate::CameraState::default();
-        self.local_player.last_look_at = None;
-        self.local_player.interaction = crate::LocalPlayerInteractionState::default();
+        // handleRespawn constructs a fresh LocalPlayer. Only state explicitly
+        // copied below survives; listener/level-owned projections are retained
+        // separately where their Vanilla owner survives the replacement.
+        self.local_player.abilities = Some(crate::client::game_type_player_abilities(
+            GameType::from_id(game_type_id),
+        ));
+        self.local_player.default_spawn = (!dimension_changed)
+            .then_some(old_local_player.default_spawn)
+            .flatten();
+        self.local_player.simulation_distance = old_local_player.simulation_distance;
         self.local_player.pose = keep_entity_data.then_some(old_pose).flatten().map(|pose| {
             crate::LocalPlayerPoseState {
+                position: Default::default(),
+                delta_movement: pose.delta_movement,
                 on_ground: false,
                 horizontal_collision: false,
                 fall_distance: 0.0,
-                ..pose
+                sneaking: pose.sneaking,
+                swimming: pose.swimming,
+                y_rot: pose.y_rot,
+                x_rot: pose.x_rot,
+                last_teleport_id: 0,
             }
         });
         self.removed_player_vehicle_id = None;
@@ -739,33 +779,11 @@ impl WorldStore {
             return;
         };
         self.clear_local_player_mount(local_player_id);
-        self.entities
-            .with_mob_effects_mut(local_player_id, |effects| {
-                effects.effects.clear();
-            });
-        self.entities
-            .with_transient_events_mut(local_player_id, |events| {
-                events.last_animation_action = None;
-                events.last_event_id = None;
-                events.last_hurt_yaw = None;
-            });
-        self.entities.with_damage_mut(local_player_id, |damage| {
-            damage.last_damage = None;
-        });
-        if !keep_entity_data {
-            self.entities
-                .with_metadata_mut(local_player_id, |metadata| {
-                    metadata.data_values.clear();
-                });
-        }
-        if !keep_attribute_modifiers {
-            self.entities
-                .with_attributes_mut(local_player_id, |attributes| {
-                    for attribute in &mut attributes.attributes {
-                        attribute.modifiers.clear();
-                    }
-                });
-        }
+        self.entities.rebuild_local_player_entity_for_respawn(
+            local_player_id,
+            keep_entity_data,
+            keep_attribute_modifiers,
+        );
         self.update_active_mob_effect_count();
     }
 
@@ -1139,7 +1157,9 @@ mod tests {
         AttributeSnapshot as ProtocolAttributeSnapshot,
         BlockDestruction as ProtocolBlockDestruction, BlockEvent as ProtocolBlockEvent,
         BlockPos as ProtocolBlockPos, EntityDataValue as ProtocolEntityDataValue,
-        EntityDataValueKind, GlobalPos as ProtocolGlobalPos, LevelEvent as ProtocolLevelEvent,
+        EntityDataValueKind, EntityEvent as ProtocolEntityEvent, EquipmentSlot,
+        EquipmentSlotUpdate as ProtocolEquipmentSlotUpdate, GlobalPos as ProtocolGlobalPos,
+        ItemStackSummary as ProtocolItemStackSummary, LevelEvent as ProtocolLevelEvent,
         MapItemData as ProtocolMapItemData, MobEffectFlags, OpenScreen as ProtocolOpenScreen,
         PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
         RegistryData, RegistryDataEntry, SetCamera as ProtocolSetCamera,
@@ -1400,53 +1420,78 @@ mod tests {
             title: "Chest".to_string(),
             title_styled: Vec::new(),
         });
+        store.client_debug_game.last_debug_block_value = Some(crate::DebugBlockValueState {
+            pos: BlockPos { x: 1, y: 2, z: 3 },
+            raw_update_payload_len: 4,
+        });
+        store.client_debug_game.last_debug_chunk_value = Some(crate::DebugChunkValueState {
+            pos: ChunkPos { x: 1, z: -2 },
+            raw_update_payload_len: 5,
+        });
+        store.client_debug_game.last_debug_entity_value = Some(crate::DebugEntityValueState {
+            entity_id: 123,
+            raw_update_payload_len: 6,
+        });
+        store.client_debug_game.last_debug_event = Some(crate::DebugEventState {
+            raw_event_payload_len: 7,
+        });
+        store.client_debug_game.last_debug_sample = Some(crate::DebugSampleState {
+            sample_len: 2,
+            sample_type: "tick_time".to_string(),
+        });
+        store.local_player.default_spawn = Some(crate::DefaultSpawnState {
+            dimension: "minecraft:the_nether".to_string(),
+            pos: BlockPos { x: 8, y: 64, z: 8 },
+            yaw: 0.0,
+            pitch: 0.0,
+        });
 
-        assert_eq!(
-            store.apply_respawn(&ProtocolRespawn {
-                common_spawn_info: ProtocolSpawnInfo {
-                    dimension_type_id: 1,
-                    dimension: "minecraft:the_nether".to_string(),
-                    seed: 12345,
-                    game_type: 1,
-                    previous_game_type: -1,
-                    is_debug: false,
-                    is_flat: false,
-                    last_death_location: None,
-                    portal_cooldown: 6,
-                    sea_level: 32,
-                },
-                data_to_keep: 3,
-            }),
-            Some(7)
-        );
+        let same_dimension = store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 1,
+                dimension: "minecraft:the_nether".to_string(),
+                seed: 12345,
+                game_type: 1,
+                previous_game_type: -1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 6,
+                sea_level: 32,
+            },
+            data_to_keep: 3,
+        });
+        assert_eq!(same_dimension.closed_server_container_id, Some(7));
+        assert!(!same_dimension.dimension_changed);
         assert_eq!(store.open_container_id(), None);
         assert_eq!(store.chunk_count(), 1);
         assert_eq!(store.first_chunk(), Some(ChunkPos { x: 1, z: -2 }));
         assert_eq!(store.entity_count(), 1);
         assert_eq!(store.level_info().unwrap().biome_zoom_seed, 12345);
         assert_eq!(store.local_player().portal_cooldown, 6);
+        assert!(store.last_debug_block_value().is_some());
+        assert!(store.local_player().default_spawn.is_some());
         assert_eq!(store.client_level_generation(), 1);
         let available_levels = store.available_levels().clone();
         let server_enforces_secure_chat = store.server_enforces_secure_chat();
 
-        assert_eq!(
-            store.apply_respawn(&ProtocolRespawn {
-                common_spawn_info: ProtocolSpawnInfo {
-                    dimension_type_id: 2,
-                    dimension: "minecraft:the_end".to_string(),
-                    seed: 98765,
-                    game_type: 1,
-                    previous_game_type: 1,
-                    is_debug: false,
-                    is_flat: false,
-                    last_death_location: None,
-                    portal_cooldown: 2,
-                    sea_level: 63,
-                },
-                data_to_keep: 3,
-            }),
-            None
-        );
+        let changed_dimension = store.apply_respawn(&ProtocolRespawn {
+            common_spawn_info: ProtocolSpawnInfo {
+                dimension_type_id: 2,
+                dimension: "minecraft:the_end".to_string(),
+                seed: 98765,
+                game_type: 1,
+                previous_game_type: 1,
+                is_debug: false,
+                is_flat: false,
+                last_death_location: None,
+                portal_cooldown: 2,
+                sea_level: 63,
+            },
+            data_to_keep: 3,
+        });
+        assert_eq!(changed_dimension.closed_server_container_id, None);
+        assert!(changed_dimension.dimension_changed);
 
         assert_eq!(
             store.dimension(),
@@ -1458,6 +1503,18 @@ mod tests {
         assert_eq!(store.chunk_count(), 0);
         assert_eq!(store.first_chunk(), None);
         assert_eq!(store.entity_count(), 0);
+        assert!(store.last_debug_block_value().is_none());
+        assert!(store.last_debug_chunk_value().is_none());
+        assert!(store.last_debug_entity_value().is_none());
+        assert!(store.last_debug_event().is_none());
+        assert_eq!(
+            store.last_debug_sample(),
+            Some(&crate::DebugSampleState {
+                sample_len: 2,
+                sample_type: "tick_time".to_string(),
+            })
+        );
+        assert!(store.local_player().default_spawn.is_none());
         let map = store.map_item(42).expect("map survives dimension respawn");
         assert_eq!(map.scale, 2);
         assert!(map.locked);
@@ -1495,8 +1552,26 @@ mod tests {
 
         store.apply_respawn(&respawn_packet(0));
 
+        assert_eq!(
+            store.local_player().abilities,
+            Some(crate::LocalPlayerAbilitiesState {
+                invulnerable: false,
+                flying: false,
+                can_fly: false,
+                instabuild: false,
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            })
+        );
         assert!(store.local_player().health.is_none());
         assert!(store.local_player().experience.is_none());
+        assert_eq!(store.local_player().selected_hotbar_slot, 0);
+        assert_eq!(
+            store.local_player().permission_level,
+            crate::LocalPlayerPermissionLevel::NoPermissions
+        );
+        assert!(store.local_player().default_spawn.is_some());
+        assert_eq!(store.local_player().simulation_distance, Some(12));
         assert_eq!(store.local_player_pose(), None);
         assert_eq!(store.local_player().camera, CameraState::default());
         assert_eq!(
@@ -1505,7 +1580,17 @@ mod tests {
         );
 
         let entity = store.probe_entity(123).unwrap();
+        assert_eq!(entity.data, 0);
+        assert_eq!(entity.position, Default::default());
+        assert_eq!(entity.delta_movement, Default::default());
+        assert_eq!(entity.y_rot, -180.0);
+        assert_eq!(entity.x_rot, 0.0);
         assert!(entity.data_values.is_empty());
+        assert!(entity.equipment.is_empty());
+        assert_eq!(entity.leash_holder_id, None);
+        assert_eq!(entity.last_event_id, None);
+        assert_eq!(entity.main_supporting_block_pos, None);
+        assert!(!entity.on_ground_no_blocks);
         assert!(entity.mob_effects.is_empty());
         assert_eq!(store.counters().active_mob_effects_tracked, 0);
         assert_eq!(entity.attributes.len(), 1);
@@ -1525,10 +1610,16 @@ mod tests {
         assert_eq!(
             store.local_player_pose(),
             Some(LocalPlayerPoseState {
+                position: Default::default(),
+                delta_movement: old_pose.delta_movement,
                 on_ground: false,
                 horizontal_collision: false,
                 fall_distance: 0.0,
-                ..old_pose
+                sneaking: old_pose.sneaking,
+                swimming: old_pose.swimming,
+                y_rot: old_pose.y_rot,
+                x_rot: old_pose.x_rot,
+                last_teleport_id: 0,
             })
         );
         assert_eq!(store.local_player().camera, CameraState::default());
@@ -1551,6 +1642,38 @@ mod tests {
                 operation_id: 1,
             }]
         );
+    }
+
+    #[test]
+    fn respawn_keep_bits_preserve_entity_data_and_attribute_modifiers_independently() {
+        let mut attributes_only = respawn_state_with_local_player_data();
+        attributes_only.apply_respawn(&respawn_packet(RESPAWN_KEEP_ATTRIBUTE_MODIFIERS));
+        assert!(attributes_only.local_player_pose().is_none());
+        let entity = attributes_only.probe_entity(123).unwrap();
+        assert!(entity.data_values.is_empty());
+        assert_eq!(entity.attributes[0].modifiers.len(), 1);
+
+        let mut entity_data_only = respawn_state_with_local_player_data();
+        let old_pose = entity_data_only.local_player_pose().unwrap();
+        entity_data_only.apply_respawn(&respawn_packet(RESPAWN_KEEP_ENTITY_DATA));
+        assert_eq!(
+            entity_data_only.local_player_pose(),
+            Some(LocalPlayerPoseState {
+                position: Default::default(),
+                delta_movement: old_pose.delta_movement,
+                on_ground: false,
+                horizontal_collision: false,
+                fall_distance: 0.0,
+                sneaking: old_pose.sneaking,
+                swimming: old_pose.swimming,
+                y_rot: old_pose.y_rot,
+                x_rot: old_pose.x_rot,
+                last_teleport_id: 0,
+            })
+        );
+        let entity = entity_data_only.probe_entity(123).unwrap();
+        assert_eq!(entity.data_values, vec![entity_byte_data(0, 0x02)]);
+        assert!(entity.attributes[0].modifiers.is_empty());
     }
 
     #[test]
@@ -2085,6 +2208,14 @@ mod tests {
         store.local_player_id = Some(123);
         store.apply_add_entity(local_player_entity(123));
         store.apply_add_entity(protocol_add_entity(456));
+        store.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: true,
+            flying: true,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.2,
+            walking_speed: 0.3,
+        });
         assert!(store.apply_set_camera(ProtocolSetCamera { camera_id: 456 }));
         store.apply_player_health(ProtocolPlayerHealth {
             health: 4.0,
@@ -2096,6 +2227,42 @@ mod tests {
             level: 3,
             total: 40,
         });
+        assert!(store.set_local_selected_hotbar_slot(8));
+        store.local_player.default_spawn = Some(crate::DefaultSpawnState {
+            dimension: "minecraft:overworld".to_string(),
+            pos: BlockPos { x: 8, y: 64, z: 8 },
+            yaw: 0.0,
+            pitch: 0.0,
+        });
+        store.local_player.simulation_distance = Some(12);
+        store
+            .entities
+            .with_equipment_mut(123, |equipment| {
+                equipment.equipment.push(ProtocolEquipmentSlotUpdate {
+                    slot: EquipmentSlot::Head,
+                    item: ProtocolItemStackSummary {
+                        item_id: Some(1),
+                        count: 1,
+                        component_patch: Default::default(),
+                    },
+                });
+            })
+            .unwrap();
+        store
+            .entities
+            .with_leash_mut(123, |leash| leash.holder_id = Some(456))
+            .unwrap();
+        store
+            .entities
+            .with_supporting_block_mut(123, |support| {
+                support.main = Some(BlockPos { x: 4, y: 63, z: -2 });
+                support.on_ground_no_blocks = true;
+            })
+            .unwrap();
+        assert!(store.apply_entity_event(ProtocolEntityEvent {
+            entity_id: 123,
+            event_id: 28,
+        }));
         store.set_local_player_pose(LocalPlayerPoseState {
             position: ProtocolVec3d {
                 x: 10.0,

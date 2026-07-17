@@ -67,19 +67,20 @@ use super::{
     EntityHurtingProjectile, EntityIdentity, EntityLeash, EntityMetadata, EntityMinecartLerp,
     EntityMobEffects, EntityModelSourceState, EntityMount, EntityProjectileLifecycle, EntityState,
     EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
-    EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
-    FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
-    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
-    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
-    OminousItemSpawnerParticleState, RavagerRoarParticleState, RavagerStunParticleState,
-    WolfArmorCrackiness, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
-    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
-    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-    VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
-    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
-    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
+    EntityVec3, EvokerFangsCritParticleState, FallingBlockModelState,
+    FireworkRocketExplosionParticleState, FireworkRocketItemState,
+    FireworkRocketTrailParticleState, FoxEatParticleState, HappyGhastHarnessColor,
+    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
+    MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
+    RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
+    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
+    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
+    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
+    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
+    VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
@@ -3580,6 +3581,75 @@ impl EntityStore {
         let mut support = self.ecs.get::<&mut EntitySupportingBlock>(entity).ok()?;
         let result = update(&mut support);
         Some(result)
+    }
+
+    pub(crate) fn rebuild_local_player_entity_for_respawn(
+        &mut self,
+        id: i32,
+        keep_entity_data: bool,
+        keep_attribute_modifiers: bool,
+    ) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+
+        if let Ok(mut identity) = self.ecs.get::<&mut EntityIdentity>(entity) {
+            identity.data = 0;
+        }
+        if let Ok(mut transform) = self.ecs.get::<&mut EntityTransform>(entity) {
+            let (delta_movement, y_rot, x_rot) = if keep_entity_data {
+                (transform.delta_movement, transform.y_rot, transform.x_rot)
+            } else {
+                (EntityVec3::default(), -180.0, 0.0)
+            };
+            *transform = EntityTransform {
+                position: EntityVec3::default(),
+                position_base: EntityVec3::default(),
+                delta_movement,
+                y_rot,
+                x_rot,
+                y_head_rot: 0.0,
+                on_ground: None,
+            };
+        }
+        if !keep_entity_data {
+            if let Ok(mut metadata) = self.ecs.get::<&mut EntityMetadata>(entity) {
+                *metadata = EntityMetadata::default();
+            }
+        }
+        if let Ok(mut equipment) = self.ecs.get::<&mut EntityEquipment>(entity) {
+            *equipment = EntityEquipment::default();
+        }
+        if let Ok(mut attributes) = self.ecs.get::<&mut EntityAttributes>(entity) {
+            if !keep_attribute_modifiers {
+                for attribute in &mut attributes.attributes {
+                    attribute.modifiers.clear();
+                }
+            }
+        }
+        if let Ok(mut events) = self.ecs.get::<&mut EntityTransientEvents>(entity) {
+            *events = EntityTransientEvents::default();
+        }
+        if let Ok(mut mount) = self.ecs.get::<&mut EntityMount>(entity) {
+            *mount = EntityMount::default();
+        }
+        if let Ok(mut leash) = self.ecs.get::<&mut EntityLeash>(entity) {
+            *leash = EntityLeash::default();
+        }
+        if let Ok(mut effects) = self.ecs.get::<&mut EntityMobEffects>(entity) {
+            *effects = EntityMobEffects::default();
+        }
+        if let Ok(mut animations) = self.ecs.get::<&mut EntityClientAnimations>(entity) {
+            *animations = EntityClientAnimations::default();
+        }
+        if let Ok(mut damage) = self.ecs.get::<&mut EntityDamage>(entity) {
+            *damage = EntityDamage::default();
+        }
+        if let Ok(mut support) = self.ecs.get::<&mut EntitySupportingBlock>(entity) {
+            *support = EntitySupportingBlock::default();
+        }
+        if keep_entity_data {
+            let _ = self.sync_client_animation_targets_from_metadata(id);
+        }
+        Some(())
     }
 
     pub(crate) fn with_minecart_lerp_mut<R>(

@@ -91,6 +91,7 @@ pub trait PlayApplyEffects {
     fn local_sound(&mut self, _state: &LocalSoundEventState) {}
     fn entity_sound(&mut self, _state: &SoundEntityEventState, _position: Option<[f64; 3]>) {}
     fn stop_sound(&mut self, _state: &StopSoundEventState) {}
+    fn stop_music(&mut self) {}
     fn jukebox_level_event(&mut self, _state: &JukeboxLevelEventState) {}
     fn chat_acknowledgement(&mut self, _command: ChatAcknowledgement) {}
     fn container_close(&mut self, _container_id: i32) {}
@@ -377,8 +378,12 @@ impl WorldStore {
                 self.apply_login(&login);
             }
             PlayClientbound::Respawn(respawn) => {
-                if let Some(container_id) = self.apply_respawn(&respawn) {
+                let result = self.apply_respawn(&respawn);
+                if let Some(container_id) = result.closed_server_container_id {
                     effects.container_close(container_id);
+                }
+                if result.dimension_changed {
+                    effects.stop_music();
                 }
             }
             PlayClientbound::SetHealth(health) => {

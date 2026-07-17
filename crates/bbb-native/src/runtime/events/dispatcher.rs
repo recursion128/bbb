@@ -330,6 +330,12 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         emit_stop_sound(self.audio_events, state);
     }
 
+    fn stop_music(&mut self) {
+        if let Some(audio_events) = self.audio_events.as_deref_mut() {
+            audio_events.stop_music();
+        }
+    }
+
     fn jukebox_level_event(&mut self, state: &bbb_world::JukeboxLevelEventState) {
         emit_jukebox_level_event(self.audio_events, state);
     }

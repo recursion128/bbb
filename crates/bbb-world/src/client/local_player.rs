@@ -310,7 +310,8 @@ impl WorldStore {
 
     pub(crate) fn reset_local_player_for_login(&mut self, player_id: i32, game_type_id: i32) {
         self.local_player = LocalPlayerState::default();
-        self.local_player.abilities = Some(login_player_abilities(GameType::from_id(game_type_id)));
+        self.local_player.abilities =
+            Some(game_type_player_abilities(GameType::from_id(game_type_id)));
         self.local_player.camera = CameraState {
             entity_id: Some(player_id),
             follows_player: true,
@@ -744,7 +745,7 @@ impl WorldStore {
     }
 }
 
-fn login_player_abilities(game_type: GameType) -> LocalPlayerAbilitiesState {
+pub(crate) fn game_type_player_abilities(game_type: GameType) -> LocalPlayerAbilitiesState {
     let (invulnerable, flying, can_fly, instabuild) = match game_type {
         GameType::Creative => (true, false, true, true),
         GameType::Spectator => (true, true, true, false),
@@ -816,10 +817,10 @@ mod tests {
             flying_speed: 0.05,
             walking_speed: 0.1,
         };
-        assert_eq!(login_player_abilities(GameType::Survival), survival);
-        assert_eq!(login_player_abilities(GameType::Adventure), survival);
+        assert_eq!(game_type_player_abilities(GameType::Survival), survival);
+        assert_eq!(game_type_player_abilities(GameType::Adventure), survival);
         assert_eq!(
-            login_player_abilities(GameType::Creative),
+            game_type_player_abilities(GameType::Creative),
             LocalPlayerAbilitiesState {
                 invulnerable: true,
                 flying: false,
@@ -830,7 +831,7 @@ mod tests {
             }
         );
         assert_eq!(
-            login_player_abilities(GameType::Spectator),
+            game_type_player_abilities(GameType::Spectator),
             LocalPlayerAbilitiesState {
                 invulnerable: true,
                 flying: true,

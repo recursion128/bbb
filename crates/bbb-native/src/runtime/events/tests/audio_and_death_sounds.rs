@@ -1,6 +1,42 @@
 use super::*;
 
 #[test]
+fn respawn_stops_music_only_when_the_dimension_changes() {
+    let (tx, mut rx) = mpsc::channel(2);
+    let login = protocol_play_login(9);
+    tx.try_send(NetEvent::Play(PlayClientbound::Respawn(Respawn {
+        common_spawn_info: login.common_spawn_info.clone(),
+        data_to_keep: 0,
+    })))
+    .unwrap();
+    let mut changed_spawn = login.common_spawn_info.clone();
+    changed_spawn.dimension_type_id = 1;
+    changed_spawn.dimension = "minecraft:the_nether".to_string();
+    tx.try_send(NetEvent::Play(PlayClientbound::Respawn(Respawn {
+        common_spawn_info: changed_spawn,
+        data_to_keep: 0,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    world.apply_login(&login);
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        2
+    );
+    assert_eq!(
+        audio.commands,
+        vec![AudioCommand::StopSound(bbb_audio::StopSoundCommand {
+            category: Some(AudioCategory::Music),
+            name: None,
+        })]
+    );
+}
+
+#[test]
 fn damage_type_holder_drives_runtime_player_hurt_audio() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(

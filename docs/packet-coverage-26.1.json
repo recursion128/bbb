@@ -10988,11 +10988,12 @@
           "evidence": [
             "crates/bbb-world/src/level.rs#apply_respawn",
             "crates/bbb-world/src/level.rs#respawn_updates_dimension_and_clears_old_chunks",
-            "crates/bbb-world/src/level.rs#respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers",
+            "crates/bbb-world/src/level.rs#respawn_keep_bits_preserve_entity_data_and_attribute_modifiers_independently",
+            "crates/bbb-world/src/entities/store.rs#rebuild_local_player_entity_for_respawn",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRespawn"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -11012,13 +11013,14 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/level.rs#reset_local_player_for_respawn",
+            "crates/bbb-world/src/play_apply.rs#PlayApplyEffects",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#respawn_event_resets_local_player_runtime_state",
             "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#respawn_clears_world_first_chunk_when_world_changes",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#respawn_stops_music_only_when_the_dimension_changes",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleRespawn"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -11028,11 +11030,13 @@
             "crates/bbb-net/src/probe/play.rs#probe_respawn_keep_all_data_preserves_local_pose_entity_data_and_attribute_modifiers",
             "crates/bbb-world/src/level.rs#respawn_without_keep_data_resets_local_player_runtime_state",
             "crates/bbb-world/src/level.rs#respawn_keep_all_data_preserves_entity_data_pose_and_attribute_modifiers",
+            "crates/bbb-world/src/level.rs#respawn_keep_bits_preserve_entity_data_and_attribute_modifiers_independently",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#respawn_event_resets_local_player_runtime_state",
-            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#respawn_clears_world_first_chunk_when_world_changes"
+            "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#respawn_clears_world_first_chunk_when_world_changes",
+            "crates/bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs#respawn_stops_music_only_when_the_dimension_changes"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

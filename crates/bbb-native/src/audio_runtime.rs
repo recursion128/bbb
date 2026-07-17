@@ -22,6 +22,16 @@ pub(crate) trait AudioEventSink {
     fn play_jukebox_song(&mut self, state: &JukeboxLevelEventState);
     fn stop_jukebox_song(&mut self, state: &JukeboxLevelEventState);
     fn stop_sound(&mut self, state: &StopSoundEventState);
+    fn stop_music(&mut self) {
+        self.stop_sound(&StopSoundEventState {
+            source: Some(
+                bbb_protocol::packets::SoundSource::Music
+                    .as_str()
+                    .to_string(),
+            ),
+            name: None,
+        });
+    }
     fn tick_entity_sound_positions(
         &mut self,
         command: TickEntitySoundPositionsCommand,
