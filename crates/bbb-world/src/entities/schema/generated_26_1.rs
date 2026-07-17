@@ -24348,6 +24348,7 @@ mod generated_catalog_guards {
         let native_audio_tests = include_str!(
             "../../../../bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs"
         );
+        let net_event_tests = include_str!("../../../../bbb-net/src/event_stream.rs");
         for source in [
             dimensions,
             animations,
@@ -24373,6 +24374,7 @@ mod generated_catalog_guards {
             audio_tests,
             entity_world_tests,
             native_runtime_tests,
+            net_event_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [
@@ -24450,6 +24452,8 @@ mod generated_catalog_guards {
         assert!(local_player_collision.contains("entity_pose_data(VANILLA_ENTITY_POSE_DIGGING_ID)"));
         assert!(lifecycle_tests.contains("entity_invisible_data()"));
         assert!(lifecycle_tests.contains("entity_air_supply_data(301)"));
+        assert!(net_event_tests.contains("entity_invisible_data()"));
+        assert!(net_event_tests.contains("entity_air_supply_data(301)"));
     }
 
     #[test]

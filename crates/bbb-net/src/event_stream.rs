@@ -297,10 +297,33 @@ mod tests {
         ids,
         packets::{ChatAcknowledgement, GameProfile, LoginClientbound, PlayClientbound},
     };
-    use bbb_world::code_of_conduct_text_hash;
+    use bbb_world::{code_of_conduct_text_hash, vanilla_entity_metadata_entity_accessors};
     use bytes::BytesMut;
     use std::time::Duration;
     use tokio::{net::TcpListener, time::timeout};
+
+    fn entity_invisible_data() -> packets::EntityDataValue {
+        let accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        assert_eq!(accessors.shared_flags_default, 0);
+        packets::EntityDataValue {
+            data_id: accessors.shared_flags_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: packets::EntityDataValueKind::Byte(accessors.invisible_mask),
+        }
+    }
+
+    fn entity_air_supply_data(air_supply: i32) -> packets::EntityDataValue {
+        let accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        packets::EntityDataValue {
+            data_id: accessors.air_supply_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+            value: packets::EntityDataValueKind::Int(air_supply),
+        }
+    }
 
     #[tokio::test]
     async fn login_compression_query_and_finish_follow_vanilla_state_sequence() {
@@ -1520,18 +1543,7 @@ mod tests {
 
         let entity_data = packets::SetEntityData {
             id: 123,
-            values: vec![
-                packets::EntityDataValue {
-                    data_id: 0,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: packets::EntityDataValueKind::Byte(0x20),
-                },
-                packets::EntityDataValue {
-                    data_id: 2,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                    value: packets::EntityDataValueKind::Int(301),
-                },
-            ],
+            values: vec![entity_invisible_data(), entity_air_supply_data(301)],
         };
         assert_matching_event!(
             PlayClientbound::SetEntityData(entity_data.clone()),
