@@ -355,6 +355,21 @@ fn allay_dancing_data(dancing: bool) -> ProtocolEntityDataValue {
     }
 }
 
+fn allay_can_duplicate_data(can_duplicate: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_allay_can_duplicate_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ALLAY_ID,
+        )
+        .expect("generated Allay can-duplicate accessor must resolve");
+    assert!(default);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(can_duplicate),
+    }
+}
+
 fn sniffer_state_data(state_id: i32) -> ProtocolEntityDataValue {
     let (data_id, _) = vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
         VANILLA_ENTITY_TYPE_SNIFFER_ID,
@@ -6569,8 +6584,6 @@ fn shift_f3_i_with_permission_copies_local_parrot_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard() {
-    const ALLAY_CAN_DUPLICATE_DATA_ID: u8 = 17;
-
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -6594,11 +6607,7 @@ fn shift_f3_i_with_permission_copies_local_allay_save_nbt_to_clipboard() {
         values: vec![
             mob_flags_data(&world, 71, true, true),
             allay_dancing_data(true),
-            ProtocolEntityDataValue {
-                data_id: ALLAY_CAN_DUPLICATE_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(false),
-            },
+            allay_can_duplicate_data(false),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

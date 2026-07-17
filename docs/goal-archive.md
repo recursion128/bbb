@@ -18272,3 +18272,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   从 generated `DATA_CARRY_STATE`/`DATA_CREEPY` 字段派生 indices/defaults，不再手抄 16/17。
 - world model-source、native entity-scene 与 item-model carried-block fixtures 统一消费 bundle；
   EnderMan reverse guard 覆盖三份完整 fixtures，禁止固定 accessor/default aliases 回流。
+
+## 2026-07-16：派生 Allay can-duplicate metadata
+
+- world schema 新增 Allay-only `DATA_CAN_DUPLICATE` BOOLEAN/default `true` typed accessor，并以
+  Bogged/非法 id 为 membership 负例。
+- native F3+I fixture 删除固定 slot 17，改由 accessor 构造 false metadata；Allay reverse guard
+  禁止 can-duplicate accessor/default aliases 回流，dancing animation 边界保持独立。

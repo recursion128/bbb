@@ -25801,7 +25801,14 @@ mod generated_catalog_guards {
                 source.contains("vanilla_entity_metadata_allay_dancing_accessor_for_entity_type")
             );
         }
-        for removed in ["ALLAY_DANCING_DATA_ID", "ALLAY_DEFAULT_DANCING"] {
+        assert!(native_input_tests
+            .contains("vanilla_entity_metadata_allay_can_duplicate_accessor_for_entity_type"));
+        for removed in [
+            "ALLAY_DANCING_DATA_ID",
+            "ALLAY_DEFAULT_DANCING",
+            "ALLAY_CAN_DUPLICATE_DATA_ID",
+            "ALLAY_DEFAULT_CAN_DUPLICATE",
+        ] {
             for source in [
                 animations,
                 store,

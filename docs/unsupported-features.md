@@ -448,7 +448,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Allay dancing membership, wire index and typed default must remain derived from generated
   `Allay.DATA_DANCING`; world animation consumers and semantic fixtures must not restore fixed
   accessor/default aliases, hand-written wire indices or read another entity family's slot 16 as
-  the dancing flag.
+  the dancing flag. The native F3+I can-duplicate fixture must likewise derive generated
+  `Allay.DATA_CAN_DUPLICATE` membership, wire index and default rather than restore slot 17.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
   fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19
