@@ -24315,6 +24315,20 @@ mod generated_catalog_guards {
         let visibility_tests =
             include_str!("../tests/visibility_equipment_and_mount_projection.rs");
         let item_frame_tests = include_str!("../../../../bbb-native/src/item_frames.rs");
+        let native_runtime_tests =
+            include_str!("../../../../bbb-native/src/runtime/events/tests.rs");
+        let native_particle_tests = include_str!(
+            "../../../../bbb-native/src/runtime/events/tests/entity_particle_events.rs"
+        );
+        let native_counter_tests = include_str!(
+            "../../../../bbb-native/src/runtime/events/tests/entity_and_inventory_counters.rs"
+        );
+        let native_session_tests = include_str!(
+            "../../../../bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs"
+        );
+        let native_audio_tests = include_str!(
+            "../../../../bbb-native/src/runtime/events/tests/audio_and_death_sounds.rs"
+        );
         for source in [
             dimensions,
             animations,
@@ -24336,6 +24350,7 @@ mod generated_catalog_guards {
             small_mob_tests,
             visibility_tests,
             item_frame_tests,
+            native_runtime_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_entity_accessors"));
             for removed in [
@@ -24404,6 +24419,10 @@ mod generated_catalog_guards {
         assert!(input_tests.contains("entity_accessors.silent_data_id"));
         assert!(input_tests.contains("entity_accessors.no_gravity_data_id"));
         assert!(input_tests.contains("entity_accessors.ticks_frozen_data_id"));
+        assert!(native_particle_tests.contains("entity_invisible_data()"));
+        assert!(native_counter_tests.contains("entity_invisible_data()"));
+        assert!(native_session_tests.contains("entity_shift_key_down_data()"));
+        assert!(native_audio_tests.contains("entity_silent_data()"));
     }
 
     #[test]

@@ -48,6 +48,7 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{
     advance_cobweb_place_particle_randoms, vanilla_entity_metadata_arrow_accessors_for_entity_type,
+    vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
@@ -137,6 +138,42 @@ fn throwable_item_stack_data_id(entity_type_id: i32) -> u8 {
 fn item_entity_stack_data_id() -> u8 {
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(VANILLA_ENTITY_TYPE_ITEM_ID)
         .expect("generated ItemEntity item accessor must resolve")
+}
+
+fn entity_invisible_data() -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert_eq!(accessors.shared_flags_default, 0);
+    EntityDataValue {
+        data_id: accessors.shared_flags_data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(accessors.invisible_mask),
+    }
+}
+
+fn entity_shift_key_down_data() -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert_eq!(accessors.shared_flags_default, 0);
+    EntityDataValue {
+        data_id: accessors.shared_flags_data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+        value: EntityDataValueKind::Byte(accessors.shift_key_down_mask),
+    }
+}
+
+fn entity_silent_data() -> EntityDataValue {
+    let accessors = vanilla_entity_metadata_entity_accessors()
+        .expect("generated base Entity metadata accessors must resolve");
+    assert!(!accessors.silent_default);
+    EntityDataValue {
+        data_id: accessors.silent_data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(true),
+    }
 }
 
 fn firework_item_entity_data(entity_id: i32, explosions_count: Option<usize>) -> SetEntityData {

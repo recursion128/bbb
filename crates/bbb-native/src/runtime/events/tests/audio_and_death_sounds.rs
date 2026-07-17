@@ -1000,11 +1000,7 @@ fn silent_entity_sound_events_do_not_emit_runtime_commands() {
     tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
         SetEntityData {
             id: 123,
-            values: vec![EntityDataValue {
-                data_id: 4,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            }],
+            values: vec![entity_silent_data()],
         },
     )))
     .unwrap();

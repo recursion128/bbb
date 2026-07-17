@@ -1062,12 +1062,7 @@ fn respawn_event_resets_local_player_runtime_state() {
     world.set_local_using_item(true);
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 9,
-        values: vec![EntityDataValue {
-            data_id: 0,
-            serializer_id:
-                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-            value: EntityDataValueKind::Byte(0x02),
-        }],
+        values: vec![entity_shift_key_down_data()],
     }));
     assert!(world.apply_update_mob_effect(protocol_update_mob_effect(9, 3)));
 

@@ -125,12 +125,7 @@ fn entity_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::SetEntityData(
         SetEntityData {
             id: 123,
-            values: vec![EntityDataValue {
-                data_id: 0,
-                serializer_id:
-                    bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(0x20),
-            }],
+            values: vec![entity_invisible_data()],
         },
     )))
     .unwrap();
