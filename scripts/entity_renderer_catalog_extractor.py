@@ -28,6 +28,8 @@ ITEM_FRAME_RENDERER_CLASS = RENDERER_PACKAGE + ".ItemFrameRenderer"
 WOLF_RENDERER_CLASS = RENDERER_PACKAGE + ".WolfRenderer"
 PARROT_RENDERER_CLASS = RENDERER_PACKAGE + ".ParrotRenderer"
 UNDEAD_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".UndeadHorseRenderer"
+HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".HorseRenderer"
+DONKEY_RENDERER_CLASS = RENDERER_PACKAGE + ".DonkeyRenderer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
@@ -57,6 +59,7 @@ class EntityRendererRegistration:
     extracts_wolf_sitting: bool
     extracts_parrot_pose: bool
     undead_horse_kind: str | None
+    horse_kind: str | None
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -654,6 +657,40 @@ def extract_entity_renderer_registrations(
                     "unsupported UndeadHorseRenderer constructor arguments",
                 )
 
+        horse_kind = None
+        if renderer_class == HORSE_RENDERER_CLASS:
+            if constructor_arguments:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported HorseRenderer constructor arguments",
+                )
+            horse_kind = "Horse"
+        elif renderer_class == DONKEY_RENDERER_CLASS:
+            arguments = tuple(argument.canonical for argument in constructor_arguments)
+            horse_kind = {
+                (
+                    "context",
+                    "EquipmentClientInfo.LayerType.DONKEY_SADDLE",
+                    "ModelLayers.DONKEY_SADDLE",
+                    "DonkeyRenderer.Type.DONKEY",
+                    "DonkeyRenderer.Type.DONKEY_BABY",
+                ): "Donkey",
+                (
+                    "context",
+                    "EquipmentClientInfo.LayerType.MULE_SADDLE",
+                    "ModelLayers.MULE_SADDLE",
+                    "DonkeyRenderer.Type.MULE",
+                    "DonkeyRenderer.Type.MULE_BABY",
+                ): "Mule",
+            }.get(arguments)
+            if horse_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported DonkeyRenderer constructor arguments",
+                )
+
         registrations.append(
             EntityRendererRegistration(
                 entity_type_id,
@@ -738,6 +775,7 @@ def extract_entity_renderer_registrations(
                     type_by_name,
                 ),
                 undead_horse_kind,
+                horse_kind,
             )
         )
 

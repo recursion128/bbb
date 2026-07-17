@@ -104,6 +104,20 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                             ModelLayers.ZOMBIE_HORSE_SADDLE,
                             UndeadHorseRenderer.Type.ZOMBIE,
                             UndeadHorseRenderer.Type.ZOMBIE_BABY));
+                    register(EntityType.DONKEY,
+                        context -> new DonkeyRenderer<>(
+                            context,
+                            EquipmentClientInfo.LayerType.DONKEY_SADDLE,
+                            ModelLayers.DONKEY_SADDLE,
+                            DonkeyRenderer.Type.DONKEY,
+                            DonkeyRenderer.Type.DONKEY_BABY));
+                    register(EntityType.MULE,
+                        context -> new DonkeyRenderer<>(
+                            context,
+                            EquipmentClientInfo.LayerType.MULE_SADDLE,
+                            ModelLayers.MULE_SADDLE,
+                            DonkeyRenderer.Type.MULE,
+                            DonkeyRenderer.Type.MULE_BABY));
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -264,6 +278,13 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 """,
             ),
             java(
+                "net/minecraft/client/renderer/entity/DonkeyRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class DonkeyRenderer extends AbstractHorseRenderer {}
+                """,
+            ),
+            java(
                 "net/minecraft/client/renderer/entity/CatRenderer.java",
                 """
                 package net.minecraft.client.renderer.entity;
@@ -405,6 +426,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "WOLF",
                 "SKELETON_HORSE",
                 "ZOMBIE_HORSE",
+                "DONKEY",
+                "MULE",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -453,6 +476,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (21, "WOLF", "WolfRenderer", False, None, None, False, False, False, False, False, False),
                 (22, "SKELETON_HORSE", "UndeadHorseRenderer", False, None, None, False, True, False, False, False, False),
                 (23, "ZOMBIE_HORSE", "UndeadHorseRenderer", False, None, None, False, True, False, False, False, False),
+                (24, "DONKEY", "DonkeyRenderer", False, None, None, False, True, False, False, False, False),
+                (25, "MULE", "DonkeyRenderer", False, None, None, False, True, False, False, False, False),
             ],
         )
         self.assertEqual(
@@ -482,6 +507,14 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 if entry.undead_horse_kind is not None
             ],
             [("SKELETON_HORSE", "Skeleton"), ("ZOMBIE_HORSE", "Zombie")],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.horse_kind)
+                for entry in entries
+                if entry.horse_kind is not None
+            ],
+            [("HORSE", "Horse"), ("DONKEY", "Donkey"), ("MULE", "Mule")],
         )
 
 

@@ -159,6 +159,13 @@ def render(source_root: Path) -> str:
                     else "None"
                 )
                 + ",",
+                "        horse_kind: "
+                + (
+                    f"Some(VanillaHorseRendererKind::{entry.horse_kind})"
+                    if entry.horse_kind is not None
+                    else "None"
+                )
+                + ",",
                 "    },",
             ]
         )
@@ -251,6 +258,15 @@ def render(source_root: Path) -> str:
             '        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
             '        assert!(source.contains("vanilla_entity_renderer_undead_horse_kind"));',
             '        for removed in ["VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID", "VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID"] {',
+            '            assert!(!source.contains(removed), "restored {removed}");',
+            '        }',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_model_selection_does_not_restore_horse_type_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
+            '        assert!(source.contains("vanilla_entity_renderer_horse_kind"));',
+            '        for removed in ["VANILLA_ENTITY_TYPE_HORSE_ID", "VANILLA_ENTITY_TYPE_DONKEY_ID", "VANILLA_ENTITY_TYPE_MULE_ID"] {',
             '            assert!(!source.contains(removed), "restored {removed}");',
             '        }',
             "    }",

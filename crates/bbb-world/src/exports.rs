@@ -15,6 +15,7 @@ pub use crate::entities::VanillaFarmAnimalVariantMetadataAccessors;
 pub use crate::entities::VanillaFoxMetadataAccessors;
 pub use crate::entities::VanillaGoatMetadataAccessors;
 pub use crate::entities::VanillaHappyGhastMetadataAccessors;
+pub use crate::entities::VanillaHorseRendererKind;
 pub use crate::entities::VanillaIllagerRendererKind;
 pub use crate::entities::VanillaInteractionMetadataAccessors;
 pub use crate::entities::VanillaLivingEntityMetadataAccessors;
@@ -138,11 +139,11 @@ pub use crate::entities::{
     vanilla_entity_renderer_camel_kind, vanilla_entity_renderer_extracts_parrot_pose,
     vanilla_entity_renderer_extracts_sheep_head_eat, vanilla_entity_renderer_extracts_wolf_sitting,
     vanilla_entity_renderer_extracts_zombie_underwater_converting,
-    vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_illager_kind,
-    vanilla_entity_renderer_is_noop, vanilla_entity_renderer_minimum_block_light,
-    vanilla_entity_renderer_skeleton_kind, vanilla_entity_renderer_thrown_item_scale,
-    vanilla_entity_renderer_thrown_item_scales, vanilla_entity_renderer_undead_horse_kind,
-    vanilla_entity_renderer_uses_native_non_model_pass,
+    vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_horse_kind,
+    vanilla_entity_renderer_illager_kind, vanilla_entity_renderer_is_noop,
+    vanilla_entity_renderer_minimum_block_light, vanilla_entity_renderer_skeleton_kind,
+    vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,
+    vanilla_entity_renderer_undead_horse_kind, vanilla_entity_renderer_uses_native_non_model_pass,
     vanilla_entity_type_illager_arm_pose_uses_celebrating, vanilla_entity_type_is_abstract_piglin,
     vanilla_entity_type_is_boat, vanilla_entity_type_is_chest_boat,
     vanilla_entity_type_is_hurting_projectile, vanilla_entity_type_is_item_frame,

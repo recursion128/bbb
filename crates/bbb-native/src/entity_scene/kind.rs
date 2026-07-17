@@ -99,6 +99,21 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             data_values,
         );
     }
+    if let Some(horse_kind) = bbb_world::vanilla_entity_renderer_horse_kind(entity_type_id) {
+        return match horse_kind {
+            bbb_world::VanillaHorseRendererKind::Horse => EntityModelKind::Horse {
+                baby: ageable_baby(entity_type_id, data_values),
+                variant: horse_color_variant(entity_type_id, data_values),
+                markings: horse_markings(entity_type_id, data_values),
+            },
+            bbb_world::VanillaHorseRendererKind::Donkey => {
+                donkey_model_kind(entity_type_id, DonkeyModelFamily::Donkey, data_values)
+            }
+            bbb_world::VanillaHorseRendererKind::Mule => {
+                donkey_model_kind(entity_type_id, DonkeyModelFamily::Mule, data_values)
+            }
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -173,17 +188,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         },
         VANILLA_ENTITY_TYPE_SHEEP_ID => {
             sheep_model_kind(entity_type_id, data_values, entity_age_ticks)
-        }
-        VANILLA_ENTITY_TYPE_HORSE_ID => EntityModelKind::Horse {
-            baby: ageable_baby(entity_type_id, data_values),
-            variant: horse_color_variant(entity_type_id, data_values),
-            markings: horse_markings(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_DONKEY_ID => {
-            donkey_model_kind(entity_type_id, DonkeyModelFamily::Donkey, data_values)
-        }
-        VANILLA_ENTITY_TYPE_MULE_ID => {
-            donkey_model_kind(entity_type_id, DonkeyModelFamily::Mule, data_values)
         }
         VANILLA_ENTITY_TYPE_LLAMA_ID => {
             llama_model_kind(entity_type_id, LlamaModelFamily::Llama, data_values)

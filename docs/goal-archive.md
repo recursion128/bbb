@@ -18401,3 +18401,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   type arms，并继续用各实体的 generated baby accessor 选择 adult/baby model。
 - extractor fixture 锁定两个合法 tuple，renderer generator 输出 reverse guard，防止 native
   恢复两个 entity-type 分支。
+
+## 2026-07-17：生成 Horse/Donkey provider kind
+
+- entity renderer extractor 将零参 `HorseRenderer::new` 归一化为 Horse，并严格解析
+  `DonkeyRenderer` 的五参 provider constructor，将 saddle layer、model layer 与 adult/baby
+  `Type` tuple 归一化为 Donkey 或 Mule；未知构造参数显式失败。
+- checked-in registration 新增 typed horse kind；native 删除 Horse/Donkey/Mule type arms，
+  仍分别复用现有的花色、斑纹、幼体与驮箱投影逻辑。
+- extractor fixture 锁定三种 provider，renderer generator 输出 reverse guard，防止 native
+  恢复三个 entity-type 分支。
