@@ -433,7 +433,7 @@ mod tests {
     }
 
     #[test]
-    fn configuration_presentation_packets_only_leave_transfer_reconnect_open() {
+    fn configuration_presentation_packets_are_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "CLIENTBOUND_CUSTOM_REPORT_DETAILS",
@@ -449,24 +449,13 @@ mod tests {
             .collect();
         assert_eq!(entries.len(), packets.len());
 
-        let partial: BTreeSet<_> = entries
-            .iter()
-            .flat_map(|entry| {
-                entry.coverage.iter().filter_map(move |(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial)
-                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
-                })
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([("CLIENTBOUND_TRANSFER", "runtime_side_effect")])
-        );
         assert!(entries.iter().all(|entry| {
-            entry
-                .coverage
-                .values()
-                .all(|cell| cell.status != PacketCoverageStatus::Deferred)
+            entry.coverage.values().all(|cell| {
+                matches!(
+                    cell.status,
+                    PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
+                )
+            })
         }));
     }
 
@@ -1521,21 +1510,17 @@ mod tests {
     }
 
     #[test]
-    fn play_transfer_keeps_reconnect_lifecycle_open() {
+    fn play_transfer_closes_reconnect_lifecycle_coverage() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_TRANSFER")
             .expect("play transfer coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(partial, BTreeSet::from(["runtime_side_effect"]));
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]

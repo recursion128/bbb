@@ -46,6 +46,17 @@ pub struct WorldStore {
     /// chat additionally depends on profile-key validation support.
     #[serde(default)]
     pub(crate) server_enforces_secure_chat: Option<bool>,
+    /// Whether the active services key set can validate signed profile keys.
+    /// The native client currently has no such key set, so this defaults false.
+    #[serde(default)]
+    pub(crate) profile_key_validation_available: bool,
+    /// Vanilla carries this once-per-connection-chain warning guard through
+    /// reconfiguration and TransferState.
+    #[serde(default)]
+    pub(crate) seen_insecure_chat_warning: bool,
+    /// Monotonic presentation edge for the native toast owner.
+    #[serde(default)]
+    pub(crate) insecure_chat_warning_count: usize,
     pub(crate) registries: RegistrySet,
     pub(crate) chunks: Vec<ChunkColumn>,
     #[serde(default)]

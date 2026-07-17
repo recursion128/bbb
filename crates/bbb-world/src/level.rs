@@ -288,6 +288,10 @@ impl WorldStore {
         self.advance_client_level_generation();
         self.available_levels = login.levels.iter().cloned().collect();
         self.server_enforces_secure_chat = Some(login.enforces_secure_chat);
+        if !self.seen_insecure_chat_warning && !self.effectively_enforces_secure_chat() {
+            self.seen_insecure_chat_warning = true;
+            self.insecure_chat_warning_count = self.insecure_chat_warning_count.saturating_add(1);
+        }
         // Vanilla constructs the new ClientChunkCache and ClientLevel from these
         // login fields before later SetChunkCacheRadius/SetSimulationDistance
         // packets may replace them.
@@ -512,6 +516,7 @@ impl WorldStore {
         self.local_player_vehicle_id = None;
         self.removed_player_vehicle_id = None;
         self.last_projectile_power = None;
+        self.clear_active_player_info();
         self.clear_level_bound_state();
     }
 
@@ -541,6 +546,26 @@ impl WorldStore {
 
     pub fn server_enforces_secure_chat(&self) -> Option<bool> {
         self.server_enforces_secure_chat
+    }
+
+    pub fn set_profile_key_validation_available(&mut self, available: bool) {
+        self.profile_key_validation_available = available;
+    }
+
+    pub fn profile_key_validation_available(&self) -> bool {
+        self.profile_key_validation_available
+    }
+
+    pub fn effectively_enforces_secure_chat(&self) -> bool {
+        self.profile_key_validation_available && self.server_enforces_secure_chat == Some(true)
+    }
+
+    pub fn seen_insecure_chat_warning(&self) -> bool {
+        self.seen_insecure_chat_warning
+    }
+
+    pub fn insecure_chat_warning_count(&self) -> usize {
+        self.insecure_chat_warning_count
     }
 
     fn start_client_level_load(&mut self) {
@@ -1107,8 +1132,9 @@ mod tests {
         MapItemData as ProtocolMapItemData, MobEffectFlags, OpenScreen as ProtocolOpenScreen,
         PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
         RegistryData, RegistryDataEntry, SetCamera as ProtocolSetCamera,
-        SetEntityData as ProtocolSetEntityData, UpdateAttributes as ProtocolUpdateAttributes,
-        UpdateMobEffect as ProtocolUpdateMobEffect, Vec3d as ProtocolVec3d,
+        SetEntityData as ProtocolSetEntityData, Transfer as ProtocolTransfer,
+        UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
+        Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -1223,6 +1249,48 @@ mod tests {
         assert!(store.local_player_has_reduced_debug_info());
         store.advance_client_time(3);
         assert_eq!(store.local_player().portal_cooldown, 4);
+    }
+
+    #[test]
+    fn login_warns_once_when_profile_keys_cannot_be_validated() {
+        let mut store = WorldStore::new();
+
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+
+        assert_eq!(store.server_enforces_secure_chat(), Some(true));
+        assert!(!store.profile_key_validation_available());
+        assert!(!store.effectively_enforces_secure_chat());
+        assert!(store.seen_insecure_chat_warning());
+        assert_eq!(store.insecure_chat_warning_count(), 1);
+    }
+
+    #[test]
+    fn insecure_chat_warning_guard_survives_transfer_level_reset() {
+        let mut store = WorldStore::new();
+        store.set_profile_key_validation_available(true);
+        store.apply_login(&login_packet(0, "minecraft:overworld"));
+        assert!(store.effectively_enforces_secure_chat());
+        assert!(!store.seen_insecure_chat_warning());
+        assert_eq!(store.insecure_chat_warning_count(), 0);
+
+        let mut insecure_login = login_packet(0, "minecraft:overworld");
+        insecure_login.enforces_secure_chat = false;
+        store.apply_login(&insecure_login);
+        assert!(!store.effectively_enforces_secure_chat());
+        assert!(store.seen_insecure_chat_warning());
+        assert_eq!(store.insecure_chat_warning_count(), 1);
+
+        store.apply_transfer(ProtocolTransfer {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        });
+        store.clear_client_level();
+        assert!(store.profile_key_validation_available());
+        assert!(store.seen_insecure_chat_warning());
+        assert_eq!(store.insecure_chat_warning_count(), 1);
+
+        store.apply_login(&insecure_login);
+        assert_eq!(store.insecure_chat_warning_count(), 1);
     }
 
     #[test]

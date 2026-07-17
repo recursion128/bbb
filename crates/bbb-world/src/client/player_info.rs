@@ -14,6 +14,16 @@ use crate::WorldStore;
 pub struct PlayerInfoState {
     pub entries: BTreeMap<Uuid, PlayerInfoEntryState>,
     pub listed_players: BTreeSet<Uuid>,
+    /// Player info retained after a matching player entity has existed. This
+    /// survives active-list removal and connection reconfiguration like
+    /// vanilla's TransferState.seenPlayers map.
+    #[serde(default)]
+    pub seen_players: BTreeMap<Uuid, PlayerInfoEntryState>,
+    /// UUIDs whose retained entry still aliases the current active PlayerInfo.
+    /// Vanilla stores object references; this set preserves that distinction
+    /// when canonical state stores owned snapshots.
+    #[serde(default)]
+    current_seen_players: BTreeSet<Uuid>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -120,6 +130,15 @@ impl WorldStore {
                     }
                 }
             }
+            if self
+                .player_info
+                .current_seen_players
+                .contains(&entry.profile_id)
+            {
+                self.player_info
+                    .seen_players
+                    .insert(entry.profile_id, info.clone());
+            }
         }
 
         self.update_player_info_counts();
@@ -134,6 +153,7 @@ impl WorldStore {
                 removed += 1;
             }
             self.player_info.listed_players.remove(&profile_id);
+            self.player_info.current_seen_players.remove(&profile_id);
         }
         self.update_player_info_counts();
         removed
@@ -151,6 +171,29 @@ impl WorldStore {
         &self.player_info.listed_players
     }
 
+    pub fn seen_players(&self) -> &BTreeMap<Uuid, PlayerInfoEntryState> {
+        &self.player_info.seen_players
+    }
+
+    pub fn seen_player_info_entry(&self, profile_id: Uuid) -> Option<&PlayerInfoEntryState> {
+        self.player_info.seen_players.get(&profile_id)
+    }
+
+    pub(crate) fn record_seen_player_info(&mut self, profile_id: Uuid) {
+        let Some(info) = self.player_info.entries.get(&profile_id).cloned() else {
+            return;
+        };
+        self.player_info.seen_players.insert(profile_id, info);
+        self.player_info.current_seen_players.insert(profile_id);
+    }
+
+    pub(crate) fn clear_active_player_info(&mut self) {
+        self.player_info.entries.clear();
+        self.player_info.listed_players.clear();
+        self.player_info.current_seen_players.clear();
+        self.update_player_info_counts();
+    }
+
     fn update_player_info_counts(&mut self) {
         self.counters.player_info_entries_tracked = self.player_info.entries.len();
         self.counters.listed_players_tracked = self.player_info.listed_players.len();
@@ -164,9 +207,11 @@ fn player_info_game_mode_name(game_mode: ProtocolGameType) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID;
     use bbb_protocol::packets::{
-        PlayerInfoChatSession as ProtocolPlayerInfoChatSession,
-        PlayerInfoEntry as ProtocolPlayerInfoEntry,
+        AddEntity as ProtocolAddEntity, PlayerInfoChatSession as ProtocolPlayerInfoChatSession,
+        PlayerInfoEntry as ProtocolPlayerInfoEntry, Transfer as ProtocolTransfer,
+        Vec3d as ProtocolVec3d,
     };
 
     #[test]
@@ -325,6 +370,76 @@ mod tests {
         assert_eq!(store.counters().player_info_update_packets, 2);
     }
 
+    #[test]
+    fn seen_players_follow_current_info_and_survive_transfer_reset() {
+        let mut store = WorldStore::new();
+        let id = Uuid::from_u128(0xfedcba98765432100123456789abcdef);
+        let mut initial = listed_player_info_entry(id, "Ada", true);
+        initial.latency = 12;
+        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![
+                ProtocolPlayerInfoAction::AddPlayer,
+                ProtocolPlayerInfoAction::UpdateListed,
+                ProtocolPlayerInfoAction::UpdateLatency,
+            ],
+            entries: vec![initial],
+        });
+
+        store.apply_add_entity(protocol_player_entity(7, id));
+        assert_eq!(store.seen_player_info_entry(id).unwrap().latency, 12);
+
+        let mut latency_update = protocol_player_info_entry(id);
+        latency_update.latency = 24;
+        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![ProtocolPlayerInfoAction::UpdateLatency],
+            entries: vec![latency_update],
+        });
+        assert_eq!(store.seen_player_info_entry(id).unwrap().latency, 24);
+
+        store.apply_player_info_remove(ProtocolPlayerInfoRemove {
+            profile_ids: vec![id],
+        });
+        assert!(store.player_info_entry(id).is_none());
+        assert_eq!(store.seen_player_info_entry(id).unwrap().latency, 24);
+
+        store.apply_transfer(ProtocolTransfer {
+            host: "next.example.com".to_string(),
+            port: 25566,
+        });
+        store.clear_client_level();
+        assert!(store.player_info().entries.is_empty());
+        assert_eq!(store.seen_player_info_entry(id).unwrap().latency, 24);
+
+        let mut replacement = listed_player_info_entry(id, "Ada New", false);
+        replacement.latency = 36;
+        store.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![
+                ProtocolPlayerInfoAction::AddPlayer,
+                ProtocolPlayerInfoAction::UpdateLatency,
+            ],
+            entries: vec![replacement],
+        });
+        // The replacement PlayerInfo does not overwrite the historical object
+        // until its matching player entity is actually added.
+        assert_eq!(store.seen_player_info_entry(id).unwrap().latency, 24);
+
+        store.apply_add_entity(protocol_player_entity(8, id));
+        let seen = store.seen_player_info_entry(id).unwrap();
+        assert_eq!(seen.profile.name, "Ada New");
+        assert_eq!(seen.latency, 36);
+        assert_eq!(store.seen_players().len(), 1);
+    }
+
+    #[test]
+    fn player_entity_without_active_info_does_not_create_seen_entry() {
+        let mut store = WorldStore::new();
+        let id = Uuid::from_u128(0x0123456789abcdeffedcba9876543210);
+
+        store.apply_add_entity(protocol_player_entity(9, id));
+
+        assert!(store.seen_players().is_empty());
+    }
+
     fn protocol_game_profile(uuid: Uuid, name: &str) -> ProtocolGameProfile {
         ProtocolGameProfile {
             uuid,
@@ -368,6 +483,28 @@ mod tests {
             expires_at_epoch_millis: 1_700_000_000_000,
             public_key: vec![1, 2, 3],
             key_signature: vec![4, 5, 6],
+        }
+    }
+
+    fn protocol_player_entity(id: i32, uuid: Uuid) -> ProtocolAddEntity {
+        ProtocolAddEntity {
+            id,
+            uuid,
+            entity_type_id: VANILLA_ENTITY_TYPE_PLAYER_ID,
+            position: ProtocolVec3d {
+                x: 1.0,
+                y: 64.0,
+                z: -2.0,
+            },
+            delta_movement: ProtocolVec3d {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            x_rot: 0.0,
+            y_rot: 0.0,
+            y_head_rot: 0.0,
+            data: 0,
         }
     }
 }

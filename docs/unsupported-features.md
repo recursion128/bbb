@@ -56,13 +56,6 @@ Owner: `bbb-protocol`
   `partial` network and persistent rows in
   `docs/registry-holder-consumer-coverage-26.1.json` before marking those
   families complete.
-- Complete the remaining configuration/play transfer runtime behavior. Production
-  now stops using the old transport, carries cookies and the login identity, opens
-  the requested target with a Transfer-intent handshake, resets connection-local
-  compression/configuration state, and re-enters login. Its bounded closing window
-  drains already-read and bundled StoreCookie/Transfer packets while suppressing
-  other old-session work. Remaining work is the currently unmodeled seen-player and
-  insecure-chat-warning TransferState members.
 - Thread the world/session owner into generic packet Components whose nested
   player, dialog-holder, or show-item payloads require registry context, while
   preserving an explicit unknown result in context-free callers.
@@ -95,9 +88,10 @@ Owner: `bbb-protocol`
   direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
   complete.
 - Complete play Login session initialization beyond the current player-id and
-  partial dimension/gameplay projection: apply the retained raw secure-chat
-  declaration to effective profile-key validation and the insecure-server
-  warning, and reset the remaining level-bound debug/chat/camera/player state.
+  partial dimension/gameplay projection: acquire the services profile-key set,
+  validate signed profile keys and present the existing once-per-Transfer-chain
+  insecure-server warning event as a native system toast. Reset the remaining
+  level-bound debug/chat/camera/player state.
 - Complete play Respawn lifecycle from
   `ClientPacketListener.handleRespawn`: reconstruct the local player according
   to both keep bits and reset music/debug-subscriber state. The current world

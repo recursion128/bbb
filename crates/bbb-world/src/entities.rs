@@ -2635,6 +2635,9 @@ impl WorldStore {
 
         self.entities
             .apply_add_entity_components(identity, transform);
+        if packet.entity_type_id == VANILLA_ENTITY_TYPE_PLAYER_ID {
+            self.record_seen_player_info(packet.uuid);
+        }
         if packet.entity_type_id == VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID {
             self.trigger_sky_flash();
         }

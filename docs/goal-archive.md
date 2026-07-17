@@ -18741,3 +18741,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Locked login ordering to one sent hello before encryption, rejected duplicate and out-of-state
   login responses, shared the path between event stream and probe, and closed all login rows in
   the generated packet-coverage ledger with focused RSA/hash/HTTP/transport/state tests.
+
+# 2026-07-17: Carry complete vanilla TransferState session state
+
+- Added the retained `seenPlayers` map beside active player info. Player entity creation captures
+  the current entry, later updates follow the same live object, removal preserves the historical
+  snapshot, and a replacement entry does not overwrite it until that player entity is created.
+- Added the profile-key validation capability gate and once-per-connection-chain insecure-chat
+  warning edge. The guard, warning count, validation capability, and historical players survive
+  configuration resets and Transfer reconnects while active player info is reset.
+- Closed configuration and play Transfer runtime coverage after locking both remaining
+  `TransferState` members against vanilla `ClientCommonPacketListenerImpl`,
+  `ClientPacketListener`, and `TransferState`.
