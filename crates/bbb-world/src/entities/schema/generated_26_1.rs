@@ -25096,24 +25096,29 @@ mod generated_catalog_guards {
     #[test]
     fn iron_golem_flags_consumers_do_not_restore_accessor_constants() {
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
-        assert!(native_input
-            .contains("vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type"));
         let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        for source in [native_input, native_input_tests] {
+            assert!(source
+                .contains("vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type"));
+        }
         let fixture = native_input_tests
             .split("fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard")
             .nth(1)
             .and_then(|source| source.split("#[test]").next())
             .expect("IronGolem F3+I fixture source");
         assert!(fixture.contains("iron_golem_flags_data("));
-        for removed in ["IRON_GOLEM_FLAGS_DATA_ID", "IRON_GOLEM_DEFAULT_FLAGS"] {
-            assert!(
-                !native_input.contains(removed),
-                "native input restored {removed}"
-            );
-            assert!(
-                !fixture.contains(removed),
-                "native input fixture restored {removed}"
-            );
+        for removed in [
+            "IRON_GOLEM_FLAGS_DATA_ID",
+            "IRON_GOLEM_DEFAULT_FLAGS",
+            "IRON_GOLEM_PLAYER_CREATED_FLAG",
+            "VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED",
+        ] {
+            for source in [native_input, native_input_tests] {
+                assert!(
+                    !source.contains(removed),
+                    "IronGolem projection restored {removed}"
+                );
+            }
         }
     }
 

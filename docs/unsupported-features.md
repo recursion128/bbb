@@ -504,10 +504,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   generated `WitherBoss.DATA_TARGET_B/C`; world tick consumers and world/native fixtures must carry
   entity type, must not restore fixed accessor/default aliases or hand-written wire indices, and
   must not mix in center-head `DATA_TARGET_A`.
-  IronGolem player-created debug membership, wire index and default must remain derived from
-  generated `IronGolem.DATA_FLAGS_ID`; native debug production/fixtures must not restore fixed
-  accessor/default aliases or hand-written wire indices, while the generated player-created mask
-  remains the semantic flag owner.
+  IronGolem player-created debug membership, wire index, default and named mask must remain derived
+  together from generated `IronGolem.DATA_FLAGS_ID`/`isPlayerCreated`; native debug production and
+  fixtures must not restore fixed accessor/default/mask aliases or hand-written wire facts.
   Saveable projectile lifecycle bounds must remain composed from generated projectile/saveability
   membership and generated `EntityType.Builder.sized` dimensions rather than a projectile size
   table; production and fixtures must not restore fixed registry ranges or projectile-type tables.

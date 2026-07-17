@@ -587,16 +587,21 @@ fn armadillo_state_data(state_id: i32) -> ProtocolEntityDataValue {
     }
 }
 
-fn iron_golem_flags_data(flags: i8) -> ProtocolEntityDataValue {
-    let (data_id, _) = vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-    )
-    .expect("generated IronGolem flags accessor must resolve");
+fn iron_golem_flags_data(player_created: bool) -> ProtocolEntityDataValue {
+    let (data_id, default, player_created_mask) =
+        vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        )
+        .expect("generated IronGolem flags accessor must resolve");
     ProtocolEntityDataValue {
         data_id,
         serializer_id:
             bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-        value: EntityDataValueKind::Byte(flags),
+        value: EntityDataValueKind::Byte(if player_created {
+            default | player_created_mask
+        } else {
+            default & !player_created_mask
+        }),
     }
 }
 
@@ -13316,7 +13321,7 @@ fn shift_f3_i_with_permission_copies_local_iron_golem_save_nbt_to_clipboard() {
         id: 50,
         values: vec![
             mob_flags_data(&world, 50, false, true),
-            iron_golem_flags_data(IRON_GOLEM_PLAYER_CREATED_FLAG),
+            iron_golem_flags_data(true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

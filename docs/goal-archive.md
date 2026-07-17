@@ -18230,3 +18230,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Zoglin 固定 wire id/default aliases；Zoglin 自有 owner 与 AgeableMob 不同索引边界保持不变。
 - generator reverse guard 覆盖 input facade 与完整 tests，entity-scene model-kind 继续共享同一
   nearest-owner accessor。
+
+## 2026-07-16：派生 IronGolem player-created mask
+
+- world schema 的 IronGolem flags accessor 现在统一返回 generated membership、BYTE wire index、
+  typed default 与 `isPlayerCreated` named mask，保持 Chicken 同槽位负例。
+- native F3+I production 与 fixture 删除固定 mask alias，按同一 accessor 解码和构造 flags；
+  generator reverse guard 覆盖 input facade 与完整 tests，禁止固定 id/default/mask 回流。

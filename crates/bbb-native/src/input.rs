@@ -137,7 +137,6 @@ use bbb_world::{
 use bbb_world::{
     vanilla_painting_variant_resource_id,
     VANILLA_COMMAND_BLOCK_MINECART_COMMAND_DATA_ID as COMMAND_BLOCK_MINECART_COMMAND_DATA_ID,
-    VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED as IRON_GOLEM_PLAYER_CREATED_FLAG,
 };
 use bbb_world::{
     VANILLA_ARMADILLO_STATE_ROLLING_ID as ARMADILLO_STATE_ROLLING_ID,
@@ -7607,15 +7606,18 @@ fn debug_push_interaction_additional_save_data(entity: &EntityState, fields: &mu
 }
 
 fn debug_push_iron_golem_additional_save_data(entity: &EntityState, fields: &mut Vec<String>) {
-    let flags =
+    let (flags, player_created_mask) =
         vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(entity.entity_type_id)
-            .map(|(data_id, default)| {
-                debug_entity_data_byte_present(entity, data_id).unwrap_or(default)
+            .map(|(data_id, default, player_created_mask)| {
+                (
+                    debug_entity_data_byte_present(entity, data_id).unwrap_or(default),
+                    player_created_mask,
+                )
             })
-            .unwrap_or(0);
+            .unwrap_or((0, 0));
     fields.push(format!(
         "PlayerCreated: {}",
-        debug_snbt_bool(flags & IRON_GOLEM_PLAYER_CREATED_FLAG != 0)
+        debug_snbt_bool(flags & player_created_mask != 0)
     ));
 }
 

@@ -1396,12 +1396,18 @@ pub fn vanilla_entity_metadata_fox_flags_accessor_for_entity_type(
         .map(|accessors| (accessors.flags_data_id, accessors.flags_default))
 }
 
-/// Resolves the generated IronGolem flags accessor and its typed default.
+/// Resolves the generated IronGolem flags accessor, typed default, and player-created mask.
 pub fn vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
     entity_type_id: i32,
-) -> Option<(u8, i8)> {
+) -> Option<(u8, i8, i8)> {
     let accessor =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_FLAGS_ID")?;
+    let player_created_mask =
+        vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::IronGolem)
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == "isPlayerCreated" && flag.data_id == accessor.data_id)?
+            .mask;
     match (
         accessor.owner,
         accessor.serializer_name,
@@ -1411,7 +1417,7 @@ pub fn vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
             "net.minecraft.world.entity.animal.golem.IronGolem",
             "BYTE",
             Some(VanillaEntityMetadataDefault::Byte(default)),
-        ) => Some((accessor.data_id, default)),
+        ) => Some((accessor.data_id, default, player_created_mask)),
         _ => None,
     }
 }
@@ -5569,7 +5575,7 @@ mod tests {
     }
 
     #[test]
-    fn generated_iron_golem_flags_accessor_owns_membership_index_and_default() {
+    fn generated_iron_golem_flags_accessor_owns_membership_index_default_and_named_mask() {
         let iron_golem = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::IronGolem);
         let flags = iron_golem
             .own_fields
@@ -5579,11 +5585,16 @@ mod tests {
         let VanillaEntityMetadataDefault::Byte(flags_default) = flags.default else {
             panic!("generated IronGolem flags default must be BYTE");
         };
+        let player_created = iron_golem
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == "isPlayerCreated")
+            .expect("generated IronGolem player-created flag");
         assert_eq!(
             vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_IRON_GOLEM_ID
             ),
-            Some((flags.data_id, flags_default))
+            Some((flags.data_id, flags_default, player_created.mask))
         );
         assert_eq!(
             vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
@@ -9176,7 +9187,7 @@ mod tests {
         assert_eq!(iron_golem.parent, Some(VanillaEntityMetadataFamily::Mob));
         assert_eq!(iron_golem.inherited_field_count, 16);
         assert_eq!(iron_golem.own_fields.len(), 1);
-        let (flags_data_id, flags_default) =
+        let (flags_data_id, flags_default, player_created_mask) =
             vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type(
                 VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
             )
@@ -9186,7 +9197,7 @@ mod tests {
             VanillaEntityMetadataDefault::Byte(flags_default),
             iron_golem.own_fields[0].default
         );
-        assert_eq!(VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED, 1);
+        assert_eq!(player_created_mask, VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED);
         assert_eq!(
             snow_golem.own_flags,
             &[VanillaEntityMetadataFlagSchema {
