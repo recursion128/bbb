@@ -178,6 +178,7 @@ pub use schema::{
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_villager_data_accessor_for_entity_type,
     vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,
+    vanilla_entity_metadata_witch_using_item_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entity_type,
     vanilla_entity_metadata_wolf_interested_accessor_for_entity_type,

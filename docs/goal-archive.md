@@ -18286,3 +18286,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   same-name owner 和 Cow/非法 id 为负例。
 - native F3+I fixture 删除固定 slot 18，改由 accessor 构造 boost metadata；Strider reverse
   guard 禁止 boost accessor/default aliases 回流，suffocating BOOLEAN 投影保持独立。
+
+## 2026-07-16：派生 Witch using-item metadata
+
+- world schema 新增 Witch-only `DATA_USING_ITEM` BOOLEAN/default false typed accessor，以同属
+  Raider 分支的 Pillager 及 Cow/非法 id 为 membership 负例。
+- native F3+I fixture 删除固定 slot 17，改由 accessor 构造 using-item metadata；生成 reverse
+  guard 禁止 Witch accessor/default aliases 回流。

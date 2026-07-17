@@ -708,6 +708,21 @@ fn strider_boost_time_data(boost_time: i32) -> ProtocolEntityDataValue {
     }
 }
 
+fn witch_using_item_data(using_item: bool) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_witch_using_item_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_WITCH_ID,
+        )
+        .expect("generated Witch using-item accessor");
+    assert!(!default);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id:
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
+        value: EntityDataValueKind::Boolean(using_item),
+    }
+}
+
 fn glow_squid_dark_ticks_data_id() -> u8 {
     let (data_id, default) =
         vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(
@@ -13680,8 +13695,6 @@ fn shift_f3_i_with_permission_copies_local_wandering_trader_save_nbt_to_clipboar
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard() {
-    const WITCH_USING_ITEM_DATA_ID: u8 = 17;
-
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -13704,11 +13717,7 @@ fn shift_f3_i_with_permission_copies_local_witch_save_nbt_to_clipboard() {
         id: 51,
         values: vec![
             mob_flags_data(&world, 51, true, true),
-            ProtocolEntityDataValue {
-                data_id: WITCH_USING_ITEM_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
-                value: EntityDataValueKind::Boolean(true),
-            },
+            witch_using_item_data(true),
         ],
     }));
     world.set_local_player_pose(LocalPlayerPoseState {

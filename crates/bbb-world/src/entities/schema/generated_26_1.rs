@@ -23498,6 +23498,19 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn native_witch_debug_fixture_does_not_restore_fixed_using_item_metadata() {
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        assert!(native_input_tests
+            .contains("vanilla_entity_metadata_witch_using_item_accessor_for_entity_type"));
+        for removed in ["WITCH_USING_ITEM_DATA_ID", "WITCH_DEFAULT_USING_ITEM"] {
+            assert!(
+                !native_input_tests.contains(removed),
+                "Witch debug fixture restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn production_zombie_villager_shaking_does_not_restore_entity_type_membership() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");
         let body = source

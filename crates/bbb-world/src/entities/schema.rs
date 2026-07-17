@@ -811,6 +811,26 @@ pub fn vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
     }
 }
 
+/// Resolves the generated Witch using-item accessor and its typed default.
+pub fn vanilla_entity_metadata_witch_using_item_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, bool)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_USING_ITEM")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.Witch",
+            "BOOLEAN",
+            Some(VanillaEntityMetadataDefault::Boolean(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated ZombieVillager curing-conversion accessor and its typed default.
 pub fn vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type(
     entity_type_id: i32,
@@ -4287,10 +4307,11 @@ mod tests {
         VANILLA_ENTITY_TYPE_TRIDENT_ID, VANILLA_ENTITY_TYPE_TROPICAL_FISH_ID,
         VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
         VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WOLF_ID,
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_WARDEN_ID, VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
 
     use super::*;
@@ -6246,6 +6267,26 @@ mod tests {
         for entity_type_id in [VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_COW_ID, -1] {
             assert_eq!(
                 vanilla_entity_metadata_strider_boost_time_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn generated_witch_using_item_accessor_owns_membership_index_and_default() {
+        assert_eq!(
+            vanilla_entity_metadata_witch_using_item_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_WITCH_ID
+            ),
+            Some((17, false))
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_PILLAGER_ID,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_witch_using_item_accessor_for_entity_type(entity_type_id),
                 None
             );
         }
