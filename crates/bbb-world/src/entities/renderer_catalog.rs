@@ -26,6 +26,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     horse_kind: Option<VanillaHorseRendererKind>,
     llama_kind: Option<VanillaLlamaRendererKind>,
     boat_kind: Option<VanillaBoatRendererKind>,
+    piglin_kind: Option<VanillaPiglinRendererKind>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,6 +77,13 @@ pub enum VanillaZombieRendererKind {
     Husk,
     Drowned,
     ZombieVillager,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaPiglinRendererKind {
+    Piglin,
+    PiglinBrute,
+    ZombifiedPiglin,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -275,6 +283,12 @@ pub fn vanilla_entity_renderer_zombie_kind(
         "ZombieVillagerRenderer" => Some(VanillaZombieRendererKind::ZombieVillager),
         _ => None,
     }
+}
+
+pub fn vanilla_entity_renderer_piglin_kind(
+    entity_type_id: i32,
+) -> Option<VanillaPiglinRendererKind> {
+    vanilla_entity_renderer_registration(entity_type_id)?.piglin_kind
 }
 
 #[cfg(test)]
@@ -628,6 +642,26 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_renderer_zombie_kind(VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_piglin_kinds_match_provider_constructor_layers() {
+        assert_eq!(
+            vanilla_entity_renderer_piglin_kind(VANILLA_ENTITY_TYPE_PIGLIN_ID),
+            Some(VanillaPiglinRendererKind::Piglin)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_piglin_kind(VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID),
+            Some(VanillaPiglinRendererKind::PiglinBrute)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_piglin_kind(VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID),
+            Some(VanillaPiglinRendererKind::ZombifiedPiglin)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_piglin_kind(VANILLA_ENTITY_TYPE_ZOMBIE_ID),
             None
         );
     }

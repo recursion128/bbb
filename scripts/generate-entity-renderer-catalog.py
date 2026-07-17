@@ -182,6 +182,13 @@ def render(source_root: Path) -> str:
                 )
                 + ",",
                 f"        boat_kind: {boat_kind},",
+                "        piglin_kind: "
+                + (
+                    f"Some(VanillaPiglinRendererKind::{entry.piglin_kind})"
+                    if entry.piglin_kind is not None
+                    else "None"
+                )
+                + ",",
                 "    },",
             ]
         )
@@ -317,6 +324,15 @@ def render(source_root: Path) -> str:
             '        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
             '        assert!(source.contains("vanilla_entity_renderer_zombie_kind"));',
             '        for removed in ["VANILLA_ENTITY_TYPE_ZOMBIE_ID", "VANILLA_ENTITY_TYPE_HUSK_ID", "VANILLA_ENTITY_TYPE_DROWNED_ID", "VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID"] {',
+            '            assert!(!source.contains(removed), "restored {removed}");',
+            '        }',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_model_selection_does_not_restore_piglin_type_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
+            '        assert!(source.contains("vanilla_entity_renderer_piglin_kind"));',
+            '        for removed in ["VANILLA_ENTITY_TYPE_PIGLIN_ID", "VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID", "VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID"] {',
             '            assert!(!source.contains(removed), "restored {removed}");',
             '        }',
             "    }",

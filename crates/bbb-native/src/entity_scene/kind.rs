@@ -162,6 +162,26 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             }
         };
     }
+    if let Some(piglin_kind) = bbb_world::vanilla_entity_renderer_piglin_kind(entity_type_id) {
+        return EntityModelKind::Piglin {
+            family: match piglin_kind {
+                bbb_world::VanillaPiglinRendererKind::Piglin => PiglinModelFamily::Piglin,
+                bbb_world::VanillaPiglinRendererKind::PiglinBrute => PiglinModelFamily::PiglinBrute,
+                bbb_world::VanillaPiglinRendererKind::ZombifiedPiglin => {
+                    PiglinModelFamily::ZombifiedPiglin
+                }
+            },
+            baby: match piglin_kind {
+                bbb_world::VanillaPiglinRendererKind::Piglin => {
+                    piglin_baby(entity_type_id, data_values)
+                }
+                bbb_world::VanillaPiglinRendererKind::PiglinBrute => false,
+                bbb_world::VanillaPiglinRendererKind::ZombifiedPiglin => {
+                    zombie_baby(entity_type_id, data_values)
+                }
+            },
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -170,14 +190,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             player_model_kind(entity_type_id, data_values)
         }
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID => armor_stand_model_kind(entity_type_id, data_values),
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID => EntityModelKind::Piglin {
-            family: PiglinModelFamily::ZombifiedPiglin,
-            baby: zombie_baby(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_PIGLIN_ID => EntityModelKind::Piglin {
-            family: PiglinModelFamily::Piglin,
-            baby: piglin_baby(entity_type_id, data_values),
-        },
         VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityModelKind::Villager {
             baby: ageable_baby(entity_type_id, data_values),
         },
@@ -343,10 +355,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_PARROT_ID => parrot_model_kind(entity_type_id, data_values),
         VANILLA_ENTITY_TYPE_PHANTOM_ID => EntityModelKind::Phantom {
             size: phantom_size(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID => EntityModelKind::Piglin {
-            family: PiglinModelFamily::PiglinBrute,
-            baby: false,
         },
         VANILLA_ENTITY_TYPE_PUFFERFISH_ID => EntityModelKind::Pufferfish {
             puff_state: pufferfish_puff_state(entity_type_id, data_values),

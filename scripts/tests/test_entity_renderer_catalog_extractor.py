@@ -134,6 +134,27 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                         context -> new RaftRenderer(context, ModelLayers.BAMBOO_RAFT));
                     register(EntityType.BAMBOO_CHEST_RAFT,
                         context -> new RaftRenderer(context, ModelLayers.BAMBOO_CHEST_RAFT));
+                    register(EntityType.PIGLIN,
+                        context -> new PiglinRenderer(
+                            context,
+                            ModelLayers.PIGLIN,
+                            ModelLayers.PIGLIN_BABY,
+                            ModelLayers.PIGLIN_ARMOR,
+                            ModelLayers.PIGLIN_BABY_ARMOR));
+                    register(EntityType.PIGLIN_BRUTE,
+                        context -> new PiglinRenderer(
+                            context,
+                            ModelLayers.PIGLIN_BRUTE,
+                            ModelLayers.PIGLIN_BRUTE,
+                            ModelLayers.PIGLIN_BRUTE_ARMOR,
+                            ModelLayers.PIGLIN_BRUTE_ARMOR));
+                    register(EntityType.ZOMBIFIED_PIGLIN,
+                        context -> new ZombifiedPiglinRenderer(
+                            context,
+                            ModelLayers.ZOMBIFIED_PIGLIN,
+                            ModelLayers.ZOMBIFIED_PIGLIN_BABY,
+                            ModelLayers.ZOMBIFIED_PIGLIN_ARMOR,
+                            ModelLayers.ZOMBIFIED_PIGLIN_BABY_ARMOR));
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -322,6 +343,20 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 """,
             ),
             java(
+                "net/minecraft/client/renderer/entity/PiglinRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class PiglinRenderer extends MobRenderer {}
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/ZombifiedPiglinRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class ZombifiedPiglinRenderer extends MobRenderer {}
+                """,
+            ),
+            java(
                 "net/minecraft/client/renderer/entity/CatRenderer.java",
                 """
                 package net.minecraft.client.renderer.entity;
@@ -471,6 +506,9 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "ACACIA_CHEST_BOAT",
                 "BAMBOO_RAFT",
                 "BAMBOO_CHEST_RAFT",
+                "PIGLIN",
+                "PIGLIN_BRUTE",
+                "ZOMBIFIED_PIGLIN",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -527,6 +565,21 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (29, "ACACIA_CHEST_BOAT", "BoatRenderer", False, None, None, False, False, False, False, False, False),
                 (30, "BAMBOO_RAFT", "RaftRenderer", False, None, None, False, False, False, False, False, False),
                 (31, "BAMBOO_CHEST_RAFT", "RaftRenderer", False, None, None, False, False, False, False, False, False),
+                (32, "PIGLIN", "PiglinRenderer", False, None, None, False, False, False, False, False, False),
+                (33, "PIGLIN_BRUTE", "PiglinRenderer", False, None, None, False, False, False, False, False, False),
+                (34, "ZOMBIFIED_PIGLIN", "ZombifiedPiglinRenderer", False, None, None, False, False, False, False, False, False),
+            ],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.piglin_kind)
+                for entry in entries
+                if entry.piglin_kind is not None
+            ],
+            [
+                ("PIGLIN", "Piglin"),
+                ("PIGLIN_BRUTE", "PiglinBrute"),
+                ("ZOMBIFIED_PIGLIN", "ZombifiedPiglin"),
             ],
         )
         self.assertEqual(

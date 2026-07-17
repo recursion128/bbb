@@ -18438,3 +18438,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native 删除四个 zombie-family type arms，统一消费 renderer kind；各 family 的 baby 状态
   继续读取 generated Zombie metadata accessor。
 - renderer generator 输出反向守卫，禁止 native kind dispatch 恢复四个 entity-type 分支。
+
+## 2026-07-17：生成 Piglin provider kind
+
+- entity renderer extractor 严格解析 Piglin/PiglinBrute 共用 `PiglinRenderer` 的两组五参
+  model-layer tuple，以及 ZombifiedPiglin 的完整五参 provider；未知参数显式失败。
+- checked-in registration 新增 typed piglin kind；native 删除三种 type arms，同时保持
+  Piglin、ZombifiedPiglin 与 PiglinBrute 各自的 baby accessor/固定 adult 语义。
+- extractor fixture 锁定三组 tuple，renderer generator 输出反向守卫，防止 native 恢复
+  三个 entity-type 分支。

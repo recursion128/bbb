@@ -33,6 +33,8 @@ DONKEY_RENDERER_CLASS = RENDERER_PACKAGE + ".DonkeyRenderer"
 LLAMA_RENDERER_CLASS = RENDERER_PACKAGE + ".LlamaRenderer"
 BOAT_RENDERER_CLASS = RENDERER_PACKAGE + ".BoatRenderer"
 RAFT_RENDERER_CLASS = RENDERER_PACKAGE + ".RaftRenderer"
+PIGLIN_RENDERER_CLASS = RENDERER_PACKAGE + ".PiglinRenderer"
+ZOMBIFIED_PIGLIN_RENDERER_CLASS = RENDERER_PACKAGE + ".ZombifiedPiglinRenderer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
@@ -87,6 +89,7 @@ class EntityRendererRegistration:
     horse_kind: str | None
     llama_kind: str | None
     boat_kind: tuple[str, bool] | None
+    piglin_kind: str | None
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -761,6 +764,48 @@ def extract_entity_renderer_registrations(
                     "unsupported boat renderer model layer",
                 )
 
+        piglin_kind = None
+        if renderer_class in {PIGLIN_RENDERER_CLASS, ZOMBIFIED_PIGLIN_RENDERER_CLASS}:
+            arguments = tuple(argument.canonical for argument in constructor_arguments)
+            piglin_kind = {
+                (
+                    PIGLIN_RENDERER_CLASS,
+                    (
+                        "context",
+                        "ModelLayers.PIGLIN",
+                        "ModelLayers.PIGLIN_BABY",
+                        "ModelLayers.PIGLIN_ARMOR",
+                        "ModelLayers.PIGLIN_BABY_ARMOR",
+                    ),
+                ): "Piglin",
+                (
+                    PIGLIN_RENDERER_CLASS,
+                    (
+                        "context",
+                        "ModelLayers.PIGLIN_BRUTE",
+                        "ModelLayers.PIGLIN_BRUTE",
+                        "ModelLayers.PIGLIN_BRUTE_ARMOR",
+                        "ModelLayers.PIGLIN_BRUTE_ARMOR",
+                    ),
+                ): "PiglinBrute",
+                (
+                    ZOMBIFIED_PIGLIN_RENDERER_CLASS,
+                    (
+                        "context",
+                        "ModelLayers.ZOMBIFIED_PIGLIN",
+                        "ModelLayers.ZOMBIFIED_PIGLIN_BABY",
+                        "ModelLayers.ZOMBIFIED_PIGLIN_ARMOR",
+                        "ModelLayers.ZOMBIFIED_PIGLIN_BABY_ARMOR",
+                    ),
+                ): "ZombifiedPiglin",
+            }.get((renderer_class, arguments))
+            if piglin_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported piglin renderer constructor arguments",
+                )
+
         registrations.append(
             EntityRendererRegistration(
                 entity_type_id,
@@ -848,6 +893,7 @@ def extract_entity_renderer_registrations(
                 horse_kind,
                 llama_kind,
                 boat_kind,
+                piglin_kind,
             )
         )
 
