@@ -1328,6 +1328,10 @@ back into a todo. Do not delete these.
 - Complete the reverse audit from every client-side entity event override and
   listener special case to canonical state plus applicable animation, particle,
   and audio side effects.
+- `FishingHook.handleEntityEvent(31)` now resolves the generated override owner,
+  the synced `entityId + 1` hooked target, and the add-entity owner id before
+  adding vanilla's `(ownerPos - hookPos) * 0.1` pull to the hooked local player.
+  This closes that override only; the full reverse audit remains open.
 
 ### Entity coverage matrix save and debug
 

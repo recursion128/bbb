@@ -42,6 +42,7 @@ const LAVA_EXTINGUISH_LEVEL_EVENT: i32 = 1501;
 const PLANT_GROWTH_LEVEL_EVENT: i32 = 1505;
 const POTION_BREAK_LEVEL_EVENT: i32 = 2002;
 const RAVAGER_ROAR_EVENT_ID: i8 = 69;
+const FISHING_HOOK_PULL_EVENT_ID: i8 = 31;
 const REDSTONE_TORCH_BURNOUT_LEVEL_EVENT: i32 = 1502;
 const TRIAL_SPAWNER_DETECT_PLAYER_LEVEL_EVENT: i32 = 3013;
 const TRIAL_SPAWNER_DETECT_PLAYER_OMINOUS_LEVEL_EVENT: i32 = 3019;
@@ -541,6 +542,9 @@ impl WorldStore {
                     _ => None,
                 };
                 let applied = self.apply_entity_event(update);
+                if applied && update.event_id == FISHING_HOOK_PULL_EVENT_ID {
+                    let _ = self.apply_fishing_hook_pull(update.entity_id);
+                }
                 if let Some(state) = firework_explosion_particles {
                     if state.has_explosions {
                         if !state.explosions.is_empty() {
@@ -1605,9 +1609,9 @@ mod tests {
         VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID, VANILLA_ENTITY_TYPE_COW_ID,
         VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
-        VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
+        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
         VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
@@ -5056,6 +5060,116 @@ mod tests {
         assert_eq!(effects.ravager_roar_particles.len(), 1);
         let pose = store.local_player_pose().unwrap();
         assert_eq!(pose.delta_movement, vec3(0.5, -0.25, 1.0));
+    }
+
+    #[test]
+    fn fishing_hook_pull_event_adds_owner_to_hook_delta_to_local_player_velocity() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        store.set_local_player_pose(LocalPlayerPoseState {
+            delta_movement: vec3(0.25, -0.5, 2.0),
+            ..LocalPlayerPoseState::default()
+        });
+        store.apply_add_entity(add_entity(
+            7,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            vec3(1.0, 64.0, 1.0),
+        ));
+        store.apply_add_entity(add_entity(
+            8,
+            VANILLA_ENTITY_TYPE_PLAYER_ID,
+            vec3(10.0, 70.0, -4.0),
+        ));
+        let mut hook = add_entity(
+            76,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            vec3(2.0, 65.0, 6.0),
+        );
+        hook.data = 8;
+        store.apply_add_entity(hook);
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 76,
+            values: vec![int_entity_data(
+                crate::entities::VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
+                8,
+            )],
+        }));
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::EntityEvent(EntityEvent {
+                    entity_id: 76,
+                    event_id: FISHING_HOOK_PULL_EVENT_ID,
+                }),
+                &mut random,
+                &mut NoPlayApplyEffects,
+            )
+            .is_none());
+
+        assert_vec3_close(
+            store.local_player_pose().unwrap().delta_movement,
+            vec3(1.05, 0.0, 1.0),
+        );
+        assert_eq!(store.probe_entity(76).unwrap().last_event_id, Some(31));
+    }
+
+    #[test]
+    fn fishing_hook_pull_event_ignores_remote_targets_and_non_hook_entities() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        store.set_local_player_pose(LocalPlayerPoseState {
+            delta_movement: vec3(0.25, -0.5, 2.0),
+            ..LocalPlayerPoseState::default()
+        });
+        for (entity_id, position) in [
+            (7, vec3(1.0, 64.0, 1.0)),
+            (8, vec3(10.0, 70.0, -4.0)),
+            (9, vec3(3.0, 64.0, 3.0)),
+        ] {
+            store.apply_add_entity(add_entity(
+                entity_id,
+                VANILLA_ENTITY_TYPE_PLAYER_ID,
+                position,
+            ));
+        }
+        let mut hook = add_entity(
+            76,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            vec3(2.0, 65.0, 6.0),
+        );
+        hook.data = 8;
+        store.apply_add_entity(hook);
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 76,
+            values: vec![int_entity_data(
+                crate::entities::VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
+                10,
+            )],
+        }));
+        store.apply_add_entity(add_entity(
+            77,
+            VANILLA_ENTITY_TYPE_ARROW_ID,
+            vec3(2.0, 65.0, 6.0),
+        ));
+
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        for entity_id in [76, 77] {
+            assert!(store
+                .apply_play_packet(
+                    PlayClientbound::EntityEvent(EntityEvent {
+                        entity_id,
+                        event_id: FISHING_HOOK_PULL_EVENT_ID,
+                    }),
+                    &mut random,
+                    &mut NoPlayApplyEffects,
+                )
+                .is_none());
+        }
+        assert_eq!(
+            store.local_player_pose().unwrap().delta_movement,
+            vec3(0.25, -0.5, 2.0)
+        );
     }
 
     #[test]

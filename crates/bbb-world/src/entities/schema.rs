@@ -4003,6 +4003,14 @@ pub(crate) fn vanilla_entity_metadata_type_uses_wolf_entity_event_handler(
         == Some("net.minecraft.world.entity.animal.wolf.Wolf")
 }
 
+/// Returns whether entity event dispatch reaches `FishingHook.handleEntityEvent(byte)` first.
+pub(crate) fn vanilla_entity_metadata_type_uses_fishing_hook_entity_event_handler(
+    entity_type_id: i32,
+) -> bool {
+    vanilla_entity_metadata_handle_entity_event_owner(entity_type_id)
+        == Some("net.minecraft.world.entity.projectile.FishingHook")
+}
+
 /// Returns whether vanilla's generated class hierarchy and entity-type tags make this type
 /// eligible for `Entity.isPickable` before per-instance state gates.
 ///
@@ -4492,6 +4500,7 @@ mod tests {
         const SQUID_OWNER: &str = "net.minecraft.world.entity.animal.squid.Squid";
         const OCELOT_OWNER: &str = "net.minecraft.world.entity.animal.feline.Ocelot";
         const WOLF_OWNER: &str = "net.minecraft.world.entity.animal.wolf.Wolf";
+        const FISHING_HOOK_OWNER: &str = "net.minecraft.world.entity.projectile.FishingHook";
         let squid_dispatch_types = VANILLA_ENTITY_TYPE_METADATA_26_1
             .iter()
             .filter(|entry| entry.handle_entity_event_owner == Some(SQUID_OWNER))
@@ -4547,6 +4556,22 @@ mod tests {
         assert!(
             !vanilla_entity_metadata_type_uses_wolf_entity_event_handler(
                 VANILLA_ENTITY_TYPE_CAT_ID
+            )
+        );
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner(
+                VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
+            ),
+            Some(FISHING_HOOK_OWNER)
+        );
+        assert!(
+            vanilla_entity_metadata_type_uses_fishing_hook_entity_event_handler(
+                VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID
+            )
+        );
+        assert!(
+            !vanilla_entity_metadata_type_uses_fishing_hook_entity_event_handler(
+                VANILLA_ENTITY_TYPE_PLAYER_ID
             )
         );
     }

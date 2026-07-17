@@ -5,7 +5,10 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 
 use crate::entities::{
-    vanilla_living_entity_type, EntityPickBoundsState, EntityVec3, VANILLA_ENTITY_TYPE_RAVAGER_ID,
+    vanilla_entity_metadata_type_uses_fishing_hook_entity_event_handler,
+    vanilla_living_entity_type, EntityPickBoundsState, EntityVec3, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY,
+    VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
 };
 use crate::{LocalPlayerPoseState, WorldStore};
 
@@ -14,6 +17,7 @@ const RAVAGER_ROAR_TARGET_INFLATE: f64 = 4.0;
 const RAVAGER_ROAR_KNOCKBACK_HORIZONTAL_SCALE: f64 = 4.0;
 const RAVAGER_ROAR_KNOCKBACK_VERTICAL: f64 = 0.2;
 const RAVAGER_ROAR_MIN_HORIZONTAL_DISTANCE_SQUARED: f64 = 0.001;
+const FISHING_HOOK_PULL_SCALE: f64 = 0.1;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientEffectsState {
@@ -134,6 +138,71 @@ impl WorldStore {
         pose.delta_movement.x += xd / dd * RAVAGER_ROAR_KNOCKBACK_HORIZONTAL_SCALE;
         pose.delta_movement.y += RAVAGER_ROAR_KNOCKBACK_VERTICAL;
         pose.delta_movement.z += zd / dd * RAVAGER_ROAR_KNOCKBACK_HORIZONTAL_SCALE;
+        self.local_player.pose = Some(pose);
+        true
+    }
+
+    /// Applies vanilla `FishingHook.handleEntityEvent(31)` to the client-owned player velocity.
+    ///
+    /// `DATA_HOOKED_ENTITY` stores `entityId + 1` (`0` means no target), while the fishing
+    /// bobber add-entity packet stores its owner id in `data`. Vanilla only runs the pull on the
+    /// client whose local player is the hooked entity.
+    pub(crate) fn apply_fishing_hook_pull(&mut self, hook_id: i32) -> bool {
+        let Some(local_player_id) = self.local_player_id else {
+            return false;
+        };
+        let Some(local_identity) = self.entities.identity(local_player_id) else {
+            return false;
+        };
+        if local_identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return false;
+        }
+
+        let Some(hook_identity) = self.entities.identity(hook_id) else {
+            return false;
+        };
+        if !vanilla_entity_metadata_type_uses_fishing_hook_entity_event_handler(
+            hook_identity.entity_type_id,
+        ) {
+            return false;
+        }
+        let Some(hooked_entity_data) = self.entities.metadata_int_for_entity(
+            hook_id,
+            VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID,
+            VANILLA_FISHING_HOOK_DEFAULT_HOOKED_ENTITY,
+        ) else {
+            return false;
+        };
+        if hooked_entity_data.checked_sub(1) != Some(local_player_id) {
+            return false;
+        }
+
+        let Some(owner_identity) = self.entities.identity(hook_identity.data) else {
+            return false;
+        };
+        if owner_identity.entity_type_id != VANILLA_ENTITY_TYPE_PLAYER_ID {
+            return false;
+        }
+        let Some(owner_transform) = self.entities.transform(owner_identity.id) else {
+            return false;
+        };
+        let Some(hook_transform) = self.entities.transform(hook_id) else {
+            return false;
+        };
+        let pull = EntityVec3 {
+            x: (owner_transform.position.x - hook_transform.position.x) * FISHING_HOOK_PULL_SCALE,
+            y: (owner_transform.position.y - hook_transform.position.y) * FISHING_HOOK_PULL_SCALE,
+            z: (owner_transform.position.z - hook_transform.position.z) * FISHING_HOOK_PULL_SCALE,
+        };
+        if !(pull.x.is_finite() && pull.y.is_finite() && pull.z.is_finite()) {
+            return false;
+        }
+        let Some(mut pose) = self.local_player.pose else {
+            return false;
+        };
+        pose.delta_movement.x += pull.x;
+        pose.delta_movement.y += pull.y;
+        pose.delta_movement.z += pull.z;
         self.local_player.pose = Some(pose);
         true
     }

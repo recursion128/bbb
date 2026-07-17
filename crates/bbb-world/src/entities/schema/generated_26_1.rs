@@ -23549,6 +23549,24 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn fishing_hook_pull_event_uses_generated_override_dispatch() {
+        let source = include_str!("../../client/effects.rs");
+        let body = source
+            .split("pub(crate) fn apply_fishing_hook_pull")
+            .nth(1)
+            .and_then(|source| source.split("    pub fn ").next())
+            .expect("fishing hook pull source");
+        assert!(
+            body.contains("vanilla_entity_metadata_type_uses_fishing_hook_entity_event_handler")
+        );
+        assert!(body.contains("VANILLA_FISHING_HOOK_HOOKED_ENTITY_DATA_ID"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID"));
+        let play_apply = include_str!("../../play_apply.rs");
+        assert!(play_apply.contains("FISHING_HOOK_PULL_EVENT_ID: i8 = 31"));
+        assert!(play_apply.contains("apply_fishing_hook_pull(update.entity_id)"));
+    }
+
+    #[test]
     fn mob_spawn_event_consumer_uses_generated_class_membership() {
         let source = include_str!("../../entities.rs");
         let body = source
