@@ -33,6 +33,47 @@ fn nautilus_geometry_matches_vanilla_26_1_body_layer() {
 }
 
 #[test]
+fn nautilus_swimming_animation_matches_vanilla_definition() {
+    // Vanilla `NautilusAnimation.SWIMMING`: a looping one-second cycle over body, upper/inner/lower
+    // mouth. At `t = 0.5`, the body stretches 20% on Z, both outer mouths stretch 40% on Z and open
+    // by opposite 30° X rotations, while the inner mouth contracts 20% on X/Y.
+    assert_eq!(NAUTILUS_SWIMMING.length_seconds, 1.0);
+    assert!(NAUTILUS_SWIMMING.looping);
+    let bones: Vec<&str> = NAUTILUS_SWIMMING
+        .bones
+        .iter()
+        .map(|bone| bone.bone)
+        .collect();
+    assert_eq!(bones, ["body", "upper_mouth", "inner_mouth", "lower_mouth"]);
+    let channel_counts: Vec<usize> = NAUTILUS_SWIMMING
+        .bones
+        .iter()
+        .map(|bone| bone.channels.len())
+        .collect();
+    assert_eq!(channel_counts, [1, 2, 1, 2]);
+    assert!(NAUTILUS_SWIMMING
+        .bones
+        .iter()
+        .flat_map(|bone| bone.channels)
+        .all(|channel| channel.keyframes.len() == 5));
+
+    let (_, _, body_scale) = sample_bone_offsets_with_scale(&NAUTILUS_SWIMMING, "body", 0.5, 1.0);
+    assert!((body_scale[2] - 0.2).abs() < 1.0e-6);
+    let (_, upper_rot, upper_scale) =
+        sample_bone_offsets_with_scale(&NAUTILUS_SWIMMING, "upper_mouth", 0.5, 1.0);
+    assert!((upper_rot[0] - 30.0_f32.to_radians()).abs() < 1.0e-6);
+    assert!((upper_scale[2] - 0.4).abs() < 1.0e-6);
+    let (_, _, inner_scale) =
+        sample_bone_offsets_with_scale(&NAUTILUS_SWIMMING, "inner_mouth", 0.5, 1.0);
+    assert!((inner_scale[0] - -0.2).abs() < 1.0e-6);
+    assert!((inner_scale[1] - -0.2).abs() < 1.0e-6);
+    let (_, lower_rot, lower_scale) =
+        sample_bone_offsets_with_scale(&NAUTILUS_SWIMMING, "lower_mouth", 0.5, 1.0);
+    assert!((lower_rot[0] - -30.0_f32.to_radians()).abs() < 1.0e-6);
+    assert!((lower_scale[2] - 0.4).abs() < 1.0e-6);
+}
+
+#[test]
 fn nautilus_saddle_geometry_matches_vanilla_26_1_layer() {
     // Vanilla `NautilusSaddleModel.createSaddleLayer()` starts from `NautilusModel.createBodyMesh`,
     // replaces the adult shell with a single `CubeDeformation(0.2F)` dome, and preserves the body and
@@ -123,6 +164,28 @@ fn nautilus_body_look_turns_the_body_and_mouths_not_the_shell() {
         looked_mesh.vertices[72..],
         "the body and its mouths turn with the look"
     );
+}
+
+#[test]
+fn nautilus_swimming_uses_walk_motion_and_idle_age_phase() {
+    // Vanilla samples `applyWalk(walkPos + ageInTicks / 5, walkSpeed + 0.2, 2, 3)`. Even with no
+    // walk motion, the `+0.2` baseline gives the age-driven cycle 0.6 amplitude: age 25 samples
+    // exactly `t = 0.5`. The shell stays still while the body and mouths pulse.
+    for baby in [false, true] {
+        let base = EntityModelInstance::nautilus(306, [0.0, 64.0, 0.0], 0.0, baby);
+        let phase_zero = entity_model_mesh(&[base]);
+        let idle_mid = entity_model_mesh(&[base.with_age_in_ticks(25.0)]);
+        assert_eq!(phase_zero.vertices[..72], idle_mid.vertices[..72]);
+        assert_ne!(phase_zero.vertices[72..], idle_mid.vertices[72..]);
+
+        // A one-second sample wraps the looping definition to phase zero.
+        let wrapped = entity_model_mesh(&[base.with_age_in_ticks(50.0)]);
+        assert_eq!(wrapped.vertices, phase_zero.vertices);
+
+        // Walk position drives the same phase, while movement raises the amplitude from 0.6 to 1.
+        let moving_mid = entity_model_mesh(&[base.with_walk_animation(5.0, 1.0)]);
+        assert_ne!(moving_mid.vertices[72..], idle_mid.vertices[72..]);
+    }
 }
 
 #[test]

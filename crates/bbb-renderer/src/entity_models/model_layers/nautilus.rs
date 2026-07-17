@@ -1,3 +1,8 @@
+use super::super::keyframe::{
+    degree_vec, keyframe, keyframe_animated_pose, keyframe_animated_scale, keyframe_walk_sample,
+    sample_bone_offsets_with_scale, scale_vec, AnimationChannel, AnimationDefinition,
+    AnimationTarget, BoneAnimation, Keyframe, KeyframeInterpolation,
+};
 use super::{apply_head_look, PartPose, NAUTILUS_BODY, NAUTILUS_SHELL, PART_POSE_ZERO};
 use crate::entity_models::instances::EntityModelInstance;
 use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
@@ -18,9 +23,8 @@ pub(in crate::entity_models) const MODEL_LAYER_ZOMBIE_NAUTILUS_CORAL: &str =
 // three boxes) and the `body` (the trunk plus its 0-thickness rear fin) which in turn parents the three
 // mouth boxes. `NautilusModel.setupAnim` steers the `body` by the look — `body.yRot/xRot` set from the
 // look yaw/pitch CLAMPED to ±10° — then layers the looping `NautilusAnimation.SWIMMING` keyframe via
-// `applyWalk` (always on, the idle baseline `walkAnimationSpeed + 0.2`). The clamped body look is
-// reproduced; the SWIMMING keyframe undulation needs the keyframe machinery + an `AnimationState`, so it
-// stays deferred (the nautilus renders at this bind pose plus the clamped look). Both the adult
+// `applyWalk` (always on, the idle baseline `walkAnimationSpeed + 0.2`). Both the clamped look and
+// the exact body/mouth scale-and-rotation undulation are reproduced. Both the adult
 // `createBodyMesh` and the smaller baby `createBabyBodyLayer` are modeled (same `root → shell + body →
 // mouths` structure), along with the zombie warm coral variant and the adult saddle/body-armor
 // equipment layers. Each unified cube carries both the colored debug tint
@@ -289,9 +293,104 @@ pub(in crate::entity_models) const BABY_NAUTILUS_LOWER_MOUTH_POSE: PartPose = Pa
     rotation: [0.0, 0.0, 0.0],
 };
 
+// Vanilla 26.1 `NautilusAnimation.SWIMMING`: a looping one-second linear cycle. The definition
+// animates no position channels: the body pulses on Z, the upper/lower mouths open in opposite X
+// rotations while stretching on Z, and the inner mouth contracts in X/Y before the closing pulse.
+const LINEAR: KeyframeInterpolation = KeyframeInterpolation::Linear;
+const NAUTILUS_SWIMMING_BODY_SCALE: [Keyframe; 5] = [
+    keyframe(0.0, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(0.5, scale_vec(1.0, 1.0, 1.2), LINEAR),
+    keyframe(0.75, scale_vec(1.0, 1.0, 0.9), LINEAR),
+    keyframe(0.875, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(1.0, scale_vec(1.0, 1.0, 1.0), LINEAR),
+];
+const NAUTILUS_SWIMMING_UPPER_MOUTH_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(30.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.875, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+const NAUTILUS_SWIMMING_MOUTH_SCALE: [Keyframe; 5] = [
+    keyframe(0.0, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(0.5, scale_vec(1.0, 1.0, 1.4), LINEAR),
+    keyframe(0.75, scale_vec(1.0, 1.0, 0.9), LINEAR),
+    keyframe(0.875, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(1.0, scale_vec(1.0, 1.0, 1.0), LINEAR),
+];
+const NAUTILUS_SWIMMING_INNER_MOUTH_SCALE: [Keyframe; 5] = [
+    keyframe(0.0, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(0.5, scale_vec(0.8, 0.8, 1.0), LINEAR),
+    keyframe(0.75, scale_vec(1.0, 1.0, 0.9), LINEAR),
+    keyframe(0.875, scale_vec(1.0, 1.0, 1.0), LINEAR),
+    keyframe(1.0, scale_vec(1.0, 1.0, 1.0), LINEAR),
+];
+const NAUTILUS_SWIMMING_LOWER_MOUTH_ROT: [Keyframe; 5] = [
+    keyframe(0.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.5, degree_vec(-30.0, 0.0, 0.0), LINEAR),
+    keyframe(0.75, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(0.875, degree_vec(0.0, 0.0, 0.0), LINEAR),
+    keyframe(1.0, degree_vec(0.0, 0.0, 0.0), LINEAR),
+];
+
+const NAUTILUS_SWIMMING_BODY_CHANNELS: [AnimationChannel; 1] = [AnimationChannel {
+    target: AnimationTarget::Scale,
+    keyframes: &NAUTILUS_SWIMMING_BODY_SCALE,
+}];
+const NAUTILUS_SWIMMING_UPPER_MOUTH_CHANNELS: [AnimationChannel; 2] = [
+    AnimationChannel {
+        target: AnimationTarget::Rotation,
+        keyframes: &NAUTILUS_SWIMMING_UPPER_MOUTH_ROT,
+    },
+    AnimationChannel {
+        target: AnimationTarget::Scale,
+        keyframes: &NAUTILUS_SWIMMING_MOUTH_SCALE,
+    },
+];
+const NAUTILUS_SWIMMING_INNER_MOUTH_CHANNELS: [AnimationChannel; 1] = [AnimationChannel {
+    target: AnimationTarget::Scale,
+    keyframes: &NAUTILUS_SWIMMING_INNER_MOUTH_SCALE,
+}];
+const NAUTILUS_SWIMMING_LOWER_MOUTH_CHANNELS: [AnimationChannel; 2] = [
+    AnimationChannel {
+        target: AnimationTarget::Rotation,
+        keyframes: &NAUTILUS_SWIMMING_LOWER_MOUTH_ROT,
+    },
+    AnimationChannel {
+        target: AnimationTarget::Scale,
+        keyframes: &NAUTILUS_SWIMMING_MOUTH_SCALE,
+    },
+];
+const NAUTILUS_SWIMMING_BONES: [BoneAnimation; 4] = [
+    BoneAnimation {
+        bone: "body",
+        channels: &NAUTILUS_SWIMMING_BODY_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "upper_mouth",
+        channels: &NAUTILUS_SWIMMING_UPPER_MOUTH_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "inner_mouth",
+        channels: &NAUTILUS_SWIMMING_INNER_MOUTH_CHANNELS,
+    },
+    BoneAnimation {
+        bone: "lower_mouth",
+        channels: &NAUTILUS_SWIMMING_LOWER_MOUTH_CHANNELS,
+    },
+];
+
+/// Vanilla `NautilusAnimation.SWIMMING`, sampled by `NautilusModel.setupAnim` through
+/// `applyWalk(walkAnimationPos + ageInTicks / 5, walkAnimationSpeed + 0.2, 2, 3)`.
+pub(in crate::entity_models) const NAUTILUS_SWIMMING: AnimationDefinition = AnimationDefinition {
+    length_seconds: 1.0,
+    looping: true,
+    bones: &NAUTILUS_SWIMMING_BONES,
+};
+
 /// Builds the cubeless `root` pivot parenting the named `shell` and `body` for the adult or baby
-/// geometry. The cube-bearing `body` carries its three mouth boxes as index-named children (only the
-/// `body` itself is steered by name in [`NautilusModel::setup_anim`]; the mouths ride along). Both the
+/// geometry. The cube-bearing `body` carries its three mouth boxes under their vanilla animation
+/// bone names. Both the
 /// adult and baby share the identical `root → shell + body → mouths` structure.
 fn nautilus_root(baby: bool) -> ModelPart {
     if baby {
@@ -300,21 +399,21 @@ fn nautilus_root(baby: bool) -> ModelPart {
             BABY_NAUTILUS_BODY_CUBES.to_vec(),
             vec![
                 (
-                    "0",
+                    "upper_mouth",
                     ModelPart::leaf(
                         BABY_NAUTILUS_UPPER_MOUTH_POSE,
                         BABY_NAUTILUS_UPPER_MOUTH_CUBES.to_vec(),
                     ),
                 ),
                 (
-                    "1",
+                    "inner_mouth",
                     ModelPart::leaf(
                         BABY_NAUTILUS_INNER_MOUTH_POSE,
                         BABY_NAUTILUS_INNER_MOUTH_CUBES.to_vec(),
                     ),
                 ),
                 (
-                    "2",
+                    "lower_mouth",
                     ModelPart::leaf(
                         BABY_NAUTILUS_LOWER_MOUTH_POSE,
                         BABY_NAUTILUS_LOWER_MOUTH_CUBES.to_vec(),
@@ -349,28 +448,28 @@ fn nautilus_root(baby: bool) -> ModelPart {
 }
 
 /// The adult `body` subtree (`NautilusModel.createBodyMesh`): the cube-bearing body parenting its three
-/// index-named mouth boxes. Shared by the plain adult nautilus and the zombie nautilus coral variant.
+/// named mouth boxes. Shared by the plain adult nautilus and the zombie nautilus coral variant.
 fn nautilus_adult_body() -> ModelPart {
     ModelPart::new(
         NAUTILUS_BODY_POSE,
         NAUTILUS_BODY_CUBES.to_vec(),
         vec![
             (
-                "0",
+                "upper_mouth",
                 ModelPart::leaf(
                     NAUTILUS_UPPER_MOUTH_POSE,
                     NAUTILUS_UPPER_MOUTH_CUBES.to_vec(),
                 ),
             ),
             (
-                "1",
+                "inner_mouth",
                 ModelPart::leaf(
                     NAUTILUS_INNER_MOUTH_POSE,
                     NAUTILUS_INNER_MOUTH_CUBES.to_vec(),
                 ),
             ),
             (
-                "2",
+                "lower_mouth",
                 ModelPart::leaf(
                     NAUTILUS_LOWER_MOUTH_POSE,
                     NAUTILUS_LOWER_MOUTH_CUBES.to_vec(),
@@ -557,8 +656,8 @@ const NAUTILUS_LOOK_CLAMP_DEGREES: f32 = 10.0;
 /// `createBodyMesh` or the smaller `createBabyBodyLayer` geometry). The named hierarchy
 /// (`root → shell + body → upper_mouth/inner_mouth/lower_mouth`) hangs off a synthetic root, built
 /// from the baked geometry. `setup_anim` steers the body by the clamped look
-/// ([`apply_head_look`] on the `body` part, with the yaw/pitch pre-clamped to ±10°) via `child_mut`;
-/// the SWIMMING keyframe undulation and every other pose stay deferred.
+/// ([`apply_head_look`] on the `body` part, with the yaw/pitch pre-clamped to ±10°), then applies
+/// [`NAUTILUS_SWIMMING`] to the body and mouth bones.
 pub(in crate::entity_models) struct NautilusModel {
     root: ModelPart,
     has_corals: bool,
@@ -632,16 +731,35 @@ impl EntityModel for NautilusModel {
         // Vanilla `NautilusModel.applyBodyRotation`: the body (root → body) turns to the look, clamped
         // to ±10° on each axis. `apply_head_look` sets `xRot`/`yRot` from the (pre-clamped) degrees.
         let render_state = &instance.render_state;
-        let body = self.root.child_mut("root").child_mut("body");
-        apply_head_look(
-            body,
-            render_state
-                .head_yaw
-                .clamp(-NAUTILUS_LOOK_CLAMP_DEGREES, NAUTILUS_LOOK_CLAMP_DEGREES),
-            render_state
-                .head_pitch
-                .clamp(-NAUTILUS_LOOK_CLAMP_DEGREES, NAUTILUS_LOOK_CLAMP_DEGREES),
+        let (seconds, target_scale) = keyframe_walk_sample(
+            &NAUTILUS_SWIMMING,
+            render_state.walk_animation_pos + render_state.age_in_ticks / 5.0,
+            render_state.walk_animation_speed + 0.2,
+            2.0,
+            3.0,
         );
+        let animate = |part: &mut ModelPart, bone: &str| {
+            let (position, rotation, scale_offset) =
+                sample_bone_offsets_with_scale(&NAUTILUS_SWIMMING, bone, seconds, target_scale);
+            part.pose = keyframe_animated_pose(part.pose, position, rotation);
+            part.scale = keyframe_animated_scale(scale_offset);
+        };
+        {
+            let body = self.root.child_mut("root").child_mut("body");
+            apply_head_look(
+                body,
+                render_state
+                    .head_yaw
+                    .clamp(-NAUTILUS_LOOK_CLAMP_DEGREES, NAUTILUS_LOOK_CLAMP_DEGREES),
+                render_state
+                    .head_pitch
+                    .clamp(-NAUTILUS_LOOK_CLAMP_DEGREES, NAUTILUS_LOOK_CLAMP_DEGREES),
+            );
+            animate(body, "body");
+            animate(body.child_mut("upper_mouth"), "upper_mouth");
+            animate(body.child_mut("inner_mouth"), "inner_mouth");
+            animate(body.child_mut("lower_mouth"), "lower_mouth");
+        }
         if self.has_corals {
             self.root
                 .child_mut("root")

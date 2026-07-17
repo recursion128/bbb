@@ -103,7 +103,8 @@ pub(in crate::entity_models) struct ModelPart {
     /// applies them last as `poseStack.scale(...)`, scaling this part's cubes and its subtree about
     /// the part origin. Reset to `[1, 1, 1]` each frame and mutated by `setup_anim` (the keyframe
     /// `AnimationChannel.Targets.SCALE` channel folds `scaleVec` offsets onto it). Only the croaking
-    /// frog uses it so far, so most parts hold `[1, 1, 1]` (an identity scale the render skips).
+    /// frog and nautilus use it so far, so most parts hold `[1, 1, 1]` (an identity scale the render
+    /// skips).
     pub(in crate::entity_models) scale: [f32; 3],
 }
 

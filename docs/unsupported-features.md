@@ -1355,9 +1355,6 @@ back into a todo. Do not delete these.
   bind layout, pitch and bounce deferred to identity at rest.
 - **Zombie-nautilus variant dynamic-registry reorder path.** The variant resolves
   from synced `DATA_VARIANT_ID` by bootstrap order.
-- **Nautilus `NautilusAnimation.SWIMMING` looping undulation** and the
-  `AgeableMobRenderer` baby render scale (`0.7`). Both need the keyframe
-  machinery plus an `AnimationState`.
 - **Rabbit `IDLE_HEAD_TILT` keyframe.** `shouldPlayIdleAnimation` is gated on a
   `random.nextInt(40) + 180` timeout and is not reconstructable client-side.
 - **Local TNT movement / fuse countdown simulation.** The current slice consumes
@@ -1457,6 +1454,9 @@ vanilla evidence. Deleting one of these re-opens work already decided against.
 - **Piglin-brute `ADMIRING_ITEM` pose.** The brute has no admire branch.
 - **Fox baby model scale.** `Fox.BABY_SCALE = 0.6` scales only the bounding box,
   so the baby uses the standard `0.5` `LivingEntity.getAgeScale`.
+- **Nautilus baby `0.7F` model scale.** `NautilusRenderer` passes `0.7F` as the
+  `shadow` argument to `AgeableMobRenderer`, whose `submit` only selects the
+  adult or baby model. Vanilla has no additional `0.7` baby-model transform.
 - **Axolotl baby as a scaled adult.** The `0.5F` constructor argument is the
   shadow radius, not a scale; the baby has its own 32x32 geometry.
 - **`SniffletModel.setupAnim` static baby transform** (`BABY_TRANSFORM` /

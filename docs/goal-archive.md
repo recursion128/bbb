@@ -18717,3 +18717,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Preserved the separately applicable interpolation paths: entity yaw follows the shared transform
   interpolation and hit `wiggle` includes the render partial tick. The native semantic fixture now
   explicitly proves that armor-stand pose selection is identical at partial ticks zero and one.
+
+# 2026-07-17: Render nautilus swimming animation
+
+- Added the exact looping `NautilusAnimation.SWIMMING` body/mouth scale and rotation channels to the
+  shared adult, baby, zombie, saddle, and armor model path. `NautilusModel.setupAnim` now samples
+  `applyWalk(walkAnimationPos + ageInTicks / 5, walkAnimationSpeed + 0.2, 2, 3)`, preserving the
+  idle age-driven pulse without inventing an `AnimationState`.
+- Corrected the feature ledger's `0.7F` interpretation: `NautilusRenderer` passes it as the
+  `AgeableMobRenderer` shadow radius, while baby presentation is already defined by the separate
+  baby model. Focused definition and mesh tests lock exact half-cycle channels, looping, idle
+  amplitude, walk amplitude, and both age models.
