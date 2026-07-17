@@ -2,6 +2,10 @@ use super::*;
 
 use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_SCALE_ID;
 use bbb_protocol::entity_data_serializers::*;
+use bbb_protocol::mob_effect_types::{
+    VANILLA_MOB_EFFECT_CONDUIT_POWER_ID, VANILLA_MOB_EFFECT_HASTE_ID,
+    VANILLA_MOB_EFFECT_MINING_FATIGUE_ID,
+};
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, BlockPos as ProtocolBlockPos,

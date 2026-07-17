@@ -592,4 +592,26 @@ mod tests {
             "parallel mob-effect catalog owners or lookup bridges: {violations:?}"
         );
     }
+
+    #[test]
+    fn swing_duration_fixtures_do_not_restore_fixed_mob_effect_ids() {
+        let source = include_str!(
+            "../../bbb-world/src/entities/tests/movement_combat_and_swing_projection.rs"
+        );
+        for required in [
+            "VANILLA_MOB_EFFECT_HASTE_ID",
+            "VANILLA_MOB_EFFECT_MINING_FATIGUE_ID",
+            "VANILLA_MOB_EFFECT_CONDUIT_POWER_ID",
+        ] {
+            assert!(
+                source.contains(required),
+                "swing-duration fixture missing {required}"
+            );
+            let removed = format!("const {required}");
+            assert!(
+                !source.contains(&removed),
+                "swing-duration fixture restored {removed}"
+            );
+        }
+    }
 }

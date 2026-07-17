@@ -468,6 +468,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Avatar main-arm/model-customization fixtures must consume generated accessor, HumanoidArm and
   cape-part ids; fixture aliases must not return, while Mannequin's explicit runtime default remains
   a separate native projection boundary.
+  Swing-duration mob-effect fixtures must consume the generated Haste, Mining Fatigue and Conduit
+  Power ids; local 2/3/28 aliases must not return.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
   fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19

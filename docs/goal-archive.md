@@ -18329,3 +18329,9 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   0x01 的五个局部 aliases，统一消费 metadata schema 生成常量。
 - metadata generator 新增 fixture reverse guard；native Mannequin 的显式 model-parts runtime
   default 保持独立，未被本切片改动。
+
+## 2026-07-16：迁移 swing-duration mob-effect fixtures
+
+- world swing-duration / in-flight refresh fixtures 删除 Haste=2、Mining Fatigue=3、Conduit
+  Power=28 的四个局部 aliases，统一消费 `MobEffects.java` 生成 catalog 常量。
+- gameplay-id generator 的 mob-effect 输出新增 reverse guard，禁止这些固定 effect ids 回流。

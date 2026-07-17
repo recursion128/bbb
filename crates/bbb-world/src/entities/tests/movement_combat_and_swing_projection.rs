@@ -730,9 +730,6 @@ fn entity_model_sources_use_item_stack_swing_animation_patch_duration() {
 
 #[test]
 fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
-    const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
-    const VANILLA_MOB_EFFECT_MINING_FATIGUE_ID: i32 = 3;
-    const VANILLA_MOB_EFFECT_CONDUIT_POWER_ID: i32 = 28;
     const SPEAR_ITEM_ID: i32 = 42;
 
     let attack = |store: &WorldStore, entity_id: i32, partial: f32| {
@@ -813,7 +810,6 @@ fn entity_model_sources_apply_mob_effect_swing_duration_modifiers() {
 fn entity_model_sources_refresh_in_flight_swing_duration_from_runtime_state_changes() {
     const PLAIN_ITEM_ID: i32 = 41;
     const SPEAR_ITEM_ID: i32 = 42;
-    const VANILLA_MOB_EFFECT_HASTE_ID: i32 = 2;
 
     let attack = |store: &WorldStore, entity_id: i32, partial: f32| {
         store
