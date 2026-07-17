@@ -1335,6 +1335,9 @@ back into a todo. Do not delete these.
   side of that audit: 35 source-derived handlers with direct ids, delegated ids,
   and `super` fallback. The remaining declaration-to-consumer ownership audit is
   still open, so this catalog alone does not close the reverse audit.
+  The consumer-side guard must also prove inherited superclass events remain reachable only
+  through declarations that forward unhandled ids to `super`, while non-forwarding handlers
+  (Snowball, ThrownEgg, and MinecartSpawner) mask the superclass fallback.
 - All three `ClientPacketListener.handleEntityEvent` special cases now have native
   consumers. Event `21` starts Guardian's hostile, looping, non-attenuated attack
   instance and updates its squared attack-scale volume plus `0.7 + 0.5 * scale`

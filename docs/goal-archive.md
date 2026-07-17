@@ -18522,3 +18522,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   实体不改 equipment，未知 id 保持 ignored。缺失 hand slot 按 vanilla EMPTY stack 参与交换。
 - world 测试锁定双非空往返交换、单 hand 向空 hand 交换、非 Living 负例和 packet counters；
   metadata generator reverse guard 禁止恢复 entity type-id 分支或遗漏任一 hand slot。
+
+# 2026-07-17: Apply non-player living death entity state
+
+- Closed the canonical-state half of vanilla 26.1 `LivingEntity.handleEntityEvent(3)`: every
+  non-Player living entity now receives health zero and enters the existing client death counter,
+  renderer fall rotation, and red-overlay path. Player retains vanilla's sound-only exception, and
+  non-living event-3 owners remain unaffected.

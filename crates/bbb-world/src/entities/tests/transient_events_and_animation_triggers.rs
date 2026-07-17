@@ -224,6 +224,60 @@ fn living_entity_swap_hand_event_updates_canonical_equipment() {
 }
 
 #[test]
+fn living_death_event_sets_non_player_health_and_starts_death_animation() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        68,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        69,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        70,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+    ));
+
+    let death_time = |store: &WorldStore, id: i32| {
+        store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == id)
+            .unwrap()
+            .death_time
+    };
+
+    // Vanilla `LivingEntity.handleEntityEvent(3)` sets every non-Player living entity's health to
+    // zero and calls `die(generic)`. The existing health-driven client counter begins on the next
+    // tick, just like `LivingEntity.tickDeath`.
+    assert_eq!(store.entities.living_entity_health(68), Some(1.0));
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 68,
+        event_id: 3,
+    }));
+    assert_eq!(store.entities.living_entity_health(68), Some(0.0));
+    assert_eq!(death_time(&store, 68), 0.0);
+    store.advance_entity_client_animations(1);
+    assert_eq!(death_time(&store, 68), 1.0);
+
+    // The sound half of event 3 still applies to a Player, but vanilla deliberately skips its
+    // health/death mutation. Non-living event-3 owners such as Snowball are unaffected too.
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 69,
+        event_id: 3,
+    }));
+    assert_eq!(store.entities.living_entity_health(69), Some(1.0));
+    assert_eq!(death_time(&store, 69), 0.0);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 70,
+        event_id: 3,
+    }));
+    assert_eq!(store.entities.living_entity_health(70), None);
+    assert_eq!(death_time(&store, 70), 0.0);
+}
+
+#[test]
 fn sheep_eat_grass_event_drives_client_animation_tick() {
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type(

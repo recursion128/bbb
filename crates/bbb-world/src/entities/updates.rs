@@ -18,6 +18,9 @@ const SWING_MAIN_HAND_ACTION: u8 = 0;
 const SWING_OFF_HAND_ACTION: u8 = 3;
 /// Vanilla `LivingEntity.handleEntityEvent(55)` swaps the main- and off-hand equipment stacks.
 const LIVING_ENTITY_SWAP_HAND_ITEMS_EVENT_ID: i8 = 55;
+/// Vanilla `LivingEntity.handleEntityEvent(3)` plays the death sound and, for every non-Player
+/// living entity, sets health to zero before entering the client death sequence.
+const LIVING_ENTITY_DEATH_EVENT_ID: i8 = 3;
 /// Vanilla `Player.handleEntityEvent(9)` completes the local player's active item use.
 const PLAYER_FINISH_USING_ITEM_EVENT_ID: i8 = 9;
 /// Vanilla `Player.handleEntityEvent(22)` enables the local player's reduced-debug gate.
@@ -76,6 +79,11 @@ impl WorldStore {
         let _ = self
             .entities
             .apply_client_animation_entity_event(packet.entity_id, packet.event_id);
+        if packet.event_id == LIVING_ENTITY_DEATH_EVENT_ID {
+            let _ = self
+                .entities
+                .apply_client_living_death_entity_event(packet.entity_id);
+        }
         if self
             .entities
             .entity_type_id(packet.entity_id)

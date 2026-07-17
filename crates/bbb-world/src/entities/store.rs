@@ -11,6 +11,7 @@ use bbb_protocol::attribute_types::{
     VANILLA_ATTRIBUTE_MAX_HEALTH_ID, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
     VANILLA_ATTRIBUTE_STEP_HEIGHT_ID,
 };
+use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID;
 use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_CROUCHING_ID, VANILLA_ENTITY_POSE_SLEEPING_ID,
     VANILLA_ENTITY_POSE_STANDING_ID, VANILLA_ENTITY_POSE_SWIMMING_ID,
@@ -23,7 +24,9 @@ use uuid::Uuid;
 use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TURTLE_ID;
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
-use bbb_protocol::packets::{EntityDataRegistryHolder, EntityDataValueKind};
+use bbb_protocol::packets::{
+    EntityDataRegistryHolder, EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind,
+};
 
 use super::renderer_catalog::vanilla_living_entity_renderer_name_is_upside_down;
 use super::schema::{
@@ -47,6 +50,7 @@ use super::schema::{
     vanilla_entity_metadata_spellcaster_casting_accessor_for_entity_type,
     vanilla_entity_metadata_tamable_animal_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
+    vanilla_entity_metadata_type_uses_player_entity_event_handler,
     vanilla_entity_metadata_vex_flags_accessor_for_entity_type,
     vanilla_entity_metadata_wither_invulnerable_ticks_accessor_for_entity_type,
     VanillaFireworkRocketMetadataAccessors,
@@ -3480,6 +3484,47 @@ impl EntityStore {
         animations
             .animations
             .handle_entity_event(entity_type_id, id, event_id);
+        Some(())
+    }
+
+    /// Applies the canonical state mutation from `LivingEntity.handleEntityEvent(3)`.
+    ///
+    /// Vanilla plays the death sound for Players too, but deliberately skips `setHealth(0)` and
+    /// `die(generic)` for every `Player` instance. The caller owns the sound side effect; this
+    /// method owns only the non-Player health/death-state transition.
+    pub(crate) fn apply_client_living_death_entity_event(&mut self, id: i32) -> Option<()> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let entity_type_id = self.ecs.get::<&EntityIdentity>(entity).ok()?.entity_type_id;
+        let accessors =
+            vanilla_entity_metadata_living_entity_accessors_for_entity_type(entity_type_id)?;
+        if vanilla_entity_metadata_type_uses_player_entity_event_handler(entity_type_id) {
+            return Some(());
+        }
+
+        {
+            let mut metadata = self.ecs.get::<&mut EntityMetadata>(entity).ok()?;
+            let health = ProtocolEntityDataValue {
+                data_id: accessors.health_data_id,
+                serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_FLOAT_ID,
+                value: EntityDataValueKind::Float(0.0),
+            };
+            if let Some(existing) = metadata
+                .data_values
+                .iter_mut()
+                .find(|value| value.data_id == accessors.health_data_id)
+            {
+                *existing = health;
+            } else {
+                metadata.data_values.push(health);
+                metadata.data_values.sort_by_key(|value| value.data_id);
+            }
+        }
+
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?.clone();
+        let mut animations = self.ecs.get::<&mut EntityClientAnimations>(entity).ok()?;
+        animations
+            .animations
+            .sync_targets_from_metadata(entity_type_id, &metadata.data_values);
         Some(())
     }
 
