@@ -620,6 +620,64 @@ fn living_entity_poof_entity_event_emits_particle_state() {
 }
 
 #[test]
+fn living_entity_item_break_event_emits_equipment_particle_state() {
+    let (tx, mut rx) = mpsc::channel(3);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(148, VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::SetEquipment(
+        SetEquipment {
+            entity_id: 148,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::MainHand,
+                item: ItemStackSummary {
+                    item_id: Some(bbb_protocol::item_types::VANILLA_ITEM_STONE_ID),
+                    count: 1,
+                    component_patch: Default::default(),
+                },
+            }],
+        },
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 148,
+        event_id: 47,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        3
+    );
+
+    assert_eq!(particles.living_entity_item_break_states.len(), 1);
+    let state = &particles.living_entity_item_break_states[0];
+    assert_eq!(state.entity_id, 148);
+    assert_eq!(
+        state.item_stack.item_id,
+        Some(bbb_protocol::item_types::VANILLA_ITEM_STONE_ID)
+    );
+    assert!(state.eye_height > 0.0);
+    assert_eq!(particles.batches.len(), 1);
+}
+
+#[test]
 fn mob_spawn_entity_event_emits_shared_poof_particle_state_only_for_mobs() {
     let (tx, mut rx) = mpsc::channel(5);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(

@@ -55,11 +55,12 @@ use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState, BlockPos,
     ChunkPos, DolphinHappyParticleState, EntityTamingParticleState,
     FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
-    HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, LocalPlayerPoseState, OminousItemSpawnerParticleState,
-    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
-    VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
+    HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalPlayerPoseState,
+    OminousItemSpawnerParticleState, RavagerRoarParticleState, RegistryPacketEntry,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, ThrownEggHitParticleState,
+    VillagerParticleKind, VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile,
+    WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -517,6 +518,7 @@ struct RecordingParticleSink {
     ravager_roar_states: Vec<RavagerRoarParticleState>,
     witch_magic_states: Vec<WitchMagicParticleState>,
     living_entity_poof_states: Vec<LivingEntityPoofParticleState>,
+    living_entity_item_break_states: Vec<LivingEntityItemBreakState>,
     living_entity_drown_states: Vec<LivingEntityDrownParticleState>,
     living_entity_portal_states: Vec<LivingEntityPortalParticleState>,
     arrow_effect_states: Vec<ArrowEffectParticleState>,
@@ -688,6 +690,17 @@ impl ParticleEventSink for RecordingParticleSink {
         state: LivingEntityPoofParticleState,
     ) -> bbb_renderer::ParticleSpawnBatch {
         self.living_entity_poof_states.push(state);
+        let batch = bbb_renderer::ParticleSpawnBatch::default();
+        self.batches.push(batch.clone());
+        batch
+    }
+
+    fn spawn_living_entity_item_break_particles(
+        &mut self,
+        state: LivingEntityItemBreakState,
+        _item_runtime: Option<&bbb_item_model::NativeItemRuntime>,
+    ) -> bbb_renderer::ParticleSpawnBatch {
+        self.living_entity_item_break_states.push(state);
         let batch = bbb_renderer::ParticleSpawnBatch::default();
         self.batches.push(batch.clone());
         batch

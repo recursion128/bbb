@@ -29,7 +29,7 @@ use bbb_world::{
     BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityTamingParticleState,
     FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
     HoneyBlockParticleState, LevelEventSoundRandomState, LivingEntityDrownParticleState,
-    LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    LivingEntityItemBreakState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
     OminousItemSpawnerParticleState, RavagerRoarParticleState, SnowballHitParticleState,
     TakeItemEntityPickupParticleState, TakeItemEntityPickupProjectileModel, TerrainLight,
     ThrownEggHitParticleState, VaultConnectionParticleState, VillagerParticleKind,
@@ -106,6 +106,11 @@ pub(crate) trait ParticleEventSink {
     fn spawn_living_entity_poof_particles(
         &mut self,
         state: LivingEntityPoofParticleState,
+    ) -> ParticleSpawnBatch;
+    fn spawn_living_entity_item_break_particles(
+        &mut self,
+        state: LivingEntityItemBreakState,
+        item_runtime: Option<&NativeItemRuntime>,
     ) -> ParticleSpawnBatch;
     fn spawn_living_entity_drown_particles(
         &mut self,
@@ -420,6 +425,15 @@ impl ParticleEventSink for NativeParticleRuntime {
         state: LivingEntityPoofParticleState,
     ) -> ParticleSpawnBatch {
         self.resolver.living_entity_poof_particle_batch(state)
+    }
+
+    fn spawn_living_entity_item_break_particles(
+        &mut self,
+        state: LivingEntityItemBreakState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        self.resolver
+            .living_entity_item_break_particle_batch(state, item_runtime)
     }
 
     fn spawn_living_entity_drown_particles(
@@ -1044,7 +1058,7 @@ fn fox_look_vector(x_rot: f32, y_rot: f32) -> [f64; 3] {
     ]
 }
 
-fn fox_rotate_velocity(local: [f64; 3], x_rot: f32, y_rot: f32) -> [f64; 3] {
+fn rotate_entity_local_vector(local: [f64; 3], x_rot: f32, y_rot: f32) -> [f64; 3] {
     let x_rad = -x_rot.to_radians();
     let x_cos = f64::from(x_rad.cos());
     let x_sin = f64::from(x_rad.sin());
@@ -1252,6 +1266,7 @@ const DOLPHIN_HAPPY_PARTICLE_Y_OFFSET: f64 = 0.2;
 const DOLPHIN_HAPPY_PARTICLE_VELOCITY_SCALE: f64 = 0.01;
 const THROWN_EGG_HIT_VELOCITY_SCALE: f32 = 0.08;
 const FOX_EAT_PARTICLE_COUNT: usize = 8;
+const LIVING_ENTITY_ITEM_BREAK_PARTICLE_COUNT: usize = 5;
 const FOX_EAT_HORIZONTAL_VELOCITY_RANGE: f32 = 0.1;
 const FOX_EAT_VERTICAL_VELOCITY_RANGE: f32 = 0.1;
 const FOX_EAT_VERTICAL_VELOCITY_BASE: f32 = 0.1;

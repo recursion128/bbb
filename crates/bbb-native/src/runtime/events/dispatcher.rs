@@ -15,10 +15,10 @@ use bbb_world::{
     BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityTamingParticleState,
     EntityTrackingEmitterParticleKind, FireworkRocketExplosionParticleState, FoxEatParticleState,
     HoneyBlockParticleState, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
-    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    PlayApplyEffects, RavagerRoarParticleState, SnowballHitParticleState,
-    TakeItemEntityPickupParticleState, TerrainFluidKind, ThrownEggHitParticleState,
-    VillagerParticleState, WitchMagicParticleState, WorldStore,
+    LivingEntityDrownParticleState, LivingEntityItemBreakState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, PlayApplyEffects, RavagerRoarParticleState,
+    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
+    ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 use std::time::Instant;
 use tokio::sync::mpsc;
@@ -456,6 +456,19 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         emit_living_entity_poof_particles(self.particle_events, self.particle_renderer, state);
     }
 
+    fn living_entity_item_break_particles(
+        &mut self,
+        _world: &WorldStore,
+        state: LivingEntityItemBreakState,
+    ) {
+        emit_living_entity_item_break_particles(
+            self.particle_events,
+            self.particle_renderer,
+            state,
+            self.item_runtime,
+        );
+    }
+
     fn living_entity_drown_particles(
         &mut self,
         _world: &WorldStore,
@@ -845,6 +858,21 @@ fn emit_living_entity_poof_particles(
         return;
     };
     let batch = particle_events.spawn_living_entity_poof_particles(state);
+    if let Some(renderer) = particle_renderer.as_deref_mut() {
+        renderer.submit_particle_spawns(batch);
+    }
+}
+
+fn emit_living_entity_item_break_particles(
+    particle_events: &mut Option<&mut dyn ParticleEventSink>,
+    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    state: LivingEntityItemBreakState,
+    item_runtime: Option<&NativeItemRuntime>,
+) {
+    let Some(particle_events) = particle_events.as_deref_mut() else {
+        return;
+    };
+    let batch = particle_events.spawn_living_entity_item_break_particles(state, item_runtime);
     if let Some(renderer) = particle_renderer.as_deref_mut() {
         renderer.submit_particle_spawns(batch);
     }

@@ -9,8 +9,8 @@
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::game_event_types::VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID;
 use bbb_protocol::packets::{
-    ChatAcknowledgement, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
-    PlayClientbound, Vec3d as ProtocolVec3d,
+    ChatAcknowledgement, EquipmentSlot, GameEvent as ProtocolGameEvent,
+    LevelEvent as ProtocolLevelEvent, PlayClientbound, Vec3d as ProtocolVec3d,
 };
 
 use crate::{
@@ -20,10 +20,10 @@ use crate::{
     AnimalLoveParticleState, ArrowEffectParticleState, BlockPos, ChunkPos,
     DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
     FoxEatParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
-    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, LocalSoundEventState, RavagerRoarParticleState,
-    RemovedPlayerVehicleTeleportRecovery, SnowballHitParticleState, SoundEntityEventState,
-    SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
+    LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
+    LivingEntityPoofParticleState, LivingEntityPortalParticleState, LocalSoundEventState,
+    RavagerRoarParticleState, RemovedPlayerVehicleTeleportRecovery, SnowballHitParticleState,
+    SoundEntityEventState, SoundEventState, StopSoundEventState, TakeItemEntityPickupParticleState,
     ThrownEggHitParticleState, VehicleMoveReport, VillagerParticleKind, VillagerParticleState,
     WitchMagicParticleState, WorldStore,
 };
@@ -81,11 +81,19 @@ const OCELOT_TRUSTING_SUCCEEDED_EVENT_ID: i8 = 41;
 const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
 const FOX_EAT_EVENT_ID: i8 = 45;
 const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
+const LIVING_ENTITY_MAIN_HAND_BREAK_EVENT_ID: i8 = 47;
+const LIVING_ENTITY_OFF_HAND_BREAK_EVENT_ID: i8 = 48;
+const LIVING_ENTITY_HEAD_BREAK_EVENT_ID: i8 = 49;
+const LIVING_ENTITY_CHEST_BREAK_EVENT_ID: i8 = 50;
+const LIVING_ENTITY_LEGS_BREAK_EVENT_ID: i8 = 51;
+const LIVING_ENTITY_FEET_BREAK_EVENT_ID: i8 = 52;
 const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
 const HONEY_BLOCK_JUMP_EVENT_ID: i8 = 54;
 const LIVING_ENTITY_POOF_EVENT_ID: i8 = 60;
 const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
+const LIVING_ENTITY_BODY_BREAK_EVENT_ID: i8 = 65;
 const LIVING_ENTITY_DROWN_EVENT_ID: i8 = 67;
+const LIVING_ENTITY_SADDLE_BREAK_EVENT_ID: i8 = 68;
 const HONEY_BLOCK_SLIDE_PARTICLE_COUNT: u32 = 5;
 const HONEY_BLOCK_JUMP_PARTICLE_COUNT: u32 = 10;
 
@@ -156,6 +164,12 @@ pub trait PlayApplyEffects {
         &mut self,
         _world: &WorldStore,
         _state: LivingEntityPoofParticleState,
+    ) {
+    }
+    fn living_entity_item_break_particles(
+        &mut self,
+        _world: &WorldStore,
+        _state: LivingEntityItemBreakState,
     ) {
     }
     fn living_entity_drown_particles(
@@ -500,6 +514,8 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let living_entity_item_break = living_entity_item_break_slot(update.event_id)
+                    .and_then(|slot| self.living_entity_item_break_state(update.entity_id, slot));
                 let mob_spawn_particles = if update.event_id == MOB_SPAWN_EVENT_ID {
                     self.mob_spawn_particle_state(update.entity_id)
                 } else {
@@ -547,6 +563,14 @@ impl WorldStore {
                     }
                     if let Some(state) = living_entity_poof_particles {
                         effects.living_entity_poof_particles(self, state);
+                    }
+                    if let Some(state) = living_entity_item_break {
+                        if let Some(sound) =
+                            self.living_entity_item_break_sound(&state, || random.next_float())
+                        {
+                            effects.positioned_sound(&sound);
+                        }
+                        effects.living_entity_item_break_particles(self, state);
                     }
                     if let Some(state) = mob_spawn_particles {
                         effects.living_entity_poof_particles(self, state);
@@ -1114,6 +1138,20 @@ impl WorldStore {
     }
 }
 
+fn living_entity_item_break_slot(event_id: i8) -> Option<EquipmentSlot> {
+    match event_id {
+        LIVING_ENTITY_MAIN_HAND_BREAK_EVENT_ID => Some(EquipmentSlot::MainHand),
+        LIVING_ENTITY_OFF_HAND_BREAK_EVENT_ID => Some(EquipmentSlot::OffHand),
+        LIVING_ENTITY_HEAD_BREAK_EVENT_ID => Some(EquipmentSlot::Head),
+        LIVING_ENTITY_CHEST_BREAK_EVENT_ID => Some(EquipmentSlot::Chest),
+        LIVING_ENTITY_LEGS_BREAK_EVENT_ID => Some(EquipmentSlot::Legs),
+        LIVING_ENTITY_FEET_BREAK_EVENT_ID => Some(EquipmentSlot::Feet),
+        LIVING_ENTITY_BODY_BREAK_EVENT_ID => Some(EquipmentSlot::Body),
+        LIVING_ENTITY_SADDLE_BREAK_EVENT_ID => Some(EquipmentSlot::Saddle),
+        _ => None,
+    }
+}
+
 /// Vanilla camera-relative audio position: the current camera entity when it
 /// is not following the player, otherwise the local player's eye position.
 fn camera_audio_position(world: &WorldStore) -> Option<ProtocolVec3d> {
@@ -1559,6 +1597,7 @@ mod tests {
     use crate::{
         DamageTypeEffects, LocalPlayerPoseState, RegistryPacketEntry, DAMAGE_TYPE_REGISTRY,
     };
+    use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID;
     use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID;
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
@@ -1576,14 +1615,15 @@ mod tests {
         VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
+    use bbb_protocol::item_types::{VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID};
 
     use bbb_protocol::packets::{
         AddEntity, BlockPos as ProtocolBlockPos, DamageEvent, EntityAnimation,
         EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind, EntityEvent,
         EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, GameEvent, ItemStackSummary,
         LevelEvent, PlayTime, PlayerHealth, RemoveEntities, SetEntityData, SetEquipment,
-        SetPassengers, SoundEvent, SoundEventHolder, SoundSource, TakeItemEntity, TeleportEntity,
-        Vec3d,
+        SetPassengers, SoundEvent, SoundEventHolder, SoundEventSummary, SoundSource,
+        TakeItemEntity, TeleportEntity, Vec3d,
     };
     use uuid::Uuid;
 
@@ -1608,6 +1648,7 @@ mod tests {
         ravager_roar_particles: Vec<RavagerRoarParticleState>,
         witch_magic_particles: Vec<WitchMagicParticleState>,
         living_entity_poof_particles: Vec<LivingEntityPoofParticleState>,
+        living_entity_item_break_particles: Vec<LivingEntityItemBreakState>,
         living_entity_drown_particles: Vec<LivingEntityDrownParticleState>,
         living_entity_portal_particles: Vec<LivingEntityPortalParticleState>,
         arrow_effect_particles: Vec<ArrowEffectParticleState>,
@@ -1654,6 +1695,14 @@ mod tests {
             state: LivingEntityPoofParticleState,
         ) {
             self.living_entity_poof_particles.push(state);
+        }
+
+        fn living_entity_item_break_particles(
+            &mut self,
+            _world: &WorldStore,
+            state: LivingEntityItemBreakState,
+        ) {
+            self.living_entity_item_break_particles.push(state);
         }
 
         fn living_entity_drown_particles(
@@ -3764,6 +3813,176 @@ mod tests {
         assert!((state.height - 1.95).abs() < 1.0e-5);
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn living_entity_item_break_events_select_all_vanilla_equipment_slots() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        let mut zombie = add_entity(
+            146,
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+            Vec3d {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            },
+        );
+        zombie.x_rot = -30.0;
+        zombie.y_rot = 45.0;
+        let slots = [
+            (
+                LIVING_ENTITY_MAIN_HAND_BREAK_EVENT_ID,
+                EquipmentSlot::MainHand,
+                1,
+            ),
+            (
+                LIVING_ENTITY_OFF_HAND_BREAK_EVENT_ID,
+                EquipmentSlot::OffHand,
+                2,
+            ),
+            (LIVING_ENTITY_HEAD_BREAK_EVENT_ID, EquipmentSlot::Head, 3),
+            (LIVING_ENTITY_CHEST_BREAK_EVENT_ID, EquipmentSlot::Chest, 4),
+            (LIVING_ENTITY_LEGS_BREAK_EVENT_ID, EquipmentSlot::Legs, 5),
+            (LIVING_ENTITY_FEET_BREAK_EVENT_ID, EquipmentSlot::Feet, 6),
+            (LIVING_ENTITY_BODY_BREAK_EVENT_ID, EquipmentSlot::Body, 7),
+            (
+                LIVING_ENTITY_SADDLE_BREAK_EVENT_ID,
+                EquipmentSlot::Saddle,
+                8,
+            ),
+        ];
+        for packet in [
+            PlayClientbound::AddEntity(zombie),
+            PlayClientbound::SetEquipment(SetEquipment {
+                entity_id: 146,
+                slots: slots
+                    .iter()
+                    .map(|(_, slot, item_id)| EquipmentSlotUpdate {
+                        slot: *slot,
+                        item: item_stack(*item_id, 1),
+                    })
+                    .collect(),
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                147,
+                VANILLA_ENTITY_TYPE_ITEM_ID,
+                Vec3d::default(),
+            )),
+            PlayClientbound::SetEquipment(SetEquipment {
+                entity_id: 147,
+                slots: vec![EquipmentSlotUpdate {
+                    slot: EquipmentSlot::MainHand,
+                    item: item_stack(VANILLA_ITEM_STONE_ID, 1),
+                }],
+            }),
+        ] {
+            assert!(store
+                .apply_play_packet(packet, &mut random, &mut effects)
+                .is_none());
+        }
+        for (event_id, _, _) in slots {
+            assert!(store
+                .apply_play_packet(
+                    PlayClientbound::EntityEvent(EntityEvent {
+                        entity_id: 146,
+                        event_id,
+                    }),
+                    &mut random,
+                    &mut effects,
+                )
+                .is_none());
+        }
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::EntityEvent(EntityEvent {
+                    entity_id: 147,
+                    event_id: LIVING_ENTITY_MAIN_HAND_BREAK_EVENT_ID,
+                }),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+
+        assert_eq!(effects.living_entity_item_break_particles.len(), 8);
+        for (state, expected_item_id) in
+            effects.living_entity_item_break_particles.iter().zip(1..=8)
+        {
+            assert_eq!(state.entity_id, 146);
+            assert_eq!(state.item_stack.item_id, Some(expected_item_id));
+            assert_eq!(state.y_rot, 45.0);
+            assert_eq!(state.x_rot, -30.0);
+            assert!(state.eye_height > 0.0);
+        }
+        assert_eq!(effects.positioned_sounds.len(), 8);
+        assert!(effects.positioned_sounds.iter().all(|sound| {
+            sound.sound.location.as_deref() == Some("minecraft:entity.item.break")
+                && sound.source == "hostile"
+                && sound.volume == 0.8
+                && (0.8..=1.2).contains(&sound.pitch)
+        }));
+    }
+
+    #[test]
+    fn living_entity_item_break_sound_honors_patch_removal_and_generated_defaults() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        assert!(store
+            .apply_play_packet(
+                PlayClientbound::AddEntity(add_entity(
+                    148,
+                    VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                    Vec3d::default(),
+                )),
+                &mut random,
+                &mut effects,
+            )
+            .is_none());
+
+        let mut direct = item_stack(VANILLA_ITEM_STONE_ID, 1);
+        direct.component_patch.break_sound = Some(SoundEventSummary {
+            registry_id: None,
+            sound_id: Some("example:custom_break".to_string()),
+            fixed_range_bits: Some(12.5_f32.to_bits()),
+        });
+        let mut removed = item_stack(VANILLA_ITEM_STONE_ID, 1);
+        removed
+            .component_patch
+            .removed_type_ids
+            .push(VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID);
+        for item in [direct, removed, item_stack(VANILLA_ITEM_SHIELD_ID, 1)] {
+            for packet in [
+                PlayClientbound::SetEquipment(SetEquipment {
+                    entity_id: 148,
+                    slots: vec![EquipmentSlotUpdate {
+                        slot: EquipmentSlot::MainHand,
+                        item,
+                    }],
+                }),
+                PlayClientbound::EntityEvent(EntityEvent {
+                    entity_id: 148,
+                    event_id: LIVING_ENTITY_MAIN_HAND_BREAK_EVENT_ID,
+                }),
+            ] {
+                assert!(store
+                    .apply_play_packet(packet, &mut random, &mut effects)
+                    .is_none());
+            }
+        }
+
+        assert_eq!(effects.living_entity_item_break_particles.len(), 3);
+        assert_eq!(effects.positioned_sounds.len(), 2);
+        assert_eq!(
+            effects.positioned_sounds[0].sound.location.as_deref(),
+            Some("example:custom_break")
+        );
+        assert_eq!(effects.positioned_sounds[0].sound.fixed_range, Some(12.5));
+        assert_eq!(
+            effects.positioned_sounds[1].sound.location.as_deref(),
+            Some("minecraft:item.shield.break")
+        );
     }
 
     #[test]

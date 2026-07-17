@@ -906,6 +906,17 @@ pub struct LivingEntityPoofParticleState {
     pub height: f32,
 }
 
+/// Vanilla `LivingEntity.breakItem` inputs captured when entity events 47–52/65/68 arrive.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LivingEntityItemBreakState {
+    pub entity_id: i32,
+    pub position: EntityVec3,
+    pub eye_height: f32,
+    pub y_rot: f32,
+    pub x_rot: f32,
+    pub item_stack: ProtocolItemStackSummary,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct LivingEntityDrownParticleState {
     pub entity_id: i32,
@@ -2701,6 +2712,32 @@ impl WorldStore {
             position: transform.position,
             width: bounds.max[0] - bounds.min[0],
             height: bounds.max[1] - bounds.min[1],
+        })
+    }
+
+    /// Projects the selected equipment stack and current view pose for vanilla
+    /// `LivingEntity.handleEntityEvent(47..=52, 65, 68)` -> `breakItem`.
+    pub fn living_entity_item_break_state(
+        &self,
+        entity_id: i32,
+        slot: ProtocolEquipmentSlot,
+    ) -> Option<LivingEntityItemBreakState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if !vanilla_living_entity_type(transform.entity_type_id) {
+            return None;
+        }
+        let pose = self.probe_entity_camera_pose(entity_id)?;
+        let item_stack = self.entities.equipment_item(entity_id, slot)?;
+        if item_stack.count <= 0 {
+            return None;
+        }
+        Some(LivingEntityItemBreakState {
+            entity_id,
+            position: transform.position,
+            eye_height: pose.eye_height,
+            y_rot: transform.y_rot,
+            x_rot: transform.x_rot,
+            item_stack,
         })
     }
 

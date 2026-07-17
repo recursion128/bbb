@@ -1045,13 +1045,80 @@ fn fox_eat_batch_matches_vanilla_item_particles() {
         ),
         0.0,
     ];
-    let mut expected_velocity = fox_rotate_velocity(local_velocity, state.x_rot, state.y_rot);
+    let mut expected_velocity =
+        rotate_entity_local_vector(local_velocity, state.x_rot, state.y_rot);
     expected_velocity[1] += FOX_EAT_VERTICAL_VELOCITY_OFFSET;
     let mut resolver = test_resolver(0);
 
     let batch = resolver.fox_eat_particle_batch(state, None);
 
     assert_eq!(batch.len(), FOX_EAT_PARTICLE_COUNT);
+    assert_particle_command(
+        &batch.commands[0],
+        VANILLA_PARTICLE_TYPE_ITEM_ID,
+        "minecraft:item",
+        expected_position,
+        expected_velocity,
+        false,
+    );
+    assert_eq!(
+        batch.commands[0].option_item,
+        Some(ParticleItemOptionState {
+            item_id: 42,
+            count: 3,
+            component_patch_len: 0,
+        })
+    );
+    assert!(batch
+        .commands
+        .iter()
+        .all(|command| command.particle_id == "minecraft:item"));
+}
+
+#[test]
+fn living_entity_item_break_batch_matches_vanilla_view_rotated_item_particles() {
+    let state = LivingEntityItemBreakState {
+        entity_id: 86,
+        position: bbb_world::EntityVec3 {
+            x: 10.0,
+            y: 64.0,
+            z: -3.0,
+        },
+        eye_height: 1.74,
+        y_rot: 45.0,
+        x_rot: -30.0,
+        item_stack: ItemStackSummary {
+            item_id: Some(42),
+            count: 3,
+            component_patch: Default::default(),
+        },
+    };
+    let mut expected_random = LegacyRandom::new(0);
+    let local_velocity = [
+        f64::from((expected_random.next_float() - 0.5) * 0.1),
+        f64::from(expected_random.next_float() * 0.1 + 0.1),
+        0.0,
+    ];
+    let mut expected_velocity =
+        rotate_entity_local_vector(local_velocity, state.x_rot, state.y_rot);
+    expected_velocity[1] += 0.05;
+    let local_position_y = f64::from(-expected_random.next_float() * 0.6 - 0.3);
+    let local_position = [
+        f64::from((expected_random.next_float() - 0.5) * 0.3),
+        local_position_y,
+        0.6,
+    ];
+    let rotated_position = rotate_entity_local_vector(local_position, state.x_rot, state.y_rot);
+    let expected_position = [
+        state.position.x + rotated_position[0],
+        state.position.y + f64::from(state.eye_height) + rotated_position[1],
+        state.position.z + rotated_position[2],
+    ];
+    let mut resolver = test_resolver(0);
+
+    let batch = resolver.living_entity_item_break_particle_batch(state, None);
+
+    assert_eq!(batch.len(), LIVING_ENTITY_ITEM_BREAK_PARTICLE_COUNT);
     assert_particle_command(
         &batch.commands[0],
         VANILLA_PARTICLE_TYPE_ITEM_ID,

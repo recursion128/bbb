@@ -23581,6 +23581,24 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn living_item_break_events_use_generated_class_membership() {
+        let source = include_str!("../../entities.rs");
+        let body = source
+            .split("pub fn living_entity_item_break_state")
+            .nth(1)
+            .and_then(|source| source.split("    pub fn ").next())
+            .expect("living item-break projection source");
+        assert!(body.contains("vanilla_living_entity_type"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        let play_apply = include_str!("../../play_apply.rs");
+        assert!(play_apply.contains("living_entity_item_break_slot(update.event_id)"));
+        assert!(play_apply.contains("living_entity_item_break_state(update.entity_id, slot)"));
+        for event_id in [47, 48, 49, 50, 51, 52, 65, 68] {
+            assert!(play_apply.contains(&format!("EVENT_ID: i8 = {event_id};")));
+        }
+    }
+
+    #[test]
     fn illager_celebrating_consumers_do_not_restore_parallel_metadata_or_types() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");

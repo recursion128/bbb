@@ -413,7 +413,7 @@ impl ParticleCommandResolver {
                 ),
                 0.0,
             ];
-            let direction = fox_rotate_velocity(local_velocity, state.x_rot, state.y_rot);
+            let direction = rotate_entity_local_vector(local_velocity, state.x_rot, state.y_rot);
             let velocity = Vec3d {
                 x: direction[0],
                 y: direction[1] + FOX_EAT_VERTICAL_VELOCITY_OFFSET,
@@ -424,6 +424,67 @@ impl ParticleCommandResolver {
                 &template.sprite_ids,
                 position,
                 velocity,
+                template.particle_type.override_limiter,
+                false,
+                0,
+                0,
+                option_state.clone(),
+                None,
+                item_runtime,
+            ));
+        }
+        batch
+    }
+
+    pub(super) fn living_entity_item_break_particle_batch(
+        &mut self,
+        state: LivingEntityItemBreakState,
+        item_runtime: Option<&NativeItemRuntime>,
+    ) -> ParticleSpawnBatch {
+        let Some(item) = particle_item_option_state_for_stack(&state.item_stack) else {
+            return ParticleSpawnBatch::default();
+        };
+        let template = match self.simple_particle_template(VANILLA_PARTICLE_TYPE_ITEM_ID) {
+            Ok(template) => template,
+            Err(batch) => return batch,
+        };
+        let option_state = ParticleOptionRenderState {
+            item: Some(item),
+            item_stack: Some(state.item_stack.clone()),
+            item_component_patch_empty: state.item_stack.component_patch == Default::default(),
+            ..ParticleOptionRenderState::default()
+        };
+        let mut batch = ParticleSpawnBatch {
+            missing_sprite_count: template.missing_sprite_count,
+            ..ParticleSpawnBatch::default()
+        };
+        for _ in 0..LIVING_ENTITY_ITEM_BREAK_PARTICLE_COUNT {
+            let local_velocity = [
+                f64::from((self.random.next_float() - 0.5) * 0.1),
+                f64::from(self.random.next_float() * 0.1 + 0.1),
+                0.0,
+            ];
+            let velocity = rotate_entity_local_vector(local_velocity, state.x_rot, state.y_rot);
+            let local_position_y = f64::from(-self.random.next_float() * 0.6 - 0.3);
+            let local_position = [
+                f64::from((self.random.next_float() - 0.5) * 0.3),
+                local_position_y,
+                0.6,
+            ];
+            let position = rotate_entity_local_vector(local_position, state.x_rot, state.y_rot);
+            batch.commands.push(self.command_for_type(
+                template.particle_type,
+                &template.sprite_ids,
+                Vec3d {
+                    x: state.position.x + position[0],
+                    y: state.position.y + f64::from(state.eye_height) + position[1],
+                    z: state.position.z + position[2],
+                },
+                Vec3d {
+                    x: velocity[0],
+                    y: velocity[1] + 0.05,
+                    z: velocity[2],
+                },
                 template.particle_type.override_limiter,
                 false,
                 0,

@@ -2,17 +2,19 @@ use std::collections::BTreeMap;
 
 use bbb_protocol::{
     block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
+    data_component_types::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
     entity_types::*,
     game_event_types::{
         VANILLA_CLIENT_GAME_EVENT_GUARDIAN_ELDER_EFFECT_ID,
         VANILLA_CLIENT_GAME_EVENT_PLAY_ARROW_HIT_SOUND_ID,
         VANILLA_CLIENT_GAME_EVENT_PUFFER_FISH_STING_ID,
     },
+    item_types::vanilla_item_default_break_sound_resource_id,
     packets::{
         EntityDataRegistryHolder, GameEvent as ProtocolGameEvent, LevelEvent as ProtocolLevelEvent,
         SoundEntityEvent as ProtocolSoundEntityEvent, SoundEvent as ProtocolSoundEvent,
-        SoundEventHolder as ProtocolSoundEventHolder, SoundSource, StopSound as ProtocolStopSound,
-        Vec3d as ProtocolVec3d,
+        SoundEventHolder as ProtocolSoundEventHolder, SoundEventSummary, SoundSource,
+        StopSound as ProtocolStopSound, Vec3d as ProtocolVec3d,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -21,8 +23,8 @@ use crate::entities::{
     vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
     vanilla_entity_metadata_type_sound_source_kind, CatSoundVariantIdentity,
-    ChickenSoundVariantIdentity, CowSoundVariantIdentity, PigSoundVariantIdentity,
-    VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
+    ChickenSoundVariantIdentity, CowSoundVariantIdentity, LivingEntityItemBreakState,
+    PigSoundVariantIdentity, VanillaEntitySoundSourceKind, WolfSoundVariantIdentity,
 };
 use crate::registries::{
     DamageTypeEffects, RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY,
@@ -383,6 +385,49 @@ impl WorldStore {
             distance_delay: false,
         };
         Some(self.record_positioned_sound(state))
+    }
+
+    /// Resolves vanilla `LivingEntity.breakItem` audio from the effective stack component.
+    /// A synchronized patch wins, an explicit removal suppresses sound, and otherwise the
+    /// source-generated item prototype default supplies the common/Shield/Wolf Armor event.
+    pub fn living_entity_item_break_sound(
+        &mut self,
+        state: &LivingEntityItemBreakState,
+        mut next_float: impl FnMut() -> f32,
+    ) -> Option<SoundEventState> {
+        if self.entities.is_silent(state.entity_id)? {
+            return None;
+        }
+        let patch = &state.item_stack.component_patch;
+        let sound = if let Some(summary) = patch.break_sound.as_ref() {
+            sound_event_summary_holder(summary)?
+        } else if patch
+            .removed_type_ids
+            .contains(&VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID)
+        {
+            return None;
+        } else {
+            direct_sound_holder(vanilla_item_default_break_sound_resource_id(
+                state.item_stack.item_id?,
+            )?)
+        };
+        let entity_type_id = self.probe_entity_transform(state.entity_id)?.entity_type_id;
+        let sound = SoundEventState {
+            sound,
+            source: vanilla_entity_sound_source(entity_type_id)
+                .as_str()
+                .to_string(),
+            position: ProtocolVec3d {
+                x: state.position.x,
+                y: state.position.y,
+                z: state.position.z,
+            },
+            volume: 0.8,
+            pitch: 0.8 + next_float().clamp(0.0, 1.0) * 0.4,
+            seed: self.next_sound_seed(),
+            distance_delay: false,
+        };
+        Some(self.record_positioned_sound(sound))
     }
 
     pub fn player_damage_hurt_sound_for_entity(
@@ -1631,6 +1676,23 @@ fn direct_sound_holder(sound: &str) -> SoundHolderState {
         location: Some(sound.to_string()),
         fixed_range: None,
     }
+}
+
+fn sound_event_summary_holder(sound: &SoundEventSummary) -> Option<SoundHolderState> {
+    if let Some(registry_id) = sound.registry_id {
+        return Some(SoundHolderState {
+            kind: "reference".to_string(),
+            registry_id: Some(registry_id),
+            location: None,
+            fixed_range: None,
+        });
+    }
+    Some(SoundHolderState {
+        kind: "direct".to_string(),
+        registry_id: None,
+        location: Some(sound.sound_id.clone()?),
+        fixed_range: sound.fixed_range_bits.map(f32::from_bits),
+    })
 }
 
 fn registry_sound_holder(sound: RegistrySoundEvent) -> SoundHolderState {
