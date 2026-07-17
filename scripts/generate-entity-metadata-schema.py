@@ -5621,6 +5621,7 @@ def render(result: ExtractionResult) -> str:
             '        assert!(net_event_tests.contains("entity_air_supply_data(301)"));',
             '        assert!(net_probe_tests.contains("entity_invisible_data()"));',
             '        assert!(net_probe_tests.contains("entity_air_supply_data(301)"));',
+            '        assert!(net_probe_tests.contains("entity_shift_key_down_data()"));',
             "    }",
             "",
             "    #[test]",

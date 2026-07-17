@@ -4702,11 +4702,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::SetEntityData(SetEntityData {
                 id: 9,
-                values: vec![EntityDataValue {
-                    data_id: 0,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: EntityDataValueKind::Byte(0x02),
-                }],
+                values: vec![entity_shift_key_down_data()],
             }))
             .await
             .unwrap();
@@ -5054,6 +5050,18 @@ mod tests {
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
             value: EntityDataValueKind::Int(air_supply),
+        }
+    }
+
+    fn entity_shift_key_down_data() -> EntityDataValue {
+        let accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        assert_eq!(accessors.shared_flags_default, 0);
+        EntityDataValue {
+            data_id: accessors.shared_flags_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: EntityDataValueKind::Byte(accessors.shift_key_down_mask),
         }
     }
 
