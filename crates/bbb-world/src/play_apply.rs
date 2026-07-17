@@ -75,6 +75,7 @@ const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const ZOMBIE_VILLAGER_CURE_EVENT_ID: i8 = 16;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
 const MOB_SPAWN_EVENT_ID: i8 = 20;
+const GUARDIAN_ATTACK_SOUND_EVENT_ID: i8 = 21;
 const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
 const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
 const OCELOT_TRUSTING_FAILED_EVENT_ID: i8 = 40;
@@ -91,6 +92,7 @@ const LIVING_ENTITY_FEET_BREAK_EVENT_ID: i8 = 52;
 const HONEY_BLOCK_SLIDE_EVENT_ID: i8 = 53;
 const HONEY_BLOCK_JUMP_EVENT_ID: i8 = 54;
 const LIVING_ENTITY_POOF_EVENT_ID: i8 = 60;
+const SNIFFER_DIGGING_SOUND_EVENT_ID: i8 = 63;
 const ARMADILLO_PEEK_EVENT_ID: i8 = 64;
 const LIVING_ENTITY_BODY_BREAK_EVENT_ID: i8 = 65;
 const LIVING_ENTITY_DROWN_EVENT_ID: i8 = 67;
@@ -630,6 +632,29 @@ impl WorldStore {
                         effects.positioned_sound(&state);
                     }
                 }
+                if applied
+                    && matches!(
+                        update.event_id,
+                        GUARDIAN_ATTACK_SOUND_EVENT_ID | SNIFFER_DIGGING_SOUND_EVENT_ID
+                    )
+                {
+                    let state = match update.event_id {
+                        GUARDIAN_ATTACK_SOUND_EVENT_ID => {
+                            self.guardian_attack_sound_for_entity(update.entity_id)
+                        }
+                        SNIFFER_DIGGING_SOUND_EVENT_ID => {
+                            self.sniffer_digging_sound_for_entity(update.entity_id)
+                        }
+                        _ => None,
+                    };
+                    if let Some(state) = state {
+                        let position =
+                            self.probe_entity_transform(update.entity_id).map(|entity| {
+                                [entity.position.x, entity.position.y, entity.position.z]
+                            });
+                        effects.entity_sound(&state, position);
+                    }
+                }
                 if applied && update.event_id == ATTACK_SOUND_EVENT_ID {
                     if let Some(state) = self.entity_attack_event_sound_for_entity(update.entity_id)
                     {
@@ -674,6 +699,7 @@ impl WorldStore {
                 self.apply_hurt_animation(update);
             }
             PlayClientbound::RemoveEntities(update) => {
+                self.remove_tickable_entity_sounds(&update.entity_ids);
                 self.apply_remove_entities(update);
             }
             PlayClientbound::RotateHead(update) => {
@@ -1602,7 +1628,10 @@ mod tests {
         DamageTypeEffects, LocalPlayerPoseState, RegistryPacketEntry, DAMAGE_TYPE_REGISTRY,
     };
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID;
-    use bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID;
+    use bbb_protocol::entity_data_serializers::{
+        VANILLA_ENTITY_DATA_SERIALIZER_COW_SOUND_VARIANT_ID,
+        VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
+    };
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_ARROW_ID,
@@ -1610,14 +1639,15 @@ mod tests {
         VANILLA_ENTITY_TYPE_DOLPHIN_ID, VANILLA_ENTITY_TYPE_EGG_ID,
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
         VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
-        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_SNIFFER_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
+        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
     use bbb_protocol::item_types::{VANILLA_ITEM_SHIELD_ID, VANILLA_ITEM_STONE_ID};
 
@@ -1648,6 +1678,7 @@ mod tests {
     #[derive(Default)]
     struct RecordingEffects {
         positioned_sounds: Vec<SoundEventState>,
+        entity_sounds: Vec<(SoundEntityEventState, Option<[f64; 3]>)>,
         elder_guardian_effect_particles: Vec<Vec3d>,
         ravager_roar_particles: Vec<RavagerRoarParticleState>,
         witch_magic_particles: Vec<WitchMagicParticleState>,
@@ -1672,6 +1703,10 @@ mod tests {
     impl PlayApplyEffects for RecordingEffects {
         fn positioned_sound(&mut self, state: &SoundEventState) {
             self.positioned_sounds.push(state.clone());
+        }
+
+        fn entity_sound(&mut self, state: &SoundEntityEventState, position: Option<[f64; 3]>) {
+            self.entity_sounds.push((state.clone(), position));
         }
 
         fn removed_player_vehicle_teleport(
@@ -1876,6 +1911,22 @@ mod tests {
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,
             value: EntityDataValueKind::Boolean(value),
+        }
+    }
+
+    fn sniffer_state_entity_data(state_id: i32) -> EntityDataValue {
+        let (data_id, _) =
+            crate::entities::vanilla_entity_metadata_sniffer_state_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_SNIFFER_ID,
+            )
+            .expect("generated Sniffer state accessor must resolve");
+        EntityDataValue {
+            data_id,
+            serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_SNIFFER_STATE_ID,
+            value: EntityDataValueKind::EnumId {
+                serializer: bbb_protocol::packets::EntityDataEnumSerializer::SnifferState,
+                id: state_id,
+            },
         }
     }
 
@@ -2595,6 +2646,118 @@ mod tests {
         assert_eq!(store.last_sound(), Some(&effects.positioned_sounds[1]));
         assert_eq!(store.counters().entity_events_applied, 2);
         assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn listener_special_entity_events_drive_tickable_guardian_and_sniffer_sounds() {
+        let guardian_attack_target_data_id =
+            crate::vanilla_entity_metadata_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+                "DATA_ID_ATTACK_TARGET",
+            )
+            .expect("generated Guardian attack-target accessor must resolve")
+            .data_id;
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                60,
+                VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+                Vec3d {
+                    x: 1.0,
+                    y: 62.0,
+                    z: -3.0,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                61,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 5.0,
+                    y: 62.0,
+                    z: -3.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 60,
+                values: vec![int_entity_data(guardian_attack_target_data_id, 61)],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 60,
+                event_id: GUARDIAN_ATTACK_SOUND_EVENT_ID,
+            }),
+            PlayClientbound::AddEntity(add_entity(
+                62,
+                VANILLA_ENTITY_TYPE_SNIFFER_ID,
+                Vec3d {
+                    x: 8.0,
+                    y: 63.0,
+                    z: 2.0,
+                },
+            )),
+            PlayClientbound::SetEntityData(SetEntityData {
+                id: 62,
+                values: vec![sniffer_state_entity_data(
+                    crate::VANILLA_SNIFFER_STATE_DIGGING_ID,
+                )],
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 62,
+                event_id: SNIFFER_DIGGING_SOUND_EVENT_ID,
+            }),
+        ] {
+            assert!(store
+                .apply_play_packet(packet, &mut random, &mut effects)
+                .is_none());
+        }
+
+        assert_eq!(effects.entity_sounds.len(), 2);
+        let guardian = &effects.entity_sounds[0];
+        assert_eq!(
+            guardian.0.sound.location.as_deref(),
+            Some("minecraft:entity.guardian.attack")
+        );
+        assert_eq!(guardian.0.source, "hostile");
+        assert!(guardian.0.looping);
+        assert!(!guardian.0.linear_attenuation);
+        assert!(guardian.0.tickable);
+        assert_eq!(guardian.0.volume, 0.0);
+        assert_eq!(guardian.0.pitch, 0.7);
+        assert_eq!(guardian.1, Some([1.0, 62.0, -3.0]));
+
+        let sniffer = &effects.entity_sounds[1];
+        assert_eq!(
+            sniffer.0.sound.location.as_deref(),
+            Some("minecraft:entity.sniffer.digging")
+        );
+        assert_eq!(sniffer.0.source, "neutral");
+        assert!(!sniffer.0.looping);
+        assert!(sniffer.0.linear_attenuation);
+        assert!(sniffer.0.tickable);
+        assert_eq!(sniffer.1, Some([8.0, 63.0, 2.0]));
+
+        store.advance_entity_client_animations(4);
+        let active = store.tickable_entity_sounds();
+        assert_eq!(active.len(), 2);
+        let guardian = active
+            .iter()
+            .find(|sound| sound.event.entity_id == 60)
+            .unwrap();
+        assert!((guardian.event.volume - 0.0025).abs() < 1.0e-6);
+        assert!((guardian.event.pitch - 0.725).abs() < 1.0e-6);
+
+        assert!(store.apply_set_entity_data(SetEntityData {
+            id: 62,
+            values: vec![sniffer_state_entity_data(
+                crate::VANILLA_SNIFFER_STATE_RISING_ID,
+            )],
+        }));
+        assert_eq!(store.tickable_entity_sounds().len(), 1);
+        store.apply_remove_entities(RemoveEntities {
+            entity_ids: vec![60],
+        });
+        assert!(store.tickable_entity_sounds().is_empty());
     }
 
     #[test]

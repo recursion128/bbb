@@ -495,7 +495,22 @@ impl crate::audio_runtime::AudioEventSink for RecordingAudioSink {
         self.commands.push(command);
     }
 
-    fn tick_entity_sound_positions(&mut self, command: bbb_audio::TickEntitySoundPositionsCommand) {
+    fn tick_entity_sound_positions(
+        &mut self,
+        mut command: bbb_audio::TickEntitySoundPositionsCommand,
+        tickable_sounds: &[bbb_world::TickableEntitySoundState],
+    ) {
+        let resolver = AudioCommandResolver::with_jukebox_registry(
+            &self.catalog,
+            &self.registry,
+            &self.jukebox_registry,
+            bbb_audio::AudioVolumeSettings::default(),
+        );
+        command.tickable_sounds.extend(
+            tickable_sounds
+                .iter()
+                .map(|state| resolver.tickable_entity_sound_update(state).unwrap()),
+        );
         self.commands
             .push(AudioCommand::TickEntitySoundPositions(command));
     }
@@ -850,6 +865,12 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "item.totem.use": {
                 "sounds": ["item/totem/use"]
+            },
+            "entity.guardian.attack": {
+                "sounds": ["mob/guardian/attack_loop"]
+            },
+            "entity.sniffer.digging": {
+                "sounds": ["mob/sniffer/digging"]
             },
             "entity.ravager.attack": {
                 "sounds": ["mob/ravager/attack1"]

@@ -1333,8 +1333,15 @@ back into a todo. Do not delete these.
   and audio side effects.
 - `VANILLA_ENTITY_EVENT_HANDLERS_26_1` now provides the authoritative declaration
   side of that audit: 35 source-derived handlers with direct ids, delegated ids,
-  and `super` fallback. Consumer ownership and the listener-special cases remain
-  open, so this catalog alone does not close the reverse audit.
+  and `super` fallback. The remaining declaration-to-consumer ownership audit is
+  still open, so this catalog alone does not close the reverse audit.
+- All three `ClientPacketListener.handleEntityEvent` special cases now have native
+  consumers. Event `21` starts Guardian's hostile, looping, non-attenuated attack
+  instance and updates its squared attack-scale volume plus `0.7 + 0.5 * scale`
+  pitch each audio tick. Event `63` starts Sniffer's neutral, entity-following
+  digging instance and stops it when the synced state leaves DIGGING/SEARCHING.
+  Both honor the entity silent gate and removal; event `35` retains the totem
+  tracking emitter, entity-source sound, and local activation presentation.
 - `FishingHook.handleEntityEvent(31)` now resolves the generated override owner,
   the synced `entityId + 1` hooked target, and the add-entity owner id before
   adding vanilla's `(ownerPos - hookPos) * 0.1` pull to the hooked local player.

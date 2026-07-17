@@ -81,9 +81,9 @@ use crate::entities::animations::{
     creaking_can_move, creaking_is_tearing_down, entity_animation_uses_in_water,
     entity_chunk_coordinate, entity_is_fall_flying, guardian_attack_duration,
     guardian_attack_target_id, guardian_is_moving, piglin_is_charging_crossbow,
-    pillager_is_charging_crossbow, player_is_using_item, warden_heartbeat_delay,
-    wither_side_head_target_ids, wither_side_head_target_rotation, wolf_is_interested,
-    EntityClientTickParticleTriggers, WitherHeadTargetRotations,
+    pillager_is_charging_crossbow, player_is_using_item, sniffer_can_play_digging_sound,
+    warden_heartbeat_delay, wither_side_head_target_ids, wither_side_head_target_rotation,
+    wolf_is_interested, EntityClientTickParticleTriggers, WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -542,6 +542,29 @@ impl EntityStore {
     pub(crate) fn is_silent(&self, id: i32) -> Option<bool> {
         let accessors = vanilla_entity_metadata_entity_accessors()?;
         self.metadata_bool(id, accessors.silent_data_id, accessors.silent_default)
+    }
+
+    pub(crate) fn guardian_attack_sound_state(&self, id: i32) -> Option<(super::EntityVec3, f32)> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        if !vanilla_entity_metadata_type_is_guardian(identity.entity_type_id) {
+            return None;
+        }
+        let transform = self.ecs.get::<&EntityTransform>(entity).ok()?;
+        let animations = self.ecs.get::<&EntityClientAnimations>(entity).ok()?;
+        let attack = animations.animations.guardian_attack.unwrap_or_default();
+        let duration = guardian_attack_duration(identity.entity_type_id);
+        Some((transform.position, attack.attack_scale(0.0, duration)))
+    }
+
+    pub(crate) fn sniffer_can_play_digging_sound(&self, id: i32) -> Option<bool> {
+        let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
+        Some(sniffer_can_play_digging_sound(
+            identity.entity_type_id,
+            &metadata.data_values,
+        ))
     }
 
     pub(crate) fn no_gravity(&self, id: i32) -> Option<bool> {

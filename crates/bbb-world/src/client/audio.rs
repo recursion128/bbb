@@ -45,6 +45,8 @@ const ARROW_HIT_PLAYER_SOUND_EVENT: &str = "minecraft:entity.arrow.hit_player";
 const PUFFER_FISH_STING_SOUND_EVENT: &str = "minecraft:entity.puffer_fish.sting";
 const ELDER_GUARDIAN_CURSE_SOUND_EVENT: &str = "minecraft:entity.elder_guardian.curse";
 const TOTEM_USE_SOUND_EVENT: &str = "minecraft:item.totem.use";
+const GUARDIAN_ATTACK_SOUND_EVENT: &str = "minecraft:entity.guardian.attack";
+const SNIFFER_DIGGING_SOUND_EVENT: &str = "minecraft:entity.sniffer.digging";
 const RAVAGER_ATTACK_SOUND_EVENT: &str = "minecraft:entity.ravager.attack";
 const IRON_GOLEM_ATTACK_SOUND_EVENT: &str = "minecraft:entity.iron_golem.attack";
 const EVOKER_FANGS_ATTACK_SOUND_EVENT: &str = "minecraft:entity.evoker_fangs.attack";
@@ -86,6 +88,10 @@ const DEFAULT_LEVEL_EVENT_SOUND_SEED: i64 = 0;
 /// `ClientLevel.random`), itself seeded from wall-clock unique seeds; a distinct
 /// fixed seed keeps `WorldStore` serializable and deterministic.
 const SOUND_SEED_RANDOM_INITIAL_SEED: i64 = 0x5EED_50_1D_A0D_10;
+
+const fn default_true() -> bool {
+    true
+}
 
 #[derive(Debug, Clone)]
 pub struct LevelEventSoundRandomState {
@@ -224,6 +230,8 @@ pub struct ClientAudioState {
     pub last_jukebox_event: Option<JukeboxLevelEventState>,
     #[serde(default)]
     pub sound_seed_random: SoundSeedRandomState,
+    #[serde(default)]
+    pub(crate) active_tickable_entity_sounds: BTreeMap<i32, ActiveTickableEntitySound>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -255,6 +263,24 @@ pub struct SoundEntityEventState {
     pub volume: f32,
     pub pitch: f32,
     pub seed: i64,
+    #[serde(default)]
+    pub looping: bool,
+    #[serde(default = "default_true")]
+    pub linear_attenuation: bool,
+    #[serde(default)]
+    pub tickable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TickableEntitySoundState {
+    pub event: SoundEntityEventState,
+    pub position: ProtocolVec3d,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ActiveTickableEntitySound {
+    GuardianAttack { seed: i64 },
+    SnifferDigging { seed: i64 },
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -352,10 +378,146 @@ impl WorldStore {
             volume: packet.volume,
             pitch: packet.pitch,
             seed: packet.seed,
+            looping: false,
+            linear_attenuation: true,
+            tickable: false,
         };
         self.client_audio.last_sound_entity = Some(state.clone());
         self.counters.sound_entity_events_applied += 1;
         Some(state)
+    }
+
+    pub fn guardian_attack_sound_for_entity(
+        &mut self,
+        entity_id: i32,
+    ) -> Option<SoundEntityEventState> {
+        if self.entities.is_silent(entity_id)? {
+            return None;
+        }
+        let (_, attack_scale) = self.entities.guardian_attack_sound_state(entity_id)?;
+        let seed = self.next_sound_seed();
+        let state = SoundEntityEventState {
+            sound: direct_sound_holder(GUARDIAN_ATTACK_SOUND_EVENT),
+            source: SoundSource::Hostile.as_str().to_string(),
+            entity_id,
+            volume: attack_scale * attack_scale,
+            pitch: 0.7 + 0.5 * attack_scale,
+            seed,
+            looping: true,
+            linear_attenuation: false,
+            tickable: true,
+        };
+        self.client_audio.active_tickable_entity_sounds.insert(
+            entity_id,
+            ActiveTickableEntitySound::GuardianAttack { seed },
+        );
+        self.client_audio.last_sound_entity = Some(state.clone());
+        Some(state)
+    }
+
+    pub fn sniffer_digging_sound_for_entity(
+        &mut self,
+        entity_id: i32,
+    ) -> Option<SoundEntityEventState> {
+        let transform = self.entities.transform_state(entity_id)?;
+        if transform.entity_type_id != VANILLA_ENTITY_TYPE_SNIFFER_ID
+            || self.entities.is_silent(entity_id)?
+        {
+            return None;
+        }
+        let seed = self.next_sound_seed();
+        let state = SoundEntityEventState {
+            sound: direct_sound_holder(SNIFFER_DIGGING_SOUND_EVENT),
+            source: SoundSource::Neutral.as_str().to_string(),
+            entity_id,
+            volume: 1.0,
+            pitch: 1.0,
+            seed,
+            looping: false,
+            linear_attenuation: true,
+            tickable: true,
+        };
+        self.client_audio.active_tickable_entity_sounds.insert(
+            entity_id,
+            ActiveTickableEntitySound::SnifferDigging { seed },
+        );
+        self.client_audio.last_sound_entity = Some(state.clone());
+        Some(state)
+    }
+
+    pub fn tickable_entity_sounds(&self) -> Vec<TickableEntitySoundState> {
+        self.client_audio
+            .active_tickable_entity_sounds
+            .iter()
+            .filter_map(|(&entity_id, active)| {
+                if self.entities.is_silent(entity_id)? {
+                    return None;
+                }
+                let (position, sound, source, volume, pitch, seed, looping, attenuation) =
+                    match *active {
+                        ActiveTickableEntitySound::GuardianAttack { seed } => {
+                            let (position, attack_scale) =
+                                self.entities.guardian_attack_sound_state(entity_id)?;
+                            (
+                                position,
+                                GUARDIAN_ATTACK_SOUND_EVENT,
+                                SoundSource::Hostile,
+                                attack_scale * attack_scale,
+                                0.7 + 0.5 * attack_scale,
+                                seed,
+                                true,
+                                false,
+                            )
+                        }
+                        ActiveTickableEntitySound::SnifferDigging { seed } => {
+                            if !self.entities.sniffer_can_play_digging_sound(entity_id)? {
+                                return None;
+                            }
+                            let transform = self.entities.transform_state(entity_id)?;
+                            (
+                                transform.position,
+                                SNIFFER_DIGGING_SOUND_EVENT,
+                                SoundSource::Neutral,
+                                1.0,
+                                1.0,
+                                seed,
+                                false,
+                                true,
+                            )
+                        }
+                    };
+                Some(TickableEntitySoundState {
+                    event: SoundEntityEventState {
+                        sound: direct_sound_holder(sound),
+                        source: source.as_str().to_string(),
+                        entity_id,
+                        volume,
+                        pitch,
+                        seed,
+                        looping,
+                        linear_attenuation: attenuation,
+                        tickable: true,
+                    },
+                    position: ProtocolVec3d {
+                        x: position.x,
+                        y: position.y,
+                        z: position.z,
+                    },
+                })
+            })
+            .collect()
+    }
+
+    pub(crate) fn clear_tickable_entity_sounds(&mut self) {
+        self.client_audio.active_tickable_entity_sounds.clear();
+    }
+
+    pub(crate) fn remove_tickable_entity_sounds(&mut self, entity_ids: &[i32]) {
+        for entity_id in entity_ids {
+            self.client_audio
+                .active_tickable_entity_sounds
+                .remove(entity_id);
+        }
     }
 
     pub fn apply_stop_sound(&mut self, packet: ProtocolStopSound) -> StopSoundEventState {
@@ -1938,6 +2100,9 @@ mod tests {
             volume: 1.0,
             pitch: 0.5,
             seed: -9,
+            looping: false,
+            linear_attenuation: true,
+            tickable: false,
         };
         assert_eq!(entity_sound, expected_entity_sound);
         assert_eq!(store.last_sound_entity(), Some(&expected_entity_sound));

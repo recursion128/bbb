@@ -6128,6 +6128,16 @@ fn sniffer_state_id(entity_type_id: i32, data_values: &[EntityDataValue]) -> Opt
     )
 }
 
+pub(crate) fn sniffer_can_play_digging_sound(
+    entity_type_id: i32,
+    data_values: &[EntityDataValue],
+) -> bool {
+    matches!(
+        sniffer_state_id(entity_type_id, data_values),
+        Some(SNIFFER_STATE_DIGGING_ID | SNIFFER_STATE_SEARCHING_ID)
+    )
+}
+
 /// Vanilla `LivingEntity.isFallFlying()` reads the generated base Entity shared-flags accessor and
 /// its named fall-flying mask.
 pub(crate) fn entity_is_fall_flying(data_values: &[EntityDataValue]) -> bool {

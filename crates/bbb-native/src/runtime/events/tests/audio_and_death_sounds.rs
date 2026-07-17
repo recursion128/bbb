@@ -141,6 +141,9 @@ fn client_audio_events_update_world_counters() {
             volume: 1.0,
             pitch: 0.5,
             seed: -9,
+            looping: false,
+            linear_attenuation: true,
+            tickable: false,
         })
     );
     assert_eq!(world.counters().stop_sound_packets, 1);
@@ -151,6 +154,64 @@ fn client_audio_events_update_world_counters() {
             name: Some("minecraft:music.menu".to_string()),
         })
     );
+}
+
+#[test]
+fn listener_special_entity_events_emit_tickable_audio_commands() {
+    let (tx, mut rx) = mpsc::channel(4);
+    for packet in [
+        PlayClientbound::AddEntity(protocol_add_entity_with_type(
+            170,
+            VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        )),
+        PlayClientbound::EntityEvent(EntityEvent {
+            entity_id: 170,
+            event_id: 21,
+        }),
+        PlayClientbound::AddEntity(protocol_add_entity_with_type(
+            171,
+            VANILLA_ENTITY_TYPE_SNIFFER_ID,
+        )),
+        PlayClientbound::EntityEvent(EntityEvent {
+            entity_id: 171,
+            event_id: 63,
+        }),
+    ] {
+        tx.try_send(NetEvent::Play(packet)).unwrap();
+    }
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut audio = RecordingAudioSink::new(test_sound_catalog(), SoundEventRegistry::default());
+    assert_eq!(
+        drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
+        4
+    );
+
+    assert!(audio.errors.is_empty(), "{:?}", audio.errors);
+    assert_eq!(audio.commands.len(), 2);
+    let AudioCommand::PlayEntitySound(guardian) = &audio.commands[0] else {
+        panic!("expected guardian entity sound command")
+    };
+    assert_eq!(guardian.sound.event_id, "minecraft:entity.guardian.attack");
+    assert_eq!(guardian.category, AudioCategory::Hostile);
+    assert_eq!(guardian.entity_id, 170);
+    assert_eq!(guardian.position, Some([1.0, 64.0, -2.0]));
+    assert!(guardian.looping);
+    assert!(!guardian.linear_attenuation);
+    assert!(guardian.tickable);
+    assert_eq!(guardian.packet_volume, 0.0);
+    assert_eq!(guardian.packet_pitch, 0.7);
+
+    let AudioCommand::PlayEntitySound(sniffer) = &audio.commands[1] else {
+        panic!("expected sniffer entity sound command")
+    };
+    assert_eq!(sniffer.sound.event_id, "minecraft:entity.sniffer.digging");
+    assert_eq!(sniffer.category, AudioCategory::Neutral);
+    assert_eq!(sniffer.entity_id, 171);
+    assert!(!sniffer.looping);
+    assert!(sniffer.linear_attenuation);
+    assert!(sniffer.tickable);
 }
 
 #[test]

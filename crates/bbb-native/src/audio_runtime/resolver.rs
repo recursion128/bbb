@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use bbb_audio::{
     AudioCategory, AudioCommand, AudioVolumeSettings, PlayEntitySoundCommand,
     PlayJukeboxSongCommand, PlayLocalSoundCommand, PlayPositionedSoundCommand, ResolvedSound,
-    StopJukeboxSongCommand, StopSoundCommand,
+    StopJukeboxSongCommand, StopSoundCommand, TickableEntitySoundUpdate,
 };
 use bbb_pack::{
     JukeboxSongRegistry, SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition,
@@ -170,7 +170,27 @@ impl<'a> AudioCommandResolver<'a> {
             fixed_range,
             category,
             sound,
+            looping: state.looping,
+            linear_attenuation: state.linear_attenuation,
+            tickable: state.tickable,
         }))
+    }
+
+    pub fn tickable_entity_sound_update(
+        &self,
+        state: &bbb_world::TickableEntitySoundState,
+    ) -> Result<TickableEntitySoundUpdate, AudioResolveError> {
+        let (event_id, _) = self.event_id_for_holder(&state.event.sound)?;
+        let sound = self.resolve_event_for_seed(&event_id, state.event.seed)?;
+        let category = AudioCategory::from_world_source(&state.event.source);
+        let gain = state.event.volume * sound.entry_volume;
+        Ok(TickableEntitySoundUpdate {
+            event_id,
+            entity_id: state.event.entity_id,
+            position: [state.position.x, state.position.y, state.position.z],
+            channel_gain: self.volume_settings.channel_gain(gain, &category),
+            playback_rate: state.event.pitch * sound.entry_pitch,
+        })
     }
 
     pub fn stop_sound(&self, state: &StopSoundEventState) -> AudioCommand {
@@ -790,6 +810,9 @@ mod tests {
                 volume: 1.0,
                 pitch: 0.5,
                 seed: 12,
+                looping: false,
+                linear_attenuation: true,
+                tickable: false,
             })
             .unwrap();
 
@@ -802,6 +825,52 @@ mod tests {
         assert_eq!(play.sound.sound_name, "minecraft:mob/cat/meow1");
         assert_near(play.gain, 1.0);
         assert_near(play.playback_rate, 0.5);
+    }
+
+    #[test]
+    fn resolves_tickable_entity_sound_updates_with_current_gain_pitch_and_position() {
+        let assets_dir = unique_assets_dir("tickable-entity-update");
+        let catalog = test_catalog(
+            &assets_dir,
+            br#"{
+              "entity.guardian.attack": {
+                "sounds": [{"name": "mob/guardian/attack_loop", "volume": 0.8, "pitch": 1.1}]
+              }
+            }"#,
+        );
+        let registry = SoundEventRegistry::default();
+        let resolver = AudioCommandResolver::new(&catalog, &registry);
+        let update = resolver
+            .tickable_entity_sound_update(&bbb_world::TickableEntitySoundState {
+                event: SoundEntityEventState {
+                    sound: SoundHolderState {
+                        kind: "direct".to_string(),
+                        registry_id: None,
+                        location: Some("minecraft:entity.guardian.attack".to_string()),
+                        fixed_range: None,
+                    },
+                    source: "hostile".to_string(),
+                    entity_id: 42,
+                    volume: 0.25,
+                    pitch: 1.2,
+                    seed: 7,
+                    looping: true,
+                    linear_attenuation: false,
+                    tickable: true,
+                },
+                position: Vec3d {
+                    x: 4.0,
+                    y: 5.0,
+                    z: 6.0,
+                },
+            })
+            .unwrap();
+
+        assert_eq!(update.event_id, "minecraft:entity.guardian.attack");
+        assert_eq!(update.entity_id, 42);
+        assert_eq!(update.position, [4.0, 5.0, 6.0]);
+        assert_near(update.channel_gain, 0.2);
+        assert_near(update.playback_rate, 1.32);
     }
 
     #[test]
@@ -950,6 +1019,9 @@ mod tests {
                 volume: 1.0,
                 pitch: 1.0,
                 seed: 0,
+                looping: false,
+                linear_attenuation: true,
+                tickable: false,
             })
             .unwrap_err();
 

@@ -739,6 +739,9 @@ mod tests {
                 volume: 1.0,
                 pitch: 0.5,
                 seed: -9,
+                looping: false,
+                linear_attenuation: true,
+                tickable: false,
             })
         );
         assert_eq!(report.world_counters.stop_sound_packets, 1);

@@ -756,6 +756,7 @@ impl WorldStore {
         self.enchanting_book_random = crate::EnchantingBookRandom::default();
         self.level_events.clear();
         self.client_audio.playing_jukebox_songs.clear();
+        self.clear_tickable_entity_sounds();
         self.local_block_predictions.clear();
         self.entities.clear();
         self.counters.block_destructions_tracked = 0;

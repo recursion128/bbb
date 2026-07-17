@@ -15,7 +15,7 @@ use kira::{
 use crate::{
     AudioCategory, AudioCommand, AudioListenerState, EntitySoundPosition,
     PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand, StopSoundCommand,
-    TickEntitySoundPositionsCommand,
+    TickEntitySoundPositionsCommand, TickableEntitySoundUpdate,
 };
 
 const MIN_SPATIAL_DISTANCE: f32 = 1.0;
@@ -43,6 +43,7 @@ struct KiraPlayingSound {
     jukebox_pos: Option<[i32; 3]>,
     handle: KiraSoundHandle,
     track: Option<SpatialTrackHandle>,
+    tickable: bool,
 }
 
 enum KiraSoundHandle {
@@ -85,6 +86,9 @@ impl KiraAudioRuntime {
                 command.playback_rate,
                 command.fixed_range,
                 None,
+                command.looping,
+                command.linear_attenuation,
+                command.tickable,
             ),
             AudioCommand::PlayJukeboxSong(command) => self.play_jukebox_song(
                 &command.sound,
@@ -140,6 +144,7 @@ impl KiraAudioRuntime {
             jukebox_pos: None,
             handle,
             track: None,
+            tickable: false,
         });
         Ok(())
     }
@@ -168,6 +173,9 @@ impl KiraAudioRuntime {
             command.playback_rate,
             command.fixed_range,
             None,
+            false,
+            true,
+            false,
         )
     }
 
@@ -182,33 +190,52 @@ impl KiraAudioRuntime {
         playback_rate: f32,
         fixed_range: Option<f32>,
         jukebox_pos: Option<[i32; 3]>,
+        looping: bool,
+        linear_attenuation: bool,
+        tickable: bool,
     ) -> Result<()> {
         self.retain_active_sounds();
-        if !sound_should_start(channel_gain, &category) {
+        if !tickable && !sound_should_start(channel_gain, &category) {
             return Ok(());
         }
-        let mut track = self.manager.add_spatial_sub_track(
-            &self.listener,
-            audio_position(position),
-            SpatialTrackBuilder::new()
-                .persist_until_sounds_finish(true)
-                .distances((
-                    MIN_SPATIAL_DISTANCE,
-                    spatial_max_distance(sound, gain, fixed_range),
-                )),
-        )?;
+        let mut track = if linear_attenuation {
+            Some(
+                self.manager.add_spatial_sub_track(
+                    &self.listener,
+                    audio_position(position),
+                    SpatialTrackBuilder::new()
+                        .persist_until_sounds_finish(true)
+                        .distances((
+                            MIN_SPATIAL_DISTANCE,
+                            spatial_max_distance(sound, gain, fixed_range),
+                        )),
+                )?,
+            )
+        } else {
+            None
+        };
         let volume = channel_decibels_from_gain(channel_gain);
         let playback_rate = channel_playback_rate(playback_rate);
         let handle = if sound.stream {
             let data = StreamingSoundData::from_file(&sound.ogg_path)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
-            KiraSoundHandle::Streaming(track.play(data)?)
+            let data = if looping { data.loop_region(..) } else { data };
+            KiraSoundHandle::Streaming(if let Some(track) = track.as_mut() {
+                track.play(data)?
+            } else {
+                self.manager.play(data)?
+            })
         } else {
             let data = StaticSoundData::from_file(&sound.ogg_path)?
                 .volume(volume)
                 .playback_rate(playback_rate as f64);
-            KiraSoundHandle::Static(track.play(data)?)
+            let data = if looping { data.loop_region(..) } else { data };
+            KiraSoundHandle::Static(if let Some(track) = track.as_mut() {
+                track.play(data)?
+            } else {
+                self.manager.play(data)?
+            })
         };
         self.playing.push(KiraPlayingSound {
             event_id: sound.event_id.clone(),
@@ -216,7 +243,8 @@ impl KiraAudioRuntime {
             entity_id,
             jukebox_pos,
             handle,
-            track: Some(track),
+            track,
+            tickable,
         });
         Ok(())
     }
@@ -242,6 +270,9 @@ impl KiraAudioRuntime {
             playback_rate,
             None,
             Some(jukebox_pos),
+            false,
+            true,
+            false,
         )
     }
 
@@ -282,13 +313,20 @@ impl KiraAudioRuntime {
                 .set_orientation(listener_orientation(listener), Tween::default());
         }
         let active_entity_ids = active_entity_sound_ids(&command.entities);
+        let active_tickable_sounds = active_tickable_entity_sounds(&command.tickable_sounds);
         for sound in &mut self.playing {
             if entity_bound_sound_is_missing(sound.entity_id, &active_entity_ids) {
+                sound.handle.stop();
+            }
+            if tickable_entity_sound_is_missing(sound, &active_tickable_sounds) {
                 sound.handle.stop();
             }
         }
         for entity in &command.entities {
             self.update_entity_sound_position(*entity);
+        }
+        for sound in &command.tickable_sounds {
+            self.update_tickable_entity_sound(sound);
         }
         self.retain_active_sounds();
         for command in advance_delayed_positioned_sounds(&mut self.delayed_positioned) {
@@ -303,6 +341,21 @@ impl KiraAudioRuntime {
                 if let Some(track) = &mut sound.track {
                     track.set_position(audio_position(entity.position), Tween::default());
                 }
+            }
+        }
+    }
+
+    fn update_tickable_entity_sound(&mut self, update: &TickableEntitySoundUpdate) {
+        for sound in &mut self.playing {
+            if sound.tickable
+                && sound.entity_id == Some(update.entity_id)
+                && sound.event_id == update.event_id
+            {
+                if let Some(track) = &mut sound.track {
+                    track.set_position(audio_position(update.position), Tween::default());
+                }
+                sound.handle.set_volume(update.channel_gain);
+                sound.handle.set_playback_rate(update.playback_rate);
             }
         }
     }
@@ -324,6 +377,22 @@ impl KiraSoundHandle {
         match self {
             Self::Static(handle) => handle.state(),
             Self::Streaming(handle) => handle.state(),
+        }
+    }
+
+    fn set_volume(&mut self, gain: f32) {
+        let volume = channel_decibels_from_gain(gain);
+        match self {
+            Self::Static(handle) => handle.set_volume(volume, Tween::default()),
+            Self::Streaming(handle) => handle.set_volume(volume, Tween::default()),
+        }
+    }
+
+    fn set_playback_rate(&mut self, playback_rate: f32) {
+        let playback_rate = f64::from(channel_playback_rate(playback_rate));
+        match self {
+            Self::Static(handle) => handle.set_playback_rate(playback_rate, Tween::default()),
+            Self::Streaming(handle) => handle.set_playback_rate(playback_rate, Tween::default()),
         }
     }
 }
@@ -378,6 +447,23 @@ fn advance_delayed_positioned_sounds(
 
 fn active_entity_sound_ids(entities: &[EntitySoundPosition]) -> HashSet<i32> {
     entities.iter().map(|entity| entity.entity_id).collect()
+}
+
+fn active_tickable_entity_sounds(sounds: &[TickableEntitySoundUpdate]) -> HashSet<(i32, &str)> {
+    sounds
+        .iter()
+        .map(|sound| (sound.entity_id, sound.event_id.as_str()))
+        .collect()
+}
+
+fn tickable_entity_sound_is_missing(
+    sound: &KiraPlayingSound,
+    active_sounds: &HashSet<(i32, &str)>,
+) -> bool {
+    sound.tickable
+        && sound
+            .entity_id
+            .is_some_and(|entity_id| !active_sounds.contains(&(entity_id, sound.event_id.as_str())))
 }
 
 fn entity_bound_sound_is_missing(entity_id: Option<i32>, active_entity_ids: &HashSet<i32>) -> bool {

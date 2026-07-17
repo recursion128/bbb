@@ -2859,7 +2859,10 @@ pub(crate) fn pump_network_and_terrain(
         player_section_compiled_and_visible,
     );
     if let Some(audio_events) = audio_events.as_mut() {
-        audio_events.tick_entity_sound_positions(audio_scene_command_from_world(world));
+        audio_events.tick_entity_sound_positions(
+            audio_scene_command_from_world(world),
+            &world.tickable_entity_sounds(),
+        );
     }
     let audio_counters = audio_events
         .as_deref()
@@ -13265,6 +13268,7 @@ fn audio_scene_command_from_world(world: &WorldStore) -> TickEntitySoundPosition
                 position: [entity.position.x, entity.position.y, entity.position.z],
             })
             .collect(),
+        tickable_sounds: Vec::new(),
     }
 }
 

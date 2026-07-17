@@ -7,7 +7,7 @@ pub use command::{
     AudioCategory, AudioCommand, AudioListenerState, AudioVolumeSettings, EntitySoundPosition,
     PlayEntitySoundCommand, PlayJukeboxSongCommand, PlayLocalSoundCommand,
     PlayPositionedSoundCommand, ResolvedSound, StopJukeboxSongCommand, StopSoundCommand,
-    TickEntitySoundPositionsCommand,
+    TickEntitySoundPositionsCommand, TickableEntitySoundUpdate,
 };
 
 #[cfg(feature = "kira")]

@@ -705,6 +705,7 @@ mod tests {
         fn tick_entity_sound_positions(
             &mut self,
             _command: bbb_audio::TickEntitySoundPositionsCommand,
+            _tickable_sounds: &[bbb_world::TickableEntitySoundState],
         ) {
         }
     }

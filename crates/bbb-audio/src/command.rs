@@ -54,6 +54,12 @@ pub struct PlayEntitySoundCommand {
     pub playback_rate: f32,
     pub seed: i64,
     pub fixed_range: Option<f32>,
+    #[serde(default)]
+    pub looping: bool,
+    #[serde(default = "default_true")]
+    pub linear_attenuation: bool,
+    #[serde(default)]
+    pub tickable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -85,6 +91,17 @@ pub struct StopSoundCommand {
 pub struct TickEntitySoundPositionsCommand {
     pub listener: Option<AudioListenerState>,
     pub entities: Vec<EntitySoundPosition>,
+    #[serde(default)]
+    pub tickable_sounds: Vec<TickableEntitySoundUpdate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TickableEntitySoundUpdate {
+    pub event_id: String,
+    pub entity_id: i32,
+    pub position: [f64; 3],
+    pub channel_gain: f32,
+    pub playback_rate: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -98,6 +115,10 @@ pub struct AudioListenerState {
 pub struct EntitySoundPosition {
     pub entity_id: i32,
     pub position: [f64; 3],
+}
+
+const fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

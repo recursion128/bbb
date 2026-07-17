@@ -4,7 +4,7 @@ pub use crate::client::audio::{
     advance_vault_deactivation_particle_randoms, ClientAudioState, JukeboxLevelEventAction,
     JukeboxLevelEventState, JukeboxSongState, LevelEventSoundRandomState, LocalSoundEventState,
     SoundEntityEventState, SoundEventState, SoundHolderState, SoundSeedRandomState,
-    StopSoundEventState, WorldBlockSoundProfile,
+    StopSoundEventState, TickableEntitySoundState, WorldBlockSoundProfile,
 };
 pub use crate::client::chat::{
     ChatMessageKind, ChatMessageState, ChatSignatureState, ChatTypeState, ChatValidationState,

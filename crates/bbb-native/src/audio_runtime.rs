@@ -22,7 +22,11 @@ pub(crate) trait AudioEventSink {
     fn play_jukebox_song(&mut self, state: &JukeboxLevelEventState);
     fn stop_jukebox_song(&mut self, state: &JukeboxLevelEventState);
     fn stop_sound(&mut self, state: &StopSoundEventState);
-    fn tick_entity_sound_positions(&mut self, command: TickEntitySoundPositionsCommand);
+    fn tick_entity_sound_positions(
+        &mut self,
+        command: TickEntitySoundPositionsCommand,
+        tickable_sounds: &[bbb_world::TickableEntitySoundState],
+    );
 }
 
 pub(crate) struct NativeAudioRuntime {
@@ -186,7 +190,32 @@ impl AudioEventSink for NativeAudioRuntime {
         self.submit_command(command);
     }
 
-    fn tick_entity_sound_positions(&mut self, command: TickEntitySoundPositionsCommand) {
+    fn tick_entity_sound_positions(
+        &mut self,
+        mut command: TickEntitySoundPositionsCommand,
+        tickable_sounds: &[bbb_world::TickableEntitySoundState],
+    ) {
+        let updates = {
+            let resolver = AudioCommandResolver::with_jukebox_registry(
+                &self.catalog,
+                &self.registry,
+                &self.jukebox_registry,
+                bbb_audio::AudioVolumeSettings::default(),
+            );
+            tickable_sounds
+                .iter()
+                .map(|state| resolver.tickable_entity_sound_update(state))
+                .collect::<Vec<_>>()
+        };
+        for update in updates {
+            match update {
+                Ok(update) => command.tickable_sounds.push(update),
+                Err(err) => {
+                    self.counters.resolve_failures += 1;
+                    self.counters.last_resolve_error = Some(err.to_string());
+                }
+            }
+        }
         self.submit_command(AudioCommand::TickEntitySoundPositions(command));
     }
 }
