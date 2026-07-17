@@ -47,7 +47,7 @@ use bbb_protocol::packets::{
     WaypointVec3i, WrittenBookContentSummary,
 };
 use bbb_world::{
-    advance_cobweb_place_particle_randoms,
+    advance_cobweb_place_particle_randoms, vanilla_entity_metadata_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState, BlockPos,
     ChunkPos, DolphinHappyParticleState, EntityTamingParticleState,
@@ -108,6 +108,14 @@ fn firework_item_data_id() -> u8 {
         "minecraft:firework_rocket"
     );
     accessors.item_data_id
+}
+
+fn arrow_effect_color_data_id() -> u8 {
+    let accessors =
+        vanilla_entity_metadata_arrow_accessors_for_entity_type(VANILLA_ENTITY_TYPE_ARROW_ID)
+            .expect("generated Arrow metadata accessors must resolve");
+    assert_eq!(accessors.effect_color_default, -1);
+    accessors.effect_color_data_id
 }
 
 fn firework_item_entity_data(entity_id: i32, explosions_count: Option<usize>) -> SetEntityData {

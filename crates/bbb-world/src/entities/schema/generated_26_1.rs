@@ -24927,6 +24927,8 @@ mod generated_catalog_guards {
         let native_data = include_str!("../../../../bbb-native/src/entity_scene/entity_data.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let native_runtime_tests =
+            include_str!("../../../../bbb-native/src/runtime/events/tests.rs");
         for source in [animations, projectiles, native_input] {
             assert!(
                 source.contains("vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type")
@@ -24946,6 +24948,8 @@ mod generated_catalog_guards {
         assert!(native_kind.contains("vanilla_entity_metadata_arrow_accessors_for_entity_type"));
         assert!(native_data
             .contains("vanilla_entity_metadata_thrown_trident_accessors_for_entity_type"));
+        assert!(native_runtime_tests
+            .contains("vanilla_entity_metadata_arrow_accessors_for_entity_type"));
         assert!(!animations.contains("fn is_vanilla_arrow_type"));
         for removed in [
             "ABSTRACT_ARROW_FLAGS_DATA_ID",
@@ -24998,6 +25002,10 @@ mod generated_catalog_guards {
             assert!(
                 !native_input_tests.contains(removed),
                 "native input fixtures restored {removed}"
+            );
+            assert!(
+                !native_runtime_tests.contains(removed),
+                "native runtime fixtures restored {removed}"
             );
         }
     }

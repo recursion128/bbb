@@ -803,7 +803,7 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
         SetEntityData {
             id: 118,
             values: vec![EntityDataValue {
-                data_id: 11,
+                data_id: arrow_effect_color_data_id(),
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(0x0033_66cc),
@@ -819,7 +819,7 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
         SetEntityData {
             id: 119,
             values: vec![EntityDataValue {
-                data_id: 11,
+                data_id: arrow_effect_color_data_id(),
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(0),
@@ -835,7 +835,7 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
         SetEntityData {
             id: 120,
             values: vec![EntityDataValue {
-                data_id: 11,
+                data_id: arrow_effect_color_data_id(),
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(-1),
@@ -851,7 +851,7 @@ fn arrow_effect_clear_entity_event_emits_particle_state() {
         SetEntityData {
             id: 121,
             values: vec![EntityDataValue {
-                data_id: 11,
+                data_id: arrow_effect_color_data_id(),
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
                 value: EntityDataValueKind::Int(0x0011_2233),
