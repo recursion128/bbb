@@ -19011,3 +19011,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Extended the gameplay-id generator's operation guard to cover `Some(n)` construction/comparison
   and added slot/display construction and comparison coverage across semantic consumers. Protocol
   wire samples remain under their codec owner.
+
+# 2026-07-17: Derive dialog item-patch component type ids
+
+- Replaced numeric DataComponentType ids in dialog item-patch entries, hidden-component
+  references, and patch-summary assertions with the generated constants matching each fixture's
+  resource id.
+- Extended the core-registry generator's dialog reverse guard across the full body owner so patch
+  entry/reference construction and summary assertions cannot restore numeric component ids.

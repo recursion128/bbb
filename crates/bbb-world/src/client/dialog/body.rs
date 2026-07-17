@@ -1,4 +1,8 @@
 #[cfg(test)]
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+};
+#[cfg(test)]
 use bbb_protocol::item_component_value_types::ItemRaritySummary;
 use bbb_protocol::packets::{DataComponentPatchSummary, ItemStackSummary};
 use bbb_protocol::{
@@ -444,7 +448,7 @@ mod tests {
             item.component_data,
             Some(DialogDataComponentPatchState {
                 entries: vec![DialogDataComponentPatchEntryState {
-                    type_id: 6,
+                    type_id: VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
                     resource_id: "minecraft:custom_name".to_string(),
                     removed: false,
                     value: Some(NbtSummaryValue::String("Named".to_string())),
@@ -470,7 +474,10 @@ mod tests {
         assert_eq!(summary.item_id, Some(7));
         assert_eq!(summary.count, 2);
         assert_eq!(summary.component_patch.added, 1);
-        assert_eq!(summary.component_patch.added_type_ids, vec![6]);
+        assert_eq!(
+            summary.component_patch.added_type_ids,
+            vec![VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID]
+        );
         assert_eq!(
             summary.component_patch.custom_name.as_deref(),
             Some("Named")
@@ -800,7 +807,7 @@ mod tests {
         assert_eq!(
             item.component_data.as_ref().unwrap().entries[0],
             DialogDataComponentPatchEntryState {
-                type_id: 6,
+                type_id: VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID,
                 resource_id: "minecraft:custom_name".to_string(),
                 removed: true,
                 value: None,
@@ -810,7 +817,7 @@ mod tests {
         assert_eq!(
             item.component_data.as_ref().unwrap().entries[1],
             DialogDataComponentPatchEntryState {
-                type_id: 19,
+                type_id: VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
                 resource_id: "minecraft:repair_cost".to_string(),
                 removed: false,
                 value: Some(NbtSummaryValue::Int(3)),

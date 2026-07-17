@@ -149,9 +149,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   the first invalid catalog index, while the non-Vanilla item-pickup sentinel remains explicitly
   named. The core-registry generator owns the reverse guard and leaves protocol wire samples under
   their packet-codec owner.
-  Dialog component predicate fixtures must use generated DataComponentType and
-  DataComponentPredicateType constants that match their resource ids; the core-registry generator
-  owns both named predicate constants and the reverse guard over this semantic owner.
+  Dialog component predicate, item-patch entry/reference, and patch-summary fixtures must use
+  generated DataComponentType and DataComponentPredicateType constants that match their resource
+  ids; the core-registry generator owns both named predicate constants and the reverse guard over
+  this semantic owner.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test

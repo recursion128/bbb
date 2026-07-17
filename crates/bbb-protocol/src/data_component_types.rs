@@ -1644,7 +1644,7 @@ mod tests {
             .chars()
             .filter(|character| !character.is_whitespace())
             .collect();
-        ["component_type_id:", "predicate_type_id:"]
+        let numeric_component_or_predicate_field = ["component_type_id:", "predicate_type_id:"]
             .iter()
             .any(|field| {
                 compact.match_indices(field).any(|(offset, _)| {
@@ -1657,7 +1657,30 @@ mod tests {
                             });
                     boundary && starts_with_integer_literal(&compact[offset + field.len()..])
                 })
-            })
+            });
+        let numeric_patch_or_reference_construction = [
+            "DialogDataComponentPatchEntryState{type_id:",
+            "DialogDataComponentReferenceState{type_id:",
+        ]
+        .iter()
+        .any(|prefix| {
+            compact
+                .match_indices(prefix)
+                .any(|(offset, _)| starts_with_integer_literal(&compact[offset + prefix.len()..]))
+        });
+        let numeric_patch_summary = [
+            "component_patch.added_type_ids,vec![",
+            "component_patch.removed_type_ids,vec![",
+        ]
+        .iter()
+        .any(|prefix| {
+            compact
+                .match_indices(prefix)
+                .any(|(offset, _)| starts_with_integer_literal(&compact[offset + prefix.len()..]))
+        });
+        numeric_component_or_predicate_field
+            || numeric_patch_or_reference_construction
+            || numeric_patch_summary
     }
 
     #[test]
@@ -1668,12 +1691,24 @@ mod tests {
         assert!(contains_numeric_dialog_component_type_id_reference(
             "predicate_type_id: 5,"
         ));
+        assert!(contains_numeric_dialog_component_type_id_reference(
+            "DialogDataComponentPatchEntryState { type_id: 19 }"
+        ));
+        assert!(contains_numeric_dialog_component_type_id_reference(
+            "DialogDataComponentReferenceState { type_id: 1 }"
+        ));
+        assert!(contains_numeric_dialog_component_type_id_reference(
+            "assert_eq!(summary.component_patch.added_type_ids, vec![6]);"
+        ));
         assert!(!contains_numeric_dialog_component_type_id_reference(
             "component_type_id: VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,"
         ));
         assert!(!contains_numeric_dialog_component_type_id_reference(
             "predicate_type_id: VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID,"
         ));
+        assert!(!contains_numeric_dialog_component_type_id_reference("DialogDataComponentPatchEntryState { type_id: VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID }"));
+        assert!(!contains_numeric_dialog_component_type_id_reference("DialogDataComponentReferenceState { type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID }"));
+        assert!(!contains_numeric_dialog_component_type_id_reference("assert_eq!(summary.component_patch.added_type_ids, vec![VANILLA_DATA_COMPONENT_CUSTOM_NAME_TYPE_ID]);"));
         assert!(!contains_numeric_dialog_component_type_id_reference(
             "particle_type_id: 5,"
         ));
@@ -1703,7 +1738,7 @@ mod tests {
         let mut violations = Vec::new();
         let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         visit(
-            &crates.join("bbb-world/src/client/dialog/body/component_value"),
+            &crates.join("bbb-world/src/client/dialog/body"),
             &mut violations,
         );
         assert!(

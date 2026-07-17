@@ -4,6 +4,12 @@ use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 #[cfg(test)]
 use bbb_protocol::{
     attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+    data_component_types::{
+        VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
+        VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
+    },
     equipment_slots::{
         VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID, VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
     },
@@ -2194,7 +2200,7 @@ mod tests {
             }])),
             component_data: Some(DialogDataComponentPatchState {
                 entries: vec![super::super::super::DialogDataComponentPatchEntryState {
-                    type_id: 0,
+                    type_id: VANILLA_DATA_COMPONENT_REPAIR_COST_TYPE_ID,
                     resource_id: "minecraft:repair_cost".to_string(),
                     removed: false,
                     value: Some(NbtSummaryValue::Int(4)),
@@ -2338,7 +2344,7 @@ mod tests {
             DialogDataComponentValueState::TooltipDisplay {
                 hide_tooltip: true,
                 hidden_components: vec![super::super::DialogDataComponentReferenceState {
-                    type_id: 1,
+                    type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
                     resource_id: "minecraft:max_stack_size".to_string(),
                 }],
             },
@@ -2362,7 +2368,7 @@ mod tests {
         );
         let non_finite_patch = DialogDataComponentPatchState {
             entries: vec![super::super::super::DialogDataComponentPatchEntryState {
-                type_id: 0,
+                type_id: VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
                 resource_id: "minecraft:custom_model_data".to_string(),
                 removed: false,
                 value: None,
@@ -2775,7 +2781,7 @@ mod tests {
 
         let non_finite_patch = DialogDataComponentPatchState {
             entries: vec![super::super::super::DialogDataComponentPatchEntryState {
-                type_id: 0,
+                type_id: VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
                 resource_id: "minecraft:custom_data".to_string(),
                 removed: false,
                 value: None,
@@ -2994,7 +3000,7 @@ mod tests {
 
         let non_finite_patch = DialogDataComponentPatchState {
             entries: vec![super::super::super::DialogDataComponentPatchEntryState {
-                type_id: 0,
+                type_id: VANILLA_DATA_COMPONENT_TOOL_TYPE_ID,
                 resource_id: "minecraft:tool".to_string(),
                 removed: false,
                 value: None,
