@@ -21,7 +21,9 @@ use hecs::{Entity, World};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 
-use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_TURTLE_ID;
+use bbb_protocol::entity_types::{
+    VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
+};
 use bbb_protocol::packets::EquipmentSlot as ProtocolEquipmentSlot;
 use bbb_protocol::packets::ItemStackSummary;
 use bbb_protocol::packets::{
@@ -67,17 +69,17 @@ use super::{
     EntitySupportingBlock, EntityTransform, EntityTransformState, EntityTransientEvents,
     EvokerFangsCritParticleState, FallingBlockModelState, FireworkRocketExplosionParticleState,
     FireworkRocketItemState, FireworkRocketTrailParticleState, FoxEatParticleState,
-    ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor, LocalPlayerAttackSwingState,
-    MinecartDisplayBlockState, OminousItemSpawnerItemState, OminousItemSpawnerParticleState,
-    RavagerRoarParticleState, RavagerStunParticleState, WolfArmorCrackiness,
-    VANILLA_ENTITY_TYPE_CHEST_MINECART_ID, VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID,
-    VANILLA_ENTITY_TYPE_END_CRYSTAL_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
-    VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-    VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-    VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
-    VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_MAX_AIR_SUPPLY_TICKS,
+    HappyGhastHarnessColor, ItemEntityStackState, ItemFrameRenderState, LlamaBodyDecorColor,
+    LocalPlayerAttackSwingState, MinecartDisplayBlockState, OminousItemSpawnerItemState,
+    OminousItemSpawnerParticleState, RavagerRoarParticleState, RavagerStunParticleState,
+    WolfArmorCrackiness, VANILLA_ENTITY_TYPE_CHEST_MINECART_ID,
+    VANILLA_ENTITY_TYPE_COMMAND_BLOCK_MINECART_ID, VANILLA_ENTITY_TYPE_END_CRYSTAL_ID,
+    VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
+    VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+    VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID, VANILLA_ENTITY_TYPE_STRIDER_ID,
+    VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -1533,6 +1535,7 @@ impl EntityStore {
         wings_equipment_assets: &BTreeMap<i32, String>,
         equipment_slots: &BTreeMap<i32, ItemEquipmentSlot>,
         llama_body_decor_colors: &BTreeMap<i32, LlamaBodyDecorColor>,
+        happy_ghast_harness_colors: &BTreeMap<i32, HappyGhastHarnessColor>,
         nautilus_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
         horse_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
         wolf_body_armor_materials: &BTreeMap<i32, ArmorMaterialKind>,
@@ -1698,6 +1701,29 @@ impl EntityStore {
             || -> Option<i32> { body_slot_item().and_then(|item| item.item_id) };
         let body_slot_armor_dye =
             || -> Option<i32> { body_slot_item().and_then(|item| item.component_patch.dyed_color) };
+        let happy_ghast_body_item = identity.entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+            && body_slot_item().is_some();
+        let happy_ghast_harness = if identity.entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID {
+            body_slot_item_id()
+                .and_then(|item_id| happy_ghast_harness_colors.get(&item_id).copied())
+        } else {
+            None
+        };
+        let happy_ghast_harness_trim = happy_ghast_harness.and_then(|color| {
+            armor_trim_sprite(
+                registries,
+                body_slot_item()?,
+                color.equipment_asset_id(),
+                ArmorTrimLayer::HappyGhastBody,
+            )
+        });
+        let happy_ghast_harness_foil = happy_ghast_harness
+            .and_then(|_| body_slot_item())
+            .is_some_and(ItemStackSummary::has_foil);
+        let happy_ghast_ridden = identity.entity_type_id == VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID
+            && mount
+                .as_ref()
+                .is_some_and(|mount| !mount.passengers.is_empty());
         let llama_body_decor = if is_vanilla_llama_type(identity.entity_type_id)
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
         {
@@ -2623,6 +2649,11 @@ impl EntityStore {
             nautilus_saddle,
             nautilus_saddle_trim,
             nautilus_saddle_foil,
+            happy_ghast_body_item,
+            happy_ghast_harness,
+            happy_ghast_harness_trim,
+            happy_ghast_harness_foil,
+            happy_ghast_ridden,
             guardian_beam: self.guardian_beam_source(
                 identity.entity_type_id,
                 identity.data,

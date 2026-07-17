@@ -1235,7 +1235,7 @@ pub fn wolf_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &WOLF_ENTITY_TEXTURE_REFS
 }
 
-pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 690] = [
+pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextureRef; 707] = [
     PLAYER_SLIM_ALEX_TEXTURE_REF,
     PLAYER_SLIM_ARI_TEXTURE_REF,
     PLAYER_SLIM_EFE_TEXTURE_REF,
@@ -1710,6 +1710,23 @@ pub(in crate::entity_models) const ENTITY_MODEL_TEXTURE_REFS: [EntityModelTextur
     PHANTOM_EYES_TEXTURE_REF,
     PUFFERFISH_TEXTURE_REF,
     HAPPY_GHAST_TEXTURE_REF,
+    HAPPY_GHAST_BABY_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_ORANGE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_MAGENTA_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_LIGHT_BLUE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_YELLOW_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_LIME_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_PINK_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_GRAY_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_LIGHT_GRAY_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_CYAN_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_PURPLE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_BROWN_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_GREEN_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_RED_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF,
     MINECART_TEXTURE_REF,
     ARMOR_STAND_TEXTURE_REF,
     ZOMBIE_TEXTURE_REF,
@@ -2811,8 +2828,85 @@ pub(in crate::entity_models) const HAPPY_GHAST_TEXTURE_REF: EntityModelTextureRe
         size: [64, 64],
     };
 
-pub(in crate::entity_models) const HAPPY_GHAST_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 1] =
-    [HAPPY_GHAST_TEXTURE_REF];
+pub(in crate::entity_models) const HAPPY_GHAST_BABY_TEXTURE_REF: EntityModelTextureRef =
+    EntityModelTextureRef {
+        path: "textures/entity/ghast/happy_ghast_baby.png",
+        size: [64, 64],
+    };
+
+macro_rules! happy_ghast_harness_texture_ref {
+    ($name:ident, $color:literal) => {
+        pub(in crate::entity_models) const $name: EntityModelTextureRef = EntityModelTextureRef {
+            path: concat!(
+                "textures/entity/equipment/happy_ghast_body/",
+                $color,
+                "_harness.png"
+            ),
+            size: [64, 64],
+        };
+    };
+}
+
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF, "white");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_ORANGE_TEXTURE_REF, "orange");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_MAGENTA_TEXTURE_REF, "magenta");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_LIGHT_BLUE_TEXTURE_REF, "light_blue");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_YELLOW_TEXTURE_REF, "yellow");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_LIME_TEXTURE_REF, "lime");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_PINK_TEXTURE_REF, "pink");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_GRAY_TEXTURE_REF, "gray");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_LIGHT_GRAY_TEXTURE_REF, "light_gray");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_CYAN_TEXTURE_REF, "cyan");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_PURPLE_TEXTURE_REF, "purple");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF, "blue");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_BROWN_TEXTURE_REF, "brown");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_GREEN_TEXTURE_REF, "green");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_RED_TEXTURE_REF, "red");
+happy_ghast_harness_texture_ref!(HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF, "black");
+
+pub(in crate::entity_models) const fn happy_ghast_harness_texture_ref(
+    color: EntityDyeColor,
+) -> EntityModelTextureRef {
+    match color {
+        EntityDyeColor::White => HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF,
+        EntityDyeColor::Orange => HAPPY_GHAST_HARNESS_ORANGE_TEXTURE_REF,
+        EntityDyeColor::Magenta => HAPPY_GHAST_HARNESS_MAGENTA_TEXTURE_REF,
+        EntityDyeColor::LightBlue => HAPPY_GHAST_HARNESS_LIGHT_BLUE_TEXTURE_REF,
+        EntityDyeColor::Yellow => HAPPY_GHAST_HARNESS_YELLOW_TEXTURE_REF,
+        EntityDyeColor::Lime => HAPPY_GHAST_HARNESS_LIME_TEXTURE_REF,
+        EntityDyeColor::Pink => HAPPY_GHAST_HARNESS_PINK_TEXTURE_REF,
+        EntityDyeColor::Gray => HAPPY_GHAST_HARNESS_GRAY_TEXTURE_REF,
+        EntityDyeColor::LightGray => HAPPY_GHAST_HARNESS_LIGHT_GRAY_TEXTURE_REF,
+        EntityDyeColor::Cyan => HAPPY_GHAST_HARNESS_CYAN_TEXTURE_REF,
+        EntityDyeColor::Purple => HAPPY_GHAST_HARNESS_PURPLE_TEXTURE_REF,
+        EntityDyeColor::Blue => HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF,
+        EntityDyeColor::Brown => HAPPY_GHAST_HARNESS_BROWN_TEXTURE_REF,
+        EntityDyeColor::Green => HAPPY_GHAST_HARNESS_GREEN_TEXTURE_REF,
+        EntityDyeColor::Red => HAPPY_GHAST_HARNESS_RED_TEXTURE_REF,
+        EntityDyeColor::Black => HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF,
+    }
+}
+
+pub(in crate::entity_models) const HAPPY_GHAST_ENTITY_TEXTURE_REFS: [EntityModelTextureRef; 18] = [
+    HAPPY_GHAST_TEXTURE_REF,
+    HAPPY_GHAST_BABY_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_ORANGE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_MAGENTA_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_LIGHT_BLUE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_YELLOW_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_LIME_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_PINK_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_GRAY_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_LIGHT_GRAY_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_CYAN_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_PURPLE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_BROWN_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_GREEN_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_RED_TEXTURE_REF,
+    HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF,
+];
 
 pub fn happy_ghast_entity_texture_refs() -> &'static [EntityModelTextureRef] {
     &HAPPY_GHAST_ENTITY_TEXTURE_REFS

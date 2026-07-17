@@ -101,7 +101,11 @@ pub enum EntityModelKind {
         /// `ghast_shooting.png` (the open-mouth shooting face). Same `GhastModel`, only the texture differs.
         charging: bool,
     },
-    HappyGhast,
+    /// `HappyGhastModel` adult/baby baked layer. BODY equipment state stays in render state because
+    /// it changes the body subtree scale and optional harness overlay without changing entity identity.
+    HappyGhast {
+        baby: bool,
+    },
     Blaze,
     Endermite,
     Silverfish,

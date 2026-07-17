@@ -774,10 +774,7 @@ Models and layers:
 
 - Replace the placeholder raw-cuboid `Humanoid` fallback with a vanilla-faithful
   part-list model.
-- Implement the happy-ghast baby model (extra `inner_body` cube, `0.2375` baby
-  scale), the `bodyItem` body squeeze (`0.9375` scale with harness), the harness
-  equipment layer, and the rope/lead layer, per
-  `HappyGhastModel.createBodyLayer(false, NONE)`.
+- Implement the happy-ghast rope/lead layer.
 - Port the keyframe `AnimationState` start-tick phase offset for the bat flap
   (`BatAnimation.BAT_FLYING`).
 - Implement the remaining zombie-family and piglin-family armor nuances and
@@ -1327,7 +1324,7 @@ back into a todo. Do not delete these.
   targets, timers, RNG, AI, and authoritative save fields must remain absent or
   carry a narrow vanilla-backed not-applicable decision.
 
-- **Happy-ghast body equipment and the remaining mob-specific armor models.**
+- **Remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
   resolved vanilla spear ids.
 - **Exact humanoid arm-pose idle-bob ordering.** The halved `arm.xRot` folds

@@ -2164,6 +2164,105 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
 }
 
 #[test]
+fn entity_model_sources_project_happy_ghast_body_item_harness_and_ridden_state() {
+    use std::collections::BTreeMap;
+
+    const WHITE_HARNESS_ITEM_ID: i32 = 841;
+    const PLAIN_ITEM_ID: i32 = 842;
+    let stack = |item_id, count| ItemStackSummary {
+        item_id: Some(item_id),
+        count,
+        component_patch: DataComponentPatchSummary {
+            enchantments: vec![ItemEnchantmentSummary {
+                holder_id: 12,
+                level: 1,
+            }],
+            armor_trim_material_id: Some(1), // iron
+            armor_trim_pattern_id: Some(0),  // sentry
+            ..Default::default()
+        },
+    };
+    let state = |store: &WorldStore, entity_id| {
+        let source = store
+            .entity_model_sources_at_partial_tick(0.0)
+            .into_iter()
+            .find(|source| source.entity_id == entity_id)
+            .unwrap();
+        (
+            source.happy_ghast_body_item,
+            source.happy_ghast_harness,
+            source.happy_ghast_harness_trim,
+            source.happy_ghast_harness_foil,
+            source.happy_ghast_ridden,
+        )
+    };
+
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        88,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        89,
+        VANILLA_ENTITY_TYPE_COW_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        90,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    for entity_id in [88, 89] {
+        assert!(store.apply_set_equipment(ProtocolSetEquipment {
+            entity_id,
+            slots: vec![EquipmentSlotUpdate {
+                slot: EquipmentSlot::Body,
+                item: stack(PLAIN_ITEM_ID, 1),
+            }],
+        }));
+    }
+    assert_eq!(state(&store, 88), (true, None, None, false, false));
+    assert_eq!(state(&store, 89), (false, None, None, false, false));
+
+    store.set_default_happy_ghast_harness_colors(BTreeMap::from([(
+        WHITE_HARNESS_ITEM_ID,
+        HappyGhastHarnessColor::White,
+    )]));
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 88,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(WHITE_HARNESS_ITEM_ID, 1),
+        }],
+    }));
+    assert_eq!(
+        state(&store, 88),
+        (
+            true,
+            Some(HappyGhastHarnessColor::White),
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/happy_ghast_body/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+            false,
+        )
+    );
+    assert!(store.apply_set_passengers(ProtocolSetPassengers {
+        vehicle_id: 88,
+        passenger_ids: vec![90],
+    }));
+    assert!(state(&store, 88).4);
+
+    assert!(store.apply_set_equipment(ProtocolSetEquipment {
+        entity_id: 88,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: stack(WHITE_HARNESS_ITEM_ID, 0),
+        }],
+    }));
+    assert_eq!(state(&store, 88), (false, None, None, false, true));
+}
+
+#[test]
 fn entity_model_sources_project_in_water_from_world_fluid() {
     // Vanilla `LivingEntityRenderState.isInWater = entity.isInWater()`: the scene projects
     // the `wasTouchingWater` overlap of the entity's world AABB against the chunk fluid

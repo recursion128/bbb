@@ -1,8 +1,9 @@
 use super::catalog::EntityDynamicPlayerTextureAtlasEntry;
 use super::colored::{
     boat_model_root_transform, creeper_model_root_transform, drowned_model_root_transform,
-    ender_dragon_model_root_transform, trident_model_root_transform,
-    villager_adult_model_root_transform, wither_model_root_transform, GIANT_SCALE, HORSE_SCALE,
+    ender_dragon_model_root_transform, happy_ghast_model_root_transform,
+    trident_model_root_transform, villager_adult_model_root_transform, wither_model_root_transform,
+    GIANT_SCALE, HORSE_SCALE,
 };
 use super::dispatch::{
     dispatch_invisible_living_ungated_layers, dispatch_uniform_entity_model,
@@ -41,26 +42,26 @@ use super::{
     model_layers::{
         armor_layer_tint, armor_slot_texture_for_layer, default_player_skin_texture_ref,
         end_crystal_bob_y, end_crystal_get_y, end_crystal_glass_quaternions, equine_body_pose,
-        equine_head_pose, equine_leg_pose, equine_tail_pose, head_look_at_rest,
-        horse_body_armor_texture_layers, limb_swing_at_rest, llama_body_decor_texture_ref,
-        nautilus_body_armor_texture_ref, wolf_armor_crackiness_texture_ref,
-        wolf_body_armor_texture_layers, ArmorStandModel, ArrowModel, BoatWaterPatchModel,
-        BreezeWindModel, CamelModel, CreeperModel, CustomHeadDragonSkullModel,
-        CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel, EquineAnimationPose,
-        GuardianModel, HumanoidArmorModelLayerSet, HumanoidArmorSlot, HumanoidBabyArmorKind,
-        LlamaModel, NautilusModel, ParrotModel, PigModel, PiglinModel, PlayerEarsModel,
-        PlayerModel, SkeletonClothingModel, SkeletonModel, SpinAttackEffectModel, StriderModel,
-        TridentModel, VillagerModel, WitherModel, WolfModel, ZombieModel, ZombieVariantModel,
-        ADULT_DONKEY_PARTS_TEXTURED, ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED,
-        ADULT_DONKEY_SADDLE_PARTS_TEXTURED, ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED,
-        ADULT_HORSE_ARMOR_PARTS_TEXTURED, ADULT_HORSE_PARTS_TEXTURED,
-        ADULT_HORSE_SADDLE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED,
-        BABY_DONKEY_PARTS_TEXTURED, BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF,
-        CAMEL_SADDLE_TEXTURE_REF, CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF,
-        ENCHANTED_GLINT_ARMOR_TEXTURE_REF, ENDER_DRAGON_EXPLODING_TEXTURE_REF,
-        ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS, END_PORTAL_TEXTURE_REF,
-        END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG, EQUINE_STANDARD_LEG_STAND_CONFIG,
-        EXPERIENCE_ORB_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
+        equine_head_pose, equine_leg_pose, equine_tail_pose, happy_ghast_harness_texture_ref,
+        head_look_at_rest, horse_body_armor_texture_layers, limb_swing_at_rest,
+        llama_body_decor_texture_ref, nautilus_body_armor_texture_ref,
+        wolf_armor_crackiness_texture_ref, wolf_body_armor_texture_layers, ArmorStandModel,
+        ArrowModel, BoatWaterPatchModel, BreezeWindModel, CamelModel, CreeperModel,
+        CustomHeadDragonSkullModel, CustomHeadPiglinSkullModel, CustomHeadSkullModel, ElytraModel,
+        EquineAnimationPose, GuardianModel, HappyGhastHarnessModel, HumanoidArmorModelLayerSet,
+        HumanoidArmorSlot, HumanoidBabyArmorKind, LlamaModel, NautilusModel, ParrotModel, PigModel,
+        PiglinModel, PlayerEarsModel, PlayerModel, SkeletonClothingModel, SkeletonModel,
+        SpinAttackEffectModel, StriderModel, TridentModel, VillagerModel, WitherModel, WolfModel,
+        ZombieModel, ZombieVariantModel, ADULT_DONKEY_PARTS_TEXTURED,
+        ADULT_DONKEY_PARTS_WITH_CHEST_TEXTURED, ADULT_DONKEY_SADDLE_PARTS_TEXTURED,
+        ADULT_DONKEY_SADDLE_RIDDEN_PARTS_TEXTURED, ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+        ADULT_HORSE_PARTS_TEXTURED, ADULT_HORSE_SADDLE_PARTS_TEXTURED,
+        ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED, BABY_DONKEY_PARTS_TEXTURED,
+        BABY_HORSE_PARTS_TEXTURED, CAMEL_HUSK_SADDLE_TEXTURE_REF, CAMEL_SADDLE_TEXTURE_REF,
+        CREEPER_TEXTURE_REF, DONKEY_SADDLE_TEXTURE_REF, ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+        ENDER_DRAGON_EXPLODING_TEXTURE_REF, ENDER_DRAGON_TEXTURE_REF, END_CRYSTAL_TEXTURED_PARTS,
+        END_PORTAL_TEXTURE_REF, END_SKY_TEXTURE_REF, EQUINE_BABY_DONKEY_LEG_STAND_CONFIG,
+        EQUINE_STANDARD_LEG_STAND_CONFIG, EXPERIENCE_ORB_TEXTURE_REF, HORSE_SADDLE_TEXTURE_REF,
         HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND, HUMANOID_ARMOR_MODEL_LAYERS_ARMOR_STAND_SMALL,
         HUMANOID_ARMOR_MODEL_LAYERS_BOGGED, HUMANOID_ARMOR_MODEL_LAYERS_DROWNED,
         HUMANOID_ARMOR_MODEL_LAYERS_DROWNED_BABY, HUMANOID_ARMOR_MODEL_LAYERS_GIANT,
@@ -76,6 +77,7 @@ use super::{
         HUMANOID_ARMOR_MODEL_LAYERS_ZOMBIFIED_PIGLIN_BABY, LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
         LLAMA_BODY_TRADER_TEXTURE_REF, MODEL_LAYER_CAMEL_HUSK_SADDLE, MODEL_LAYER_CAMEL_SADDLE,
         MODEL_LAYER_DONKEY_SADDLE, MODEL_LAYER_ELYTRA, MODEL_LAYER_ELYTRA_BABY,
+        MODEL_LAYER_HAPPY_GHAST_BABY_HARNESS, MODEL_LAYER_HAPPY_GHAST_HARNESS,
         MODEL_LAYER_HORSE_ARMOR, MODEL_LAYER_HORSE_SADDLE, MODEL_LAYER_LLAMA_BABY_DECOR,
         MODEL_LAYER_LLAMA_DECOR, MODEL_LAYER_MULE_SADDLE, MODEL_LAYER_NAUTILUS_ARMOR,
         MODEL_LAYER_NAUTILUS_SADDLE, MODEL_LAYER_PIG_SADDLE, MODEL_LAYER_SKELETON_HORSE_SADDLE,
@@ -2315,6 +2317,7 @@ fn layer_pass_uses_no_overlay(pass: EntityModelLayerPass) -> bool {
             | EntityModelLayerKind::EndermanEyes
             | EntityModelLayerKind::EquineBodyArmor
             | EntityModelLayerKind::EquineSaddle
+            | EntityModelLayerKind::HappyGhastHarness
             | EntityModelLayerKind::EvokerFangsBase
             | EntityModelLayerKind::HumanoidArmor
             | EntityModelLayerKind::LeashKnotBase
@@ -4240,6 +4243,96 @@ fn custom_head_skull_texture_ref(skull: EntityCustomHeadSkull) -> EntityModelTex
         EntityCustomHeadSkull::Creeper => CREEPER_TEXTURE_REF,
         EntityCustomHeadSkull::Dragon => ENDER_DRAGON_TEXTURE_REF,
         EntityCustomHeadSkull::Piglin => PIGLIN_TEXTURE_REF,
+    }
+}
+
+/// Vanilla `HappyGhastRenderer` `SimpleEquipmentLayer(HAPPY_GHAST_BODY)`. Both ages have a harness
+/// model; the base texture is followed by optional armor glint and trim submissions.
+pub(in crate::entity_models) fn render_happy_ghast_harness_layer(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) {
+    let Some(color) = instance.render_state.happy_ghast_harness else {
+        return;
+    };
+    let EntityModelKind::HappyGhast { baby } = instance.kind else {
+        return;
+    };
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return;
+    }
+
+    let transform = happy_ghast_model_root_transform(instance, baby);
+    let model_layer = if baby {
+        MODEL_LAYER_HAPPY_GHAST_BABY_HARNESS
+    } else {
+        MODEL_LAYER_HAPPY_GHAST_HARNESS
+    };
+    let texture = happy_ghast_harness_texture_ref(color);
+    let mut model = HappyGhastHarnessModel::new();
+    model.prepare(&instance);
+    let pass = equipment_layer_pass(
+        EntityModelLayerKind::HappyGhastHarness,
+        EntityModelLayerRenderType::ArmorCutoutNoCull,
+        model_layer,
+        texture,
+        [1.0; 4],
+        0,
+        1,
+    );
+    render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+
+    let mut next_order = 1;
+    let mut next_submit_sequence = 2;
+    if instance.render_state.happy_ghast_harness_foil {
+        let pass = equipment_layer_pass(
+            EntityModelLayerKind::HappyGhastHarness,
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            model_layer,
+            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+            [1.0; 4],
+            next_order,
+            next_submit_sequence,
+        );
+        render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+        next_order += 1;
+        next_submit_sequence += 1;
+    }
+    if let Some(trim) = instance.render_state.happy_ghast_harness_trim {
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
+            let render_type = if trim.decal {
+                EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+            } else {
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            };
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::HappyGhastHarness,
+                render_type,
+                model_layer,
+                texture,
+                [1.0; 4],
+                next_order,
+                next_submit_sequence,
+            );
+            let submit =
+                no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| {
+                    model.root().render_textured(
+                        mesh,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                    );
+                },
+            );
+        }
     }
 }
 

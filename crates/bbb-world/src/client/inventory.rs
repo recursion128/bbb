@@ -2385,6 +2385,14 @@ impl WorldStore {
         self.items.set_default_llama_body_decor_colors(decor_colors)
     }
 
+    pub fn set_default_happy_ghast_harness_colors(
+        &mut self,
+        harness_colors: BTreeMap<i32, crate::entities::HappyGhastHarnessColor>,
+    ) {
+        self.items
+            .set_default_happy_ghast_harness_colors(harness_colors)
+    }
+
     pub fn set_default_nautilus_body_armor_materials(
         &mut self,
         armor_materials: BTreeMap<i32, crate::entities::ArmorMaterialKind>,

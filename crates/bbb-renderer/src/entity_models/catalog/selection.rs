@@ -61,7 +61,13 @@ impl EntityModelKind {
             Self::Slime { .. } => "slime",
             Self::MagmaCube { .. } => "magma_cube",
             Self::Ghast { .. } => "ghast",
-            Self::HappyGhast => "happy_ghast",
+            Self::HappyGhast { baby } => {
+                if baby {
+                    "happy_ghast_baby"
+                } else {
+                    "happy_ghast"
+                }
+            }
             Self::Blaze => "blaze",
             Self::Endermite => "endermite",
             Self::Silverfish => "silverfish",
@@ -440,7 +446,11 @@ impl EntityModelKind {
             } else {
                 GHAST_TEXTURE_REF
             }),
-            Self::HappyGhast => Some(HAPPY_GHAST_TEXTURE_REF),
+            Self::HappyGhast { baby } => Some(if baby {
+                HAPPY_GHAST_BABY_TEXTURE_REF
+            } else {
+                HAPPY_GHAST_TEXTURE_REF
+            }),
             Self::Blaze => Some(BLAZE_TEXTURE_REF),
             Self::Endermite => Some(ENDERMITE_TEXTURE_REF),
             Self::Silverfish => Some(SILVERFISH_TEXTURE_REF),

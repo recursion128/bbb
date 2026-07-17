@@ -96,6 +96,7 @@ use bbb_world::{
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
     FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
+    HappyGhastHarnessColor as WorldHappyGhastHarnessColor,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, VanillaArmorStandMetadataAccessors,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WolfVariantPresentation, WorldStore,
     ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,

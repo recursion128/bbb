@@ -133,6 +133,7 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
     StriderSaddle,
     GhastBase,
     HappyGhastBase,
+    HappyGhastHarness,
     MinecartBase,
     ParrotBase,
     ZombieBase,
@@ -1058,12 +1059,22 @@ pub(in crate::entity_models) fn ghast_textured_layer_passes(
     }]
 }
 
-pub(in crate::entity_models) fn happy_ghast_textured_layer_passes() -> Vec<EntityModelLayerPass> {
+pub(in crate::entity_models) fn happy_ghast_textured_layer_passes(
+    baby: bool,
+) -> Vec<EntityModelLayerPass> {
     vec![EntityModelLayerPass {
         kind: EntityModelLayerKind::HappyGhastBase,
         render_type: EntityModelLayerRenderType::EntityCutout,
-        model_layer: MODEL_LAYER_HAPPY_GHAST,
-        texture: HAPPY_GHAST_TEXTURE_REF,
+        model_layer: if baby {
+            MODEL_LAYER_HAPPY_GHAST_BABY
+        } else {
+            MODEL_LAYER_HAPPY_GHAST
+        },
+        texture: if baby {
+            HAPPY_GHAST_BABY_TEXTURE_REF
+        } else {
+            HAPPY_GHAST_TEXTURE_REF
+        },
         visibility: EntityModelLayerVisibility::All,
         tint: [1.0, 1.0, 1.0, 1.0],
         order: 0,

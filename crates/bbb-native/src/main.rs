@@ -275,6 +275,9 @@ fn main() -> Result<()> {
         );
         world.set_default_mount_body_armor_kinds(items.mount_body_armor_kinds_by_protocol_id());
         world.set_default_llama_body_decor_colors(items.llama_body_decor_colors_by_protocol_id());
+        world.set_default_happy_ghast_harness_colors(
+            items.happy_ghast_harness_colors_by_protocol_id(),
+        );
         world.set_default_nautilus_body_armor_materials(
             items.nautilus_body_armor_materials_by_protocol_id(),
         );

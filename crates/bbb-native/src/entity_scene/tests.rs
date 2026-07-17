@@ -18,7 +18,8 @@ use bbb_protocol::packets::{
 use bbb_world::{
     vanilla_entity_metadata_enderman_render_accessors_for_entity_type,
     ArmorMaterialKind as WorldArmorMaterialKind, EntityPickBoundsState, EntityVec3,
-    ItemEquipmentSlot, LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
+    HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemEquipmentSlot,
+    LlamaBodyDecorColor as WorldLlamaBodyDecorColor, RegistryPacketEntry,
     VANILLA_PLAYER_SHOULDER_PARROT_LEFT_DATA_ID, VANILLA_PLAYER_SHOULDER_PARROT_RIGHT_DATA_ID,
 };
 use uuid::Uuid;
@@ -7439,6 +7440,95 @@ fn entity_model_instances_project_llama_body_decor_render_state() {
 }
 
 #[test]
+fn entity_model_instances_project_happy_ghast_harness_render_state() {
+    const WHITE_HARNESS_ITEM_ID: i32 = 747;
+    let trim_texture = EntityDynamicTexture { handle: 42_4312 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/happy_ghast_body/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
+    let harness = |entity_id: i32| SetEquipment {
+        entity_id,
+        slots: vec![EquipmentSlotUpdate {
+            slot: EquipmentSlot::Body,
+            item: ItemStackSummary {
+                item_id: Some(WHITE_HARNESS_ITEM_ID),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1),
+                    armor_trim_pattern_id: Some(0),
+                    ..Default::default()
+                },
+            },
+        }],
+    };
+
+    let mut world = WorldStore::new();
+    world.set_default_happy_ghast_harness_colors(std::collections::BTreeMap::from([(
+        WHITE_HARNESS_ITEM_ID,
+        WorldHappyGhastHarnessColor::White,
+    )]));
+    world.apply_add_entity(protocol_add_entity(
+        126,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        [1.0, 64.0, -3.0],
+    ));
+    world.apply_add_entity(protocol_add_entity(
+        127,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+        [2.0, 64.0, -3.0],
+    ));
+    world.apply_add_entity(protocol_add_entity(
+        128,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+        [2.0, 64.0, -3.0],
+    ));
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 127,
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, true)],
+    }));
+    assert!(world.apply_set_equipment(harness(126)));
+    assert!(world.apply_set_equipment(harness(127)));
+    assert!(world.apply_set_passengers(SetPassengers {
+        vehicle_id: 126,
+        passenger_ids: vec![128],
+    }));
+
+    let instances = entity_model_instances_from_world_with_registry_at_partial_tick(
+        &world,
+        None,
+        0.0,
+        Some(&trim_lookup),
+    );
+    for (entity_id, baby, ridden) in [(126, false, true), (127, true, false)] {
+        let instance = instances
+            .iter()
+            .find(|instance| instance.entity_id == entity_id)
+            .unwrap();
+        assert_eq!(instance.kind, EntityModelKind::HappyGhast { baby });
+        assert!(instance.render_state.happy_ghast_body_item);
+        assert_eq!(
+            instance.render_state.happy_ghast_harness,
+            Some(EntityDyeColor::White)
+        );
+        assert_eq!(
+            instance.render_state.happy_ghast_harness_trim,
+            Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            })
+        );
+        assert!(instance.render_state.happy_ghast_harness_foil);
+        assert_eq!(instance.render_state.happy_ghast_ridden, ridden);
+    }
+}
+
+#[test]
 fn entity_model_instances_project_armor_stand_flags_and_pose() {
     let mut world = WorldStore::new();
     let accessors = armor_stand_metadata_accessors();
@@ -8537,7 +8627,14 @@ fn entity_model_kind_uses_exact_model_for_happy_ghast() {
     // The happy ghast was a placeholder render box; it now resolves to the real model.
     assert_eq!(
         entity_model_kind(VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, &[]),
-        EntityModelKind::HappyGhast
+        EntityModelKind::HappyGhast { baby: false }
+    );
+    assert_eq!(
+        entity_model_kind(
+            VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+            &[baby_data(VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, true)]
+        ),
+        EntityModelKind::HappyGhast { baby: true }
     );
 }
 

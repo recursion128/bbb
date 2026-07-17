@@ -95,6 +95,30 @@ pub(super) fn llama_body_decor_color_from_item_id(
     })
 }
 
+fn happy_ghast_harness_color_from_texture(texture: &str) -> Option<WorldHappyGhastHarnessColor> {
+    let path = texture.split_once(':').map_or(texture, |(_, path)| path);
+    let color = path.strip_suffix("_harness")?;
+    Some(match color {
+        "white" => WorldHappyGhastHarnessColor::White,
+        "orange" => WorldHappyGhastHarnessColor::Orange,
+        "magenta" => WorldHappyGhastHarnessColor::Magenta,
+        "light_blue" => WorldHappyGhastHarnessColor::LightBlue,
+        "yellow" => WorldHappyGhastHarnessColor::Yellow,
+        "lime" => WorldHappyGhastHarnessColor::Lime,
+        "pink" => WorldHappyGhastHarnessColor::Pink,
+        "gray" => WorldHappyGhastHarnessColor::Gray,
+        "light_gray" => WorldHappyGhastHarnessColor::LightGray,
+        "cyan" => WorldHappyGhastHarnessColor::Cyan,
+        "purple" => WorldHappyGhastHarnessColor::Purple,
+        "blue" => WorldHappyGhastHarnessColor::Blue,
+        "brown" => WorldHappyGhastHarnessColor::Brown,
+        "green" => WorldHappyGhastHarnessColor::Green,
+        "red" => WorldHappyGhastHarnessColor::Red,
+        "black" => WorldHappyGhastHarnessColor::Black,
+        _ => return None,
+    })
+}
+
 pub(super) fn nautilus_body_armor_material_from_asset(
     asset: &str,
 ) -> Option<WorldArmorMaterialKind> {
@@ -437,6 +461,47 @@ impl NativeItemRuntime {
             let Some(color) = llama_body_decor_color_from_item_id(resource_id) else {
                 continue;
             };
+            colors.insert(protocol_id as i32, color);
+        }
+        colors
+    }
+
+    /// Pack-derived BODY items whose equipment asset has exactly one recognized vanilla
+    /// `HAPPY_GHAST_BODY` harness layer. Custom textures stay unclassified until the renderer can
+    /// consume arbitrary equipment-layer textures rather than silently choosing the wrong color.
+    pub fn happy_ghast_harness_colors_by_protocol_id(
+        &self,
+    ) -> BTreeMap<i32, WorldHappyGhastHarnessColor> {
+        let mut colors = BTreeMap::new();
+        let Some(registry) = &self.registry else {
+            return colors;
+        };
+        for (protocol_id, resource_id) in registry.resource_ids().iter().enumerate() {
+            let Some(asset_id) = registry.equippable_asset(resource_id) else {
+                continue;
+            };
+            let Some(asset) = self.equipment_assets.asset(asset_id) else {
+                continue;
+            };
+            let [layer] = asset.layers(EquipmentLayerType::HappyGhastBody) else {
+                continue;
+            };
+            let Some(color) = happy_ghast_harness_color_from_texture(&layer.texture) else {
+                continue;
+            };
+            if asset_id != layer.texture {
+                continue;
+            }
+            let Some(("minecraft", texture_path)) = layer.texture.split_once(':') else {
+                continue;
+            };
+            if layer.texture_location
+                != format!(
+                    "minecraft:textures/entity/equipment/happy_ghast_body/{texture_path}.png"
+                )
+            {
+                continue;
+            }
             colors.insert(protocol_id as i32, color);
         }
         colors

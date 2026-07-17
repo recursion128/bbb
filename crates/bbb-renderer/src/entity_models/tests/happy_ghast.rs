@@ -2,6 +2,11 @@ use super::*;
 
 use crate::entity_models::colored::happy_ghast_model_root_transform;
 use crate::entity_models::model::ModelCube;
+use crate::DynamicEntityTextureImage;
+
+fn assert_close(actual: f32, expected: f32) {
+    assert!((actual - expected).abs() < 1e-5, "{actual} != {expected}");
+}
 
 #[test]
 fn happy_ghast_cubes_match_vanilla_26_1_body_layer() {
@@ -30,13 +35,12 @@ fn happy_ghast_cubes_match_vanilla_26_1_body_layer() {
 
 #[test]
 fn happy_ghast_tentacle_ring_layout_matches_vanilla() {
-    // The nine tentacles hang at `HAPPY_GHAST_TENTACLE_OFFSETS[i]` (world y 23) with no bind
-    // rotation, each a `box(-1, 0, -1, 2, len, 2)` at `texOffs(0, 0)` (reused for the body and
-    // every tentacle). `uv_size == size` (no deformation).
+    // The nine tentacles hang at local y 7 under the body at y 16 (world model y 23), preserving
+    // the vanilla subtree needed by the BODY-item squeeze.
     for index in 0..9 {
         let pose = happy_ghast_tentacle_pose(index);
         assert_eq!(pose.offset, HAPPY_GHAST_TENTACLE_OFFSETS[index]);
-        assert_eq!(pose.offset[1], 23.0, "tentacle {index} world y");
+        assert_eq!(pose.offset[1], 7.0, "tentacle {index} body-local y");
         assert_eq!(pose.rotation, [0.0, 0.0, 0.0]);
         let cube = happy_ghast_tentacle_cube(index);
         assert_eq!(cube.min, [-1.0, 0.0, -1.0]);
@@ -52,7 +56,7 @@ fn happy_ghast_tentacle_ring_layout_matches_vanilla() {
 
 #[test]
 fn happy_ghast_layer_passes_match_vanilla_renderer() {
-    let passes = happy_ghast_textured_layer_passes();
+    let passes = happy_ghast_textured_layer_passes(false);
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].kind, EntityModelLayerKind::HappyGhastBase);
     assert_eq!(
@@ -69,9 +73,12 @@ fn happy_ghast_layer_passes_match_vanilla_renderer() {
 
 #[test]
 fn happy_ghast_texture_ref_matches_vanilla_renderer() {
-    assert_eq!(EntityModelKind::HappyGhast.model_key(), "happy_ghast");
     assert_eq!(
-        EntityModelKind::HappyGhast.vanilla_texture_ref(),
+        EntityModelKind::HappyGhast { baby: false }.model_key(),
+        "happy_ghast"
+    );
+    assert_eq!(
+        EntityModelKind::HappyGhast { baby: false }.vanilla_texture_ref(),
         Some(EntityModelTextureRef {
             path: "textures/entity/ghast/happy_ghast.png",
             size: [64, 64],
@@ -80,10 +87,197 @@ fn happy_ghast_texture_ref_matches_vanilla_renderer() {
     assert_eq!(HAPPY_GHAST_TEXTURE_REF.size, [64, 64]);
     assert_eq!(MODEL_LAYER_HAPPY_GHAST, "minecraft:happy_ghast#main");
     assert!(entity_model_texture_refs().contains(&HAPPY_GHAST_TEXTURE_REF));
+    assert_eq!(happy_ghast_entity_texture_refs().len(), 18);
     assert_eq!(
-        happy_ghast_entity_texture_refs(),
-        &[HAPPY_GHAST_TEXTURE_REF]
+        happy_ghast_entity_texture_refs()[0],
+        HAPPY_GHAST_TEXTURE_REF
     );
+    assert_eq!(
+        happy_ghast_entity_texture_refs()[1],
+        HAPPY_GHAST_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        happy_ghast_harness_texture_ref(EntityDyeColor::White),
+        HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF
+    );
+    assert_eq!(
+        happy_ghast_harness_texture_ref(EntityDyeColor::Black),
+        HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF
+    );
+}
+
+#[test]
+fn happy_ghast_baby_uses_baby_texture_inner_body_and_scale() {
+    let baby = EntityModelInstance::new(
+        59,
+        EntityModelKind::HappyGhast { baby: true },
+        [0.0, 64.0, 0.0],
+        0.0,
+    );
+    assert_eq!(baby.kind.model_key(), "happy_ghast_baby");
+    assert_eq!(
+        baby.kind.vanilla_texture_ref(),
+        Some(HAPPY_GHAST_BABY_TEXTURE_REF)
+    );
+    assert_eq!(
+        HAPPY_GHAST_BABY_INNER_BODY_CUBE[0],
+        ModelCube::new(
+            [-7.5, -15.5, -7.5],
+            [15.0, 15.0, 15.0],
+            HAPPY_GHAST_CREAM,
+            [16.0, 16.0, 16.0],
+            [0.0, 32.0],
+            false,
+        )
+    );
+    assert_eq!(HAPPY_GHAST_BABY_INNER_BODY_POSE.offset, [0.0, 8.0, 0.0]);
+
+    let passes = happy_ghast_textured_layer_passes(true);
+    assert_eq!(passes[0].model_layer, MODEL_LAYER_HAPPY_GHAST_BABY);
+    assert_eq!(passes[0].texture, HAPPY_GHAST_BABY_TEXTURE_REF);
+    let adult_mesh =
+        entity_model_mesh(&[EntityModelInstance::happy_ghast(58, [0.0, 64.0, 0.0], 0.0)]);
+    let baby_mesh = entity_model_mesh(&[baby]);
+    assert_eq!(baby_mesh.opaque_faces, 66);
+    assert_eq!(baby_mesh.vertices.len(), 264);
+    let (adult_min, adult_max) = mesh_extents(&adult_mesh);
+    let (baby_min, baby_max) = mesh_extents(&baby_mesh);
+    assert_close3(
+        [
+            (baby_max[0] - baby_min[0]) / (adult_max[0] - adult_min[0]),
+            (baby_max[1] - baby_min[1]) / (adult_max[1] - adult_min[1]),
+            (baby_max[2] - baby_min[2]) / (adult_max[2] - adult_min[2]),
+        ],
+        [0.2375, 0.2375, 0.2375],
+    );
+}
+
+#[test]
+fn happy_ghast_body_item_squeezes_the_complete_body_subtree() {
+    let bare = EntityModelInstance::happy_ghast(60, [0.0, 64.0, 0.0], 0.0);
+    let equipped = bare.with_happy_ghast_body_item(true);
+    let bare_mesh = entity_model_mesh(&[bare]);
+    let equipped_mesh = entity_model_mesh(&[equipped]);
+    assert_eq!(bare_mesh.opaque_faces, equipped_mesh.opaque_faces);
+    let (bare_min, bare_max) = mesh_extents(&bare_mesh);
+    let (equipped_min, equipped_max) = mesh_extents(&equipped_mesh);
+    for axis in 0..3 {
+        assert_close(
+            equipped_max[axis] - equipped_min[axis],
+            (bare_max[axis] - bare_min[axis]) * 0.9375,
+        );
+    }
+    assert_ne!(
+        bare_mesh.vertices[24..],
+        equipped_mesh.vertices[24..],
+        "tentacles inherit the body squeeze"
+    );
+}
+
+#[test]
+fn happy_ghast_harness_renders_for_both_ages_and_moves_ridden_goggles() {
+    let (atlas, _) = build_entity_model_texture_atlas(&happy_ghast_texture_images()).unwrap();
+    let adult = EntityModelInstance::happy_ghast(61, [0.0, 64.0, 0.0], 0.0)
+        .with_happy_ghast_harness(Some(EntityDyeColor::White));
+    let unridden = entity_model_textured_meshes(&[adult], &atlas);
+    assert_eq!(unridden.submissions.len(), 2);
+    assert_eq!(
+        unridden.submissions[1].render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!(
+        unridden.submissions[1].texture,
+        HAPPY_GHAST_HARNESS_WHITE_TEXTURE_REF
+    );
+    assert_eq!(
+        (
+            unridden.submissions[1].order,
+            unridden.submissions[1].submit_sequence
+        ),
+        (0, 1)
+    );
+    assert_eq!(unridden.armor_cutout.cutout_faces, 12);
+    assert_eq!(unridden.armor_cutout.vertices.len(), 48);
+
+    let ridden = entity_model_textured_meshes(&[adult.with_happy_ghast_ridden(true)], &atlas);
+    assert_eq!(ridden.armor_cutout.vertices.len(), 48);
+    assert_ne!(
+        unridden.armor_cutout.vertices[24..],
+        ridden.armor_cutout.vertices[24..],
+        "goggles change from the raised -45 degree pose to the lowered ridden pose"
+    );
+
+    let baby = EntityModelInstance::new(
+        62,
+        EntityModelKind::HappyGhast { baby: true },
+        [0.0, 64.0, 0.0],
+        0.0,
+    )
+    .with_happy_ghast_harness(Some(EntityDyeColor::Black));
+    let baby_meshes = entity_model_textured_meshes(&[baby], &atlas);
+    assert_eq!(baby_meshes.submissions.len(), 2);
+    assert_eq!(
+        baby_meshes.submissions[0].texture,
+        HAPPY_GHAST_BABY_TEXTURE_REF
+    );
+    assert_eq!(
+        baby_meshes.submissions[1].texture,
+        HAPPY_GHAST_HARNESS_BLACK_TEXTURE_REF
+    );
+    assert_eq!(
+        baby_meshes.submissions[1].transform,
+        happy_ghast_model_root_transform(baby, true)
+    );
+}
+
+#[test]
+fn happy_ghast_harness_foil_and_trim_follow_the_base_layer() {
+    let (atlas, _) = build_entity_model_texture_atlas(&happy_ghast_texture_images()).unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 62_401 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 64],
+        rgba: vec![0xff; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let instance = EntityModelInstance::happy_ghast(63, [0.0, 64.0, 0.0], 0.0)
+        .with_happy_ghast_harness(Some(EntityDyeColor::Blue))
+        .with_happy_ghast_harness_foil(true)
+        .with_happy_ghast_harness_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        }));
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[instance],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(meshes.submissions.len(), 4);
+    let [base, harness, foil, trim] = meshes.submissions.as_slice() else {
+        panic!("expected base, harness, foil, and trim")
+    };
+    assert_eq!(base.texture, HAPPY_GHAST_TEXTURE_REF);
+    assert_eq!(harness.texture, HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF);
+    assert_eq!(
+        harness.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!((harness.order, harness.submit_sequence), (0, 1));
+    assert_eq!(foil.texture, ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+    assert_eq!(
+        foil.render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!((foil.order, foil.submit_sequence), (1, 2));
+    assert_eq!(trim.texture, HAPPY_GHAST_HARNESS_BLUE_TEXTURE_REF);
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!((trim.order, trim.submit_sequence), (2, 3));
 }
 
 #[test]
@@ -193,7 +387,10 @@ fn assert_happy_ghast_base_submission(
     assert_eq!(submit.render_type.vanilla_name(), "entityCutout");
     assert_eq!(submit.texture, HAPPY_GHAST_TEXTURE_REF);
     assert_eq!(submit.tint, [1.0, 1.0, 1.0, 1.0]);
-    assert_eq!(submit.transform, happy_ghast_model_root_transform(instance));
+    assert_eq!(
+        submit.transform,
+        happy_ghast_model_root_transform(instance, false)
+    );
     assert_eq!((submit.order, submit.submit_sequence), (0, 0));
     assert_eq!(submit.light, instance.render_state.shader_light());
     assert_eq!(submit.overlay, instance.render_state.overlay_coords());

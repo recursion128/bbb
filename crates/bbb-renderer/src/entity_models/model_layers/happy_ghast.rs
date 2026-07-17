@@ -7,6 +7,12 @@ use crate::entity_models::model::{EntityModel, ModelCube, ModelPart};
 pub(in crate::entity_models) const HAPPY_GHAST_CREAM: [f32; 4] = [0.96, 0.92, 0.74, 1.0];
 
 pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST: &str = "minecraft:happy_ghast#main";
+pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST_BABY: &str =
+    "minecraft:happy_ghast_baby#main";
+pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST_HARNESS: &str =
+    "minecraft:happy_ghast_harness#main";
+pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST_BABY_HARNESS: &str =
+    "minecraft:happy_ghast_baby_harness#main";
 
 /// The nine happy-ghast tentacle lengths, baked verbatim from vanilla 26.1
 /// `HappyGhastModel.createBodyLayer` (each `addBox(-1, 0, -1, 2, len, 2)`). Unlike the regular
@@ -14,20 +20,18 @@ pub(in crate::entity_models) const MODEL_LAYER_HAPPY_GHAST: &str = "minecraft:ha
 pub(in crate::entity_models) const HAPPY_GHAST_TENTACLE_LENGTHS: [f32; 9] =
     [5.0, 7.0, 4.0, 5.0, 5.0, 7.0, 8.0, 8.0, 5.0];
 
-/// The nine tentacle root offsets `[xo, 23.0, yo]`. Vanilla parents the tentacles under the
-/// body (`PartPose.offset(0, 16, 0)`) at `PartPose.offset(xo, 7.0, yo)`, so the world-space
-/// offset is `[xo, 16 + 7, yo]`. The body carries no rotation (and, for an unharnessed happy
-/// ghast, no scale), so flattening the tentacles to absolute offsets is exact.
+/// The nine tentacle root offsets under the body. Keeping the vanilla parent relationship is
+/// required because equipping any BODY item scales the complete body subtree by 0.9375.
 pub(in crate::entity_models) const HAPPY_GHAST_TENTACLE_OFFSETS: [[f32; 3]; 9] = [
-    [-3.75, 23.0, -5.0],
-    [1.25, 23.0, -5.0],
-    [6.25, 23.0, -5.0],
-    [-6.25, 23.0, 0.0],
-    [-1.25, 23.0, 0.0],
-    [3.75, 23.0, 0.0],
-    [-3.75, 23.0, 5.0],
-    [1.25, 23.0, 5.0],
-    [6.25, 23.0, 5.0],
+    [-3.75, 7.0, -5.0],
+    [1.25, 7.0, -5.0],
+    [6.25, 7.0, -5.0],
+    [-6.25, 7.0, 0.0],
+    [-1.25, 7.0, 0.0],
+    [3.75, 7.0, 0.0],
+    [-3.75, 7.0, 5.0],
+    [1.25, 7.0, 5.0],
+    [6.25, 7.0, 5.0],
 ];
 
 /// Vanilla `HappyGhastModel.createBodyLayer` body cube: a 16×16×16 box at `texOffs(0, 0)`. The
@@ -46,6 +50,23 @@ pub(in crate::entity_models) const HAPPY_GHAST_BODY_CUBE: [ModelCube; 1] = [Mode
 pub(in crate::entity_models) const HAPPY_GHAST_BODY_POSE: PartPose = PartPose {
     offset: [0.0, 16.0, 0.0],
     rotation: [0.0, 0.0, 0.0],
+};
+
+/// Baby-only inset body cube (`inner_body`): vanilla uses the same logical 16px UV dimensions with
+/// a `-0.5` deformation and offsets it by eight pixels below the outer body origin.
+pub(in crate::entity_models) const HAPPY_GHAST_BABY_INNER_BODY_CUBE: [ModelCube; 1] =
+    [ModelCube::new(
+        [-7.5, -15.5, -7.5],
+        [15.0, 15.0, 15.0],
+        HAPPY_GHAST_CREAM,
+        [16.0, 16.0, 16.0],
+        [0.0, 32.0],
+        false,
+    )];
+
+pub(in crate::entity_models) const HAPPY_GHAST_BABY_INNER_BODY_POSE: PartPose = PartPose {
+    offset: [0.0, 8.0, 0.0],
+    rotation: [0.0; 3],
 };
 
 /// Vanilla `HappyGhastModel.createBodyLayer` tentacle child names, in `tentacle0..tentacle8` order;
@@ -78,7 +99,7 @@ pub(in crate::entity_models) fn happy_ghast_tentacle_cube(index: usize) -> Model
 }
 
 /// Bind pose of tentacle `i`: vanilla `HappyGhastModel.createBodyLayer` hangs it at
-/// [`HAPPY_GHAST_TENTACLE_OFFSETS`]`[i]` (`y = 23.0`) with no rotation. The `xRot` wave is `0.4` at
+/// [`HAPPY_GHAST_TENTACLE_OFFSETS`]`[i]` (`y = 7.0` under the body) with no rotation. The `xRot` wave is `0.4` at
 /// age 0 and overwritten each frame by `setup_anim`.
 pub(in crate::entity_models) fn happy_ghast_tentacle_pose(index: usize) -> PartPose {
     PartPose {
@@ -88,24 +109,28 @@ pub(in crate::entity_models) fn happy_ghast_tentacle_pose(index: usize) -> PartP
 }
 
 /// Mutable happy ghast model, mirroring vanilla `HappyGhastModel`. The unified tree is built once
-/// with named children: `body` plus `tentacle0..tentacle8`. `setup_anim` reuses
+/// with the original `body -> inner_body/tentacle*` hierarchy. `setup_anim` reuses
 /// `GhastModel.animateTentacles` verbatim ([`ghast_tentacle_x_rot`], never at rest). The harness
-/// body-item squeeze (`0.9375` scale when equipped) is deferred with the equipment layer, so an
-/// unharnessed happy ghast renders at full scale; the bob/scale lives in the root transform
-/// (`happy_ghast_model_root_transform`).
+/// body-item squeeze (`0.9375` scale when equipped) applies to the body subtree; age scaling lives
+/// in the root transform (`happy_ghast_model_root_transform`).
 pub(in crate::entity_models) struct HappyGhastModel {
     root: ModelPart,
 }
 
 impl HappyGhastModel {
-    pub(in crate::entity_models) fn new() -> Self {
-        let mut children: Vec<(&'static str, ModelPart)> = Vec::with_capacity(10);
-        children.push((
-            "body",
-            ModelPart::leaf(HAPPY_GHAST_BODY_POSE, HAPPY_GHAST_BODY_CUBE.to_vec()),
-        ));
+    pub(in crate::entity_models) fn new(baby: bool) -> Self {
+        let mut body_children: Vec<(&'static str, ModelPart)> = Vec::with_capacity(10);
+        if baby {
+            body_children.push((
+                "inner_body",
+                ModelPart::leaf(
+                    HAPPY_GHAST_BABY_INNER_BODY_POSE,
+                    HAPPY_GHAST_BABY_INNER_BODY_CUBE.to_vec(),
+                ),
+            ));
+        }
         for (i, &name) in HAPPY_GHAST_TENTACLE_NAMES.iter().enumerate() {
-            children.push((
+            body_children.push((
                 name,
                 ModelPart::leaf(
                     happy_ghast_tentacle_pose(i),
@@ -114,7 +139,18 @@ impl HappyGhastModel {
             ));
         }
         Self {
-            root: ModelPart::new(PART_POSE_ZERO, Vec::new(), children),
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![(
+                    "body",
+                    ModelPart::new(
+                        HAPPY_GHAST_BODY_POSE,
+                        HAPPY_GHAST_BODY_CUBE.to_vec(),
+                        body_children,
+                    ),
+                )],
+            ),
         }
     }
 }
@@ -130,8 +166,85 @@ impl EntityModel for HappyGhastModel {
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
         let age_in_ticks = instance.render_state.age_in_ticks;
+        let body = self.root.child_mut("body");
+        if instance.render_state.happy_ghast_body_item {
+            body.scale = [0.9375; 3];
+        }
         for (i, &name) in HAPPY_GHAST_TENTACLE_NAMES.iter().enumerate() {
-            self.root.child_mut(name).pose.rotation[0] = ghast_tentacle_x_rot(i, age_in_ticks);
+            body.child_mut(name).pose.rotation[0] = ghast_tentacle_x_rot(i, age_in_ticks);
+        }
+    }
+}
+
+pub(in crate::entity_models) const HAPPY_GHAST_HARNESS_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [-8.0, -16.0, -8.0],
+    [16.0, 16.0, 16.0],
+    [1.0; 4],
+    [16.0, 16.0, 16.0],
+    [0.0, 0.0],
+    false,
+)];
+
+pub(in crate::entity_models) const HAPPY_GHAST_GOGGLES_CUBE: [ModelCube; 1] = [ModelCube::new(
+    [-8.15, -2.65, -2.65],
+    [16.3, 5.3, 5.3],
+    [1.0; 4],
+    [16.0, 5.0, 5.0],
+    [0.0, 32.0],
+    false,
+)];
+
+pub(in crate::entity_models) struct HappyGhastHarnessModel {
+    root: ModelPart,
+}
+
+impl HappyGhastHarnessModel {
+    pub(in crate::entity_models) fn new() -> Self {
+        Self {
+            root: ModelPart::new(
+                PART_POSE_ZERO,
+                Vec::new(),
+                vec![
+                    (
+                        "harness",
+                        ModelPart::leaf(
+                            PartPose {
+                                offset: [0.0, 24.0, 0.0],
+                                rotation: [0.0; 3],
+                            },
+                            HAPPY_GHAST_HARNESS_CUBE.to_vec(),
+                        ),
+                    ),
+                    (
+                        "goggles",
+                        ModelPart::leaf(
+                            PartPose {
+                                offset: [0.0, 9.0, -5.5],
+                                rotation: [-0.7854, 0.0, 0.0],
+                            },
+                            HAPPY_GHAST_GOGGLES_CUBE.to_vec(),
+                        ),
+                    ),
+                ],
+            ),
+        }
+    }
+}
+
+impl EntityModel for HappyGhastHarnessModel {
+    fn root(&self) -> &ModelPart {
+        &self.root
+    }
+
+    fn root_mut(&mut self) -> &mut ModelPart {
+        &mut self.root
+    }
+
+    fn setup_anim(&mut self, instance: &EntityModelInstance) {
+        if instance.render_state.happy_ghast_ridden {
+            let goggles = self.root.child_mut("goggles");
+            goggles.pose.offset[1] = 14.0;
+            goggles.pose.rotation[0] = 0.0;
         }
     }
 }

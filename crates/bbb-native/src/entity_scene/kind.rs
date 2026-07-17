@@ -350,7 +350,9 @@ pub(super) fn entity_model_kind_with_time_and_registries(
                     .unwrap_or_default();
             EntityModelKind::Ghast { charging }
         }
-        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID => EntityModelKind::HappyGhast {
+            baby: ageable_baby(entity_type_id, data_values),
+        },
         VANILLA_ENTITY_TYPE_GIANT_ID => EntityModelKind::Giant,
         VANILLA_ENTITY_TYPE_ITEM_DISPLAY_ID => {
             placeholder("todo_item_display_bounds", 1.0, 1.0, 1.0)

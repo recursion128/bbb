@@ -1287,8 +1287,13 @@ pub(in crate::entity_models) fn ghast_model_root_transform(instance: EntityModel
 
 pub(in crate::entity_models) fn happy_ghast_model_root_transform(
     instance: EntityModelInstance,
+    baby: bool,
 ) -> Mat4 {
-    mesh_transformer_scaled_model_root_transform(instance, HAPPY_GHAST_SCALE)
+    const BABY_SCALE: f32 = 0.2375;
+    mesh_transformer_scaled_model_root_transform(
+        instance,
+        HAPPY_GHAST_SCALE * if baby { BABY_SCALE } else { 1.0 },
+    )
 }
 
 /// Vanilla `PhantomRenderer` transform overrides. `setupRotations` appends an extra

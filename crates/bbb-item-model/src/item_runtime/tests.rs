@@ -4319,6 +4319,85 @@ fn native_item_runtime_projects_wolf_body_armor_materials_and_max_damage() {
 }
 
 #[test]
+fn native_item_runtime_projects_exact_happy_ghast_harness_assets() {
+    let root = unique_temp_dir("item-runtime-happy-ghast-harness");
+    let assets = assets_dir(&root);
+    write_item_atlases(&assets);
+    write_item_registry_fixture(
+        &root,
+        &[
+            "white_harness",
+            "black_harness",
+            "custom_harness",
+            "multi_harness",
+        ],
+    );
+    let mut catalog = item_registry_override_value(&[
+        "white_harness",
+        "black_harness",
+        "custom_harness",
+        "multi_harness",
+    ]);
+    catalog["equippable_assets"] = serde_json::json!({
+        "minecraft:white_harness": "minecraft:white_harness",
+        "minecraft:black_harness": "minecraft:black_harness",
+        "minecraft:custom_harness": "minecraft:custom_harness",
+        "minecraft:multi_harness": "minecraft:multi_harness"
+    });
+    write_item_registry_override_value(&root, &catalog);
+    for color in ["white", "black"] {
+        write_json(
+            &assets
+                .join("equipment")
+                .join(format!("{color}_harness.json")),
+            &format!(
+                r#"{{
+                    "layers": {{
+                        "happy_ghast_body": [{{ "texture": "minecraft:{color}_harness" }}]
+                    }}
+                }}"#
+            ),
+        );
+    }
+    write_json(
+        &assets.join("equipment").join("custom_harness.json"),
+        r#"{
+            "layers": {
+                "happy_ghast_body": [{ "texture": "minecraft:white_harness" }]
+            }
+        }"#,
+    );
+    write_json(
+        &assets.join("equipment").join("multi_harness.json"),
+        r#"{
+            "layers": {
+                "happy_ghast_body": [
+                    { "texture": "minecraft:white_harness" },
+                    { "texture": "minecraft:black_harness" }
+                ]
+            }
+        }"#,
+    );
+
+    let runtime = NativeItemRuntime::load(&PackRoots::from_root(&root).unwrap()).unwrap();
+    let registry = runtime.registry.as_ref().unwrap();
+    let colors = runtime.happy_ghast_harness_colors_by_protocol_id();
+    assert_eq!(colors.len(), 2);
+    assert_eq!(
+        colors.get(&registry.protocol_id("minecraft:white_harness").unwrap()),
+        Some(&WorldHappyGhastHarnessColor::White)
+    );
+    assert_eq!(
+        colors.get(&registry.protocol_id("minecraft:black_harness").unwrap()),
+        Some(&WorldHappyGhastHarnessColor::Black)
+    );
+    assert!(!colors.contains_key(&registry.protocol_id("minecraft:custom_harness").unwrap()));
+    assert!(!colors.contains_key(&registry.protocol_id("minecraft:multi_harness").unwrap()));
+
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn native_item_runtime_converts_mining_profiles_for_world() {
     let profile = PackItemMiningProfile {
         default_mining_speed_thousandths: 1_000,

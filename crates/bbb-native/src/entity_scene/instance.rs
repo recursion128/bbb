@@ -674,6 +674,11 @@ pub(super) fn entity_model_instance(
             source.nautilus_body_armor_trim.as_ref(),
             variant_registries,
         ))
+        .with_happy_ghast_harness(happy_ghast_harness_color(source.happy_ghast_harness))
+        .with_happy_ghast_harness_trim(armor_trim(
+            source.happy_ghast_harness_trim.as_ref(),
+            variant_registries,
+        ))
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_llama_body_decor_trim(armor_trim(
             source.llama_body_decor_trim.as_ref(),
@@ -841,6 +846,9 @@ pub(super) fn entity_model_instance(
         with_nautilus_saddle nautilus_saddle,
         with_nautilus_saddle_foil nautilus_saddle_foil,
         with_nautilus_body_armor_foil nautilus_body_armor_foil,
+        with_happy_ghast_body_item happy_ghast_body_item,
+        with_happy_ghast_harness_foil happy_ghast_harness_foil,
+        with_happy_ghast_ridden happy_ghast_ridden,
         with_llama_body_decor_foil llama_body_decor_foil,
         with_is_crouching is_crouching,
         with_elytra_rot_x elytra_rot_x,

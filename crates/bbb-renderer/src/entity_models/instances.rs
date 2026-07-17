@@ -1132,6 +1132,17 @@ entity_render_state! {
     /// Vanilla `ItemStack.hasFoil()` for nautilus body armor. The glint follows the base armor and
     /// precedes its trim.
     (with_nautilus_body_armor_foil) nautilus_body_armor_foil: bool = false;
+    /// Any non-empty happy-ghast BODY item, independently of whether its equipment asset is
+    /// recognized. Vanilla squeezes the complete base-model body subtree while this is true.
+    (with_happy_ghast_body_item) happy_ghast_body_item: bool = false;
+    /// Recognized vanilla happy-ghast harness color.
+    (with_happy_ghast_harness) happy_ghast_harness: Option<EntityDyeColor> = None;
+    /// Armor trim rendered over the happy-ghast harness model.
+    (with_happy_ghast_harness_trim) happy_ghast_harness_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for the recognized harness.
+    (with_happy_ghast_harness_foil) happy_ghast_harness_foil: bool = false;
+    /// True while a happy ghast has passengers; lowers the harness goggles into their ridden pose.
+    (with_happy_ghast_ridden) happy_ghast_ridden: bool = false;
     /// Vanilla `SnowGolemRenderState.headBlock`: a carved pumpkin block model on the snow golem head
     /// while the synced `SnowGolem.DATA_PUMPKIN_ID` flag is set. The block layer is baked by native
     /// into the shared block-item model pass because it samples the terrain atlas.
@@ -2016,7 +2027,12 @@ impl EntityModelInstance {
     }
 
     pub fn happy_ghast(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
-        Self::new(entity_id, EntityModelKind::HappyGhast, position, y_rot)
+        Self::new(
+            entity_id,
+            EntityModelKind::HappyGhast { baby: false },
+            position,
+            y_rot,
+        )
     }
 
     pub fn minecart(entity_id: i32, position: [f32; 3], y_rot: f32) -> Self {
@@ -3137,6 +3153,11 @@ mod tests {
                 nautilus_body_armor: None,
                 nautilus_body_armor_trim: None,
                 nautilus_body_armor_foil: false,
+                happy_ghast_body_item: false,
+                happy_ghast_harness: None,
+                happy_ghast_harness_trim: None,
+                happy_ghast_harness_foil: false,
+                happy_ghast_ridden: false,
                 snow_golem_pumpkin: false,
                 llama_body_decor: None,
                 llama_body_decor_trim: None,

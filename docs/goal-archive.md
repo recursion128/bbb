@@ -18686,3 +18686,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Baby living nautilus continue to suppress the complete saddle layer.
 - Focused world, native, and renderer tests lock both nautilus families, runtime-atlas resolution,
   body-armor → saddle ordering, and the saddle model's 144-vertex base/glint/trim geometry.
+
+# 2026-07-17: Render happy-ghast baby and harness equipment
+
+- Added the vanilla baby `inner_body`, `0.2375` age transform, baby texture, and the original
+  body-parented tentacle tree. Any non-empty BODY item now applies the exact `0.9375` body-subtree
+  squeeze independently of equipment-asset recognition.
+- Derived the sixteen harness colors from exact pack equipment assets, carrying recognized BODY
+  items, passenger state, foil, and `HAPPY_GHAST_BODY` trims through world and native boundaries.
+  Custom or multi-layer assets remain unclassified instead of silently selecting a vanilla color.
+- Both adult and baby harness models now render the harness and raised/ridden goggles, followed by
+  optional armor glint and regular/decal trim in vanilla collector order. Focused tests lock pack
+  classification, source projection, trim-atlas handoff, body squeeze, age geometry and textures,
+  goggles poses, and base → foil → trim submissions.

@@ -112,6 +112,29 @@ pub(super) fn llama_body_decor_color(
     })
 }
 
+pub(super) fn happy_ghast_harness_color(
+    color: Option<WorldHappyGhastHarnessColor>,
+) -> Option<EntityDyeColor> {
+    color.map(|color| match color {
+        WorldHappyGhastHarnessColor::White => EntityDyeColor::White,
+        WorldHappyGhastHarnessColor::Orange => EntityDyeColor::Orange,
+        WorldHappyGhastHarnessColor::Magenta => EntityDyeColor::Magenta,
+        WorldHappyGhastHarnessColor::LightBlue => EntityDyeColor::LightBlue,
+        WorldHappyGhastHarnessColor::Yellow => EntityDyeColor::Yellow,
+        WorldHappyGhastHarnessColor::Lime => EntityDyeColor::Lime,
+        WorldHappyGhastHarnessColor::Pink => EntityDyeColor::Pink,
+        WorldHappyGhastHarnessColor::Gray => EntityDyeColor::Gray,
+        WorldHappyGhastHarnessColor::LightGray => EntityDyeColor::LightGray,
+        WorldHappyGhastHarnessColor::Cyan => EntityDyeColor::Cyan,
+        WorldHappyGhastHarnessColor::Purple => EntityDyeColor::Purple,
+        WorldHappyGhastHarnessColor::Blue => EntityDyeColor::Blue,
+        WorldHappyGhastHarnessColor::Brown => EntityDyeColor::Brown,
+        WorldHappyGhastHarnessColor::Green => EntityDyeColor::Green,
+        WorldHappyGhastHarnessColor::Red => EntityDyeColor::Red,
+        WorldHappyGhastHarnessColor::Black => EntityDyeColor::Black,
+    })
+}
+
 /// Maps `ShulkerRenderState.attachFace` from world metadata onto the renderer root transform input.
 pub(super) fn entity_attachment_face(face: WorldEntityAttachmentFace) -> EntityAttachmentFace {
     match face {

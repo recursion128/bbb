@@ -2230,6 +2230,23 @@ entity_model_source_state! {
     /// Vanilla `ItemStack.hasFoil()` for the nautilus saddle item.
     #[serde(default)]
     pub nautilus_saddle_foil: bool,
+    /// Vanilla `HappyGhastRenderState.bodyItem`: any non-empty BODY-slot item. The base model uses
+    /// this independently of asset recognition to squeeze its body subtree to 0.9375.
+    #[serde(default)]
+    pub happy_ghast_body_item: bool,
+    /// Recognized vanilla happy-ghast harness color derived from the BODY item's equipment asset.
+    #[serde(default)]
+    pub happy_ghast_harness: Option<HappyGhastHarnessColor>,
+    /// Vanilla armor-trim sprite for the harness `HAPPY_GHAST_BODY` layer.
+    #[serde(default)]
+    pub happy_ghast_harness_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for a recognized happy-ghast harness item.
+    #[serde(default)]
+    pub happy_ghast_harness_foil: bool,
+    /// Vanilla `HappyGhastRenderState.isRidden`: true while the happy ghast has passengers; the
+    /// harness model uses it to lower the goggles into the ridden pose.
+    #[serde(default)]
+    pub happy_ghast_ridden: bool,
     /// Vanilla `GuardianRenderer` attack beam: present when a guardian has an active attack target.
     /// Mirrors the renderer's `GuardianBeamRenderState`; `None` for a guardian with no target and every
     /// other entity.
@@ -2347,6 +2364,52 @@ pub enum LlamaBodyDecorColor {
     Green,
     Red,
     Black,
+}
+
+/// Vanilla `DyeColor` encoded by the sixteen `EquipmentAssets.HARNESSES` body-equipment assets.
+/// The renderer uses the color to select
+/// `textures/entity/equipment/happy_ghast_body/<color>_harness.png`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum HappyGhastHarnessColor {
+    White,
+    Orange,
+    Magenta,
+    LightBlue,
+    Yellow,
+    Lime,
+    Pink,
+    Gray,
+    LightGray,
+    Cyan,
+    Purple,
+    Blue,
+    Brown,
+    Green,
+    Red,
+    Black,
+}
+
+impl HappyGhastHarnessColor {
+    pub(crate) const fn equipment_asset_id(self) -> &'static str {
+        match self {
+            Self::White => "minecraft:white_harness",
+            Self::Orange => "minecraft:orange_harness",
+            Self::Magenta => "minecraft:magenta_harness",
+            Self::LightBlue => "minecraft:light_blue_harness",
+            Self::Yellow => "minecraft:yellow_harness",
+            Self::Lime => "minecraft:lime_harness",
+            Self::Pink => "minecraft:pink_harness",
+            Self::Gray => "minecraft:gray_harness",
+            Self::LightGray => "minecraft:light_gray_harness",
+            Self::Cyan => "minecraft:cyan_harness",
+            Self::Purple => "minecraft:purple_harness",
+            Self::Blue => "minecraft:blue_harness",
+            Self::Brown => "minecraft:brown_harness",
+            Self::Green => "minecraft:green_harness",
+            Self::Red => "minecraft:red_harness",
+            Self::Black => "minecraft:black_harness",
+        }
+    }
 }
 
 impl LlamaBodyDecorColor {
@@ -3254,6 +3317,7 @@ impl WorldStore {
             &self.items.default_item_wings_equipment_assets,
             &self.items.default_item_equipment_slots,
             &self.items.default_llama_body_decor_colors,
+            &self.items.default_happy_ghast_harness_colors,
             &self.items.default_nautilus_body_armor_materials,
             &self.items.default_horse_body_armor_materials,
             &self.items.default_wolf_body_armor_materials,

@@ -54,7 +54,8 @@ use bbb_render_types::{
 #[cfg(any(test, feature = "test-support"))]
 use bbb_render_types::HudUvRect;
 use bbb_world::{
-    ArmorMaterialKind as WorldArmorMaterialKind, ItemAttackRange as WorldItemAttackRange,
+    ArmorMaterialKind as WorldArmorMaterialKind,
+    HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemAttackRange as WorldItemAttackRange,
     ItemEquipmentSlot as WorldItemEquipmentSlot, ItemUseEffects as WorldItemUseEffects,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, MountArmorSlotKind as WorldMountArmorSlotKind,
     WorldItemMiningProfile, WorldItemMiningRule,

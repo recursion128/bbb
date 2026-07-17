@@ -44,6 +44,9 @@ pub struct ItemProfiles {
     #[serde(default)]
     pub(crate) default_llama_body_decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
     #[serde(default)]
+    pub(crate) default_happy_ghast_harness_colors:
+        BTreeMap<i32, crate::entities::HappyGhastHarnessColor>,
+    #[serde(default)]
     pub(crate) default_nautilus_body_armor_materials:
         BTreeMap<i32, crate::entities::ArmorMaterialKind>,
     #[serde(default)]
@@ -283,6 +286,13 @@ impl ItemProfiles {
         decor_colors: BTreeMap<i32, crate::entities::LlamaBodyDecorColor>,
     ) {
         self.default_llama_body_decor_colors = filter_item_id_keys(decor_colors);
+    }
+
+    pub(crate) fn set_default_happy_ghast_harness_colors(
+        &mut self,
+        harness_colors: BTreeMap<i32, crate::entities::HappyGhastHarnessColor>,
+    ) {
+        self.default_happy_ghast_harness_colors = filter_item_id_keys(harness_colors);
     }
 
     pub(crate) fn set_default_nautilus_body_armor_materials(

@@ -104,17 +104,17 @@ use super::textured::{
     render_custom_head_skull_layer_with_root_transform, render_donkey_textured_layers,
     render_end_crystal_beam, render_end_crystal_textured_layers, render_end_portal_block_model,
     render_ender_dragon_beam, render_ender_dragon_death_rays, render_equine_body_armor_layer,
-    render_equine_saddle_layer, render_guardian_beam, render_horse_textured_layers,
-    render_llama_decor_layer, render_nautilus_body_armor_layer, render_nautilus_saddle_layer,
-    render_no_overlay_scrolled_textured_layers, render_pig_saddle_layer, render_player_cape_layer,
-    render_player_extra_ears_layer, render_player_parrot_on_shoulder_layer,
-    render_player_spin_attack_effect_layer, render_player_textured_layers,
-    render_skeleton_clothing_layer, render_skull_block_model, render_strider_saddle_layer,
-    render_textured_layers, render_textured_layers_with_dynamic_texture,
-    render_trident_foil_submission, render_undead_horse_textured_layers,
-    render_villager_profession_layers, render_wings_layer, render_wither_energy_swirl,
-    render_wolf_body_armor_layer, render_worn_humanoid_armor, salmon_textured_layer_passes,
-    sheep_textured_layer_passes, shulker_box_textured_layer_passes,
+    render_equine_saddle_layer, render_guardian_beam, render_happy_ghast_harness_layer,
+    render_horse_textured_layers, render_llama_decor_layer, render_nautilus_body_armor_layer,
+    render_nautilus_saddle_layer, render_no_overlay_scrolled_textured_layers,
+    render_pig_saddle_layer, render_player_cape_layer, render_player_extra_ears_layer,
+    render_player_parrot_on_shoulder_layer, render_player_spin_attack_effect_layer,
+    render_player_textured_layers, render_skeleton_clothing_layer, render_skull_block_model,
+    render_strider_saddle_layer, render_textured_layers,
+    render_textured_layers_with_dynamic_texture, render_trident_foil_submission,
+    render_undead_horse_textured_layers, render_villager_profession_layers, render_wings_layer,
+    render_wither_energy_swirl, render_wolf_body_armor_layer, render_worn_humanoid_armor,
+    salmon_textured_layer_passes, sheep_textured_layer_passes, shulker_box_textured_layer_passes,
     shulker_bullet_textured_layer_passes, shulker_textured_layer_passes,
     sign_textured_layer_passes, silverfish_textured_layer_passes, skeleton_textured_layer_passes,
     slime_textured_layer_passes, sniffer_textured_layer_passes, snow_golem_textured_layer_passes,
@@ -285,6 +285,15 @@ pub(in crate::entity_models) trait EntityModelSink {
             entity_model_root_transform(*instance),
             instance,
             &nautilus_textured_layer_passes(baby),
+        );
+    }
+
+    fn happy_ghast_model(&mut self, baby: bool, instance: &EntityModelInstance) {
+        self.model(
+            HappyGhastModel::new(baby),
+            happy_ghast_model_root_transform(*instance, baby),
+            instance,
+            &happy_ghast_textured_layer_passes(baby),
         );
     }
 
@@ -775,6 +784,21 @@ impl EntityModelSink for TexturedSink<'_> {
             self.atlas,
             self.dynamic_player_texture_atlas,
             next_submit_sequence,
+        );
+    }
+
+    fn happy_ghast_model(&mut self, baby: bool, instance: &EntityModelInstance) {
+        self.model(
+            HappyGhastModel::new(baby),
+            happy_ghast_model_root_transform(*instance, baby),
+            instance,
+            &happy_ghast_textured_layer_passes(baby),
+        );
+        render_happy_ghast_harness_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
         );
     }
 
@@ -1280,12 +1304,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &ghast_textured_layer_passes(charging),
         ),
-        EntityModelKind::HappyGhast => sink.model(
-            HappyGhastModel::new(),
-            happy_ghast_model_root_transform(*instance),
-            instance,
-            &happy_ghast_textured_layer_passes(),
-        ),
+        EntityModelKind::HappyGhast { baby } => sink.happy_ghast_model(baby, instance),
         EntityModelKind::Blaze => sink.model(
             BlazeModel::new(),
             entity_model_root_transform(*instance),
