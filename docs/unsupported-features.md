@@ -470,6 +470,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   a separate native projection boundary.
   Swing-duration mob-effect fixtures must consume the generated Haste, Mining Fatigue and Conduit
   Power ids; local 2/3/28 aliases must not return.
+  Local-player movement's Bad Omen negative fixture must consume the generated mob-effect catalog
+  id; a local numeric Bad Omen alias must not return.
   Net probe merchant-container fixtures must consume the generated MenuType catalog id; a local
   merchant menu id alias must not return.
   Inventory profile and native attack-range component fixtures must consume the generated

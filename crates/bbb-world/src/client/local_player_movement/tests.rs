@@ -1,6 +1,7 @@
 use super::*;
 use std::collections::{BTreeMap, BTreeSet};
 
+use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_BAD_OMEN_ID;
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
     AttributeSnapshot as ProtocolAttributeSnapshot, EntityDataValue as ProtocolEntityDataValue,
@@ -191,8 +192,6 @@ const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
 const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
 const SOURCE_LAVA_BLOCK_STATE_ID: i32 = 102;
 const FLOWING_LAVA_LEVEL_3_BLOCK_STATE_ID: i32 = 105;
-const VANILLA_MOB_EFFECT_BAD_OMEN_ID: i32 = 30;
-
 #[test]
 fn local_player_input_stops_at_full_block_wall_and_reports_collision() {
     let mut world = flat_collision_world();
