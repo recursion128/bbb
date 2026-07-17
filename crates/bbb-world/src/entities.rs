@@ -55,8 +55,9 @@ pub use renderer_catalog::{
     vanilla_entity_renderer_extracts_wolf_sitting,
     vanilla_entity_renderer_extracts_zombie_underwater_converting,
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_is_noop,
-    vanilla_entity_renderer_minimum_block_light, vanilla_entity_renderer_thrown_item_scale,
-    vanilla_entity_renderer_thrown_item_scales, vanilla_entity_renderer_uses_native_non_model_pass,
+    vanilla_entity_renderer_minimum_block_light, vanilla_entity_renderer_skeleton_kind,
+    vanilla_entity_renderer_thrown_item_scale, vanilla_entity_renderer_thrown_item_scales,
+    vanilla_entity_renderer_uses_native_non_model_pass, VanillaSkeletonRendererKind,
 };
 pub use schema::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type;
 pub use schema::vanilla_entity_metadata_type_is_llama;

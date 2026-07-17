@@ -18363,3 +18363,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - native sitting pose 投影删除两个 entity-type gate，改为将 renderer 生成 membership 与
   TamableAnimal schema 的 sitting mask 相交，保持 presentation owner 与 metadata owner 分离。
 - renderer generator 输出 reverse guard，禁止两个 helper 恢复 Wolf/Parrot type 常量判断。
+
+## 2026-07-17：生成 skeleton model-kind dispatch
+
+- world renderer owner 现在把 source-generated provider class 映射为 typed Skeleton、Stray、
+  Parched、WitherSkeleton、Bogged renderer kind，并以 Zombie 作为非成员负例。
+- native model-kind 选择删除五个 entity-type match arms，统一消费 renderer kind；Bogged
+  `isSheared` 仍独立读取 generated metadata accessor，避免 presentation 与同步状态混为一表。
+- renderer generator 输出 reverse guard，禁止 native kind dispatch 恢复五个 skeleton type
+  常量分支。

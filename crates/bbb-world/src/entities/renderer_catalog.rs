@@ -24,6 +24,15 @@ pub(super) struct VanillaEntityRendererRegistration {
     extracts_parrot_pose: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaSkeletonRendererKind {
+    Skeleton,
+    Stray,
+    Parched,
+    WitherSkeleton,
+    Bogged,
+}
+
 include!("renderer_catalog/generated_26_1.rs");
 
 pub(super) fn vanilla_living_entity_renderer_name_is_upside_down(name: &str) -> bool {
@@ -138,6 +147,19 @@ pub fn vanilla_entity_renderer_extracts_wolf_sitting(entity_type_id: i32) -> boo
 pub fn vanilla_entity_renderer_extracts_parrot_pose(entity_type_id: i32) -> bool {
     vanilla_entity_renderer_registration(entity_type_id)
         .is_some_and(|entry| entry.extracts_parrot_pose)
+}
+
+pub fn vanilla_entity_renderer_skeleton_kind(
+    entity_type_id: i32,
+) -> Option<VanillaSkeletonRendererKind> {
+    match vanilla_entity_renderer_registration(entity_type_id)?.renderer_class {
+        "SkeletonRenderer" => Some(VanillaSkeletonRendererKind::Skeleton),
+        "StrayRenderer" => Some(VanillaSkeletonRendererKind::Stray),
+        "ParchedRenderer" => Some(VanillaSkeletonRendererKind::Parched),
+        "WitherSkeletonRenderer" => Some(VanillaSkeletonRendererKind::WitherSkeleton),
+        "BoggedRenderer" => Some(VanillaSkeletonRendererKind::Bogged),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -297,6 +319,34 @@ mod tests {
         assert!(!vanilla_entity_renderer_extracts_parrot_pose(
             VANILLA_ENTITY_TYPE_WOLF_ID
         ));
+    }
+
+    #[test]
+    fn generated_skeleton_kinds_match_registered_renderer_classes() {
+        assert_eq!(
+            vanilla_entity_renderer_skeleton_kind(VANILLA_ENTITY_TYPE_SKELETON_ID),
+            Some(VanillaSkeletonRendererKind::Skeleton)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_skeleton_kind(VANILLA_ENTITY_TYPE_STRAY_ID),
+            Some(VanillaSkeletonRendererKind::Stray)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_skeleton_kind(VANILLA_ENTITY_TYPE_PARCHED_ID),
+            Some(VanillaSkeletonRendererKind::Parched)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_skeleton_kind(VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID),
+            Some(VanillaSkeletonRendererKind::WitherSkeleton)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_skeleton_kind(VANILLA_ENTITY_TYPE_BOGGED_ID),
+            Some(VanillaSkeletonRendererKind::Bogged)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_skeleton_kind(VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+            None
+        );
     }
 
     #[test]

@@ -44,6 +44,27 @@ pub(super) fn entity_model_kind_with_time_and_registries(
     if bbb_world::vanilla_entity_renderer_uses_native_non_model_pass(entity_type_id) {
         return EntityModelKind::NoRender;
     }
+    if let Some(skeleton_kind) = bbb_world::vanilla_entity_renderer_skeleton_kind(entity_type_id) {
+        return match skeleton_kind {
+            bbb_world::VanillaSkeletonRendererKind::Skeleton => EntityModelKind::Skeleton,
+            bbb_world::VanillaSkeletonRendererKind::Stray => EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Stray,
+            },
+            bbb_world::VanillaSkeletonRendererKind::Parched => EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Parched,
+            },
+            bbb_world::VanillaSkeletonRendererKind::WitherSkeleton => {
+                EntityModelKind::SkeletonVariant {
+                    family: SkeletonModelFamily::WitherSkeleton,
+                }
+            }
+            bbb_world::VanillaSkeletonRendererKind::Bogged => EntityModelKind::SkeletonVariant {
+                family: SkeletonModelFamily::Bogged {
+                    sheared: bogged_sheared(entity_type_id, data_values),
+                },
+            },
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -74,21 +95,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_PIGLIN_ID => EntityModelKind::Piglin {
             family: PiglinModelFamily::Piglin,
             baby: piglin_baby(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_SKELETON_ID => EntityModelKind::Skeleton,
-        VANILLA_ENTITY_TYPE_STRAY_ID => EntityModelKind::SkeletonVariant {
-            family: SkeletonModelFamily::Stray,
-        },
-        VANILLA_ENTITY_TYPE_PARCHED_ID => EntityModelKind::SkeletonVariant {
-            family: SkeletonModelFamily::Parched,
-        },
-        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID => EntityModelKind::SkeletonVariant {
-            family: SkeletonModelFamily::WitherSkeleton,
-        },
-        VANILLA_ENTITY_TYPE_BOGGED_ID => EntityModelKind::SkeletonVariant {
-            family: SkeletonModelFamily::Bogged {
-                sheared: bogged_sheared(entity_type_id, data_values),
-            },
         },
         VANILLA_ENTITY_TYPE_VILLAGER_ID => EntityModelKind::Villager {
             baby: ageable_baby(entity_type_id, data_values),
