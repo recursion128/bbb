@@ -39,6 +39,7 @@ use bbb_protocol::packets::{
     UpdateEnabledFeatures, UpdateMobEffect, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d,
     WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
 };
+use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID;
 use bbb_world::{
     BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, LightData,
     PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
@@ -2495,7 +2496,7 @@ fn client_effects_reads_canonical_world_state() {
             max_speed: 1.5,
             count: 16,
             particle: ParticlePayload {
-                particle_type_id: 45,
+                particle_type_id: VANILLA_PARTICLE_TYPE_HEART_ID,
                 raw_options: vec![0xaa, 0xbb],
             },
         });
@@ -2528,7 +2529,10 @@ fn client_effects_reads_canonical_world_state() {
     assert_eq!(effects["last_level_particles"]["position"]["z"], -3.25);
     assert_eq!(effects["last_level_particles"]["max_speed"], 1.5);
     assert_eq!(effects["last_level_particles"]["count"], 16);
-    assert_eq!(effects["last_level_particles"]["particle_type_id"], 45);
+    assert_eq!(
+        effects["last_level_particles"]["particle_type_id"],
+        VANILLA_PARTICLE_TYPE_HEART_ID
+    );
     assert_eq!(effects["last_level_particles"]["raw_options_len"], 2);
 }
 

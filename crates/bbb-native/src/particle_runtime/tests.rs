@@ -1174,13 +1174,14 @@ fn honey_block_batch_matches_vanilla_show_particles() {
 #[test]
 fn count_zero_emits_single_spawn_with_offset_velocity() {
     let mut resolver = test_resolver(0);
-    let batch = resolver.resolve_level_particles(&level_particles_packet(4, 0));
+    let batch = resolver
+        .resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_CLOUD_ID, 0));
 
     assert_eq!(batch.len(), 1);
     assert_eq!(batch.missing_definition_count, 0);
     assert_eq!(batch.unknown_particle_type_count, 0);
     let command = &batch.commands[0];
-    assert_eq!(command.particle_type_id, 4);
+    assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_CLOUD_ID);
     assert_eq!(command.particle_id, "minecraft:cloud");
     assert_eq!(
         command.sprite_ids,
@@ -6139,7 +6140,8 @@ fn level_particles_decodes_shriek_delay_option_into_spawn_command() {
 #[test]
 fn positive_count_emits_deterministic_gaussian_scatter() {
     let mut resolver = test_resolver(0);
-    let batch = resolver.resolve_level_particles(&level_particles_packet(4, 2));
+    let batch = resolver
+        .resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_CLOUD_ID, 2));
 
     assert_eq!(batch.len(), 2);
     let first = &batch.commands[0];
@@ -6154,7 +6156,8 @@ fn positive_count_emits_deterministic_gaussian_scatter() {
 #[test]
 fn negative_count_emits_no_spawn_commands() {
     let mut resolver = test_resolver(0);
-    let batch = resolver.resolve_level_particles(&level_particles_packet(4, -1));
+    let batch = resolver
+        .resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_CLOUD_ID, -1));
 
     assert!(batch.is_empty());
 }
@@ -6162,7 +6165,10 @@ fn negative_count_emits_no_spawn_commands() {
 #[test]
 fn missing_definition_records_diagnostic_without_spawn_commands() {
     let mut resolver = test_resolver(0);
-    let batch = resolver.resolve_level_particles(&level_particles_packet(18, 1));
+    let batch = resolver.resolve_level_particles(&level_particles_packet(
+        VANILLA_PARTICLE_TYPE_ENCHANTED_HIT_ID,
+        1,
+    ));
 
     assert!(batch.commands.is_empty());
     assert_eq!(batch.missing_definition_count, 1);
@@ -6172,7 +6178,9 @@ fn missing_definition_records_diagnostic_without_spawn_commands() {
 #[test]
 fn unknown_particle_type_records_diagnostic_without_spawn_commands() {
     let mut resolver = test_resolver(0);
-    let batch = resolver.resolve_level_particles(&level_particles_packet(999, 1));
+    let unknown_particle_type_id = i32::try_from(VANILLA_PARTICLE_TYPES.len()).unwrap();
+    let batch =
+        resolver.resolve_level_particles(&level_particles_packet(unknown_particle_type_id, 1));
 
     assert!(batch.commands.is_empty());
     assert_eq!(batch.missing_definition_count, 0);
@@ -6187,7 +6195,8 @@ fn missing_sprite_records_diagnostic_without_dropping_spawn_command() {
         &["minecraft:generic_7", "minecraft:missing_particle"],
         &["generic_7"],
     );
-    let batch = resolver.resolve_level_particles(&level_particles_packet(4, 1));
+    let batch = resolver
+        .resolve_level_particles(&level_particles_packet(VANILLA_PARTICLE_TYPE_CLOUD_ID, 1));
 
     assert_eq!(batch.len(), 1);
     assert_eq!(batch.missing_definition_count, 0);
@@ -6203,7 +6212,7 @@ fn missing_sprite_records_diagnostic_without_dropping_spawn_command() {
 
 #[test]
 fn level_particles_drop_non_override_spawns_beyond_vanilla_camera_distance() {
-    let mut packet = level_particles_packet(4, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_CLOUD_ID, 0);
     packet.override_limiter = false;
     packet.always_show = false;
     packet.position = Vec3d {
@@ -6226,7 +6235,7 @@ fn level_particles_drop_non_override_spawns_beyond_vanilla_camera_distance() {
 
 #[test]
 fn level_particles_override_limiter_bypasses_distance_and_particle_status() {
-    let mut packet = level_particles_packet(4, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_CLOUD_ID, 0);
     packet.override_limiter = true;
     packet.always_show = false;
     packet.position = Vec3d {
@@ -6249,7 +6258,7 @@ fn level_particles_override_limiter_bypasses_distance_and_particle_status() {
 
 #[test]
 fn decreased_particle_status_uses_vanilla_next_int_three() {
-    let mut packet = level_particles_packet(4, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_CLOUD_ID, 0);
     packet.override_limiter = false;
     packet.always_show = false;
     packet.position = Vec3d::default();
@@ -6276,7 +6285,7 @@ fn decreased_particle_status_uses_vanilla_next_int_three() {
 
 #[test]
 fn minimal_particle_status_only_keeps_always_show_promoted_particles() {
-    let mut packet = level_particles_packet(4, 0);
+    let mut packet = level_particles_packet(VANILLA_PARTICLE_TYPE_CLOUD_ID, 0);
     packet.override_limiter = false;
     packet.always_show = false;
     packet.position = Vec3d::default();
@@ -6355,7 +6364,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(lava.len(), 8);
     assert_particle_command(
         &lava.commands[0],
-        55,
+        VANILLA_PARTICLE_TYPE_LARGE_SMOKE_ID,
         "minecraft:large_smoke",
         [10.730_967_787_376_657, 65.2, -2.759_463_584_328_514],
         [0.0, 0.0, 0.0],
@@ -6375,7 +6384,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(burnout.len(), 5);
     assert_particle_command(
         &burnout.commands[0],
-        62,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         [
             10.344_321_849_402_891,
@@ -6397,7 +6406,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(frame_fill.len(), 16);
     assert_particle_command(
         &frame_fill.commands[0],
-        62,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         [10.586_612_920_266_246, 64.8125, -2.597_298_844_123_192_6],
         [0.0, 0.0, 0.0],
@@ -6566,7 +6575,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(blaze.len(), 40);
     assert_particle_command(
         &blaze.commands[0],
-        62,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         [
             10.961_935_574_753_314,
@@ -6578,7 +6587,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_particle_command(
         &blaze.commands[1],
-        32,
+        VANILLA_PARTICLE_TYPE_FLAME_ID,
         "minecraft:flame",
         [
             10.961_935_574_753_314,
@@ -6600,7 +6609,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(dragon_breath.len(), 200);
     assert_particle_command(
         &dragon_breath.commands[0],
-        8,
+        VANILLA_PARTICLE_TYPE_DRAGON_BREATH_ID,
         "minecraft:dragon_breath",
         [10.143_172_562_122_345, 64.3, -3.254_934_978_485_107_6],
         [
@@ -6706,7 +6715,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_particle_command(
         &ender_eye.commands[first_portal_index],
-        60,
+        VANILLA_PARTICLE_TYPE_PORTAL_ID,
         "minecraft:portal",
         [15.5, 63.6, -2.5],
         [-5.0, 0.0, -0.0],
@@ -6714,7 +6723,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_particle_command(
         &ender_eye.commands[first_portal_index + 1],
-        60,
+        VANILLA_PARTICLE_TYPE_PORTAL_ID,
         "minecraft:portal",
         [15.5, 63.6, -2.5],
         [-7.0, 0.0, -0.0],
@@ -6722,7 +6731,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_particle_command(
         &ender_eye.commands[first_portal_index + 20],
-        60,
+        VANILLA_PARTICLE_TYPE_PORTAL_ID,
         "minecraft:portal",
         [10.5, 63.6, 2.5],
         [-0.0, 0.0, -5.0],
@@ -6740,7 +6749,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(explosion.len(), 1);
     assert_particle_command(
         &explosion.commands[0],
-        23,
+        VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
         "minecraft:explosion",
         [10.5, 64.5, -2.5],
         [0.0, 0.0, 0.0],
@@ -6778,7 +6787,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(electric_x.len(), 10);
     assert_particle_command(
         &electric_x.commands[0],
-        103,
+        VANILLA_PARTICLE_TYPE_ELECTRIC_SPARK_ID,
         "minecraft:electric_spark",
         [
             10.831_440_988_787_062,
@@ -6801,7 +6810,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(electric_z.len(), 10);
     assert_particle_command(
         &electric_z.commands[0],
-        103,
+        VANILLA_PARTICLE_TYPE_ELECTRIC_SPARK_ID,
         "minecraft:electric_spark",
         [
             10.582_860_247_196_765,
@@ -6824,7 +6833,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(electric_fallback.len(), 23);
     assert_particle_command(
         &electric_fallback.commands[0],
-        103,
+        VANILLA_PARTICLE_TYPE_ELECTRIC_SPARK_ID,
         "minecraft:electric_spark",
         [10.117_006_608_807_225, 63.95, -2.218_465_367_954_695_3],
         [0.331_440_988_787_061_2, 0.0, -0.190_949_431_800_290_78],
@@ -6842,7 +6851,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(wax_on.len(), 23);
     assert_particle_command(
         &wax_on.commands[0],
-        101,
+        VANILLA_PARTICLE_TYPE_WAX_ON_ID,
         "minecraft:wax_on",
         [10.117_006_608_807_225, 63.95, -2.218_465_367_954_695_3],
         [0.331_440_988_787_061_2, 0.0, -0.190_949_431_800_290_78],
@@ -6858,7 +6867,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut wax_off_random,
     );
     assert_eq!(wax_off.len(), 23);
-    assert_eq!(wax_off.commands[0].particle_type_id, 102);
+    assert_eq!(
+        wax_off.commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_WAX_OFF_ID
+    );
     assert_eq!(wax_off.commands[0].particle_id, "minecraft:wax_off");
 
     let mut scrape_random = LevelEventSoundRandomState::with_seed(0);
@@ -6870,7 +6882,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut scrape_random,
     );
     assert_eq!(scrape.len(), 23);
-    assert_eq!(scrape.commands[0].particle_type_id, 104);
+    assert_eq!(
+        scrape.commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_SCRAPE_ID
+    );
     assert_eq!(scrape.commands[0].particle_id, "minecraft:scrape");
 
     let mut sculk_charge_full_random = LevelEventSoundRandomState::with_seed(0);
@@ -6981,7 +6996,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut egg_crack_random,
     );
     assert_eq!(egg_crack.len(), 30);
-    assert_eq!(egg_crack.commands[0].particle_type_id, 106);
+    assert_eq!(
+        egg_crack.commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_EGG_CRACK_ID
+    );
     assert_eq!(egg_crack.commands[0].particle_id, "minecraft:egg_crack");
     assert!(!egg_crack.commands[0].override_limiter);
 
@@ -6997,7 +7015,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(trial_spawn.len(), 40);
     assert_particle_command(
         &trial_spawn.commands[0],
-        62,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         [
             10.961_935_574_753_314,
@@ -7009,7 +7027,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_particle_command(
         &trial_spawn.commands[1],
-        32,
+        VANILLA_PARTICLE_TYPE_FLAME_ID,
         "minecraft:flame",
         [
             10.961_935_574_753_314,
@@ -7030,7 +7048,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut trial_spawn_ominous_random,
     );
     assert_eq!(trial_spawn_ominous.len(), 40);
-    assert_eq!(trial_spawn_ominous.commands[1].particle_type_id, 40);
+    assert_eq!(
+        trial_spawn_ominous.commands[1].particle_type_id,
+        VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID
+    );
     assert_eq!(
         trial_spawn_ominous.commands[1].particle_id,
         "minecraft:soul_fire_flame"
@@ -7046,7 +7067,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut trial_spawn_mob_random,
     );
     assert_eq!(trial_spawn_mob.len(), 40);
-    assert_eq!(trial_spawn_mob.commands[1].particle_type_id, 40);
+    assert_eq!(
+        trial_spawn_mob.commands[1].particle_type_id,
+        VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID
+    );
     assert_eq!(
         trial_spawn_mob.commands[1].particle_id,
         "minecraft:soul_fire_flame"
@@ -7064,7 +7088,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(trial_detect.len(), 40);
     assert_particle_command(
         &trial_detect.commands[0],
-        108,
+        VANILLA_PARTICLE_TYPE_TRIAL_SPAWNER_DETECTED_PLAYER_ID,
         "minecraft:trial_spawner_detection",
         [
             10.800_258_088_111_878,
@@ -7086,7 +7110,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(trial_eject.len(), 40);
     assert_particle_command(
         &trial_eject.commands[0],
-        93,
+        VANILLA_PARTICLE_TYPE_SMALL_FLAME_ID,
         "minecraft:small_flame",
         [
             10.546_193_557_475_332,
@@ -7102,7 +7126,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     );
     assert_particle_command(
         &trial_eject.commands[1],
-        62,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         [
             10.546_193_557_475_332,
@@ -7126,8 +7150,14 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut trial_eject_sound_event_random,
     );
     assert_eq!(trial_eject_sound_event.len(), 40);
-    assert_eq!(trial_eject_sound_event.commands[0].particle_type_id, 93);
-    assert_eq!(trial_eject_sound_event.commands[1].particle_type_id, 62);
+    assert_eq!(
+        trial_eject_sound_event.commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_SMALL_FLAME_ID
+    );
+    assert_eq!(
+        trial_eject_sound_event.commands[1].particle_type_id,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID
+    );
 
     let mut missing_vault_activation_random = LevelEventSoundRandomState::with_seed(0);
     let missing_vault_activation = resolver.resolve_level_event_particles(
@@ -7312,7 +7342,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(cobweb_poof.len(), 10);
     assert_particle_command(
         &cobweb_poof.commands[0],
-        59,
+        VANILLA_PARTICLE_TYPE_POOF_ID,
         "minecraft:poof",
         [
             10.597_545_277_797_202,
@@ -7333,7 +7363,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(firework_poof.len(), 2);
     assert_particle_command(
         &firework_poof.commands[0],
-        59,
+        VANILLA_PARTICLE_TYPE_POOF_ID,
         "minecraft:poof",
         [10.0, 64.0, -3.0],
         [0.057_302_703_614_493_14, 0.005, 0.018_385_983_023_454_71],
@@ -7494,7 +7524,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(bee_growth.len(), 3);
     assert_particle_command(
         &bee_growth.commands[0],
-        43,
+        VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
         "minecraft:happy_villager",
         [
             10.597_545_277_797_202,
@@ -7525,7 +7555,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(bee_growth_half_height.len(), 3);
     assert_particle_command(
         &bee_growth_half_height.commands[0],
-        43,
+        VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID,
         "minecraft:happy_villager",
         [
             10.597_545_277_797_202,
@@ -7550,7 +7580,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut turtle_egg_placement_random,
     );
     assert_eq!(turtle_egg_placement.len(), 2);
-    assert_eq!(turtle_egg_placement.commands[0].particle_type_id, 43);
+    assert_eq!(
+        turtle_egg_placement.commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_HAPPY_VILLAGER_ID
+    );
     assert_eq!(
         turtle_egg_placement.commands[0].particle_id,
         "minecraft:happy_villager"
@@ -7577,7 +7610,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut trial_detect_ominous_random,
     );
     assert_eq!(trial_detect_ominous.len(), 80);
-    assert_eq!(trial_detect_ominous.commands[0].particle_type_id, 109);
+    assert_eq!(
+        trial_detect_ominous.commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_ID
+    );
     assert_eq!(
         trial_detect_ominous.commands[0].particle_id,
         "minecraft:trial_spawner_detection_ominous"
@@ -7592,10 +7628,13 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut trial_ominous_activate_random,
     );
     assert_eq!(trial_ominous_activate.len(), 70);
-    assert_eq!(trial_ominous_activate.commands[0].particle_type_id, 109);
+    assert_eq!(
+        trial_ominous_activate.commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_TRIAL_SPAWNER_DETECTED_PLAYER_OMINOUS_ID
+    );
     assert_particle_command(
         &trial_ominous_activate.commands[30],
-        114,
+        VANILLA_PARTICLE_TYPE_TRIAL_OMEN_ID,
         "minecraft:trial_omen",
         [
             11.208_974_334_084_582,
@@ -7609,7 +7648,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         ],
         false,
     );
-    assert_eq!(trial_ominous_activate.commands[31].particle_type_id, 40);
+    assert_eq!(
+        trial_ominous_activate.commands[31].particle_type_id,
+        VANILLA_PARTICLE_TYPE_SOUL_FIRE_FLAME_ID
+    );
     assert_eq!(
         trial_ominous_activate.commands[31].particle_id,
         "minecraft:soul_fire_flame"
@@ -7625,7 +7667,10 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
         &mut trial_spawn_item_random,
     );
     assert_eq!(trial_spawn_item.len(), 40);
-    assert_eq!(trial_spawn_item.commands[1].particle_type_id, 32);
+    assert_eq!(
+        trial_spawn_item.commands[1].particle_type_id,
+        VANILLA_PARTICLE_TYPE_FLAME_ID
+    );
 
     let mut cloud_random = LevelEventSoundRandomState::with_seed(0);
     let cloud = resolver.resolve_level_event_particles(
@@ -7638,7 +7683,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(cloud.len(), 8);
     assert_particle_command(
         &cloud.commands[0],
-        4,
+        VANILLA_PARTICLE_TYPE_CLOUD_ID,
         "minecraft:cloud",
         [10.730_967_787_376_657, 65.2, -2.759_463_584_328_514],
         [0.0, 0.0, 0.0],
@@ -7657,7 +7702,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(dispenser.len(), 10);
     assert_particle_command(
         &dispenser.commands[0],
-        62,
+        VANILLA_PARTICLE_TYPE_SMOKE_ID,
         "minecraft:smoke",
         [11.11, 64.5, -2.474_781_497_441_183],
         [
@@ -7680,7 +7725,7 @@ fn level_event_particles_map_vanilla_simple_side_effects() {
     assert_eq!(white_smoke.len(), 10);
     assert_particle_command(
         &white_smoke.commands[0],
-        63,
+        VANILLA_PARTICLE_TYPE_WHITE_SMOKE_ID,
         "minecraft:white_smoke",
         [10.629_731_792_164_257, 64.5, -3.11],
         [

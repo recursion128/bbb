@@ -234,6 +234,7 @@ mod tests {
         WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
         WrittenBookContentSummary,
     };
+    use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID;
     use bbb_protocol::{
         codec::{Decoder, Encoder},
         ids,
@@ -802,7 +803,7 @@ mod tests {
                 max_speed: 1.5,
                 count: 16,
                 particle: ParticlePayload {
-                    particle_type_id: 45,
+                    particle_type_id: VANILLA_PARTICLE_TYPE_HEART_ID,
                     raw_options: vec![0xaa, 0xbb],
                 },
             }))
@@ -856,7 +857,7 @@ mod tests {
                 },
                 max_speed: 1.5,
                 count: 16,
-                particle_type_id: 45,
+                particle_type_id: VANILLA_PARTICLE_TYPE_HEART_ID,
                 raw_options_len: 2,
             })
         );

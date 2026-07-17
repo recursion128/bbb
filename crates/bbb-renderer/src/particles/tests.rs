@@ -1,5 +1,13 @@
 use super::descriptors::VANILLA_SPORE_BLOSSOM_PARTICLE_LIMIT;
 use super::*;
+use bbb_protocol::particle_types::{
+    vanilla_particle_type_id_for_resource_id, VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
+    VANILLA_PARTICLE_TYPE_FALLING_HONEY_ID, VANILLA_PARTICLE_TYPE_FIREWORK_ID,
+    VANILLA_PARTICLE_TYPE_GUST_ID, VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID,
+    VANILLA_PARTICLE_TYPE_SMOKE_ID,
+};
+
+const ITEM_PICKUP_PARTICLE_TYPE_ID: i32 = -1;
 
 #[test]
 fn particle_spawn_batch_empty_tracks_diagnostics() {
@@ -1109,12 +1117,12 @@ fn particle_runtime_drip_hang_expiration_spawns_falling_child() {
     instance.age_ticks = 1;
     instance.child_spawn_templates = vec![
         ParticleChildSpawnTemplate {
-            particle_type_id: 80,
+            particle_type_id: VANILLA_PARTICLE_TYPE_FALLING_HONEY_ID,
             particle_id: "minecraft:falling_honey".to_string(),
             sprite_ids: vec!["minecraft:drip_0".to_string()],
         },
         ParticleChildSpawnTemplate {
-            particle_type_id: 81,
+            particle_type_id: VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID,
             particle_id: "minecraft:landing_honey".to_string(),
             sprite_ids: vec!["minecraft:drip_1".to_string()],
         },
@@ -1122,7 +1130,10 @@ fn particle_runtime_drip_hang_expiration_spawns_falling_child() {
 
     let commands = instance.removal_child_spawn_commands(ParticleRemovalReason::LifetimeExpired);
     assert_eq!(commands.len(), 1);
-    assert_eq!(commands[0].particle_type_id, 80);
+    assert_eq!(
+        commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_FALLING_HONEY_ID
+    );
     assert_eq!(commands[0].particle_id, "minecraft:falling_honey");
     assert_close3(commands[0].position, [1.0, 2.0, 3.0]);
     assert_close3(commands[0].velocity, [0.01, -0.02, 0.03]);
@@ -1139,7 +1150,10 @@ fn particle_runtime_drip_hang_expiration_spawns_falling_child() {
     assert_eq!(summary.intaken_instances, 1);
     assert_eq!(summary.active_instances, 1);
     let child = &particles.active_instances()[0];
-    assert_eq!(child.particle_type_id, 80);
+    assert_eq!(
+        child.particle_type_id,
+        VANILLA_PARTICLE_TYPE_FALLING_HONEY_ID
+    );
     assert_eq!(child.particle_id, "minecraft:falling_honey");
     assert_eq!(child.provider, "DripParticle.HoneyFallProvider");
     assert_eq!(child.current_sprite_id.as_deref(), Some("minecraft:drip_0"));
@@ -1161,14 +1175,17 @@ fn particle_runtime_drip_fall_and_land_ground_hit_spawns_landing_child() {
     instance.velocity = [0.0, -0.1, 0.0];
     instance.gravity = 0.0;
     instance.child_spawn_templates = vec![ParticleChildSpawnTemplate {
-        particle_type_id: 81,
+        particle_type_id: VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID,
         particle_id: "minecraft:landing_honey".to_string(),
         sprite_ids: vec!["minecraft:drip_1".to_string()],
     }];
     instance.on_ground = true;
     let commands = instance.removal_child_spawn_commands(ParticleRemovalReason::RemovedDuringTick);
     assert_eq!(commands.len(), 1);
-    assert_eq!(commands[0].particle_type_id, 81);
+    assert_eq!(
+        commands[0].particle_type_id,
+        VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID
+    );
     assert_eq!(commands[0].particle_id, "minecraft:landing_honey");
     assert_close3(commands[0].position, [0.0, 0.05, 0.0]);
     assert_eq!(commands[0].velocity, [0.0, 0.0, 0.0]);
@@ -1187,7 +1204,10 @@ fn particle_runtime_drip_fall_and_land_ground_hit_spawns_landing_child() {
     assert_eq!(summary.intaken_instances, 1);
     assert_eq!(summary.active_instances, 1);
     let child = &particles.active_instances()[0];
-    assert_eq!(child.particle_type_id, 81);
+    assert_eq!(
+        child.particle_type_id,
+        VANILLA_PARTICLE_TYPE_LANDING_HONEY_ID
+    );
     assert_eq!(child.particle_id, "minecraft:landing_honey");
     assert_eq!(child.provider, "DripParticle.HoneyLandProvider");
     assert_eq!(child.current_sprite_id.as_deref(), Some("minecraft:drip_1"));
@@ -1617,7 +1637,7 @@ fn particle_runtime_lava_emits_child_smoke_after_tick_when_vanilla_odds_pass() {
     lava.previous_position = lava.position;
     lava.velocity = [0.1, 0.2, 0.3];
     lava.child_spawn_templates = vec![ParticleChildSpawnTemplate {
-        particle_type_id: 62,
+        particle_type_id: VANILLA_PARTICLE_TYPE_SMOKE_ID,
         particle_id: "minecraft:smoke".to_string(),
         sprite_ids: vec!["minecraft:generic_7".to_string()],
     }];
@@ -1634,7 +1654,7 @@ fn particle_runtime_lava_emits_child_smoke_after_tick_when_vanilla_odds_pass() {
     assert_close3(lava.velocity, [0.0999, 0.16983, 0.2997]);
 
     let smoke = &particles.active_instances()[1];
-    assert_eq!(smoke.particle_type_id, 62);
+    assert_eq!(smoke.particle_type_id, VANILLA_PARTICLE_TYPE_SMOKE_ID);
     assert_eq!(smoke.particle_id, "minecraft:smoke");
     assert_eq!(smoke.provider, "SmokeParticle.Provider");
     assert_eq!(
@@ -1696,7 +1716,7 @@ fn particle_runtime_smoke_intake_applies_vanilla_base_particle_spread() {
 #[test]
 fn particle_runtime_huge_explosion_seed_emits_vanilla_child_explosions() {
     let explosion_template = ParticleChildSpawnTemplate {
-        particle_type_id: 23,
+        particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
         particle_id: "minecraft:explosion".to_string(),
         sprite_ids: vec!["minecraft:explosion_0".to_string()],
     };
@@ -1707,7 +1727,7 @@ fn particle_runtime_huge_explosion_seed_emits_vanilla_child_explosions() {
     let commands = seed_for_command.child_spawn_commands(&mut ParticleRandom::new(0));
     assert_eq!(commands.len(), 6);
     for command in &commands {
-        assert_eq!(command.particle_type_id, 23);
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_EXPLOSION_ID);
         assert_eq!(command.particle_id, "minecraft:explosion");
         assert_close3(command.velocity, [2.0 / 8.0, 0.0, 0.0]);
         assert_range_f64(command.position[0], -3.0, 5.0);
@@ -1736,7 +1756,7 @@ fn particle_runtime_huge_explosion_seed_emits_vanilla_child_explosions() {
     let seed = &particles.active_instances()[0];
     assert_eq!(seed.age_ticks, 1);
     for child in particles.active_instances().iter().skip(1) {
-        assert_eq!(child.particle_type_id, 23);
+        assert_eq!(child.particle_type_id, VANILLA_PARTICLE_TYPE_EXPLOSION_ID);
         assert_eq!(child.particle_id, "minecraft:explosion");
         assert_eq!(child.provider, "HugeExplosionParticle.Provider");
         assert_eq!(
@@ -1760,7 +1780,7 @@ fn particle_runtime_huge_explosion_seed_emits_vanilla_child_explosions() {
 #[test]
 fn particle_runtime_gust_seed_emits_vanilla_child_gusts() {
     let gust_template = ParticleChildSpawnTemplate {
-        particle_type_id: 24,
+        particle_type_id: VANILLA_PARTICLE_TYPE_GUST_ID,
         particle_id: "minecraft:gust".to_string(),
         sprite_ids: vec!["minecraft:gust_0".to_string()],
     };
@@ -1771,7 +1791,7 @@ fn particle_runtime_gust_seed_emits_vanilla_child_gusts() {
     let commands = seed_for_command.child_spawn_commands(&mut ParticleRandom::new(0));
     assert_eq!(commands.len(), 3);
     for command in &commands {
-        assert_eq!(command.particle_type_id, 24);
+        assert_eq!(command.particle_type_id, VANILLA_PARTICLE_TYPE_GUST_ID);
         assert_eq!(command.particle_id, "minecraft:gust");
         assert_close3(command.velocity, [1.0 / 7.0, 0.0, 0.0]);
     }
@@ -1797,7 +1817,7 @@ fn particle_runtime_gust_seed_emits_vanilla_child_gusts() {
     let seed = &particles.active_instances()[0];
     assert_eq!(seed.age_ticks, 1);
     for child in particles.active_instances().iter().skip(1) {
-        assert_eq!(child.particle_type_id, 24);
+        assert_eq!(child.particle_type_id, VANILLA_PARTICLE_TYPE_GUST_ID);
         assert_eq!(child.particle_id, "minecraft:gust");
         assert_eq!(child.provider, "GustParticle.Provider");
         assert_eq!(child.current_sprite_id.as_deref(), Some("minecraft:gust_0"));
@@ -2966,7 +2986,7 @@ fn particle_runtime_firework_spark_alpha_preserves_initial_then_fades() {
 fn particle_runtime_firework_trail_spawns_half_lifetime_twinkle_child() {
     let mut particles = ParticleRuntimeState::with_capacities_and_seed(4, 8, 99);
     let mut parent = test_instance_with_lifetime("minecraft:firework", 48);
-    parent.particle_type_id = 30;
+    parent.particle_type_id = VANILLA_PARTICLE_TYPE_FIREWORK_ID;
     parent.sprite_ids = vec!["minecraft:firework_0".to_string()];
     parent.current_sprite_id = Some("minecraft:firework_0".to_string());
     parent.position = [1.0, 2.0, 3.0];
@@ -4969,7 +4989,7 @@ fn particle_instances_sample_provider_visual_state() {
 
     let mut explosion_emitter_command = spawn_command("minecraft:explosion_emitter", 1.0);
     explosion_emitter_command.child_spawn_templates = vec![ParticleChildSpawnTemplate {
-        particle_type_id: 23,
+        particle_type_id: VANILLA_PARTICLE_TYPE_EXPLOSION_ID,
         particle_id: "minecraft:explosion".to_string(),
         sprite_ids: vec!["minecraft:explosion_0".to_string()],
     }];
@@ -5185,7 +5205,7 @@ fn particle_instances_sample_provider_visual_state() {
 
     let mut gust_emitter_large_command = spawn_command("minecraft:gust_emitter_large", 1.0);
     gust_emitter_large_command.child_spawn_templates = vec![ParticleChildSpawnTemplate {
-        particle_type_id: 24,
+        particle_type_id: VANILLA_PARTICLE_TYPE_GUST_ID,
         particle_id: "minecraft:gust".to_string(),
         sprite_ids: vec!["minecraft:gust_0".to_string()],
     }];
@@ -6677,7 +6697,8 @@ fn test_instance_with_lifetime(particle_id: &str, lifetime_ticks: u32) -> Partic
         DEFAULT_PARTICLE_COLLISION_HEIGHT,
     ]);
     ParticleInstance {
-        particle_type_id: 0,
+        particle_type_id: vanilla_particle_type_id_for_resource_id(particle_id)
+            .unwrap_or(ITEM_PICKUP_PARTICLE_TYPE_ID),
         particle_id: particle_id.to_string(),
         sprite_ids: Vec::new(),
         current_sprite_id: None,
@@ -6765,7 +6786,8 @@ fn falling_leaves_instance(particle_id: &str, seed: i64) -> ParticleInstance {
 
 fn spawn_command(particle_id: &str, x: f64) -> ParticleSpawnCommand {
     ParticleSpawnCommand {
-        particle_type_id: 4,
+        particle_type_id: vanilla_particle_type_id_for_resource_id(particle_id)
+            .unwrap_or(ITEM_PICKUP_PARTICLE_TYPE_ID),
         particle_id: particle_id.to_string(),
         sprite_ids: vec!["minecraft:generic_0".to_string()],
         position: [x, 0.0, 0.0],
@@ -6799,7 +6821,7 @@ fn spawn_command(particle_id: &str, x: f64) -> ParticleSpawnCommand {
 
 fn item_pickup_spawn_command() -> ParticleSpawnCommand {
     let mut command = spawn_command(ITEM_PICKUP_PARTICLE_ID, 1.0);
-    command.particle_type_id = -1;
+    command.particle_type_id = ITEM_PICKUP_PARTICLE_TYPE_ID;
     command.sprite_ids.clear();
     command.position = [1.0, 64.0, -2.0];
     command.velocity = [0.1, 0.2, 0.3];

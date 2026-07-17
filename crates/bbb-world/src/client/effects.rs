@@ -292,6 +292,7 @@ mod tests {
     use super::*;
     use crate::LocalPlayerPoseState;
     use bbb_protocol::packets::ParticlePayload;
+    use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID;
 
     #[test]
     fn tracks_last_world_effect_events_and_counters() {
@@ -346,7 +347,7 @@ mod tests {
             max_speed: 1.5,
             count: 16,
             particle: ParticlePayload {
-                particle_type_id: 45,
+                particle_type_id: VANILLA_PARTICLE_TYPE_HEART_ID,
                 raw_options: vec![0xaa, 0xbb],
             },
         });
@@ -365,7 +366,7 @@ mod tests {
             },
             max_speed: 1.5,
             count: 16,
-            particle_type_id: 45,
+            particle_type_id: VANILLA_PARTICLE_TYPE_HEART_ID,
             raw_options_len: 2,
         };
         assert_eq!(level_particles, expected_level_particles);

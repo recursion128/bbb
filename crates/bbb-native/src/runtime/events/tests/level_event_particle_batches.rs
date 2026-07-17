@@ -36,7 +36,7 @@ fn world_effect_events_update_world_counters() {
             max_speed: 1.5,
             count: 16,
             particle: ParticlePayload {
-                particle_type_id: 45,
+                particle_type_id: VANILLA_PARTICLE_TYPE_HEART_ID,
                 raw_options: vec![0xaa, 0xbb],
             },
         },
@@ -102,7 +102,7 @@ fn world_effect_events_update_world_counters() {
             },
             max_speed: 1.5,
             count: 16,
-            particle_type_id: 45,
+            particle_type_id: VANILLA_PARTICLE_TYPE_HEART_ID,
             raw_options_len: 2,
         })
     );
@@ -126,7 +126,7 @@ fn level_particles_emit_particle_runtime_batch_and_world_counters() {
         max_speed: 1.5,
         count: 0,
         particle: ParticlePayload {
-            particle_type_id: 4,
+            particle_type_id: VANILLA_PARTICLE_TYPE_CLOUD_ID,
             raw_options: vec![0xcc],
         },
     };
@@ -193,7 +193,7 @@ fn level_particles_context_resolves_vibration_entity_position_source() {
         max_speed: 0.0,
         count: 0,
         particle: ParticlePayload {
-            particle_type_id: 48,
+            particle_type_id: VANILLA_PARTICLE_TYPE_VIBRATION_ID,
             raw_options,
         },
     };

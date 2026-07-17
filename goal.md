@@ -66,8 +66,8 @@
   新增 play-packet 副作用时，无 sink 的 `PlayApplyEffects` 调用方与 native
   sink 调用方必须走同一条确定性 random/context 路径。
 - 实体 type id 常量一律取自 `bbb_protocol::entity_types`；粒子 type id 常量
-  一律经 `particle_registry::particle_type_ids!` 宏从 `PARTICLE_TYPES_26_1`
-  编译期派生；均不得内联数字。
+  一律取自 `bbb_protocol::particle_types` 的 generated catalog；均不得内联数字。
+  非 Vanilla 注册表的本地粒子哨兵必须单独命名，不能冒充 catalog entry。
 - 实体热路径（spawn/apply/clone）只写窄组件；`EntityState` 投影仅限
   probe/serialize/debug 边界。
 - world→renderer 每帧状态经 `runtime/render_extract.rs` 的 `RendererFrame`

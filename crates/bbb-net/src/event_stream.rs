@@ -316,6 +316,7 @@ mod tests {
     use super::*;
     use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
     use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
+    use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_DAMAGE_INDICATOR_ID;
     use bbb_protocol::{
         codec::{Decoder, Encoder},
         ids,
@@ -2426,7 +2427,7 @@ mod tests {
             max_speed: 0.4,
             count: 12,
             particle: packets::ParticlePayload {
-                particle_type_id: 7,
+                particle_type_id: VANILLA_PARTICLE_TYPE_DAMAGE_INDICATOR_ID,
                 raw_options: vec![0x01, 0x02],
             },
         };

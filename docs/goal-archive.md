@@ -18982,3 +18982,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   piston, or vault role.
 - Extended the core-registry generator with a reverse guard over block-entity-type construction and
   comparison in semantic sources.
+
+# 2026-07-17: Derive semantic particle-type ids
+
+- Replaced numeric ParticleType ordinals in native, world, net, control, and renderer semantic
+  fixtures with constants generated from Vanilla's `ParticleTypes` registration order. Unknown
+  packet ids now derive the first invalid catalog index, and generic renderer fixtures resolve the
+  resource id they actually exercise.
+- Kept the renderer-only `minecraft:item_pickup` `-1` value as an explicitly named non-Vanilla
+  sentinel. Extended the core-registry generator with a reverse guard over semantic construction,
+  assignment, comparison, JSON projection, and particle helper fixtures while leaving protocol
+  wire samples under the packet-codec owner.

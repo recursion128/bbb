@@ -46,6 +46,7 @@ use bbb_protocol::packets::{
     Vec3i as ProtocolVec3i, WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation,
     WaypointVec3i, WrittenBookContentSummary,
 };
+use bbb_protocol::particle_types::*;
 use bbb_world::{
     advance_cobweb_place_particle_randoms, vanilla_entity_metadata_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_entity_accessors,

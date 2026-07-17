@@ -144,6 +144,11 @@ Owner: `scripts/` + each generated catalog's semantic crate
   constants for their actual sign, banner, spawner, decorated-pot, end-gateway, jukebox, piston, or
   vault role instead of retaining numeric placeholders; the core-registry generator owns the
   reverse guard.
+  Semantic particle packet/state/runtime/renderer fixtures must use generated ParticleType
+  constants or the generated resource-id lookup instead of numeric catalog ids; unknown ids derive
+  the first invalid catalog index, while the non-Vanilla item-pickup sentinel remains explicitly
+  named. The core-registry generator owns the reverse guard and leaves protocol wire samples under
+  their packet-codec owner.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test
