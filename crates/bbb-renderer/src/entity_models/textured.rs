@@ -4895,6 +4895,7 @@ pub(in crate::entity_models) fn render_llama_decor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
 ) {
     if meshes.current_force_transparent || meshes.current_outline_only {
         return;
@@ -4939,6 +4940,63 @@ pub(in crate::entity_models) fn render_llama_decor_layer(
         pass,
         atlas,
     );
+
+    // The trader fallback above supplies `ItemStack.EMPTY`; only an adult carpet item can carry
+    // foil or trim components through `EquipmentLayerRenderer`.
+    if baby || instance.render_state.llama_body_decor.is_none() {
+        return;
+    }
+    let transform = entity_model_root_transform(instance);
+    let mut next_order = 2;
+    let mut next_submit_sequence = 2;
+    if instance.render_state.llama_body_decor_foil {
+        let pass = equipment_layer_pass(
+            EntityModelLayerKind::LlamaDecor,
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            MODEL_LAYER_LLAMA_DECOR,
+            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+            [1.0; 4],
+            next_order,
+            next_submit_sequence,
+        );
+        render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+        next_order += 1;
+        next_submit_sequence += 1;
+    }
+    if let Some(trim) = instance.render_state.llama_body_decor_trim {
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
+            let render_type = if trim.decal {
+                EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+            } else {
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            };
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::LlamaDecor,
+                render_type,
+                MODEL_LAYER_LLAMA_DECOR,
+                texture,
+                [1.0; 4],
+                next_order,
+                next_submit_sequence,
+            );
+            let submit =
+                no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| {
+                    model.root().render_textured(
+                        mesh,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                    );
+                },
+            );
+        }
+    }
 }
 
 const VILLAGER_NO_HAT_EXCLUDED_PARTS: [&str; 2] = ["hat", "hat_rim"];

@@ -1116,6 +1116,10 @@ entity_render_state! {
     /// equipment asset is one of the 16 carpet colors. Baby llamas ignore body items for the decor
     /// layer; trader llamas render their built-in decor when this is `None`.
     (with_llama_body_decor) llama_body_decor: Option<EntityDyeColor> = None;
+    /// Vanilla armor trim over an adult carpet item's `LLAMA_BODY` equipment model.
+    (with_llama_body_decor_trim) llama_body_decor_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for an adult llama carpet item. Built-in trader decor has none.
+    (with_llama_body_decor_foil) llama_body_decor_foil: bool = false;
     /// Vanilla `IllagerRenderState.armPose == SPELLCASTING` (`SpellcasterIllager.isCastingSpell()`,
     /// the synced `DATA_SPELL_CASTING_ID` byte > 0): a casting evoker/illusioner, whose
     /// `IllagerModel.setupAnim` hides the crossed `arms` part and raises the two separate arms
@@ -3099,6 +3103,8 @@ mod tests {
                 nautilus_body_armor_foil: false,
                 snow_golem_pumpkin: false,
                 llama_body_decor: None,
+                llama_body_decor_trim: None,
+                llama_body_decor_foil: false,
                 illager_spellcasting: false,
                 illager_celebrating: false,
                 illager_main_hand_empty: false,

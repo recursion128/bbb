@@ -2212,6 +2212,14 @@ entity_model_source_state! {
     /// built-in trader decor in the renderer when this is `None`.
     #[serde(default)]
     pub llama_body_decor: Option<LlamaBodyDecorColor>,
+    /// Vanilla `ArmorTrim.layerAssetId` for an adult carpet item's `LLAMA_BODY` equipment layer.
+    /// Trader-llama built-in decor uses `ItemStack.EMPTY` and therefore has no trim.
+    #[serde(default)]
+    pub llama_body_decor_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for an adult llama's carpet body item. Trader-llama built-in
+    /// decor and baby decor use no item foil.
+    #[serde(default)]
+    pub llama_body_decor_foil: bool,
     /// Vanilla `NautilusRenderState.bodyArmorItem`: an adult living nautilus / zombie nautilus body
     /// equipment item whose equipment asset has a `nautilus_body` layer. Baby living nautilus skip it
     /// because `SimpleEquipmentLayer` supplies no baby armor model.
@@ -2301,6 +2309,29 @@ pub enum LlamaBodyDecorColor {
     Green,
     Red,
     Black,
+}
+
+impl LlamaBodyDecorColor {
+    pub(crate) const fn equipment_asset_id(self) -> &'static str {
+        match self {
+            Self::White => "minecraft:white_carpet",
+            Self::Orange => "minecraft:orange_carpet",
+            Self::Magenta => "minecraft:magenta_carpet",
+            Self::LightBlue => "minecraft:light_blue_carpet",
+            Self::Yellow => "minecraft:yellow_carpet",
+            Self::Lime => "minecraft:lime_carpet",
+            Self::Pink => "minecraft:pink_carpet",
+            Self::Gray => "minecraft:gray_carpet",
+            Self::LightGray => "minecraft:light_gray_carpet",
+            Self::Cyan => "minecraft:cyan_carpet",
+            Self::Purple => "minecraft:purple_carpet",
+            Self::Blue => "minecraft:blue_carpet",
+            Self::Brown => "minecraft:brown_carpet",
+            Self::Green => "minecraft:green_carpet",
+            Self::Red => "minecraft:red_carpet",
+            Self::Black => "minecraft:black_carpet",
+        }
+    }
 }
 
 /// A humanoid armor equipment-asset material (vanilla `ArmorMaterials.<MAT>` → `EquipmentAssets.<MAT>`),

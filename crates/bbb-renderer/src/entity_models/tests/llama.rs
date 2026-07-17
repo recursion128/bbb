@@ -2,6 +2,7 @@ use super::*;
 
 use super::super::textured::EntityModelRenderSubmission;
 use crate::entity_models::model::ModelCube;
+use crate::DynamicEntityTextureImage;
 
 #[test]
 fn llama_model_parts_match_vanilla_26_1_body_layers() {
@@ -587,6 +588,175 @@ fn llama_textured_mesh_renders_vanilla_decor_layer() {
         1,
         1,
     );
+}
+
+#[test]
+fn llama_carpet_trim_follows_foil_and_trader_fallback_keeps_empty_stack_semantics() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        LLAMA_CREAMY_TEXTURE_REF,
+        LLAMA_CREAMY_BABY_TEXTURE_REF,
+        LLAMA_BODY_WHITE_TEXTURE_REF,
+        LLAMA_BODY_BLACK_TEXTURE_REF,
+        LLAMA_BODY_TRADER_TEXTURE_REF,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+    ]))
+    .unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 91_401 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: LLAMA_BODY_WHITE_TEXTURE_REF.size,
+        rgba: vec![0xff; 128 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let trim = EntityArmorTrim {
+        texture: trim_texture,
+        decal: false,
+    };
+    let adult = EntityModelInstance::llama(
+        613,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::Llama,
+        LlamaVariant::Creamy,
+        false,
+        false,
+    )
+    .with_llama_body_decor(Some(EntityDyeColor::White))
+    .with_llama_body_decor_foil(true)
+    .with_llama_body_decor_trim(Some(trim));
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[adult],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    assert_eq!(meshes.submissions.len(), 4);
+    assert_llama_base_submission_at(&meshes, 0, adult);
+    assert_eq!(
+        (
+            meshes.submissions[1].texture,
+            meshes.submissions[1].render_type,
+            meshes.submissions[1].order,
+            meshes.submissions[1].submit_sequence,
+        ),
+        (
+            LLAMA_BODY_WHITE_TEXTURE_REF,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            1,
+            1,
+        )
+    );
+    assert_eq!(
+        (
+            meshes.submissions[2].render_type,
+            meshes.submissions[2].order,
+            meshes.submissions[2].submit_sequence,
+        ),
+        (EntityModelLayerRenderType::ArmorEntityGlint, 2, 2)
+    );
+    let trim_submit = meshes.submissions[3];
+    assert_eq!(
+        trim_submit.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!(trim_submit.texture, LLAMA_BODY_WHITE_TEXTURE_REF);
+    assert_eq!(trim_submit.dynamic_texture, Some(trim_texture));
+    assert_eq!((trim_submit.order, trim_submit.submit_sequence), (3, 3));
+    assert_eq!(meshes.armor_entity_glint.vertices.len(), 216);
+    assert_eq!(
+        meshes.dynamic_player_texture_armor_trim.vertices.len(),
+        216,
+        "the trim reuses the posed adult LLAMA_DECOR model"
+    );
+
+    let adult_trader = EntityModelInstance::llama(
+        614,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::TraderLlama,
+        LlamaVariant::Creamy,
+        false,
+        false,
+    );
+    let trader_fallback = adult_trader
+        .with_llama_body_decor_foil(true)
+        .with_llama_body_decor_trim(Some(trim));
+    let trader_fallback_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[trader_fallback],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(trader_fallback_meshes.submissions.len(), 2);
+    assert_eq!(
+        trader_fallback_meshes.submissions[1].texture,
+        LLAMA_BODY_TRADER_TEXTURE_REF
+    );
+    assert!(trader_fallback_meshes
+        .armor_entity_glint
+        .vertices
+        .is_empty());
+    assert!(trader_fallback_meshes
+        .dynamic_player_texture_armor_trim
+        .vertices
+        .is_empty());
+
+    let carpeted_trader = adult_trader
+        .with_llama_body_decor(Some(EntityDyeColor::Black))
+        .with_llama_body_decor_foil(true)
+        .with_llama_body_decor_trim(Some(trim));
+    let carpeted_trader_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[carpeted_trader],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(carpeted_trader_meshes.submissions.len(), 4);
+    assert_eq!(
+        carpeted_trader_meshes.submissions[1].texture, LLAMA_BODY_BLACK_TEXTURE_REF,
+        "an explicit adult carpet wins over the trader fallback"
+    );
+    assert_eq!(
+        carpeted_trader_meshes.submissions[2].render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!(
+        carpeted_trader_meshes.submissions[3].dynamic_texture,
+        Some(trim_texture)
+    );
+
+    let baby_trader = EntityModelInstance::llama(
+        615,
+        [0.0, 64.0, 0.0],
+        0.0,
+        LlamaModelFamily::TraderLlama,
+        LlamaVariant::Creamy,
+        true,
+        false,
+    )
+    .with_llama_body_decor(Some(EntityDyeColor::Black))
+    .with_llama_body_decor_foil(true)
+    .with_llama_body_decor_trim(Some(trim));
+    let baby_trader_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[baby_trader],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(baby_trader_meshes.submissions.len(), 2);
+    assert_eq!(
+        baby_trader_meshes.submissions[1].texture,
+        LLAMA_BODY_TRADER_BABY_TEXTURE_REF
+    );
+    assert!(baby_trader_meshes.armor_entity_glint.vertices.is_empty());
+    assert!(baby_trader_meshes
+        .dynamic_player_texture_armor_trim
+        .vertices
+        .is_empty());
 }
 
 #[test]

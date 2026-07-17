@@ -1748,16 +1748,31 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
         ItemStackSummary {
             item_id: Some(item_id),
             count,
-            component_patch: Default::default(),
+            component_patch: DataComponentPatchSummary {
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                armor_trim_material_id: Some(1), // iron
+                armor_trim_pattern_id: Some(0),  // sentry
+                ..Default::default()
+            },
         }
     }
-    fn llama_decor(store: &WorldStore, entity_id: i32) -> Option<LlamaBodyDecorColor> {
-        store
+    fn llama_decor(
+        store: &WorldStore,
+        entity_id: i32,
+    ) -> (Option<LlamaBodyDecorColor>, Option<ArmorTrimSprite>, bool) {
+        let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
-            .unwrap()
-            .llama_body_decor
+            .unwrap();
+        (
+            source.llama_body_decor,
+            source.llama_body_decor_trim,
+            source.llama_body_decor_foil,
+        )
     }
 
     let mut store = WorldStore::new();
@@ -1798,7 +1813,7 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
     }
     assert_eq!(
         llama_decor(&store, 74),
-        None,
+        (None, None, false),
         "without the item registry's llama carpet map, a raw body item id is not enough"
     );
 
@@ -1806,16 +1821,31 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
         (WHITE_CARPET_ITEM_ID, LlamaBodyDecorColor::White),
         (BLACK_CARPET_ITEM_ID, LlamaBodyDecorColor::Black),
     ]));
-    assert_eq!(llama_decor(&store, 74), Some(LlamaBodyDecorColor::White));
-    assert_eq!(llama_decor(&store, 75), Some(LlamaBodyDecorColor::Black));
+    let expected_trim = Some(ArmorTrimSprite {
+        sprite_id: "minecraft:trims/entity/llama_body/sentry_iron".to_string(),
+        decal: false,
+    });
+    assert_eq!(
+        llama_decor(&store, 74),
+        (
+            Some(LlamaBodyDecorColor::White),
+            expected_trim.clone(),
+            true
+        )
+    );
+    assert_eq!(
+        llama_decor(&store, 75),
+        (Some(LlamaBodyDecorColor::Black), expected_trim, true),
+        "an explicit carpet wins over the trader-llama empty-stack fallback"
+    );
     assert_eq!(
         llama_decor(&store, 76),
-        None,
+        (None, None, false),
         "non-llamas do not project the llama body decor flag"
     );
     assert_eq!(
         llama_decor(&store, 77),
-        None,
+        (None, None, false),
         "baby llamas ignore body items for the decor layer"
     );
 
@@ -1826,7 +1856,7 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert_eq!(llama_decor(&store, 74), None);
+    assert_eq!(llama_decor(&store, 74), (None, None, false));
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 75,
@@ -1835,7 +1865,7 @@ fn entity_model_sources_project_llama_body_decor_from_body_slot() {
             item: stack(BLACK_CARPET_ITEM_ID, 0),
         }],
     }));
-    assert_eq!(llama_decor(&store, 75), None);
+    assert_eq!(llama_decor(&store, 75), (None, None, false));
 }
 
 #[test]

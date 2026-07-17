@@ -7151,6 +7151,12 @@ fn entity_model_instances_project_wolf_body_armor_render_state() {
 fn entity_model_instances_project_llama_body_decor_render_state() {
     const WHITE_CARPET_ITEM_ID: i32 = 745;
     const BLACK_CARPET_ITEM_ID: i32 = 746;
+    let trim_texture = EntityDynamicTexture { handle: 42_4311 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/llama_body/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
 
     let body_item = |entity_id: i32, item_id: i32| SetEquipment {
         entity_id,
@@ -7159,17 +7165,34 @@ fn entity_model_instances_project_llama_body_decor_render_state() {
             item: ItemStackSummary {
                 item_id: Some(item_id),
                 count: 1,
-                component_patch: DataComponentPatchSummary::default(),
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
             },
         }],
     };
     let llama_body_decor = |world: &WorldStore, id: i32| {
-        entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state
-            .llama_body_decor
+        let render_state = entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state;
+        (
+            render_state.llama_body_decor,
+            render_state.llama_body_decor_trim,
+            render_state.llama_body_decor_foil,
+        )
     };
 
     let mut world = WorldStore::new();
@@ -7201,11 +7224,22 @@ fn entity_model_instances_project_llama_body_decor_render_state() {
     assert!(world.apply_set_equipment(body_item(121, BLACK_CARPET_ITEM_ID)));
     assert!(world.apply_set_equipment(body_item(122, WHITE_CARPET_ITEM_ID)));
 
-    assert_eq!(llama_body_decor(&world, 120), Some(EntityDyeColor::White));
-    assert_eq!(llama_body_decor(&world, 121), Some(EntityDyeColor::Black));
+    let expected_trim = Some(EntityArmorTrim {
+        texture: trim_texture,
+        decal: false,
+    });
+    assert_eq!(
+        llama_body_decor(&world, 120),
+        (Some(EntityDyeColor::White), expected_trim, true)
+    );
+    assert_eq!(
+        llama_body_decor(&world, 121),
+        (Some(EntityDyeColor::Black), expected_trim, true),
+        "an explicit carpet wins over the trader-llama empty-stack fallback"
+    );
     assert_eq!(
         llama_body_decor(&world, 122),
-        None,
+        (None, None, false),
         "baby llamas ignore body items; renderer handles trader baby fallback separately"
     );
 }

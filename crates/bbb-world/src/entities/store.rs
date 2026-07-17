@@ -1659,6 +1659,17 @@ impl EntityStore {
         } else {
             None
         };
+        let llama_body_decor_trim = llama_body_decor.and_then(|color| {
+            armor_trim_sprite(
+                registries,
+                body_slot_item()?,
+                color.equipment_asset_id(),
+                ArmorTrimLayer::LlamaBody,
+            )
+        });
+        let llama_body_decor_foil = llama_body_decor
+            .and_then(|_| body_slot_item())
+            .is_some_and(ItemStackSummary::has_foil);
         let nautilus_body_armor = if is_vanilla_abstract_nautilus_type(identity.entity_type_id)
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
         {
@@ -2574,6 +2585,8 @@ impl EntityStore {
                 partial_ticks,
             ),
             llama_body_decor,
+            llama_body_decor_trim,
+            llama_body_decor_foil,
             nautilus_body_armor,
             nautilus_body_armor_trim,
             nautilus_body_armor_foil,

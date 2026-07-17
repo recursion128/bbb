@@ -733,7 +733,12 @@ impl EntityModelSink for TexturedSink<'_> {
             &llama_textured_layer_passes(variant, baby, has_chest),
             llama_model_color(family, variant),
         );
-        render_llama_decor_layer(self.meshes, *instance, self.atlas);
+        render_llama_decor_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+        );
     }
 
     fn nautilus_model(&mut self, baby: bool, instance: &EntityModelInstance) {

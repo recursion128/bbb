@@ -651,6 +651,10 @@ pub(super) fn entity_model_instance(
             variant_registries,
         ))
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
+        .with_llama_body_decor_trim(armor_trim(
+            source.llama_body_decor_trim.as_ref(),
+            variant_registries,
+        ))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_end_crystal_beam(end_crystal_beam(source.end_crystal_beam))
         .with_ender_dragon_beam(ender_dragon_beam(source.ender_dragon_beam))
@@ -807,6 +811,7 @@ pub(super) fn entity_model_instance(
         with_camel_saddle_ridden camel_saddle_ridden,
         with_nautilus_saddle nautilus_saddle,
         with_nautilus_body_armor_foil nautilus_body_armor_foil,
+        with_llama_body_decor_foil llama_body_decor_foil,
         with_is_crouching is_crouching,
         with_elytra_rot_x elytra_rot_x,
         with_elytra_rot_y elytra_rot_y,

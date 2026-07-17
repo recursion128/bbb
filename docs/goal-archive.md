@@ -18607,3 +18607,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   trim-atlas handle; baby living nautilus suppress all equipment layers.
 - Tests lock the full world/native/renderer path, including `iron_darker`, missing-sprite fallback,
   192-vertex posed trim geometry, and the saddle's advanced collector sequence.
+
+# 2026-07-17: Render llama carpet armor trims and foil
+
+- Extended trim projection with vanilla's `LLAMA_BODY` prefix and each carpet color's exact
+  equipment-asset id, carrying adult carpet item trim and foil through world, native, and the shared
+  runtime trim atlas.
+- Adult carpet decor now submits base equipment → optional foil → regular/decal trim on the posed
+  llama decor model. An explicit carpet still wins on trader llamas, while the built-in adult and
+  baby trader decorations retain vanilla's `ItemStack.EMPTY` semantics and never inherit trim or
+  foil.
+- Focused tests lock ordinary and trader carpet rendering, baby suppression, the 216-vertex trim
+  model, and exact collector order.
