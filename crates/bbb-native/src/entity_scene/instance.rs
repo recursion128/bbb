@@ -700,6 +700,7 @@ pub(super) fn entity_model_instance(
         with_death_time death_time,
         with_ender_dragon_death_time ender_dragon_death_time,
         with_scale scale,
+        with_age_scale age_scale,
         with_swim_amount swim_amount,
         with_in_water in_water,
         with_on_ground on_ground,

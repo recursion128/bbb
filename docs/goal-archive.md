@@ -18550,3 +18550,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - `MinecartSpawner.handleEntityEvent(1)` now closes the only missing delegated state mutation by
   applying `BaseSpawner.onEventTriggered`'s client-side `spawnDelay = minSpawnDelay` over the
   vanilla 20/200 defaults.
+
+# 2026-07-17: Project source-generated baby age scale through model setup
+
+- Metadata generation now resolves the nearest vanilla `LivingEntity.isBaby()` and
+  `getAgeScale()` implementations for every fixed living runtime class. This preserves the exact
+  Armadillo/Camel/Dolphin/Goat/HappyGhast/Turtle overrides, ArmorStand's small flag, and explicit
+  false overrides such as CamelHusk, Frog, Parrot, and ZombieNautilus without a hand-maintained
+  entity-type table.
+- World projects `age_scale` independently from the `SCALE` attribute-backed model `scale`, and
+  native forwards both fields unchanged into renderer state.
+- Humanoid attack anchors, equine tail motion, feline/fox poses, polar-bear standing, sheep eating,
+  and wolf sitting now consume the projected value in every repo-native `setupAnim` equivalent.
+  Generated reverse guards and world/native/renderer semantic tests lock the full path.

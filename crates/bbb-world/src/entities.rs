@@ -1725,6 +1725,11 @@ entity_model_source_state! {
     /// for an entity at its default size (and every non-living entity).
     #[serde(default = "entity_model_source_default_scale")]
     pub scale: f32,
+    /// Vanilla `LivingEntityRenderState.ageScale` (`LivingEntity.getAgeScale`), used only by model
+    /// `setupAnim` proportions. This is independent of the SCALE attribute-backed [`scale`](Self::scale):
+    /// adults and non-living entities use `1.0`, while baby values follow the generated class override.
+    #[serde(default = "entity_model_source_default_scale")]
+    pub age_scale: f32,
     /// Vanilla `LivingEntityRenderState.swimAmount` (`LivingEntity.getSwimAmount(partialTick)`): the
     /// eased 0..1 blend toward `Entity.isVisuallySwimming()`. The drowned render path currently
     /// consumes it for the body pitch and limb swim overrides; `0.0` for dry/non-swimming entities.

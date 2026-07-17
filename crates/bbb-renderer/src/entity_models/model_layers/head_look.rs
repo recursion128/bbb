@@ -263,7 +263,8 @@ pub(in crate::entity_models) fn apply_humanoid_walk(
 /// `yRot += bodyYRot` (the left arm also `xRot += bodyYRot`); then the attacking arm
 /// (`attack_arm_off_hand` → left) gets `xRot -= sin(outQuart(t) · π) · 1.2 + sin(t · π) · -(headXRot -
 /// 0.7) · 0.75`, `yRot += bodyYRot · 2`, `zRot += sin(t · π) · -0.4`. `head_pitch_degrees` is the head
-/// look pitch (vanilla `head.xRot`); `age_scale` is the model scale (`1.0` adult). A no-op at
+/// look pitch (vanilla `head.xRot`); `age_scale` is `LivingEntityRenderState.ageScale`, independent
+/// of the SCALE attribute-backed entity model scale. A no-op at
 /// `attack_anim <= 0`. Runs LAST — after the walk swing / arm pose — accumulating onto their rotations
 /// and overwriting the arm anchor offsets. Use [`apply_humanoid_stab_attack_animation`] for the per-item
 /// STAB branch and [`apply_humanoid_no_swing_attack_animation`] for the per-item NONE branch.
@@ -1212,8 +1213,8 @@ pub(in crate::entity_models) fn apply_wolf_sitting_pose(
     pose: &mut PartPose,
     part: WolfSitPart,
     baby: bool,
+    age_scale: f32,
 ) {
-    let age_scale = if baby { 0.5 } else { 1.0 };
     match part {
         WolfSitPart::Body => {
             pose.offset[1] += 4.0 * age_scale;

@@ -619,7 +619,7 @@ impl EntityModel for PiglinModel {
                     &mut self.root,
                     render_state.attack_anim,
                     render_state.attack_arm_off_hand,
-                    1.0,
+                    render_state.age_scale,
                 );
                 for name in ["right_arm", "left_arm"] {
                     let arm = self.root.child_mut(name);
@@ -645,14 +645,14 @@ impl EntityModel for PiglinModel {
                     &mut self.root,
                     render_state.attack_anim,
                     render_state.attack_arm_off_hand,
-                    1.0,
+                    render_state.age_scale,
                 );
             } else if render_state.main_hand_swing_is_none {
                 apply_humanoid_no_swing_attack_animation(
                     &mut self.root,
                     render_state.attack_anim,
                     render_state.attack_arm_off_hand,
-                    1.0,
+                    render_state.age_scale,
                 );
             } else {
                 apply_humanoid_attack_animation(
@@ -660,7 +660,7 @@ impl EntityModel for PiglinModel {
                     render_state.attack_anim,
                     render_state.attack_arm_off_hand,
                     render_state.head_pitch,
-                    1.0,
+                    render_state.age_scale,
                 );
             }
         }

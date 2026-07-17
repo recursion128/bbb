@@ -224,12 +224,11 @@ pub(in crate::entity_models) fn sheep_head_at_rest(
 /// assignments.
 pub(in crate::entity_models) fn sheep_head_pose(
     head_pose: PartPose,
-    baby: bool,
+    age_scale: f32,
     head_eat: SheepHeadEatPose,
     head_yaw_deg: f32,
     head_pitch_deg: f32,
 ) -> PartPose {
-    let age_scale = if baby { 0.5 } else { 1.0 };
     let x_rot = if head_eat.is_resting() {
         head_pitch_deg.to_radians()
     } else {
@@ -338,7 +337,7 @@ fn baby_sheep_tree() -> ModelPart {
 /// Vanilla `SheepModel.setupAnim`: `super.setupAnim` (the `QuadrupedModel` leg swing) then the
 /// eat-grass head pose ([`sheep_head_pose`], folded with the head look). Shared by the body and fur
 /// layers — both move together. The head pose is skipped while fully at rest ([`sheep_head_at_rest`]).
-fn apply_sheep_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
+fn apply_sheep_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let render_state = &instance.render_state;
     if !sheep_head_at_rest(
         render_state.head_eat,
@@ -348,7 +347,7 @@ fn apply_sheep_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInst
         let head = root.child_mut("head");
         head.pose = sheep_head_pose(
             head.pose,
-            baby,
+            render_state.age_scale,
             render_state.head_eat,
             render_state.head_yaw,
             render_state.head_pitch,
@@ -367,7 +366,6 @@ fn apply_sheep_anim(root: &mut ModelPart, baby: bool, instance: &EntityModelInst
 /// the same tree recolored with the wool tint.
 pub(in crate::entity_models) struct SheepModel {
     root: ModelPart,
-    baby: bool,
 }
 
 impl SheepModel {
@@ -377,7 +375,7 @@ impl SheepModel {
         } else {
             adult_sheep_body_tree()
         };
-        Self { root, baby }
+        Self { root }
     }
 }
 
@@ -391,7 +389,7 @@ impl EntityModel for SheepModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        apply_sheep_anim(&mut self.root, self.baby, instance);
+        apply_sheep_anim(&mut self.root, instance);
     }
 }
 
@@ -402,7 +400,6 @@ impl EntityModel for SheepModel {
 /// invisible.
 pub(in crate::entity_models) struct SheepFurModel {
     root: ModelPart,
-    baby: bool,
 }
 
 impl SheepFurModel {
@@ -412,7 +409,7 @@ impl SheepFurModel {
         } else {
             adult_sheep_wool_tree()
         };
-        Self { root, baby }
+        Self { root }
     }
 }
 
@@ -426,6 +423,6 @@ impl EntityModel for SheepFurModel {
     }
 
     fn setup_anim(&mut self, instance: &EntityModelInstance) {
-        apply_sheep_anim(&mut self.root, self.baby, instance);
+        apply_sheep_anim(&mut self.root, instance);
     }
 }

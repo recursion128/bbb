@@ -493,7 +493,12 @@ impl EntityModel for WolfModel {
         let baby = self.baby;
         if render_state.wolf_sitting {
             for (name, role) in wolf_sitting_part_roles() {
-                apply_wolf_sitting_pose(&mut self.root.child_mut(name).pose, role, baby);
+                apply_wolf_sitting_pose(
+                    &mut self.root.child_mut(name).pose,
+                    role,
+                    baby,
+                    render_state.age_scale,
+                );
             }
         } else {
             for name in WOLF_LEG_NAMES {

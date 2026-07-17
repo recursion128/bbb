@@ -443,7 +443,7 @@ fn fox_set_walking_pose(root: &mut ModelPart, baby: bool, instance: &EntityModel
 /// crouchAmount / 6`.
 fn fox_set_crouching_pose(root: &mut ModelPart, baby: bool, instance: &EntityModelInstance) {
     let state = &instance.render_state;
-    let age_scale = fox_age_scale(baby);
+    let age_scale = state.age_scale;
     let crouch = state.fox_crouch_amount;
     let wiggle = state.age_in_ticks.cos() * 0.05;
 
@@ -500,8 +500,7 @@ fn fox_set_sleeping_pose(root: &mut ModelPart, baby: bool) {
 /// Vanilla `FoxModel.setSittingPose` + the adult/baby override (the base sets `head.xRot/yRot = 0`). The
 /// adult folds the body down and back, lifts the hind legs and pitches the front legs and tail; the baby
 /// scales most shifts by `ageScale`.
-fn fox_set_sitting_pose(root: &mut ModelPart, baby: bool) {
-    let age_scale = fox_age_scale(baby);
+fn fox_set_sitting_pose(root: &mut ModelPart, baby: bool, age_scale: f32) {
     if baby {
         let body = root.child_mut("body");
         body.pose.rotation[0] = -0.959931;
@@ -570,17 +569,6 @@ const FOX_LEG_NAMES: [&str; 4] = [
     "right_front_leg",
     "left_front_leg",
 ];
-
-/// Vanilla `state.ageScale` for the fox = `LivingEntity.getAgeScale()` (`0.5` baby / `1.0` adult). The
-/// fox does NOT override `getAgeScale`; `Fox.BABY_SCALE = 0.6` only scales the bounding box, not the
-/// model. `setCrouchingPose` multiplies the head lift by this.
-fn fox_age_scale(baby: bool) -> f32 {
-    if baby {
-        0.5
-    } else {
-        1.0
-    }
-}
 
 /// Vanilla `BabyFoxModel`'s `applyWalk(walkPos, walkSpeed, 1.0, 2.5)` factors: `MAX_WALK_ANIMATION_SPEED`
 /// and `WALK_ANIMATION_SCALE_FACTOR`. The speed factor scales `walkPos` into the animation time; the
@@ -782,7 +770,7 @@ impl EntityModel for FoxModel {
         } else if state.fox_is_sleeping {
             fox_set_sleeping_pose(&mut self.root, baby);
         } else if state.fox_is_sitting {
-            fox_set_sitting_pose(&mut self.root, baby);
+            fox_set_sitting_pose(&mut self.root, baby, instance.render_state.age_scale);
         }
 
         // The pounce drop layers on top of whichever pose ran.

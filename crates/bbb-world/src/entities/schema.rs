@@ -666,6 +666,13 @@ pub struct VanillaCopperGolemMetadataAccessors {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaEntityBabyBehavior {
+    Never,
+    Metadata,
+    ArmorStandSmall,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub entity_type_id: i32,
     pub constant_name: &'static str,
@@ -674,6 +681,10 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub schema_class: Option<&'static str>,
     /// Nearest vanilla class that declares `handleEntityEvent(byte)` for this runtime type.
     pub handle_entity_event_owner: Option<&'static str>,
+    /// Source-derived nearest `LivingEntity.isBaby()` behavior for this runtime class.
+    pub baby_behavior: VanillaEntityBabyBehavior,
+    /// Baby branch of the nearest `LivingEntity.getAgeScale()` implementation, as exact f32 bits.
+    pub baby_age_scale_bits: u32,
     pub is_pickable_by_class: bool,
     pub sound_source_kind: VanillaEntitySoundSourceKind,
     pub pushability_kind: VanillaEntityPushabilityKind,
@@ -3836,6 +3847,18 @@ pub fn vanilla_entity_metadata_baby_accessor_for_entity_type(
     }
 }
 
+/// Returns source-derived `isBaby` dispatch and the exact baby `getAgeScale` value for a living
+/// runtime type. Non-living and unknown ids have no living age-scale state.
+pub(crate) fn vanilla_entity_metadata_baby_behavior_and_age_scale(
+    entity_type_id: i32,
+) -> Option<(VanillaEntityBabyBehavior, f32)> {
+    let entry = VANILLA_ENTITY_TYPE_METADATA_26_1.get(usize::try_from(entity_type_id).ok()?)?;
+    entry.is_living.then_some((
+        entry.baby_behavior,
+        f32::from_bits(entry.baby_age_scale_bits),
+    ))
+}
+
 /// Resolves the nearest generated boolean `AGE_LOCKED` accessor and its typed default.
 ///
 /// Vanilla declares this field on `AgeableMob` and independently on `Tadpole`; walking the
@@ -4387,24 +4410,25 @@ mod tests {
         VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_FOX_ID,
         VANILLA_ENTITY_TYPE_FROG_ID, VANILLA_ENTITY_TYPE_FURNACE_MINECART_ID,
         VANILLA_ENTITY_TYPE_GHAST_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_GUARDIAN_ID, VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
-        VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
-        VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_ITEM_ID, VANILLA_ENTITY_TYPE_LEASH_KNOT_ID,
-        VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LLAMA_ID,
-        VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MINECART_ID,
-        VANILLA_ENTITY_TYPE_MOOSHROOM_ID, VANILLA_ENTITY_TYPE_MULE_ID,
-        VANILLA_ENTITY_TYPE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
-        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
-        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PAINTING_ID,
-        VANILLA_ENTITY_TYPE_PANDA_ID, VANILLA_ENTITY_TYPE_PARCHED_ID,
-        VANILLA_ENTITY_TYPE_PARROT_ID, VANILLA_ENTITY_TYPE_PHANTOM_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
-        VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
-        VANILLA_ENTITY_TYPE_POLAR_BEAR_ID, VANILLA_ENTITY_TYPE_PUFFERFISH_ID,
-        VANILLA_ENTITY_TYPE_RABBIT_ID, VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
+        VANILLA_ENTITY_TYPE_GOAT_ID, VANILLA_ENTITY_TYPE_GUARDIAN_ID,
+        VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID, VANILLA_ENTITY_TYPE_HOGLIN_ID,
+        VANILLA_ENTITY_TYPE_HOPPER_MINECART_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_HUSK_ID, VANILLA_ENTITY_TYPE_ILLUSIONER_ID,
+        VANILLA_ENTITY_TYPE_INTERACTION_ID, VANILLA_ENTITY_TYPE_IRON_GOLEM_ID,
+        VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
+        VANILLA_ENTITY_TYPE_LEASH_KNOT_ID, VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID,
+        VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID,
+        VANILLA_ENTITY_TYPE_MINECART_ID, VANILLA_ENTITY_TYPE_MOOSHROOM_ID,
+        VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_OAK_BOAT_ID, VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+        VANILLA_ENTITY_TYPE_PAINTING_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PHANTOM_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
+        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_POLAR_BEAR_ID,
+        VANILLA_ENTITY_TYPE_PUFFERFISH_ID, VANILLA_ENTITY_TYPE_RABBIT_ID,
+        VANILLA_ENTITY_TYPE_SALMON_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
         VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SHULKER_ID,
         VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
         VANILLA_ENTITY_TYPE_SLIME_ID, VANILLA_ENTITY_TYPE_SNIFFER_ID,
@@ -5508,6 +5532,90 @@ mod tests {
         }
         assert_eq!(vanilla_entity_metadata_type_pushability_kind(-1), None);
         assert_eq!(vanilla_entity_metadata_type_pushability_kind(157), None);
+    }
+
+    #[test]
+    fn generated_baby_behavior_and_age_scale_follow_nearest_vanilla_overrides() {
+        for (entity_type_id, expected_behavior, expected_scale) in [
+            (
+                VANILLA_ENTITY_TYPE_ARMADILLO_ID,
+                VanillaEntityBabyBehavior::Metadata,
+                0.6_f32,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_CAMEL_ID,
+                VanillaEntityBabyBehavior::Metadata,
+                0.6,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_DOLPHIN_ID,
+                VanillaEntityBabyBehavior::Metadata,
+                0.65,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_GOAT_ID,
+                VanillaEntityBabyBehavior::Metadata,
+                0.55,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_HAPPY_GHAST_ID,
+                VanillaEntityBabyBehavior::Metadata,
+                0.2375,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_TURTLE_ID,
+                VanillaEntityBabyBehavior::Metadata,
+                0.3,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                VanillaEntityBabyBehavior::Metadata,
+                0.5,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+                VanillaEntityBabyBehavior::ArmorStandSmall,
+                0.5,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+                VanillaEntityBabyBehavior::Never,
+                0.6,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_FROG_ID,
+                VanillaEntityBabyBehavior::Never,
+                0.5,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_PARROT_ID,
+                VanillaEntityBabyBehavior::Never,
+                0.5,
+            ),
+            (
+                VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+                VanillaEntityBabyBehavior::Never,
+                0.5,
+            ),
+        ] {
+            let (behavior, scale) =
+                vanilla_entity_metadata_baby_behavior_and_age_scale(entity_type_id)
+                    .expect("living entity age-scale facts");
+            assert_eq!(behavior, expected_behavior, "entity type {entity_type_id}");
+            assert_eq!(
+                scale.to_bits(),
+                expected_scale.to_bits(),
+                "entity type {entity_type_id}"
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_baby_behavior_and_age_scale(VANILLA_ENTITY_TYPE_ITEM_ID),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_baby_behavior_and_age_scale(-1),
+            None
+        );
     }
 
     #[test]

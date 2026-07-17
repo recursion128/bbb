@@ -1327,8 +1327,6 @@ back into a todo. Do not delete these.
   targets, timers, RNG, AI, and authoritative save fields must remain absent or
   carry a narrow vanilla-backed not-applicable decision.
 
-- **Baby `ageScale`** — the `0.5` proportions applied in model `setupAnim`,
-  distinct from the projected `SCALE`-attribute `scale`.
 - **Armor trims and the remaining mob-specific armor models.**
 - **Datapack/custom item prototype default `SWING_ANIMATION`** beyond the
   resolved vanilla spear ids.

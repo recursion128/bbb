@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -2812,6 +2813,93 @@ def class_zero_argument_boolean_method(
     return value
 
 
+def class_baby_behavior(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    cache: dict[str, str],
+) -> str:
+    """Interpret the nearest vanilla ``isBaby`` implementation for a living class."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(f"unknown class in isBaby hierarchy: {owner}")
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == "isBaby" and len(method.parameters) == 0
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.isBaby/0: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(f"{owner}: no isBaby override or superclass")
+        value = class_baby_behavior(result, class_map, item.superclass, cache)
+        cache[owner] = value
+        return value
+
+    expression = method_single_return_expression(result, owner, "isBaby")
+    compact = expression.replace(" ", "")
+    if compact == "false":
+        value = "Never"
+    elif compact in {
+        "this.getAge()<0",
+        "this.getEntityData().get(DATA_BABY_ID)",
+    }:
+        value = "Metadata"
+    elif compact == "this.isSmall()":
+        value = "ArmorStandSmall"
+    else:
+        raise ExtractionError(
+            f"{owner}.isBaby: unsupported return expression {expression!r}"
+        )
+    cache[owner] = value
+    return value
+
+
+def class_baby_age_scale_bits(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    cache: dict[str, str],
+) -> str:
+    """Resolve the baby arm of the nearest vanilla ``getAgeScale`` implementation."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(f"unknown class in getAgeScale hierarchy: {owner}")
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == "getAgeScale" and len(method.parameters) == 0
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(f"{owner}.getAgeScale/0: expected at most one method")
+    if not methods:
+        if item.superclass is None:
+            raise ExtractionError(f"{owner}: no getAgeScale override or superclass")
+        value = class_baby_age_scale_bits(result, class_map, item.superclass, cache)
+        cache[owner] = value
+        return value
+
+    expression = method_single_return_expression(result, owner, "getAgeScale")
+    compact = expression.replace(" ", "")
+    match = re.fullmatch(
+        r"this\.isBaby\(\)\?([0-9]+(?:\.[0-9]+)?)F:1\.0F", compact
+    )
+    if match is None:
+        raise ExtractionError(
+            f"{owner}.getAgeScale: unsupported return expression {expression!r}"
+        )
+    value = f"{match.group(1)}_f32.to_bits()"
+    cache[owner] = value
+    return value
+
+
 def class_zero_argument_integer_method(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -3556,6 +3644,8 @@ def render(result: ExtractionResult) -> str:
     can_use_every_slot_cache: dict[str, bool] = {}
     illager_celebrating_cache: dict[str, bool] = {}
     handle_entity_event_owner_cache: dict[str, str] = {}
+    baby_behavior_cache: dict[str, str] = {}
+    baby_age_scale_cache: dict[str, str] = {}
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -3925,6 +4015,8 @@ def render(result: ExtractionResult) -> str:
                 f"        runtime_class: {option_string(item.runtime_class)},",
                 f"        schema_class: {option_string(schema_class(item.runtime_class))},",
                 f"        handle_entity_event_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'handleEntityEvent', 1, handle_entity_event_owner_cache) if item.runtime_class is not None else None)},",
+                f"        baby_behavior: VanillaEntityBabyBehavior::{class_baby_behavior(result, class_map, item.runtime_class, baby_behavior_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else 'Never'},",
+                f"        baby_age_scale_bits: {class_baby_age_scale_bits(result, class_map, item.runtime_class, baby_age_scale_cache) if extends_class(item.runtime_class, 'net.minecraft.world.entity.LivingEntity') else '1.0_f32.to_bits()'},",
                 f"        is_pickable_by_class: {str(class_is_pickable_without_type_tag(result, class_map, item.runtime_class, pickable_cache)).lower()},",
                 f"        sound_source_kind: VanillaEntitySoundSourceKind::{class_sound_source_kind(result, class_map, item.runtime_class, sound_source_cache)},",
                 f"        pushability_kind: VanillaEntityPushabilityKind::{class_pushability_kind(result, class_map, item.runtime_class, pushability_cache)},",
@@ -4768,7 +4860,7 @@ def render(result: ExtractionResult) -> str:
             '        assert!(!source.contains("VANILLA_AGEABLE_MOB_DEFAULT_BABY"));',
             '        assert!(source.contains("goat_pick_bounds(entity_type_id, data_values)"));',
             '        assert!(source.contains("polar_bear_pick_bounds("));',
-            '        assert_eq!(source.matches("vanilla_is_baby(entity_type_id, data_values)").count(), 6);',
+            '        assert_eq!(source.matches("vanilla_is_baby(entity_type_id, data_values)").count(), 7);',
             '        assert!(fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));',
             '        assert!(model_source_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));',
             '        assert!(animation_fixture.contains("vanilla_entity_metadata_baby_accessor_for_entity_type"));',
@@ -5019,6 +5111,45 @@ def render(result: ExtractionResult) -> str:
             '            for fixture in [fixture, model_source_fixture, animation_fixture, creature_bounds_fixture, visibility_fixture, world_inventory_fixture, world_inventory, world_inventory_slot_ops, native_inventory_fixture, native_scene, native_kind, native_variants, native_input] {',
             '                assert!(!fixture.contains(removed), "baby fixture restored {removed}");',
             "            }",
+            "        }",
+            "    }",
+            "",
+            "    #[test]",
+            "    fn production_age_scale_projection_stays_source_generated_and_distinct_from_scale() {",
+            '        let schema = include_str!("../schema.rs");',
+            '        let dimensions = include_str!("../dimensions.rs");',
+            '        let entities = include_str!("../../entities.rs");',
+            '        let store = include_str!("../store.rs");',
+            '        let native_instance = include_str!("../../../../bbb-native/src/entity_scene/instance.rs");',
+            '        let renderer_instances = include_str!("../../../../bbb-renderer/src/entity_models/instances.rs");',
+            '        let age_scale_body = dimensions',
+            '            .split("fn vanilla_age_scale")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split_once("\n}"))',
+            "            .map(|(body, _)| body)",
+            '            .expect("age-scale projection source");',
+            '        assert!(schema.contains("vanilla_entity_metadata_baby_behavior_and_age_scale"));',
+            '        assert!(age_scale_body.contains("vanilla_entity_metadata_baby_behavior_and_age_scale"));',
+            '        assert!(age_scale_body.contains("vanilla_is_baby(entity_type_id, data_values)"));',
+            '        assert!(!age_scale_body.contains("VANILLA_ENTITY_TYPE_"));',
+            '        assert!(entities.contains("pub age_scale: f32"));',
+            '        assert!(store.contains("age_scale: vanilla_age_scale(identity.entity_type_id, &metadata.data_values)"));',
+            '        assert!(native_instance.contains("with_age_scale age_scale"));',
+            '        assert!(renderer_instances.contains("(with_age_scale) age_scale: f32 = 1.0"));',
+            '        for model in [',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/colored/mounts.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/textured.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/feline.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/fox.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/piglin.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/player.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/polar_bear.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/sheep.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/skeleton.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/wolf.rs"),',
+            '            include_str!("../../../../bbb-renderer/src/entity_models/model_layers/zombie.rs"),',
+            "        ] {",
+            '            assert!(model.contains("age_scale"), "setupAnim consumer dropped ageScale");',
             "        }",
             "    }",
             "",
@@ -7270,7 +7401,7 @@ def render(result: ExtractionResult) -> str:
             '        assert!(native_scene_tests.contains("vanilla_entity_metadata_pillager_charging_crossbow_accessor_for_entity_type"));',
             '        assert!(native_scene_tests.contains("vanilla_entity_metadata_piglin_charging_crossbow_accessor_for_entity_type"));',
             '        let baby_fixture = baby_tests',
-            '            .split("fn generated_baby_accessor_membership_covers_all_ageable_families")',
+            '            .split("fn generated_baby_accessor_and_is_baby_dispatch_preserve_overrides")',
             '            .nth(1)',
             '            .and_then(|source| source.split("#[test]").next())',
             '            .expect("Pillager non-baby fixture source");',

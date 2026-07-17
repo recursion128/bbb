@@ -680,7 +680,7 @@ fn entity_model_instances_project_chicken_adult_and_baby_models() {
         aged(
             vec![
                 EntityModelInstance::chicken(26, [1.0, 64.0, -2.0], 0.0, false),
-                EntityModelInstance::chicken(27, [3.0, 64.0, -2.0], 0.0, true),
+                EntityModelInstance::chicken(27, [3.0, 64.0, -2.0], 0.0, true).with_age_scale(0.5),
                 EntityModelInstance::new(85, EntityModelKind::Minecart, [5.0, 64.0, -2.0], 0.0,),
             ],
             1.0,
@@ -5827,7 +5827,8 @@ fn entity_model_instances_project_chicken_variants_from_world_registry_order() {
                     0.0,
                     ChickenModelVariant::Warm,
                     true
-                ),
+                )
+                .with_age_scale(0.5),
             ],
             1.0,
         )
@@ -5929,7 +5930,8 @@ fn entity_model_instances_project_cow_variants_from_world_registry_order() {
                     0.0,
                     CowModelVariant::Warm,
                     true
-                ),
+                )
+                .with_age_scale(0.5),
             ],
             1.0,
         )
@@ -6019,7 +6021,8 @@ fn entity_model_instances_project_pig_variants_from_world_registry_order() {
         aged(
             vec![
                 EntityModelInstance::pig(100, [1.0, 64.0, -2.0], 0.0, PigModelVariant::Cold, false,),
-                EntityModelInstance::pig(101, [3.0, 64.0, -2.0], 0.0, PigModelVariant::Warm, true,),
+                EntityModelInstance::pig(101, [3.0, 64.0, -2.0], 0.0, PigModelVariant::Warm, true,)
+                    .with_age_scale(0.5),
             ],
             1.0,
         )
@@ -7093,7 +7096,8 @@ fn entity_model_instances_project_armor_stand_flags_and_pose() {
                 true,
                 false,
                 pose,
-            )],
+            )
+            .with_age_scale(0.5),],
             1.0,
         )
     );
@@ -7686,6 +7690,42 @@ fn entity_model_instances_project_age_in_ticks_from_world_age_and_partial_tick()
         "{}",
         instances[0].render_state.age_in_ticks
     );
+}
+
+#[test]
+fn entity_model_instances_forward_exact_age_scale_separately_from_scale_attribute() {
+    let mut world = WorldStore::new();
+    world.apply_add_entity(protocol_add_entity(
+        71,
+        VANILLA_ENTITY_TYPE_GOAT_ID,
+        [1.0, 64.0, -2.0],
+    ));
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 71,
+        values: vec![baby_data(VANILLA_ENTITY_TYPE_GOAT_ID, true)],
+    }));
+    assert!(world.apply_update_attributes(UpdateAttributes {
+        entity_id: 71,
+        attributes: vec![AttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+
+    let source = world
+        .entity_model_sources_at_partial_tick(1.0)
+        .into_iter()
+        .find(|source| source.entity_id == 71)
+        .expect("baby goat model source");
+    let instance = entity_model_instances_from_world_at_partial_tick(&world, None, 1.0)
+        .into_iter()
+        .find(|instance| instance.entity_id == 71)
+        .expect("baby goat model instance");
+
+    assert_eq!((source.scale, source.age_scale), (2.0, 0.55));
+    assert_eq!(instance.render_state.scale, source.scale);
+    assert_eq!(instance.render_state.age_scale, source.age_scale);
 }
 
 #[test]
@@ -10323,7 +10363,8 @@ fn entity_model_instances_project_cat_variants_from_world_registry_order() {
                     true,
                     CatModelVariant::White,
                     None,
-                ),
+                )
+                .with_age_scale(0.5),
             ],
             1.0,
         )

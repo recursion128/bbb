@@ -28,24 +28,24 @@ fn set_baby(store: &mut WorldStore, entity_id: i32, is_baby: bool) -> bool {
 }
 
 #[test]
-fn generated_baby_accessor_membership_covers_all_ageable_families() {
+fn generated_baby_accessor_and_is_baby_dispatch_preserve_overrides() {
     let mut store = WorldStore::new();
-    for (id, entity_type_id) in [
-        (180, VANILLA_ENTITY_TYPE_CAMEL_ID),
-        (181, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID),
-        (182, VANILLA_ENTITY_TYPE_FROG_ID),
-        (183, VANILLA_ENTITY_TYPE_GOAT_ID),
-        (184, VANILLA_ENTITY_TYPE_PARROT_ID),
-        (185, VANILLA_ENTITY_TYPE_SNIFFER_ID),
-        (186, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID),
+    for (id, entity_type_id, expected_is_baby) in [
+        (180, VANILLA_ENTITY_TYPE_CAMEL_ID, true),
+        (181, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID, false),
+        (182, VANILLA_ENTITY_TYPE_FROG_ID, false),
+        (183, VANILLA_ENTITY_TYPE_GOAT_ID, true),
+        (184, VANILLA_ENTITY_TYPE_PARROT_ID, false),
+        (185, VANILLA_ENTITY_TYPE_SNIFFER_ID, true),
+        (186, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, false),
     ] {
         store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
         assert_eq!(store.entities.is_baby(id), Some(false));
         assert!(set_baby(&mut store, id, true));
         assert_eq!(
             store.entities.is_baby(id),
-            Some(true),
-            "generated AgeableMob accessor: type {entity_type_id}"
+            Some(expected_is_baby),
+            "source-generated isBaby dispatch: type {entity_type_id}"
         );
     }
 
@@ -75,6 +75,44 @@ fn generated_baby_accessor_membership_covers_all_ageable_families() {
         ],
     }));
     assert_eq!(store.entities.is_baby(187), Some(false));
+}
+
+#[test]
+fn entity_model_sources_project_exact_age_scale_independently_of_scale_attribute() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity_with_type(
+        189,
+        VANILLA_ENTITY_TYPE_GOAT_ID,
+    ));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        190,
+        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+    ));
+    assert!(set_baby(&mut store, 189, true));
+    assert!(set_baby(&mut store, 190, true));
+    assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
+        entity_id: 189,
+        attributes: vec![ProtocolAttributeSnapshot {
+            attribute_id: VANILLA_ATTRIBUTE_SCALE_ID,
+            base: 2.0,
+            modifiers: Vec::new(),
+        }],
+    }));
+
+    let sources = store.entity_model_sources_at_partial_tick(1.0);
+    let goat = sources
+        .iter()
+        .find(|source| source.entity_id == 189)
+        .expect("baby goat model source");
+    assert_eq!(goat.scale, 2.0);
+    assert_eq!(goat.age_scale, 0.55);
+
+    let camel_husk = sources
+        .iter()
+        .find(|source| source.entity_id == 190)
+        .expect("camel husk model source");
+    assert_eq!(camel_husk.scale, 1.0);
+    assert_eq!(camel_husk.age_scale, 1.0);
 }
 
 #[test]
@@ -1055,6 +1093,13 @@ fn armor_stand_pick_bounds_follow_client_flags() {
             0.0,
         ))
     );
+    assert_eq!(store.entities.is_baby(27), Some(true));
+    let small_source = store
+        .entity_model_sources_at_partial_tick(1.0)
+        .into_iter()
+        .find(|source| source.entity_id == 27)
+        .expect("small armor stand model source");
+    assert_eq!(small_source.age_scale, 0.5);
 
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 28,

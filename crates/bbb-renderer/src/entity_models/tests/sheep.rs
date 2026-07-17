@@ -991,7 +991,7 @@ fn sheep_head_pose_matches_vanilla_setup_anim() {
     // yaw (0 here). ageScale = 1.0, so the head drops the full 9.0 model units.
     let adult_eaten = sheep_head_pose(
         adult_head,
-        false,
+        1.0,
         SheepHeadEatPose {
             position_scale: 1.0,
             angle_scale: 0.5,
@@ -1017,7 +1017,7 @@ fn sheep_head_pose_matches_vanilla_setup_anim() {
     };
     let baby_eaten = sheep_head_pose(
         baby_head,
-        true,
+        0.5,
         SheepHeadEatPose {
             position_scale: 1.0,
             angle_scale: 0.3,
@@ -1038,7 +1038,7 @@ fn sheep_head_pose_matches_vanilla_setup_anim() {
     // Not eating with a head-look turn: head.yRot = yRot*PI/180 (QuadrupedModel
     // super) and head.xRot = getXRot*PI/180 (Sheep.getHeadEatAngleScale's
     // non-eating branch). No vertical dip while at rest.
-    let looking = sheep_head_pose(adult_head, false, SheepHeadEatPose::NONE, 40.0, -18.0);
+    let looking = sheep_head_pose(adult_head, 1.0, SheepHeadEatPose::NONE, 40.0, -18.0);
     assert_eq!(looking.offset, adult_head.offset);
     assert!((looking.rotation[0] - (-18.0_f32).to_radians()).abs() < 1e-6);
     assert!((looking.rotation[1] - 40.0_f32.to_radians()).abs() < 1e-6);
@@ -1047,7 +1047,7 @@ fn sheep_head_pose_matches_vanilla_setup_anim() {
     // Eating wins the pitch (eat angle), but the look yaw still applies.
     let eating_and_looking = sheep_head_pose(
         adult_head,
-        false,
+        1.0,
         SheepHeadEatPose {
             position_scale: 1.0,
             angle_scale: 0.5,
@@ -1063,7 +1063,7 @@ fn sheep_head_pose_matches_vanilla_setup_anim() {
     assert!(!sheep_head_at_rest(SheepHeadEatPose::NONE, 1.0, 0.0));
     assert!(!sheep_head_at_rest(SheepHeadEatPose::NONE, 0.0, 1.0));
     assert_eq!(
-        sheep_head_pose(adult_head, false, SheepHeadEatPose::NONE, 0.0, 0.0),
+        sheep_head_pose(adult_head, 1.0, SheepHeadEatPose::NONE, 0.0, 0.0),
         adult_head
     );
 }

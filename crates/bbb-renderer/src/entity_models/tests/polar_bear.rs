@@ -327,7 +327,7 @@ fn apply_polar_bear_standing_pose_matches_vanilla_setup_anim() {
         rotation: [0.0, 0.0, 0.0],
     };
     let mut head = adult_head_pose;
-    apply_polar_bear_standing_pose(&mut head, PolarBearStandPart::Head, false, 1.0);
+    apply_polar_bear_standing_pose(&mut head, PolarBearStandPart::Head, 1.0, 1.0);
     assert_eq!(head.offset, [0.0, 10.0 - 24.0, -16.0 + 13.0]);
     assert!((head.rotation[0] - pi * 0.15).abs() < 1e-6);
     assert_eq!([head.rotation[1], head.rotation[2]], [0.0, 0.0]);
@@ -336,7 +336,7 @@ fn apply_polar_bear_standing_pose_matches_vanilla_setup_anim() {
         offset: [-2.0, 9.0, 12.0],
         rotation: [std::f32::consts::FRAC_PI_2, 0.0, 0.0],
     };
-    apply_polar_bear_standing_pose(&mut body, PolarBearStandPart::Body, false, 1.0);
+    apply_polar_bear_standing_pose(&mut body, PolarBearStandPart::Body, 1.0, 1.0);
     assert_eq!(body.offset, [-2.0, 9.0 + 2.0, 12.0]);
     assert!((body.rotation[0] - (std::f32::consts::FRAC_PI_2 - pi * 0.35)).abs() < 1e-6);
 
@@ -344,13 +344,13 @@ fn apply_polar_bear_standing_pose_matches_vanilla_setup_anim() {
         offset: [-3.5, 14.0, -8.0],
         rotation: [0.0, 0.0, 0.0],
     };
-    apply_polar_bear_standing_pose(&mut front_leg, PolarBearStandPart::FrontLeg, false, 1.0);
+    apply_polar_bear_standing_pose(&mut front_leg, PolarBearStandPart::FrontLeg, 1.0, 1.0);
     assert_eq!(front_leg.offset, [-3.5, 14.0 - 20.0, -8.0 + 4.0]);
     assert!((front_leg.rotation[0] - (-pi * 0.45)).abs() < 1e-6);
 
     // standScale is squared: 0.5 -> 0.25 of the full delta.
     let mut quarter_head = adult_head_pose;
-    apply_polar_bear_standing_pose(&mut quarter_head, PolarBearStandPart::Head, false, 0.5);
+    apply_polar_bear_standing_pose(&mut quarter_head, PolarBearStandPart::Head, 1.0, 0.5);
     assert_eq!(quarter_head.offset[1], 10.0 - 0.25 * 24.0);
 
     // Baby (ageScale 0.5) scales only the body/front-leg translation terms.
@@ -358,14 +358,14 @@ fn apply_polar_bear_standing_pose_matches_vanilla_setup_anim() {
         offset: [0.0, 17.5, 0.0],
         rotation: [0.0, 0.0, 0.0],
     };
-    apply_polar_bear_standing_pose(&mut baby_body, PolarBearStandPart::Body, true, 1.0);
+    apply_polar_bear_standing_pose(&mut baby_body, PolarBearStandPart::Body, 0.5, 1.0);
     assert_eq!(baby_body.offset[1], 17.5 + 0.5 * 2.0);
 
     let mut baby_front_leg = PartPose {
         offset: [-2.5, 21.5, -4.5],
         rotation: [0.0, 0.0, 0.0],
     };
-    apply_polar_bear_standing_pose(&mut baby_front_leg, PolarBearStandPart::FrontLeg, true, 1.0);
+    apply_polar_bear_standing_pose(&mut baby_front_leg, PolarBearStandPart::FrontLeg, 0.5, 1.0);
     assert_eq!(baby_front_leg.offset[1], 21.5 - 0.5 * 20.0);
     assert_eq!(baby_front_leg.offset[2], -4.5 + 0.5 * 4.0);
 
@@ -375,7 +375,7 @@ fn apply_polar_bear_standing_pose_matches_vanilla_setup_anim() {
         offset: [0.0, 18.625, -5.75],
         rotation: [0.0, 0.0, 0.0],
     };
-    apply_polar_bear_standing_pose(&mut baby_head, PolarBearStandPart::Head, true, 1.0);
+    apply_polar_bear_standing_pose(&mut baby_head, PolarBearStandPart::Head, 0.5, 1.0);
     assert_eq!(baby_head.offset, [0.0, 18.625 - 24.0, -5.75 + 13.0]);
 }
 

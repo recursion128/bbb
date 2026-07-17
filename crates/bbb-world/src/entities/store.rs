@@ -91,9 +91,9 @@ use crate::entities::animations::{
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
-    vanilla_body_anchor_y_offset_for_entity_data, vanilla_client_position_for_entity_data,
-    vanilla_eye_height_for_entity_data, vanilla_is_baby, vanilla_is_cat,
-    vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
+    vanilla_age_scale, vanilla_body_anchor_y_offset_for_entity_data,
+    vanilla_client_position_for_entity_data, vanilla_eye_height_for_entity_data, vanilla_is_baby,
+    vanilla_is_cat, vanilla_living_entity_type, vanilla_model_source_bounds_for_entity_data,
     vanilla_passenger_position_for_entity_data,
     vanilla_passenger_vehicle_debug_target_for_entity_data, vanilla_pick_bounds_for_entity_data,
     vanilla_render_scale,
@@ -2244,6 +2244,7 @@ impl EntityStore {
             sleeping_bed_yaw: None,
             sleeping_bed_offset: [0.0, 0.0],
             scale,
+            age_scale: vanilla_age_scale(identity.entity_type_id, &metadata.data_values),
             swim_amount: client_animations
                 .animations
                 .living_swim_amount(partial_ticks),

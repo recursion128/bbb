@@ -599,7 +599,7 @@ impl EntityModel for SkeletonModel {
             render_state.attack_anim,
             render_state.attack_arm_off_hand,
             render_state.head_pitch,
-            1.0,
+            render_state.age_scale,
         );
         // A melee (aggressive, no bow) skeleton raises and chops its arms (vanilla `SkeletonModel.setupAnim`).
         if skeleton_is_meleeing(instance) {
@@ -660,7 +660,7 @@ impl EntityModel for SkeletonClothingModel {
             render_state.attack_anim,
             render_state.attack_arm_off_hand,
             render_state.head_pitch,
-            1.0,
+            render_state.age_scale,
         );
         if skeleton_is_meleeing(instance) {
             apply_skeleton_melee_arms(

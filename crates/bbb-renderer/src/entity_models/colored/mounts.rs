@@ -51,10 +51,6 @@ const ADULT_EQUINE_TAIL_X_ROT_OFFSET: f32 = 0.0;
 const BABY_HORSE_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_2;
 const BABY_DONKEY_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_4;
 
-/// `LivingEntity.getAgeScale()`: `1.0` for adults, `0.5` for babies. The equine tail's
-/// walk translation scales by this.
-const ADULT_AGE_SCALE: f32 = 1.0;
-const BABY_AGE_SCALE: f32 = 0.5;
 use super::selection::{donkey_model_color, donkey_model_scale, undead_horse_model_color};
 use super::transforms::{
     entity_model_root_transform, mesh_transformer_scaled_model_root_transform, HORSE_SCALE,
@@ -223,7 +219,7 @@ fn emit_baby_donkey_posed(
         body_children[EQUINE_TAIL_CHILD_INDEX].pose,
         BABY_DONKEY_TAIL_X_ROT_OFFSET,
         limb_swing_amount,
-        BABY_AGE_SCALE,
+        instance.render_state.age_scale,
         instance.render_state.equine_animate_tail,
         instance.render_state.age_in_ticks,
     );
@@ -267,11 +263,7 @@ pub(in crate::entity_models) fn emit_horse_model(
         } else {
             ADULT_EQUINE_TAIL_X_ROT_OFFSET
         },
-        if baby {
-            BABY_AGE_SCALE
-        } else {
-            ADULT_AGE_SCALE
-        },
+        instance.render_state.age_scale,
         if baby {
             entity_model_root_transform(instance)
         } else {
@@ -318,7 +310,7 @@ pub(in crate::entity_models) fn emit_donkey_model(
             ADULT_EQUINE_LEG_PART_INDICES,
             ADULT_EQUINE_HEAD_PART_INDEX,
             ADULT_EQUINE_TAIL_X_ROT_OFFSET,
-            ADULT_AGE_SCALE,
+            instance.render_state.age_scale,
             transform,
             Some(color),
             instance,
@@ -356,11 +348,7 @@ pub(in crate::entity_models) fn emit_undead_horse_model(
         } else {
             ADULT_EQUINE_TAIL_X_ROT_OFFSET
         },
-        if baby {
-            BABY_AGE_SCALE
-        } else {
-            ADULT_AGE_SCALE
-        },
+        instance.render_state.age_scale,
         entity_model_root_transform(instance),
         Some(undead_horse_model_color(family)),
         instance,

@@ -285,19 +285,18 @@ pub(in crate::entity_models) const fn polar_bear_standing_part_roles(
 pub(in crate::entity_models) fn apply_polar_bear_standing_pose(
     pose: &mut PartPose,
     part: PolarBearStandPart,
-    baby: bool,
+    age_scale: f32,
     stand_scale: f32,
 ) {
     let scale = stand_scale * stand_scale;
-    let body_age_scale = if baby { 0.5 } else { 1.0 };
     match part {
         PolarBearStandPart::Body => {
             pose.rotation[0] -= scale * std::f32::consts::PI * 0.35;
-            pose.offset[1] += scale * body_age_scale * 2.0;
+            pose.offset[1] += scale * age_scale * 2.0;
         }
         PolarBearStandPart::FrontLeg => {
-            pose.offset[1] -= scale * body_age_scale * 20.0;
-            pose.offset[2] += scale * body_age_scale * 4.0;
+            pose.offset[1] -= scale * age_scale * 20.0;
+            pose.offset[2] += scale * age_scale * 4.0;
             pose.rotation[0] -= scale * std::f32::consts::PI * 0.45;
         }
         PolarBearStandPart::Head => {
@@ -316,14 +315,12 @@ pub(in crate::entity_models) fn apply_polar_bear_standing_pose(
 /// projected `standScale`. The per-size scale (adult only) lives in the root transform.
 pub(in crate::entity_models) struct PolarBearModel {
     root: ModelPart,
-    baby: bool,
 }
 
 impl PolarBearModel {
     pub(in crate::entity_models) fn new(baby: bool) -> Self {
         Self {
             root: polar_bear_tree(baby),
-            baby,
         }
     }
 }
@@ -355,7 +352,7 @@ impl EntityModel for PolarBearModel {
                 apply_polar_bear_standing_pose(
                     &mut self.root.child_mut(name).pose,
                     part,
-                    self.baby,
+                    render_state.age_scale,
                     stand_scale,
                 );
             }

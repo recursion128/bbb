@@ -20,6 +20,7 @@ use super::renderer_catalog::vanilla_entity_renderer_uses_abstract_horse_rendere
 use super::schema::{
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_baby_accessor_for_entity_type,
+    vanilla_entity_metadata_baby_behavior_and_age_scale,
     vanilla_entity_metadata_camel_last_pose_change_tick_accessor_for_entity_type,
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
@@ -35,7 +36,7 @@ use super::schema::{
     vanilla_entity_metadata_type_is_animal, vanilla_entity_metadata_type_is_camel,
     vanilla_entity_metadata_type_is_living, vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
-    vanilla_entity_scale_sanitizer, VanillaArmorStandMetadataAccessors,
+    vanilla_entity_scale_sanitizer, VanillaArmorStandMetadataAccessors, VanillaEntityBabyBehavior,
     VanillaEntityScaleSanitizer, VANILLA_SNIFFER_STATE_DIGGING_ID as SNIFFER_STATE_DIGGING_ID,
 };
 use super::{
@@ -1054,16 +1055,45 @@ fn sniffer_pick_bounds(
     }
 }
 
-/// Vanilla `Mob.isBaby`: reads the nearest generated boolean `DATA_BABY_ID` accessor from
-/// `AgeableMob`, `Zombie`, `Piglin`, or `Zoglin`, preserving each class's wire index. Entity classes
-/// without that accessor are never babies even when another boolean occupies the same index.
+/// Vanilla `LivingEntity.isBaby`: follows the source-derived nearest class implementation. Most
+/// ageable/zombie/piglin/zoglin families read their generated `DATA_BABY_ID`; ArmorStand reads its
+/// generated small flag; explicit false overrides such as CamelHusk, Frog, Parrot, and
+/// ZombieNautilus remain adults even though they inherit an ageable metadata accessor.
 pub(crate) fn vanilla_is_baby(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
-    let Some((data_id, default)) =
-        vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+    let Some((behavior, _)) = vanilla_entity_metadata_baby_behavior_and_age_scale(entity_type_id)
     else {
         return false;
     };
-    entity_data_bool(data_values, data_id, default)
+    match behavior {
+        VanillaEntityBabyBehavior::Never => false,
+        VanillaEntityBabyBehavior::Metadata => {
+            let Some((data_id, default)) =
+                vanilla_entity_metadata_baby_accessor_for_entity_type(entity_type_id)
+            else {
+                return false;
+            };
+            entity_data_bool(data_values, data_id, default)
+        }
+        VanillaEntityBabyBehavior::ArmorStandSmall => {
+            armor_stand_client_flags(entity_type_id, data_values)
+                .is_some_and(|(accessors, flags)| flags & accessors.small_mask != 0)
+        }
+    }
+}
+
+/// Vanilla `LivingEntity.getAgeScale`, kept separate from the SCALE attribute multiplier. Adults,
+/// non-living entities, and unknown ids use `1`; baby values come from the generated nearest
+/// override (including the non-default Armadillo/Camel/Dolphin/Goat/HappyGhast/Turtle values).
+pub(crate) fn vanilla_age_scale(entity_type_id: i32, data_values: &[EntityDataValue]) -> f32 {
+    let Some((_, baby_scale)) = vanilla_entity_metadata_baby_behavior_and_age_scale(entity_type_id)
+    else {
+        return 1.0;
+    };
+    if vanilla_is_baby(entity_type_id, data_values) {
+        baby_scale
+    } else {
+        1.0
+    }
 }
 
 fn baby_pick_bounds(

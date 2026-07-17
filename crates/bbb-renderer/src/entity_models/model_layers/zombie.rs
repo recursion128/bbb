@@ -768,7 +768,7 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
             root,
             render_state.attack_anim,
             render_state.attack_arm_off_hand,
-            1.0,
+            render_state.age_scale,
         );
         // Vanilla `AnimationUtils.animateZombieArms` still runs after `super.setupAnim`, but the STAB branch
         // skips the held-out arm rewrite and only applies `bobArms`.
@@ -787,7 +787,7 @@ fn apply_zombie_family_anim(root: &mut ModelPart, instance: &EntityModelInstance
             render_state.attack_anim,
             render_state.attack_arm_off_hand,
             render_state.head_pitch,
-            1.0,
+            render_state.age_scale,
         );
         apply_zombie_arms_held_out_named(
             root,

@@ -492,22 +492,22 @@ impl EntityModel for PlayerModel {
             apply_humanoid_crouch_named(&mut self.root);
         }
         // Vanilla `HumanoidModel.setupAnim` runs `setupAttackAnimation` last (after the pose / crouch):
-        // a swinging player twists the body and drives the attacking arm. The player is always adult
-        // (`ageScale = 1.0`). An attack-arm spear lunges (`STAB`), `NONE` keeps only the shared prologue,
+        // a swinging player twists the body and drives the attacking arm. The projected age scale is
+        // `1.0` for players. An attack-arm spear lunges (`STAB`), `NONE` keeps only the shared prologue,
         // and everything else chops (`WHACK`).
         if render_state.main_hand_swing_is_stab {
             apply_humanoid_stab_attack_animation(
                 &mut self.root,
                 render_state.attack_anim,
                 render_state.attack_arm_off_hand,
-                1.0,
+                render_state.age_scale,
             );
         } else if render_state.main_hand_swing_is_none {
             apply_humanoid_no_swing_attack_animation(
                 &mut self.root,
                 render_state.attack_anim,
                 render_state.attack_arm_off_hand,
-                1.0,
+                render_state.age_scale,
             );
         } else {
             apply_humanoid_attack_animation(
@@ -515,7 +515,7 @@ impl EntityModel for PlayerModel {
                 render_state.attack_anim,
                 render_state.attack_arm_off_hand,
                 render_state.head_pitch,
-                1.0,
+                render_state.age_scale,
             );
         }
     }

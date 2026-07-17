@@ -1618,12 +1618,12 @@ fn wolf_sitting_pose_matches_vanilla_set_sitting_pose() {
     };
 
     let mut body = base;
-    apply_wolf_sitting_pose(&mut body, WolfSitPart::Body, false);
+    apply_wolf_sitting_pose(&mut body, WolfSitPart::Body, false, 1.0);
     assert_eq!(body.offset, [1.0, 6.0, 1.0]);
     assert_eq!(body.rotation, [std::f32::consts::FRAC_PI_4, 0.2, 0.3]);
 
     let mut baby_body = base;
-    apply_wolf_sitting_pose(&mut baby_body, WolfSitPart::Body, true);
+    apply_wolf_sitting_pose(&mut baby_body, WolfSitPart::Body, true, 0.5);
     assert_eq!(baby_body.offset, [1.0, 4.0, 2.0]);
     assert!(
         (baby_body.rotation[0] - (std::f32::consts::FRAC_PI_4 - std::f32::consts::FRAC_PI_2)).abs()
@@ -1631,26 +1631,26 @@ fn wolf_sitting_pose_matches_vanilla_set_sitting_pose() {
     );
 
     let mut hind = base;
-    apply_wolf_sitting_pose(&mut hind, WolfSitPart::HindLeg, false);
+    apply_wolf_sitting_pose(&mut hind, WolfSitPart::HindLeg, false, 1.0);
     assert_eq!(hind.offset, [1.0, 8.7, -2.0]);
     assert!((hind.rotation[0] - std::f32::consts::PI * 1.5).abs() < 1e-6);
 
     let mut right = base;
-    apply_wolf_sitting_pose(&mut right, WolfSitPart::RightFrontLeg, false);
+    apply_wolf_sitting_pose(&mut right, WolfSitPart::RightFrontLeg, false, 1.0);
     assert!((right.offset[0] - 1.01).abs() < 1e-6);
     assert_eq!(right.offset[1], 3.0);
     assert_eq!(right.rotation[0], WOLF_SIT_FRONT_LEG_X_ROT);
     let mut left = base;
-    apply_wolf_sitting_pose(&mut left, WolfSitPart::LeftFrontLeg, false);
+    apply_wolf_sitting_pose(&mut left, WolfSitPart::LeftFrontLeg, false, 1.0);
     assert!((left.offset[0] - 0.99).abs() < 1e-6);
 
     // The baby front-leg x nudge scales by ageScale 0.5.
     let mut baby_right = base;
-    apply_wolf_sitting_pose(&mut baby_right, WolfSitPart::RightFrontLeg, true);
+    apply_wolf_sitting_pose(&mut baby_right, WolfSitPart::RightFrontLeg, true, 0.5);
     assert!((baby_right.offset[0] - 1.005).abs() < 1e-6);
 
     let mut tail = base;
-    apply_wolf_sitting_pose(&mut tail, WolfSitPart::Tail, false);
+    apply_wolf_sitting_pose(&mut tail, WolfSitPart::Tail, false, 1.0);
     assert_eq!(tail.offset, [1.0, 11.0, 1.0]);
     assert_eq!(
         tail.rotation, base.rotation,

@@ -458,6 +458,10 @@ entity_render_state! {
     /// `poseStack.scale(scale, scale, scale)` before `setupRotations`. `1.0` for an
     /// entity at its default size.
     (with_scale) scale: f32 = 1.0;
+    /// Vanilla `LivingEntityRenderState.ageScale` (`LivingEntity.getAgeScale`): the independent
+    /// adult/baby proportion multiplier consumed inside model `setupAnim`. It is not the SCALE
+    /// attribute-backed [`scale`](Self::scale); adults and non-living entities use `1.0`.
+    (with_age_scale) age_scale: f32 = 1.0;
     /// Vanilla `HumanoidRenderState.swimAmount` / `LivingEntity.getSwimAmount(partialTick)`: the
     /// eased 0..1 blend toward `isVisuallySwimming()`. The drowned consumes this for
     /// `DrownedRenderer.setupRotations` and the `DrownedModel.setupAnim` swim limb override. `0.0`
@@ -2916,6 +2920,7 @@ mod tests {
                 bounding_box_height: 0.0,
                 sleeping: None,
                 scale: 1.0,
+                age_scale: 1.0,
                 swim_amount: 0.0,
                 walk_animation_pos: 0.0,
                 walk_animation_speed: 0.0,

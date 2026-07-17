@@ -5180,7 +5180,6 @@ const EQUINE_TAIL_CHILD_INDEX: usize = 0;
 const BABY_DONKEY_BODY_CHILD_LEG_INDICES: [usize; 4] = [1, 2, 3, 4];
 const BABY_DONKEY_BODY_CHILD_HEAD_PARTS_INDEX: usize = 5;
 const BABY_DONKEY_TAIL_X_ROT_OFFSET: f32 = -std::f32::consts::FRAC_PI_4;
-const BABY_AGE_SCALE: f32 = 0.5;
 
 /// Textured counterpart of `colored::mounts::emit_equine_posed`: applies the vanilla
 /// `AbstractEquineModel.setupAnim` default-branch poses — the walking leg swing on the four parts at
@@ -5395,7 +5394,7 @@ fn emit_baby_donkey_textured_posed(
         body_children[EQUINE_TAIL_CHILD_INDEX].pose,
         BABY_DONKEY_TAIL_X_ROT_OFFSET,
         limb_swing_amount,
-        BABY_AGE_SCALE,
+        instance.render_state.age_scale,
         instance.render_state.equine_animate_tail,
         instance.render_state.age_in_ticks,
     );
@@ -5462,7 +5461,7 @@ pub(in crate::entity_models) fn render_donkey_textured_layers(
         [2, 3, 4, 5],
         1,
         0.0,
-        1.0,
+        instance.render_state.age_scale,
         pass,
         transform,
         *instance,
@@ -5499,7 +5498,7 @@ pub(in crate::entity_models) fn render_horse_textured_layers(
             [1, 2, 3, 4],
             5,
             -std::f32::consts::FRAC_PI_2,
-            0.5,
+            instance.render_state.age_scale,
             entity_model_root_transform(*instance),
         )
     } else {
@@ -5508,7 +5507,7 @@ pub(in crate::entity_models) fn render_horse_textured_layers(
             [2, 3, 4, 5],
             1,
             0.0,
-            1.0,
+            instance.render_state.age_scale,
             mesh_transformer_scaled_model_root_transform(*instance, HORSE_SCALE),
         )
     };
@@ -5571,10 +5570,16 @@ pub(in crate::entity_models) fn render_undead_horse_textured_layers(
             [1, 2, 3, 4],
             5,
             -std::f32::consts::FRAC_PI_2,
-            0.5,
+            instance.render_state.age_scale,
         )
     } else {
-        (&ADULT_HORSE_PARTS_TEXTURED, [2, 3, 4, 5], 1, 0.0, 1.0)
+        (
+            &ADULT_HORSE_PARTS_TEXTURED,
+            [2, 3, 4, 5],
+            1,
+            0.0,
+            instance.render_state.age_scale,
+        )
     };
     let passes = undead_horse_textured_layer_passes(family, baby);
     emit_equine_textured_layer_pass(

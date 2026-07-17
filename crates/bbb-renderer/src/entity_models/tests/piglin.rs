@@ -1151,6 +1151,13 @@ fn piglin_default_whack_swing_uses_humanoid_attack_animation() {
         assert!((right.rotation[1] - body_yrot * 3.0).abs() < 1.0e-6);
         assert!((right.rotation[2] - (0.1 - 0.4)).abs() < 1.0e-6);
 
+        let age_scaled_whack = default_whack.with_age_scale(0.5);
+        let mut age_scaled_model = PiglinModel::new(family, false);
+        age_scaled_model.prepare(&age_scaled_whack);
+        let age_scaled_right = age_scaled_model.root_mut().child_mut("right_arm").pose;
+        assert!((age_scaled_right.offset[0] - (-body_yrot.cos() * 5.0 * 0.5)).abs() < 1.0e-6);
+        assert!((age_scaled_right.offset[2] - (body_yrot.sin() * 5.0 * 0.5)).abs() < 1.0e-6);
+
         let melee = default_whack.with_piglin_attacking_with_melee(true);
         let mut melee_model = PiglinModel::new(family, false);
         melee_model.prepare(&melee);

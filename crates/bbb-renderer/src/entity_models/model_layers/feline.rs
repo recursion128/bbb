@@ -506,50 +506,51 @@ fn apply_feline_crouch_or_sprint_pose(
     root: &mut ModelPart,
     is_crouching: bool,
     is_sprinting: bool,
+    age_scale: f32,
 ) {
     if is_crouching {
-        root.child_mut("body").pose.offset[1] += 1.0;
-        root.child_mut("head").pose.offset[1] += 2.0;
-        root.child_mut("tail1").pose.offset[1] += 1.0;
-        root.child_mut("tail2").pose.offset[1] -= 4.0;
-        root.child_mut("tail2").pose.offset[2] += 2.0;
+        root.child_mut("body").pose.offset[1] += age_scale;
+        root.child_mut("head").pose.offset[1] += 2.0 * age_scale;
+        root.child_mut("tail1").pose.offset[1] += age_scale;
+        root.child_mut("tail2").pose.offset[1] -= 4.0 * age_scale;
+        root.child_mut("tail2").pose.offset[2] += 2.0 * age_scale;
         root.child_mut("tail1").pose.rotation[0] = std::f32::consts::FRAC_PI_2;
         root.child_mut("tail2").pose.rotation[0] = std::f32::consts::FRAC_PI_2;
     } else if is_sprinting {
         let tail1_y = root.child_mut("tail1").pose.offset[1];
         root.child_mut("tail2").pose.offset[1] = tail1_y;
-        root.child_mut("tail2").pose.offset[2] += 2.0;
+        root.child_mut("tail2").pose.offset[2] += 2.0 * age_scale;
         root.child_mut("tail1").pose.rotation[0] = std::f32::consts::FRAC_PI_2;
         root.child_mut("tail2").pose.rotation[0] = std::f32::consts::FRAC_PI_2;
     }
 }
 
-/// Vanilla `AdultFelineModel.setupAnim` sitting branch. The adult feline model is only used for adult
-/// cats/ocelots, so `state.ageScale` is the vanilla adult baseline `1.0`.
-fn apply_adult_feline_sitting_pose(root: &mut ModelPart) {
+/// Vanilla `AdultFelineModel.setupAnim` sitting branch, with every translated proportion multiplied
+/// by the projected `state.ageScale`.
+fn apply_adult_feline_sitting_pose(root: &mut ModelPart, age_scale: f32) {
     root.child_mut("body").pose.rotation[0] = std::f32::consts::FRAC_PI_4;
-    root.child_mut("body").pose.offset[1] -= 4.0;
-    root.child_mut("body").pose.offset[2] += 5.0;
-    root.child_mut("head").pose.offset[1] -= 3.3;
-    root.child_mut("head").pose.offset[2] += 1.0;
-    root.child_mut("tail1").pose.offset[1] += 8.0;
-    root.child_mut("tail1").pose.offset[2] -= 2.0;
-    root.child_mut("tail2").pose.offset[1] += 2.0;
-    root.child_mut("tail2").pose.offset[2] -= 0.8;
+    root.child_mut("body").pose.offset[1] -= 4.0 * age_scale;
+    root.child_mut("body").pose.offset[2] += 5.0 * age_scale;
+    root.child_mut("head").pose.offset[1] -= 3.3 * age_scale;
+    root.child_mut("head").pose.offset[2] += age_scale;
+    root.child_mut("tail1").pose.offset[1] += 8.0 * age_scale;
+    root.child_mut("tail1").pose.offset[2] -= 2.0 * age_scale;
+    root.child_mut("tail2").pose.offset[1] += 2.0 * age_scale;
+    root.child_mut("tail2").pose.offset[2] -= 0.8 * age_scale;
     root.child_mut("tail1").pose.rotation[0] = FELINE_TAIL2_REST_X_ROT;
     root.child_mut("tail2").pose.rotation[0] = FELINE_SITTING_TAIL2_X_ROT;
     root.child_mut("left_front_leg").pose.rotation[0] = -std::f32::consts::PI / 20.0;
-    root.child_mut("left_front_leg").pose.offset[1] += 2.0;
-    root.child_mut("left_front_leg").pose.offset[2] -= 2.0;
+    root.child_mut("left_front_leg").pose.offset[1] += 2.0 * age_scale;
+    root.child_mut("left_front_leg").pose.offset[2] -= 2.0 * age_scale;
     root.child_mut("right_front_leg").pose.rotation[0] = -std::f32::consts::PI / 20.0;
-    root.child_mut("right_front_leg").pose.offset[1] += 2.0;
-    root.child_mut("right_front_leg").pose.offset[2] -= 2.0;
+    root.child_mut("right_front_leg").pose.offset[1] += 2.0 * age_scale;
+    root.child_mut("right_front_leg").pose.offset[2] -= 2.0 * age_scale;
     root.child_mut("left_hind_leg").pose.rotation[0] = -std::f32::consts::FRAC_PI_2;
-    root.child_mut("left_hind_leg").pose.offset[1] += 3.0;
-    root.child_mut("left_hind_leg").pose.offset[2] -= 4.0;
+    root.child_mut("left_hind_leg").pose.offset[1] += 3.0 * age_scale;
+    root.child_mut("left_hind_leg").pose.offset[2] -= 4.0 * age_scale;
     root.child_mut("right_hind_leg").pose.rotation[0] = -std::f32::consts::FRAC_PI_2;
-    root.child_mut("right_hind_leg").pose.offset[1] += 3.0;
-    root.child_mut("right_hind_leg").pose.offset[2] -= 4.0;
+    root.child_mut("right_hind_leg").pose.offset[1] += 3.0 * age_scale;
+    root.child_mut("right_hind_leg").pose.offset[2] -= 4.0 * age_scale;
 }
 
 /// Vanilla `BabyFelineModel.setupAnim` sitting branch. Baby feline applies these deltas unscaled after
@@ -565,11 +566,11 @@ fn apply_baby_feline_sitting_pose(root: &mut ModelPart) {
     root.child_mut("right_hind_leg").pose.offset[2] -= 0.9;
 }
 
-fn apply_feline_sitting_pose(root: &mut ModelPart, baby: bool) {
+fn apply_feline_sitting_pose(root: &mut ModelPart, baby: bool, age_scale: f32) {
     if baby {
         apply_baby_feline_sitting_pose(root);
     } else {
-        apply_adult_feline_sitting_pose(root);
+        apply_adult_feline_sitting_pose(root, age_scale);
     }
 }
 
@@ -583,6 +584,7 @@ fn apply_adult_feline_lie_down_pose(
     root: &mut ModelPart,
     lie_down_amount: f32,
     lie_down_amount_tail: f32,
+    age_scale: f32,
 ) {
     if lie_down_amount <= 0.0 {
         return;
@@ -606,15 +608,15 @@ fn apply_adult_feline_lie_down_pose(
         let right_front_leg = root.child_mut("right_front_leg");
         right_front_leg.pose.rotation[0] = ADULT_FELINE_LIE_RIGHT_FRONT_LEG_X_ROT;
         right_front_leg.pose.rotation[2] = -0.2;
-        right_front_leg.pose.offset[0] += 1.0;
+        right_front_leg.pose.offset[0] += age_scale;
     }
     root.child_mut("left_hind_leg").pose.rotation[0] = -0.4;
     {
         let right_hind_leg = root.child_mut("right_hind_leg");
         right_hind_leg.pose.rotation[0] = 0.5;
         right_hind_leg.pose.rotation[2] = -0.5;
-        right_hind_leg.pose.offset[0] += 0.8;
-        right_hind_leg.pose.offset[1] += 2.0;
+        right_hind_leg.pose.offset[0] += 0.8 * age_scale;
+        right_hind_leg.pose.offset[1] += 2.0 * age_scale;
     }
     {
         let tail1 = root.child_mut("tail1");
@@ -705,11 +707,12 @@ fn apply_feline_lie_down_pose(
     baby: bool,
     lie_down_amount: f32,
     lie_down_amount_tail: f32,
+    age_scale: f32,
 ) {
     if baby {
         apply_baby_feline_lie_down_pose(root, lie_down_amount, lie_down_amount_tail);
     } else {
-        apply_adult_feline_lie_down_pose(root, lie_down_amount, lie_down_amount_tail);
+        apply_adult_feline_lie_down_pose(root, lie_down_amount, lie_down_amount_tail, age_scale);
     }
 }
 
@@ -742,6 +745,7 @@ impl EntityModel for FelineModel {
             &mut self.root,
             render_state.feline_is_crouching,
             render_state.feline_is_sprinting,
+            render_state.age_scale,
         );
         apply_head_look(
             self.root.child_mut("head"),
@@ -749,7 +753,7 @@ impl EntityModel for FelineModel {
             render_state.head_pitch,
         );
         if render_state.feline_is_sitting {
-            apply_feline_sitting_pose(&mut self.root, self.baby);
+            apply_feline_sitting_pose(&mut self.root, self.baby, render_state.age_scale);
         } else {
             // Vanilla's not-sitting branch drops the lower tail to `1.7278761` and then adds the
             // branch-specific standing/crouch/sprint wobble. At rest the wobble collapses to zero,
@@ -776,6 +780,7 @@ impl EntityModel for FelineModel {
             self.baby,
             render_state.feline_lie_down_amount,
             render_state.feline_lie_down_amount_tail,
+            render_state.age_scale,
         );
         apply_feline_relax_pose(&mut self.root, render_state.feline_relax_state_one_amount);
     }
