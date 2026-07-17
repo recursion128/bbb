@@ -424,9 +424,11 @@ fn parrot_passenger_holds_its_wings() {
 
 #[test]
 fn entity_model_sources_project_bee_roll_amount() {
-    // Vanilla `Bee.DATA_FLAGS_ID` is synced data id 18; `FLAG_ROLL` is mask 2 within that byte.
+    let accessors =
+        vanilla_entity_metadata_bee_accessors_for_entity_type(VANILLA_ENTITY_TYPE_BEE_ID)
+            .expect("generated Bee metadata accessors must resolve");
     let bee_flags = |raw: i8| ProtocolEntityDataValue {
-        data_id: 18,
+        data_id: accessors.flags_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(raw),
     };
@@ -451,7 +453,7 @@ fn entity_model_sources_project_bee_roll_amount() {
     // Setting `FLAG_ROLL` makes vanilla `Bee.updateRollAmount` climb `rollAmount` by `0.2`/tick.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 81,
-        values: vec![bee_flags(2)],
+        values: vec![bee_flags(accessors.roll_mask)],
     }));
     store.advance_entity_client_animations(1);
     assert!((roll(&store, 1.0) - 0.2).abs() < 1.0e-6);
@@ -465,7 +467,7 @@ fn entity_model_sources_project_bee_roll_amount() {
     // Clearing the flag decays it by `0.24`/tick (vanilla `Math.max(0.0, …)`).
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 81,
-        values: vec![bee_flags(0)],
+        values: vec![bee_flags(accessors.flags_default)],
     }));
     store.advance_entity_client_animations(1);
     assert!((roll(&store, 1.0) - 0.76).abs() < 1.0e-6);
@@ -1072,10 +1074,11 @@ fn entity_model_sources_project_warden_emerge_and_dig() {
 
 #[test]
 fn entity_model_sources_project_fox_head_roll_and_crouch() {
-    // Vanilla `Fox.DATA_FLAGS_ID` is synced data id 19; `FLAG_CROUCHING` is mask 4 and
-    // `FLAG_INTERESTED` is mask 8 within that byte.
+    let accessors =
+        vanilla_entity_metadata_fox_accessors_for_entity_type(VANILLA_ENTITY_TYPE_FOX_ID)
+            .expect("generated Fox metadata accessors must resolve");
     let fox_flags = |raw: i8| ProtocolEntityDataValue {
-        data_id: 19,
+        data_id: accessors.flags_data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
         value: EntityDataValueKind::Byte(raw),
     };
@@ -1106,7 +1109,7 @@ fn entity_model_sources_project_fox_head_roll_and_crouch() {
     // angle is `0.4`, so the head roll is `0.4 * 0.11 * π`.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 91,
-        values: vec![fox_flags(8)],
+        values: vec![fox_flags(accessors.interested_mask)],
     }));
     store.advance_entity_client_animations(1);
     assert!((head_roll(&store, 1.0) - 0.4 * HEAD_ROLL_SCALE).abs() < 1.0e-6);
@@ -1118,7 +1121,7 @@ fn entity_model_sources_project_fox_head_roll_and_crouch() {
     // resets the interest ease toward 0.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 91,
-        values: vec![fox_flags(4)],
+        values: vec![fox_flags(accessors.crouching_mask)],
     }));
     assert!(source(&store, 1.0).fox_is_crouching);
     store.advance_entity_client_animations(1);
@@ -1134,7 +1137,7 @@ fn entity_model_sources_project_fox_head_roll_and_crouch() {
     // flag resets `crouchAmount` to `0` INSTANTLY (vanilla's non-crouching branch is an assignment).
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 91,
-        values: vec![fox_flags(0)],
+        values: vec![fox_flags(accessors.flags_default)],
     }));
     assert!(!source(&store, 1.0).fox_is_crouching);
     store.advance_entity_client_animations(1);
@@ -1148,7 +1151,12 @@ fn entity_model_sources_project_fox_head_roll_and_crouch() {
     // The plain sleep/sit/pounce/faceplant bools project straight off the synced byte.
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {
         id: 91,
-        values: vec![fox_flags(32 | 1 | 16 | 64)],
+        values: vec![fox_flags(
+            accessors.sleeping_mask
+                | accessors.sitting_mask
+                | accessors.pouncing_mask
+                | accessors.faceplanted_mask,
+        )],
     }));
     let posed = source(&store, 1.0);
     assert!(posed.fox_is_sleeping);

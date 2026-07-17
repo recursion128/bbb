@@ -23890,6 +23890,7 @@ mod generated_catalog_guards {
         let store = include_str!("../store.rs");
         let animations = include_str!("../animations.rs");
         let world_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        let animation_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
         let native_variants = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
@@ -23899,6 +23900,7 @@ mod generated_catalog_guards {
             store,
             animations,
             world_tests,
+            animation_tests,
             native_scene,
             native_variants,
             native_scene_tests,
@@ -23912,6 +23914,7 @@ mod generated_catalog_guards {
             store,
             animations,
             world_tests,
+            animation_tests,
             native_scene,
             native_variants,
             native_scene_tests,
@@ -23967,6 +23970,7 @@ mod generated_catalog_guards {
         let native_scene_tests = include_str!("../../../../bbb-native/src/entity_scene/tests.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
+        let animation_tests = include_str!("../tests/small_mob_and_walk_animation.rs");
         for source in [
             store,
             animations,
@@ -23975,6 +23979,7 @@ mod generated_catalog_guards {
             native_scene_tests,
             native_input,
             native_input_tests,
+            animation_tests,
         ] {
             assert!(source.contains("vanilla_entity_metadata_fox_accessors_for_entity_type"));
         }
@@ -23998,6 +24003,7 @@ mod generated_catalog_guards {
                 native_scene_tests,
                 native_input,
                 native_input_tests,
+                animation_tests,
             ] {
                 assert!(
                     !source.contains(removed),
