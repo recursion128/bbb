@@ -65,6 +65,7 @@ pub use renderer_catalog::{
     VanillaHorseRendererKind, VanillaIllagerRendererKind, VanillaLlamaRendererKind,
     VanillaSkeletonRendererKind, VanillaUndeadHorseRendererKind, VanillaZombieRendererKind,
 };
+pub use renderer_catalog::{vanilla_entity_renderer_hoglin_kind, VanillaHoglinRendererKind};
 pub use renderer_catalog::{vanilla_entity_renderer_piglin_kind, VanillaPiglinRendererKind};
 pub use schema::vanilla_entity_metadata_experience_orb_value_accessor_for_entity_type;
 pub use schema::vanilla_entity_metadata_type_is_llama;

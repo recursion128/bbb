@@ -182,6 +182,15 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             },
         };
     }
+    if let Some(hoglin_kind) = bbb_world::vanilla_entity_renderer_hoglin_kind(entity_type_id) {
+        return EntityModelKind::Hoglin {
+            family: match hoglin_kind {
+                bbb_world::VanillaHoglinRendererKind::Hoglin => HoglinModelFamily::Hoglin,
+                bbb_world::VanillaHoglinRendererKind::Zoglin => HoglinModelFamily::Zoglin,
+            },
+            baby: ageable_baby(entity_type_id, data_values),
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -220,14 +229,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             baby: ageable_baby(entity_type_id, data_values),
         },
         VANILLA_ENTITY_TYPE_RAVAGER_ID => EntityModelKind::Ravager,
-        VANILLA_ENTITY_TYPE_HOGLIN_ID => EntityModelKind::Hoglin {
-            family: HoglinModelFamily::Hoglin,
-            baby: ageable_baby(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_ZOGLIN_ID => EntityModelKind::Hoglin {
-            family: HoglinModelFamily::Zoglin,
-            baby: ageable_baby(entity_type_id, data_values),
-        },
         VANILLA_ENTITY_TYPE_POLAR_BEAR_ID => EntityModelKind::PolarBear {
             baby: ageable_baby(entity_type_id, data_values),
         },

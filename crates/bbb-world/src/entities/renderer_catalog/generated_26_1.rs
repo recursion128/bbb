@@ -3809,6 +3809,18 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn native_model_selection_does_not_restore_hoglin_type_membership() {
+        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
+        assert!(source.contains("vanilla_entity_renderer_hoglin_kind"));
+        for removed in [
+            "VANILLA_ENTITY_TYPE_HOGLIN_ID",
+            "VANILLA_ENTITY_TYPE_ZOGLIN_ID",
+        ] {
+            assert!(!source.contains(removed), "restored {removed}");
+        }
+    }
+
+    #[test]
     fn world_projection_does_not_restore_feline_type_membership() {
         let source = include_str!("../dimensions.rs");
         assert!(!source.contains("fn vanilla_feline_family"));

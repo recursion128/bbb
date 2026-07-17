@@ -87,6 +87,12 @@ pub enum VanillaPiglinRendererKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaHoglinRendererKind {
+    Hoglin,
+    Zoglin,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VanillaBoatRendererFamily {
     Acacia,
     Bamboo,
@@ -291,6 +297,16 @@ pub fn vanilla_entity_renderer_piglin_kind(
     vanilla_entity_renderer_registration(entity_type_id)?.piglin_kind
 }
 
+pub fn vanilla_entity_renderer_hoglin_kind(
+    entity_type_id: i32,
+) -> Option<VanillaHoglinRendererKind> {
+    match vanilla_entity_renderer_registration(entity_type_id)?.renderer_class {
+        "HoglinRenderer" => Some(VanillaHoglinRendererKind::Hoglin),
+        "ZoglinRenderer" => Some(VanillaHoglinRendererKind::Zoglin),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -307,7 +323,7 @@ mod tests {
         VANILLA_ENTITY_TYPE_EYE_OF_ENDER_ID, VANILLA_ENTITY_TYPE_FALLING_BLOCK_ID,
         VANILLA_ENTITY_TYPE_FIREBALL_ID, VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
         VANILLA_ENTITY_TYPE_GIANT_ID, VANILLA_ENTITY_TYPE_GLOW_ITEM_FRAME_ID,
-        VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
+        VANILLA_ENTITY_TYPE_HOGLIN_ID, VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_HUSK_ID,
         VANILLA_ENTITY_TYPE_ILLUSIONER_ID, VANILLA_ENTITY_TYPE_INTERACTION_ID,
         VANILLA_ENTITY_TYPE_ITEM_FRAME_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
         VANILLA_ENTITY_TYPE_LIGHTNING_BOLT_ID, VANILLA_ENTITY_TYPE_LINGERING_POTION_ID,
@@ -327,9 +343,9 @@ mod tests {
         VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
         VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
         VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
-        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOGLIN_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
 
     use super::*;
@@ -662,6 +678,22 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_renderer_piglin_kind(VANILLA_ENTITY_TYPE_ZOMBIE_ID),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_hoglin_kinds_match_provider_classes() {
+        assert_eq!(
+            vanilla_entity_renderer_hoglin_kind(VANILLA_ENTITY_TYPE_HOGLIN_ID),
+            Some(VanillaHoglinRendererKind::Hoglin)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_hoglin_kind(VANILLA_ENTITY_TYPE_ZOGLIN_ID),
+            Some(VanillaHoglinRendererKind::Zoglin)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_hoglin_kind(VANILLA_ENTITY_TYPE_PIGLIN_ID),
             None
         );
     }

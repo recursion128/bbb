@@ -18447,3 +18447,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Piglin、ZombifiedPiglin 与 PiglinBrute 各自的 baby accessor/固定 adult 语义。
 - extractor fixture 锁定三组 tuple，renderer generator 输出反向守卫，防止 native 恢复
   三个 entity-type 分支。
+
+## 2026-07-17：生成 Hoglin model-kind dispatch
+
+- world renderer owner 将 source-generated `HoglinRenderer`/`ZoglinRenderer` provider class
+  映射为 typed hoglin renderer kind，并以 Piglin 作为非成员负例。
+- native 删除 Hoglin/Zoglin type arms，统一消费 renderer kind；两者的 baby 状态继续通过
+  generated nearest-owner accessor 解析。
+- renderer generator 输出反向守卫，禁止 native kind dispatch 恢复两个 entity-type 分支。
