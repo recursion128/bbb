@@ -21850,7 +21850,15 @@ mod generated_catalog_guards {
         let world_tests = include_str!("../tests/item_entity_and_pickup_projection.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
         let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
-        for source in [store, world_tests, native_input, native_input_tests] {
+        let native_runtime_tests =
+            include_str!("../../../../bbb-native/src/runtime/events/tests.rs");
+        for source in [
+            store,
+            world_tests,
+            native_input,
+            native_input_tests,
+            native_runtime_tests,
+        ] {
             assert!(source
                 .contains("vanilla_entity_metadata_firework_rocket_accessors_for_entity_type"));
             for removed in [

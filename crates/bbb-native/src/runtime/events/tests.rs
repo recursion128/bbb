@@ -47,15 +47,16 @@ use bbb_protocol::packets::{
     WaypointVec3i, WrittenBookContentSummary,
 };
 use bbb_world::{
-    advance_cobweb_place_particle_randoms, AllayDuplicationParticleState, AnimalLoveParticleState,
-    ArrowEffectParticleState, BlockPos, ChunkPos, DolphinHappyParticleState,
-    EntityTamingParticleState, FireworkRocketExplosionParticleState,
-    FireworkRocketTrailParticleState, FoxEatParticleState, HoneyBlockParticleState,
-    LivingEntityDrownParticleState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
-    LocalPlayerPoseState, OminousItemSpawnerParticleState, RavagerRoarParticleState,
-    RegistryPacketEntry, SnowballHitParticleState, TakeItemEntityPickupParticleState,
-    ThrownEggHitParticleState, VillagerParticleKind, VillagerParticleState,
-    WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
+    advance_cobweb_place_particle_randoms,
+    vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
+    AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState, BlockPos,
+    ChunkPos, DolphinHappyParticleState, EntityTamingParticleState,
+    FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
+    HoneyBlockParticleState, LivingEntityDrownParticleState, LivingEntityPoofParticleState,
+    LivingEntityPortalParticleState, LocalPlayerPoseState, OminousItemSpawnerParticleState,
+    RavagerRoarParticleState, RegistryPacketEntry, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, ThrownEggHitParticleState, VillagerParticleKind,
+    VillagerParticleState, WitchMagicParticleState, WorldBlockSoundProfile, WorldStore,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc;
@@ -97,6 +98,18 @@ fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
     }
 }
 
+fn firework_item_data_id() -> u8 {
+    let accessors = vanilla_entity_metadata_firework_rocket_accessors_for_entity_type(
+        VANILLA_ENTITY_TYPE_FIREWORK_ROCKET_ID,
+    )
+    .expect("generated FireworkRocket metadata accessors must resolve");
+    assert_eq!(
+        accessors.item_default_resource_id,
+        "minecraft:firework_rocket"
+    );
+    accessors.item_data_id
+}
+
 fn firework_item_entity_data(entity_id: i32, explosions_count: Option<usize>) -> SetEntityData {
     let mut stack = item_stack(901, 1);
     stack.component_patch = DataComponentPatchSummary {
@@ -107,7 +120,7 @@ fn firework_item_entity_data(entity_id: i32, explosions_count: Option<usize>) ->
     SetEntityData {
         id: entity_id,
         values: vec![EntityDataValue {
-            data_id: 8,
+            data_id: firework_item_data_id(),
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(stack),
@@ -129,7 +142,7 @@ fn firework_item_entity_data_with_explosions(
     SetEntityData {
         id: entity_id,
         values: vec![EntityDataValue {
-            data_id: 8,
+            data_id: firework_item_data_id(),
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(stack),
