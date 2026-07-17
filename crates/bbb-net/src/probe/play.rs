@@ -238,8 +238,9 @@ mod tests {
         ids,
     };
     use bbb_world::{
-        advance_growth_level_event_particle_randoms, BlockPos, ChunkPos,
-        LevelEventGrowthRandomMode, LevelEventSoundRandomState, LocalPlayerPoseState, RegistrySet,
+        advance_growth_level_event_particle_randoms, vanilla_entity_metadata_entity_accessors,
+        BlockPos, ChunkPos, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
+        LocalPlayerPoseState, RegistrySet,
     };
     use bytes::BytesMut;
     use std::{collections::BTreeMap, time::Duration};
@@ -2348,18 +2349,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::SetEntityData(SetEntityData {
                 id: 123,
-                values: vec![
-                    EntityDataValue {
-                        data_id: 0,
-                        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                        value: EntityDataValueKind::Byte(0x20),
-                    },
-                    EntityDataValue {
-                        data_id: 2,
-                        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                        value: EntityDataValueKind::Int(301),
-                    },
-                ],
+                values: vec![entity_invisible_data(), entity_air_supply_data(301)],
             }))
             .await
             .unwrap();
@@ -2476,18 +2466,7 @@ mod tests {
         assert_eq!(entity.on_ground, Some(true));
         assert_eq!(
             entity.data_values,
-            vec![
-                EntityDataValue {
-                    data_id: 0,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: EntityDataValueKind::Byte(0x20),
-                },
-                EntityDataValue {
-                    data_id: 2,
-                    serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                    value: EntityDataValueKind::Int(301),
-                },
-            ]
+            vec![entity_invisible_data(), entity_air_supply_data(301)]
         );
         assert_eq!(
             entity.equipment,
@@ -5052,6 +5031,29 @@ mod tests {
             item_id: Some(item_id),
             count,
             component_patch: Default::default(),
+        }
+    }
+
+    fn entity_invisible_data() -> EntityDataValue {
+        let accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        assert_eq!(accessors.shared_flags_default, 0);
+        EntityDataValue {
+            data_id: accessors.shared_flags_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
+            value: EntityDataValueKind::Byte(accessors.invisible_mask),
+        }
+    }
+
+    fn entity_air_supply_data(air_supply: i32) -> EntityDataValue {
+        let accessors = vanilla_entity_metadata_entity_accessors()
+            .expect("generated base Entity metadata accessors must resolve");
+        EntityDataValue {
+            data_id: accessors.air_supply_data_id,
+            serializer_id:
+                bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+            value: EntityDataValueKind::Int(air_supply),
         }
     }
 
