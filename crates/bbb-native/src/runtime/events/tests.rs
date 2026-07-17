@@ -49,6 +49,7 @@ use bbb_protocol::packets::{
 use bbb_world::{
     advance_cobweb_place_particle_randoms, vanilla_entity_metadata_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
+    vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState, BlockPos,
     ChunkPos, DolphinHappyParticleState, EntityTamingParticleState,
     FireworkRocketExplosionParticleState, FireworkRocketTrailParticleState, FoxEatParticleState,
@@ -116,6 +117,20 @@ fn arrow_effect_color_data_id() -> u8 {
             .expect("generated Arrow metadata accessors must resolve");
     assert_eq!(accessors.effect_color_default, -1);
     accessors.effect_color_data_id
+}
+
+fn throwable_item_stack_data_id(entity_type_id: i32) -> u8 {
+    let accessor = vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+        entity_type_id,
+        "ITEM_STACK",
+    )
+    .expect("generated throwable-item metadata accessor must resolve");
+    assert_eq!(
+        accessor.owner,
+        "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile"
+    );
+    assert_eq!(accessor.java_name, "DATA_ITEM_STACK");
+    accessor.data_id
 }
 
 fn firework_item_entity_data(entity_id: i32, explosions_count: Option<usize>) -> SetEntityData {

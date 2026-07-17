@@ -24950,6 +24950,8 @@ mod generated_catalog_guards {
             .contains("vanilla_entity_metadata_thrown_trident_accessors_for_entity_type"));
         assert!(native_runtime_tests
             .contains("vanilla_entity_metadata_arrow_accessors_for_entity_type"));
+        assert!(native_runtime_tests
+            .contains("vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer"));
         assert!(!animations.contains("fn is_vanilla_arrow_type"));
         for removed in [
             "ABSTRACT_ARROW_FLAGS_DATA_ID",

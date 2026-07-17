@@ -1280,7 +1280,7 @@ fn snowball_hit_entity_event_emits_particle_state() {
         SetEntityData {
             id: 79,
             values: vec![EntityDataValue {
-                data_id: 8,
+                data_id: throwable_item_stack_data_id(VANILLA_ENTITY_TYPE_SNOWBALL_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(ItemStackSummary::empty()),
             }],
@@ -1363,7 +1363,7 @@ fn thrown_egg_hit_entity_event_emits_particle_state() {
         SetEntityData {
             id: 89,
             values: vec![EntityDataValue {
-                data_id: 8,
+                data_id: throwable_item_stack_data_id(VANILLA_ENTITY_TYPE_EGG_ID),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(ItemStackSummary::empty()),
             }],
