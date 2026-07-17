@@ -1346,6 +1346,10 @@ entity_model_source_state! {
     /// for the entity carrying the generated Bat flags accessor; `false` for every other entity.
     #[serde(default)]
     pub bat_resting: bool,
+    /// Vanilla `BatRenderState.flyAnimationState`: elapsed seconds since the current flying run
+    /// started. `-1.0` before the first flying tick, while resting, and for every non-bat entity.
+    #[serde(default = "entity_model_source_default_neg_one")]
+    pub bat_flying_seconds: f32,
     /// Vanilla `BeeRenderState.hasStinger` (`!Bee.hasStung()`, the synced `DATA_FLAGS_ID & 4`):
     /// whether the bee still carries its stinger, which `BeeModel.setupAnim` toggles as the
     /// stinger cube's `visible` flag. Projected only for the entity carrying the generated Bee

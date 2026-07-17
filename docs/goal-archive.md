@@ -18699,3 +18699,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   optional armor glint and regular/decal trim in vanilla collector order. Focused tests lock pack
   classification, source projection, trim-atlas handoff, body squeeze, age geometry and textures,
   goggles poses, and base → foil → trim submissions.
+
+# 2026-07-17: Project bat flying AnimationState phase
+
+- Added the client-ticked `Bat.flyAnimationState` across world, native, and renderer boundaries.
+  The first flying tick records its start age, resting stops it, and a later takeoff restarts the
+  timer instead of resuming the entity's absolute-age phase.
+- `BatAnimation.BAT_FLYING` now samples the projected elapsed seconds while a stopped state leaves
+  the model in its bind pose. Focused tests lock first-tick timing, partial-tick interpolation,
+  rest/takeoff transitions, and distinct flap phases for bats with the same absolute age.

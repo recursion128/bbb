@@ -78,17 +78,29 @@ fn bat_mesh_uses_vanilla_body_layer_geometry() {
 }
 
 #[test]
-fn bat_wings_flap_with_age() {
-    // The looping `BAT_FLYING` flap re-poses the mesh as the age advances within the 0.5s
-    // (10-tick) cycle.
-    let base = EntityModelInstance::bat(911, [0.0, 64.0, 0.0], 0.0);
+fn bat_wings_flap_with_flying_animation_elapsed_time() {
+    // Vanilla samples `BAT_FLYING` from `flyAnimationState`, so two bats at the same absolute age
+    // can have different flap phases when their current flying runs started on different ticks.
+    let base = EntityModelInstance::bat(911, [0.0, 64.0, 0.0], 0.0)
+        .with_age_in_ticks(37.0)
+        .with_bat_flying_seconds(0.0);
+    let stopped = entity_model_mesh(&[
+        EntityModelInstance::bat(911, [0.0, 64.0, 0.0], 0.0).with_age_in_ticks(37.0)
+    ]);
     let early = entity_model_mesh(&[base]);
-    let later = entity_model_mesh(&[base.with_age_in_ticks(3.0)]);
+    assert_ne!(
+        stopped.vertices, early.vertices,
+        "a stopped AnimationState leaves the bat in its bind pose"
+    );
+    let later = entity_model_mesh(&[base.with_bat_flying_seconds(0.15)]);
     assert_eq!(early.vertices.len(), later.vertices.len());
-    assert_ne!(early.vertices, later.vertices, "the wings flap with age");
+    assert_ne!(
+        early.vertices, later.vertices,
+        "the wings flap with AnimationState elapsed time"
+    );
 
-    // The animation loops every 0.5s = 10 ticks, so age 0 and age 10 sample the same phase.
-    let one_cycle = entity_model_mesh(&[base.with_age_in_ticks(10.0)]);
+    // The animation loops every 0.5s = 10 ticks, independent of absolute entity age.
+    let one_cycle = entity_model_mesh(&[base.with_bat_flying_seconds(0.5)]);
     assert_eq!(
         early.vertices, one_cycle.vertices,
         "the flap loops every 10 ticks"
@@ -125,7 +137,9 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
     let base = EntityModelInstance::bat(920, [0.0, 64.0, 0.0], 0.0)
         .with_light_coords((5_u32 << 4) | (11_u32 << 20))
         .with_white_overlay_progress(0.8)
-        .with_has_red_overlay(true);
+        .with_has_red_overlay(true)
+        .with_age_in_ticks(37.0)
+        .with_bat_flying_seconds(0.0);
     let meshes = entity_model_textured_meshes(&[base], &atlas);
     assert_bat_base_submission(&meshes, base);
     assert!(meshes.translucent.vertices.is_empty());
@@ -139,12 +153,14 @@ fn bat_textured_mesh_uses_vanilla_geometry_and_animates() {
         .iter()
         .all(|vertex| vertex.tint == [1.0, 1.0, 1.0, 1.0]));
 
-    // The looping flap re-poses the wings as the age advances and repeats every 10 ticks.
-    let later = entity_model_textured_meshes(&[base.with_age_in_ticks(3.0)], &atlas);
-    assert_bat_base_submission(&later, base.with_age_in_ticks(3.0));
+    // The looping flap re-poses from relative AnimationState time and repeats every 10 ticks.
+    let later_instance = base.with_bat_flying_seconds(0.15);
+    let later = entity_model_textured_meshes(&[later_instance], &atlas);
+    assert_bat_base_submission(&later, later_instance);
     assert_ne!(meshes.cutout_cull.vertices, later.cutout_cull.vertices);
-    let one_cycle = entity_model_textured_meshes(&[base.with_age_in_ticks(10.0)], &atlas);
-    assert_bat_base_submission(&one_cycle, base.with_age_in_ticks(10.0));
+    let cycle_instance = base.with_bat_flying_seconds(0.5);
+    let one_cycle = entity_model_textured_meshes(&[cycle_instance], &atlas);
+    assert_bat_base_submission(&one_cycle, cycle_instance);
     assert_eq!(meshes.cutout_cull.vertices, one_cycle.cutout_cull.vertices);
 }
 
@@ -161,7 +177,7 @@ fn bat_resting_animation_matches_vanilla_definition() {
 fn bat_hangs_upside_down_when_resting() {
     // While `isResting`, `BatModel.setupAnim` swaps to the static `BAT_RESTING` hanging pose
     // and `applyHeadRotation` turns the head by the look yaw. Colored path here, textured below.
-    let base = EntityModelInstance::bat(930, [0.0, 64.0, 0.0], 0.0);
+    let base = EntityModelInstance::bat(930, [0.0, 64.0, 0.0], 0.0).with_bat_flying_seconds(0.0);
     let flying = entity_model_mesh(&[base]);
     let resting = entity_model_mesh(&[base.with_bat_resting(true)]);
     assert_eq!(flying.vertices.len(), resting.vertices.len());
@@ -177,7 +193,7 @@ fn bat_hangs_upside_down_when_resting() {
         resting.vertices, resting_later.vertices,
         "the resting pose holds still"
     );
-    let flying_later = entity_model_mesh(&[base.with_age_in_ticks(3.0)]);
+    let flying_later = entity_model_mesh(&[base.with_bat_flying_seconds(0.15)]);
     assert_ne!(
         flying.vertices, flying_later.vertices,
         "a flying bat keeps flapping"
@@ -202,7 +218,8 @@ fn bat_textured_mesh_hangs_upside_down_when_resting() {
     let base = EntityModelInstance::bat(931, [0.0, 64.0, 0.0], 0.0)
         .with_light_coords((6_u32 << 4) | (10_u32 << 20))
         .with_white_overlay_progress(0.8)
-        .with_has_red_overlay(true);
+        .with_has_red_overlay(true)
+        .with_bat_flying_seconds(0.0);
     let flying = entity_model_textured_meshes(&[base], &atlas);
     assert_bat_base_submission(&flying, base);
     let resting_instance = base.with_bat_resting(true);

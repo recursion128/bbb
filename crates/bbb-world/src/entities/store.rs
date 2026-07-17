@@ -82,14 +82,15 @@ use super::{
     VANILLA_ENTITY_TYPE_TNT_MINECART_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
-    allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
-    camel_is_dashing, cat_is_lying, cat_relax_state_one, copper_golem_animation_flags,
-    creaking_can_move, creaking_is_tearing_down, entity_animation_uses_in_water,
-    entity_chunk_coordinate, entity_is_fall_flying, guardian_attack_duration,
-    guardian_attack_target_id, guardian_is_moving, piglin_is_charging_crossbow,
-    pillager_is_charging_crossbow, player_is_using_item, sniffer_can_play_digging_sound,
-    warden_heartbeat_delay, wither_side_head_target_ids, wither_side_head_target_rotation,
-    wolf_is_interested, EntityClientTickParticleTriggers, WitherHeadTargetRotations,
+    allay_is_dancing, axolotl_is_playing_dead, bat_is_resting, boat_bubble_time,
+    boat_paddle_states, camel_is_dashing, cat_is_lying, cat_relax_state_one,
+    copper_golem_animation_flags, creaking_can_move, creaking_is_tearing_down,
+    entity_animation_uses_in_water, entity_chunk_coordinate, entity_is_fall_flying,
+    guardian_attack_duration, guardian_attack_target_id, guardian_is_moving,
+    piglin_is_charging_crossbow, pillager_is_charging_crossbow, player_is_using_item,
+    sniffer_can_play_digging_sound, warden_heartbeat_delay, wither_side_head_target_ids,
+    wither_side_head_target_rotation, wolf_is_interested, EntityClientTickParticleTriggers,
+    WitherHeadTargetRotations,
 };
 use crate::entities::dimensions::{
     entity_data_pose, item_frame_facing, item_frame_item, item_frame_map_id, item_frame_rotation,
@@ -2232,6 +2233,9 @@ impl EntityStore {
             enderman_carried_block,
             enderman_creepy,
             bat_resting,
+            bat_flying_seconds: client_animations
+                .animations
+                .bat_flying_seconds(partial_ticks),
             bee_has_stinger,
             bee_roll_amount: client_animations.animations.bee_roll_amount(partial_ticks),
             panda_sit_amount: client_animations.animations.panda_sit_amount(partial_ticks),
@@ -3877,6 +3881,7 @@ impl EntityStore {
                 let is_fall_flying = entity_is_fall_flying(&metadata.data_values);
                 let is_crouching =
                     entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_CROUCHING_ID;
+                let bat_is_resting = bat_is_resting(identity.entity_type_id, &metadata.data_values);
                 let is_swimming =
                     entity_data_pose(&metadata.data_values) == VANILLA_ENTITY_POSE_SWIMMING_ID;
                 // The per-tick world fact (`isInWater()`) the world resolved before
@@ -3935,6 +3940,7 @@ impl EntityStore {
                     is_baby,
                     is_fall_flying,
                     is_crouching,
+                    bat_is_resting,
                     in_water,
                     is_moving,
                     warden_heartbeat_delay,

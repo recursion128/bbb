@@ -754,6 +754,9 @@ entity_render_state! {
     /// applies the `BatAnimation.BAT_RESTING` upside-down pose (and a head look) instead of
     /// the flying flap. `false` for every other entity (and for a flying bat).
     (with_bat_resting) bat_resting: bool = false;
+    /// Vanilla `BatRenderState.flyAnimationState`: elapsed seconds since the current flying run
+    /// started. Negative means the AnimationState is stopped, so no flying keyframe is applied.
+    (with_bat_flying_seconds) bat_flying_seconds: f32 = -1.0;
     /// Vanilla `BeeRenderState.hasStinger` (`!Bee.hasStung()`): whether the bee still carries
     /// its stinger cube, which `BeeModel.setupAnim` toggles via `stinger.visible`. `true` for
     /// every other entity and for a bee that has not stung; `false` only for a bee that has
@@ -3053,6 +3056,7 @@ mod tests {
                 enderman_carrying: false,
                 enderman_creepy: false,
                 bat_resting: false,
+                bat_flying_seconds: -1.0,
                 bee_has_stinger: true,
                 bee_angry: false,
                 bee_roll_amount: 0.0,

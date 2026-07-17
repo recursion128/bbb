@@ -782,6 +782,7 @@ pub(super) fn entity_model_instance(
         with_enderman_carrying enderman_carrying,
         with_enderman_creepy enderman_creepy,
         with_bat_resting bat_resting,
+        with_bat_flying_seconds bat_flying_seconds,
         with_bee_has_stinger bee_has_stinger,
         with_bee_roll_amount bee_roll_amount,
         with_frog_croak_seconds frog_croak_seconds,

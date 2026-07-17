@@ -21,6 +21,7 @@ use super::schema::{
     vanilla_entity_metadata_allay_dancing_accessor_for_entity_type,
     vanilla_entity_metadata_armadillo_state_accessor_for_entity_type,
     vanilla_entity_metadata_axolotl_playing_dead_accessor_for_entity_type,
+    vanilla_entity_metadata_bat_flags_accessor_for_entity_type,
     vanilla_entity_metadata_bee_accessors_for_entity_type,
     vanilla_entity_metadata_camel_dash_accessor_for_entity_type,
     vanilla_entity_metadata_cat_lying_accessor_for_entity_type,
@@ -314,6 +315,11 @@ pub struct EntityClientAnimationState {
     pub cat_lie_down: Option<CatLieDownAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wither_heads: Option<WitherHeadRotationsState>,
+    /// Vanilla `Bat.flyAnimationState`, started on the first flying client tick and stopped while
+    /// resting so the renderer samples `BAT_FLYING` relative to that transition rather than the
+    /// entity's absolute age.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bat_flying: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub frog_croak: Option<KeyframeAnimationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -4401,6 +4407,15 @@ impl EntityClientAnimationState {
             .unwrap_or(-1.0)
     }
 
+    /// Vanilla `Bat.flyAnimationState` elapsed seconds, started by `Bat.setupAnimationStates` on the
+    /// first flying client tick and stopped while the bat is resting. Returns `-1.0` before that
+    /// first tick, while resting, and for every non-bat entity.
+    pub fn bat_flying_seconds(&self, partial_tick: f32) -> f32 {
+        self.bat_flying
+            .and_then(|state| state.elapsed_seconds(self.age_ticks, partial_tick))
+            .unwrap_or(-1.0)
+    }
+
     /// The creaking attack's elapsed seconds since entity event `4` started it (vanilla
     /// `attackAnimationState`), projected for the renderer `CreakingModel.setupAnim`
     /// `attackAnimation.apply`. Returns `-1.0` (the stopped-animation sentinel) for a non-attacking
@@ -5322,6 +5337,9 @@ impl EntityClientAnimationState {
         is_baby: bool,
         is_fall_flying: bool,
         is_crouching: bool,
+        // Vanilla `Bat.isResting()`, read from the synced flags byte before `Bat.tick` calls
+        // `setupAnimationStates`. It selects which of the two bat AnimationStates remains started.
+        bat_is_resting: bool,
         // The per-tick world fact `Guardian.aiStep` reads via `isInWater()`,
         // resolved by [`WorldStore::advance_entity_client_animations`] (which holds
         // the chunk/fluid data this context lacks). `false` for entities that do
@@ -5574,6 +5592,10 @@ impl EntityClientAnimationState {
                     }
                 }
             }
+            VANILLA_ENTITY_TYPE_BAT_ID => self
+                .bat_flying
+                .get_or_insert_with(KeyframeAnimationState::default)
+                .animate_when(!bat_is_resting, self.age_ticks),
             VANILLA_ENTITY_TYPE_SHULKER_ID => {
                 if let Some(peek) = self.shulker_peek.as_mut() {
                     peek.advance_client_tick();
@@ -6211,6 +6233,16 @@ pub(crate) fn boat_bubble_time(entity_type_id: i32, data_values: &[EntityDataVal
         data_values,
         accessors.bubble_time_data_id,
         accessors.bubble_time_default,
+    )
+}
+
+/// Vanilla `Bat.isResting()` (`DATA_ID_FLAGS & FLAG_RESTING`), resolved through the generated Bat
+/// accessor so the shared byte slot never leaks to another entity type.
+pub(crate) fn bat_is_resting(entity_type_id: i32, data_values: &[EntityDataValue]) -> bool {
+    vanilla_entity_metadata_bat_flags_accessor_for_entity_type(entity_type_id).is_some_and(
+        |(data_id, default, resting_mask)| {
+            entity_data_byte(data_values, data_id, default) & resting_mask != 0
+        },
     )
 }
 

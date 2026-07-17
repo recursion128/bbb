@@ -882,18 +882,18 @@ fn entity_model_sources_project_enderman_carrying_and_creepy() {
 }
 
 #[test]
-fn entity_model_sources_project_bat_resting_from_flags() {
+fn entity_model_sources_project_bat_resting_and_flying_start_phase() {
     // Vanilla Bat.DATA_ID_FLAGS (BYTE); FLAG_RESTING.
     let (_, default, resting_mask) =
         vanilla_entity_metadata_bat_flags_accessor_for_entity_type(VANILLA_ENTITY_TYPE_BAT_ID)
             .expect("generated Bat flags accessor must resolve");
-    let resting = |store: &WorldStore, id: i32| {
+    let state = |store: &WorldStore, id: i32, partial_tick: f32| {
         store
-            .entity_model_sources_at_partial_tick(0.0)
+            .entity_model_sources_at_partial_tick(partial_tick)
             .into_iter()
             .find(|source| source.entity_id == id)
+            .map(|source| (source.bat_resting, source.bat_flying_seconds))
             .unwrap()
-            .bat_resting
     };
     let set_flags = |store: &mut WorldStore, id: i32, value: ProtocolEntityDataValue| {
         store.apply_set_entity_data(ProtocolSetEntityData {
@@ -907,22 +907,34 @@ fn entity_model_sources_project_bat_resting_from_flags() {
         70,
         VANILLA_ENTITY_TYPE_BAT_ID,
     ));
-    // A bat with no flags is flying.
-    assert!(!resting(&store, 70));
+    // Before its first client tick vanilla has not started either AnimationState, even though the
+    // default flags select flying.
+    assert_eq!(state(&store, 70, 0.0), (false, -1.0));
+    store.advance_entity_client_animations(1);
+    assert_eq!(state(&store, 70, 0.0), (false, 0.0));
+    assert_eq!(state(&store, 70, 0.5), (false, 0.025));
+    store.advance_entity_client_animations(3);
+    assert_eq!(state(&store, 70, 0.0), (false, 0.15));
+
     // Setting Bat.FLAG_RESTING projects the hanging pose; clearing it
-    // returns to flying.
+    // returns to flying. `setupAnimationStates` observes each transition on the next client tick,
+    // stopping the old flying timer and restarting it from zero after takeoff.
     assert!(set_flags(
         &mut store,
         70,
         bat_flags_data(VANILLA_ENTITY_TYPE_BAT_ID, resting_mask)
     ));
-    assert!(resting(&store, 70));
+    assert_eq!(state(&store, 70, 0.0), (true, 0.15));
+    store.advance_entity_client_animations(1);
+    assert_eq!(state(&store, 70, 0.0), (true, -1.0));
     assert!(set_flags(
         &mut store,
         70,
         bat_flags_data(VANILLA_ENTITY_TYPE_BAT_ID, default)
     ));
-    assert!(!resting(&store, 70));
+    assert_eq!(state(&store, 70, 0.0), (false, -1.0));
+    store.advance_entity_client_animations(1);
+    assert_eq!(state(&store, 70, 0.0), (false, 0.0));
 
     // A chicken carries no bat flags byte; a stray bit at the same data id never reaches its
     // render state.
@@ -935,7 +947,7 @@ fn entity_model_sources_project_bat_resting_from_flags() {
         71,
         bat_flags_collision_data(resting_mask)
     ));
-    assert!(!resting(&store, 71));
+    assert_eq!(state(&store, 71, 0.0), (false, -1.0));
 }
 
 #[test]

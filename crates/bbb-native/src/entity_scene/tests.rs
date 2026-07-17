@@ -2186,7 +2186,7 @@ fn entity_model_instances_project_enderman_carrying_and_creepy() {
 }
 
 #[test]
-fn entity_model_instances_project_bat_resting() {
+fn entity_model_instances_project_bat_resting_and_flying_start_phase() {
     // Vanilla Bat.DATA_ID_FLAGS (BYTE) and its named resting bit.
     let (_, default, resting_mask) =
         bbb_world::vanilla_entity_metadata_bat_flags_accessor_for_entity_type(
@@ -2201,24 +2201,45 @@ fn entity_model_instances_project_bat_resting() {
         [1.0, 64.0, -2.0],
     ));
 
-    let resting = |world: &WorldStore, id: i32| {
-        entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
+    let state = |world: &WorldStore, id: i32, partial_tick: f32| {
+        entity_model_instances_from_world_at_partial_tick(world, None, partial_tick)
             .into_iter()
             .find(|instance| instance.entity_id == id)
             .unwrap()
             .render_state
-            .bat_resting
     };
 
-    // A flying bat projects bat_resting = false.
-    assert!(!resting(&world, 95));
+    // Before the first client tick the flying AnimationState is stopped. The first tick starts it
+    // at elapsed zero, and native forwards the partial-tick sample into renderer state.
+    let initial = state(&world, 95, 0.0);
+    assert!(!initial.bat_resting);
+    assert_eq!(initial.bat_flying_seconds, -1.0);
+    world.advance_entity_client_animations(1);
+    let flying = state(&world, 95, 0.5);
+    assert!(!flying.bat_resting);
+    assert_eq!(flying.bat_flying_seconds, 0.025);
 
     // Setting Bat.isResting via the named mask projects through to the hanging-pose state.
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 95,
         values: vec![bat_flags_data(resting_mask)],
     }));
-    assert!(resting(&world, 95));
+    assert!(state(&world, 95, 0.0).bat_resting);
+    world.advance_entity_client_animations(1);
+    let resting = state(&world, 95, 0.0);
+    assert!(resting.bat_resting);
+    assert_eq!(resting.bat_flying_seconds, -1.0);
+
+    // Taking off restarts the timer on the next bat tick instead of resuming the old absolute-age
+    // phase.
+    assert!(world.apply_set_entity_data(SetEntityData {
+        id: 95,
+        values: vec![bat_flags_data(default)],
+    }));
+    world.advance_entity_client_animations(1);
+    let restarted = state(&world, 95, 0.0);
+    assert!(!restarted.bat_resting);
+    assert_eq!(restarted.bat_flying_seconds, 0.0);
 }
 
 #[test]

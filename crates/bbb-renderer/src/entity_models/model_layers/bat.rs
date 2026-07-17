@@ -370,10 +370,9 @@ pub(in crate::entity_models) const BAT_RESTING: AnimationDefinition = AnimationD
 };
 
 /// Applies the vanilla `BatModel.setupAnim` to the unified tree: the looping `BatAnimation.BAT_FLYING`
-/// wing flap / body bob (sampled from `ageInTicks`), or, while `isResting`, the `BAT_RESTING` hanging
-/// pose with the head turned by the look yaw (`applyHeadRotation`, additive to the head's `yRot`). The
-/// ears hold their bind poses. The exact animation start tick is deferred, imperceptible for a
-/// continuous flap.
+/// wing flap / body bob sampled from `flyAnimationState`'s elapsed time, or, while `isResting`, the
+/// `BAT_RESTING` hanging pose with the head turned by the look yaw (`applyHeadRotation`, additive to
+/// the head's `yRot`). The ears hold their bind poses.
 fn apply_bat_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     let resting = instance.render_state.bat_resting;
     let animation = if resting { &BAT_RESTING } else { &BAT_FLYING };
@@ -382,7 +381,16 @@ fn apply_bat_anim(root: &mut ModelPart, instance: &EntityModelInstance) {
     } else {
         0.0
     };
-    let seconds = keyframe_elapsed_seconds(animation, instance.render_state.age_in_ticks * 0.05);
+    let elapsed_seconds = if resting {
+        // BAT_RESTING is a static one-keyframe pose, so its start phase is immaterial.
+        0.0
+    } else {
+        instance.render_state.bat_flying_seconds
+    };
+    if elapsed_seconds < 0.0 {
+        return;
+    }
+    let seconds = keyframe_elapsed_seconds(animation, elapsed_seconds);
     let sample = |bone: &str| sample_bone_offsets(animation, bone, seconds, 1.0);
 
     let (head_pos, head_rot) = sample("head");
