@@ -18816,3 +18816,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   zero while cumulative update, reset, add, and tab-selection counters remain available.
 - Added a focused regression seeded with a selected root advancement and narrowed the remaining
   fresh-listener manager gap to the debug subscriber.
+
+# 2026-07-17: Rebuild the debug subscriber on reconfiguration
+
+- Matched `ClientDebugSubscriber.clear()` by dropping the current block, chunk, entity, and event
+  value projections when play re-enters configuration. Cumulative packet counters remain history.
+- Preserved remote tick samples because Vanilla routes them to the independent
+  `DebugScreenOverlay` logger rather than the per-listener subscriber; the focused regression locks
+  that ownership boundary.
+- Closed Start Configuration coverage after rebuilding every current per-listener manager. Typed
+  debug-subscription codecs and renderers remain separately open on their owning packet families.

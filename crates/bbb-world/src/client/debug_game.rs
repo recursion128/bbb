@@ -210,6 +210,13 @@ impl WorldStore {
             .last_test_instance_block_status
             .as_ref()
     }
+
+    pub(crate) fn reset_debug_subscriber_for_new_listener(&mut self) {
+        self.client_debug_game.last_debug_block_value = None;
+        self.client_debug_game.last_debug_chunk_value = None;
+        self.client_debug_game.last_debug_entity_value = None;
+        self.client_debug_game.last_debug_event = None;
+    }
 }
 
 fn debug_vec3i_state(pos: ProtocolVec3i) -> DebugVec3iState {
@@ -405,5 +412,48 @@ mod tests {
                 size: Some(DebugVec3iState { x: 3, y: 4, z: 5 }),
             })
         );
+    }
+
+    #[test]
+    fn configuration_reentry_clears_subscriber_values_and_preserves_overlay_diagnostics() {
+        let mut store = WorldStore::new();
+        store.apply_debug_block_value(DebugBlockValue {
+            pos: ProtocolBlockPos { x: 1, y: 64, z: -2 },
+            raw_update_payload: vec![5, 1, 0xaa],
+        });
+        store.apply_debug_chunk_value(DebugChunkValue {
+            pos: ProtocolChunkPos { x: 3, z: -4 },
+            raw_update_payload: vec![7, 0],
+        });
+        store.apply_debug_entity_value(DebugEntityValue {
+            entity_id: 123,
+            raw_update_payload: vec![9, 1, 0xbb],
+        });
+        store.apply_debug_event(DebugEvent {
+            raw_event_payload: vec![4, 0xcc],
+        });
+        store.apply_debug_sample(DebugSample {
+            sample: vec![100, -50],
+            sample_type: RemoteDebugSampleType::TickTime,
+        });
+
+        store.clear_client_level();
+
+        assert!(store.last_debug_block_value().is_none());
+        assert!(store.last_debug_chunk_value().is_none());
+        assert!(store.last_debug_entity_value().is_none());
+        assert!(store.last_debug_event().is_none());
+        assert_eq!(
+            store.last_debug_sample(),
+            Some(&DebugSampleState {
+                sample_len: 2,
+                sample_type: "tick_time".to_string(),
+            })
+        );
+        assert_eq!(store.counters().debug_block_value_packets, 1);
+        assert_eq!(store.counters().debug_chunk_value_packets, 1);
+        assert_eq!(store.counters().debug_entity_value_packets, 1);
+        assert_eq!(store.counters().debug_event_packets, 1);
+        assert_eq!(store.counters().debug_sample_packets, 1);
     }
 }
