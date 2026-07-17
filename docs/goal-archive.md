@@ -18642,3 +18642,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   supplies no baby saddle model.
 - Focused world, native, and renderer tests lock saddle-slot filtering, runtime trim resolution,
   exact collector order, texture/render-type metadata, and adult-only geometry.
+
+# 2026-07-17: Render strider saddle armor trims and foil
+
+- Carried the synchronized saddle item's foil and armor trim through the existing strider
+  saddle-slot projection and the shared runtime trim atlas, using the vanilla
+  `minecraft:saddle` equipment asset and `trims/entity/strider_saddle` sprite prefix.
+- The adult `STRIDER_SADDLE` model now submits base → foil → regular/decal trim with no overlay;
+  baby striders continue to suppress the complete layer because vanilla supplies no baby saddle
+  model.
+- Focused world, native, and renderer tests cover saddle-slot filtering, ridden-state independence,
+  exact collector order, submission metadata, missing base-atlas behavior, and adult-only geometry.

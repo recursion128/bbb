@@ -2192,6 +2192,12 @@ entity_model_source_state! {
     /// layer on adult striders.
     #[serde(default)]
     pub strider_saddle: bool,
+    /// Vanilla `ArmorTrim.layerAssetId` for an adult strider's `STRIDER_SADDLE` equipment layer.
+    #[serde(default)]
+    pub strider_saddle_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for the strider saddle item.
+    #[serde(default)]
+    pub strider_saddle_foil: bool,
     /// Vanilla `CamelRenderState.saddle`: true when a camel/camel_husk carries a non-empty saddle item
     /// in `EquipmentSlot.SADDLE`. The renderer consumes this to draw the adult `CamelSaddleModel`
     /// equipment layer.

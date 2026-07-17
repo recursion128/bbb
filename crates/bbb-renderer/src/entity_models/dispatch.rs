@@ -698,7 +698,12 @@ impl EntityModelSink for TexturedSink<'_> {
             instance,
             &[strider_base_layer_pass(baby, cold)],
         );
-        render_strider_saddle_layer(self.meshes, *instance, self.atlas);
+        render_strider_saddle_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+        );
     }
 
     fn camel_model(

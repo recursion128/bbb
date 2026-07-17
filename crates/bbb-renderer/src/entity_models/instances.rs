@@ -1095,6 +1095,10 @@ entity_render_state! {
     /// renders `AdultStriderModel(ModelLayers.STRIDER_SADDLE)` over the base strider. Babies skip the
     /// layer because vanilla supplies no baby saddle model.
     (with_strider_saddle) strider_saddle: bool = false;
+    /// Vanilla armor-trim atlas sprite for the `STRIDER_SADDLE` equipment model.
+    (with_strider_saddle_trim) strider_saddle_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for the strider saddle item.
+    (with_strider_saddle_foil) strider_saddle_foil: bool = false;
     /// Vanilla `CamelRenderState.saddle`: the item in `EquipmentSlot.SADDLE` for camel and camel husk.
     /// A non-empty saddle item renders `CamelSaddleModel`; baby camels skip it because vanilla supplies
     /// no baby saddle model.
@@ -3107,6 +3111,8 @@ mod tests {
                 wolf_body_armor_foil: false,
                 strider_ridden: false,
                 strider_saddle: false,
+                strider_saddle_trim: None,
+                strider_saddle_foil: false,
                 camel_saddle: false,
                 camel_saddle_ridden: false,
                 nautilus_saddle: false,

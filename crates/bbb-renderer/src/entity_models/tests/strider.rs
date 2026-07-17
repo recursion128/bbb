@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::entity_models::model::ModelCube;
+use crate::DynamicEntityTextureImage;
 
 #[test]
 fn strider_adult_geometry_matches_vanilla_26_1_body_layer() {
@@ -543,6 +544,88 @@ fn strider_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
     assert!(meshes.eyes.vertices.is_empty());
     assert!(meshes.scroll.vertices.is_empty());
     assert!(meshes.scroll_additive.vertices.is_empty());
+}
+
+#[test]
+fn strider_saddle_foil_and_trim_follow_the_base_equipment_layer() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        STRIDER_TEXTURE_REF,
+        STRIDER_BABY_TEXTURE_REF,
+        STRIDER_SADDLE_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+    ]))
+    .unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 75_401 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 128],
+        rgba: vec![0xff; 64 * 128 * 4],
+    }])
+    .unwrap()
+    .0;
+    let trimmed_saddle = |entity_id, baby| {
+        EntityModelInstance::strider(entity_id, [0.0, 64.0, 0.0], 0.0, baby, false)
+            .with_strider_saddle(true)
+            .with_strider_saddle_foil(true)
+            .with_strider_saddle_trim(Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }))
+    };
+
+    let adult = trimmed_saddle(755, false);
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[adult],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(meshes.submissions.len(), 4);
+    let saddle = meshes.submissions[1];
+    assert_eq!(saddle.texture, STRIDER_SADDLE_TEXTURE_REF);
+    assert_eq!(
+        saddle.render_type,
+        EntityModelLayerRenderType::ArmorCutoutNoCull
+    );
+    assert_eq!((saddle.order, saddle.submit_sequence), (0, 1));
+    let foil = meshes.submissions[2];
+    assert_eq!(foil.texture, ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+    assert_eq!(
+        foil.render_type,
+        EntityModelLayerRenderType::ArmorEntityGlint
+    );
+    assert_eq!((foil.order, foil.submit_sequence), (1, 2));
+    let trim = meshes.submissions[3];
+    assert_eq!(trim.texture, STRIDER_SADDLE_TEXTURE_REF);
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!((trim.order, trim.submit_sequence), (2, 3));
+    for submit in [saddle, foil, trim] {
+        assert_eq!(submit.transform, entity_model_root_transform(adult));
+        assert_eq!(submit.light, adult.render_state.shader_light());
+        assert_eq!(submit.overlay, [0.0, 10.0]);
+    }
+    assert_eq!(meshes.armor_cutout.vertices.len(), 216);
+    assert_eq!(meshes.armor_entity_glint.vertices.len(), 216);
+    assert_eq!(meshes.dynamic_player_texture_armor_trim.vertices.len(), 216);
+
+    let baby = trimmed_saddle(756, true);
+    let baby_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[baby],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    assert!(baby_meshes.armor_cutout.vertices.is_empty());
+    assert!(baby_meshes.armor_entity_glint.vertices.is_empty());
+    assert!(baby_meshes
+        .dynamic_player_texture_armor_trim
+        .vertices
+        .is_empty());
 }
 
 fn strider_texture_images() -> Vec<EntityModelTextureImage> {

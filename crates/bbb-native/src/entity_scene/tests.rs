@@ -6648,6 +6648,12 @@ fn entity_model_instance_projects_equine_pose_animations_from_source() {
 #[test]
 fn entity_model_instances_project_strider_saddle_and_ridden_render_state() {
     const SADDLE_ITEM_ID: i32 = 742;
+    let trim_texture = EntityDynamicTexture { handle: 42_4314 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/strider_saddle/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
 
     let saddle = |entity_id: i32| SetEquipment {
         entity_id,
@@ -6656,17 +6662,29 @@ fn entity_model_instances_project_strider_saddle_and_ridden_render_state() {
             item: ItemStackSummary {
                 item_id: Some(SADDLE_ITEM_ID),
                 count: 1,
-                component_patch: DataComponentPatchSummary::default(),
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
             },
         }],
     };
     let strider_state = |world: &WorldStore, id: i32| {
-        let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state;
-        (render_state.strider_saddle, render_state.strider_ridden)
+        entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state
     };
 
     let mut world = WorldStore::new();
@@ -6681,23 +6699,40 @@ fn entity_model_instances_project_strider_saddle_and_ridden_render_state() {
         [2.0, 64.0, -3.0],
     ));
     assert!(world.apply_set_equipment(saddle(113)));
-    assert_eq!(
-        strider_state(&world, 113),
-        (false, false),
+    let unresolved = strider_state(&world, 113);
+    assert!(
+        !unresolved.strider_saddle,
         "without the item registry's saddle-slot map, a raw item id is not enough"
     );
+    assert!(!unresolved.strider_ridden);
+    assert_eq!(unresolved.strider_saddle_trim, None);
+    assert!(!unresolved.strider_saddle_foil);
 
     world.set_default_item_equipment_slots(std::collections::BTreeMap::from([(
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
     )]));
-    assert_eq!(strider_state(&world, 113), (true, false));
+    let saddled = strider_state(&world, 113);
+    assert!(saddled.strider_saddle);
+    assert!(!saddled.strider_ridden);
+    assert!(saddled.strider_saddle_foil);
+    assert_eq!(
+        saddled.strider_saddle_trim,
+        Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        })
+    );
 
     assert!(world.apply_set_passengers(SetPassengers {
         vehicle_id: 113,
         passenger_ids: vec![114],
     }));
-    assert_eq!(strider_state(&world, 113), (true, true));
+    let ridden = strider_state(&world, 113);
+    assert!(ridden.strider_saddle);
+    assert!(ridden.strider_ridden);
+    assert!(ridden.strider_saddle_foil);
+    assert_eq!(ridden.strider_saddle_trim, saddled.strider_saddle_trim);
 }
 
 #[test]

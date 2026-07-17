@@ -1109,13 +1109,21 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
             component_patch: Default::default(),
         }
     }
-    fn strider_state(store: &WorldStore, entity_id: i32) -> (bool, bool) {
+    fn strider_state(
+        store: &WorldStore,
+        entity_id: i32,
+    ) -> (bool, bool, Option<ArmorTrimSprite>, bool) {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
             .unwrap();
-        (source.strider_saddle, source.strider_ridden)
+        (
+            source.strider_saddle,
+            source.strider_ridden,
+            source.strider_saddle_trim,
+            source.strider_saddle_foil,
+        )
     }
 
     let mut store = WorldStore::new();
@@ -1132,7 +1140,7 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
         VANILLA_ENTITY_TYPE_COW_ID,
     ));
 
-    assert_eq!(strider_state(&store, 66), (false, false));
+    assert_eq!(strider_state(&store, 66), (false, false, None, false));
 
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 66,
@@ -1140,7 +1148,7 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
     }));
     assert_eq!(
         strider_state(&store, 66),
-        (false, true),
+        (false, true, None, false),
         "strider isRidden is independent of the saddle slot"
     );
 
@@ -1148,10 +1156,32 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
         entity_id: 66,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Saddle,
-            item: stack(SADDLE_ITEM_ID, 1),
+            item: ItemStackSummary {
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
+                ..stack(SADDLE_ITEM_ID, 1)
+            },
         }],
     }));
-    assert_eq!(strider_state(&store, 66), (true, true));
+    assert_eq!(
+        strider_state(&store, 66),
+        (
+            true,
+            true,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/strider_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 67,
@@ -1162,7 +1192,7 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
     }));
     assert_eq!(
         strider_state(&store, 67),
-        (false, false),
+        (false, false, None, false),
         "non-striders do not project the strider saddle flag"
     );
 
@@ -1173,7 +1203,7 @@ fn entity_model_sources_project_strider_saddle_and_ridden_state() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert_eq!(strider_state(&store, 66), (false, true));
+    assert_eq!(strider_state(&store, 66), (false, true, None, false));
 }
 
 #[test]

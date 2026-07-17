@@ -1625,18 +1625,17 @@ impl EntityStore {
         // from the item equipment-slot map.
         let saddle_slot_item = || equipment_saddle_item(equipment, equipment_slots);
         let saddle_slot_contains_saddle_item = || saddle_slot_item().is_some();
+        let saddle_trim = |enabled: bool, layer| {
+            enabled.then_some(()).and_then(|()| {
+                armor_trim_sprite(registries, saddle_slot_item()?, "minecraft:saddle", layer)
+            })
+        };
+        let saddle_foil =
+            |enabled: bool| enabled && saddle_slot_item().is_some_and(ItemStackSummary::has_foil);
         let pig_saddle = identity.entity_type_id == VANILLA_ENTITY_TYPE_PIG_ID
             && saddle_slot_contains_saddle_item();
-        let pig_saddle_trim = pig_saddle.then_some(()).and_then(|()| {
-            armor_trim_sprite(
-                registries,
-                saddle_slot_item()?,
-                "minecraft:saddle",
-                ArmorTrimLayer::PigSaddle,
-            )
-        });
-        let pig_saddle_foil =
-            pig_saddle && saddle_slot_item().is_some_and(ItemStackSummary::has_foil);
+        let pig_saddle_trim = saddle_trim(pig_saddle, ArmorTrimLayer::PigSaddle);
+        let pig_saddle_foil = saddle_foil(pig_saddle);
         let equine_saddle = || -> bool {
             vanilla_entity_renderer_uses_abstract_horse_renderer(identity.entity_type_id)
                 && saddle_slot_contains_saddle_item()
@@ -1652,6 +1651,8 @@ impl EntityStore {
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let strider_saddle = identity.entity_type_id == VANILLA_ENTITY_TYPE_STRIDER_ID
             && saddle_slot_contains_saddle_item();
+        let strider_saddle_trim = saddle_trim(strider_saddle, ArmorTrimLayer::StriderSaddle);
+        let strider_saddle_foil = saddle_foil(strider_saddle);
         let camel_saddle = vanilla_camel_saddle_type(identity.entity_type_id)
             && saddle_slot_contains_saddle_item();
         let camel_saddle_ridden = camel_saddle
@@ -2590,6 +2591,8 @@ impl EntityStore {
             equine_body_armor_foil: horse_body_armor_foil,
             strider_ridden,
             strider_saddle,
+            strider_saddle_trim,
+            strider_saddle_foil,
             camel_saddle,
             camel_saddle_ridden,
             nautilus_saddle,
