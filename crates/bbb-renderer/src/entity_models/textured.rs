@@ -4764,6 +4764,7 @@ pub(in crate::entity_models) fn render_nautilus_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    submit_sequence: u32,
 ) {
     if !instance.render_state.nautilus_saddle {
         return;
@@ -4781,12 +4782,6 @@ pub(in crate::entity_models) fn render_nautilus_saddle_layer(
     let transform = entity_model_root_transform(instance);
     let mut model = NautilusModel::new_saddle();
     model.prepare(&instance);
-    let body_layer_count = instance
-        .render_state
-        .nautilus_body_armor
-        .and_then(nautilus_body_armor_texture_ref)
-        .map(|_| 1)
-        .unwrap_or(0);
     let pass = equipment_layer_pass(
         EntityModelLayerKind::NautilusSaddle,
         EntityModelLayerRenderType::ArmorCutoutNoCull,
@@ -4794,7 +4789,7 @@ pub(in crate::entity_models) fn render_nautilus_saddle_layer(
         NAUTILUS_SADDLE_TEXTURE_REF,
         [1.0, 1.0, 1.0, 1.0],
         0,
-        1 + body_layer_count,
+        submit_sequence,
     );
     render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
 }
@@ -4802,26 +4797,28 @@ pub(in crate::entity_models) fn render_nautilus_saddle_layer(
 /// Vanilla `NautilusRenderer` / `ZombieNautilusRenderer` `SimpleEquipmentLayer(NAUTILUS_BODY)`:
 /// a non-empty nautilus body armor item renders `NautilusArmorModel(ModelLayers.NAUTILUS_ARMOR)` over
 /// adult living nautilus and zombie nautilus. The layer has no baby model, so baby living nautilus
-/// skip it.
+/// skip it. The shared equipment renderer inserts foil after the base armor and a runtime-atlas
+/// trim after the foil, before the later saddle equipment layer.
 pub(in crate::entity_models) fn render_nautilus_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
-) {
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> u32 {
     if meshes.current_force_transparent || meshes.current_outline_only {
-        return;
+        return 1;
     }
     let Some(material) = instance.render_state.nautilus_body_armor else {
-        return;
+        return 1;
     };
     if !matches!(
         instance.kind,
         EntityModelKind::Nautilus { baby: false } | EntityModelKind::ZombieNautilus { .. }
     ) {
-        return;
+        return 1;
     }
     let Some(texture) = nautilus_body_armor_texture_ref(material) else {
-        return;
+        return 1;
     };
 
     let transform = entity_model_root_transform(instance);
@@ -4837,6 +4834,61 @@ pub(in crate::entity_models) fn render_nautilus_body_armor_layer(
         1,
     );
     render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+
+    let mut next_order = 1;
+    let mut next_submit_sequence = 2;
+    if instance.render_state.nautilus_body_armor_foil {
+        let pass = equipment_layer_pass(
+            EntityModelLayerKind::NautilusBodyArmor,
+            EntityModelLayerRenderType::ArmorEntityGlint,
+            MODEL_LAYER_NAUTILUS_ARMOR,
+            ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+            [1.0; 4],
+            next_order,
+            next_submit_sequence,
+        );
+        render_textured_no_overlay_layer_pass(meshes, &model, transform, pass, atlas);
+        next_order += 1;
+        next_submit_sequence += 1;
+    }
+
+    if let Some(trim) = instance.render_state.nautilus_body_armor_trim {
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
+            let render_type = if trim.decal {
+                EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+            } else {
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            };
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::NautilusBodyArmor,
+                render_type,
+                MODEL_LAYER_NAUTILUS_ARMOR,
+                texture,
+                [1.0; 4],
+                next_order,
+                next_submit_sequence,
+            );
+            let submit =
+                no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| {
+                    model.root().render_textured(
+                        mesh,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                    );
+                },
+            );
+            next_submit_sequence += 1;
+        }
+    }
+
+    next_submit_sequence
 }
 
 pub(in crate::entity_models) fn render_llama_decor_layer(

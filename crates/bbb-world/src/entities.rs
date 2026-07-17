@@ -2217,6 +2217,14 @@ entity_model_source_state! {
     /// because `SimpleEquipmentLayer` supplies no baby armor model.
     #[serde(default)]
     pub nautilus_body_armor: Option<ArmorMaterialKind>,
+    /// Vanilla `ArmorTrim.layerAssetId` for the `NAUTILUS_BODY` equipment layer. Native resolves
+    /// the `trims/entity/nautilus_body` sprite through the shared runtime trim atlas.
+    #[serde(default)]
+    pub nautilus_body_armor_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for the nautilus body armor item. The equipment renderer emits
+    /// one armor glint after the base body-armor layer.
+    #[serde(default)]
+    pub nautilus_body_armor_foil: bool,
     pub data_values: Vec<ProtocolEntityDataValue>,
 }
 

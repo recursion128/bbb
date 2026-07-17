@@ -6789,6 +6789,13 @@ fn entity_model_instances_project_nautilus_saddle_render_state() {
 fn entity_model_instances_project_nautilus_body_armor_render_state() {
     const IRON_NAUTILUS_ARMOR_ITEM_ID: i32 = 747;
     const NETHERITE_NAUTILUS_ARMOR_ITEM_ID: i32 = 748;
+    let trim_texture = EntityDynamicTexture { handle: 42_4308 };
+    let missing_texture = EntityDynamicTexture { handle: 42_4307 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/nautilus_body/sentry_iron_darker",
+        texture: trim_texture,
+        missing_texture: Some(missing_texture),
+    };
 
     let body_armor = |entity_id: i32, item_id: i32| SetEquipment {
         entity_id,
@@ -6797,17 +6804,34 @@ fn entity_model_instances_project_nautilus_body_armor_render_state() {
             item: ItemStackSummary {
                 item_id: Some(item_id),
                 count: 1,
-                component_patch: DataComponentPatchSummary::default(),
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
             },
         }],
     };
     let nautilus_body_armor = |world: &WorldStore, id: i32| {
-        entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state
-            .nautilus_body_armor
+        let render_state = entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state;
+        (
+            render_state.nautilus_body_armor,
+            render_state.nautilus_body_armor_trim,
+            render_state.nautilus_body_armor_foil,
+        )
     };
 
     let mut world = WorldStore::new();
@@ -6844,15 +6868,30 @@ fn entity_model_instances_project_nautilus_body_armor_render_state() {
 
     assert_eq!(
         nautilus_body_armor(&world, 123),
-        Some(EntityArmorMaterial::Iron)
+        (
+            Some(EntityArmorMaterial::Iron),
+            Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }),
+            true,
+        )
     );
     assert_eq!(
         nautilus_body_armor(&world, 124),
-        Some(EntityArmorMaterial::Netherite)
+        (
+            Some(EntityArmorMaterial::Netherite),
+            Some(EntityArmorTrim {
+                texture: missing_texture,
+                decal: false,
+            }),
+            true,
+        ),
+        "the absent netherite trim sprite keeps the layer through vanilla's missing sprite"
     );
     assert_eq!(
         nautilus_body_armor(&world, 125),
-        None,
+        (None, None, false),
         "baby living nautilus skip the body armor equipment layer"
     );
 }

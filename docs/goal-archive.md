@@ -18597,3 +18597,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   the later saddle layer keeps its own order while advancing after every body-armor submission.
 - Runtime trim geometry reuses the posed adult horse-armor model and shared trim atlas; focused
   tests lock base → foil → overlay → trim → saddle ordering and baby suppression.
+
+# 2026-07-17: Render nautilus body armor trims and foil
+
+- Extended trim projection with vanilla's `NAUTILUS_BODY` prefix for adult living and zombie
+  nautilus, retaining the no-baby-model gate and exact same-material suffix override.
+- The shared `NautilusArmorModel` now submits base armor → optional foil → regular/decal trim before
+  the separately ordered nautilus saddle. Both living and zombie render paths carry the runtime
+  trim-atlas handle; baby living nautilus suppress all equipment layers.
+- Tests lock the full world/native/renderer path, including `iron_darker`, missing-sprite fallback,
+  192-vertex posed trim geometry, and the saddle's advanced collector sequence.

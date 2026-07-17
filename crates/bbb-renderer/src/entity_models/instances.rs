@@ -1102,6 +1102,12 @@ entity_render_state! {
     /// equipment item whose equipment asset provides a `NAUTILUS_BODY` layer. Baby living nautilus
     /// skip it because vanilla supplies no baby armor model.
     (with_nautilus_body_armor) nautilus_body_armor: Option<EntityArmorMaterial> = None;
+    /// Vanilla armor trim over the adult `NAUTILUS_BODY` equipment model, resolved through the
+    /// shared runtime trim atlas.
+    (with_nautilus_body_armor_trim) nautilus_body_armor_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for nautilus body armor. The glint follows the base armor and
+    /// precedes its trim.
+    (with_nautilus_body_armor_foil) nautilus_body_armor_foil: bool = false;
     /// Vanilla `SnowGolemRenderState.headBlock`: a carved pumpkin block model on the snow golem head
     /// while the synced `SnowGolem.DATA_PUMPKIN_ID` flag is set. The block layer is baked by native
     /// into the shared block-item model pass because it samples the terrain atlas.
@@ -3089,6 +3095,8 @@ mod tests {
                 camel_saddle_ridden: false,
                 nautilus_saddle: false,
                 nautilus_body_armor: None,
+                nautilus_body_armor_trim: None,
+                nautilus_body_armor_foil: false,
                 snow_golem_pumpkin: false,
                 llama_body_decor: None,
                 illager_spellcasting: false,

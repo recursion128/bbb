@@ -1667,6 +1667,17 @@ impl EntityStore {
         } else {
             None
         };
+        let nautilus_body_armor_trim = nautilus_body_armor.and_then(|material| {
+            armor_trim_sprite(
+                registries,
+                body_slot_item()?,
+                material.equipment_asset_id(),
+                ArmorTrimLayer::NautilusBody,
+            )
+        });
+        let nautilus_body_armor_foil = nautilus_body_armor
+            .and_then(|_| body_slot_item())
+            .is_some_and(ItemStackSummary::has_foil);
         let horse_body_armor = if is_vanilla_can_wear_horse_armor_type(identity.entity_type_id)
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
         {
@@ -2564,6 +2575,8 @@ impl EntityStore {
             ),
             llama_body_decor,
             nautilus_body_armor,
+            nautilus_body_armor_trim,
+            nautilus_body_armor_foil,
             data_values: metadata.data_values.clone(),
         })
     }

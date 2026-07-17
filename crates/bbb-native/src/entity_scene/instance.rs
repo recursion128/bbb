@@ -646,6 +646,10 @@ pub(super) fn entity_model_instance(
         .with_wolf_body_armor_dye(armor_dye(source.wolf_body_armor_dye))
         .with_wolf_body_armor_crackiness(wolf_armor_crackiness(source.wolf_body_armor_crackiness))
         .with_nautilus_body_armor(armor_material(source.nautilus_body_armor))
+        .with_nautilus_body_armor_trim(armor_trim(
+            source.nautilus_body_armor_trim.as_ref(),
+            variant_registries,
+        ))
         .with_llama_body_decor(llama_body_decor_color(source.llama_body_decor))
         .with_guardian_beam(guardian_beam(source.guardian_beam))
         .with_end_crystal_beam(end_crystal_beam(source.end_crystal_beam))
@@ -802,6 +806,7 @@ pub(super) fn entity_model_instance(
         with_camel_saddle camel_saddle,
         with_camel_saddle_ridden camel_saddle_ridden,
         with_nautilus_saddle nautilus_saddle,
+        with_nautilus_body_armor_foil nautilus_body_armor_foil,
         with_is_crouching is_crouching,
         with_elytra_rot_x elytra_rot_x,
         with_elytra_rot_y elytra_rot_y,

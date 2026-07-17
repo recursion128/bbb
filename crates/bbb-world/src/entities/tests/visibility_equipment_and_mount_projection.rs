@@ -1274,16 +1274,31 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
         ItemStackSummary {
             item_id: Some(item_id),
             count,
-            component_patch: Default::default(),
+            component_patch: DataComponentPatchSummary {
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                armor_trim_material_id: Some(1), // iron
+                armor_trim_pattern_id: Some(0),  // sentry
+                ..Default::default()
+            },
         }
     }
-    fn nautilus_body_armor(store: &WorldStore, entity_id: i32) -> Option<ArmorMaterialKind> {
-        store
+    fn nautilus_body_armor(
+        store: &WorldStore,
+        entity_id: i32,
+    ) -> (Option<ArmorMaterialKind>, Option<ArmorTrimSprite>, bool) {
+        let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
-            .unwrap()
-            .nautilus_body_armor
+            .unwrap();
+        (
+            source.nautilus_body_armor,
+            source.nautilus_body_armor_trim,
+            source.nautilus_body_armor_foil,
+        )
     }
 
     let mut store = WorldStore::new();
@@ -1324,7 +1339,7 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
     }
     assert_eq!(
         nautilus_body_armor(&store, 78),
-        None,
+        (None, None, false),
         "without the item registry's nautilus armor material map, a raw body item id is not enough"
     );
 
@@ -1337,20 +1352,34 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
     ]));
     assert_eq!(
         nautilus_body_armor(&store, 78),
-        Some(ArmorMaterialKind::Iron)
+        (
+            Some(ArmorMaterialKind::Iron),
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/nautilus_body/sentry_iron_darker".to_string(),
+                decal: false,
+            }),
+            true,
+        )
     );
     assert_eq!(
         nautilus_body_armor(&store, 79),
-        Some(ArmorMaterialKind::Netherite)
+        (
+            Some(ArmorMaterialKind::Netherite),
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/nautilus_body/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
     );
     assert_eq!(
         nautilus_body_armor(&store, 80),
-        None,
+        (None, None, false),
         "non-nautilus entities do not project the nautilus body armor flag"
     );
     assert_eq!(
         nautilus_body_armor(&store, 81),
-        None,
+        (None, None, false),
         "baby living nautilus skip the layer because vanilla supplies no baby armor model"
     );
 
@@ -1361,7 +1390,7 @@ fn entity_model_sources_project_nautilus_body_armor_from_body_slot() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert_eq!(nautilus_body_armor(&store, 78), None);
+    assert_eq!(nautilus_body_armor(&store, 78), (None, None, false));
 }
 
 #[test]

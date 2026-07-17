@@ -743,8 +743,13 @@ impl EntityModelSink for TexturedSink<'_> {
             instance,
             &nautilus_textured_layer_passes(baby),
         );
-        render_nautilus_body_armor_layer(self.meshes, *instance, self.atlas);
-        render_nautilus_saddle_layer(self.meshes, *instance, self.atlas);
+        let next_submit_sequence = render_nautilus_body_armor_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+        );
+        render_nautilus_saddle_layer(self.meshes, *instance, self.atlas, next_submit_sequence);
     }
 
     fn zombie_nautilus_model(
@@ -761,8 +766,13 @@ impl EntityModelSink for TexturedSink<'_> {
             instance,
             &zombie_nautilus_textured_layer_passes(variant),
         );
-        render_nautilus_body_armor_layer(self.meshes, *instance, self.atlas);
-        render_nautilus_saddle_layer(self.meshes, *instance, self.atlas);
+        let next_submit_sequence = render_nautilus_body_armor_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+        );
+        render_nautilus_saddle_layer(self.meshes, *instance, self.atlas, next_submit_sequence);
     }
 
     fn wolf_model(
