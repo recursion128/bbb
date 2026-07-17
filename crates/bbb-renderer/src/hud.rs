@@ -326,6 +326,7 @@ pub struct HudStatsScreen {
     pub item_sort_column: Option<usize>,
     pub item_sort_order: i8,
     pub item_hovered_column: Option<usize>,
+    pub item_focused_column: Option<usize>,
     /// First projected data-row index (the Items header is a separate scrollable entry).
     pub scroll_row: usize,
     /// Integer-pixel list scroll after vanilla's `(int) scrollAmount` truncation.
@@ -339,6 +340,7 @@ pub struct HudStatsScreen {
     pub row_height: i32,
     pub tooltip: Option<HudDebugOptionsTooltip>,
     pub done_hovered: bool,
+    pub done_focused: bool,
 }
 
 /// One visible vanilla system toast. Native owns token/update timing; the renderer owns selected
@@ -7755,7 +7757,8 @@ fn push_hud_stats_screen<'a>(
         let header_y = HUD_STATS_LIST_TOP + HUD_STATS_LIST_ENTRY_PADDING + 1 - screen.scroll_amount;
         for column in 0..6 {
             let x = list_x + 57 + i32::try_from(column).unwrap_or(i32::MAX) * 40;
-            let hovered = screen.item_hovered_column == Some(column);
+            let hovered = screen.item_hovered_column == Some(column)
+                || screen.item_focused_column == Some(column);
             let background = hud_stats_header_background_sprite(hovered);
             let column_sprite = HudStatsSprite::column(column)
                 .and_then(|sprite| stats_sprites[sprite.as_index()].as_ref());
@@ -7973,7 +7976,7 @@ fn push_hud_stats_screen<'a>(
         surface_size,
         hud_stats_done_button_rect(surface_size),
         "Done",
-        screen.done_hovered,
+        screen.done_hovered || screen.done_focused,
         true,
     );
     push_hud_debug_options_tooltip(
@@ -13618,6 +13621,7 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
         item_sort_column: screen.item_sort_column.filter(|column| *column < 6),
         item_sort_order: screen.item_sort_order.clamp(-1, 1),
         item_hovered_column: screen.item_hovered_column.filter(|column| *column < 6),
+        item_focused_column: screen.item_focused_column.filter(|column| *column < 6),
         scroll_row: screen.scroll_row.min(screen.total_rows),
         scroll_amount,
         max_scroll_amount,
@@ -13627,6 +13631,7 @@ fn sanitize_hud_stats_screen(screen: HudStatsScreen) -> Option<HudStatsScreen> {
         row_height: screen.row_height.clamp(9, 64),
         tooltip,
         done_hovered: screen.done_hovered,
+        done_focused: screen.done_focused,
     })
 }
 
@@ -14062,6 +14067,7 @@ mod tests {
             item_sort_column: None,
             item_sort_order: 0,
             item_hovered_column: None,
+            item_focused_column: None,
             scroll_row: 0,
             scroll_amount: 70,
             max_scroll_amount: 140,
@@ -14071,6 +14077,7 @@ mod tests {
             row_height: 14,
             tooltip: None,
             done_hovered: false,
+            done_focused: false,
         };
         assert_eq!(
             hud_stats_scrollbar_rects(PhysicalSize::new(320, 240), &screen),
@@ -15539,6 +15546,7 @@ mod tests {
             item_sort_column: None,
             item_sort_order: 0,
             item_hovered_column: None,
+            item_focused_column: None,
             scroll_row: 0,
             scroll_amount: 0,
             max_scroll_amount: 0,
@@ -15548,6 +15556,7 @@ mod tests {
             row_height: 22,
             tooltip: None,
             done_hovered: false,
+            done_focused: false,
         }));
 
         let meshes = renderer.collect_hud_block_item_mesh();
@@ -19211,6 +19220,7 @@ mod tests {
             item_sort_column: None,
             item_sort_order: 0,
             item_hovered_column: None,
+            item_focused_column: None,
             scroll_row: 3,
             scroll_amount: 999,
             max_scroll_amount: 100,
@@ -19224,6 +19234,7 @@ mod tests {
                 y: 34,
             }),
             done_hovered: true,
+            done_focused: false,
         })
         .expect("stats screen");
         assert_eq!(screen.title, "Stats");
@@ -19257,6 +19268,7 @@ mod tests {
             item_sort_column: None,
             item_sort_order: 0,
             item_hovered_column: None,
+            item_focused_column: None,
             scroll_row: 0,
             scroll_amount: 0,
             max_scroll_amount: 0,
@@ -19266,6 +19278,7 @@ mod tests {
             row_height: 14,
             tooltip: None,
             done_hovered: false,
+            done_focused: false,
         })
         .is_none());
     }

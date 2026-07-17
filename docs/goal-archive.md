@@ -18890,3 +18890,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Added CLI, status filtering, command-argument, and localization fixtures. No in-game settings UI
   was introduced; enabling output requires `--client-narrator all|system` plus
   `--narrator-command` and optional repeated `--narrator-command-arg` values.
+
+# 2026-07-17: Navigate StatsScreen focus
+
+- Matched the real-widget replacement in `StatsScreen.onStatsUpdated` by moving initial focus to
+  the tab navigation bar only after the AwardStats response replaces the loading tabs.
+- Added the concrete tab bar, list row, six Items header buttons, item widgets, and Done focus path.
+  Tab/Shift+Tab, arrows, Enter/Space, Ctrl+digit/Ctrl+Tab, mouse clicks, and list removal now retain
+  or clear focus with the same widget ownership boundaries as vanilla.
+- Keyboard row focus keeps the selected entry in the pixel-scrolled viewport. Items header and
+  Done focused states share their vanilla hovered/focused visual state; localized narration and
+  delayed screen collection remain the next StatsScreen slice.

@@ -21608,6 +21608,135 @@ fn stats_screen_control_tab_and_digits_skip_disabled_tabs() {
 }
 
 #[test]
+fn stats_screen_focus_matches_loading_replacement_and_widget_tab_order() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    open_stats_screen(&mut input, &mut counters, &mut world, &None);
+
+    input.sync_stats_screen_interaction(true, 0, 0);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::None);
+    input.sync_stats_screen_interaction(false, 0, 3);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::Tabs);
+
+    handle_key_input(
+        &mut input,
+        &mut counters,
+        &mut world,
+        &None,
+        PhysicalKey::Code(KeyCode::Tab),
+        ElementState::Pressed,
+    );
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::GeneralRow(0));
+    stats_screen_move_tab_focus(&mut input, true);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::Done);
+    stats_screen_move_tab_focus(&mut input, true);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::Tabs);
+
+    input.stats_screen_tab = 1;
+    input.sync_stats_screen_interaction(false, 1, 2);
+    input.stats_screen_focus = StatsScreenFocus::Tabs;
+    stats_screen_move_tab_focus(&mut input, true);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::ItemHeader(0));
+    for column in 1..6 {
+        stats_screen_move_tab_focus(&mut input, true);
+        assert_eq!(
+            input.stats_screen_focus(),
+            StatsScreenFocus::ItemHeader(column)
+        );
+    }
+    stats_screen_move_tab_focus(&mut input, true);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::ItemRow(0));
+    stats_screen_move_tab_focus(&mut input, true);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::ItemRow(1));
+    stats_screen_move_tab_focus(&mut input, true);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::Done);
+    stats_screen_move_tab_focus(&mut input, false);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::ItemRow(1));
+}
+
+#[test]
+fn stats_screen_focus_arrow_scroll_and_activation_follow_widget_paths() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    open_stats_screen(&mut input, &mut counters, &mut world, &None);
+    input.stats_screen_was_loading = false;
+    input.stats_screen_tab = 1;
+    input.sync_stats_screen_interaction(false, 1, 12);
+    input.stats_screen_focus = StatsScreenFocus::ItemHeader(0);
+
+    stats_screen_move_arrow_focus(&mut input, &world, KeyCode::ArrowRight);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::ItemHeader(1));
+    assert!(!stats_screen_activate_focus(&mut input));
+    assert_eq!(input.stats_screen_item_sort(), (Some(1), -1));
+    assert!(!stats_screen_activate_focus(&mut input));
+    assert_eq!(input.stats_screen_item_sort(), (Some(1), 1));
+    assert!(!stats_screen_activate_focus(&mut input));
+    assert_eq!(input.stats_screen_item_sort(), (None, 0));
+
+    stats_screen_move_arrow_focus(&mut input, &world, KeyCode::ArrowDown);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::ItemRow(0));
+    for _ in 0..11 {
+        stats_screen_move_arrow_focus(&mut input, &world, KeyCode::ArrowDown);
+    }
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::ItemRow(11));
+    input.sync_stats_screen_scroll_metrics(200, 40);
+    input.keep_stats_screen_focus_visible(66, 22);
+    assert_eq!(input.stats_screen_scroll_amount(), 222.0_f64.min(200.0));
+    stats_screen_move_arrow_focus(&mut input, &world, KeyCode::ArrowDown);
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::Done);
+    assert!(stats_screen_activate_focus(&mut input));
+}
+
+#[test]
+fn stats_screen_focus_mouse_clicks_rows_headers_and_tabs() {
+    let mut input = ClientInputState::new(true);
+    let mut counters = NetCounters::default();
+    let mut world = WorldStore::new();
+    let surface = PhysicalSize::new(320, 240);
+    assert!(world.open_stats_screen());
+    world.apply_award_stats(AwardStats { stats: Vec::new() });
+    input.stats_screen_tab = 0;
+    input.sync_stats_screen_interaction(false, 0, 20);
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(160.0, 64.0)),
+        surface,
+    ));
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::GeneralRow(1));
+
+    input.stats_screen_tab = 1;
+    input.sync_stats_screen_interaction(false, 1, 3);
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(117.0, 50.0)),
+        surface,
+    ));
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::ItemHeader(1));
+
+    assert!(input.handle_stats_screen_mouse_input(
+        &mut counters,
+        &mut world,
+        &None,
+        MouseButton::Left,
+        ElementState::Pressed,
+        Some(PhysicalPosition::new(70.0, 30.0)),
+        surface,
+    ));
+    assert_eq!(input.stats_screen_focus(), StatsScreenFocus::Tabs);
+}
+
+#[test]
 fn escape_key_closes_stats_screen_without_requesting_stats_again() {
     let (tx, mut rx) = mpsc::channel(1);
     let commands = Some(tx);

@@ -115,7 +115,7 @@ use crate::{
         sync_loom_pattern_state_for_hud, sync_stonecutter_recipe_scroll_state, ClientInputState,
         CommandSuggestionNarrationState, DebugOptionsScreenHudRow, DialogImePreeditHudState,
         InventoryScreenBackground, RecipeBookOverlayHudState, RecipeBookPageHudState,
-        RecipeBookSearchHudState, RecipeBookTabSelectionHudState,
+        RecipeBookSearchHudState, RecipeBookTabSelectionHudState, StatsScreenFocus,
         LOOM_NO_ITEM_REQUIRED_PATTERN_COUNT, LOOM_PATTERN_BUTTON_COLUMNS, LOOM_PATTERN_BUTTON_ROWS,
         LOOM_PATTERN_BUTTON_SIZE, LOOM_PATTERN_BUTTON_X, LOOM_PATTERN_BUTTON_Y,
         LOOM_PATTERN_ITEM_PATTERN_COUNT, LOOM_SCROLLER_HEIGHT, LOOM_SCROLLER_MAX_OFFSET,
@@ -3435,6 +3435,11 @@ fn hud_stats_screen(
         );
         let items_tab_enabled = !item_rows.is_empty();
         let mobs_tab_enabled = !mob_rows.is_empty();
+        input.sync_stats_screen_tab_row_counts([
+            general_rows.len(),
+            item_rows.len(),
+            mob_rows.len(),
+        ]);
         let active_tab = match input.stats_screen_tab() {
             1 if !is_loading && items_tab_enabled => 1,
             2 if !is_loading && mobs_tab_enabled => 2,
@@ -3458,6 +3463,7 @@ fn hud_stats_screen(
         } else {
             rows.len()
         };
+        input.sync_stats_screen_interaction(is_loading, active_tab, total_rows);
         let viewport_height = stats_screen_viewport_height(surface_size, row_height);
         let content_entries = if is_loading {
             0
@@ -3476,6 +3482,7 @@ fn hud_stats_screen(
         let scroller_height =
             stats_screen_scroller_height(viewport_height, content_height, max_scroll_amount);
         input.sync_stats_screen_scroll_metrics(max_scroll_amount, scroller_height);
+        input.keep_stats_screen_focus_visible(viewport_height, row_height);
         let scroll_amount = input.stats_screen_scroll_amount() as i32;
         let scroll_row =
             stats_screen_first_data_row(active_tab, scroll_amount, row_height).min(total_rows);
@@ -3570,6 +3577,10 @@ fn hud_stats_screen(
             item_sort_column,
             item_sort_order,
             item_hovered_column,
+            item_focused_column: match input.stats_screen_focus() {
+                StatsScreenFocus::ItemHeader(column) => Some(column),
+                _ => None,
+            },
             scroll_row,
             scroll_amount,
             max_scroll_amount,
@@ -3582,6 +3593,7 @@ fn hud_stats_screen(
                 input.stats_screen_cursor_position(),
                 surface_size,
             ),
+            done_focused: input.stats_screen_focus() == StatsScreenFocus::Done,
         }
     })
 }

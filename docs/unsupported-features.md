@@ -87,9 +87,10 @@ Owner: `bbb-protocol`
   attributes, timeline/clock holders and their layer ordering; typed `skybox`,
   direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
   complete.
-- Complete StatsScreen presentation parity: add narration. General, Items and Mobs now leave
-  loading only after the requested AwardStats response and use selected-pack language.
-  Item/header/empty-tab tooltips and vanilla Ctrl+digit/Ctrl+Tab navigation are wired;
+- Complete StatsScreen presentation parity: connect its focused/hovered widget narration frame to
+  the native screen collector, vanilla trigger delays, and the system narrator sink. General,
+  Items and Mobs now leave loading only after the requested AwardStats response and use
+  selected-pack language. Item/header/empty-tab tooltips and vanilla focus navigation are wired;
   Items mechanically maps block stats through checked-in `Block.asItem` evidence, renders
   flat/3D item icons and vanilla header/slot/sort sprites, preserves six-column no-value
   semantics and the descending/ascending/clear sort cycle. All three lists use vanilla

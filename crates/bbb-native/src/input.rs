@@ -496,6 +496,21 @@ pub(crate) enum DebugProfilingToggleRequest {
     Stop,
 }
 
+/// Focus path owned by the native StatsScreen interaction model. This mirrors the
+/// concrete vanilla widgets without leaking localized labels into input state.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum StatsScreenFocus {
+    #[default]
+    None,
+    Tabs,
+    List,
+    GeneralRow(usize),
+    ItemHeader(usize),
+    ItemRow(usize),
+    MobRow(usize),
+    Done,
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ClientInputState {
     focused: bool,
@@ -581,6 +596,10 @@ pub(crate) struct ClientInputState {
     stats_screen_item_sort_column: Option<usize>,
     stats_screen_item_sort_order: i8,
     stats_screen_item_effective_sort: Option<(usize, i8)>,
+    stats_screen_tab_row_counts: [usize; 3],
+    stats_screen_total_rows: usize,
+    stats_screen_focus: StatsScreenFocus,
+    stats_screen_was_loading: bool,
     pause_screen_link_requests: Vec<PauseScreenLinkRequest>,
     pause_screen_disconnect_requested: bool,
     debug_entries: DebugScreenEntryList,
@@ -2282,6 +2301,32 @@ impl ClientInputState {
         self.stats_screen_scrolling = false;
     }
 
+    pub(crate) fn keep_stats_screen_focus_visible(
+        &mut self,
+        viewport_height: i32,
+        row_height: i32,
+    ) {
+        let entry = match self.stats_screen_focus {
+            StatsScreenFocus::GeneralRow(row) | StatsScreenFocus::MobRow(row) => row,
+            StatsScreenFocus::ItemHeader(_) => 0,
+            StatsScreenFocus::ItemRow(row) => row.saturating_add(1),
+            _ => return,
+        };
+        let entry = i32::try_from(entry).unwrap_or(i32::MAX / row_height.max(1));
+        let top = STATS_SCREEN_LIST_ENTRY_PADDING.saturating_add(entry.saturating_mul(row_height));
+        let bottom = top.saturating_add(row_height);
+        let scroll = self.stats_screen_scroll_amount as i32;
+        if top < scroll {
+            self.stats_screen_scroll_amount = f64::from(top.max(0));
+        } else if bottom > scroll.saturating_add(viewport_height) {
+            self.stats_screen_scroll_amount = f64::from(
+                bottom
+                    .saturating_sub(viewport_height)
+                    .clamp(0, self.stats_screen_max_scroll_amount as i32),
+            );
+        }
+    }
+
     pub(crate) fn stats_screen_tab(&self) -> usize {
         self.stats_screen_tab
     }
@@ -2295,6 +2340,58 @@ impl ClientInputState {
 
     pub(crate) fn stats_screen_item_effective_sort(&self) -> Option<(usize, i8)> {
         self.stats_screen_item_effective_sort
+    }
+
+    pub(crate) fn stats_screen_focus(&self) -> StatsScreenFocus {
+        self.stats_screen_focus
+    }
+
+    /// Synchronizes the concrete focus path after the runtime has projected the
+    /// active tab's rows. Vanilla replaces the loading tabs with real widgets on
+    /// the first stats response and explicitly focuses the tab navigation bar.
+    pub(crate) fn sync_stats_screen_interaction(
+        &mut self,
+        is_loading: bool,
+        active_tab: usize,
+        total_rows: usize,
+    ) {
+        if active_tab < self.stats_screen_tab_row_counts.len() {
+            self.stats_screen_tab_row_counts[active_tab] = total_rows;
+        }
+        self.stats_screen_total_rows = total_rows;
+        if is_loading {
+            self.stats_screen_was_loading = true;
+            self.stats_screen_focus = StatsScreenFocus::None;
+            return;
+        }
+        if self.stats_screen_was_loading {
+            self.stats_screen_was_loading = false;
+            self.stats_screen_focus = StatsScreenFocus::Tabs;
+        }
+        self.stats_screen_focus = match self.stats_screen_focus {
+            StatsScreenFocus::None => StatsScreenFocus::None,
+            StatsScreenFocus::GeneralRow(row) if active_tab == 0 && row < total_rows => {
+                StatsScreenFocus::GeneralRow(row)
+            }
+            StatsScreenFocus::ItemHeader(column) if active_tab == 1 && column < 6 => {
+                StatsScreenFocus::ItemHeader(column)
+            }
+            StatsScreenFocus::ItemRow(row) if active_tab == 1 && row < total_rows => {
+                StatsScreenFocus::ItemRow(row)
+            }
+            StatsScreenFocus::MobRow(row) if active_tab == 2 && row < total_rows => {
+                StatsScreenFocus::MobRow(row)
+            }
+            StatsScreenFocus::List | StatsScreenFocus::Tabs | StatsScreenFocus::Done => {
+                self.stats_screen_focus
+            }
+            _ => StatsScreenFocus::List,
+        };
+    }
+
+    pub(crate) fn sync_stats_screen_tab_row_counts(&mut self, row_counts: [usize; 3]) {
+        self.stats_screen_tab_row_counts = row_counts;
+        self.stats_screen_total_rows = row_counts[self.stats_screen_tab.min(2)];
     }
 
     pub(crate) fn stats_screen_item_hovered_column(
@@ -2346,6 +2443,22 @@ impl ClientInputState {
         (entry > 0 && content_y % 22 < STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE)
             .then(|| usize::try_from(entry - 1).ok())
             .flatten()
+    }
+
+    pub(crate) fn stats_screen_hovered_row(
+        &self,
+        surface_size: PhysicalSize<u32>,
+    ) -> Option<usize> {
+        if self.stats_screen_tab == 1 {
+            return self.stats_screen_hovered_item_row(surface_size);
+        }
+        stats_screen_row_at_position(
+            self.stats_screen_cursor_position,
+            surface_size,
+            self.stats_screen_tab,
+            self.stats_screen_scroll_amount as i32,
+        )
+        .filter(|row| *row < self.stats_screen_total_rows)
     }
 
     pub(crate) fn handle_stats_screen_mouse_wheel(
@@ -2423,6 +2536,7 @@ impl ClientInputState {
                 && stats_screen_scrollbar_contains(self.stats_screen_cursor_position, surface_size)
             {
                 self.stats_screen_scrolling = true;
+                self.stats_screen_focus = StatsScreenFocus::List;
                 return true;
             }
             let item_column = (self.stats_screen_tab == 1 && !world.stats_screen_is_loading())
@@ -2435,40 +2549,54 @@ impl ClientInputState {
                 })
                 .flatten();
             if let Some(column) = item_column {
-                match (
-                    self.stats_screen_item_sort_column,
-                    self.stats_screen_item_sort_order,
-                ) {
-                    (Some(current), -1) if current == column => {
-                        self.stats_screen_item_sort_order = 1;
-                        self.stats_screen_item_effective_sort = Some((column, 1));
-                    }
-                    (Some(current), 1) if current == column => {
-                        self.stats_screen_item_sort_column = None;
-                        self.stats_screen_item_sort_order = 0;
-                    }
-                    _ => {
-                        self.stats_screen_item_sort_column = Some(column);
-                        self.stats_screen_item_sort_order = -1;
-                        self.stats_screen_item_effective_sort = Some((column, -1));
-                    }
-                }
-                self.stats_screen_scroll_amount = 0.0;
+                self.activate_stats_screen_item_column(column);
+                self.stats_screen_focus = StatsScreenFocus::ItemHeader(column);
             } else if let Some(tab) =
                 stats_screen_tab_at_position(self.stats_screen_cursor_position, surface_size)
             {
                 if stats_screen_tab_is_enabled(tab, world) {
                     self.stats_screen_tab = tab;
+                    self.stats_screen_total_rows = self.stats_screen_tab_row_counts[tab];
                     self.stats_screen_scroll_amount = 0.0;
+                    self.stats_screen_focus = StatsScreenFocus::Tabs;
                 }
             } else if stats_screen_done_button_contains(
                 self.stats_screen_cursor_position,
                 surface_size,
             ) {
+                self.stats_screen_focus = StatsScreenFocus::Done;
                 close_stats_screen(self, counters, world, net_commands);
+            } else if let Some(row) = self.stats_screen_hovered_row(surface_size) {
+                self.stats_screen_focus = match self.stats_screen_tab {
+                    1 => StatsScreenFocus::ItemRow(row),
+                    2 => StatsScreenFocus::MobRow(row),
+                    _ => StatsScreenFocus::GeneralRow(row),
+                };
             }
         }
         true
+    }
+
+    fn activate_stats_screen_item_column(&mut self, column: usize) {
+        match (
+            self.stats_screen_item_sort_column,
+            self.stats_screen_item_sort_order,
+        ) {
+            (Some(current), -1) if current == column => {
+                self.stats_screen_item_sort_order = 1;
+                self.stats_screen_item_effective_sort = Some((column, 1));
+            }
+            (Some(current), 1) if current == column => {
+                self.stats_screen_item_sort_column = None;
+                self.stats_screen_item_sort_order = 0;
+            }
+            _ => {
+                self.stats_screen_item_sort_column = Some(column);
+                self.stats_screen_item_sort_order = -1;
+                self.stats_screen_item_effective_sort = Some((column, -1));
+            }
+        }
+        self.stats_screen_scroll_amount = 0.0;
     }
 
     pub(crate) fn debug_game_mode_switcher_selected(&self) -> Option<GameType> {
@@ -4022,6 +4150,31 @@ fn stats_screen_item_column_at_position(
             + i32::try_from(*column).unwrap_or(i32::MAX) * STATS_SCREEN_ITEM_COLUMN_STRIDE;
         (x..x + STATS_SCREEN_ITEM_COLUMN_BUTTON_SIZE).contains(&mouse_x)
     })
+}
+
+fn stats_screen_row_at_position(
+    cursor_position: Option<(i32, i32)>,
+    surface_size: PhysicalSize<u32>,
+    tab: usize,
+    scroll_amount: i32,
+) -> Option<usize> {
+    let (mouse_x, mouse_y) = cursor_position?;
+    let width = i32::try_from(surface_size.width).unwrap_or(i32::MAX);
+    let list_x = width / 2 - STATS_SCREEN_LIST_WIDTH / 2;
+    let list_bottom = i32::try_from(surface_size.height)
+        .unwrap_or(i32::MAX)
+        .saturating_sub(STATS_SCREEN_FOOTER_HEIGHT);
+    if !(list_x..list_x + STATS_SCREEN_LIST_WIDTH).contains(&mouse_x)
+        || !(STATS_SCREEN_LIST_TOP..list_bottom).contains(&mouse_y)
+    {
+        return None;
+    }
+    let content_y =
+        mouse_y - STATS_SCREEN_LIST_TOP - STATS_SCREEN_LIST_ENTRY_PADDING + scroll_amount;
+    let row_height = stats_screen_row_height(tab);
+    (content_y >= 0)
+        .then(|| usize::try_from(content_y / row_height).ok())
+        .flatten()
 }
 
 fn stats_screen_row_height(tab: usize) -> i32 {
@@ -8441,13 +8594,195 @@ fn handle_stats_screen_key(
                 _ => None,
             });
             if let Some(tab) = requested.filter(|tab| stats_screen_tab_is_enabled(*tab, world)) {
+                let old_tab = input.stats_screen_tab;
                 input.stats_screen_tab = tab;
+                input.stats_screen_total_rows = input.stats_screen_tab_row_counts[tab];
                 input.stats_screen_scroll_amount = 0.0;
                 input.stats_screen_scrolling = false;
+                if tab != old_tab
+                    && matches!(
+                        input.stats_screen_focus,
+                        StatsScreenFocus::List
+                            | StatsScreenFocus::GeneralRow(_)
+                            | StatsScreenFocus::ItemHeader(_)
+                            | StatsScreenFocus::ItemRow(_)
+                            | StatsScreenFocus::MobRow(_)
+                    )
+                {
+                    // `TabManager` removes the old list widget and `Screen.removeWidget`
+                    // clears focus when the shortcut is used outside the tab bar.
+                    input.stats_screen_focus = StatsScreenFocus::None;
+                }
+            }
+        } else {
+            match code {
+                KeyCode::Tab => stats_screen_move_tab_focus(input, !input.shift_down()),
+                KeyCode::ArrowLeft
+                | KeyCode::ArrowRight
+                | KeyCode::ArrowUp
+                | KeyCode::ArrowDown => stats_screen_move_arrow_focus(input, world, code),
+                KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space => {
+                    if stats_screen_activate_focus(input) {
+                        close_stats_screen(input, counters, world, net_commands);
+                    }
+                }
+                _ => {}
             }
         }
     }
     true
+}
+
+fn stats_screen_move_tab_focus(input: &mut ClientInputState, forward: bool) {
+    let last_list_focus = || match input.stats_screen_tab {
+        1 if input.stats_screen_total_rows > 0 => {
+            StatsScreenFocus::ItemRow(input.stats_screen_total_rows - 1)
+        }
+        1 => StatsScreenFocus::ItemHeader(5),
+        2 if input.stats_screen_total_rows > 0 => {
+            StatsScreenFocus::MobRow(input.stats_screen_total_rows - 1)
+        }
+        0 if input.stats_screen_total_rows > 0 => {
+            StatsScreenFocus::GeneralRow(input.stats_screen_total_rows - 1)
+        }
+        _ => StatsScreenFocus::List,
+    };
+    let first_list_focus = || match input.stats_screen_tab {
+        1 => StatsScreenFocus::ItemHeader(0),
+        2 if input.stats_screen_total_rows > 0 => StatsScreenFocus::MobRow(0),
+        0 if input.stats_screen_total_rows > 0 => StatsScreenFocus::GeneralRow(0),
+        _ => StatsScreenFocus::List,
+    };
+    input.stats_screen_focus = if forward {
+        match input.stats_screen_focus {
+            StatsScreenFocus::None => StatsScreenFocus::Tabs,
+            StatsScreenFocus::Tabs => first_list_focus(),
+            StatsScreenFocus::ItemHeader(column) if column < 5 => {
+                StatsScreenFocus::ItemHeader(column + 1)
+            }
+            StatsScreenFocus::ItemHeader(_) if input.stats_screen_total_rows > 0 => {
+                StatsScreenFocus::ItemRow(0)
+            }
+            StatsScreenFocus::ItemRow(row) if row + 1 < input.stats_screen_total_rows => {
+                StatsScreenFocus::ItemRow(row + 1)
+            }
+            StatsScreenFocus::List
+            | StatsScreenFocus::GeneralRow(_)
+            | StatsScreenFocus::ItemHeader(_)
+            | StatsScreenFocus::ItemRow(_)
+            | StatsScreenFocus::MobRow(_) => StatsScreenFocus::Done,
+            StatsScreenFocus::Done => StatsScreenFocus::Tabs,
+        }
+    } else {
+        match input.stats_screen_focus {
+            StatsScreenFocus::None => StatsScreenFocus::Done,
+            StatsScreenFocus::Tabs => StatsScreenFocus::Done,
+            StatsScreenFocus::ItemHeader(column) if column > 0 => {
+                StatsScreenFocus::ItemHeader(column - 1)
+            }
+            StatsScreenFocus::ItemRow(0) => StatsScreenFocus::ItemHeader(5),
+            StatsScreenFocus::ItemRow(row) => StatsScreenFocus::ItemRow(row - 1),
+            StatsScreenFocus::List
+            | StatsScreenFocus::GeneralRow(_)
+            | StatsScreenFocus::ItemHeader(_)
+            | StatsScreenFocus::MobRow(_) => StatsScreenFocus::Tabs,
+            StatsScreenFocus::Done => last_list_focus(),
+        }
+    };
+}
+
+fn stats_screen_move_arrow_focus(input: &mut ClientInputState, world: &WorldStore, code: KeyCode) {
+    input.stats_screen_focus = match (input.stats_screen_focus, code) {
+        (StatsScreenFocus::Tabs, KeyCode::ArrowLeft) => {
+            let tab = next_enabled_stats_screen_tab(input.stats_screen_tab, -1, world)
+                .unwrap_or(input.stats_screen_tab);
+            input.stats_screen_tab = tab;
+            input.stats_screen_total_rows = input.stats_screen_tab_row_counts[tab];
+            input.stats_screen_scroll_amount = 0.0;
+            StatsScreenFocus::Tabs
+        }
+        (StatsScreenFocus::Tabs, KeyCode::ArrowRight) => {
+            let tab = next_enabled_stats_screen_tab(input.stats_screen_tab, 1, world)
+                .unwrap_or(input.stats_screen_tab);
+            input.stats_screen_tab = tab;
+            input.stats_screen_total_rows = input.stats_screen_tab_row_counts[tab];
+            input.stats_screen_scroll_amount = 0.0;
+            StatsScreenFocus::Tabs
+        }
+        (StatsScreenFocus::Tabs, KeyCode::ArrowDown) => match input.stats_screen_tab {
+            1 => StatsScreenFocus::ItemHeader(0),
+            2 if input.stats_screen_total_rows > 0 => StatsScreenFocus::MobRow(0),
+            0 if input.stats_screen_total_rows > 0 => StatsScreenFocus::GeneralRow(0),
+            _ => StatsScreenFocus::List,
+        },
+        (StatsScreenFocus::GeneralRow(0), KeyCode::ArrowUp)
+        | (StatsScreenFocus::MobRow(0), KeyCode::ArrowUp)
+        | (StatsScreenFocus::ItemHeader(_), KeyCode::ArrowUp) => StatsScreenFocus::Tabs,
+        (StatsScreenFocus::GeneralRow(row), KeyCode::ArrowUp) => {
+            StatsScreenFocus::GeneralRow(row - 1)
+        }
+        (StatsScreenFocus::MobRow(row), KeyCode::ArrowUp) => StatsScreenFocus::MobRow(row - 1),
+        (StatsScreenFocus::ItemRow(0), KeyCode::ArrowUp) => StatsScreenFocus::ItemHeader(0),
+        (StatsScreenFocus::ItemRow(row), KeyCode::ArrowUp) => StatsScreenFocus::ItemRow(row - 1),
+        (StatsScreenFocus::GeneralRow(row), KeyCode::ArrowDown)
+            if row + 1 < input.stats_screen_total_rows =>
+        {
+            StatsScreenFocus::GeneralRow(row + 1)
+        }
+        (StatsScreenFocus::MobRow(row), KeyCode::ArrowDown)
+            if row + 1 < input.stats_screen_total_rows =>
+        {
+            StatsScreenFocus::MobRow(row + 1)
+        }
+        (StatsScreenFocus::ItemHeader(_), KeyCode::ArrowDown)
+            if input.stats_screen_total_rows > 0 =>
+        {
+            StatsScreenFocus::ItemRow(0)
+        }
+        (StatsScreenFocus::ItemRow(row), KeyCode::ArrowDown)
+            if row + 1 < input.stats_screen_total_rows =>
+        {
+            StatsScreenFocus::ItemRow(row + 1)
+        }
+        (
+            StatsScreenFocus::GeneralRow(_)
+            | StatsScreenFocus::MobRow(_)
+            | StatsScreenFocus::ItemRow(_),
+            KeyCode::ArrowDown,
+        ) => StatsScreenFocus::Done,
+        (StatsScreenFocus::ItemHeader(column), KeyCode::ArrowLeft) if column > 0 => {
+            StatsScreenFocus::ItemHeader(column - 1)
+        }
+        (StatsScreenFocus::ItemHeader(column), KeyCode::ArrowRight) if column < 5 => {
+            StatsScreenFocus::ItemHeader(column + 1)
+        }
+        (StatsScreenFocus::Done, KeyCode::ArrowUp) => match input.stats_screen_tab {
+            1 if input.stats_screen_total_rows > 0 => {
+                StatsScreenFocus::ItemRow(input.stats_screen_total_rows - 1)
+            }
+            1 => StatsScreenFocus::ItemHeader(0),
+            2 if input.stats_screen_total_rows > 0 => {
+                StatsScreenFocus::MobRow(input.stats_screen_total_rows - 1)
+            }
+            0 if input.stats_screen_total_rows > 0 => {
+                StatsScreenFocus::GeneralRow(input.stats_screen_total_rows - 1)
+            }
+            _ => StatsScreenFocus::List,
+        },
+        (focus, _) => focus,
+    };
+}
+
+/// Returns whether the focused Done button should close the screen.
+fn stats_screen_activate_focus(input: &mut ClientInputState) -> bool {
+    match input.stats_screen_focus {
+        StatsScreenFocus::ItemHeader(column) => {
+            input.activate_stats_screen_item_column(column);
+            false
+        }
+        StatsScreenFocus::Done => true,
+        _ => false,
+    }
 }
 
 fn stats_screen_digit_tab(code: KeyCode) -> Option<usize> {
@@ -8550,6 +8885,10 @@ fn open_stats_screen(
         input.stats_screen_item_sort_column = None;
         input.stats_screen_item_sort_order = 0;
         input.stats_screen_item_effective_sort = None;
+        input.stats_screen_tab_row_counts = [0; 3];
+        input.stats_screen_total_rows = 0;
+        input.stats_screen_focus = StatsScreenFocus::None;
+        input.stats_screen_was_loading = true;
         queue_request_stats_command(counters, net_commands);
     }
 }
@@ -8571,6 +8910,10 @@ fn close_stats_screen(
         input.stats_screen_item_sort_column = None;
         input.stats_screen_item_sort_order = 0;
         input.stats_screen_item_effective_sort = None;
+        input.stats_screen_tab_row_counts = [0; 3];
+        input.stats_screen_total_rows = 0;
+        input.stats_screen_focus = StatsScreenFocus::None;
+        input.stats_screen_was_loading = false;
     }
 }
 
