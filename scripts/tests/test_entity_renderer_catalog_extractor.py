@@ -88,6 +88,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                     register(EntityType.GLOW_ITEM_FRAME, ItemFrameRenderer::new);
                     register(EntityType.ITEM_FRAME, ItemFrameRenderer::new);
                     register(EntityType.SHEEP, SheepRenderer::new);
+                    register(EntityType.PARROT, ParrotRenderer::new);
+                    register(EntityType.WOLF, WolfRenderer::new);
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -247,7 +249,11 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 import net.minecraft.client.model.animal.feline.AbstractFelineModel;
                 public class CatRenderer extends AgeableMobRenderer<
                     Object, Object, AbstractFelineModel<Object>
-                > {}
+                > {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isSitting = entity.isInSittingPose();
+                    }
+                }
                 """,
             ),
             java(
@@ -326,6 +332,28 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 }
                 """,
             ),
+            java(
+                "net/minecraft/client/renderer/entity/ParrotRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class ParrotRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.pose = ParrotModel.getPose(entity);
+                    }
+                }
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/WolfRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class WolfRenderer extends MobRenderer {
+                    public void extractRenderState(Object entity, Object state, float partialTicks) {
+                        state.isSitting = entity.isInSittingPose();
+                    }
+                }
+                """,
+            ),
         ]
 
         entries = extract_entity_renderer_registrations(
@@ -352,6 +380,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "GLOW_ITEM_FRAME",
                 "ITEM_FRAME",
                 "SHEEP",
+                "PARROT",
+                "WOLF",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -396,6 +426,8 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (17, "GLOW_ITEM_FRAME", "ItemFrameRenderer", False, 5, None, False, False, False, False, False, False),
                 (18, "ITEM_FRAME", "ItemFrameRenderer", False, None, None, False, False, False, False, False, False),
                 (19, "SHEEP", "SheepRenderer", False, None, None, False, False, False, False, False, False),
+                (20, "PARROT", "ParrotRenderer", False, None, None, False, False, False, False, False, False),
+                (21, "WOLF", "WolfRenderer", False, None, None, False, False, False, False, False, False),
             ],
         )
         self.assertEqual(
@@ -409,6 +441,14 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
         self.assertEqual(
             [entry.constant_name for entry in entries if entry.extracts_sheep_head_eat],
             ["SHEEP"],
+        )
+        self.assertEqual(
+            [entry.constant_name for entry in entries if entry.extracts_wolf_sitting],
+            ["WOLF"],
+        )
+        self.assertEqual(
+            [entry.constant_name for entry in entries if entry.extracts_parrot_pose],
+            ["PARROT"],
         )
 
 

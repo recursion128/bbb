@@ -146,6 +146,12 @@ def render(source_root: Path) -> str:
                 "        extracts_zombie_underwater_converting: "
                 + str(entry.extracts_zombie_underwater_converting).lower()
                 + ",",
+                "        extracts_wolf_sitting: "
+                + str(entry.extracts_wolf_sitting).lower()
+                + ",",
+                "        extracts_parrot_pose: "
+                + str(entry.extracts_parrot_pose).lower()
+                + ",",
                 "    },",
             ]
         )
@@ -263,6 +269,24 @@ def render(source_root: Path) -> str:
             '        assert!(!body.contains("VANILLA_ENTITY_TYPE_ZOMBIE_ID"));',
             '        assert!(!body.contains("VANILLA_ENTITY_TYPE_HUSK_ID"));',
             '        assert!(!body.contains("VANILLA_ENTITY_TYPE_DROWNED_ID"));',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_sitting_pose_does_not_restore_wolf_or_parrot_type_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");',
+            '        for (function, query, removed) in [',
+            '            ("wolf_sitting", "vanilla_entity_renderer_extracts_wolf_sitting", "VANILLA_ENTITY_TYPE_WOLF_ID"),',
+            '            ("parrot_sitting", "vanilla_entity_renderer_extracts_parrot_pose", "VANILLA_ENTITY_TYPE_PARROT_ID"),',
+            '        ] {',
+            '            let body = source',
+            '                .split(&format!("fn {function}"))',
+            '                .nth(1)',
+            '                .and_then(|source| source.split_once("\\n}"))',
+            '                .map(|(body, _)| body)',
+            '                .unwrap_or_else(|| panic!("missing {function} projection"));',
+            '            assert!(body.contains(query), "{function} missing {query}");',
+            '            assert!(!body.contains(removed), "{function} restored {removed}");',
+            '        }',
             "    }",
             "",
             "    #[test]",

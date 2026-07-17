@@ -20,6 +20,8 @@ pub(super) struct VanillaEntityRendererRegistration {
     extracts_casting_spell: bool,
     extracts_sheep_head_eat: bool,
     extracts_zombie_underwater_converting: bool,
+    extracts_wolf_sitting: bool,
+    extracts_parrot_pose: bool,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -128,6 +130,16 @@ pub fn vanilla_entity_renderer_extracts_zombie_underwater_converting(entity_type
         .is_some_and(|entry| entry.extracts_zombie_underwater_converting)
 }
 
+pub fn vanilla_entity_renderer_extracts_wolf_sitting(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.extracts_wolf_sitting)
+}
+
+pub fn vanilla_entity_renderer_extracts_parrot_pose(entity_type_id: i32) -> bool {
+    vanilla_entity_renderer_registration(entity_type_id)
+        .is_some_and(|entry| entry.extracts_parrot_pose)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -150,17 +162,18 @@ mod tests {
         VANILLA_ENTITY_TYPE_MAGMA_CUBE_ID, VANILLA_ENTITY_TYPE_MANNEQUIN_ID,
         VANILLA_ENTITY_TYPE_MARKER_ID, VANILLA_ENTITY_TYPE_MULE_ID, VANILLA_ENTITY_TYPE_OCELOT_ID,
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
-        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID,
-        VANILLA_ENTITY_TYPE_PIGLIN_ID, VANILLA_ENTITY_TYPE_PILLAGER_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SHEEP_ID,
-        VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID, VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID,
-        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPLASH_POTION_ID,
-        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TURTLE_ID,
-        VANILLA_ENTITY_TYPE_VEX_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
-        VANILLA_ENTITY_TYPE_VINDICATOR_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WITHER_ID, VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID,
-        VANILLA_ENTITY_TYPE_WITHER_SKULL_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
+        VANILLA_ENTITY_TYPE_PARCHED_ID, VANILLA_ENTITY_TYPE_PARROT_ID,
+        VANILLA_ENTITY_TYPE_PIGLIN_BRUTE_ID, VANILLA_ENTITY_TYPE_PIGLIN_ID,
+        VANILLA_ENTITY_TYPE_PILLAGER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_SHEEP_ID, VANILLA_ENTITY_TYPE_SHULKER_BULLET_ID,
+        VANILLA_ENTITY_TYPE_SKELETON_HORSE_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_SMALL_FIREBALL_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+        VANILLA_ENTITY_TYPE_SPLASH_POTION_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
+        VANILLA_ENTITY_TYPE_TNT_ID, VANILLA_ENTITY_TYPE_TURTLE_ID, VANILLA_ENTITY_TYPE_VEX_ID,
+        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_VINDICATOR_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITHER_ID,
+        VANILLA_ENTITY_TYPE_WITHER_SKELETON_ID, VANILLA_ENTITY_TYPE_WITHER_SKULL_ID,
+        VANILLA_ENTITY_TYPE_WOLF_ID, VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID,
         VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
         VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
     };
@@ -256,6 +269,34 @@ mod tests {
         }
         assert!(!vanilla_entity_renderer_is_noop(-1));
         assert!(!vanilla_entity_renderer_is_noop(157));
+    }
+
+    #[test]
+    fn generated_sitting_pose_memberships_match_registered_extractors() {
+        let wolf = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.extracts_wolf_sitting)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        let parrot = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter(|entry| entry.extracts_parrot_pose)
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(wolf, vec![VANILLA_ENTITY_TYPE_WOLF_ID]);
+        assert_eq!(parrot, vec![VANILLA_ENTITY_TYPE_PARROT_ID]);
+        assert!(vanilla_entity_renderer_extracts_wolf_sitting(
+            VANILLA_ENTITY_TYPE_WOLF_ID
+        ));
+        assert!(vanilla_entity_renderer_extracts_parrot_pose(
+            VANILLA_ENTITY_TYPE_PARROT_ID
+        ));
+        assert!(!vanilla_entity_renderer_extracts_wolf_sitting(
+            VANILLA_ENTITY_TYPE_PARROT_ID
+        ));
+        assert!(!vanilla_entity_renderer_extracts_parrot_pose(
+            VANILLA_ENTITY_TYPE_WOLF_ID
+        ));
     }
 
     #[test]

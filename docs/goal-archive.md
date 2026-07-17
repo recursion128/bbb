@@ -18353,3 +18353,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   反向校验的 schema owner，拒绝数值 `data_id` 字段或局部 `_DATA_ID` alias 回流。
 - protocol raw-wire 样本仍独立验证解码器 ordinal；18 个 numeric `serializer_id` 继续由
   gameplay-id generator 的专用 wire-sample 边界守卫负责，不属于语义 fixture 迁移范围。
+
+## 2026-07-17：生成 Wolf/Parrot sitting pose membership
+
+- entity renderer extractor 现在把注册的 `WolfRenderer` / `ParrotRenderer` 类身份分别与
+  hierarchy 中 `state.isSitting = entity.isInSittingPose()` /
+  `state.pose = ParrotModel.getPose(entity)` assignment 相交；Cat 的同形 sitting assignment
+  不会扩大 Wolf membership，当前两个查询各自只解析到 Wolf/Parrot。
+- native sitting pose 投影删除两个 entity-type gate，改为将 renderer 生成 membership 与
+  TamableAnimal schema 的 sitting mask 相交，保持 presentation owner 与 metadata owner 分离。
+- renderer generator 输出 reverse guard，禁止两个 helper 恢复 Wolf/Parrot type 常量判断。

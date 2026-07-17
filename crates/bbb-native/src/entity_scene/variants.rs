@@ -1023,7 +1023,7 @@ pub(super) fn wolf_sitting(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
+    bbb_world::vanilla_entity_renderer_extracts_wolf_sitting(entity_type_id)
         && vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
             .is_some_and(|accessors| {
                 entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)
@@ -1039,7 +1039,7 @@ pub(super) fn parrot_sitting(
     entity_type_id: i32,
     values: &[bbb_protocol::packets::EntityDataValue],
 ) -> bool {
-    entity_type_id == VANILLA_ENTITY_TYPE_PARROT_ID
+    bbb_world::vanilla_entity_renderer_extracts_parrot_pose(entity_type_id)
         && vanilla_entity_metadata_tamable_animal_accessors_for_entity_type(entity_type_id)
             .is_some_and(|accessors| {
                 entity_data_byte(values, accessors.flags_data_id, accessors.flags_default)

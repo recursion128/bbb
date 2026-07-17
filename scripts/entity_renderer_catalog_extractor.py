@@ -25,6 +25,8 @@ ABSTRACT_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".AbstractHorseRenderer"
 MOB_RENDERER_CLASS = RENDERER_PACKAGE + ".MobRenderer"
 ITEM_IN_HAND_LAYER_CLASS = RENDERER_PACKAGE + ".layers.ItemInHandLayer"
 ITEM_FRAME_RENDERER_CLASS = RENDERER_PACKAGE + ".ItemFrameRenderer"
+WOLF_RENDERER_CLASS = RENDERER_PACKAGE + ".WolfRenderer"
+PARROT_RENDERER_CLASS = RENDERER_PACKAGE + ".ParrotRenderer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
@@ -51,6 +53,8 @@ class EntityRendererRegistration:
     extracts_casting_spell: bool
     extracts_sheep_head_eat: bool
     extracts_zombie_underwater_converting: bool
+    extracts_wolf_sitting: bool
+    extracts_parrot_pose: bool
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -688,6 +692,20 @@ def extract_entity_renderer_registrations(
                 _renderer_hierarchy_contains_extract_assignment(
                     renderer_class,
                     "state.isConverting = entity.isUnderWaterConverting ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                renderer_class == WOLF_RENDERER_CLASS
+                and _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.isSitting = entity.isInSittingPose ()",
+                    source_by_type,
+                    type_by_name,
+                ),
+                renderer_class == PARROT_RENDERER_CLASS
+                and _renderer_hierarchy_contains_extract_assignment(
+                    renderer_class,
+                    "state.pose = ParrotModel.getPose (entity)",
                     source_by_type,
                     type_by_name,
                 ),
