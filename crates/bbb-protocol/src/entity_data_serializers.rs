@@ -318,6 +318,50 @@ mod tests {
         );
     }
 
+    fn contains_numeric_serializer_id_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction = compact.match_indices("serializer_id:").any(|(offset, _)| {
+            compact[offset + "serializer_id:".len()..]
+                .chars()
+                .next()
+                .is_some_and(|character| character.is_ascii_digit())
+        });
+        numeric_construction
+            || compact.match_indices(".serializer_id").any(|(offset, _)| {
+                let suffix = &compact[offset + ".serializer_id".len()..];
+                [",", "==", "!=", "="].iter().any(|separator| {
+                    suffix.strip_prefix(separator).is_some_and(|value| {
+                        value
+                            .chars()
+                            .next()
+                            .is_some_and(|character| character.is_ascii_digit())
+                    })
+                })
+            })
+    }
+
+    #[test]
+    fn numeric_serializer_id_reference_guard_covers_construction_and_comparison() {
+        assert!(contains_numeric_serializer_id_reference(
+            "serializer_id: 0,"
+        ));
+        assert!(contains_numeric_serializer_id_reference(
+            "assert_eq!(value.serializer_id,\n 0);"
+        ));
+        assert!(contains_numeric_serializer_id_reference(
+            "value.serializer_id != 42"
+        ));
+        assert!(!contains_numeric_serializer_id_reference(
+            "serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,"
+        ));
+        assert!(!contains_numeric_serializer_id_reference(
+            "assert_eq!(value.serializer_id, VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID);"
+        ));
+    }
+
     #[test]
     fn semantic_consumers_use_generated_serializer_ids() {
         fn visit(path: &Path, violations: &mut Vec<String>) {
@@ -331,6 +375,12 @@ mod tests {
                 return;
             }
             let source = fs::read_to_string(path).unwrap();
+            if contains_numeric_serializer_id_reference(&source) {
+                violations.push(format!(
+                    "{}: numeric .serializer_id reference",
+                    path.display()
+                ));
+            }
             for line in source.lines() {
                 if line.contains("SERIALIZER_ID: i32 =") {
                     violations.push(format!("{}: {line}", path.display()));

@@ -4774,7 +4774,10 @@ mod tests {
         let entity = report.world.probe_entity(9).unwrap();
         assert_eq!(entity.data_values.len(), 1);
         assert_eq!(entity.data_values[0].data_id, 0);
-        assert_eq!(entity.data_values[0].serializer_id, 0);
+        assert_eq!(
+            entity.data_values[0].serializer_id,
+            bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID
+        );
         assert_eq!(entity.data_values[0].value, EntityDataValueKind::Byte(0x02));
         assert!(entity.mob_effects.is_empty());
         assert_eq!(entity.attributes.len(), 1);

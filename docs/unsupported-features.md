@@ -142,7 +142,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test
   submodules, as must `bbb-net` event/probe fixtures; protocol wire samples remain separately
-  owned evidence. Numeric `serializer_id` fields are confined to the 18 audited raw-decoder
+  owned evidence. The generator-emitted reverse guard must reject numeric serializer construction,
+  assignment, and comparison even when formatting splits a field access across lines. Numeric
+  `serializer_id` fields are confined to the 18 audited raw-decoder
   assertions in `bbb-protocol/src/packets/entities/tests.rs`, identified by its wire-sample marker.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.

@@ -18915,3 +18915,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   hints, then submitted changed utterances to the interrupting system narrator sink. Exact frame
   tests cover loading, all three tabs, empty-tab hints, headers, items, and rows; the StatsScreen
   presentation ledger entry is closed.
+
+# 2026-07-17: Guard semantic serializer-id comparisons
+
+- Replaced the remaining `bbb-net` semantic-fixture comparison against numeric serializer id zero
+  with the generated `BYTE` serializer constant derived from Vanilla's registration order.
+- Extended the gameplay-id generator's reverse guard to normalize whitespace and reject numeric
+  `.serializer_id` construction, assignment, equality, and inequality references across native,
+  world, and net sources. Protocol decoder wire samples retain their separately audited boundary.
