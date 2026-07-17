@@ -70,6 +70,23 @@ impl BuiltinEnumValueTypeDescriptor {
     }
 }
 
+pub const VANILLA_DYE_COLOR_WHITE_ID: i32 = 0;
+pub const VANILLA_DYE_COLOR_ORANGE_ID: i32 = 1;
+pub const VANILLA_DYE_COLOR_MAGENTA_ID: i32 = 2;
+pub const VANILLA_DYE_COLOR_LIGHT_BLUE_ID: i32 = 3;
+pub const VANILLA_DYE_COLOR_YELLOW_ID: i32 = 4;
+pub const VANILLA_DYE_COLOR_LIME_ID: i32 = 5;
+pub const VANILLA_DYE_COLOR_PINK_ID: i32 = 6;
+pub const VANILLA_DYE_COLOR_GRAY_ID: i32 = 7;
+pub const VANILLA_DYE_COLOR_LIGHT_GRAY_ID: i32 = 8;
+pub const VANILLA_DYE_COLOR_CYAN_ID: i32 = 9;
+pub const VANILLA_DYE_COLOR_PURPLE_ID: i32 = 10;
+pub const VANILLA_DYE_COLOR_BLUE_ID: i32 = 11;
+pub const VANILLA_DYE_COLOR_BROWN_ID: i32 = 12;
+pub const VANILLA_DYE_COLOR_GREEN_ID: i32 = 13;
+pub const VANILLA_DYE_COLOR_RED_ID: i32 = 14;
+pub const VANILLA_DYE_COLOR_BLACK_ID: i32 = 15;
+
 pub const VANILLA_DYE_COLOR_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
         id: 0,
@@ -161,6 +178,9 @@ pub const VANILLA_DYE_COLOR_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         values: VANILLA_DYE_COLOR_VALUES,
     };
 
+pub const VANILLA_FOX_VARIANT_RED_ID: i32 = 0;
+pub const VANILLA_FOX_VARIANT_SNOW_ID: i32 = 1;
+
 pub const VANILLA_FOX_VARIANT_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
         id: 0,
@@ -181,6 +201,10 @@ pub const VANILLA_FOX_VARIANT_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         default_id: 0,
         values: VANILLA_FOX_VARIANT_VALUES,
     };
+
+pub const VANILLA_SALMON_VARIANT_SMALL_ID: i32 = 0;
+pub const VANILLA_SALMON_VARIANT_MEDIUM_ID: i32 = 1;
+pub const VANILLA_SALMON_VARIANT_LARGE_ID: i32 = 2;
 
 pub const VANILLA_SALMON_VARIANT_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
@@ -207,6 +231,12 @@ pub const VANILLA_SALMON_VARIANT_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         default_id: 0,
         values: VANILLA_SALMON_VARIANT_VALUES,
     };
+
+pub const VANILLA_PARROT_VARIANT_RED_BLUE_ID: i32 = 0;
+pub const VANILLA_PARROT_VARIANT_BLUE_ID: i32 = 1;
+pub const VANILLA_PARROT_VARIANT_GREEN_ID: i32 = 2;
+pub const VANILLA_PARROT_VARIANT_YELLOW_BLUE_ID: i32 = 3;
+pub const VANILLA_PARROT_VARIANT_GRAY_ID: i32 = 4;
 
 pub const VANILLA_PARROT_VARIANT_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
@@ -244,6 +274,9 @@ pub const VANILLA_PARROT_VARIANT_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         values: VANILLA_PARROT_VARIANT_VALUES,
     };
 
+pub const VANILLA_MOOSHROOM_VARIANT_RED_ID: i32 = 0;
+pub const VANILLA_MOOSHROOM_VARIANT_BROWN_ID: i32 = 1;
+
 pub const VANILLA_MOOSHROOM_VARIANT_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
         id: 0,
@@ -264,6 +297,14 @@ pub const VANILLA_MOOSHROOM_VARIANT_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         default_id: 0,
         values: VANILLA_MOOSHROOM_VARIANT_VALUES,
     };
+
+pub const VANILLA_RABBIT_VARIANT_BROWN_ID: i32 = 0;
+pub const VANILLA_RABBIT_VARIANT_WHITE_ID: i32 = 1;
+pub const VANILLA_RABBIT_VARIANT_BLACK_ID: i32 = 2;
+pub const VANILLA_RABBIT_VARIANT_WHITE_SPLOTCHED_ID: i32 = 3;
+pub const VANILLA_RABBIT_VARIANT_GOLD_ID: i32 = 4;
+pub const VANILLA_RABBIT_VARIANT_SALT_ID: i32 = 5;
+pub const VANILLA_RABBIT_VARIANT_EVIL_ID: i32 = 99;
 
 pub const VANILLA_RABBIT_VARIANT_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
@@ -311,6 +352,14 @@ pub const VANILLA_RABBIT_VARIANT_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         values: VANILLA_RABBIT_VARIANT_VALUES,
     };
 
+pub const VANILLA_HORSE_VARIANT_WHITE_ID: i32 = 0;
+pub const VANILLA_HORSE_VARIANT_CREAMY_ID: i32 = 1;
+pub const VANILLA_HORSE_VARIANT_CHESTNUT_ID: i32 = 2;
+pub const VANILLA_HORSE_VARIANT_BROWN_ID: i32 = 3;
+pub const VANILLA_HORSE_VARIANT_BLACK_ID: i32 = 4;
+pub const VANILLA_HORSE_VARIANT_GRAY_ID: i32 = 5;
+pub const VANILLA_HORSE_VARIANT_DARK_BROWN_ID: i32 = 6;
+
 pub const VANILLA_HORSE_VARIANT_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
         id: 0,
@@ -357,6 +406,11 @@ pub const VANILLA_HORSE_VARIANT_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         values: VANILLA_HORSE_VARIANT_VALUES,
     };
 
+pub const VANILLA_LLAMA_VARIANT_CREAMY_ID: i32 = 0;
+pub const VANILLA_LLAMA_VARIANT_WHITE_ID: i32 = 1;
+pub const VANILLA_LLAMA_VARIANT_BROWN_ID: i32 = 2;
+pub const VANILLA_LLAMA_VARIANT_GRAY_ID: i32 = 3;
+
 pub const VANILLA_LLAMA_VARIANT_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
         id: 0,
@@ -387,6 +441,12 @@ pub const VANILLA_LLAMA_VARIANT_VALUE_TYPE: BuiltinEnumValueTypeDescriptor =
         default_id: 0,
         values: VANILLA_LLAMA_VARIANT_VALUES,
     };
+
+pub const VANILLA_AXOLOTL_VARIANT_LUCY_ID: i32 = 0;
+pub const VANILLA_AXOLOTL_VARIANT_WILD_ID: i32 = 1;
+pub const VANILLA_AXOLOTL_VARIANT_GOLD_ID: i32 = 2;
+pub const VANILLA_AXOLOTL_VARIANT_CYAN_ID: i32 = 3;
+pub const VANILLA_AXOLOTL_VARIANT_BLUE_ID: i32 = 4;
 
 pub const VANILLA_AXOLOTL_VARIANT_VALUES: &[BuiltinEnumValueEntry] = &[
     BuiltinEnumValueEntry {
@@ -605,6 +665,10 @@ mod tests {
 
     #[test]
     fn built_in_enum_component_values_preserve_vanilla_fallbacks_and_names() {
+        assert_eq!(VANILLA_DYE_COLOR_WHITE_ID, 0);
+        assert_eq!(VANILLA_DYE_COLOR_ORANGE_ID, 1);
+        assert_eq!(VANILLA_DYE_COLOR_GRAY_ID, 7);
+        assert_eq!(VANILLA_DYE_COLOR_RED_ID, 14);
         assert_eq!(vanilla_dye_color_name(14), "red");
         assert_eq!(vanilla_dye_color_name(16), "white");
         assert_eq!(normalize_vanilla_dye_color_id(-1), 0);
@@ -647,6 +711,92 @@ mod tests {
             None
         );
         assert_eq!(normalize_builtin_enum_component_value_id(-1, 0), None);
+    }
+
+    fn starts_with_numeric_or_optional_numeric(value: &str) -> bool {
+        let value = value.strip_prefix("Some(").unwrap_or(value);
+        let mut characters = value.chars();
+        let Some(first) = characters.next() else {
+            return false;
+        };
+        first.is_ascii_digit()
+            || (first == '-'
+                && characters
+                    .next()
+                    .is_some_and(|character| character.is_ascii_digit()))
+    }
+
+    fn contains_numeric_tropical_fish_color_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        [
+            "tropical_fish_base_color_id",
+            "tropical_fish_pattern_color_id",
+        ]
+        .iter()
+        .any(|field| {
+            compact.match_indices(field).any(|(offset, _)| {
+                let suffix = &compact[offset + field.len()..];
+                [":", ",", "==", "!=", "="].iter().any(|separator| {
+                    suffix
+                        .strip_prefix(separator)
+                        .is_some_and(starts_with_numeric_or_optional_numeric)
+                })
+            })
+        })
+    }
+
+    #[test]
+    fn numeric_tropical_fish_color_guard_covers_semantic_fixtures() {
+        assert!(contains_numeric_tropical_fish_color_reference(
+            "tropical_fish_base_color_id: Some(1),"
+        ));
+        assert!(contains_numeric_tropical_fish_color_reference(
+            "assert_eq!(patch.tropical_fish_pattern_color_id, Some(7));"
+        ));
+        assert!(!contains_numeric_tropical_fish_color_reference(
+            "tropical_fish_base_color_id: Some(VANILLA_DYE_COLOR_ORANGE_ID),"
+        ));
+        assert!(!contains_numeric_tropical_fish_color_reference(
+            "tropical_fish_pattern_color_id: Some(unknown_dye_color_id),"
+        ));
+    }
+
+    #[test]
+    fn semantic_fixtures_do_not_restore_numeric_tropical_fish_color_ids() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                if contains_numeric_tropical_fish_color_reference(&source) {
+                    violations.push(path.display().to_string());
+                }
+            }
+        }
+        let mut violations = Vec::new();
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        for directory in [
+            "bbb-native/src",
+            "bbb-world/src",
+            "bbb-net/src",
+            "bbb-item-model/src",
+            "bbb-renderer/src",
+        ] {
+            visit(&crates.join(directory), &mut violations);
+        }
+        assert!(
+            violations.is_empty(),
+            "numeric tropical fish color ids: {violations:?}"
+        );
     }
 
     #[test]

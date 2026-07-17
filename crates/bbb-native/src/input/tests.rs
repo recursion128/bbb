@@ -1,6 +1,9 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
+use bbb_protocol::builtin_enum_component_values::{
+    VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_VALUES,
+};
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPES, VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_ARMADILLO_ID,
@@ -9363,6 +9366,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         registry,
         EquipmentAssetCatalog::default(),
     );
+    let unknown_dye_color_id = i32::try_from(VANILLA_DYE_COLOR_VALUES.len()).unwrap();
     let patch = DataComponentPatchSummary {
         added: 107,
         added_type_ids: vec![
@@ -9987,8 +9991,8 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             min_ticks_in_hive: 600,
         }],
         tropical_fish_pattern_id: Some(VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID),
-        tropical_fish_base_color_id: Some(1),
-        tropical_fish_pattern_color_id: Some(99),
+        tropical_fish_base_color_id: Some(VANILLA_DYE_COLOR_ORANGE_ID),
+        tropical_fish_pattern_color_id: Some(unknown_dye_color_id),
         break_sound: Some(bbb_protocol::packets::SoundEventSummary {
             registry_id: Some(7),
             sound_id: None,

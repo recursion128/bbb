@@ -5792,6 +5792,11 @@ def render_builtin_enum_component_values(
     for value_type in value_types:
         catalog = f"VANILLA_{value_type.constant_name}_VALUES"
         descriptor = f"VANILLA_{value_type.constant_name}_VALUE_TYPE"
+        for value in value_type.values:
+            lines.append(
+                f"pub const VANILLA_{value_type.constant_name}_{value.constant_name}_ID: i32 = {value.value_id};"
+            )
+        lines.append("")
         lines.append(f"pub const {catalog}: &[BuiltinEnumValueEntry] = &[")
         for value in value_type.values:
             lines.extend((
@@ -5904,6 +5909,10 @@ def render_builtin_enum_component_values(
         "",
         "    #[test]",
         "    fn built_in_enum_component_values_preserve_vanilla_fallbacks_and_names() {",
+        "        assert_eq!(VANILLA_DYE_COLOR_WHITE_ID, 0);",
+        "        assert_eq!(VANILLA_DYE_COLOR_ORANGE_ID, 1);",
+        "        assert_eq!(VANILLA_DYE_COLOR_GRAY_ID, 7);",
+        "        assert_eq!(VANILLA_DYE_COLOR_RED_ID, 14);",
         "        assert_eq!(vanilla_dye_color_name(14), \"red\");",
         "        assert_eq!(vanilla_dye_color_name(16), \"white\");",
         "        assert_eq!(normalize_vanilla_dye_color_id(-1), 0);",
@@ -5915,6 +5924,48 @@ def render_builtin_enum_component_values(
         "        assert_eq!(builtin_enum_component_value_for_name(VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, \"evil\").map(|entry| entry.id), Some(99));",
         "        assert_eq!(builtin_enum_component_value_for_name(VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID, \"killer\"), None);",
         "        assert_eq!(normalize_builtin_enum_component_value_id(-1, 0), None);",
+        "    }",
+        "",
+        "    fn starts_with_numeric_or_optional_numeric(value: &str) -> bool {",
+        '        let value = value.strip_prefix("Some(").unwrap_or(value);',
+        "        let mut characters = value.chars();",
+        "        let Some(first) = characters.next() else { return false; };",
+        "        first.is_ascii_digit() || (first == '-' && characters.next().is_some_and(|character| character.is_ascii_digit()))",
+        "    }",
+        "",
+        "    fn contains_numeric_tropical_fish_color_reference(source: &str) -> bool {",
+        "        let compact: String = source.chars().filter(|character| !character.is_whitespace()).collect();",
+        '        ["tropical_fish_base_color_id", "tropical_fish_pattern_color_id"].iter().any(|field| {',
+        "            compact.match_indices(field).any(|(offset, _)| {",
+        "                let suffix = &compact[offset + field.len()..];",
+        '                [":", ",", "==", "!=", "="].iter().any(|separator| suffix.strip_prefix(separator).is_some_and(starts_with_numeric_or_optional_numeric))',
+        "            })",
+        "        })",
+        "    }",
+        "",
+        "    #[test]",
+        "    fn numeric_tropical_fish_color_guard_covers_semantic_fixtures() {",
+        '        assert!(contains_numeric_tropical_fish_color_reference("tropical_fish_base_color_id: Some(1),"));',
+        '        assert!(contains_numeric_tropical_fish_color_reference("assert_eq!(patch.tropical_fish_pattern_color_id, Some(7));"));',
+        '        assert!(!contains_numeric_tropical_fish_color_reference("tropical_fish_base_color_id: Some(VANILLA_DYE_COLOR_ORANGE_ID),"));',
+        '        assert!(!contains_numeric_tropical_fish_color_reference("tropical_fish_pattern_color_id: Some(unknown_dye_color_id),"));',
+        "    }",
+        "",
+        "    #[test]",
+        "    fn semantic_fixtures_do_not_restore_numeric_tropical_fish_color_ids() {",
+        "        fn visit(directory: &Path, violations: &mut Vec<String>) {",
+        "            for entry in fs::read_dir(directory).unwrap() {",
+        "                let path = entry.unwrap().path();",
+        "                if path.is_dir() { visit(&path, violations); continue; }",
+        "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
+        "                let source = fs::read_to_string(&path).unwrap();",
+        '                if contains_numeric_tropical_fish_color_reference(&source) { violations.push(path.display().to_string()); }',
+        "            }",
+        "        }",
+        "        let mut violations = Vec::new();",
+        "        let crates = Path::new(env!(\"CARGO_MANIFEST_DIR\")).parent().unwrap();",
+        "        for directory in [\"bbb-native/src\", \"bbb-world/src\", \"bbb-net/src\", \"bbb-item-model/src\", \"bbb-renderer/src\"] { visit(&crates.join(directory), &mut violations); }",
+        "        assert!(violations.is_empty(), \"numeric tropical fish color ids: {violations:?}\");",
         "    }",
         "",
         "    #[test]",

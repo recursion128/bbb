@@ -154,8 +154,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   ids; the core-registry generator owns both named predicate constants and the reverse guard over
   this semantic owner.
   Semantic tropical-fish pattern item-component fixtures must use the generated sparse packed-id
-  constants; the gameplay-id generator owns their reverse guard across world, item-model, native,
-  net, and renderer consumers while protocol packet codec samples remain separately owned.
+  constants, and their base/pattern colors must use generated DyeColor value constants; the
+  gameplay-id generator owns both reverse guards across world, item-model, native, net, and
+  renderer consumers while protocol packet codec samples remain separately owned. Unknown-color
+  fixtures derive the first invalid id from the generated catalog length.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test

@@ -2,6 +2,10 @@ use super::*;
 use crate::skin_runtime::{
     AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
 };
+use bbb_protocol::builtin_enum_component_values::{
+    VANILLA_DYE_COLOR_GRAY_ID, VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID,
+    VANILLA_DYE_COLOR_WHITE_ID,
+};
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID,
     VANILLA_MOB_EFFECT_WEAKNESS_ID,
@@ -1101,8 +1105,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             count: 1,
             component_patch: DataComponentPatchSummary {
                 tropical_fish_pattern_id: Some(VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID),
-                tropical_fish_base_color_id: Some(1),
-                tropical_fish_pattern_color_id: Some(7),
+                tropical_fish_base_color_id: Some(VANILLA_DYE_COLOR_ORANGE_ID),
+                tropical_fish_pattern_color_id: Some(VANILLA_DYE_COLOR_GRAY_ID),
                 instrument_id: Some(0),
                 ..DataComponentPatchSummary::default()
             },
@@ -1119,8 +1123,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             count: 1,
             component_patch: DataComponentPatchSummary {
                 tropical_fish_pattern_id: Some(VANILLA_TROPICAL_FISH_PATTERN_KOB_PACKED_ID),
-                tropical_fish_base_color_id: Some(0),
-                tropical_fish_pattern_color_id: Some(14),
+                tropical_fish_base_color_id: Some(VANILLA_DYE_COLOR_WHITE_ID),
+                tropical_fish_pattern_color_id: Some(VANILLA_DYE_COLOR_RED_ID),
                 ..DataComponentPatchSummary::default()
             },
         }),

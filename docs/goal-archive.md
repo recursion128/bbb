@@ -19026,3 +19026,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   fixtures, and native input snapshots with the generated KOB, FLOPPER, and STRIPEY constants.
 - Added a gameplay-id generator guard for pattern construction/comparison across semantic crates,
   while retaining raw numeric packet samples under the protocol codec owner.
+
+# 2026-07-17: Derive semantic tropical-fish color ids
+
+- Added generated named constants for all built-in enum component values and replaced numeric
+  DyeColor ids in tropical-fish tooltip and native item-patch fixtures.
+- Changed the intentional invalid color fixture to derive the first id beyond the generated
+  DyeColor catalog, and added a generator-owned reverse guard over semantic consumers.
