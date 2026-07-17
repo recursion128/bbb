@@ -75,6 +75,8 @@ const ZOMBIE_VILLAGER_CURE_EVENT_ID: i8 = 16;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
 const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
 const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
+const OCELOT_TRUSTING_FAILED_EVENT_ID: i8 = 40;
+const OCELOT_TRUSTING_SUCCEEDED_EVENT_ID: i8 = 41;
 const VILLAGER_SPLASH_EVENT_ID: i8 = 42;
 const FOX_EAT_EVENT_ID: i8 = 45;
 const LIVING_ENTITY_PORTAL_EVENT_ID: i8 = 46;
@@ -423,6 +425,14 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let ocelot_trusting_particles =
+                    if update.event_id == OCELOT_TRUSTING_SUCCEEDED_EVENT_ID {
+                        self.ocelot_trusting_particle_state(update.entity_id, true)
+                    } else if update.event_id == OCELOT_TRUSTING_FAILED_EVENT_ID {
+                        self.ocelot_trusting_particle_state(update.entity_id, false)
+                    } else {
+                        None
+                    };
                 let villager_particles =
                     match update.event_id {
                         VILLAGER_HEART_EVENT_ID => self
@@ -542,6 +552,9 @@ impl WorldStore {
                         effects.arrow_effect_particles(self, state);
                     }
                     if let Some(state) = entity_taming_particles {
+                        effects.entity_taming_particles(self, state);
+                    }
+                    if let Some(state) = ocelot_trusting_particles {
                         effects.entity_taming_particles(self, state);
                     }
                     if let Some(state) = villager_particles {
@@ -1546,12 +1559,13 @@ mod tests {
         VANILLA_ENTITY_TYPE_EVOKER_FANGS_ID, VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
         VANILLA_ENTITY_TYPE_FOX_ID, VANILLA_ENTITY_TYPE_HORSE_ID,
         VANILLA_ENTITY_TYPE_IRON_GOLEM_ID, VANILLA_ENTITY_TYPE_ITEM_ID,
-        VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_RAVAGER_ID,
-        VANILLA_ENTITY_TYPE_SKELETON_ID, VANILLA_ENTITY_TYPE_SNOWBALL_ID,
-        VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID, VANILLA_ENTITY_TYPE_STRAY_ID,
-        VANILLA_ENTITY_TYPE_VILLAGER_ID, VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID,
-        VANILLA_ENTITY_TYPE_WITCH_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
-        VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_OCELOT_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+        VANILLA_ENTITY_TYPE_RAVAGER_ID, VANILLA_ENTITY_TYPE_SKELETON_ID,
+        VANILLA_ENTITY_TYPE_SNOWBALL_ID, VANILLA_ENTITY_TYPE_SPECTRAL_ARROW_ID,
+        VANILLA_ENTITY_TYPE_STRAY_ID, VANILLA_ENTITY_TYPE_VILLAGER_ID,
+        VANILLA_ENTITY_TYPE_WANDERING_TRADER_ID, VANILLA_ENTITY_TYPE_WITCH_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID,
+        VANILLA_ENTITY_TYPE_ZOMBIE_VILLAGER_ID,
     };
 
     use bbb_protocol::packets::{
@@ -4111,6 +4125,73 @@ mod tests {
         assert_eq!(state.entity_id, 133);
         assert!(state.success);
         assert_eq!(store.counters().entity_events_applied, 4);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn ocelot_trusting_events_forward_shared_heart_and_smoke_particle_states() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                134,
+                VANILLA_ENTITY_TYPE_OCELOT_ID,
+                Vec3d {
+                    x: 2.25,
+                    y: 65.0,
+                    z: -4.5,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                135,
+                VANILLA_ENTITY_TYPE_CAT_ID,
+                Vec3d {
+                    x: 3.0,
+                    y: 66.0,
+                    z: -5.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 134,
+                event_id: OCELOT_TRUSTING_SUCCEEDED_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 134,
+                event_id: OCELOT_TRUSTING_FAILED_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 135,
+                event_id: OCELOT_TRUSTING_SUCCEEDED_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: OCELOT_TRUSTING_FAILED_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.entity_taming_particles.len(), 2);
+        let success = effects.entity_taming_particles[0];
+        assert_eq!(success.entity_id, 134);
+        assert!(success.success);
+        assert_eq!(
+            success.position,
+            crate::EntityVec3 {
+                x: 2.25,
+                y: 65.0,
+                z: -4.5,
+            }
+        );
+        assert!((success.width - 0.6).abs() < 1.0e-6);
+        assert!((success.height - 0.7).abs() < 1.0e-6);
+        let failure = effects.entity_taming_particles[1];
+        assert_eq!(failure.entity_id, 134);
+        assert!(!failure.success);
+        assert_eq!(store.counters().entity_events_applied, 3);
         assert_eq!(store.counters().entity_events_ignored, 1);
     }
 

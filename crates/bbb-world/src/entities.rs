@@ -2819,6 +2819,31 @@ impl WorldStore {
         })
     }
 
+    /// Projects vanilla `Ocelot.handleEntityEvent(40/41)` trusting feedback.
+    ///
+    /// `Ocelot.spawnTrustingParticles` intentionally has the same seven-particle HEART/SMOKE
+    /// algorithm as tamable/horse feedback, so both paths share [`EntityTamingParticleState`].
+    pub fn ocelot_trusting_particle_state(
+        &self,
+        entity_id: i32,
+        success: bool,
+    ) -> Option<EntityTamingParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if !schema::vanilla_entity_metadata_type_uses_ocelot_entity_event_handler(
+            transform.entity_type_id,
+        ) {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(EntityTamingParticleState {
+            entity_id,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
+            success,
+        })
+    }
+
     pub fn villager_particle_state(
         &self,
         entity_id: i32,

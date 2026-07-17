@@ -1044,6 +1044,75 @@ fn taming_entity_events_emit_tamable_and_horse_particle_states() {
 }
 
 #[test]
+fn ocelot_trusting_entity_events_emit_shared_heart_and_smoke_particle_states() {
+    let (tx, mut rx) = mpsc::channel(6);
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(133, VANILLA_ENTITY_TYPE_OCELOT_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
+        protocol_add_entity_with_type(134, VANILLA_ENTITY_TYPE_CAT_ID),
+    )))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 133,
+        event_id: 41,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 133,
+        event_id: 40,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 134,
+        event_id: 41,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::EntityEvent(EntityEvent {
+        entity_id: 999,
+        event_id: 40,
+    })))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let mut particles = RecordingParticleSink::default();
+    let mut level_event_sound_random = LevelEventSoundRandomState::with_seed(0);
+
+    assert_eq!(
+        drain_net_events_with_sinks(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            Some(&mut particles),
+            None,
+            None,
+            &mut level_event_sound_random,
+        ),
+        6
+    );
+
+    assert_eq!(particles.entity_taming_states.len(), 2);
+    let success = particles.entity_taming_states[0];
+    assert_eq!(success.entity_id, 133);
+    assert!(success.success);
+    assert_eq!(success.position.x, 1.0);
+    assert_eq!(success.position.y, 64.0);
+    assert_eq!(success.position.z, -2.0);
+    assert_close(success.width, 0.6);
+    assert_close(success.height, 0.7);
+    let failure = particles.entity_taming_states[1];
+    assert_eq!(failure.entity_id, 133);
+    assert!(!failure.success);
+    assert_eq!(particles.batches.len(), 2);
+    assert_eq!(world.counters().entity_events_applied, 3);
+    assert_eq!(world.counters().entity_events_ignored, 1);
+}
+
+#[test]
 fn villager_entity_events_emit_particle_states() {
     let (tx, mut rx) = mpsc::channel(8);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(

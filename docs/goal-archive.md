@@ -18482,3 +18482,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `Squid.handleEntityEvent` owner membership；Guardian 与未知 id 作为负例。
 - generator 输出反向守卫，禁止该事件分派恢复 Squid/GlowSquid type 常量或旧 family query；
   完整 override/event-id/listener-special-case 语义矩阵仍按 unsupported ledger 继续审计。
+
+## 2026-07-17：Ocelot trusting entity events
+
+- 依据 vanilla 26.1 `Ocelot.handleEntityEvent(40/41)` / `spawnTrustingParticles`，world
+  现在为失败/成功事件投影 7 个 SMOKE/HEART 粒子的 client side effect。
+- Ocelot membership 直接消费 generated nearest override owner；Cat 与未知实体不生成该效果，
+  但仍按通用 packet apply 规则记录已存在实体的 event。
+- vanilla trusting 与 tamable/horse feedback 的 AABB 采样、`+0.5` Y offset 和
+  `nextGaussian() * 0.02` 完全一致，因此复用现有 typed state 与 native particle resolver；
+  world/native tests 分别锁定路由、尺寸、success 标志和 sink batch。
