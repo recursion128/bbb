@@ -355,7 +355,8 @@ mod tests {
                     y: pos.y,
                     z: pos.z,
                 },
-                block_entity_type_id: 0,
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
                 raw_nbt: nbt,
             })
             .unwrap());

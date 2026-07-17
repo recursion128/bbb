@@ -18974,3 +18974,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Extended the core-registry generator with a reverse guard over entity-type construction and
   comparison while leaving generated schema/renderer catalogs and protocol wire evidence under
   their existing owners.
+
+# 2026-07-17: Derive semantic block-entity-type ids
+
+- Replaced numeric block-entity type fixture values across native, world, and net with generated
+  constants for each fixture's actual sign, banner, spawner, decorated-pot, end-gateway, jukebox,
+  piston, or vault role.
+- Extended the core-registry generator with a reverse guard over block-entity-type construction and
+  comparison in semantic sources.

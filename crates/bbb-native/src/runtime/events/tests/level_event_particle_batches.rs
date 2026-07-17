@@ -762,7 +762,8 @@ fn vault_activation_level_event_threads_block_entity_context_to_particles() {
     tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
         BlockEntityData {
             pos: vault_event.pos,
-            block_entity_type_id: 45,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
             raw_nbt: vec![0],
         },
     )))
@@ -862,7 +863,8 @@ fn vault_activation_level_event_threads_connection_particle_context() {
     tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
         BlockEntityData {
             pos: event.pos,
-            block_entity_type_id: 45,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
             raw_nbt: vault_shared_data_nbt(&[player_uuid], Some(3.0)),
         },
     )))

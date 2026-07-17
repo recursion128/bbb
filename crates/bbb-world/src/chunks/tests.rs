@@ -1225,7 +1225,8 @@ fn applies_block_entity_data_update() {
                 y: 7,
                 z: -46,
             },
-            block_entity_type_id: 9,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
             raw_nbt: raw_nbt.clone(),
         })
         .unwrap();
@@ -1290,7 +1291,8 @@ fn applies_block_entity_data_update() {
                 y: 7,
                 z: -46,
             },
-            block_entity_type_id: 11,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_PISTON_ID,
             raw_nbt: replacement_nbt.clone(),
         })
         .unwrap());
@@ -1321,7 +1323,8 @@ fn applies_block_entity_data_update() {
                 y: 7,
                 z: -46,
             },
-            block_entity_type_id: 9,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
             raw_nbt: vec![0],
         })
         .unwrap();
@@ -1352,7 +1355,8 @@ fn applies_sign_block_entity_text_update() {
                 y: 7,
                 z: -46,
             },
-            block_entity_type_id: 7,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
             raw_nbt,
         })
         .unwrap());
@@ -1412,7 +1416,8 @@ fn applies_vault_shared_data_and_projects_connection_particles() {
     assert!(store
         .apply_block_entity_data(ProtocolBlockEntityData {
             pos: vault_pos,
-            block_entity_type_id: 45,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID,
             raw_nbt,
         })
         .unwrap());
@@ -1543,7 +1548,8 @@ fn synthetic_level_chunk_packet() -> LevelChunkWithLight {
             block_entities: vec![LevelChunkBlockEntity {
                 packed_xz: 0xab,
                 y: 64,
-                block_entity_type_id: 7,
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
                 raw_nbt: vec![0],
             }],
         },

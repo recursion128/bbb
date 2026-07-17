@@ -140,6 +140,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   than restoring numeric catalog ids; unknown-id fixtures derive the first invalid id from the
   generated catalog length. The owner-generated reverse guard excludes generated schema/renderer
   catalogs and separately owned protocol wire samples.
+  Semantic block-entity packet/state fixtures must likewise use the generated BlockEntityType
+  constants for their actual sign, banner, spawner, decorated-pot, end-gateway, jukebox, piston, or
+  vault role instead of retaining numeric placeholders; the core-registry generator owns the
+  reverse guard.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test

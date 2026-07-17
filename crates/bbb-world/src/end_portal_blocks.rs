@@ -442,7 +442,8 @@ mod tests {
                     y: pos.y,
                     z: pos.z,
                 },
-                block_entity_type_id: 0,
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID,
                 raw_nbt: gateway_age_nbt(10),
             })
             .unwrap();
@@ -473,7 +474,8 @@ mod tests {
                     y: pos.y,
                     z: pos.z,
                 },
-                block_entity_type_id: 0,
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_END_GATEWAY_ID,
                 raw_nbt: gateway_age_nbt(2400),
             })
             .unwrap();

@@ -402,7 +402,8 @@ mod tests {
                     y: pos.y,
                     z: pos.z,
                 },
-                block_entity_type_id: 0,
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
                 raw_nbt: spawner_nbt(entity_id, delay, min_delay, range),
             })
             .expect("spawner block entity data decodes");

@@ -1129,7 +1129,8 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::BlockEntityData(BlockEntityData {
                 pos: ProtocolBlockPos { x: 0, y: 64, z: 0 },
-                block_entity_type_id: 9,
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
                 raw_nbt: vec![1],
             }))
             .await
@@ -1173,7 +1174,8 @@ mod tests {
                     y: -64,
                     z: -32,
                 },
-                block_entity_type_id: 7,
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
                 raw_nbt: sign_text_nbt(
                     ["Front A", "Front B", "Front C", "Front D"],
                     ["Back A", "Back B", "Back C", "Back D"],
@@ -4978,7 +4980,8 @@ mod tests {
                 block_entities: vec![LevelChunkBlockEntity {
                     packed_xz: 0,
                     y: -64,
-                    block_entity_type_id: 7,
+                    block_entity_type_id:
+                        bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
                     raw_nbt: vec![0],
                 }],
             },

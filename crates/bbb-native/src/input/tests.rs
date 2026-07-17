@@ -2718,7 +2718,8 @@ fn shift_f3_i_with_permission_copies_local_block_entity_nbt_to_clipboard() {
                 y: target_pos.y,
                 z: target_pos.z,
             },
-            block_entity_type_id: 9,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
             raw_nbt: nbt_compound(vec![nbt_string("Lock", "secret")]),
         })
         .expect("local block entity nbt should decode"));
@@ -2784,7 +2785,8 @@ fn shift_f3_i_without_permission_omits_local_block_entity_nbt() {
                 y: target_pos.y,
                 z: target_pos.z,
             },
-            block_entity_type_id: 9,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
             raw_nbt: nbt_compound(vec![nbt_string("Lock", "secret")]),
         })
         .expect("local block entity nbt should decode"));

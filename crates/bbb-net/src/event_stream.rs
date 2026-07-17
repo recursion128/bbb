@@ -3116,7 +3116,8 @@ mod tests {
                 y: 65,
                 z: -5,
             },
-            block_entity_type_id: 4,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_JUKEBOX_ID,
             raw_nbt: vec![10, 0],
         };
         stream
@@ -3210,7 +3211,8 @@ mod tests {
                 block_entities: vec![packets::LevelChunkBlockEntity {
                     packed_xz: 0,
                     y: -64,
-                    block_entity_type_id: 7,
+                    block_entity_type_id:
+                        bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
                     raw_nbt: vec![0],
                 }],
             },

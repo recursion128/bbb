@@ -1102,7 +1102,8 @@ fn synthetic_native_level_chunk_packet() -> LevelChunkWithLight {
             block_entities: vec![LevelChunkBlockEntity {
                 packed_xz: 0,
                 y: -64,
-                block_entity_type_id: 7,
+                block_entity_type_id:
+                    bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
                 raw_nbt: vec![0],
             }],
         },

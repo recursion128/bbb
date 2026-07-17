@@ -117,7 +117,8 @@ fn terrain_chunk_events_update_world_counters() {
                 y: -64,
                 z: -32,
             },
-            block_entity_type_id: 7,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
             raw_nbt: vec![0],
         },
     )))
@@ -197,7 +198,8 @@ fn block_entity_data_sign_text_updates_world_through_event_dispatcher() {
                 y: -64,
                 z: -32,
             },
-            block_entity_type_id: 7,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
             raw_nbt: sign_text_nbt(
                 ["Front A", "Front B", "Front C", "Front D"],
                 ["Back A", "Back B", "Back C", "Back D"],
@@ -275,7 +277,8 @@ fn terrain_chunk_ignored_counters_stay_in_world_store() {
                 y: -64,
                 z: -32,
             },
-            block_entity_type_id: 7,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
             raw_nbt: vec![0],
         },
     )))
@@ -344,7 +347,8 @@ fn terrain_apply_errors_stay_in_world_store() {
     tx.try_send(NetEvent::Play(PlayClientbound::BlockEntityData(
         BlockEntityData {
             pos: ProtocolBlockPos { x: 0, y: 64, z: 0 },
-            block_entity_type_id: 7,
+            block_entity_type_id:
+                bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,
             raw_nbt: vec![1],
         },
     )))
