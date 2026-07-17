@@ -301,10 +301,7 @@ fn tracks_local_player_passenger_without_entity() {
     store.apply_login(&protocol_play_login(100));
     assert_eq!(store.local_player_id(), Some(100));
     assert_eq!(store.local_player_vehicle_id(), None);
-    assert_eq!(
-        store.probe_entity(10).unwrap().passengers,
-        Vec::<i32>::new()
-    );
+    assert!(store.probe_entity(10).is_none());
 }
 
 #[test]

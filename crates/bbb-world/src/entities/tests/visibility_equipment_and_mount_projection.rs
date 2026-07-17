@@ -136,10 +136,10 @@ fn entity_model_sources_project_same_team_friendly_invisible_visibility() {
     let chicken_uuid = Uuid::from_u128(0x44345678123456781234567812345678);
     let minecart_uuid = Uuid::from_u128(0x55345678123456781234567812345678);
 
+    store.apply_login(&protocol_play_login(40));
     let mut local_player = protocol_add_entity_with_type(40, VANILLA_ENTITY_TYPE_PLAYER_ID);
     local_player.uuid = local_uuid;
     store.apply_add_entity(local_player);
-    store.apply_login(&protocol_play_login(40));
     store.apply_player_info_update(ProtocolPlayerInfoUpdate {
         actions: vec![ProtocolPlayerInfoAction::AddPlayer],
         entries: vec![protocol_player_info_entry_with_mode(
