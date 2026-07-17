@@ -18258,3 +18258,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   构造 ITEM_STACK metadata，删除固定 slot 8 常量。
 - OminousItemSpawner reverse guard 纳入完整 native item-model tests；world projection、同槽位
   sibling collision 与 age/scale/spin 语义保持既有覆盖。
+
+## 2026-07-16：派生 ItemEntity item-stack accessor
+
+- world schema 新增 ItemEntity-only `DATA_ITEM` ITEM_STACK/empty accessor；dropped-item render、
+  pickup shrink 与 native bake fixtures 删除固定 slot 8，OminousItemSpawner/Cow 保持负例。
+- Snowball/Egg raw hit-particle stack 改按各自 generated owner 的 unique ITEM_STACK accessor
+  读取/构造；reverse guard 覆盖 world production、fixtures、play apply 与 native bake tests。

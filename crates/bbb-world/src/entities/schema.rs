@@ -2067,6 +2067,25 @@ pub fn vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_typ
     }
 }
 
+/// Resolves ItemEntity's generated item-stack accessor and empty default.
+pub fn vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<u8> {
+    let accessor = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_ITEM")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.item.ItemEntity",
+            "ITEM_STACK",
+            Some(VanillaEntityMetadataDefault::ItemStackEmpty),
+        ) => Some(accessor.data_id),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Armadillo animation-state accessor and its typed default.
 pub fn vanilla_entity_metadata_armadillo_state_accessor_for_entity_type(
     entity_type_id: i32,
@@ -6458,6 +6477,33 @@ mod tests {
     }
 
     #[test]
+    fn generated_item_entity_stack_accessor_owns_membership_index_and_empty_default() {
+        let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::ItemEntity);
+        let item = schema
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_ITEM")
+            .expect("generated ItemEntity item field");
+        assert_eq!(item.default, VanillaEntityMetadataDefault::ItemStackEmpty);
+        assert_eq!(
+            vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ITEM_ID
+            ),
+            Some(item.data_id)
+        );
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+            VANILLA_ENTITY_TYPE_COW_ID,
+            -1,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
+    }
+
+    #[test]
     fn generated_armadillo_state_accessor_owns_membership_index_and_default() {
         let armadillo = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Armadillo);
         let state = armadillo
@@ -9101,7 +9147,12 @@ mod tests {
                 default: VanillaEntityMetadataDefault::ItemStackEmpty,
             }]
         );
-        assert_eq!(VANILLA_ITEM_ENTITY_STACK_DATA_ID, 8);
+        assert_eq!(
+            vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_ITEM_ID
+            ),
+            Some(item_entity.own_fields[0].data_id)
+        );
         let primed_tnt = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::PrimedTnt);
         assert_eq!(primed_tnt.parent, Some(VanillaEntityMetadataFamily::Entity));
         assert_eq!(primed_tnt.inherited_field_count, 8);

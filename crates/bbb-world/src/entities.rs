@@ -84,7 +84,6 @@ pub use schema::VanillaVehicleMetadataAccessors;
 pub use schema::VanillaZombieMetadataAccessors;
 pub use schema::VANILLA_ENDER_DRAGON_PHASE_HOLDING_PATTERN_ID;
 pub use schema::VANILLA_IRON_GOLEM_FLAG_PLAYER_CREATED;
-pub(crate) use schema::VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 pub use schema::{
     vanilla_entity_camera_post_effect_id,
     vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type,
@@ -134,6 +133,7 @@ pub use schema::{
     vanilla_entity_metadata_horse_variant_accessor_for_entity_type,
     vanilla_entity_metadata_interaction_accessors_for_entity_type,
     vanilla_entity_metadata_iron_golem_flags_accessor_for_entity_type,
+    vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_llama_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
@@ -2435,25 +2435,31 @@ impl WorldStore {
         }
 
         if entity_type_id == VANILLA_ENTITY_TYPE_ITEM_ID {
-            let mut stack_shrank = false;
-            let keep_entity = self
-                .entities
-                .with_metadata_mut(packet.item_id, |metadata| {
-                    if let Some(stack) = item_entity_stack_mut(&mut metadata.data_values) {
-                        if stack.count > 0 && packet.amount > 0 {
-                            stack.count = stack.count.saturating_sub(packet.amount).max(0);
-                            stack_shrank = true;
+            if let Some(item_data_id) =
+                vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(entity_type_id)
+            {
+                let mut stack_shrank = false;
+                let keep_entity = self
+                    .entities
+                    .with_metadata_mut(packet.item_id, |metadata| {
+                        if let Some(stack) =
+                            item_entity_stack_mut(&mut metadata.data_values, item_data_id)
+                        {
+                            if stack.count > 0 && packet.amount > 0 {
+                                stack.count = stack.count.saturating_sub(packet.amount).max(0);
+                                stack_shrank = true;
+                            }
+                            return stack.count > 0;
                         }
-                        return stack.count > 0;
-                    }
-                    false
-                })
-                .unwrap_or(false);
-            if stack_shrank {
-                self.counters.item_entity_stack_shrinks += 1;
-            }
-            if keep_entity {
-                return true;
+                        false
+                    })
+                    .unwrap_or(false);
+                if stack_shrank {
+                    self.counters.item_entity_stack_shrinks += 1;
+                }
+                if keep_entity {
+                    return true;
+                }
             }
         }
 
@@ -3719,9 +3725,10 @@ fn honey_block_state_id() -> Option<i32> {
 
 fn item_entity_stack_mut(
     data_values: &mut [ProtocolEntityDataValue],
+    data_id: u8,
 ) -> Option<&mut ProtocolItemStackSummary> {
     data_values.iter_mut().find_map(|value| {
-        if value.data_id == VANILLA_ITEM_ENTITY_STACK_DATA_ID {
+        if value.data_id == data_id {
             if let EntityDataValueKind::ItemStack(stack) = &mut value.value {
                 return Some(stack);
             }

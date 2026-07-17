@@ -293,6 +293,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   remain derived together from generated `DATA_ID_FIREWORKS_ITEM`, `DATA_ATTACHED_TO_TARGET` and
   `DATA_SHOT_AT_ANGLE`; world item/trail/explosion projection, native F3+I and semantic fixtures
   must not restore a FireworkRocket type predicate or fixed accessor/default aliases.
+  ItemEntity item membership, ITEM_STACK wire index and empty default must remain derived from
+  generated `ItemEntity.DATA_ITEM`; world render/pickup/mutation and native bake fixtures must not
+  restore fixed slot aliases, while thrown-item projectiles resolve their own generated accessor.
   OminousItemSpawner item membership, ITEM_STACK wire index and empty default must remain derived
   from generated `DATA_ITEM`; world/native item-cluster projection and semantic fixtures must not
   restore a type predicate or fixed accessor alias, or read another entity family's slot-8 field.

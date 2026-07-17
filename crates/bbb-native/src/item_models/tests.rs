@@ -15,6 +15,7 @@ use bbb_renderer::{
     EntityDefaultPlayerSkin, EntityPlayerSkin, ParticleItemOptionState, PlayerModelPartVisibility,
 };
 use bbb_world::{
+    vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type, ChunkColumn,
     ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
     PalettedContainerData, WorldDimension,
@@ -3858,8 +3859,6 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
     // so the resolved item texture differs from the plain item. With identical
     // geometry inputs (position / age / entity id / light / count / seed) the
     // pickup carried bake must be byte-identical to the dropped-item bake.
-    // Protocol wire fixture: vanilla ItemEntity.DATA_ITEM is serializer slot 8.
-    const ITEM_ENTITY_DATA_ITEM_STACK_ID: u8 = 8;
     const ENTITY_ID: i32 = 555;
     const POSITION: [f32; 3] = [0.0, 64.0, 0.0];
     const AGE_TICKS: f32 = 9.5;
@@ -3888,10 +3887,14 @@ fn item_pickup_particle_component_rich_bake_matches_dropped_item_bake() {
     // Dropped-item bake: a real item entity carrying the component-rich stack.
     let mut world = WorldStore::new();
     world.apply_add_entity(protocol_add_entity(ENTITY_ID, VANILLA_ENTITY_TYPE_ITEM_ID));
+    let item_data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    )
+    .expect("generated ItemEntity item accessor");
     assert!(world.apply_set_entity_data(SetEntityData {
         id: ENTITY_ID,
         values: vec![EntityDataValue {
-            data_id: ITEM_ENTITY_DATA_ITEM_STACK_ID,
+            data_id: item_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(stack.clone()),
         }],

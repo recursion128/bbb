@@ -248,8 +248,6 @@ const GENERATED_VANILLA_INTERACTION_RESPONSE_DATA_ID: u8 = 10;
 pub const VANILLA_INTERACTION_RESPONSE_DATA_ID: u8 = GENERATED_VANILLA_INTERACTION_RESPONSE_DATA_ID;
 const GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = 8;
 pub const VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID: u8 = GENERATED_VANILLA_EXPERIENCE_ORB_VALUE_DATA_ID;
-const GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = 8;
-pub const VANILLA_ITEM_ENTITY_STACK_DATA_ID: u8 = GENERATED_VANILLA_ITEM_ENTITY_STACK_DATA_ID;
 const GENERATED_VANILLA_PRIMED_TNT_FUSE_DATA_ID: u8 = 8;
 pub const VANILLA_PRIMED_TNT_FUSE_DATA_ID: u8 = GENERATED_VANILLA_PRIMED_TNT_FUSE_DATA_ID;
 const GENERATED_VANILLA_PRIMED_TNT_BLOCK_STATE_DATA_ID: u8 = 9;
@@ -22476,6 +22474,48 @@ mod generated_catalog_guards {
         for source in [store, world_tests, native_item_model_tests] {
             assert!(!source.contains("OMINOUS_ITEM_SPAWNER_ITEM_DATA_ID"));
             assert!(!source.contains("OMINOUS_ITEM_SPAWNER_DATA_ITEM_ID"));
+        }
+    }
+
+    #[test]
+    fn item_entity_consumers_use_generated_accessor() {
+        let store = include_str!("../store.rs");
+        assert!(
+            store.contains("vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type")
+        );
+        assert!(store
+            .contains("vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer"));
+        let entities = include_str!("../../entities.rs");
+        assert!(
+            entities.contains("vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type")
+        );
+        let world_tests = include_str!("../tests.rs");
+        assert!(world_tests
+            .contains("vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type"));
+        let play_apply = include_str!("../../play_apply.rs");
+        assert!(play_apply
+            .contains("vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer"));
+        let native_item_model_tests =
+            include_str!("../../../../bbb-native/src/item_models/tests.rs");
+        assert!(native_item_model_tests
+            .contains("vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type"));
+        for source in [
+            store,
+            entities,
+            world_tests,
+            play_apply,
+            native_item_model_tests,
+        ] {
+            for removed in [
+                "VANILLA_ITEM_ENTITY_STACK_DATA_ID",
+                "ITEM_ENTITY_STACK_DATA_ID",
+                "ITEM_ENTITY_DATA_ITEM_STACK_ID",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "ItemEntity projection restored {removed}"
+                );
+            }
         }
     }
 

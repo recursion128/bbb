@@ -431,8 +431,12 @@ fn protocol_play_login(player_id: i32) -> ProtocolPlayLogin {
 }
 
 fn item_stack_entity_data(item: ProtocolItemStackSummary) -> ProtocolEntityDataValue {
+    let data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_ITEM_ID,
+    )
+    .expect("generated ItemEntity item accessor must resolve");
     ProtocolEntityDataValue {
-        data_id: VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+        data_id,
         serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
         value: EntityDataValueKind::ItemStack(item),
     }

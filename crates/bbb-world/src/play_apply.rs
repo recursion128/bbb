@@ -1771,9 +1771,14 @@ mod tests {
         }
     }
 
-    fn item_stack_entity_data(item: ItemStackSummary) -> EntityDataValue {
+    fn item_stack_entity_data(entity_type_id: i32, item: ItemStackSummary) -> EntityDataValue {
+        let accessor = crate::entities::vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+            entity_type_id,
+            "ITEM_STACK",
+        )
+        .expect("generated unique item-stack accessor must resolve");
         EntityDataValue {
-            data_id: crate::entities::VANILLA_ITEM_ENTITY_STACK_DATA_ID,
+            data_id: accessor.data_id,
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(item),
@@ -4428,7 +4433,10 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 99,
-                values: vec![item_stack_entity_data(ItemStackSummary::empty())],
+                values: vec![item_stack_entity_data(
+                    VANILLA_ENTITY_TYPE_SNOWBALL_ID,
+                    ItemStackSummary::empty(),
+                )],
             }),
             PlayClientbound::AddEntity(add_entity(
                 100,
@@ -4507,7 +4515,10 @@ mod tests {
             )),
             PlayClientbound::SetEntityData(SetEntityData {
                 id: 109,
-                values: vec![item_stack_entity_data(ItemStackSummary::empty())],
+                values: vec![item_stack_entity_data(
+                    VANILLA_ENTITY_TYPE_EGG_ID,
+                    ItemStackSummary::empty(),
+                )],
             }),
             PlayClientbound::AddEntity(add_entity(
                 110,

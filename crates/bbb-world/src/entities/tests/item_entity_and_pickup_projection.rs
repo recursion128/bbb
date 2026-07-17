@@ -143,7 +143,6 @@ fn item_stacks_for_entity_types_collects_thrown_item_projectiles() {
     for type_id in [120, 39] {
         let accessor = vanilla_entity_metadata_accessor_for_entity_type(type_id, "DATA_ITEM_STACK")
             .expect("fixture projectile type must resolve its generated item-stack accessor");
-        assert_eq!(accessor.data_id, 8);
         assert_eq!(accessor.serializer_name, "ITEM_STACK");
         assert_eq!(
             vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(

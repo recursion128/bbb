@@ -37,6 +37,7 @@ use super::schema::{
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
+    vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type,
     vanilla_entity_metadata_primed_tnt_accessors_for_entity_type,
@@ -71,7 +72,7 @@ use super::{
     VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID, VANILLA_ENTITY_TYPE_PANDA_ID,
     VANILLA_ENTITY_TYPE_PLAYER_ID, VANILLA_ENTITY_TYPE_SPAWNER_MINECART_ID,
     VANILLA_ENTITY_TYPE_STRIDER_ID, VANILLA_ENTITY_TYPE_TNT_MINECART_ID,
-    VANILLA_ITEM_ENTITY_STACK_DATA_ID, VANILLA_MAX_AIR_SUPPLY_TICKS,
+    VANILLA_MAX_AIR_SUPPLY_TICKS,
 };
 use crate::entities::animations::{
     allay_is_dancing, axolotl_is_playing_dead, boat_bubble_time, boat_paddle_states,
@@ -2913,14 +2914,25 @@ impl EntityStore {
 
     pub(crate) fn item_stack_for_entity(&self, id: i32) -> Option<ItemStackSummary> {
         let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+            identity.entity_type_id,
+        )?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
-        item_entity_render_stack(&metadata.data_values).cloned()
+        metadata_item_stack(&metadata.data_values, data_id)
+            .filter(|stack| stack.item_id.is_some() && stack.count > 0)
+            .cloned()
     }
 
     pub(crate) fn raw_item_stack_for_entity(&self, id: i32) -> Option<ItemStackSummary> {
         let entity = self.by_protocol_id.get(&id).copied()?;
+        let identity = self.ecs.get::<&EntityIdentity>(entity).ok()?;
+        let accessor = vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
+            identity.entity_type_id,
+            "ITEM_STACK",
+        )?;
         let metadata = self.ecs.get::<&EntityMetadata>(entity).ok()?;
-        raw_item_stack(&metadata.data_values).cloned()
+        metadata_item_stack(&metadata.data_values, accessor.data_id).cloned()
     }
 
     pub(crate) fn entity_age_ticks(&self, id: i32) -> Option<u32> {
@@ -3032,10 +3044,9 @@ impl EntityStore {
         item.item_id.map(|_| item)
     }
 
-    /// Collects the `DATA_ITEM_STACK` carried by every entity whose type id is in `type_ids`. Used both
-    /// for the dropped `item` entity (rendered as an item-sprite billboard) and for the thrown-item
-    /// projectiles (snowball, egg, ender pearl, potions, …) that vanilla's `ThrownItemRenderer` draws as
-    /// the same item sprite. The data id is shared (`VANILLA_ITEM_ENTITY_STACK_DATA_ID = 8`).
+    /// Collects the unique generated ITEM_STACK accessor carried by every requested entity type.
+    /// This covers dropped items and owner-specific thrown-item projectile accessors without treating
+    /// their coincident wire indices as shared ownership.
     pub(crate) fn item_stacks_for_entity_types(
         &self,
         type_ids: &[i32],
@@ -3057,15 +3068,19 @@ impl EntityStore {
             let Ok(metadata) = self.ecs.get::<&EntityMetadata>(entity) else {
                 continue;
             };
-            let Some(accessor) =
+            let Some(data_id) = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+                identity.entity_type_id,
+            )
+            .or_else(|| {
                 vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer(
                     identity.entity_type_id,
                     "ITEM_STACK",
                 )
-            else {
+                .map(|accessor| accessor.data_id)
+            }) else {
                 continue;
             };
-            let Some(stack) = metadata_item_stack(&metadata.data_values, accessor.data_id)
+            let Some(stack) = metadata_item_stack(&metadata.data_values, data_id)
                 .filter(|stack| stack.item_id.is_some() && stack.count > 0)
             else {
                 continue;
@@ -4339,13 +4354,6 @@ fn shulker_attach_face(
         .unwrap_or_else(|| EntityAttachmentFace::from_3d_data(accessors.attach_face_default))
 }
 
-fn item_entity_render_stack(
-    data_values: &[bbb_protocol::packets::EntityDataValue],
-) -> Option<&bbb_protocol::packets::ItemStackSummary> {
-    metadata_item_stack(data_values, VANILLA_ITEM_ENTITY_STACK_DATA_ID)
-        .filter(|stack| stack.item_id.is_some() && stack.count > 0)
-}
-
 fn firework_rocket_render_stack(
     data_values: &[bbb_protocol::packets::EntityDataValue],
     accessors: VanillaFireworkRocketMetadataAccessors,
@@ -4362,12 +4370,6 @@ fn ominous_item_spawner_render_stack(
         vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(entity_type_id)?;
     metadata_item_stack(data_values, data_id)
         .filter(|stack| stack.item_id.is_some() && stack.count > 0)
-}
-
-fn raw_item_stack(
-    data_values: &[bbb_protocol::packets::EntityDataValue],
-) -> Option<&bbb_protocol::packets::ItemStackSummary> {
-    metadata_item_stack(data_values, VANILLA_ITEM_ENTITY_STACK_DATA_ID)
 }
 
 fn metadata_item_stack(
