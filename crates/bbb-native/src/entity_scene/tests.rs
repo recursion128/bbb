@@ -6895,6 +6895,12 @@ fn entity_model_instances_project_camel_saddle_and_ridden_render_state() {
 #[test]
 fn entity_model_instances_project_nautilus_saddle_render_state() {
     const SADDLE_ITEM_ID: i32 = 744;
+    let trim_texture = EntityDynamicTexture { handle: 42_4317 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/nautilus_saddle/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
 
     let saddle = |entity_id: i32| SetEquipment {
         entity_id,
@@ -6903,17 +6909,29 @@ fn entity_model_instances_project_nautilus_saddle_render_state() {
             item: ItemStackSummary {
                 item_id: Some(SADDLE_ITEM_ID),
                 count: 1,
-                component_patch: DataComponentPatchSummary::default(),
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
             },
         }],
     };
     let nautilus_saddle = |world: &WorldStore, id: i32| {
-        entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state
-            .nautilus_saddle
+        entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state
     };
 
     let mut world = WorldStore::new();
@@ -6928,9 +6946,14 @@ fn entity_model_instances_project_nautilus_saddle_render_state() {
         [2.0, 64.0, -3.0],
     ));
     assert!(world.apply_set_equipment(saddle(118)));
+    let unresolved = nautilus_saddle(&world, 118);
     assert_eq!(
-        nautilus_saddle(&world, 118),
-        false,
+        (
+            unresolved.nautilus_saddle,
+            unresolved.nautilus_saddle_trim,
+            unresolved.nautilus_saddle_foil,
+        ),
+        (false, None, false),
         "without the item registry's saddle-slot map, a raw item id is not enough"
     );
 
@@ -6938,10 +6961,22 @@ fn entity_model_instances_project_nautilus_saddle_render_state() {
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
     )]));
-    assert!(nautilus_saddle(&world, 118));
+    let living = nautilus_saddle(&world, 118);
+    assert!(living.nautilus_saddle);
+    assert!(living.nautilus_saddle_foil);
+    assert_eq!(
+        living.nautilus_saddle_trim,
+        Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        })
+    );
 
     assert!(world.apply_set_equipment(saddle(119)));
-    assert!(nautilus_saddle(&world, 119));
+    let zombie = nautilus_saddle(&world, 119);
+    assert!(zombie.nautilus_saddle);
+    assert!(zombie.nautilus_saddle_foil);
+    assert_eq!(zombie.nautilus_saddle_trim, living.nautilus_saddle_trim);
 }
 
 #[test]

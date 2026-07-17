@@ -2224,6 +2224,12 @@ entity_model_source_state! {
     /// `NautilusSaddleModel` equipment layer.
     #[serde(default)]
     pub nautilus_saddle: bool,
+    /// Vanilla armor-trim sprite for the adult `NAUTILUS_SADDLE` equipment layer.
+    #[serde(default)]
+    pub nautilus_saddle_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for the nautilus saddle item.
+    #[serde(default)]
+    pub nautilus_saddle_foil: bool,
     /// Vanilla `GuardianRenderer` attack beam: present when a guardian has an active attack target.
     /// Mirrors the renderer's `GuardianBeamRenderState`; `None` for a guardian with no target and every
     /// other entity.

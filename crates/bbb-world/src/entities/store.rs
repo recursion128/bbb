@@ -1680,6 +1680,8 @@ impl EntityStore {
                 .is_some_and(|mount| !mount.passengers.is_empty());
         let nautilus_saddle = is_vanilla_abstract_nautilus_type(identity.entity_type_id)
             && saddle_slot_contains_saddle_item();
+        let nautilus_saddle_trim = saddle_trim(nautilus_saddle, ArmorTrimLayer::NautilusSaddle);
+        let nautilus_saddle_foil = saddle_foil(nautilus_saddle);
         let body_slot_item = || -> Option<&ItemStackSummary> {
             equipment
                 .as_ref()
@@ -2619,6 +2621,8 @@ impl EntityStore {
             camel_saddle_foil,
             camel_saddle_ridden,
             nautilus_saddle,
+            nautilus_saddle_trim,
+            nautilus_saddle_foil,
             guardian_beam: self.guardian_beam_source(
                 identity.entity_type_id,
                 identity.data,

@@ -1118,6 +1118,10 @@ entity_render_state! {
     /// and zombie nautilus. A non-empty saddle item renders `NautilusSaddleModel`; baby living
     /// nautilus skip it because vanilla supplies no baby saddle model.
     (with_nautilus_saddle) nautilus_saddle: bool = false;
+    /// Vanilla armor-trim atlas sprite for the adult `NAUTILUS_SADDLE` equipment model.
+    (with_nautilus_saddle_trim) nautilus_saddle_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for the nautilus saddle item.
+    (with_nautilus_saddle_foil) nautilus_saddle_foil: bool = false;
     /// Vanilla `NautilusRenderState.bodyArmorItem`: an adult living nautilus / zombie nautilus body
     /// equipment item whose equipment asset provides a `NAUTILUS_BODY` layer. Baby living nautilus
     /// skip it because vanilla supplies no baby armor model.
@@ -3128,6 +3132,8 @@ mod tests {
                 camel_saddle_foil: false,
                 camel_saddle_ridden: false,
                 nautilus_saddle: false,
+                nautilus_saddle_trim: None,
+                nautilus_saddle_foil: false,
                 nautilus_body_armor: None,
                 nautilus_body_armor_trim: None,
                 nautilus_body_armor_foil: false,

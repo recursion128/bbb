@@ -781,7 +781,7 @@ fn nautilus_body_armor_layer_renders_for_adult_living_and_zombie_only() {
 }
 
 #[test]
-fn nautilus_body_armor_trim_follows_foil_and_precedes_saddle() {
+fn nautilus_body_and_saddle_trims_keep_layer_and_collector_order() {
     let images: Vec<EntityModelTextureImage> = [
         NAUTILUS_TEXTURE_REF,
         NAUTILUS_BABY_TEXTURE_REF,
@@ -797,22 +797,35 @@ fn nautilus_body_armor_trim_follows_foil_and_precedes_saddle() {
     })
     .collect();
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
-    let trim_texture = EntityDynamicTexture { handle: 91_301 };
-    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
-        handle: trim_texture.handle,
-        size: [128, 128],
-        rgba: vec![0xff; 128 * 128 * 4],
-    }])
+    let body_trim_texture = EntityDynamicTexture { handle: 91_301 };
+    let saddle_trim_texture = EntityDynamicTexture { handle: 91_302 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[
+        DynamicEntityTextureImage {
+            handle: body_trim_texture.handle,
+            size: [128, 128],
+            rgba: vec![0xff; 128 * 128 * 4],
+        },
+        DynamicEntityTextureImage {
+            handle: saddle_trim_texture.handle,
+            size: [64, 64],
+            rgba: vec![0xff; 64 * 64 * 4],
+        },
+    ])
     .unwrap()
     .0;
     let adult = EntityModelInstance::nautilus(934, [0.0, 64.0, 0.0], 0.0, false)
         .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
         .with_nautilus_body_armor_foil(true)
         .with_nautilus_body_armor_trim(Some(EntityArmorTrim {
-            texture: trim_texture,
+            texture: body_trim_texture,
             decal: false,
         }))
-        .with_nautilus_saddle(true);
+        .with_nautilus_saddle(true)
+        .with_nautilus_saddle_foil(true)
+        .with_nautilus_saddle_trim(Some(EntityArmorTrim {
+            texture: saddle_trim_texture,
+            decal: false,
+        }));
 
     let meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[adult],
@@ -821,7 +834,7 @@ fn nautilus_body_armor_trim_follows_foil_and_precedes_saddle() {
         Some(&dynamic_atlas),
     );
 
-    assert_eq!(meshes.submissions.len(), 5);
+    assert_eq!(meshes.submissions.len(), 7);
     assert_eq!(meshes.submissions[0].texture, NAUTILUS_TEXTURE_REF);
     assert_eq!(
         (
@@ -845,13 +858,13 @@ fn nautilus_body_armor_trim_follows_foil_and_precedes_saddle() {
         EntityModelLayerRenderType::ArmorTrimCutoutNoCull
     );
     assert_eq!(trim.texture, NAUTILUS_BODY_IRON_TEXTURE_REF);
-    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!(trim.dynamic_texture, Some(body_trim_texture));
     assert_eq!((trim.order, trim.submit_sequence), (2, 3));
-    assert_eq!(meshes.armor_entity_glint.vertices.len(), 192);
+    assert_eq!(meshes.armor_entity_glint.vertices.len(), 192 + 144);
     assert_eq!(
         meshes.dynamic_player_texture_armor_trim.vertices.len(),
-        192,
-        "the trim reuses the posed adult NAUTILUS_ARMOR model"
+        192 + 144,
+        "each trim reuses its posed adult nautilus equipment model"
     );
     assert_eq!(
         (
@@ -861,15 +874,45 @@ fn nautilus_body_armor_trim_follows_foil_and_precedes_saddle() {
         ),
         (NAUTILUS_SADDLE_TEXTURE_REF, 0, 4)
     );
+    assert_eq!(
+        (
+            meshes.submissions[5].render_type,
+            meshes.submissions[5].order,
+            meshes.submissions[5].submit_sequence,
+        ),
+        (EntityModelLayerRenderType::ArmorEntityGlint, 1, 5)
+    );
+    let saddle_trim = meshes.submissions[6];
+    assert_eq!(
+        (
+            saddle_trim.texture,
+            saddle_trim.render_type,
+            saddle_trim.dynamic_texture,
+            saddle_trim.order,
+            saddle_trim.submit_sequence,
+        ),
+        (
+            NAUTILUS_SADDLE_TEXTURE_REF,
+            EntityModelLayerRenderType::ArmorTrimCutoutNoCull,
+            Some(saddle_trim_texture),
+            2,
+            6,
+        )
+    );
 
     let baby = EntityModelInstance::nautilus(935, [0.0, 64.0, 0.0], 0.0, true)
         .with_nautilus_body_armor(Some(EntityArmorMaterial::Iron))
         .with_nautilus_body_armor_foil(true)
         .with_nautilus_body_armor_trim(Some(EntityArmorTrim {
-            texture: trim_texture,
+            texture: body_trim_texture,
             decal: false,
         }))
-        .with_nautilus_saddle(true);
+        .with_nautilus_saddle(true)
+        .with_nautilus_saddle_foil(true)
+        .with_nautilus_saddle_trim(Some(EntityArmorTrim {
+            texture: saddle_trim_texture,
+            decal: false,
+        }));
     let baby_meshes = entity_model_textured_meshes_with_dynamic_textures(
         &[baby],
         &atlas,

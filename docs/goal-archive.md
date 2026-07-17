@@ -18675,3 +18675,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   sequence. Baby equines continue to suppress the complete saddle layer.
 - Focused world, native, and renderer tests lock all five trim sprite ids, runtime-atlas handoff,
   exact submission order, and reuse of the correct 408- or 456-vertex family saddle model.
+
+# 2026-07-17: Render nautilus saddle armor trims and foil
+
+- Extended the shared living/zombie nautilus saddle-slot projection with the saddle item's foil and
+  exact `trims/entity/nautilus_saddle` sprite resolved from the vanilla `minecraft:saddle`
+  equipment asset.
+- The adult `NautilusSaddleModel` now submits base → foil → regular/decal trim after every body
+  armor pass, preserving the saddle layer's independent order and the shared collector sequence.
+  Baby living nautilus continue to suppress the complete saddle layer.
+- Focused world, native, and renderer tests lock both nautilus families, runtime-atlas resolution,
+  body-armor → saddle ordering, and the saddle model's 144-vertex base/glint/trim geometry.

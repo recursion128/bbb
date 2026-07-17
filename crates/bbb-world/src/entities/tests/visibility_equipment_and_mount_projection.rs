@@ -1442,13 +1442,34 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
             component_patch: Default::default(),
         }
     }
-    fn nautilus_saddle(store: &WorldStore, entity_id: i32) -> bool {
-        store
+    fn nautilus_saddle(
+        store: &WorldStore,
+        entity_id: i32,
+    ) -> (bool, Option<ArmorTrimSprite>, bool) {
+        let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
-            .unwrap()
-            .nautilus_saddle
+            .unwrap();
+        (
+            source.nautilus_saddle,
+            source.nautilus_saddle_trim,
+            source.nautilus_saddle_foil,
+        )
+    }
+    fn trimmed_saddle(item_id: i32) -> ItemStackSummary {
+        ItemStackSummary {
+            component_patch: DataComponentPatchSummary {
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                armor_trim_material_id: Some(1), // iron
+                armor_trim_pattern_id: Some(0),  // sentry
+                ..Default::default()
+            },
+            ..stack(item_id, 1)
+        }
     }
 
     let mut store = WorldStore::new();
@@ -1469,11 +1490,12 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
         entity_id: 71,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Saddle,
-            item: stack(SADDLE_ITEM_ID, 1),
+            item: trimmed_saddle(SADDLE_ITEM_ID),
         }],
     }));
-    assert!(
-        !nautilus_saddle(&store, 71),
+    assert_eq!(
+        nautilus_saddle(&store, 71),
+        (false, None, false),
         "without the item registry's saddle-slot map, a raw item id is not enough"
     );
 
@@ -1481,16 +1503,36 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
     )]));
-    assert!(nautilus_saddle(&store, 71));
+    assert_eq!(
+        nautilus_saddle(&store, 71),
+        (
+            true,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/nautilus_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 72,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Saddle,
-            item: stack(SADDLE_ITEM_ID, 1),
+            item: trimmed_saddle(SADDLE_ITEM_ID),
         }],
     }));
-    assert!(nautilus_saddle(&store, 72));
+    assert_eq!(
+        nautilus_saddle(&store, 72),
+        (
+            true,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/nautilus_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 73,
@@ -1499,8 +1541,9 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
             item: stack(SADDLE_ITEM_ID, 1),
         }],
     }));
-    assert!(
-        !nautilus_saddle(&store, 73),
+    assert_eq!(
+        nautilus_saddle(&store, 73),
+        (false, None, false),
         "non-nautilus entities do not project the nautilus saddle flag"
     );
 
@@ -1511,7 +1554,7 @@ fn entity_model_sources_project_nautilus_saddle_from_saddle_slot() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert!(!nautilus_saddle(&store, 71));
+    assert_eq!(nautilus_saddle(&store, 71), (false, None, false));
 }
 
 #[test]
