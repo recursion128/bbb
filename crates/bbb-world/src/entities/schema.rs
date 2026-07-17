@@ -166,6 +166,17 @@ pub struct VanillaEntityMetadataClassCatalogEntry {
     pub own_accessor_count: u16,
 }
 
+/// One vanilla class declaration of `handleEntityEvent(byte)` and the fixed event ids it owns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaEntityEventHandlerCatalogEntry {
+    pub owner: &'static str,
+    pub source_path: &'static str,
+    pub direct_event_ids: &'static [u8],
+    pub delegated_event_ids: &'static [u8],
+    pub delegates_to: Option<&'static str>,
+    pub forwards_unhandled_to_super: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct VanillaEnderDragonPhaseCatalogEntry {
     pub phase_id: i32,
@@ -4449,6 +4460,86 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn generated_entity_event_handler_catalog_closes_every_vanilla_declaration() {
+        const PLAYER: &str = "net.minecraft.world.entity.player.Player";
+        const LIVING_ENTITY: &str = "net.minecraft.world.entity.LivingEntity";
+        const MINECART_SPAWNER: &str =
+            "net.minecraft.world.entity.vehicle.minecart.MinecartSpawner";
+        let classes = VANILLA_ENTITY_METADATA_CLASSES_26_1
+            .iter()
+            .map(|entry| entry.java_class)
+            .collect::<HashSet<_>>();
+        let mut owners = HashSet::new();
+        for handler in VANILLA_ENTITY_EVENT_HANDLERS_26_1 {
+            assert!(owners.insert(handler.owner));
+            assert!(classes.contains(handler.owner));
+            assert!(!handler.source_path.is_empty());
+            assert!(
+                !handler.direct_event_ids.is_empty() || !handler.delegated_event_ids.is_empty()
+            );
+            assert_eq!(
+                handler.delegates_to.is_some(),
+                !handler.delegated_event_ids.is_empty()
+            );
+            let mut event_ids = HashSet::new();
+            assert!(handler
+                .direct_event_ids
+                .iter()
+                .chain(handler.delegated_event_ids)
+                .all(|event_id| event_ids.insert(*event_id)));
+        }
+        assert_eq!(owners.len(), 35);
+        for owner in VANILLA_ENTITY_TYPE_METADATA_26_1
+            .iter()
+            .filter_map(|entry| entry.handle_entity_event_owner)
+        {
+            assert!(owners.contains(owner));
+        }
+
+        assert_eq!(
+            VANILLA_ENTITY_EVENT_HANDLERS_26_1
+                .iter()
+                .find(|handler| handler.owner == PLAYER)
+                .unwrap()
+                .direct_event_ids,
+            &[9, 23, 22]
+        );
+        assert_eq!(
+            VANILLA_ENTITY_EVENT_HANDLERS_26_1
+                .iter()
+                .find(|handler| handler.owner == LIVING_ENTITY)
+                .unwrap()
+                .direct_event_ids,
+            &[2, 3, 46, 47, 48, 49, 50, 51, 52, 54, 55, 60, 65, 67, 68]
+        );
+        let minecart_spawner = VANILLA_ENTITY_EVENT_HANDLERS_26_1
+            .iter()
+            .find(|handler| handler.owner == MINECART_SPAWNER)
+            .unwrap();
+        assert!(minecart_spawner.direct_event_ids.is_empty());
+        assert_eq!(minecart_spawner.delegated_event_ids, &[1]);
+        assert_eq!(
+            minecart_spawner.delegates_to,
+            Some("net.minecraft.world.level.BaseSpawner.onEventTriggered")
+        );
+
+        let handlers_without_super_fallback = VANILLA_ENTITY_EVENT_HANDLERS_26_1
+            .iter()
+            .filter(|handler| !handler.forwards_unhandled_to_super)
+            .map(|handler| handler.owner)
+            .collect::<HashSet<_>>();
+        assert_eq!(
+            handlers_without_super_fallback,
+            HashSet::from([
+                "net.minecraft.world.entity.Entity",
+                "net.minecraft.world.entity.projectile.throwableitemprojectile.Snowball",
+                "net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownEgg",
+                MINECART_SPAWNER,
+            ])
+        );
     }
 
     #[test]

@@ -39,6 +39,7 @@ WEATHERING_COPPER_SOURCE = Path("net/minecraft/world/level/block/WeatheringCoppe
 TNT_BLOCK_SOURCE = Path("net/minecraft/world/level/block/TntBlock.java")
 DYE_COLOR_SOURCE = Path("net/minecraft/world/item/DyeColor.java")
 GAME_RENDERER_SOURCE = Path("net/minecraft/client/renderer/GameRenderer.java")
+BASE_SPAWNER_SOURCE = Path("net/minecraft/world/level/BaseSpawner.java")
 SUPPORTING_SOURCES = (
     SERIALIZER_SOURCE,
     DIRECTION_SOURCE,
@@ -47,6 +48,7 @@ SUPPORTING_SOURCES = (
     TNT_BLOCK_SOURCE,
     DYE_COLOR_SOURCE,
     GAME_RENDERER_SOURCE,
+    BASE_SPAWNER_SOURCE,
 )
 
 

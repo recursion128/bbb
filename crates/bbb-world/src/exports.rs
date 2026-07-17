@@ -260,6 +260,9 @@ pub use crate::entities::{
     PigSoundVariantIdentity, WolfSoundVariantIdentity,
 };
 pub use crate::entities::{
+    VanillaEntityEventHandlerCatalogEntry, VANILLA_ENTITY_EVENT_HANDLERS_26_1,
+};
+pub use crate::entities::{
     VANILLA_ABSTRACT_ARROW_DEFAULT_FLAGS, VANILLA_ABSTRACT_ARROW_DEFAULT_IN_GROUND,
     VANILLA_ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL, VANILLA_ABSTRACT_ARROW_FLAGS_DATA_ID,
     VANILLA_ABSTRACT_ARROW_FLAG_CRIT, VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS,

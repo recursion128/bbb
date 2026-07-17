@@ -50,6 +50,27 @@ class CameraPostEffectSpec:
     resource_id: str
 
 
+@dataclass(frozen=True)
+class EntityEventHandlerSpec:
+    owner: str
+    source_path: str
+    direct_event_ids: tuple[int, ...]
+    delegated_event_ids: tuple[int, ...]
+    delegates_to: str | None
+    forwards_unhandled_to_super: bool
+
+
+ENTITY_EVENT_HANDLER_DELEGATIONS = {
+    "net.minecraft.world.entity.vehicle.minecart.MinecartSpawner": (
+        "this.spawner",
+        "net.minecraft.world.level.BaseSpawner",
+        "onEventTriggered",
+        2,
+        1,
+    ),
+}
+
+
 FAMILIES = (
     FamilySpec("Entity", "net.minecraft.world.entity.Entity", None),
     FamilySpec("LivingEntity", "net.minecraft.world.entity.LivingEntity", "Entity"),
@@ -2318,6 +2339,196 @@ def method_for(
     return source, matches[0]
 
 
+def _unwrapped_expression(node: Node) -> Node:
+    while node.type == "parenthesized_expression":
+        if len(node.named_children) != 1:
+            raise ExtractionError("malformed parenthesized expression")
+        node = node.named_children[0]
+    return node
+
+
+def method_discriminant_ids(
+    result: ExtractionResult,
+    owner: str,
+    name: str,
+    parameter_count: int,
+    discriminant_parameter: int,
+) -> tuple[int, ...]:
+    """Extract fixed integer arms selected directly from one method parameter."""
+    source, method = method_for(result, owner, name, parameter_count)
+    parameter = method.parameters[discriminant_parameter].node
+    parameter_name_node = parameter.child_by_field_name("name")
+    if parameter_name_node is None:
+        raise ExtractionError(f"{owner}.{name}: discriminant parameter lacks a name")
+    parameter_name = source.text(parameter_name_node)
+    body = method.node.child_by_field_name("body")
+    if body is None:
+        raise ExtractionError(f"{owner}.{name}: method lacks body")
+
+    candidates: list[tuple[int, int]] = []
+    for node in descendants(body):
+        if node.type in {"switch_expression", "switch_statement"}:
+            selector = node.child_by_field_name("condition")
+            if selector is None:
+                raise ExtractionError(f"{owner}.{name}: switch lacks selector")
+            selector = _unwrapped_expression(selector)
+            if selector.type != "identifier" or source.text(selector) != parameter_name:
+                continue
+            for label in descendants(node):
+                if label.type != "switch_label" or source.text(label).strip() == "default":
+                    continue
+                values = label.named_children
+                if len(values) != 1:
+                    raise ExtractionError(
+                        f"{owner}.{name}: unsupported switch label {source.text(label)!r}"
+                    )
+                value = evaluate_integer_expression(source, values[0], {})
+                candidates.append((label.start_byte, value))
+        elif node.type == "binary_expression":
+            operator = node.child_by_field_name("operator")
+            left = node.child_by_field_name("left")
+            right = node.child_by_field_name("right")
+            if operator is None or left is None or right is None or source.text(operator) != "==":
+                continue
+            left = _unwrapped_expression(left)
+            right = _unwrapped_expression(right)
+            if left.type == "identifier" and source.text(left) == parameter_name:
+                value_node = right
+            elif right.type == "identifier" and source.text(right) == parameter_name:
+                value_node = left
+            else:
+                continue
+            value = evaluate_integer_expression(source, value_node, {})
+            candidates.append((node.start_byte, value))
+
+    event_ids: list[int] = []
+    for _, value in sorted(candidates):
+        if not 0 <= value <= 255:
+            raise ExtractionError(f"{owner}.{name}: event id {value} is outside u8")
+        if value not in event_ids:
+            event_ids.append(value)
+    return tuple(event_ids)
+
+
+def method_forwards_parameter_to_super(
+    result: ExtractionResult,
+    owner: str,
+    name: str,
+    parameter_count: int,
+    parameter_index: int,
+) -> bool:
+    source, method = method_for(result, owner, name, parameter_count)
+    parameter_name_node = method.parameters[parameter_index].node.child_by_field_name("name")
+    body = method.node.child_by_field_name("body")
+    if parameter_name_node is None or body is None:
+        raise ExtractionError(f"{owner}.{name}: malformed method declaration")
+    parameter_name = source.text(parameter_name_node)
+    matches = []
+    for node in descendants(body):
+        if node.type != "method_invocation":
+            continue
+        object_node = node.child_by_field_name("object")
+        name_node = node.child_by_field_name("name")
+        arguments = node.child_by_field_name("arguments")
+        if (
+            object_node is not None
+            and object_node.type == "super"
+            and name_node is not None
+            and source.text(name_node) == name
+            and arguments is not None
+            and len(arguments.named_children) == 1
+            and source.expression(arguments.named_children[0]).canonical == parameter_name
+        ):
+            matches.append(node)
+    if len(matches) > 1:
+        raise ExtractionError(f"{owner}.{name}: multiple super forwarding calls")
+    return bool(matches)
+
+
+def entity_event_handler_specs(
+    result: ExtractionResult,
+) -> tuple[EntityEventHandlerSpec, ...]:
+    specs: list[EntityEventHandlerSpec] = []
+    for java_class in result.classes:
+        source = source_for_owner(result, java_class.fqcn)
+        handlers = [
+            method
+            for method in source.methods_for(java_class.fqcn)
+            if method.name == "handleEntityEvent" and len(method.parameters) == 1
+        ]
+        if len(handlers) > 1:
+            raise ExtractionError(
+                f"{java_class.fqcn}.handleEntityEvent/1: expected at most one method"
+            )
+        if not handlers:
+            continue
+
+        direct_event_ids = method_discriminant_ids(
+            result, java_class.fqcn, "handleEntityEvent", 1, 0
+        )
+        delegated_event_ids: tuple[int, ...] = ()
+        delegates_to = None
+        delegation = ENTITY_EVENT_HANDLER_DELEGATIONS.get(java_class.fqcn)
+        if delegation is not None:
+            qualifier, delegated_owner, delegated_method, parameter_count, parameter_index = delegation
+            handler = handlers[0]
+            body = handler.node.child_by_field_name("body")
+            parameter_name_node = handler.parameters[0].node.child_by_field_name("name")
+            if body is None or parameter_name_node is None:
+                raise ExtractionError(
+                    f"{java_class.fqcn}.handleEntityEvent: malformed delegation"
+                )
+            parameter_name = source.text(parameter_name_node)
+            matches = []
+            for node in descendants(body):
+                if node.type != "method_invocation":
+                    continue
+                object_node = node.child_by_field_name("object")
+                name_node = node.child_by_field_name("name")
+                arguments = node.child_by_field_name("arguments")
+                if (
+                    object_node is not None
+                    and source.expression(object_node).canonical == qualifier
+                    and name_node is not None
+                    and source.text(name_node) == delegated_method
+                    and arguments is not None
+                    and len(arguments.named_children) == parameter_count
+                    and source.expression(arguments.named_children[parameter_index]).canonical
+                    == parameter_name
+                ):
+                    matches.append(node)
+            if len(matches) != 1 or direct_event_ids:
+                raise ExtractionError(
+                    f"{java_class.fqcn}.handleEntityEvent: delegation shape changed"
+                )
+            delegated_event_ids = method_discriminant_ids(
+                result,
+                delegated_owner,
+                delegated_method,
+                parameter_count,
+                parameter_index,
+            )
+            delegates_to = f"{delegated_owner}.{delegated_method}"
+
+        specs.append(
+            EntityEventHandlerSpec(
+                owner=java_class.fqcn,
+                source_path=java_class.source_path,
+                direct_event_ids=direct_event_ids,
+                delegated_event_ids=delegated_event_ids,
+                delegates_to=delegates_to,
+                forwards_unhandled_to_super=method_forwards_parameter_to_super(
+                    result, java_class.fqcn, "handleEntityEvent", 1, 0
+                ),
+            )
+        )
+    if len(specs) != 35:
+        raise ExtractionError(
+            f"expected 35 handleEntityEvent declarations, extracted {len(specs)}"
+        )
+    return tuple(specs)
+
+
 def camera_post_effect_specs(result: ExtractionResult) -> tuple[CameraPostEffectSpec, ...]:
     """Extract ``GameRenderer.checkEntityPostEffect`` pattern-switch mappings."""
     source = result.sources[GAME_RENDERER_SOURCE.as_posix()]
@@ -3277,6 +3488,7 @@ def render(result: ExtractionResult) -> str:
     value_masks = resolve_value_masks(result)
     packed_values = resolve_packed_values(result)
     camera_post_effects = camera_post_effect_specs(result)
+    entity_event_handlers = entity_event_handler_specs(result)
     flag_by_owner: dict[str, list[ResolvedFlag]] = {}
     for flag in flags:
         flag_by_owner.setdefault(flag.owner, []).append(flag)
@@ -3576,6 +3788,30 @@ def render(result: ExtractionResult) -> str:
                 f"        kind: {rust_string(item.kind)},",
                 f"        inherited_accessor_count: {inherited_count(item.fqcn)},",
                 f"        own_accessor_count: {own_counts.get(item.fqcn, 0)},",
+                "    },",
+            ]
+        )
+    lines.extend([
+        "];",
+        "",
+        "pub const VANILLA_ENTITY_EVENT_HANDLERS_26_1: &[VanillaEntityEventHandlerCatalogEntry] = &[",
+    ])
+    for item in entity_event_handlers:
+        lines.extend(
+            [
+                "    VanillaEntityEventHandlerCatalogEntry {",
+                f"        owner: {rust_string(item.owner)},",
+                f"        source_path: {rust_string(item.source_path)},",
+                "        direct_event_ids: &["
+                + ", ".join(str(event_id) for event_id in item.direct_event_ids)
+                + "],",
+                "        delegated_event_ids: &["
+                + ", ".join(str(event_id) for event_id in item.delegated_event_ids)
+                + "],",
+                f"        delegates_to: {option_string(item.delegates_to)},",
+                "        forwards_unhandled_to_super: "
+                + str(item.forwards_unhandled_to_super).lower()
+                + ",",
                 "    },",
             ]
         )
