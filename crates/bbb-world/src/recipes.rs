@@ -26,14 +26,23 @@ impl WorldStore {
         }
         self.recipes.stonecutter_recipes = packet.stonecutter_recipes;
 
-        self.counters.recipe_property_sets_tracked = self.recipes.property_sets.len();
-        self.counters.recipe_property_set_items_tracked =
-            self.recipes.property_sets.values().map(Vec::len).sum();
-        self.counters.stonecutter_recipes_tracked = self.recipes.stonecutter_recipes.len();
+        self.update_recipe_counters();
     }
 
     pub fn recipes(&self) -> &ClientRecipesState {
         &self.recipes
+    }
+
+    pub(crate) fn reset_recipes_for_new_listener(&mut self) {
+        self.recipes = ClientRecipesState::default();
+        self.update_recipe_counters();
+    }
+
+    fn update_recipe_counters(&mut self) {
+        self.counters.recipe_property_sets_tracked = self.recipes.property_sets.len();
+        self.counters.recipe_property_set_items_tracked =
+            self.recipes.property_sets.values().map(Vec::len).sum();
+        self.counters.stonecutter_recipes_tracked = self.recipes.stonecutter_recipes.len();
     }
 }
 
@@ -83,6 +92,23 @@ mod tests {
         assert_eq!(counters.recipe_property_sets_tracked, 1);
         assert_eq!(counters.recipe_property_set_items_tracked, 1);
         assert_eq!(counters.stonecutter_recipes_tracked, 0);
+    }
+
+    #[test]
+    fn configuration_reentry_rebuilds_recipe_container_and_preserves_packet_counters() {
+        let mut store = WorldStore::new();
+        store.apply_update_recipes(update_recipes(
+            vec![("minecraft:furnace_input", vec![42, 43])],
+            vec![stonecutter_entry(vec![11, 12], 4, vec![4, 77])],
+        ));
+
+        store.clear_client_level();
+
+        assert_eq!(store.recipes(), &ClientRecipesState::default());
+        assert_eq!(store.counters().update_recipes_packets, 1);
+        assert_eq!(store.counters().recipe_property_sets_tracked, 0);
+        assert_eq!(store.counters().recipe_property_set_items_tracked, 0);
+        assert_eq!(store.counters().stonecutter_recipes_tracked, 0);
     }
 
     fn update_recipes(

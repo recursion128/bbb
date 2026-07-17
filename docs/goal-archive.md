@@ -18796,3 +18796,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   reset all derived command/suggestion counters while preserving cumulative packet counters.
 - Focused tests lock both reset boundaries, including the absence of a last root for the empty
   dispatcher and the next listener's zero-based first suggestion request.
+
+# 2026-07-17: Rebuild listener recipe container on reconfiguration
+
+- Reset the server recipe property sets and stonecutter options when play re-enters configuration,
+  matching the empty `ClientRecipeContainer` owned by a newly constructed
+  `ClientPacketListener`.
+- Centralized the three derived recipe counters so packet replacement and listener reset use the
+  same projection. The cumulative Update Recipes packet count remains diagnostic history.
+- Added a focused regression with both property-set items and a stonecutter entry, and narrowed the
+  remaining fresh-listener reset ledger to advancements and debug subscriptions.
