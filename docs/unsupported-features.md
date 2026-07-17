@@ -450,6 +450,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   accessor/default aliases, hand-written wire indices or read another entity family's slot 16 as
   the dancing flag. The native F3+I can-duplicate fixture must likewise derive generated
   `Allay.DATA_CAN_DUPLICATE` membership, wire index and default rather than restore slot 17.
+  Strider boost-time fixture membership, wire index and typed default must remain derived from its
+  generated `Strider.DATA_BOOST_TIME` owner rather than Pig's separate same-name accessor; existing
+  suffocating render/debug consumers must remain generated as a separate BOOLEAN field.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
   fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19

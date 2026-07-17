@@ -18279,3 +18279,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   Bogged/非法 id 为 membership 负例。
 - native F3+I fixture 删除固定 slot 17，改由 accessor 构造 false metadata；Allay reverse guard
   禁止 can-duplicate accessor/default aliases 回流，dancing animation 边界保持独立。
+
+## 2026-07-16：派生 Strider boost-time metadata
+
+- world schema 新增 Strider-only `DATA_BOOST_TIME` INT/default 0 typed accessor，以 Pig 的独立
+  same-name owner 和 Cow/非法 id 为负例。
+- native F3+I fixture 删除固定 slot 18，改由 accessor 构造 boost metadata；Strider reverse
+  guard 禁止 boost accessor/default aliases 回流，suffocating BOOLEAN 投影保持独立。

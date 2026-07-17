@@ -694,6 +694,20 @@ fn strider_suffocating_data_id() -> u8 {
     data_id
 }
 
+fn strider_boost_time_data(boost_time: i32) -> ProtocolEntityDataValue {
+    let (data_id, default) =
+        bbb_world::vanilla_entity_metadata_strider_boost_time_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_STRIDER_ID,
+        )
+        .expect("generated Strider boost-time accessor");
+    assert_eq!(default, 0);
+    ProtocolEntityDataValue {
+        data_id,
+        serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
+        value: EntityDataValueKind::Int(boost_time),
+    }
+}
+
 fn glow_squid_dark_ticks_data_id() -> u8 {
     let (data_id, default) =
         vanilla_entity_metadata_glow_squid_dark_ticks_accessor_for_entity_type(
@@ -6733,8 +6747,6 @@ fn shift_f3_i_with_permission_copies_local_sniffer_save_nbt_to_clipboard() {
 
 #[test]
 fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
-    const STRIDER_BOOST_TIME_DATA_ID: u8 = 18;
-
     let mut input = ClientInputState::new(true);
     let mut world = world_with_debug_player(false);
     grant_debug_recreate_nbt_permission(&mut world);
@@ -6759,11 +6771,7 @@ fn shift_f3_i_with_permission_copies_local_strider_save_nbt_to_clipboard() {
             mob_flags_data(&world, 72, true, true),
             baby_data(VANILLA_ENTITY_TYPE_STRIDER_ID, true),
             age_locked_data(&world, 72, true),
-            ProtocolEntityDataValue {
-                data_id: STRIDER_BOOST_TIME_DATA_ID,
-                serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_INT_ID,
-                value: EntityDataValueKind::Int(40),
-            },
+            strider_boost_time_data(40),
             ProtocolEntityDataValue {
                 data_id: strider_suffocating_data_id(),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BOOLEAN_ID,

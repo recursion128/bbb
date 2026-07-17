@@ -777,6 +777,26 @@ pub fn vanilla_entity_metadata_skeleton_freeze_conversion_accessor_for_entity_ty
     }
 }
 
+/// Resolves the generated Strider boost-time accessor and its typed default.
+pub fn vanilla_entity_metadata_strider_boost_time_accessor_for_entity_type(
+    entity_type_id: i32,
+) -> Option<(u8, i32)> {
+    let accessor =
+        vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "DATA_BOOST_TIME")?;
+    match (
+        accessor.owner,
+        accessor.serializer_name,
+        accessor.typed_default,
+    ) {
+        (
+            "net.minecraft.world.entity.monster.Strider",
+            "INT",
+            Some(VanillaEntityMetadataDefault::Int(default)),
+        ) => Some((accessor.data_id, default)),
+        _ => None,
+    }
+}
+
 /// Resolves the generated Strider suffocating accessor and its typed default.
 pub fn vanilla_entity_metadata_strider_suffocating_accessor_for_entity_type(
     entity_type_id: i32,
@@ -6204,6 +6224,31 @@ mod tests {
             vanilla_entity_metadata_allay_can_duplicate_accessor_for_entity_type(-1),
             None
         );
+    }
+
+    #[test]
+    fn generated_strider_boost_time_accessor_owns_membership_index_and_default() {
+        let strider = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::Strider);
+        let boost_time = strider
+            .own_fields
+            .iter()
+            .find(|field| field.name == "DATA_BOOST_TIME")
+            .expect("generated Strider boost-time field");
+        let VanillaEntityMetadataDefault::Int(default) = boost_time.default else {
+            panic!("generated Strider boost-time default must be INT");
+        };
+        assert_eq!(
+            vanilla_entity_metadata_strider_boost_time_accessor_for_entity_type(
+                VANILLA_ENTITY_TYPE_STRIDER_ID
+            ),
+            Some((boost_time.data_id, default))
+        );
+        for entity_type_id in [VANILLA_ENTITY_TYPE_PIG_ID, VANILLA_ENTITY_TYPE_COW_ID, -1] {
+            assert_eq!(
+                vanilla_entity_metadata_strider_boost_time_accessor_for_entity_type(entity_type_id),
+                None
+            );
+        }
     }
 
     #[test]
