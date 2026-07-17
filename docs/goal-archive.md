@@ -18314,3 +18314,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   局部 `SCALE=25` aliases；local-player vehicle/max-health fixtures 删除两个
   `MAX_HEALTH=19` aliases，统一消费生成的 attribute catalog 常量。
 - gameplay-id generator 新增跨 world/native reverse guard，禁止这些固定 attribute ids 回流。
+
+## 2026-07-16：迁移 Chicken/EnderDragon entity-type fixtures
+
+- world player-negative fixtures 删除两个 `CHICKEN_TYPE_ID=26` aliases；world EnderDragon
+  pick-target 与 native event fixture 删除四个 `ENDER_DRAGON_TYPE_ID=43` aliases，统一消费
+  core registry 生成常量。
+- core-registry generator 新增跨 world/native reverse guard，禁止这些固定 entity type ids
+  回流。

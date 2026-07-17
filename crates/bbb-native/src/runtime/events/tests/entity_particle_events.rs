@@ -1564,11 +1564,9 @@ fn entity_animation_emits_crit_tracking_emitter_particles() {
 
 #[test]
 fn entity_events_materialize_ender_dragon_part_pick_targets() {
-    const ENDER_DRAGON_TYPE_ID: i32 = 43;
-
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::Play(PlayClientbound::AddEntity(
-        protocol_add_entity_with_type(100, ENDER_DRAGON_TYPE_ID),
+        protocol_add_entity_with_type(100, VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID),
     )))
     .unwrap();
 

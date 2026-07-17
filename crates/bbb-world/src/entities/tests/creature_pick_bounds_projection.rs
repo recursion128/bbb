@@ -114,12 +114,10 @@ fn ender_dragon_phase_data(phase_id: i32) -> ProtocolEntityDataValue {
 
 #[test]
 fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
-    const ENDER_DRAGON_TYPE_ID: i32 = 43;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_y_rot(
         100,
-        ENDER_DRAGON_TYPE_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
         0.0,
     ));
     store.advance_entity_client_animations(1);
@@ -234,12 +232,10 @@ fn ender_dragon_pick_targets_use_vanilla_part_ids_and_bounds() {
 
 #[test]
 fn ender_dragon_pick_targets_follow_flight_history_and_phase() {
-    const ENDER_DRAGON_TYPE_ID: i32 = 43;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_y_rot(
         120,
-        ENDER_DRAGON_TYPE_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
         0.0,
     ));
     store.advance_entity_client_animations(1);
@@ -322,12 +318,10 @@ fn ender_dragon_pick_targets_follow_flight_history_and_phase() {
 
 #[test]
 fn ender_dragon_pick_targets_interpolate_flight_history_by_partial_tick() {
-    const ENDER_DRAGON_TYPE_ID: i32 = 43;
-
     let mut store = WorldStore::new();
     store.apply_add_entity(protocol_add_entity_with_type_y_rot(
         130,
-        ENDER_DRAGON_TYPE_ID,
+        VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID,
         0.0,
     ));
     store.advance_entity_client_animations(1);

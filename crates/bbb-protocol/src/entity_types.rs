@@ -3490,6 +3490,23 @@ mod tests {
     }
 
     #[test]
+    fn entity_type_fixtures_do_not_restore_fixed_chicken_or_ender_dragon_ids() {
+        let player_pose = include_str!(
+            "../../bbb-world/src/entities/tests/player_pose_and_sleeping_projection.rs"
+        );
+        assert!(player_pose.contains("VANILLA_ENTITY_TYPE_CHICKEN_ID"));
+        assert!(!player_pose.contains("const CHICKEN_TYPE_ID"));
+        let creature_bounds =
+            include_str!("../../bbb-world/src/entities/tests/creature_pick_bounds_projection.rs");
+        let native_events =
+            include_str!("../../bbb-native/src/runtime/events/tests/entity_particle_events.rs");
+        for source in [creature_bounds, native_events] {
+            assert!(source.contains("VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID"));
+            assert!(!source.contains("const ENDER_DRAGON_TYPE_ID"));
+        }
+    }
+
+    #[test]
     fn entity_type_catalog_preserves_vanilla_order_and_compatibility_api() {
         assert_eq!(
             VANILLA_ENTITY_TYPES.first().unwrap().resource_id,

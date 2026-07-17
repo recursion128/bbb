@@ -432,7 +432,6 @@ fn entity_model_sources_project_player_upside_down() {
 fn entity_model_sources_project_player_extra_ears_from_profile_name() {
     // Vanilla `AbstractClientPlayer.showExtraEars` is an exact, lowercase
     // GameProfile-name check for `"deadmau5"`; it is not driven by custom names.
-    const CHICKEN_TYPE_ID: i32 = 26;
     let show_extra_ears = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -480,7 +479,7 @@ fn entity_model_sources_project_player_extra_ears_from_profile_name() {
     add_profile(&mut store, mixed_case_uuid, "Deadmau5");
     assert!(!show_extra_ears(&store, 94));
 
-    let mut chicken = protocol_add_entity_with_type(95, CHICKEN_TYPE_ID);
+    let mut chicken = protocol_add_entity_with_type(95, VANILLA_ENTITY_TYPE_CHICKEN_ID);
     chicken.uuid = deadmau5_uuid;
     store.apply_add_entity(chicken);
     assert!(!show_extra_ears(&store, 95));
@@ -527,7 +526,6 @@ fn sleeping_bed_yaw_and_offset_matches_vanilla() {
 fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_int() {
     // Vanilla `Player.DATA_SHOULDER_PARROT_LEFT/RIGHT` are generated `OPTIONAL_UNSIGNED_INT`
     // accessors after Player absorption/score. The decoded value is the `Parrot.Variant` id.
-    const CHICKEN_TYPE_ID: i32 = 26;
 
     let shoulders = |store: &WorldStore, id: i32| {
         let source = store
@@ -546,7 +544,10 @@ fn entity_model_sources_project_player_shoulder_parrots_from_optional_unsigned_i
         101,
         VANILLA_ENTITY_TYPE_PLAYER_ID,
     ));
-    store.apply_add_entity(protocol_add_entity_with_type(102, CHICKEN_TYPE_ID));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        102,
+        VANILLA_ENTITY_TYPE_CHICKEN_ID,
+    ));
 
     assert_eq!(shoulders(&store, 101), (None, None));
     assert!(store.apply_set_entity_data(ProtocolSetEntityData {

@@ -463,6 +463,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   their local fixed slot aliases must not return.
   Entity scale and local-player max-health fixtures must consume the generated attribute catalog
   ids; local `SCALE=25` or `MAX_HEALTH=19` aliases must not return.
+  Player-negative Chicken and EnderDragon part/event fixtures must consume the generated entity
+  type catalog constants; local numeric type-id aliases must not return.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
   fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19
