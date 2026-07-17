@@ -4421,6 +4421,7 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
+    submit_sequence: u32,
 ) {
     if !instance.render_state.equine_saddle {
         return;
@@ -4438,26 +4439,18 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
         i32,
         u32,
     ) = match instance.kind {
-        EntityModelKind::Horse { baby: false, .. } => {
-            let body_layer_count = instance
-                .render_state
-                .equine_body_armor
-                .and_then(horse_body_armor_texture_layers)
-                .map(|layers| layers.len())
-                .unwrap_or(0);
-            (
-                if ridden {
-                    &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
-                } else {
-                    &ADULT_HORSE_SADDLE_PARTS_TEXTURED
-                },
-                mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
-                MODEL_LAYER_HORSE_SADDLE,
-                HORSE_SADDLE_TEXTURE_REF,
-                2,
-                2 + body_layer_count as u32,
-            )
-        }
+        EntityModelKind::Horse { baby: false, .. } => (
+            if ridden {
+                &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
+            } else {
+                &ADULT_HORSE_SADDLE_PARTS_TEXTURED
+            },
+            mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
+            MODEL_LAYER_HORSE_SADDLE,
+            HORSE_SADDLE_TEXTURE_REF,
+            2,
+            submit_sequence,
+        ),
         EntityModelKind::Donkey {
             family,
             baby: false,
@@ -4500,15 +4493,6 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
                 UndeadHorseModelFamily::Skeleton => MODEL_LAYER_SKELETON_HORSE_SADDLE,
                 UndeadHorseModelFamily::Zombie => MODEL_LAYER_ZOMBIE_HORSE_SADDLE,
             };
-            let body_layer_count = match family {
-                UndeadHorseModelFamily::Zombie => instance
-                    .render_state
-                    .equine_body_armor
-                    .and_then(horse_body_armor_texture_layers)
-                    .map(|layers| layers.len())
-                    .unwrap_or(0),
-                UndeadHorseModelFamily::Skeleton => 0,
-            };
             (
                 if ridden {
                     &ADULT_HORSE_SADDLE_RIDDEN_PARTS_TEXTURED
@@ -4519,7 +4503,7 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
                 model_layer,
                 texture,
                 0,
-                1 + body_layer_count as u32,
+                submit_sequence,
             )
         }
         _ => return,
@@ -4552,20 +4536,14 @@ pub(in crate::entity_models) fn render_equine_saddle_layer(
 /// horse armor model inherits the 1.1 `livingHorseScale`; the zombie horse armor model is unscaled.
 /// Vanilla supplies no baby model. Skeleton horses use the same renderer class but the vanilla
 /// `CAN_WEAR_HORSE_ARMOR` tag excludes them, so the world projection never sets this layer for them.
+/// The shared equipment renderer inserts foil after the first base layer and a runtime-atlas trim
+/// after all base layers, before a later saddle equipment layer.
 pub(in crate::entity_models) fn render_equine_body_armor_layer(
     meshes: &mut EntityModelTexturedMeshes,
     instance: EntityModelInstance,
     atlas: &EntityModelTextureAtlasLayout,
-) {
-    if meshes.current_force_transparent || meshes.current_outline_only {
-        return;
-    }
-    let Some(material) = instance.render_state.equine_body_armor else {
-        return;
-    };
-    let Some(layers) = horse_body_armor_texture_layers(material) else {
-        return;
-    };
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) -> u32 {
     let (transform, model_layer, order, first_submit_sequence) = match instance.kind {
         EntityModelKind::Horse { baby: false, .. } => (
             mesh_transformer_scaled_model_root_transform(instance, HORSE_SCALE),
@@ -4582,10 +4560,24 @@ pub(in crate::entity_models) fn render_equine_body_armor_layer(
             0,
             1,
         ),
-        _ => return,
+        EntityModelKind::Horse { .. } => return 2,
+        EntityModelKind::UndeadHorse { .. } => return 1,
+        _ => return 0,
+    };
+    if meshes.current_force_transparent || meshes.current_outline_only {
+        return first_submit_sequence;
+    }
+    let Some(material) = instance.render_state.equine_body_armor else {
+        return first_submit_sequence;
+    };
+    let Some(layers) = horse_body_armor_texture_layers(material) else {
+        return first_submit_sequence;
     };
 
-    for (layer_index, layer) in layers.iter().enumerate() {
+    let mut next_order = order;
+    let mut next_submit_sequence = first_submit_sequence;
+    let mut foil_pending = instance.render_state.equine_body_armor_foil;
+    for layer in layers.iter() {
         let tint = if layer.dyeable {
             armor_layer_tint(
                 EntityArmorMaterial::Leather,
@@ -4600,8 +4592,8 @@ pub(in crate::entity_models) fn render_equine_body_armor_layer(
             model_layer,
             layer.texture,
             tint,
-            order + layer_index as i32,
-            first_submit_sequence + layer_index as u32,
+            next_order,
+            next_submit_sequence,
         );
         emit_equine_textured_submission(
             meshes,
@@ -4614,7 +4606,79 @@ pub(in crate::entity_models) fn render_equine_body_armor_layer(
             instance,
             atlas,
         );
+        next_order += 1;
+        next_submit_sequence += 1;
+
+        if foil_pending {
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::EquineBodyArmor,
+                EntityModelLayerRenderType::ArmorEntityGlint,
+                model_layer,
+                ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+                tint,
+                next_order,
+                next_submit_sequence,
+            );
+            emit_equine_textured_submission(
+                meshes,
+                &ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+                [2, 3, 4, 5],
+                1,
+                0.0,
+                1.0,
+                no_overlay_layer_submission(pass, transform),
+                instance,
+                atlas,
+            );
+            next_order += 1;
+            next_submit_sequence += 1;
+            foil_pending = false;
+        }
     }
+
+    if let Some(trim) = instance.render_state.equine_body_armor_trim {
+        if let Some(entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, trim.texture) {
+            let render_type = if trim.decal {
+                EntityModelLayerRenderType::ArmorTrimDecalCutoutNoCull
+            } else {
+                EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+            };
+            let pass = equipment_layer_pass(
+                EntityModelLayerKind::EquineBodyArmor,
+                render_type,
+                model_layer,
+                layers[0].texture,
+                [1.0; 4],
+                next_order,
+                next_submit_sequence,
+            );
+            let submit =
+                no_overlay_layer_submission(pass, transform).with_dynamic_texture(trim.texture);
+            render_textured_dynamic_player_texture_submission(
+                meshes,
+                submit,
+                entry,
+                |mesh, entry| {
+                    emit_equine_textured_posed(
+                        mesh,
+                        &ADULT_HORSE_ARMOR_PARTS_TEXTURED,
+                        [2, 3, 4, 5],
+                        1,
+                        0.0,
+                        1.0,
+                        submit.transform,
+                        submit.texture,
+                        entry.uv,
+                        submit.tint,
+                        instance,
+                    );
+                },
+            );
+            next_submit_sequence += 1;
+        }
+    }
+
+    next_submit_sequence
 }
 
 /// Vanilla `StriderRenderer` `SimpleEquipmentLayer(STRIDER_SADDLE)`: a non-empty saddle item renders

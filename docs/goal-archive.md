@@ -18587,3 +18587,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Native trim lookup now mirrors `TextureAtlas.getSprite` by falling back to the ready
   `minecraft:missingno` sprite. This preserves vanilla's visible missing-texture submission for
   absent custom and non-generated trim sprites instead of silently dropping the layer.
+
+# 2026-07-17: Render horse body armor trims and foil
+
+- Extended trim projection with vanilla's `HORSE_BODY` prefix for adult horses and zombie horses,
+  retaining the existing `CAN_WEAR_HORSE_ARMOR` and no-baby-model gates through world and native.
+- Horse body equipment now submits its single first-layer foil and white regular/decal trim in the
+  exact `EquipmentLayerRenderer` order. Leather's dyed base and white overlay remain distinct, and
+  the later saddle layer keeps its own order while advancing after every body-armor submission.
+- Runtime trim geometry reuses the posed adult horse-armor model and shared trim atlas; focused
+  tests lock base → foil → overlay → trim → saddle ordering and baby suppression.

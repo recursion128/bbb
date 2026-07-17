@@ -6862,6 +6862,12 @@ fn entity_model_instances_project_horse_body_armor_render_state() {
     const LEATHER_HORSE_ARMOR_ITEM_ID: i32 = 749;
     const NETHERITE_HORSE_ARMOR_ITEM_ID: i32 = 750;
     const LEATHER_DYE: i32 = 0x0033_66CC;
+    let trim_texture = EntityDynamicTexture { handle: 42_4309 };
+    let trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/horse_body/sentry_iron",
+        texture: trim_texture,
+        missing_texture: None,
+    };
 
     let body_armor = |entity_id: i32, item_id: i32, dyed_color: Option<i32>| SetEquipment {
         entity_id,
@@ -6872,20 +6878,33 @@ fn entity_model_instances_project_horse_body_armor_render_state() {
                 count: 1,
                 component_patch: DataComponentPatchSummary {
                     dyed_color,
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
                     ..Default::default()
                 },
             },
         }],
     };
     let horse_body_armor = |world: &WorldStore, id: i32| {
-        let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state;
+        let render_state = entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(&trim_lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state;
         (
             render_state.equine_body_armor,
+            render_state.equine_body_armor_trim,
             render_state.equine_body_armor_dye,
+            render_state.equine_body_armor_foil,
         )
     };
 
@@ -6937,20 +6956,36 @@ fn entity_model_instances_project_horse_body_armor_render_state() {
 
     assert_eq!(
         horse_body_armor(&world, 126),
-        (Some(EntityArmorMaterial::Leather), Some(LEATHER_DYE as u32))
+        (
+            Some(EntityArmorMaterial::Leather),
+            Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }),
+            Some(LEATHER_DYE as u32),
+            true,
+        )
     );
     assert_eq!(
         horse_body_armor(&world, 127),
-        (Some(EntityArmorMaterial::Netherite), None)
+        (
+            Some(EntityArmorMaterial::Netherite),
+            Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }),
+            None,
+            true,
+        )
     );
     assert_eq!(
         horse_body_armor(&world, 128),
-        (None, None),
+        (None, None, None, false),
         "skeleton horses are not in vanilla CAN_WEAR_HORSE_ARMOR"
     );
     assert_eq!(
         horse_body_armor(&world, 129),
-        (None, None),
+        (None, None, None, false),
         "baby horses skip the body armor equipment layer"
     );
 }

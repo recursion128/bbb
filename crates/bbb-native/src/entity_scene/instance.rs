@@ -633,6 +633,10 @@ pub(super) fn entity_model_instance(
         .with_legs_armor_dye(armor_dye(source.legs_armor_dye))
         .with_feet_armor_dye(armor_dye(source.feet_armor_dye))
         .with_equine_body_armor(armor_material(source.equine_body_armor))
+        .with_equine_body_armor_trim(armor_trim(
+            source.equine_body_armor_trim.as_ref(),
+            variant_registries,
+        ))
         .with_equine_body_armor_dye(armor_dye(source.equine_body_armor_dye))
         .with_wolf_body_armor(armor_material(source.wolf_body_armor))
         .with_wolf_body_armor_trim(armor_trim(
@@ -791,6 +795,7 @@ pub(super) fn entity_model_instance(
         with_equine_eat_animation equine_eat_animation,
         with_equine_stand_animation equine_stand_animation,
         with_equine_feeding_animation equine_feeding_animation,
+        with_equine_body_armor_foil equine_body_armor_foil,
         with_wolf_body_armor_foil wolf_body_armor_foil,
         with_strider_ridden strider_ridden,
         with_strider_saddle strider_saddle,

@@ -1380,6 +1380,12 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
             count,
             component_patch: DataComponentPatchSummary {
                 dyed_color,
+                enchantments: vec![ItemEnchantmentSummary {
+                    holder_id: 12,
+                    level: 1,
+                }],
+                armor_trim_material_id: Some(1), // iron
+                armor_trim_pattern_id: Some(0),  // sentry
                 ..Default::default()
             },
         }
@@ -1387,13 +1393,23 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
     fn horse_body_armor(
         store: &WorldStore,
         entity_id: i32,
-    ) -> (Option<ArmorMaterialKind>, Option<i32>) {
+    ) -> (
+        Option<ArmorMaterialKind>,
+        Option<i32>,
+        Option<ArmorTrimSprite>,
+        bool,
+    ) {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
             .unwrap();
-        (source.equine_body_armor, source.equine_body_armor_dye)
+        (
+            source.equine_body_armor,
+            source.equine_body_armor_dye,
+            source.equine_body_armor_trim,
+            source.equine_body_armor_foil,
+        )
     }
 
     let mut store = WorldStore::new();
@@ -1439,7 +1455,7 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
     }
     assert_eq!(
         horse_body_armor(&store, 82),
-        (None, None),
+        (None, None, None, false),
         "without the item registry's horse armor material map, a raw body item id is not enough"
     );
 
@@ -1450,25 +1466,41 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
     ]));
     assert_eq!(
         horse_body_armor(&store, 82),
-        (Some(ArmorMaterialKind::Leather), Some(LEATHER_DYE))
+        (
+            Some(ArmorMaterialKind::Leather),
+            Some(LEATHER_DYE),
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/horse_body/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
     );
     assert_eq!(
         horse_body_armor(&store, 83),
-        (Some(ArmorMaterialKind::Netherite), None)
+        (
+            Some(ArmorMaterialKind::Netherite),
+            None,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/horse_body/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
     );
     assert_eq!(
         horse_body_armor(&store, 84),
-        (None, None),
+        (None, None, None, false),
         "EntityTypeTags.CAN_WEAR_HORSE_ARMOR excludes skeleton horses"
     );
     assert_eq!(
         horse_body_armor(&store, 85),
-        (None, None),
+        (None, None, None, false),
         "non-horse entities do not project horse body armor"
     );
     assert_eq!(
         horse_body_armor(&store, 86),
-        (None, None),
+        (None, None, None, false),
         "baby horses skip the layer because vanilla supplies no baby armor model"
     );
 
@@ -1479,7 +1511,7 @@ fn entity_model_sources_project_horse_body_armor_from_body_slot() {
             item: stack(PLAIN_ITEM_ID, 1, Some(LEATHER_DYE)),
         }],
     }));
-    assert_eq!(horse_body_armor(&store, 82), (None, None));
+    assert_eq!(horse_body_armor(&store, 82), (None, None, None, false));
 }
 
 #[test]

@@ -43,6 +43,7 @@ struct TrimPatternPresentation {
 pub(crate) enum ArmorTrimLayer {
     Humanoid,
     HumanoidLeggings,
+    HorseBody,
     WolfBody,
 }
 
@@ -51,6 +52,7 @@ impl ArmorTrimLayer {
         match self {
             Self::Humanoid => "humanoid",
             Self::HumanoidLeggings => "humanoid_leggings",
+            Self::HorseBody => "horse_body",
             Self::WolfBody => "wolf_body",
         }
     }

@@ -7,6 +7,7 @@ use crate::entity_models::colored::{
     entity_model_root_transform, mesh_transformer_scaled_model_root_transform, HORSE_SCALE,
 };
 use crate::entity_models::textured::EntityModelRenderSubmission;
+use crate::DynamicEntityTextureImage;
 
 #[test]
 fn horse_model_parts_match_vanilla_26_1_body_layers() {
@@ -2507,6 +2508,123 @@ fn horse_body_armor_layer_renders_for_adult_horse_and_zombie_horse_only() {
         "vanilla 26.1 has no chainmail horse_body equipment texture"
     );
     assert!(invalid_material_meshes.armor_cutout.vertices.is_empty());
+}
+
+#[test]
+fn horse_body_armor_trim_follows_foil_and_precedes_saddle() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        HORSE_WHITE_TEXTURE_REF,
+        HORSE_WHITE_BABY_TEXTURE_REF,
+        HORSE_BODY_LEATHER_TEXTURE_REF,
+        HORSE_BODY_LEATHER_OVERLAY_TEXTURE_REF,
+        HORSE_SADDLE_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+    ]))
+    .unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 91_201 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [64, 64],
+        rgba: vec![0xff; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let dye = 0x0033_66CC;
+    let horse = EntityModelInstance::horse(186, [0.0, 64.0, 0.0], 0.0, false)
+        .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
+        .with_equine_body_armor_dye(Some(dye))
+        .with_equine_body_armor_foil(true)
+        .with_equine_body_armor_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        }))
+        .with_equine_saddle(true);
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[horse],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+
+    assert_eq!(meshes.submissions.len(), 6);
+    assert_eq!(meshes.submissions[0].texture, HORSE_WHITE_TEXTURE_REF);
+    assert_eq!(
+        (
+            meshes.submissions[1].texture,
+            meshes.submissions[1].render_type,
+            meshes.submissions[1].order,
+            meshes.submissions[1].submit_sequence,
+        ),
+        (
+            HORSE_BODY_LEATHER_TEXTURE_REF,
+            EntityModelLayerRenderType::ArmorCutoutNoCull,
+            2,
+            2,
+        )
+    );
+    assert_eq!(
+        (
+            meshes.submissions[2].render_type,
+            meshes.submissions[2].order,
+            meshes.submissions[2].submit_sequence,
+        ),
+        (EntityModelLayerRenderType::ArmorEntityGlint, 3, 3)
+    );
+    assert_eq!(
+        (
+            meshes.submissions[3].texture,
+            meshes.submissions[3].order,
+            meshes.submissions[3].submit_sequence,
+        ),
+        (HORSE_BODY_LEATHER_OVERLAY_TEXTURE_REF, 4, 4)
+    );
+    let trim = meshes.submissions[4];
+    assert_eq!(
+        trim.render_type,
+        EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+    );
+    assert_eq!(trim.texture, HORSE_BODY_LEATHER_TEXTURE_REF);
+    assert_eq!(trim.dynamic_texture, Some(trim_texture));
+    assert_eq!(trim.tint, [1.0; 4]);
+    assert_eq!((trim.order, trim.submit_sequence), (5, 5));
+    assert_eq!(
+        meshes.dynamic_player_texture_armor_trim.vertices.len(),
+        288,
+        "the trim reuses the posed adult HORSE_ARMOR model"
+    );
+    assert_eq!(meshes.armor_entity_glint.vertices.len(), 288);
+    assert_eq!(
+        (
+            meshes.submissions[5].texture,
+            meshes.submissions[5].order,
+            meshes.submissions[5].submit_sequence,
+        ),
+        (HORSE_SADDLE_TEXTURE_REF, 2, 6),
+        "the later SimpleEquipmentLayer starts its own order while preserving collector sequence"
+    );
+
+    let baby = EntityModelInstance::horse(187, [0.0, 64.0, 0.0], 0.0, true)
+        .with_equine_body_armor(Some(EntityArmorMaterial::Leather))
+        .with_equine_body_armor_foil(true)
+        .with_equine_body_armor_trim(Some(EntityArmorTrim {
+            texture: trim_texture,
+            decal: false,
+        }))
+        .with_equine_saddle(true);
+    let baby_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[baby],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    assert!(baby_meshes.armor_cutout.vertices.is_empty());
+    assert!(baby_meshes.armor_entity_glint.vertices.is_empty());
+    assert!(baby_meshes
+        .dynamic_player_texture_armor_trim
+        .vertices
+        .is_empty());
 }
 
 #[test]

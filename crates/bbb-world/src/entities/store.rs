@@ -1675,7 +1675,18 @@ impl EntityStore {
         } else {
             None
         };
+        let horse_body_armor_trim = horse_body_armor.and_then(|material| {
+            armor_trim_sprite(
+                registries,
+                body_slot_item()?,
+                material.equipment_asset_id(),
+                ArmorTrimLayer::HorseBody,
+            )
+        });
         let horse_body_armor_dye = horse_body_armor.and_then(|_| body_slot_armor_dye());
+        let horse_body_armor_foil = horse_body_armor
+            .and_then(|_| body_slot_item())
+            .is_some_and(ItemStackSummary::has_foil);
         let wolf_body_armor = if identity.entity_type_id == VANILLA_ENTITY_TYPE_WOLF_ID
             && !vanilla_is_baby(identity.entity_type_id, &metadata.data_values)
         {
@@ -2524,7 +2535,9 @@ impl EntityStore {
                 .animations
                 .equine_feeding_animation(partial_ticks),
             equine_body_armor: horse_body_armor,
+            equine_body_armor_trim: horse_body_armor_trim,
             equine_body_armor_dye: horse_body_armor_dye,
+            equine_body_armor_foil: horse_body_armor_foil,
             strider_ridden,
             strider_saddle,
             camel_saddle,

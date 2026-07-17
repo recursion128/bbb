@@ -1054,10 +1054,16 @@ entity_render_state! {
     /// its optional dye through [`Self::equine_body_armor_dye`]. Babies skip it because vanilla
     /// supplies no baby armor model; skeleton horses are excluded by the vanilla armor-wearer tag.
     (with_equine_body_armor) equine_body_armor: Option<EntityArmorMaterial> = None;
+    /// Vanilla armor trim over the adult `HORSE_BODY` equipment model, resolved through the shared
+    /// runtime trim atlas.
+    (with_equine_body_armor_trim) equine_body_armor_trim: Option<EntityArmorTrim> = None;
     /// Vanilla `DyedItemColor.getOrDefault` for `EquineRenderState.bodyArmorItem`: the packed RGB dye
     /// component on leather horse armor. Non-leather horse armor ignores it and renders white; undyed
     /// leather falls back to `DyedItemColor.LEATHER_COLOR`.
     (with_equine_body_armor_dye) equine_body_armor_dye: Option<u32> = None;
+    /// Vanilla `ItemStack.hasFoil()` for horse body armor. The glint follows the first rendered
+    /// equipment layer and precedes later base layers and the trim.
+    (with_equine_body_armor_foil) equine_body_armor_foil: bool = false;
     /// Vanilla `WolfRenderState.bodyArmorItem`: an adult wolf body equipment item whose equipment
     /// asset provides a `WOLF_BODY` layer. The renderer maps `ArmadilloScute` to the wolf armor
     /// equipment textures and skips babies.
@@ -3069,7 +3075,9 @@ mod tests {
                 equine_stand_animation: 0.0,
                 equine_feeding_animation: 0.0,
                 equine_body_armor: None,
+                equine_body_armor_trim: None,
                 equine_body_armor_dye: None,
+                equine_body_armor_foil: false,
                 wolf_body_armor: None,
                 wolf_body_armor_trim: None,
                 wolf_body_armor_dye: None,

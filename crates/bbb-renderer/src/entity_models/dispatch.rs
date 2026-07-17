@@ -924,8 +924,13 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_horse_textured_layers(self.meshes, instance, variant, baby, markings, self.atlas);
-        render_equine_body_armor_layer(self.meshes, *instance, self.atlas);
-        render_equine_saddle_layer(self.meshes, *instance, self.atlas);
+        let next_submit_sequence = render_equine_body_armor_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+        );
+        render_equine_saddle_layer(self.meshes, *instance, self.atlas, next_submit_sequence);
     }
 
     fn donkey_model(
@@ -936,7 +941,7 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_donkey_textured_layers(self.meshes, instance, family, baby, has_chest, self.atlas);
-        render_equine_saddle_layer(self.meshes, *instance, self.atlas);
+        render_equine_saddle_layer(self.meshes, *instance, self.atlas, 1);
     }
 
     fn undead_horse_model(
@@ -946,8 +951,13 @@ impl EntityModelSink for TexturedSink<'_> {
         instance: &EntityModelInstance,
     ) {
         render_undead_horse_textured_layers(self.meshes, instance, family, baby, self.atlas);
-        render_equine_body_armor_layer(self.meshes, *instance, self.atlas);
-        render_equine_saddle_layer(self.meshes, *instance, self.atlas);
+        let next_submit_sequence = render_equine_body_armor_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+        );
+        render_equine_saddle_layer(self.meshes, *instance, self.atlas, next_submit_sequence);
     }
 
     fn boat_model(&mut self, family: BoatModelFamily, chest: bool, instance: &EntityModelInstance) {

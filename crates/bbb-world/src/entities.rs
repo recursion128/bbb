@@ -2156,11 +2156,19 @@ entity_model_source_state! {
     /// excluded by the vanilla armor-wearer tag.
     #[serde(default)]
     pub equine_body_armor: Option<ArmorMaterialKind>,
+    /// Vanilla `ArmorTrim.layerAssetId` for an adult horse or zombie horse's `HORSE_BODY`
+    /// equipment layer. Native resolves the `trims/entity/horse_body` sprite at the atlas boundary.
+    #[serde(default)]
+    pub equine_body_armor_trim: Option<ArmorTrimSprite>,
     /// Vanilla `DyedItemColor` for leather horse armor in the body slot: a packed RGB dye carried
     /// alongside [`Self::equine_body_armor`]. Non-leather horse armor ignores it; undyed leather uses
     /// the vanilla leather default color in the renderer.
     #[serde(default)]
     pub equine_body_armor_dye: Option<i32>,
+    /// Vanilla `ItemStack.hasFoil()` for the horse body armor item. `EquipmentLayerRenderer`
+    /// inserts one armor glint immediately after the first rendered equipment layer.
+    #[serde(default)]
+    pub equine_body_armor_foil: bool,
     /// Vanilla `StriderRenderState.isRidden`: true when a strider has passengers, which makes
     /// `StriderModel.setupAnim` zero body pitch/yaw.
     #[serde(default)]
