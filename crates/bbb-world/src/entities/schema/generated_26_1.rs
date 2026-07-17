@@ -23549,6 +23549,21 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn mob_spawn_event_consumer_uses_generated_class_membership() {
+        let source = include_str!("../../entities.rs");
+        let body = source
+            .split("pub fn mob_spawn_particle_state")
+            .nth(1)
+            .and_then(|source| source.split("    pub fn ").next())
+            .expect("mob spawn particle projection source");
+        assert!(body.contains("vanilla_entity_metadata_type_is_mob"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_"));
+        let play_apply = include_str!("../../play_apply.rs");
+        assert!(play_apply.contains("update.event_id == MOB_SPAWN_EVENT_ID"));
+        assert!(play_apply.contains("mob_spawn_particle_state(update.entity_id)"));
+    }
+
+    #[test]
     fn illager_celebrating_consumers_do_not_restore_parallel_metadata_or_types() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");

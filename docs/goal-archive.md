@@ -18503,3 +18503,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   计时保持 client-owned。
 - world 测试锁定离水后等待事件、事件启动、入水前保持状态、取消重置和完整 40-tick
   干燥曲线；generator reverse guard 禁止恢复 Wolf type-id event arm。
+
+## 2026-07-17：Mob spawn entity event
+
+- 依据 vanilla 26.1 `Mob.handleEntityEvent(20)` → `spawnAnim` →
+  `LivingEntity.makePoofParticles`，world/native 现在把事件 20 投影为 20 个 POOF 粒子。
+- Mob membership 从 generated runtime class graph 解析；Zombie/Ocelot 等 Mob 子类适用，
+  ArmorStand/Player 虽然是 LivingEntity 但明确排除，未知实体继续计为 ignored。
+- 事件 20 与 LivingEntity 事件 60 调用同一个 vanilla 方法，因此复用现有 typed poof state
+  和 native resolver；world/native tests 锁定 AABB 尺寸、sink 路由与计数，generator guard
+  禁止恢复实体 type-id membership。

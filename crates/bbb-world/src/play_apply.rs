@@ -73,6 +73,7 @@ const VILLAGER_HAPPY_EVENT_ID: i8 = 14;
 const WITCH_MAGIC_EVENT_ID: i8 = 15;
 const ZOMBIE_VILLAGER_CURE_EVENT_ID: i8 = 16;
 const ANIMAL_LOVE_EVENT_ID: i8 = 18;
+const MOB_SPAWN_EVENT_ID: i8 = 20;
 const ARMOR_STAND_HIT_EVENT_ID: i8 = 32;
 const DOLPHIN_HAPPY_EVENT_ID: i8 = 38;
 const OCELOT_TRUSTING_FAILED_EVENT_ID: i8 = 40;
@@ -499,6 +500,11 @@ impl WorldStore {
                 } else {
                     None
                 };
+                let mob_spawn_particles = if update.event_id == MOB_SPAWN_EVENT_ID {
+                    self.mob_spawn_particle_state(update.entity_id)
+                } else {
+                    None
+                };
                 let living_entity_drown_particles =
                     if update.event_id == LIVING_ENTITY_DROWN_EVENT_ID {
                         self.living_entity_drown_particle_state(update.entity_id)
@@ -540,6 +546,9 @@ impl WorldStore {
                         effects.witch_magic_particles(self, state);
                     }
                     if let Some(state) = living_entity_poof_particles {
+                        effects.living_entity_poof_particles(self, state);
+                    }
+                    if let Some(state) = mob_spawn_particles {
                         effects.living_entity_poof_particles(self, state);
                     }
                     if let Some(state) = living_entity_drown_particles {
@@ -3743,6 +3752,65 @@ mod tests {
         assert_eq!(effects.living_entity_poof_particles.len(), 1);
         let state = effects.living_entity_poof_particles[0];
         assert_eq!(state.entity_id, 92);
+        assert_eq!(
+            state.position,
+            crate::EntityVec3 {
+                x: 1.25,
+                y: 64.0,
+                z: -2.5,
+            }
+        );
+        assert!((state.width - 0.6).abs() < 1.0e-6);
+        assert!((state.height - 1.95).abs() < 1.0e-5);
+        assert_eq!(store.counters().entity_events_applied, 2);
+        assert_eq!(store.counters().entity_events_ignored, 1);
+    }
+
+    #[test]
+    fn mob_spawn_event_forwards_shared_poof_particle_state_only_for_mobs() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        for packet in [
+            PlayClientbound::AddEntity(add_entity(
+                94,
+                VANILLA_ENTITY_TYPE_ZOMBIE_ID,
+                Vec3d {
+                    x: 1.25,
+                    y: 64.0,
+                    z: -2.5,
+                },
+            )),
+            PlayClientbound::AddEntity(add_entity(
+                95,
+                VANILLA_ENTITY_TYPE_ARMOR_STAND_ID,
+                Vec3d {
+                    x: 4.0,
+                    y: 70.0,
+                    z: 8.0,
+                },
+            )),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 94,
+                event_id: MOB_SPAWN_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 95,
+                event_id: MOB_SPAWN_EVENT_ID,
+            }),
+            PlayClientbound::EntityEvent(EntityEvent {
+                entity_id: 404,
+                event_id: MOB_SPAWN_EVENT_ID,
+            }),
+        ] {
+            let leftover = store.apply_play_packet(packet, &mut random, &mut effects);
+            assert!(leftover.is_none());
+        }
+
+        assert_eq!(effects.living_entity_poof_particles.len(), 1);
+        let state = effects.living_entity_poof_particles[0];
+        assert_eq!(state.entity_id, 94);
         assert_eq!(
             state.position,
             crate::EntityVec3 {

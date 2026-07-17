@@ -2704,6 +2704,27 @@ impl WorldStore {
         })
     }
 
+    /// Projects vanilla `Mob.handleEntityEvent(20)` spawn feedback.
+    ///
+    /// `Mob.spawnAnim` calls `LivingEntity.makePoofParticles`, so this shares the exact event-60
+    /// state/resolver while retaining the narrower generated Mob class membership.
+    pub fn mob_spawn_particle_state(
+        &self,
+        entity_id: i32,
+    ) -> Option<LivingEntityPoofParticleState> {
+        let transform = self.probe_entity_transform(entity_id)?;
+        if !schema::vanilla_entity_metadata_type_is_mob(transform.entity_type_id) {
+            return None;
+        }
+        let bounds = self.probe_entity_pick_bounds(entity_id)?;
+        Some(LivingEntityPoofParticleState {
+            entity_id,
+            position: transform.position,
+            width: bounds.max[0] - bounds.min[0],
+            height: bounds.max[1] - bounds.min[1],
+        })
+    }
+
     pub fn living_entity_drown_particle_state(
         &self,
         entity_id: i32,

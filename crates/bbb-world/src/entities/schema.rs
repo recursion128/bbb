@@ -3955,6 +3955,18 @@ pub fn vanilla_entity_metadata_type_is_living(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+/// Returns whether the generated vanilla runtime class inherits `Mob`.
+pub fn vanilla_entity_metadata_type_is_mob(entity_type_id: i32) -> bool {
+    const MOB: &str = "net.minecraft.world.entity.Mob";
+    let Some(runtime_class) = VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
+        .and_then(|entry| entry.runtime_class)
+    else {
+        return false;
+    };
+    vanilla_class_is_or_implements(runtime_class, MOB, 0)
+}
+
 /// Returns the nearest generated vanilla `handleEntityEvent(byte)` declaration owner.
 ///
 /// Event ids and their client-side effects remain behavior owned by the world/runtime paths;
@@ -4442,6 +4454,26 @@ mod tests {
         ));
         assert!(!vanilla_entity_metadata_type_is_leashable(-1));
         assert!(!vanilla_entity_metadata_type_is_leashable(157));
+    }
+
+    #[test]
+    fn generated_class_graph_resolves_mob_event_membership() {
+        assert!(vanilla_entity_metadata_type_is_mob(
+            VANILLA_ENTITY_TYPE_ZOMBIE_ID
+        ));
+        assert!(vanilla_entity_metadata_type_is_mob(
+            VANILLA_ENTITY_TYPE_OCELOT_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_mob(
+            VANILLA_ENTITY_TYPE_ARMOR_STAND_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_mob(
+            VANILLA_ENTITY_TYPE_PLAYER_ID
+        ));
+        assert!(!vanilla_entity_metadata_type_is_mob(-1));
+        assert!(!vanilla_entity_metadata_type_is_mob(
+            VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32
+        ));
     }
 
     #[test]
