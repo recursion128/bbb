@@ -30,6 +30,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     entity_anchor_entries,
     entity_pose_entries,
     equipment_slot_entries,
+    player_inventory_equipment_slot_indices,
     game_type_entries,
     game_type_not_set_id,
     filter_mask_type_entries,
@@ -254,6 +255,56 @@ public enum SoundSource { MASTER("master"), MUSIC("music"); }
         self.assertEqual(
             [entry.serialized_name for entry in sound_source_entries(sounds, 2)],
             ["master", "music"],
+        )
+
+    def test_player_inventory_equipment_slots_join_inventory_mapping(self) -> None:
+        slots = parse_source(
+            "fixture/EquipmentSlot.java",
+            b"""
+package fixture;
+public enum EquipmentSlot {
+  MAINHAND(Type.HAND, 0, 0, "mainhand"), OFFHAND(Type.HAND, 1, 5, "offhand"),
+  FEET(Type.HUMANOID_ARMOR, 0, 1, 1, "feet"), LEGS(Type.HUMANOID_ARMOR, 1, 1, 2, "legs"),
+  CHEST(Type.HUMANOID_ARMOR, 2, 1, 3, "chest"), HEAD(Type.HUMANOID_ARMOR, 3, 1, 4, "head"),
+  BODY(Type.ANIMAL_ARMOR, 0, 1, 6, "body"), SADDLE(Type.SADDLE, 0, 1, 7, "saddle");
+  enum Type { HAND, HUMANOID_ARMOR, ANIMAL_ARMOR, SADDLE; }
+}
+""",
+        )
+        inventory = parse_source(
+            "fixture/Inventory.java",
+            b"""
+package fixture;
+public class Inventory {
+  public static final int INVENTORY_SIZE = 36;
+  public static final int SLOT_OFFHAND = 40;
+  public static final int SLOT_BODY_ARMOR = 41;
+  public static final int SLOT_SADDLE = 42;
+  public static final Map<Integer, EquipmentSlot> EQUIPMENT_SLOT_MAPPING = Map.of(
+      EquipmentSlot.FEET.getIndex(36), EquipmentSlot.FEET,
+      EquipmentSlot.LEGS.getIndex(36), EquipmentSlot.LEGS,
+      EquipmentSlot.CHEST.getIndex(36), EquipmentSlot.CHEST,
+      EquipmentSlot.HEAD.getIndex(36), EquipmentSlot.HEAD,
+      40, EquipmentSlot.OFFHAND,
+      41, EquipmentSlot.BODY,
+      42, EquipmentSlot.SADDLE);
+}
+""",
+        )
+
+        self.assertEqual(
+            player_inventory_equipment_slot_indices(
+                inventory, equipment_slot_entries(slots)
+            ),
+            {
+                "FEET": 36,
+                "LEGS": 37,
+                "CHEST": 38,
+                "HEAD": 39,
+                "OFFHAND": 40,
+                "BODY": 41,
+                "SADDLE": 42,
+            },
         )
 
     def test_serializer_static_calls_and_explicit_game_event_ids_come_from_cst(self) -> None:

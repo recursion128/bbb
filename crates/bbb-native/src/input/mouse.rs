@@ -648,6 +648,7 @@ fn scroll_signum(value: f64) -> f64 {
 mod tests {
     use super::*;
     use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_ATTACK_RANGE_TYPE_ID;
+    use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT;
     use bbb_protocol::packets::{
         AddEntity, AttackEntity, AttackRangeSummary, BlockHitResult as ProtocolBlockHitResult,
         BlockPos as ProtocolBlockPos, BlockUpdate, GameEvent as ProtocolGameEvent,
@@ -667,7 +668,6 @@ mod tests {
     const CROSSHAIR_BLOCK_POS: BlockPos = BlockPos { x: 0, y: 1, z: 3 };
     const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
-    const VANILLA_PLAYER_OFFHAND_SLOT: i32 = 40;
     const VANILLA_WORLD_BORDER_ABSOLUTE_MAX_SIZE: i32 = 29_999_984;
 
     #[derive(Default)]
@@ -930,7 +930,7 @@ mod tests {
             ..LocalPlayerPoseState::default()
         });
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
             item: item_stack(99, 1),
         });
         let mut counters = NetCounters::default();
@@ -2068,7 +2068,7 @@ mod tests {
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_entity(123);
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
             item: item_stack(99, 1),
         });
         let mut counters = NetCounters::default();
@@ -2197,7 +2197,7 @@ mod tests {
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_block();
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
             item: item_stack(99, 1),
         });
         let mut counters = NetCounters::default();
@@ -2236,7 +2236,7 @@ mod tests {
         let mut input = ClientInputState::new(true);
         let mut world = world_with_crosshair_block();
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
             item: item_stack(99, 1),
         });
         set_local_spectator(&mut world);
@@ -2283,7 +2283,7 @@ mod tests {
             item: item_stack(42, 1),
         });
         world.apply_set_player_inventory(ProtocolSetPlayerInventory {
-            slot: VANILLA_PLAYER_OFFHAND_SLOT,
+            slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
             item: item_stack(99, 1),
         });
         let mut counters = NetCounters::default();

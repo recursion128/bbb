@@ -1606,7 +1606,9 @@ pub(super) fn move_between_container_slots(
 pub(super) fn swap_button_inventory_menu_slot(button_num: i8) -> Option<i16> {
     match button_num {
         0..=8 => Some(INVENTORY_MENU_HOTBAR_START + i16::from(button_num)),
-        40 => Some(INVENTORY_MENU_OFFHAND_SLOT),
+        value if i32::from(value) == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT => {
+            Some(INVENTORY_MENU_OFFHAND_SLOT)
+        }
         _ => None,
     }
 }

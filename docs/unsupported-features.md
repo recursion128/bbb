@@ -476,6 +476,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   merchant menu id alias must not return.
   Inventory profile and native attack-range component fixtures must consume the generated
   DataComponentType catalog ids; local profile/attack-range component aliases must not return.
+  Player inventory equipment-slot indices must remain derived from `Inventory.java` through the
+  generated equipment-slot catalog; world/native 36-42 aliases and offhand button literals must
+  not return.
   Axolotl playing-dead membership, wire index and typed default must remain derived from generated
   `Axolotl.DATA_PLAYING_DEAD`; world animation consumers and semantic fixtures must not restore
   fixed accessor/default aliases, hand-written wire indices or read another entity family's slot 19

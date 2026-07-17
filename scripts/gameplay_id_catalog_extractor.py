@@ -2757,6 +2757,78 @@ def equipment_slot_entries(
     return entries
 
 
+def player_inventory_equipment_slot_indices(
+    source: JavaSource, slots: list[EquipmentSlotEntry]
+) -> dict[str, int]:
+    def int_field(name: str) -> int:
+        fields = [field for field in source.fields if field.name == name]
+        if len(fields) != 1 or fields[0].initializer is None:
+            raise GameplayIdExtractionError(
+                f"{source.relative_path}: expected one initialized {name} field"
+            )
+        return _integer(source, fields[0].initializer)
+
+    inventory_size = int_field("INVENTORY_SIZE")
+    special_slots = {
+        "OFFHAND": int_field("SLOT_OFFHAND"),
+        "BODY": int_field("SLOT_BODY_ARMOR"),
+        "SADDLE": int_field("SLOT_SADDLE"),
+    }
+    mapping_fields = [
+        field for field in source.fields if field.name == "EQUIPMENT_SLOT_MAPPING"
+    ]
+    if len(mapping_fields) != 1 or mapping_fields[0].initializer is None:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one initialized EQUIPMENT_SLOT_MAPPING field"
+        )
+    map_calls = [
+        call
+        for call in _calls(source, mapping_fields[0].initializer, "of")
+        if call.qualifier is not None and call.qualifier.canonical == "Map"
+    ]
+    if len(map_calls) != 1 or len(map_calls[0].arguments) % 2 != 0:
+        _fail(
+            source,
+            mapping_fields[0].initializer,
+            "equipment slot mapping must contain one Map.of call with key/value pairs",
+        )
+
+    slot_by_name = {slot.constant_name: slot for slot in slots}
+    expected_names = {"FEET", "LEGS", "CHEST", "HEAD", *special_slots}
+    indices: dict[str, int] = {}
+    arguments = map_calls[0].arguments
+    for offset in range(0, len(arguments), 2):
+        key, value = arguments[offset : offset + 2]
+        value_parts = value.canonical.split(".")
+        if len(value_parts) != 2 or value_parts[0] != "EquipmentSlot":
+            _fail(source, value, "equipment slot mapping value must name EquipmentSlot")
+        name = value_parts[1]
+        if name not in expected_names or name not in slot_by_name:
+            _fail(source, value, f"unexpected player inventory equipment slot {name}")
+        if name in indices:
+            _fail(source, value, f"duplicate player inventory equipment slot {name}")
+        if name in special_slots:
+            index = _integer(source, key)
+            if index != special_slots[name]:
+                _fail(source, key, f"{name} mapping differs from its Inventory slot constant")
+        else:
+            expected_key = f"EquipmentSlot.{name}.getIndex ({inventory_size})"
+            if key.canonical != expected_key:
+                _fail(
+                    source,
+                    key,
+                    f"{name} mapping must be {expected_key}, found {key.canonical}",
+                )
+            index = inventory_size + slot_by_name[name].index
+        indices[name] = index
+    if set(indices) != expected_names:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: player inventory equipment mapping differs: "
+            f"expected {sorted(expected_names)}, extracted {sorted(indices)}"
+        )
+    return indices
+
+
 def equipment_slot_group_entries(
     source: JavaSource, expected_count: int = 11
 ) -> list[EquipmentSlotGroupEntry]:

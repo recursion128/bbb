@@ -58,6 +58,7 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID, VANILLA_ENTITY_TYPE_ZOMBIE_ID,
     VANILLA_ENTITY_TYPE_ZOMBIE_NAUTILUS_ID, VANILLA_ENTITY_TYPE_ZOMBIFIED_PIGLIN_ID,
 };
+use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_CHEST_SLOT;
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::packets::AwardStats;
 use bbb_protocol::packets::BlockEntityData;
@@ -626,8 +627,6 @@ fn snow_golem_pumpkin_accessor() -> (u8, i8, i8) {
     )
     .expect("generated SnowGolem pumpkin accessor must resolve")
 }
-
-const VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
 
 fn abstract_horse_metadata_accessors(
     entity_type_id: i32,
@@ -22794,7 +22793,7 @@ fn creative_flight_toggle_suppresses_same_jump_fall_flying_command() {
     set_local_player_on_ground(&mut world, false);
     equip_player_slot(
         &mut world,
-        VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
+        VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         VANILLA_ITEM_ELYTRA_ID,
         1,
     );
@@ -22831,7 +22830,7 @@ fn jump_key_queues_start_fall_flying_when_airborne_with_elytra() {
     set_local_player_on_ground(&mut world, false);
     equip_player_slot(
         &mut world,
-        VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
+        VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         VANILLA_ITEM_ELYTRA_ID,
         1,
     );
@@ -22875,7 +22874,7 @@ fn jump_key_on_ground_with_elytra_only_queues_player_input() {
     set_local_player_on_ground(&mut world, true);
     equip_player_slot(
         &mut world,
-        VANILLA_PLAYER_CHEST_EQUIPMENT_SLOT,
+        VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         VANILLA_ITEM_ELYTRA_ID,
         1,
     );

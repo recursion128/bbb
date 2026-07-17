@@ -4,6 +4,12 @@ use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_PIERCING_WEAPON_TYPE_ID,
     VANILLA_DATA_COMPONENT_SWING_ANIMATION_TYPE_ID, VANILLA_DATA_COMPONENT_USE_EFFECTS_TYPE_ID,
 };
+use bbb_protocol::equipment_slots::{
+    VANILLA_PLAYER_INVENTORY_BODY_SLOT, VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
+    VANILLA_PLAYER_INVENTORY_FEET_SLOT, VANILLA_PLAYER_INVENTORY_HEAD_SLOT,
+    VANILLA_PLAYER_INVENTORY_LEGS_SLOT, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
+    VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
+};
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
 use bbb_protocol::menu_types::{
     VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BLAST_FURNACE_ID,
@@ -203,13 +209,6 @@ const HOPPER_CONTAINER_SLOT_COUNT: i16 = 5;
 const SHULKER_BOX_CONTAINER_SLOT_COUNT: i16 = 27;
 const GENERIC_CONTAINER_PLAYER_SLOT_COUNT: i16 = 36;
 const PLAYER_HOTBAR_SIZE: usize = 9;
-const PLAYER_FEET_EQUIPMENT_SLOT: i32 = 36;
-const PLAYER_LEGS_EQUIPMENT_SLOT: i32 = 37;
-const PLAYER_CHEST_EQUIPMENT_SLOT: i32 = 38;
-const PLAYER_HEAD_EQUIPMENT_SLOT: i32 = 39;
-const PLAYER_OFFHAND_SLOT: i32 = 40;
-const PLAYER_BODY_EQUIPMENT_SLOT: i32 = 41;
-const PLAYER_SADDLE_EQUIPMENT_SLOT: i32 = 42;
 const INVENTORY_MENU_CONTAINER_ID: i32 = 0;
 const INVENTORY_MENU_MAIN_START: i16 = 9;
 const INVENTORY_MENU_MAIN_END: i16 = 36;
@@ -512,7 +511,7 @@ impl InventoryState {
     ) -> bool {
         counters.inventory_slot_updates_received += 1;
         let slot_id = packet.slot;
-        if !(0..=PLAYER_SADDLE_EQUIPMENT_SLOT).contains(&slot_id) {
+        if !(0..=VANILLA_PLAYER_INVENTORY_SADDLE_SLOT).contains(&slot_id) {
             return false;
         }
         let menu_slot = inventory_slot_to_inventory_menu_slot(slot_id);
@@ -1174,7 +1173,7 @@ impl InventoryState {
     pub(crate) fn local_player_has_equipped_elytra(&self) -> bool {
         self.player_slots
             .iter()
-            .find(|slot| slot.slot == PLAYER_CHEST_EQUIPMENT_SLOT)
+            .find(|slot| slot.slot == VANILLA_PLAYER_INVENTORY_CHEST_SLOT)
             .is_some_and(|slot| {
                 slot.item.item_id == Some(VANILLA_ITEM_ELYTRA_ID)
                     && item_stack_is_non_empty(&slot.item)
@@ -1827,11 +1826,9 @@ impl InventoryState {
     }
 
     fn local_offhand_item(&self) -> Option<&ProtocolItemStackSummary> {
-        if let Some(item) = self
-            .player_slots
-            .iter()
-            .find_map(|slot| (slot.slot == PLAYER_OFFHAND_SLOT).then_some(&slot.item))
-        {
+        if let Some(item) = self.player_slots.iter().find_map(|slot| {
+            (slot.slot == VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT).then_some(&slot.item)
+        }) {
             return Some(item);
         }
 
@@ -1843,11 +1840,11 @@ impl InventoryState {
 
     pub(crate) fn local_player_has_freeze_immune_wearable(&self, ctx: InventoryCtx<'_>) -> bool {
         [
-            PLAYER_FEET_EQUIPMENT_SLOT,
-            PLAYER_LEGS_EQUIPMENT_SLOT,
-            PLAYER_CHEST_EQUIPMENT_SLOT,
-            PLAYER_HEAD_EQUIPMENT_SLOT,
-            PLAYER_BODY_EQUIPMENT_SLOT,
+            VANILLA_PLAYER_INVENTORY_FEET_SLOT,
+            VANILLA_PLAYER_INVENTORY_LEGS_SLOT,
+            VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
+            VANILLA_PLAYER_INVENTORY_HEAD_SLOT,
+            VANILLA_PLAYER_INVENTORY_BODY_SLOT,
         ]
         .into_iter()
         .filter_map(|slot| self.local_player_inventory_item(slot))
@@ -1857,7 +1854,7 @@ impl InventoryState {
     }
 
     pub(crate) fn local_player_can_walk_on_powder_snow(&self, ctx: InventoryCtx<'_>) -> bool {
-        self.local_player_inventory_item(PLAYER_FEET_EQUIPMENT_SLOT)
+        self.local_player_inventory_item(VANILLA_PLAYER_INVENTORY_FEET_SLOT)
             .filter(|item| item.count > 0)
             .and_then(|item| item.item_id)
             .is_some_and(|item_id| {
@@ -2451,7 +2448,7 @@ fn inventory_slot_to_inventory_menu_slot(slot: i32) -> Option<i16> {
         0..=8 => Some(INVENTORY_MENU_HOTBAR_START + slot as i16),
         9..=35 => Some(slot as i16),
         36..=39 => Some((44 - slot) as i16),
-        PLAYER_OFFHAND_SLOT => Some(INVENTORY_MENU_OFFHAND_SLOT),
+        VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT => Some(INVENTORY_MENU_OFFHAND_SLOT),
         _ => None,
     }
 }
@@ -2461,7 +2458,7 @@ fn inventory_menu_slot_to_inventory_slot(slot: i16) -> Option<i32> {
         INVENTORY_MENU_HOTBAR_START..=44 => Some(i32::from(slot - INVENTORY_MENU_HOTBAR_START)),
         9..=35 => Some(i32::from(slot)),
         5..=8 => Some(i32::from(44 - slot)),
-        INVENTORY_MENU_OFFHAND_SLOT => Some(PLAYER_OFFHAND_SLOT),
+        INVENTORY_MENU_OFFHAND_SLOT => Some(VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT),
         _ => None,
     }
 }

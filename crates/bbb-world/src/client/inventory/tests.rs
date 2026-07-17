@@ -151,12 +151,12 @@ fn set_player_inventory_only_tracks_vanilla_inventory_and_equipment_slots() {
 
     assert!(
         store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-            slot: PLAYER_SADDLE_EQUIPMENT_SLOT,
+            slot: VANILLA_PLAYER_INVENTORY_SADDLE_SLOT,
             item: item_stack(22, 1),
         })
     );
     assert_eq!(
-        player_slot_item(&store, PLAYER_SADDLE_EQUIPMENT_SLOT),
+        player_slot_item(&store, VANILLA_PLAYER_INVENTORY_SADDLE_SLOT),
         item_stack(22, 1)
     );
     assert!(store.inventory().inventory_menu.slots.is_empty());
@@ -754,7 +754,7 @@ fn open_local_inventory_builds_container_zero_view_from_player_inventory() {
         item: item_stack(10, 1),
     });
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         item: item_stack(VANILLA_ITEM_ELYTRA_ID, 1),
     });
     store.apply_set_cursor_item(ProtocolSetCursorItem {
@@ -814,7 +814,7 @@ fn local_item_use_prefers_offhand_only_when_selected_hotbar_slot_is_empty() {
     assert!(!store.local_item_use_prefers_offhand());
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_OFFHAND_SLOT,
+        slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
         item: item_stack(99, 1),
     });
     assert!(store.local_item_use_prefers_offhand());
@@ -829,7 +829,7 @@ fn local_item_use_prefers_offhand_only_when_selected_hotbar_slot_is_empty() {
     assert!(store.local_item_use_prefers_offhand());
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_OFFHAND_SLOT,
+        slot: VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT,
         item: ProtocolItemStackSummary::empty(),
     });
     assert!(!store.local_item_use_prefers_offhand());
@@ -1183,7 +1183,7 @@ fn local_player_has_equipped_elytra_true_for_non_empty_elytra_in_chest_slot() {
     let mut store = WorldStore::new();
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         item: item_stack(VANILLA_ITEM_ELYTRA_ID, 1),
     });
 
@@ -1202,7 +1202,7 @@ fn local_player_has_equipped_elytra_false_when_elytra_is_in_wrong_slot() {
     let mut store = WorldStore::new();
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_CHEST_EQUIPMENT_SLOT - 1,
+        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT - 1,
         item: item_stack(VANILLA_ITEM_ELYTRA_ID, 1),
     });
 
@@ -1214,13 +1214,13 @@ fn local_player_has_equipped_elytra_false_for_empty_or_count_zero_stack() {
     let mut store = WorldStore::new();
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         item: ProtocolItemStackSummary::empty(),
     });
     assert!(!store.local_player_has_equipped_elytra());
 
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         item: item_stack(VANILLA_ITEM_ELYTRA_ID, 0),
     });
     assert!(!store.local_player_has_equipped_elytra());
@@ -2819,7 +2819,7 @@ fn apply_local_container_quick_move_auto_equips_armor_slot() {
         ProtocolItemStackSummary::empty()
     );
     assert_eq!(
-        player_slot_item(&store, PLAYER_CHEST_EQUIPMENT_SLOT),
+        player_slot_item(&store, VANILLA_PLAYER_INVENTORY_CHEST_SLOT),
         item_stack(42, 1)
     );
     assert_eq!(
@@ -2866,7 +2866,7 @@ fn apply_local_container_quick_move_auto_equips_offhand_slot() {
         ProtocolItemStackSummary::empty()
     );
     assert_eq!(
-        player_slot_item(&store, PLAYER_OFFHAND_SLOT),
+        player_slot_item(&store, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT),
         item_stack(43, 1)
     );
 }
@@ -2876,7 +2876,7 @@ fn apply_local_container_quick_move_uses_inventory_fallback_when_equipment_slot_
     let mut store = WorldStore::new();
     store.set_default_item_equipment_slots(BTreeMap::from([(42, ItemEquipmentSlot::Chest)]));
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
-        slot: PLAYER_CHEST_EQUIPMENT_SLOT,
+        slot: VANILLA_PLAYER_INVENTORY_CHEST_SLOT,
         item: item_stack(99, 1),
     });
     store.apply_set_player_inventory(ProtocolSetPlayerInventory {
@@ -2910,7 +2910,7 @@ fn apply_local_container_quick_move_uses_inventory_fallback_when_equipment_slot_
         item_stack(42, 1)
     );
     assert_eq!(
-        player_slot_item(&store, PLAYER_CHEST_EQUIPMENT_SLOT),
+        player_slot_item(&store, VANILLA_PLAYER_INVENTORY_CHEST_SLOT),
         item_stack(99, 1)
     );
     assert_eq!(
@@ -8771,7 +8771,7 @@ fn apply_local_container_swap_moves_hovered_slot_to_empty_offhand() {
         ProtocolItemStackSummary::empty()
     );
     assert_eq!(
-        player_slot_item(&store, PLAYER_OFFHAND_SLOT),
+        player_slot_item(&store, VANILLA_PLAYER_INVENTORY_OFFHAND_SLOT),
         item_stack(44, 5)
     );
 }
