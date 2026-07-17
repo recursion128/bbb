@@ -247,7 +247,7 @@ def generate(source_root: Path) -> tuple[str, str]:
     resource_paths: list[str] = []
     for declaration in value["declarations"]:
         resource_paths.extend(_resource_ids(declaration, value["item_id_constants"]))
-    return facts, _render_types(resource_paths, value["item_constants"])
+    return facts, _render_types(resource_paths, extracted.item_constants)
 
 
 def _check(path: Path, generated: str) -> bool:

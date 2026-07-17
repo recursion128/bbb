@@ -80,11 +80,9 @@ class ExtractedItemRegistryCatalog:
             "check_command": "scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py --check",
             "sources": [
                 "net/minecraft/references/ItemIds.java",
-                "net/minecraft/world/item/Item.java",
                 "net/minecraft/world/item/Items.java",
             ],
             "item_id_constants": self.item_id_constants,
-            "item_constants": self.item_constants,
             "declarations": list(self.declarations),
         }
 
