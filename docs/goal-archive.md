@@ -18381,3 +18381,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `IllagerModelFamily`；spellcasting、aggressive 与 celebrating 仍走各自动态投影。
 - renderer generator 输出 reverse guard，禁止 native kind dispatch 恢复四个 illager type
   常量分支。
+
+## 2026-07-17：生成 Camel model-kind dispatch
+
+- world renderer owner 现在把 source-generated `CamelRenderer` / `CamelHuskRenderer` provider
+  class 映射为 typed camel renderer kind，并以 Horse 作为非成员负例。
+- native model-kind 选择删除 Camel/CamelHusk entity-type arms；普通 Camel 继续组合 generated
+  baby accessor，CamelHusk 按 `MobRenderer` 的 adult-only model 保持 `baby=false`。
+- renderer generator 输出 reverse guard，禁止 native kind dispatch 恢复两个 camel type
+  常量分支；同用一个 renderer class、必须解析 provider constructor 参数的 undead-horse
+  等子族保留为后续独立切片。

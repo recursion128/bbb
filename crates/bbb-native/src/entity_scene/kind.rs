@@ -75,6 +75,16 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             },
         };
     }
+    if let Some(camel_kind) = bbb_world::vanilla_entity_renderer_camel_kind(entity_type_id) {
+        return EntityModelKind::Camel {
+            family: match camel_kind {
+                bbb_world::VanillaCamelRendererKind::Camel => CamelModelFamily::Camel,
+                bbb_world::VanillaCamelRendererKind::CamelHusk => CamelModelFamily::CamelHusk,
+            },
+            baby: matches!(camel_kind, bbb_world::VanillaCamelRendererKind::Camel)
+                && ageable_baby(entity_type_id, data_values),
+        };
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -169,14 +179,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
         VANILLA_ENTITY_TYPE_ZOMBIE_HORSE_ID => {
             undead_horse_model_kind(entity_type_id, UndeadHorseModelFamily::Zombie, data_values)
         }
-        VANILLA_ENTITY_TYPE_CAMEL_ID => EntityModelKind::Camel {
-            family: CamelModelFamily::Camel,
-            baby: ageable_baby(entity_type_id, data_values),
-        },
-        VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID => EntityModelKind::Camel {
-            family: CamelModelFamily::CamelHusk,
-            baby: false,
-        },
         VANILLA_ENTITY_TYPE_LLAMA_ID => {
             llama_model_kind(entity_type_id, LlamaModelFamily::Llama, data_values)
         }

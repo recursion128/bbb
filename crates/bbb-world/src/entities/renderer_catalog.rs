@@ -41,6 +41,12 @@ pub enum VanillaIllagerRendererKind {
     Vindicator,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaCamelRendererKind {
+    Camel,
+    CamelHusk,
+}
+
 include!("renderer_catalog/generated_26_1.rs");
 
 pub(super) fn vanilla_living_entity_renderer_name_is_upside_down(name: &str) -> bool {
@@ -182,6 +188,14 @@ pub fn vanilla_entity_renderer_illager_kind(
     }
 }
 
+pub fn vanilla_entity_renderer_camel_kind(entity_type_id: i32) -> Option<VanillaCamelRendererKind> {
+    match vanilla_entity_renderer_registration(entity_type_id)?.renderer_class {
+        "CamelRenderer" => Some(VanillaCamelRendererKind::Camel),
+        "CamelHuskRenderer" => Some(VanillaCamelRendererKind::CamelHusk),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
@@ -189,7 +203,8 @@ mod tests {
     use bbb_protocol::entity_types::{
         VANILLA_ENTITY_TYPE_ALLAY_ID, VANILLA_ENTITY_TYPE_AREA_EFFECT_CLOUD_ID,
         VANILLA_ENTITY_TYPE_ARMOR_STAND_ID, VANILLA_ENTITY_TYPE_BLAZE_ID,
-        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAT_ID,
+        VANILLA_ENTITY_TYPE_BOGGED_ID, VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID,
+        VANILLA_ENTITY_TYPE_CAMEL_ID, VANILLA_ENTITY_TYPE_CAT_ID,
         VANILLA_ENTITY_TYPE_COPPER_GOLEM_ID, VANILLA_ENTITY_TYPE_DONKEY_ID,
         VANILLA_ENTITY_TYPE_DRAGON_FIREBALL_ID, VANILLA_ENTITY_TYPE_DROWNED_ID,
         VANILLA_ENTITY_TYPE_EGG_ID, VANILLA_ENTITY_TYPE_ENDER_PEARL_ID,
@@ -389,6 +404,22 @@ mod tests {
         );
         assert_eq!(
             vanilla_entity_renderer_illager_kind(VANILLA_ENTITY_TYPE_WITCH_ID),
+            None
+        );
+    }
+
+    #[test]
+    fn generated_camel_kinds_match_registered_renderer_classes() {
+        assert_eq!(
+            vanilla_entity_renderer_camel_kind(VANILLA_ENTITY_TYPE_CAMEL_ID),
+            Some(VanillaCamelRendererKind::Camel)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_camel_kind(VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID),
+            Some(VanillaCamelRendererKind::CamelHusk)
+        );
+        assert_eq!(
+            vanilla_entity_renderer_camel_kind(VANILLA_ENTITY_TYPE_HORSE_ID),
             None
         );
     }
