@@ -24712,8 +24712,11 @@ mod generated_catalog_guards {
     #[test]
     fn production_projectile_family_accessors_do_not_restore_fixed_metadata_facts() {
         let animations = include_str!("../animations.rs");
-        let projectiles = include_str!("../projectiles.rs");
-        let projectiles = projectiles.split("#[cfg(test)]\nmod tests").next().unwrap();
+        let projectile_source = include_str!("../projectiles.rs");
+        let projectiles = projectile_source
+            .split("#[cfg(test)]\nmod tests")
+            .next()
+            .unwrap();
         let world_entities = include_str!("../../entities.rs");
         let world_consumers = world_entities
             .split("pub fn take_item_entity_pickup_particle_state")
@@ -24725,6 +24728,7 @@ mod generated_catalog_guards {
         let native_kind = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");
         let native_data = include_str!("../../../../bbb-native/src/entity_scene/entity_data.rs");
         let native_input = include_str!("../../../../bbb-native/src/input.rs");
+        let native_input_tests = include_str!("../../../../bbb-native/src/input/tests.rs");
         for source in [animations, projectiles, native_input] {
             assert!(
                 source.contains("vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type")
@@ -24752,6 +24756,10 @@ mod generated_catalog_guards {
             "ABSTRACT_ARROW_DEFAULT_PIERCE_LEVEL",
             "ABSTRACT_ARROW_IN_GROUND_DATA_ID",
             "ABSTRACT_ARROW_DEFAULT_IN_GROUND",
+            "ABSTRACT_ARROW_FLAG_CRIT",
+            "ABSTRACT_ARROW_FLAG_NO_PHYSICS",
+            "VANILLA_ABSTRACT_ARROW_FLAG_CRIT",
+            "VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS",
             "ARROW_EFFECT_COLOR_DATA_ID",
             "ARROW_DEFAULT_EFFECT_COLOR",
             "TRIDENT_FOIL_DATA_ID",
@@ -24784,6 +24792,14 @@ mod generated_catalog_guards {
             assert!(
                 !native_data.contains(removed),
                 "native data restored {removed}"
+            );
+            assert!(
+                !projectile_source.contains(removed),
+                "projectile fixtures restored {removed}"
+            );
+            assert!(
+                !native_input_tests.contains(removed),
+                "native input fixtures restored {removed}"
             );
         }
     }

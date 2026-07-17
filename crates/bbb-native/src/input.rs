@@ -122,7 +122,6 @@ use bbb_world::vanilla_entity_metadata_wither_skull_dangerous_accessor_for_entit
 use bbb_world::vanilla_entity_metadata_wolf_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_accessors_for_entity_type;
 use bbb_world::vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type;
-use bbb_world::VANILLA_ABSTRACT_ARROW_FLAG_CRIT as ABSTRACT_ARROW_FLAG_CRIT;
 use bbb_world::{
     vanilla_entity_metadata_baby_accessor_for_entity_type,
     vanilla_entity_metadata_dolphin_accessors_for_entity_type,
@@ -5036,7 +5035,7 @@ fn debug_push_abstract_arrow_additional_save_data(entity: &EntityState, fields: 
     if let Some(flags) = debug_entity_data_byte_present(entity, accessors.flags_data_id) {
         fields.push(format!(
             "crit: {}",
-            debug_snbt_bool(flags & ABSTRACT_ARROW_FLAG_CRIT != 0)
+            debug_snbt_bool(flags & accessors.crit_mask != 0)
         ));
     }
     if let Some(pierce_level) =

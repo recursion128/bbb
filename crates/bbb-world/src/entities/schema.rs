@@ -556,6 +556,8 @@ pub struct VanillaShulkerMetadataAccessors {
 pub struct VanillaAbstractArrowMetadataAccessors {
     pub flags_data_id: u8,
     pub flags_default: i8,
+    pub crit_mask: i8,
+    pub no_physics_mask: i8,
     pub pierce_level_data_id: u8,
     pub pierce_level_default: i8,
     pub in_ground_data_id: u8,
@@ -2623,7 +2625,7 @@ pub fn vanilla_entity_metadata_shulker_accessors_for_entity_type(
     }
 }
 
-/// Resolves the inherited AbstractArrow accessors and their typed defaults.
+/// Resolves the inherited AbstractArrow accessors, typed defaults, and named flag masks.
 pub fn vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
     entity_type_id: i32,
 ) -> Option<VanillaAbstractArrowMetadataAccessors> {
@@ -2631,6 +2633,14 @@ pub fn vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
     let pierce_level =
         vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "PIERCE_LEVEL")?;
     let in_ground = vanilla_entity_metadata_accessor_for_entity_type(entity_type_id, "IN_GROUND")?;
+    let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractArrow);
+    let mask = |name| {
+        schema
+            .own_flags
+            .iter()
+            .find(|flag| flag.name == name && flag.data_id == flags.data_id)
+            .map(|flag| flag.mask)
+    };
     match (
         (flags.owner, flags.serializer_name, flags.typed_default),
         (
@@ -2663,6 +2673,8 @@ pub fn vanilla_entity_metadata_abstract_arrow_accessors_for_entity_type(
         ) => Some(VanillaAbstractArrowMetadataAccessors {
             flags_data_id: flags.data_id,
             flags_default,
+            crit_mask: mask("FLAG_CRIT")?,
+            no_physics_mask: mask("FLAG_NOPHYSICS")?,
             pierce_level_data_id: pierce_level.data_id,
             pierce_level_default,
             in_ground_data_id: in_ground.data_id,
@@ -6728,14 +6740,43 @@ mod tests {
     }
 
     #[test]
-    fn generated_abstract_arrow_accessors_own_inherited_membership_indices_and_defaults() {
+    fn generated_abstract_arrow_accessors_own_inherited_membership_indices_defaults_and_masks() {
+        let schema = vanilla_entity_metadata_schema(VanillaEntityMetadataFamily::AbstractArrow);
+        let field = |name| {
+            schema
+                .own_fields
+                .iter()
+                .find(|field| field.name == name)
+                .expect("generated AbstractArrow field")
+        };
+        let flags = field("ID_FLAGS");
+        let pierce_level = field("PIERCE_LEVEL");
+        let in_ground = field("IN_GROUND");
+        let flag = |name| {
+            schema
+                .own_flags
+                .iter()
+                .find(|flag| flag.name == name)
+                .expect("generated AbstractArrow flag")
+        };
+        let VanillaEntityMetadataDefault::Byte(flags_default) = flags.default else {
+            panic!("generated AbstractArrow flags default must be BYTE");
+        };
+        let VanillaEntityMetadataDefault::Byte(pierce_level_default) = pierce_level.default else {
+            panic!("generated AbstractArrow pierce-level default must be BYTE");
+        };
+        let VanillaEntityMetadataDefault::Boolean(in_ground_default) = in_ground.default else {
+            panic!("generated AbstractArrow in-ground default must be BOOLEAN");
+        };
         let expected = VanillaAbstractArrowMetadataAccessors {
-            flags_data_id: 8,
-            flags_default: 0,
-            pierce_level_data_id: 9,
-            pierce_level_default: 0,
-            in_ground_data_id: 10,
-            in_ground_default: false,
+            flags_data_id: flags.data_id,
+            flags_default,
+            crit_mask: flag("FLAG_CRIT").mask,
+            no_physics_mask: flag("FLAG_NOPHYSICS").mask,
+            pierce_level_data_id: pierce_level.data_id,
+            pierce_level_default,
+            in_ground_data_id: in_ground.data_id,
+            in_ground_default,
         };
         for entity_type_id in [
             VANILLA_ENTITY_TYPE_ARROW_ID,

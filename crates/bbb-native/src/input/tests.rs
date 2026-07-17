@@ -10855,7 +10855,7 @@ fn shift_f3_i_skips_unpickable_arrow_but_direct_copy_encodes_save_nbt() {
                 data_id: accessors.flags_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
+                value: EntityDataValueKind::Byte(accessors.flags_default | accessors.crit_mask),
             },
             ProtocolEntityDataValue {
                 data_id: accessors.pierce_level_data_id,
@@ -10935,7 +10935,7 @@ fn shift_f3_i_skips_unpickable_spectral_arrow_but_direct_copy_encodes_save_nbt()
                 data_id: accessors.flags_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
+                value: EntityDataValueKind::Byte(accessors.flags_default | accessors.crit_mask),
             },
             ProtocolEntityDataValue {
                 data_id: accessors.pierce_level_data_id,
@@ -11015,7 +11015,7 @@ fn shift_f3_i_skips_unpickable_trident_but_direct_copy_encodes_save_nbt() {
                 data_id: accessors.flags_data_id,
                 serializer_id:
                     bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_CRIT),
+                value: EntityDataValueKind::Byte(accessors.flags_default | accessors.crit_mask),
             },
             ProtocolEntityDataValue {
                 data_id: accessors.pierce_level_data_id,

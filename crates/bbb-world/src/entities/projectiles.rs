@@ -14,7 +14,6 @@ use super::schema::{
     vanilla_entity_metadata_armor_stand_accessors_for_entity_type,
     vanilla_entity_metadata_type_is_hurting_projectile, vanilla_entity_metadata_type_is_pickable,
     vanilla_entity_metadata_type_is_projectile, vanilla_entity_metadata_type_is_wind_charge,
-    VANILLA_ABSTRACT_ARROW_FLAG_NO_PHYSICS as ABSTRACT_ARROW_FLAG_NO_PHYSICS,
 };
 use super::{
     EntityHurtingProjectile, EntityIdentity, EntityMount, EntityPickBoundsState,
@@ -204,7 +203,7 @@ impl EntityStore {
                 )?;
                 let physics_enabled =
                     self.metadata_byte(*id, accessors.flags_data_id, accessors.flags_default)?
-                        & ABSTRACT_ARROW_FLAG_NO_PHYSICS
+                        & accessors.no_physics_mask
                         == 0;
                 Some((*id, in_ground && physics_enabled))
             })
@@ -798,7 +797,9 @@ mod tests {
                 ProtocolEntityDataValue {
                     data_id: accessors.flags_data_id,
                     serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
-                    value: EntityDataValueKind::Byte(ABSTRACT_ARROW_FLAG_NO_PHYSICS),
+                    value: EntityDataValueKind::Byte(
+                        accessors.flags_default | accessors.no_physics_mask,
+                    ),
                 },
                 ProtocolEntityDataValue {
                     data_id: accessors.in_ground_data_id,

@@ -18237,3 +18237,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   typed default 与 `isPlayerCreated` named mask，保持 Chicken 同槽位负例。
 - native F3+I production 与 fixture 删除固定 mask alias，按同一 accessor 解码和构造 flags；
   generator reverse guard 覆盖 input facade 与完整 tests，禁止固定 id/default/mask 回流。
+
+## 2026-07-16：派生 AbstractArrow named masks
+
+- world AbstractArrow bundle 在 inherited flags/pierce/in-ground 字段之外统一解析 generated
+  `FLAG_CRIT` 与 `FLAG_NOPHYSICS` named masks；schema 测试不再手抄 wire indices/defaults。
+- world trident lifecycle 与 native Arrow/SpectralArrow/ThrownTrident F3+I production/fixtures
+  删除固定 mask aliases；projectile-family reverse guard 纳入两份完整 fixtures。
