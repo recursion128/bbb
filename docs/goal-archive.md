@@ -18251,3 +18251,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   generated companion bundle 构造 registry-holder metadata，删除三处固定 wire id。
 - companion reverse guard 纳入完整 entity-variant texture 与 audio sources，禁止四组
   variant/sound-variant accessor aliases 回流；session holder order 与 serializer 保持不变。
+
+## 2026-07-16：统一 OminousItemSpawner native bake fixture
+
+- native item-cluster bake fixture 改由 generated OminousItemSpawner-only `DATA_ITEM` accessor
+  构造 ITEM_STACK metadata，删除固定 slot 8 常量。
+- OminousItemSpawner reverse guard 纳入完整 native item-model tests；world projection、同槽位
+  sibling collision 与 age/scale/spin 语义保持既有覆盖。

@@ -15,7 +15,8 @@ use bbb_renderer::{
     EntityDefaultPlayerSkin, EntityPlayerSkin, ParticleItemOptionState, PlayerModelPartVisibility,
 };
 use bbb_world::{
-    ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
+    vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type, ChunkColumn,
+    ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain, PaletteKind,
     PalettedContainerData, WorldDimension,
 };
 use std::path::{Path, PathBuf};
@@ -3762,8 +3763,6 @@ fn ominous_item_spawner_base_transform_scales_in_and_spins() {
 
 #[test]
 fn ominous_item_spawner_models_emit_item_cluster_meshes() {
-    const OMINOUS_ITEM_SPAWNER_DATA_ITEM_ID: u8 = 8;
-
     let root = unique_item_model_temp_dir("ominous-item-spawner");
     write_flat_item_runtime_fixture(&root, &["omen_drop"]);
     let item_runtime =
@@ -3776,10 +3775,14 @@ fn ominous_item_spawner_models_emit_item_cluster_meshes() {
         801,
         VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
     ));
+    let item_data_id = vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type(
+        VANILLA_ENTITY_TYPE_OMINOUS_ITEM_SPAWNER_ID,
+    )
+    .expect("generated OminousItemSpawner item accessor");
     assert!(world.apply_set_entity_data(SetEntityData {
         id: 801,
         values: vec![EntityDataValue {
-            data_id: OMINOUS_ITEM_SPAWNER_DATA_ITEM_ID,
+            data_id: item_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(ItemStackSummary {
                 item_id: Some(item_id),

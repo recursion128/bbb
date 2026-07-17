@@ -294,8 +294,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `DATA_SHOT_AT_ANGLE`; world item/trail/explosion projection, native F3+I and semantic fixtures
   must not restore a FireworkRocket type predicate or fixed accessor/default aliases.
   OminousItemSpawner item membership, ITEM_STACK wire index and empty default must remain derived
-  from generated `DATA_ITEM`; world item-cluster projection and semantic fixtures must not restore
-  a type predicate or fixed accessor alias, or read another entity family's slot-8 item field.
+  from generated `DATA_ITEM`; world/native item-cluster projection and semantic fixtures must not
+  restore a type predicate or fixed accessor alias, or read another entity family's slot-8 field.
   ExperienceOrb value membership, wire index and typed default must remain derived from generated
   `ExperienceOrb.DATA_VALUE`; world pickup-icon projection, native F3+I and semantic fixtures must
   not restore fixed accessor/default aliases or read the same wire slot from another entity family.
