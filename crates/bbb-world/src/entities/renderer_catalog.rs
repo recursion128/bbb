@@ -25,6 +25,7 @@ pub(super) struct VanillaEntityRendererRegistration {
     undead_horse_kind: Option<VanillaUndeadHorseRendererKind>,
     horse_kind: Option<VanillaHorseRendererKind>,
     llama_kind: Option<VanillaLlamaRendererKind>,
+    boat_kind: Option<VanillaBoatRendererKind>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,6 +68,26 @@ pub enum VanillaHorseRendererKind {
 pub enum VanillaLlamaRendererKind {
     Llama,
     TraderLlama,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VanillaBoatRendererFamily {
+    Acacia,
+    Bamboo,
+    Birch,
+    Cherry,
+    DarkOak,
+    Jungle,
+    Mangrove,
+    Oak,
+    PaleOak,
+    Spruce,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VanillaBoatRendererKind {
+    pub family: VanillaBoatRendererFamily,
+    pub chest: bool,
 }
 
 include!("renderer_catalog/generated_26_1.rs");
@@ -230,6 +251,10 @@ pub fn vanilla_entity_renderer_horse_kind(entity_type_id: i32) -> Option<Vanilla
 
 pub fn vanilla_entity_renderer_llama_kind(entity_type_id: i32) -> Option<VanillaLlamaRendererKind> {
     vanilla_entity_renderer_registration(entity_type_id)?.llama_kind
+}
+
+pub fn vanilla_entity_renderer_boat_kind(entity_type_id: i32) -> Option<VanillaBoatRendererKind> {
+    vanilla_entity_renderer_registration(entity_type_id)?.boat_kind
 }
 
 #[cfg(test)]
@@ -511,6 +536,55 @@ mod tests {
         assert_eq!(
             vanilla_entity_renderer_llama_kind(VANILLA_ENTITY_TYPE_HORSE_ID),
             None
+        );
+    }
+
+    #[test]
+    fn generated_boat_kinds_match_provider_classes_and_model_layers() {
+        let actual = VANILLA_ENTITY_RENDERER_REGISTRATIONS_26_1
+            .iter()
+            .filter_map(|entry| {
+                entry
+                    .boat_kind
+                    .map(|kind| (entry.constant_name, kind.family, kind.chest))
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual,
+            vec![
+                ("ACACIA_BOAT", VanillaBoatRendererFamily::Acacia, false),
+                ("ACACIA_CHEST_BOAT", VanillaBoatRendererFamily::Acacia, true),
+                ("BAMBOO_CHEST_RAFT", VanillaBoatRendererFamily::Bamboo, true),
+                ("BAMBOO_RAFT", VanillaBoatRendererFamily::Bamboo, false),
+                ("BIRCH_BOAT", VanillaBoatRendererFamily::Birch, false),
+                ("BIRCH_CHEST_BOAT", VanillaBoatRendererFamily::Birch, true),
+                ("CHERRY_BOAT", VanillaBoatRendererFamily::Cherry, false),
+                ("CHERRY_CHEST_BOAT", VanillaBoatRendererFamily::Cherry, true),
+                ("DARK_OAK_BOAT", VanillaBoatRendererFamily::DarkOak, false),
+                (
+                    "DARK_OAK_CHEST_BOAT",
+                    VanillaBoatRendererFamily::DarkOak,
+                    true
+                ),
+                ("JUNGLE_BOAT", VanillaBoatRendererFamily::Jungle, false),
+                ("JUNGLE_CHEST_BOAT", VanillaBoatRendererFamily::Jungle, true),
+                ("MANGROVE_BOAT", VanillaBoatRendererFamily::Mangrove, false),
+                (
+                    "MANGROVE_CHEST_BOAT",
+                    VanillaBoatRendererFamily::Mangrove,
+                    true
+                ),
+                ("OAK_BOAT", VanillaBoatRendererFamily::Oak, false),
+                ("OAK_CHEST_BOAT", VanillaBoatRendererFamily::Oak, true),
+                ("PALE_OAK_BOAT", VanillaBoatRendererFamily::PaleOak, false),
+                (
+                    "PALE_OAK_CHEST_BOAT",
+                    VanillaBoatRendererFamily::PaleOak,
+                    true
+                ),
+                ("SPRUCE_BOAT", VanillaBoatRendererFamily::Spruce, false),
+                ("SPRUCE_CHEST_BOAT", VanillaBoatRendererFamily::Spruce, true),
+            ]
         );
     }
 

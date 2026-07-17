@@ -124,6 +124,23 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             data_values,
         );
     }
+    if let Some(boat_kind) = bbb_world::vanilla_entity_renderer_boat_kind(entity_type_id) {
+        return boat(
+            match boat_kind.family {
+                bbb_world::VanillaBoatRendererFamily::Acacia => BoatModelFamily::Acacia,
+                bbb_world::VanillaBoatRendererFamily::Bamboo => BoatModelFamily::Bamboo,
+                bbb_world::VanillaBoatRendererFamily::Birch => BoatModelFamily::Birch,
+                bbb_world::VanillaBoatRendererFamily::Cherry => BoatModelFamily::Cherry,
+                bbb_world::VanillaBoatRendererFamily::DarkOak => BoatModelFamily::DarkOak,
+                bbb_world::VanillaBoatRendererFamily::Jungle => BoatModelFamily::Jungle,
+                bbb_world::VanillaBoatRendererFamily::Mangrove => BoatModelFamily::Mangrove,
+                bbb_world::VanillaBoatRendererFamily::Oak => BoatModelFamily::Oak,
+                bbb_world::VanillaBoatRendererFamily::PaleOak => BoatModelFamily::PaleOak,
+                bbb_world::VanillaBoatRendererFamily::Spruce => BoatModelFamily::Spruce,
+            },
+            boat_kind.chest,
+        );
+    }
     match entity_type_id {
         VANILLA_ENTITY_TYPE_CHICKEN_ID => {
             chicken_model_kind(entity_type_id, data_values, variant_registries)
@@ -245,26 +262,6 @@ pub(super) fn entity_model_kind_with_time_and_registries(
             entity_type_bounds_placeholder("dragon_fireball_entity_type_bounds", 1.0, 1.0)
         }
         VANILLA_ENTITY_TYPE_ENDER_DRAGON_ID => EntityModelKind::EnderDragon,
-        VANILLA_ENTITY_TYPE_ACACIA_BOAT_ID => boat(BoatModelFamily::Acacia, false),
-        VANILLA_ENTITY_TYPE_ACACIA_CHEST_BOAT_ID => boat(BoatModelFamily::Acacia, true),
-        VANILLA_ENTITY_TYPE_BAMBOO_RAFT_ID => boat(BoatModelFamily::Bamboo, false),
-        VANILLA_ENTITY_TYPE_BAMBOO_CHEST_RAFT_ID => boat(BoatModelFamily::Bamboo, true),
-        VANILLA_ENTITY_TYPE_BIRCH_BOAT_ID => boat(BoatModelFamily::Birch, false),
-        VANILLA_ENTITY_TYPE_BIRCH_CHEST_BOAT_ID => boat(BoatModelFamily::Birch, true),
-        VANILLA_ENTITY_TYPE_CHERRY_BOAT_ID => boat(BoatModelFamily::Cherry, false),
-        VANILLA_ENTITY_TYPE_CHERRY_CHEST_BOAT_ID => boat(BoatModelFamily::Cherry, true),
-        VANILLA_ENTITY_TYPE_DARK_OAK_BOAT_ID => boat(BoatModelFamily::DarkOak, false),
-        VANILLA_ENTITY_TYPE_DARK_OAK_CHEST_BOAT_ID => boat(BoatModelFamily::DarkOak, true),
-        VANILLA_ENTITY_TYPE_JUNGLE_BOAT_ID => boat(BoatModelFamily::Jungle, false),
-        VANILLA_ENTITY_TYPE_JUNGLE_CHEST_BOAT_ID => boat(BoatModelFamily::Jungle, true),
-        VANILLA_ENTITY_TYPE_MANGROVE_BOAT_ID => boat(BoatModelFamily::Mangrove, false),
-        VANILLA_ENTITY_TYPE_MANGROVE_CHEST_BOAT_ID => boat(BoatModelFamily::Mangrove, true),
-        VANILLA_ENTITY_TYPE_OAK_BOAT_ID => boat(BoatModelFamily::Oak, false),
-        VANILLA_ENTITY_TYPE_OAK_CHEST_BOAT_ID => boat(BoatModelFamily::Oak, true),
-        VANILLA_ENTITY_TYPE_PALE_OAK_BOAT_ID => boat(BoatModelFamily::PaleOak, false),
-        VANILLA_ENTITY_TYPE_PALE_OAK_CHEST_BOAT_ID => boat(BoatModelFamily::PaleOak, true),
-        VANILLA_ENTITY_TYPE_SPRUCE_BOAT_ID => boat(BoatModelFamily::Spruce, false),
-        VANILLA_ENTITY_TYPE_SPRUCE_CHEST_BOAT_ID => boat(BoatModelFamily::Spruce, true),
         VANILLA_ENTITY_TYPE_ALLAY_ID => EntityModelKind::Allay,
         VANILLA_ENTITY_TYPE_ARMADILLO_ID => EntityModelKind::Armadillo {
             baby: ageable_baby(entity_type_id, data_values),

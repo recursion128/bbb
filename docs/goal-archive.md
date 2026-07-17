@@ -18420,3 +18420,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   并继续复用现有 variant、幼体与驮箱元数据投影。
 - extractor fixture 锁定两组 layer tuple，renderer generator 输出 reverse guard，防止 native
   恢复两个 entity-type 分支。
+
+## 2026-07-17：生成 Boat/Raft provider kind
+
+- entity renderer extractor 严格解析全部 20 个 `BoatRenderer`/`RaftRenderer` 两参 provider，
+  以 renderer class 与 `ModelLayers` 的精确组合生成十种 family 及 chest 标志；未知 class/layer
+  组合显式失败，不依赖实体常量名。
+- checked-in registration 新增 typed boat kind；native 删除 18 个 boat 与 2 个 bamboo raft
+  type arms，并继续复用现有真实 boat/raft model dispatch。
+- extractor fixture 覆盖 boat/chest-boat 与 raft/chest-raft，world 测试锁定全部 20 条真实注册，
+  renderer generator 输出反向守卫，防止 native 恢复任一 entity-type 分支。

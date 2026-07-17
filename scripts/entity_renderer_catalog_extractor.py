@@ -31,10 +31,34 @@ UNDEAD_HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".UndeadHorseRenderer"
 HORSE_RENDERER_CLASS = RENDERER_PACKAGE + ".HorseRenderer"
 DONKEY_RENDERER_CLASS = RENDERER_PACKAGE + ".DonkeyRenderer"
 LLAMA_RENDERER_CLASS = RENDERER_PACKAGE + ".LlamaRenderer"
+BOAT_RENDERER_CLASS = RENDERER_PACKAGE + ".BoatRenderer"
+RAFT_RENDERER_CLASS = RENDERER_PACKAGE + ".RaftRenderer"
 ABSTRACT_FELINE_MODEL_CLASS = (
     "net.minecraft.client.model.animal.feline.AbstractFelineModel"
 )
 SPECIAL_AVATAR_ENTITY_TYPES = frozenset({"MANNEQUIN", "PLAYER"})
+BOAT_PROVIDER_KINDS = {
+    (BOAT_RENDERER_CLASS, "ModelLayers.ACACIA_BOAT"): ("Acacia", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.ACACIA_CHEST_BOAT"): ("Acacia", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.BIRCH_BOAT"): ("Birch", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.BIRCH_CHEST_BOAT"): ("Birch", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.CHERRY_BOAT"): ("Cherry", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.CHERRY_CHEST_BOAT"): ("Cherry", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.DARK_OAK_BOAT"): ("DarkOak", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.DARK_OAK_CHEST_BOAT"): ("DarkOak", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.JUNGLE_BOAT"): ("Jungle", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.JUNGLE_CHEST_BOAT"): ("Jungle", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.MANGROVE_BOAT"): ("Mangrove", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.MANGROVE_CHEST_BOAT"): ("Mangrove", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.OAK_BOAT"): ("Oak", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.OAK_CHEST_BOAT"): ("Oak", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.PALE_OAK_BOAT"): ("PaleOak", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.PALE_OAK_CHEST_BOAT"): ("PaleOak", True),
+    (BOAT_RENDERER_CLASS, "ModelLayers.SPRUCE_BOAT"): ("Spruce", False),
+    (BOAT_RENDERER_CLASS, "ModelLayers.SPRUCE_CHEST_BOAT"): ("Spruce", True),
+    (RAFT_RENDERER_CLASS, "ModelLayers.BAMBOO_RAFT"): ("Bamboo", False),
+    (RAFT_RENDERER_CLASS, "ModelLayers.BAMBOO_CHEST_RAFT"): ("Bamboo", True),
+}
 
 
 class EntityRendererCatalogExtractionError(ValueError):
@@ -62,6 +86,7 @@ class EntityRendererRegistration:
     undead_horse_kind: str | None
     horse_kind: str | None
     llama_kind: str | None
+    boat_kind: tuple[str, bool] | None
 
 
 def _fail(source: JavaSource, expression: JavaExpression, message: str) -> None:
@@ -715,6 +740,27 @@ def extract_entity_renderer_registrations(
                     "unsupported LlamaRenderer constructor arguments",
                 )
 
+        boat_kind = None
+        if renderer_class in {BOAT_RENDERER_CLASS, RAFT_RENDERER_CLASS}:
+            if (
+                len(constructor_arguments) != 2
+                or constructor_arguments[0].canonical != "context"
+            ):
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported boat renderer constructor arguments",
+                )
+            boat_kind = BOAT_PROVIDER_KINDS.get(
+                (renderer_class, constructor_arguments[1].canonical)
+            )
+            if boat_kind is None:
+                _fail(
+                    entity_renderers_source,
+                    call.arguments[1],
+                    "unsupported boat renderer model layer",
+                )
+
         registrations.append(
             EntityRendererRegistration(
                 entity_type_id,
@@ -801,6 +847,7 @@ def extract_entity_renderer_registrations(
                 undead_horse_kind,
                 horse_kind,
                 llama_kind,
+                boat_kind,
             )
         )
 

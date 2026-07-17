@@ -99,6 +99,14 @@ def render(source_root: Path) -> str:
         ]
     )
     for entry in registrations:
+        boat_kind = (
+            "Some(VanillaBoatRendererKind { "
+            f"family: VanillaBoatRendererFamily::{entry.boat_kind[0]}, "
+            f"chest: {str(entry.boat_kind[1]).lower()} }}"
+            ")"
+            if entry.boat_kind is not None
+            else "None"
+        )
         lines.extend(
             [
                 "    VanillaEntityRendererRegistration {",
@@ -173,6 +181,7 @@ def render(source_root: Path) -> str:
                     else "None"
                 )
                 + ",",
+                f"        boat_kind: {boat_kind},",
                 "    },",
             ]
         )
@@ -284,6 +293,22 @@ def render(source_root: Path) -> str:
             '        assert!(source.contains("vanilla_entity_renderer_llama_kind"));',
             '        for removed in ["VANILLA_ENTITY_TYPE_LLAMA_ID", "VANILLA_ENTITY_TYPE_TRADER_LLAMA_ID"] {',
             '            assert!(!source.contains(removed), "restored {removed}");',
+            '        }',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn native_model_selection_does_not_restore_boat_type_membership() {",
+            '        let source = include_str!("../../../../bbb-native/src/entity_scene/kind.rs");',
+            '        assert!(source.contains("vanilla_entity_renderer_boat_kind"));',
+            '        for family in ["ACACIA", "BIRCH", "CHERRY", "DARK_OAK", "JUNGLE", "MANGROVE", "OAK", "PALE_OAK", "SPRUCE"] {',
+            '            for suffix in ["BOAT", "CHEST_BOAT"] {',
+            '                let removed = format!("VANILLA_ENTITY_TYPE_{family}_{suffix}_ID");',
+            '                assert!(!source.contains(&removed), "restored {removed}");',
+            '            }',
+            '        }',
+            '        for suffix in ["RAFT", "CHEST_RAFT"] {',
+            '            let removed = format!("VANILLA_ENTITY_TYPE_BAMBOO_{suffix}_ID");',
+            '            assert!(!source.contains(&removed), "restored {removed}");',
             '        }',
             "    }",
             "",

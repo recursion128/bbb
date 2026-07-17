@@ -126,6 +126,14 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                             context,
                             ModelLayers.TRADER_LLAMA,
                             ModelLayers.TRADER_LLAMA_BABY));
+                    register(EntityType.ACACIA_BOAT,
+                        context -> new BoatRenderer(context, ModelLayers.ACACIA_BOAT));
+                    register(EntityType.ACACIA_CHEST_BOAT,
+                        context -> new BoatRenderer(context, ModelLayers.ACACIA_CHEST_BOAT));
+                    register(EntityType.BAMBOO_RAFT,
+                        context -> new RaftRenderer(context, ModelLayers.BAMBOO_RAFT));
+                    register(EntityType.BAMBOO_CHEST_RAFT,
+                        context -> new RaftRenderer(context, ModelLayers.BAMBOO_CHEST_RAFT));
                 }
                 private static void register(Object type, Object renderer) {}
             }
@@ -300,6 +308,20 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 """,
             ),
             java(
+                "net/minecraft/client/renderer/entity/BoatRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class BoatRenderer extends EntityRenderer {}
+                """,
+            ),
+            java(
+                "net/minecraft/client/renderer/entity/RaftRenderer.java",
+                """
+                package net.minecraft.client.renderer.entity;
+                public class RaftRenderer extends EntityRenderer {}
+                """,
+            ),
+            java(
                 "net/minecraft/client/renderer/entity/CatRenderer.java",
                 """
                 package net.minecraft.client.renderer.entity;
@@ -445,6 +467,10 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 "MULE",
                 "LLAMA",
                 "TRADER_LLAMA",
+                "ACACIA_BOAT",
+                "ACACIA_CHEST_BOAT",
+                "BAMBOO_RAFT",
+                "BAMBOO_CHEST_RAFT",
                 "MANNEQUIN",
                 "PLAYER",
             ],
@@ -497,6 +523,10 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 (25, "MULE", "DonkeyRenderer", False, None, None, False, True, False, False, False, False),
                 (26, "LLAMA", "LlamaRenderer", False, None, None, False, False, False, False, False, False),
                 (27, "TRADER_LLAMA", "LlamaRenderer", False, None, None, False, False, False, False, False, False),
+                (28, "ACACIA_BOAT", "BoatRenderer", False, None, None, False, False, False, False, False, False),
+                (29, "ACACIA_CHEST_BOAT", "BoatRenderer", False, None, None, False, False, False, False, False, False),
+                (30, "BAMBOO_RAFT", "RaftRenderer", False, None, None, False, False, False, False, False, False),
+                (31, "BAMBOO_CHEST_RAFT", "RaftRenderer", False, None, None, False, False, False, False, False, False),
             ],
         )
         self.assertEqual(
@@ -542,6 +572,19 @@ class EntityRendererCatalogExtractorTests(unittest.TestCase):
                 if entry.llama_kind is not None
             ],
             [("LLAMA", "Llama"), ("TRADER_LLAMA", "TraderLlama")],
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.boat_kind)
+                for entry in entries
+                if entry.boat_kind is not None
+            ],
+            [
+                ("ACACIA_BOAT", ("Acacia", False)),
+                ("ACACIA_CHEST_BOAT", ("Acacia", True)),
+                ("BAMBOO_RAFT", ("Bamboo", False)),
+                ("BAMBOO_CHEST_RAFT", ("Bamboo", True)),
+            ],
         )
 
 

@@ -6,6 +6,8 @@ pub use crate::entities::VanillaAbstractBoatMetadataAccessors;
 pub use crate::entities::VanillaAbstractHorseMetadataAccessors;
 pub use crate::entities::VanillaAbstractMinecartMetadataAccessors;
 pub use crate::entities::VanillaArrowMetadataAccessors;
+pub use crate::entities::VanillaBoatRendererFamily;
+pub use crate::entities::VanillaBoatRendererKind;
 pub use crate::entities::VanillaCamelRendererKind;
 pub use crate::entities::VanillaCompanionVariantMetadataAccessors;
 pub use crate::entities::VanillaCopperGolemMetadataAccessors;
@@ -137,8 +139,9 @@ pub use crate::entities::{
     vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type,
     vanilla_entity_metadata_zombie_villager_converting_accessor_for_entity_type,
     vanilla_entity_metadata_zombification_immunity_accessor_for_entity_type,
-    vanilla_entity_renderer_camel_kind, vanilla_entity_renderer_extracts_parrot_pose,
-    vanilla_entity_renderer_extracts_sheep_head_eat, vanilla_entity_renderer_extracts_wolf_sitting,
+    vanilla_entity_renderer_boat_kind, vanilla_entity_renderer_camel_kind,
+    vanilla_entity_renderer_extracts_parrot_pose, vanilla_entity_renderer_extracts_sheep_head_eat,
+    vanilla_entity_renderer_extracts_wolf_sitting,
     vanilla_entity_renderer_extracts_zombie_underwater_converting,
     vanilla_entity_renderer_has_static_full_block_light, vanilla_entity_renderer_horse_kind,
     vanilla_entity_renderer_illager_kind, vanilla_entity_renderer_is_noop,
