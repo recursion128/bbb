@@ -19033,3 +19033,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   DyeColor ids in tropical-fish tooltip and native item-patch fixtures.
 - Changed the intentional invalid color fixture to derive the first id beyond the generated
   DyeColor catalog, and added a generator-owned reverse guard over semantic consumers.
+
+# 2026-07-17: Derive remaining semantic DyeColor ids
+
+- Replaced numeric DyeColor ids in native dye/base-color component snapshots and banner pattern
+  layers across native input, item-model tooltip, and world dialog fixtures.
+- Generalized the generated tropical-fish color guard to reject numeric DyeColor construction and
+  comparison throughout semantic crates while leaving protocol wire samples separately owned.

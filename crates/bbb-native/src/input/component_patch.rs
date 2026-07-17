@@ -1855,6 +1855,9 @@ mod tests {
     use std::collections::HashSet;
 
     use super::*;
+    use bbb_protocol::builtin_enum_component_values::{
+        VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
+    };
     use bbb_protocol::mob_effect_types::{
         VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_TYPES,
     };
@@ -2620,13 +2623,13 @@ mod tests {
                     registry_id: Some(5),
                     asset_id: None,
                     translation_key: None,
-                    color_id: 14,
+                    color_id: VANILLA_DYE_COLOR_RED_ID,
                 },
                 bbb_protocol::packets::BannerPatternLayerSummary {
                     registry_id: None,
                     asset_id: Some("example:custom_banner/pattern".to_string()),
                     translation_key: Some("block.example.banner.custom".to_string()),
-                    color_id: 3,
+                    color_id: VANILLA_DYE_COLOR_LIGHT_BLUE_ID,
                 },
             ],
             ..Default::default()

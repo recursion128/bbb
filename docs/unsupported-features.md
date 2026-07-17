@@ -158,6 +158,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   gameplay-id generator owns both reverse guards across world, item-model, native, net, and
   renderer consumers while protocol packet codec samples remain separately owned. Unknown-color
   fixtures derive the first invalid id from the generated catalog length.
+  Other semantic DyeColor consumers, including dye/base-color components and banner pattern
+  layers, must use the same generated value constants and are covered by that generator guard.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test

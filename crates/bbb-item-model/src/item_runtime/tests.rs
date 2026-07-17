@@ -3,8 +3,8 @@ use crate::skin_runtime::{
     AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
 };
 use bbb_protocol::builtin_enum_component_values::{
-    VANILLA_DYE_COLOR_GRAY_ID, VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID,
-    VANILLA_DYE_COLOR_WHITE_ID,
+    VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_GRAY_ID,
+    VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_WHITE_ID,
 };
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_HASTE_ID, VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_SPEED_ID,
@@ -1921,43 +1921,43 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                         registry_id: Some(5),
                         asset_id: None,
                         translation_key: None,
-                        color_id: 14,
+                        color_id: VANILLA_DYE_COLOR_RED_ID,
                     },
                     BannerPatternLayerSummary {
                         registry_id: None,
                         asset_id: None,
                         translation_key: Some("block.test.banner.custom".to_string()),
-                        color_id: 11,
+                        color_id: VANILLA_DYE_COLOR_BLUE_ID,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
                         asset_id: None,
                         translation_key: None,
-                        color_id: 14,
+                        color_id: VANILLA_DYE_COLOR_RED_ID,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
                         asset_id: None,
                         translation_key: None,
-                        color_id: 14,
+                        color_id: VANILLA_DYE_COLOR_RED_ID,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
                         asset_id: None,
                         translation_key: None,
-                        color_id: 14,
+                        color_id: VANILLA_DYE_COLOR_RED_ID,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(5),
                         asset_id: None,
                         translation_key: None,
-                        color_id: 14,
+                        color_id: VANILLA_DYE_COLOR_RED_ID,
                     },
                     BannerPatternLayerSummary {
                         registry_id: Some(42),
                         asset_id: None,
                         translation_key: None,
-                        color_id: 15,
+                        color_id: VANILLA_DYE_COLOR_BLACK_ID,
                     },
                 ],
                 lore: vec!["After banner patterns".to_string()],

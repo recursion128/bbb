@@ -4,6 +4,7 @@ use bbb_protocol::packets::inventory::FireworkExplosionSummary;
 #[cfg(test)]
 use bbb_protocol::{
     attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+    builtin_enum_component_values::{VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_RED_ID},
     data_component_types::{
         VANILLA_DATA_COMPONENT_CUSTOM_DATA_TYPE_ID,
         VANILLA_DATA_COMPONENT_CUSTOM_MODEL_DATA_TYPE_ID,
@@ -2690,7 +2691,7 @@ mod tests {
                             registry_id: 1,
                             resource_id: "minecraft:flower".to_string(),
                         },
-                        color_id: 14,
+                        color_id: VANILLA_DYE_COLOR_RED_ID,
                         color: "red".to_string(),
                     },
                     super::super::holder_set::DialogBannerPatternLayerState {
@@ -2700,7 +2701,7 @@ mod tests {
                                 translation_key: "block.example.spiral".to_string(),
                             },
                         },
-                        color_id: 11,
+                        color_id: VANILLA_DYE_COLOR_BLUE_ID,
                         color: "blue".to_string(),
                     },
                 ],

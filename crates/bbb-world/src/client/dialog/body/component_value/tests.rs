@@ -1,3 +1,7 @@
+use bbb_protocol::builtin_enum_component_values::{
+    VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
+    VANILLA_DYE_COLOR_YELLOW_ID,
+};
 use bbb_protocol::data_component_types::{
     VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID, VANILLA_DATA_COMPONENT_BREAK_SOUND_TYPE_ID,
     VANILLA_DATA_COMPONENT_CREATIVE_SLOT_LOCK_TYPE_ID,
@@ -1502,13 +1506,13 @@ fn decodes_banner_pattern_layers_with_named_holders_and_dye_colors() {
             ref resource_id,
         } if resource_id == "minecraft:flower"
     ));
-    assert_eq!(layers[0].color_id, 14);
+    assert_eq!(layers[0].color_id, VANILLA_DYE_COLOR_RED_ID);
     assert_eq!(layers[0].color, "red");
     assert!(matches!(
         layers[1].pattern,
         DialogBannerPatternHolderState::Named { registry_id: 0, .. }
     ));
-    assert_eq!(layers[1].color_id, 3);
+    assert_eq!(layers[1].color_id, VANILLA_DYE_COLOR_LIGHT_BLUE_ID);
 
     let direct = decode_supported_component_value(
         VANILLA_DATA_COMPONENT_BANNER_PATTERNS_TYPE_ID,
@@ -1539,7 +1543,7 @@ fn decodes_banner_pattern_layers_with_named_holders_and_dye_colors() {
                     translation_key,
                 },
             },
-            color_id: 11,
+            color_id: VANILLA_DYE_COLOR_BLUE_ID,
             color,
         }] if asset_id == "example:spiral" && translation_key.is_empty() && color == "blue"
     ));
@@ -2306,7 +2310,7 @@ fn projects_holder_backed_component_values_into_protocol_summary() {
                         registry_id: 2,
                         resource_id: "example:named".to_string(),
                     },
-                    color_id: 4,
+                    color_id: VANILLA_DYE_COLOR_YELLOW_ID,
                     color: "yellow".to_string(),
                 },
                 DialogBannerPatternLayerState {
@@ -2316,7 +2320,7 @@ fn projects_holder_backed_component_values_into_protocol_summary() {
                             translation_key: "block.example.banner.direct".to_string(),
                         },
                     },
-                    color_id: 11,
+                    color_id: VANILLA_DYE_COLOR_BLUE_ID,
                     color: "blue".to_string(),
                 },
             ],

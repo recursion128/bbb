@@ -726,46 +726,47 @@ mod tests {
                     .is_some_and(|character| character.is_ascii_digit()))
     }
 
-    fn contains_numeric_tropical_fish_color_reference(source: &str) -> bool {
+    fn contains_numeric_dye_color_reference(source: &str) -> bool {
         let compact: String = source
             .chars()
             .filter(|character| !character.is_whitespace())
             .collect();
-        [
-            "tropical_fish_base_color_id",
-            "tropical_fish_pattern_color_id",
-        ]
-        .iter()
-        .any(|field| {
-            compact.match_indices(field).any(|(offset, _)| {
-                let suffix = &compact[offset + field.len()..];
-                [":", ",", "==", "!=", "="].iter().any(|separator| {
-                    suffix
-                        .strip_prefix(separator)
-                        .is_some_and(starts_with_numeric_or_optional_numeric)
+        ["dye_color_id", "base_color_id", "color_id"]
+            .iter()
+            .any(|field| {
+                compact.match_indices(field).any(|(offset, _)| {
+                    let suffix = &compact[offset + field.len()..];
+                    [":", ",", "==", "!=", "="].iter().any(|separator| {
+                        suffix
+                            .strip_prefix(separator)
+                            .is_some_and(starts_with_numeric_or_optional_numeric)
+                    })
                 })
             })
-        })
     }
 
     #[test]
-    fn numeric_tropical_fish_color_guard_covers_semantic_fixtures() {
-        assert!(contains_numeric_tropical_fish_color_reference(
-            "tropical_fish_base_color_id: Some(1),"
+    fn numeric_dye_color_guard_covers_semantic_fixtures() {
+        assert!(contains_numeric_dye_color_reference(
+            "dye_color_id: Some(14),"
         ));
-        assert!(contains_numeric_tropical_fish_color_reference(
+        assert!(contains_numeric_dye_color_reference(
+            "base_color_id: Some(3),"
+        ));
+        assert!(contains_numeric_dye_color_reference("color_id: 11,"));
+        assert!(contains_numeric_dye_color_reference(
             "assert_eq!(patch.tropical_fish_pattern_color_id, Some(7));"
         ));
-        assert!(!contains_numeric_tropical_fish_color_reference(
-            "tropical_fish_base_color_id: Some(VANILLA_DYE_COLOR_ORANGE_ID),"
+        assert!(!contains_numeric_dye_color_reference(
+            "dye_color_id: Some(VANILLA_DYE_COLOR_RED_ID),"
         ));
-        assert!(!contains_numeric_tropical_fish_color_reference(
+        assert!(!contains_numeric_dye_color_reference(
             "tropical_fish_pattern_color_id: Some(unknown_dye_color_id),"
         ));
     }
 
     #[test]
-    fn semantic_fixtures_do_not_restore_numeric_tropical_fish_color_ids() {
+    fn semantic_fixtures_do_not_restore_numeric_dye_color_ids() {
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
                 let path = entry.unwrap().path();
@@ -777,7 +778,7 @@ mod tests {
                     continue;
                 }
                 let source = fs::read_to_string(&path).unwrap();
-                if contains_numeric_tropical_fish_color_reference(&source) {
+                if contains_numeric_dye_color_reference(&source) {
                     violations.push(path.display().to_string());
                 }
             }
@@ -795,7 +796,7 @@ mod tests {
         }
         assert!(
             violations.is_empty(),
-            "numeric tropical fish color ids: {violations:?}"
+            "numeric dye color ids: {violations:?}"
         );
     }
 

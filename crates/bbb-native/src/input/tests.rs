@@ -2,7 +2,8 @@ use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::builtin_enum_component_values::{
-    VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_VALUES,
+    VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID,
+    VANILLA_DYE_COLOR_VALUES,
 };
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::entity_types::{
@@ -9727,7 +9728,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
             holder_id: 13,
             level: 5,
         }],
-        dye_color_id: Some(14),
+        dye_color_id: Some(VANILLA_DYE_COLOR_RED_ID),
         dyed_color: Some(0x11_22_33),
         map_color: Some(0x44_55_66),
         map_id: Some(42),
@@ -9936,16 +9937,16 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 registry_id: Some(5),
                 asset_id: None,
                 translation_key: None,
-                color_id: 14,
+                color_id: VANILLA_DYE_COLOR_RED_ID,
             },
             bbb_protocol::packets::BannerPatternLayerSummary {
                 registry_id: None,
                 asset_id: Some("example:custom_banner/pattern".to_string()),
                 translation_key: Some("block.example.banner.custom".to_string()),
-                color_id: 3,
+                color_id: VANILLA_DYE_COLOR_LIGHT_BLUE_ID,
             },
         ],
-        base_color_id: Some(3),
+        base_color_id: Some(VANILLA_DYE_COLOR_LIGHT_BLUE_ID),
         pot_decorations_item_ids: vec![0, 1],
         container_items: vec![bbb_protocol::packets::ItemStackTemplateSummary {
             item_id: 3,
@@ -11823,7 +11824,7 @@ fn shift_f3_i_with_permission_copies_local_item_frame_save_nbt_to_clipboard() {
                             registry_id: Some(0),
                             asset_id: None,
                             translation_key: None,
-                            color_id: 14,
+                            color_id: VANILLA_DYE_COLOR_RED_ID,
                         }],
                         wolf_variant_id: Some(0),
                         jukebox_song_id: Some(0),
