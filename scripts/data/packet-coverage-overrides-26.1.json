@@ -1085,8 +1085,8 @@
           "crates/bbb-net/src/play_bundle.rs#bundle_holds_packets_until_closing_delimiter_and_preserves_order",
           "crates/bbb-net/src/play_bundle.rs#bundle_accepts_4096_packets_and_rejects_the_next",
           "crates/bbb-net/src/play_bundle.rs#terminal_packet_is_rejected_only_inside_bundle",
-          "crates/bbb-net/src/event_stream.rs#run_offline_event_stream",
-          "crates/bbb-net/src/probe.rs#run_offline_probe_inner",
+          "crates/bbb-net/src/event_stream.rs#run_event_stream",
+          "crates/bbb-net/src/probe.rs#run_probe_inner",
           "vanilla:net/minecraft/network/PacketBundlePacker.java#decode",
           "vanilla:net/minecraft/network/protocol/BundlerInfo.java#BUNDLE_SIZE_LIMIT"
         ],
@@ -5591,7 +5591,7 @@
       "command_surface": {
         "evidence": [
           "crates/bbb-net/src/status.rs#status_ping",
-          "crates/bbb-net/src/event_stream.rs#run_offline_event_stream",
+          "crates/bbb-net/src/event_stream.rs#run_event_stream",
           "crates/bbb-net/src/event_stream.rs#reconnect_for_transfer"
         ],
         "status": "complete"
@@ -5609,7 +5609,7 @@
         "evidence": [
           "crates/bbb-net/src/types/connection.rs#connection_addresses_delegate_handshake_host_validation",
           "crates/bbb-net/src/status.rs#status_ping_enforces_handshake_request_response_and_pong_sequence",
-          "crates/bbb-net/src/event_stream.rs#run_offline_event_stream",
+          "crates/bbb-net/src/event_stream.rs#run_event_stream",
           "crates/bbb-net/src/event_stream.rs#reconnect_for_transfer",
           "crates/bbb-net/src/event_stream.rs#transfer_reconnect_uses_transfer_intent_and_carries_session_cookies"
         ],
@@ -5701,7 +5701,8 @@
     "login/clientbound/CLIENTBOUND_HELLO": {
       "canonical_apply": {
         "evidence": [
-          "crates/bbb-net/src/probe/login.rs#probe_login_terminal_packets_fail_without_advancing_state"
+          "crates/bbb-net/src/login.rs#handle_encryption_request",
+          "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#handleHello"
         ],
         "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
         "status": "not-applicable"
@@ -5723,17 +5724,20 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-net/src/probe/login.rs#probe_login_terminal_packets_fail_without_advancing_state"
+          "crates/bbb-net/src/login.rs#handle_encryption_request",
+          "crates/bbb-net/src/connection.rs#enable_encryption",
+          "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#setEncryption"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
-          "crates/bbb-net/src/probe/login.rs#probe_login_terminal_packets_fail_without_advancing_state"
+          "crates/bbb-net/src/login.rs#encryption_preparation_matches_vanilla_rsa_inputs_and_hash_order",
+          "crates/bbb-net/src/login.rs#session_join_posts_undashed_profile_and_requires_no_content",
+          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
+          "crates/bbb-net/src/login.rs#encryption_request_requires_a_sent_hello_and_required_credentials"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       }
     },
     "login/clientbound/CLIENTBOUND_LOGIN_COMPRESSION": {
@@ -5799,14 +5803,14 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-net/src/probe/login.rs#probe_login_terminal_packets_fail_without_advancing_state"
+          "crates/bbb-net/src/probe/login.rs#probe_login_disconnect_and_early_encryption_fail_without_advancing_state"
         ],
         "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/tests.rs#offline_login_clientbound_codecs_and_ack_match_vanilla_fields",
-          "crates/bbb-net/src/probe/login.rs#probe_login_terminal_packets_fail_without_advancing_state"
+          "crates/bbb-net/src/probe/login.rs#probe_login_disconnect_and_early_encryption_fail_without_advancing_state"
         ],
         "status": "complete"
       }
@@ -5923,15 +5927,16 @@
     "login/serverbound/SERVERBOUND_HELLO": {
       "ack_response": {
         "evidence": [
+          "crates/bbb-net/src/login.rs#send_login_hello",
           "crates/bbb-net/src/event_stream/login.rs#handle_login_packet",
+          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
           "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleHello"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "command_surface": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#run_offline_event_stream"
+          "crates/bbb-net/src/event_stream.rs#run_event_stream"
         ],
         "status": "complete"
       },
@@ -5948,16 +5953,17 @@
         "evidence": [
           "crates/bbb-protocol/src/packets/connection.rs#validate_login_username",
           "crates/bbb-net/src/types/connection.rs#offline_connection_options_delegate_login_username_validation",
-          "crates/bbb-net/src/event_stream.rs#run_offline_event_stream",
+          "crates/bbb-net/src/login.rs#send_login_hello",
+          "crates/bbb-net/src/login.rs#encryption_request_requires_a_sent_hello_and_required_credentials",
           "vanilla:net/minecraft/util/StringUtil.java#isValidPlayerName",
           "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleHello"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
-          "crates/bbb-protocol/src/packets/tests.rs#encodes_login_hello"
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_login_hello",
+          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream"
         ],
         "status": "complete"
       }
@@ -5966,18 +5972,18 @@
       "ack_response": {
         "evidence": [
           "crates/bbb-net/src/event_stream/login.rs#LoginClientbound::EncryptionRequest",
+          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
           "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleKey"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "command_surface": {
         "evidence": [
           "crates/bbb-net/src/event_stream/login.rs#LoginClientbound::EncryptionRequest",
+          "crates/bbb-net/src/login.rs#handle_encryption_request",
           "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#handleHello"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "encoder": {
         "evidence": [
@@ -5990,20 +5996,22 @@
       },
       "state_guard": {
         "evidence": [
-          "crates/bbb-net/src/probe/login.rs#probe_login_terminal_packets_fail_without_advancing_state",
+          "crates/bbb-net/src/login.rs#encryption_request_requires_a_sent_hello_and_required_credentials",
+          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
           "vanilla:net/minecraft/client/multiplayer/ClientHandshakePacketListenerImpl.java#setEncryption",
           "vanilla:net/minecraft/server/network/ServerLoginPacketListenerImpl.java#handleKey"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
         "evidence": [
-          "crates/bbb-net/src/probe/login.rs#probe_login_terminal_packets_fail_without_advancing_state",
+          "crates/bbb-net/src/login.rs#encryption_preparation_matches_vanilla_rsa_inputs_and_hash_order",
+          "crates/bbb-net/src/login.rs#session_join_posts_undashed_profile_and_requires_no_content",
+          "crates/bbb-net/src/login.rs#login_key_is_plaintext_then_transport_switches_to_encrypted_stream",
+          "crates/bbb-net/src/login.rs#encryption_request_requires_a_sent_hello_and_required_credentials",
           "crates/bbb-protocol/src/packet_coverage.rs#coverage_ledger_matches_every_packet_catalog_entry_in_order"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       }
     },
     "login/serverbound/SERVERBOUND_LOGIN_ACKNOWLEDGED": {

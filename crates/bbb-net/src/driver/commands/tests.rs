@@ -36,7 +36,6 @@ use bbb_protocol::{
         SpectateEntity, TeleportToEntity, Vec3d,
     },
 };
-use bytes::BytesMut;
 use std::{
     collections::{BTreeMap, BTreeSet},
     time::Duration,
@@ -220,11 +219,7 @@ async fn send_player_move_command_selects_variant_and_updates_position_state() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("move player command should be sent")
@@ -283,11 +278,7 @@ async fn send_player_move_command_force_rotation_only_keeps_previous_position_st
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("move player rotation command should be sent")
@@ -396,11 +387,7 @@ async fn send_vehicle_move_command_encodes_move_vehicle_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("move vehicle command should be sent")
@@ -444,11 +431,7 @@ async fn send_accept_code_of_conduct_encodes_configuration_accept_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("code-of-conduct accept should be sent")
@@ -474,11 +457,7 @@ async fn send_player_action_encodes_player_action_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("player action should be sent")
@@ -524,11 +503,7 @@ async fn send_chat_command_encodes_chat_command_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("chat command should be sent")
@@ -563,11 +538,7 @@ async fn send_chat_command_signed_encodes_signed_chat_command_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("signed chat command should be sent")
@@ -610,11 +581,7 @@ async fn send_chat_message_encodes_unsigned_chat_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("chat message should be sent")
@@ -654,11 +621,7 @@ async fn send_chat_session_update_encodes_profile_key_packet() {
     let session_id = Uuid::from_u128(0x12345678_90ab_cdef_1020_304050607080);
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("chat session update should be sent")
@@ -704,11 +667,7 @@ async fn send_chat_acknowledgement_encodes_chat_ack_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("chat acknowledgement should be sent")
@@ -735,11 +694,7 @@ async fn send_custom_payload_encodes_brand_payload_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("custom payload command should be sent")
@@ -799,11 +754,7 @@ async fn send_client_command_encodes_client_command_actions() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         for (name, ordinal) in [
             ("perform respawn", 0),
             ("request stats", 1),
@@ -840,11 +791,7 @@ async fn send_entity_interaction_commands_encode_packets() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
@@ -902,11 +849,7 @@ async fn send_player_command_encodes_player_command_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("player command should be sent")
@@ -942,11 +885,7 @@ async fn send_player_input_command_encodes_input_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("player input command should be sent")
@@ -984,11 +923,7 @@ async fn send_set_held_slot_command_encodes_carried_item_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("held-slot command should be sent")
@@ -1013,11 +948,7 @@ async fn send_player_abilities_command_encodes_flying_bit() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("player abilities command should be sent")
@@ -1044,11 +975,7 @@ async fn send_place_recipe_encodes_place_recipe_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("place recipe command should be sent")
@@ -1084,11 +1011,7 @@ async fn send_select_trade_encodes_select_trade_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("select trade command should be sent")
@@ -1115,11 +1038,7 @@ async fn send_select_bundle_item_encodes_bundle_item_selected_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("select bundle item command should be sent")
@@ -1153,11 +1072,7 @@ async fn send_swing_command_encodes_swing_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("swing command should be sent")
@@ -1184,11 +1099,7 @@ async fn send_use_item_on_encodes_use_item_on_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("use item on command should be sent")
@@ -1254,11 +1165,7 @@ async fn send_use_item_encodes_use_item_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("use item command should be sent")
@@ -1296,11 +1203,7 @@ async fn send_pick_item_from_block_encodes_pick_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("pick item from block command should be sent")
@@ -1350,11 +1253,7 @@ async fn send_pick_item_from_entity_encodes_pick_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("pick item from entity command should be sent")
@@ -1388,11 +1287,7 @@ async fn send_paddle_boat_encodes_left_and_right_flags() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("paddle boat command should be sent")
@@ -1426,11 +1321,7 @@ async fn send_ping_request_encodes_play_ping_request_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("ping request command should be sent")
@@ -1455,11 +1346,7 @@ async fn send_debug_subscription_request_encodes_tick_time_collection() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("tick-time subscribe request should be sent")
@@ -1499,11 +1386,7 @@ async fn send_tag_query_commands_encode_packets() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("block entity tag query should be sent")
@@ -1568,11 +1451,7 @@ async fn send_spectator_entity_commands_encode_packets() {
     let uuid = Uuid::from_u128(0x00112233_4455_6677_8899_aabbccddeeff);
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("spectate entity should be sent")
@@ -1611,11 +1490,7 @@ async fn send_difficulty_commands_encode_packets() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("change difficulty command should be sent")
@@ -1676,11 +1551,7 @@ async fn send_recipe_book_commands_encode_packets() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
@@ -1737,11 +1608,7 @@ async fn send_edit_book_encodes_edit_book_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("edit book command should be sent")
@@ -1780,11 +1647,7 @@ async fn send_set_beacon_encodes_set_beacon_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("set beacon command should be sent")
@@ -1819,11 +1682,7 @@ async fn send_set_creative_mode_slot_encodes_componentless_item() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("creative mode slot command should be sent")
@@ -1900,11 +1759,7 @@ async fn send_rename_item_encodes_rename_item_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("rename item command should be sent")
@@ -1936,11 +1791,7 @@ async fn send_seen_advancements_encodes_opened_tab_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("seen advancements command should be sent")
@@ -1973,11 +1824,7 @@ async fn send_sign_update_encodes_sign_update_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("sign update command should be sent")
@@ -2032,11 +1879,7 @@ async fn send_container_inventory_commands_encode_packets() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
@@ -2180,11 +2023,7 @@ async fn send_command_suggestion_request_encodes_command_suggestion_packet() {
     let addr = listener.local_addr().unwrap();
     let server = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut conn = RawConnection {
-            stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let mut conn = RawConnection::from_stream(stream, None);
         let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
             .await
             .expect("command suggestion request should be sent")

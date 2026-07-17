@@ -44,11 +44,6 @@ Owner: `bbb-protocol`
   remaining `partial` cell must carry implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
-- Complete authenticated login: perform session authentication/encryption from the
-  typed `ClientboundHelloPacket`, generate the encrypted inputs for the existing
-  `ServerboundKeyPacket` encoder, install the negotiated ciphers, lock the
-  sent-hello to encryption-request transition, and reject duplicate or out-of-state
-  login responses.
 - Complete configuration resource-pack runtime behavior: download allowed packs,
   verify hashes, apply/reload them, enforce required-pack outcomes, emit the full
   response lifecycle, and unload one/all packs on pop.

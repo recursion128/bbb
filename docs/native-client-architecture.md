@@ -26,8 +26,10 @@ reference; this repo owns the implementation architecture.
 
 - Do not wrap or embed another complete Minecraft client stack.
 - Do not mirror vanilla Java packages one-to-one.
-- Do not implement Microsoft/Mojang online account authentication; the playable
-  networking target is offline-mode Java 26.1 servers.
+- Do not implement Microsoft/Mojang account sign-in or access-token acquisition.
+  Authenticated sessions accept an existing profile UUID and access token at
+  command-line startup; offline-mode Java 26.1 servers remain the reproducible
+  playable-test target.
 - Do not add in-game configuration UI; runtime configuration is supplied at
   command-line startup.
 - Do not collect or upload Mojang client telemetry. Protocol fields that vanilla

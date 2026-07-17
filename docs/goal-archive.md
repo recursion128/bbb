@@ -18728,3 +18728,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `AgeableMobRenderer` shadow radius, while baby presentation is already defined by the separate
   baby model. Focused definition and mesh tests lock exact half-cycle channels, looping, idle
   amplitude, walk amplitude, and both age models.
+
+# 2026-07-17: Complete authenticated login encryption
+
+- Added command-line profile UUID/access-token session credentials without implementing account
+  sign-in. Credentials are paired by Clap, redacted from debug output, omitted from serialized
+  connection options, and reused across Transfer reconnects.
+- Matched vanilla 26.1 login cryptography: X.509 RSA public-key parsing, random AES-128 secret,
+  signed SHA-1 server hash, Mojang session join, PKCS#1 v1.5 encrypted secret/challenge, and
+  continuous AES/CFB8 using the secret as IV. The key packet is written in plaintext before the
+  transport switches ciphers.
+- Locked login ordering to one sent hello before encryption, rejected duplicate and out-of-state
+  login responses, shared the path between event stream and probe, and closed all login rows in
+  the generated packet-coverage ledger with focused RSA/hash/HTTP/transport/state tests.

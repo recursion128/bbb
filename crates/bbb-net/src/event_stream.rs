@@ -15,6 +15,7 @@ use crate::{
     chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
     driver::{read_packet_or_drive_connection, ConnectionDrive},
+    login::send_login_hello,
     play_bundle::PlayPacketBundleAssembler,
     types::{ConnectionOptions, ConnectionState, NetCommand, NetEvent},
 };
@@ -45,7 +46,7 @@ struct EventStreamContext {
     client_information: packets::ClientInformation,
 }
 
-pub async fn run_offline_event_stream(
+pub async fn run_event_stream(
     options: ConnectionOptions,
     events: mpsc::Sender<NetEvent>,
     commands: mpsc::Receiver<NetCommand>,
@@ -55,7 +56,7 @@ pub async fn run_offline_event_stream(
         RawConnection::connect(&options.address, None),
     )
     .await
-    .context("offline connect timed out")??;
+    .context("connect timed out")??;
     let mut stream = EventStreamContext {
         conn,
         events,
@@ -81,8 +82,7 @@ pub async fn run_offline_event_stream(
     let (id, payload) =
         packets::encode_handshake(&options.host, options.port, ClientIntent::Login)?;
     stream.conn.send_packet(id, &payload).await?;
-    let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id)?;
-    stream.conn.send_packet(id, &payload).await?;
+    send_login_hello(&mut stream.conn, &options.username, options.profile_id).await?;
 
     let mut play_bundle = PlayPacketBundleAssembler::default();
     loop {
@@ -115,7 +115,13 @@ pub async fn run_offline_event_stream(
         let transfer = match packet_state {
             ConnectionState::Login => {
                 let packet = packets::decode_login_clientbound(packet_id, &payload)?;
-                stream.handle_login_packet(packet).await?;
+                stream
+                    .handle_login_packet(
+                        packet,
+                        options.session_credentials.as_ref(),
+                        options.timeout,
+                    )
+                    .await?;
                 None
             }
             ConnectionState::Configuration => {
@@ -254,8 +260,7 @@ async fn reconnect_for_transfer(
         .conn
         .send_packet(handshake_id, &handshake_payload)
         .await?;
-    let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id)?;
-    stream.conn.send_packet(id, &payload).await
+    send_login_hello(&mut stream.conn, &options.username, options.profile_id).await
 }
 
 fn transfer_socket_address(host: &str, port: u16) -> String {
@@ -298,7 +303,6 @@ mod tests {
         packets::{ChatAcknowledgement, GameProfile, LoginClientbound, PlayClientbound},
     };
     use bbb_world::{code_of_conduct_text_hash, vanilla_entity_metadata_entity_accessors};
-    use bytes::BytesMut;
     use std::time::Duration;
     use tokio::{net::TcpListener, time::timeout};
 
@@ -354,7 +358,11 @@ mod tests {
         };
 
         stream
-            .handle_login_packet(LoginClientbound::CustomQuery { transaction_id: 42 })
+            .handle_login_packet(
+                LoginClientbound::CustomQuery { transaction_id: 42 },
+                None,
+                Duration::from_secs(1),
+            )
             .await
             .unwrap();
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
@@ -368,7 +376,11 @@ mod tests {
         assert!(decoder.is_empty());
 
         stream
-            .handle_login_packet(LoginClientbound::SetCompression { threshold: -1 })
+            .handle_login_packet(
+                LoginClientbound::SetCompression { threshold: -1 },
+                None,
+                Duration::from_secs(1),
+            )
             .await
             .unwrap();
         assert_eq!(stream.conn.compression_threshold, None);
@@ -378,7 +390,11 @@ mod tests {
         ));
 
         stream
-            .handle_login_packet(LoginClientbound::SetCompression { threshold: 16 })
+            .handle_login_packet(
+                LoginClientbound::SetCompression { threshold: 16 },
+                None,
+                Duration::from_secs(1),
+            )
             .await
             .unwrap();
         assert_eq!(stream.conn.compression_threshold, Some(16));
@@ -389,13 +405,17 @@ mod tests {
         server.set_compression_threshold(16);
 
         stream
-            .handle_login_packet(LoginClientbound::LoginFinished {
-                profile: GameProfile {
-                    uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
-                    name: "bbb-client".to_string(),
-                    properties: Vec::new(),
+            .handle_login_packet(
+                LoginClientbound::LoginFinished {
+                    profile: GameProfile {
+                        uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
+                        name: "bbb-client".to_string(),
+                        properties: Vec::new(),
+                    },
                 },
-            })
+                None,
+                Duration::from_secs(1),
+            )
             .await
             .unwrap();
 
@@ -448,6 +468,21 @@ mod tests {
                 state: ConnectionState::Configuration
             }
         ));
+
+        let error = stream
+            .handle_login_packet(
+                LoginClientbound::Unknown {
+                    packet_id: 0x7d,
+                    len: 0,
+                },
+                None,
+                Duration::from_secs(1),
+            )
+            .await
+            .unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("connection state is Configuration"));
     }
 
     #[tokio::test]
@@ -971,10 +1006,14 @@ mod tests {
         };
 
         stream
-            .handle_login_packet(LoginClientbound::Unknown {
-                packet_id: 0x7d,
-                len: 5,
-            })
+            .handle_login_packet(
+                LoginClientbound::Unknown {
+                    packet_id: 0x7d,
+                    len: 5,
+                },
+                None,
+                Duration::from_secs(1),
+            )
             .await
             .unwrap();
 
@@ -4374,11 +4413,7 @@ mod tests {
         let transfer_address = transfer_listener.local_addr().unwrap();
         let transfer_server = tokio::spawn(async move {
             let (server_stream, _) = transfer_listener.accept().await.unwrap();
-            let mut server = RawConnection {
-                stream: server_stream,
-                read_buf: BytesMut::with_capacity(8192),
-                compression_threshold: None,
-            };
+            let mut server = RawConnection::from_stream(server_stream, None);
             let handshake = server.read_packet().await.unwrap();
             let hello = server.read_packet().await.unwrap();
             (handshake, hello)
@@ -4622,11 +4657,7 @@ mod tests {
         });
         let (server_stream, _) = listener.accept().await.unwrap();
         let client = client.await.unwrap();
-        let server = RawConnection {
-            stream: server_stream,
-            read_buf: BytesMut::with_capacity(8192),
-            compression_threshold: None,
-        };
+        let server = RawConnection::from_stream(server_stream, None);
         (client, server)
     }
 

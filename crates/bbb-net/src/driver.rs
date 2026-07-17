@@ -355,7 +355,6 @@ mod tests {
             UseItemOn, Vec3d,
         },
     };
-    use bytes::BytesMut;
     use std::{collections::BTreeMap, time::Duration};
     use tokio::{sync::mpsc, time::timeout};
     use uuid::Uuid;
@@ -1623,11 +1622,7 @@ mod tests {
         });
         let (server_stream, _) = listener.accept().await.unwrap();
         let client = client.await.unwrap();
-        let server = RawConnection {
-            stream: server_stream,
-            read_buf: BytesMut::new(),
-            compression_threshold: None,
-        };
+        let server = RawConnection::from_stream(server_stream, None);
         (client, server)
     }
 
@@ -1637,11 +1632,7 @@ mod tests {
         let addr = listener.local_addr().unwrap();
         let server = tokio::spawn(async move {
             let (stream, _) = listener.accept().await.unwrap();
-            let mut conn = RawConnection {
-                stream,
-                read_buf: BytesMut::new(),
-                compression_threshold: None,
-            };
+            let mut conn = RawConnection::from_stream(stream, None);
             let (packet_id, payload) = timeout(Duration::from_secs(1), conn.read_packet())
                 .await
                 .expect("code-of-conduct accept should be sent")

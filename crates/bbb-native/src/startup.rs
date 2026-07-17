@@ -1,4 +1,6 @@
-use std::{net::SocketAddr, path::PathBuf, thread, time::Duration};
+use std::{
+    convert::Infallible, fmt, net::SocketAddr, path::PathBuf, str::FromStr, thread, time::Duration,
+};
 
 use anyhow::{ensure, Context, Result};
 use bbb_control::ControlState;
@@ -15,6 +17,7 @@ use bbb_renderer::{
 use clap::{ArgAction, Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use tokio::{runtime::Runtime, sync::mpsc};
+use uuid::Uuid;
 use winit::{
     dpi::PhysicalSize,
     event_loop::EventLoop,
@@ -32,6 +35,10 @@ pub(crate) struct Args {
     pub(crate) server: String,
     #[arg(long, default_value = "bbb-client")]
     pub(crate) username: String,
+    #[arg(long, value_name = "UUID", requires = "access_token")]
+    pub(crate) profile_id: Option<Uuid>,
+    #[arg(long, value_name = "TOKEN", requires = "profile_id")]
+    pub(crate) access_token: Option<StartupAccessToken>,
     #[arg(long, value_name = "ADDR", conflicts_with = "probe_server")]
     pub(crate) status_server: Option<String>,
     #[arg(long)]
@@ -142,6 +149,23 @@ pub(crate) struct Args {
     pub(crate) debug_feature_count: bool,
 }
 
+#[derive(Clone)]
+pub(crate) struct StartupAccessToken(String);
+
+impl fmt::Debug for StartupAccessToken {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("<redacted>")
+    }
+}
+
+impl FromStr for StartupAccessToken {
+    type Err = Infallible;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(Self(value.to_string()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum ClientChatVisibilityArg {
     Full,
@@ -235,10 +259,10 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
         return Ok(false);
     }
 
-    let mut options = ConnectionOptions::offline(&args.server, &args.username)?;
+    let mut options = connection_options_from_args(args)?;
     options.client_information = client_information_from_args(args)?;
     options.probe_after_first_chunk_packets = args.probe_after_first_chunk_packets;
-    let report = runtime.block_on(bbb_net::run_offline_probe(options))?;
+    let report = runtime.block_on(bbb_net::run_probe(options))?;
     println!("{}", serde_json::to_string_pretty(&report)?);
     Ok(true)
 }
@@ -275,7 +299,7 @@ pub(crate) fn start_network_if_requested(
         });
     }
 
-    let mut options = ConnectionOptions::offline(&args.server, &args.username)?;
+    let mut options = connection_options_from_args(args)?;
     options.client_information = client_information_from_args(args)?;
     options.accepted_code_of_conduct_hash = code_of_conduct.accepted_hash_for_options(&options);
     code_of_conduct.set_connected_server(&options);
@@ -283,7 +307,7 @@ pub(crate) fn start_network_if_requested(
     let (command_tx, command_rx) = mpsc::channel(256);
     let disconnect_tx = tx.clone();
     runtime.spawn(async move {
-        let reason = match bbb_net::run_offline_event_stream(options, tx, command_rx).await {
+        let reason = match bbb_net::run_event_stream(options, tx, command_rx).await {
             Ok(()) => None,
             Err(err) => Some(err.to_string()),
         };
@@ -294,6 +318,23 @@ pub(crate) fn start_network_if_requested(
         events: Some(rx),
         commands: Some(command_tx),
     })
+}
+
+fn connection_options_from_args(args: &Args) -> Result<ConnectionOptions> {
+    ensure!(
+        args.profile_id.is_some() == args.access_token.is_some(),
+        "profile id and access token must be supplied together"
+    );
+    match (args.profile_id, args.access_token.as_ref()) {
+        (Some(profile_id), Some(access_token)) => ConnectionOptions::authenticated(
+            &args.server,
+            &args.username,
+            profile_id,
+            access_token.0.clone(),
+        ),
+        (None, None) => ConnectionOptions::offline(&args.server, &args.username),
+        _ => unreachable!("paired session credential presence was checked"),
+    }
 }
 
 pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformation> {
@@ -469,6 +510,33 @@ mod tests {
             "--probe-server",
         ])
         .is_err());
+    }
+
+    #[test]
+    fn session_credentials_are_paired_redacted_and_build_authenticated_options() {
+        let profile_id = "12345678-1234-5678-90ab-cdef12345678";
+        assert!(Args::try_parse_from(["bbb-native", "--profile-id", profile_id]).is_err());
+        assert!(Args::try_parse_from(["bbb-native", "--access-token", "secret"]).is_err());
+
+        let offline = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert!(!connection_options_from_args(&offline)
+            .unwrap()
+            .is_authenticated());
+
+        let authenticated = Args::try_parse_from([
+            "bbb-native",
+            "--profile-id",
+            profile_id,
+            "--access-token",
+            "sensitive-access-token",
+        ])
+        .unwrap();
+        let debug = format!("{authenticated:?}");
+        assert!(debug.contains("<redacted>"));
+        assert!(!debug.contains("sensitive-access-token"));
+        let options = connection_options_from_args(&authenticated).unwrap();
+        assert!(options.is_authenticated());
+        assert_eq!(options.profile_id, Uuid::parse_str(profile_id).unwrap());
     }
 
     #[test]

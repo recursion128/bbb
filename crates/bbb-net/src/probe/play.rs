@@ -242,7 +242,6 @@ mod tests {
         vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type, BlockPos, ChunkPos,
         LevelEventGrowthRandomMode, LevelEventSoundRandomState, LocalPlayerPoseState, RegistrySet,
     };
-    use bytes::BytesMut;
     use std::{collections::BTreeMap, time::Duration};
     use tokio::net::TcpListener;
     use tokio::time::timeout;
@@ -4932,11 +4931,7 @@ mod tests {
         });
         let (server_stream, _) = listener.accept().await.unwrap();
         let client = client.await.unwrap();
-        let server = RawConnection {
-            stream: server_stream,
-            read_buf: BytesMut::with_capacity(8192),
-            compression_threshold: None,
-        };
+        let server = RawConnection::from_stream(server_stream, None);
         (client, server)
     }
 

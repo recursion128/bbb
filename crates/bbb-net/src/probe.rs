@@ -9,6 +9,7 @@ use crate::{
     chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
     driver::read_packet_or_send_play_tick,
+    login::send_login_hello,
     play_bundle::PlayPacketBundleAssembler,
     types::{ChunkProbeSummary, ConnectionOptions, ConnectionState, ProbeReport},
 };
@@ -142,13 +143,13 @@ impl ProbeContext {
     }
 }
 
-pub async fn run_offline_probe(options: ConnectionOptions) -> Result<ProbeReport> {
-    timeout(options.timeout, run_offline_probe_inner(options))
+pub async fn run_probe(options: ConnectionOptions) -> Result<ProbeReport> {
+    timeout(options.timeout, run_probe_inner(options))
         .await
-        .context("offline probe timed out")?
+        .context("probe timed out")?
 }
 
-async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeReport> {
+async fn run_probe_inner(options: ConnectionOptions) -> Result<ProbeReport> {
     let mut probe = ProbeContext::new(RawConnection::connect(&options.address, None).await?);
     probe.accepted_code_of_conduct_hash = options.accepted_code_of_conduct_hash;
     probe.client_information = options.client_information.clone();
@@ -157,8 +158,7 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
     let (id, payload) =
         packets::encode_handshake(&options.host, options.port, ClientIntent::Login)?;
     probe.conn.send_packet(id, &payload).await?;
-    let (id, payload) = packets::encode_login_hello(&options.username, options.profile_id)?;
-    probe.conn.send_packet(id, &payload).await?;
+    send_login_hello(&mut probe.conn, &options.username, options.profile_id).await?;
 
     let mut drain = ProbeDrain::new(options.probe_after_first_chunk_packets);
     let mut play_bundle = PlayPacketBundleAssembler::default();
@@ -178,7 +178,13 @@ async fn run_offline_probe_inner(options: ConnectionOptions) -> Result<ProbeRepo
         match probe.state {
             ConnectionState::Login => {
                 let packet = packets::decode_login_clientbound(packet_id, &payload)?;
-                probe.handle_login_packet(packet).await?;
+                probe
+                    .handle_login_packet(
+                        packet,
+                        options.session_credentials.as_ref(),
+                        options.timeout,
+                    )
+                    .await?;
                 packet_first_chunks.push(None);
             }
             ConnectionState::Configuration => {

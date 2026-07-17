@@ -52,7 +52,6 @@ mod tests {
         frame::encode_packet,
         PROTOCOL_VERSION,
     };
-    use bytes::BytesMut;
     use tokio::{io::AsyncWriteExt, net::TcpListener, time::timeout};
 
     use super::*;
@@ -63,11 +62,7 @@ mod tests {
         let address = listener.local_addr().unwrap();
         let server = tokio::spawn(async move {
             let (stream, _) = listener.accept().await.unwrap();
-            let mut connection = RawConnection {
-                stream,
-                read_buf: BytesMut::new(),
-                compression_threshold: None,
-            };
+            let mut connection = RawConnection::from_stream(stream, None);
 
             let (packet_id, payload) = connection.read_packet().await.unwrap();
             assert_eq!(packet_id, ids::handshake::SERVERBOUND_CLIENT_INTENTION);
@@ -133,11 +128,7 @@ mod tests {
             let address = listener.local_addr().unwrap();
             let server = tokio::spawn(async move {
                 let (stream, _) = listener.accept().await.unwrap();
-                let mut connection = RawConnection {
-                    stream,
-                    read_buf: BytesMut::new(),
-                    compression_threshold: None,
-                };
+                let mut connection = RawConnection::from_stream(stream, None);
                 connection.read_packet().await.unwrap();
                 connection.read_packet().await.unwrap();
 

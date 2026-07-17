@@ -135,7 +135,6 @@ mod tests {
     use bbb_world::{
         code_of_conduct_text_hash, ChunkPos, DialogState, RegistryPacketEntry, TransferTargetState,
     };
-    use bytes::BytesMut;
     use std::{collections::BTreeMap, time::Duration};
     use tokio::net::TcpListener;
     use tokio::time::timeout;
@@ -726,11 +725,7 @@ mod tests {
         });
         let (server_stream, _) = listener.accept().await.unwrap();
         let client = client.await.unwrap();
-        let server = RawConnection {
-            stream: server_stream,
-            read_buf: BytesMut::with_capacity(8192),
-            compression_threshold: None,
-        };
+        let server = RawConnection::from_stream(server_stream, None);
         (client, server)
     }
 }
