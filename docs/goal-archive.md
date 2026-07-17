@@ -18322,3 +18322,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   core registry 生成常量。
 - core-registry generator 新增跨 world/native reverse guard，禁止这些固定 entity type ids
   回流。
+
+## 2026-07-16：迁移 Avatar metadata fixtures
+
+- world main-arm 与 upside-down fixtures 删除 Avatar slot 15/16、HumanoidArm 0/1 与 cape bit
+  0x01 的五个局部 aliases，统一消费 metadata schema 生成常量。
+- metadata generator 新增 fixture reverse guard；native Mannequin 的显式 model-parts runtime
+  default 保持独立，未被本切片改动。

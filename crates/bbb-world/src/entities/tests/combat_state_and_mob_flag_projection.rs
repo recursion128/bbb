@@ -455,10 +455,6 @@ fn entity_model_sources_project_using_item_flags() {
 
 #[test]
 fn entity_model_sources_project_main_arm_left_for_item_in_hand_layer() {
-    const VANILLA_AVATAR_MAIN_HAND_DATA_ID: u8 = 15;
-    const VANILLA_HUMANOID_ARM_LEFT_ID: i32 = 0;
-    const VANILLA_HUMANOID_ARM_RIGHT_ID: i32 = 1;
-
     let main_arm_left = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)

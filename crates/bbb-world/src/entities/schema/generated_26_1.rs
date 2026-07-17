@@ -23498,6 +23498,43 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn avatar_fixtures_do_not_restore_fixed_accessor_arm_or_model_part_ids() {
+        let combat_tests = include_str!("../tests/combat_state_and_mob_flag_projection.rs");
+        for required in [
+            "VANILLA_AVATAR_MAIN_HAND_DATA_ID",
+            "VANILLA_HUMANOID_ARM_LEFT_ID",
+            "VANILLA_HUMANOID_ARM_RIGHT_ID",
+        ] {
+            assert!(
+                combat_tests.contains(required),
+                "Avatar main-arm fixture missing {required}"
+            );
+        }
+        for removed in [
+            "const VANILLA_AVATAR_MAIN_HAND_DATA_ID",
+            "const VANILLA_HUMANOID_ARM_LEFT_ID",
+            "const VANILLA_HUMANOID_ARM_RIGHT_ID",
+        ] {
+            assert!(
+                !combat_tests.contains(removed),
+                "Avatar main-arm fixture restored {removed}"
+            );
+        }
+        let player_pose_tests = include_str!("../tests/player_pose_and_sleeping_projection.rs");
+        assert!(player_pose_tests.contains("VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID"));
+        assert!(player_pose_tests.contains("VANILLA_AVATAR_MODEL_PART_CAPE"));
+        for removed in [
+            "const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID",
+            "const VANILLA_AVATAR_CAPE_PART_MASK",
+        ] {
+            assert!(
+                !player_pose_tests.contains(removed),
+                "Avatar model-parts fixture restored {removed}"
+            );
+        }
+    }
+
+    #[test]
     fn local_player_metadata_consumers_do_not_restore_fixed_accessor_ids() {
         let local_player = include_str!("../../client/local_player.rs");
         assert!(local_player.contains("vanilla_entity_metadata_entity_accessors"));

@@ -322,9 +322,6 @@ fn entity_model_sources_project_player_upside_down() {
     // cape model part is shown (DATA_PLAYER_MODE_CUSTOMISATION id 16, CAPE bit 0x01)
     // AND its GameProfile name (from the player-info list, not the custom name) is
     // "Dinnerbone"/"Grumm".
-    const VANILLA_AVATAR_MODEL_CUSTOMIZATION_DATA_ID: u8 = 16;
-    const VANILLA_AVATAR_CAPE_PART_MASK: i8 = 0x01;
-
     let upside_down = |store: &WorldStore, id: i32| {
         store
             .entity_model_sources_at_partial_tick(0.0)
@@ -377,7 +374,7 @@ fn entity_model_sources_project_player_upside_down() {
     assert!(set_customization(
         &mut store,
         90,
-        VANILLA_AVATAR_CAPE_PART_MASK
+        VANILLA_AVATAR_MODEL_PART_CAPE
     ));
     assert!(!upside_down(&store, 90));
 
@@ -393,7 +390,7 @@ fn entity_model_sources_project_player_upside_down() {
     assert!(set_customization(
         &mut store,
         90,
-        !VANILLA_AVATAR_CAPE_PART_MASK
+        !VANILLA_AVATAR_MODEL_PART_CAPE
     ));
     assert!(!upside_down(&store, 90));
 
@@ -401,7 +398,7 @@ fn entity_model_sources_project_player_upside_down() {
     assert!(set_customization(
         &mut store,
         90,
-        VANILLA_AVATAR_CAPE_PART_MASK
+        VANILLA_AVATAR_MODEL_PART_CAPE
     ));
     assert!(upside_down(&store, 90));
 
@@ -412,7 +409,7 @@ fn entity_model_sources_project_player_upside_down() {
     assert!(set_customization(
         &mut store,
         91,
-        VANILLA_AVATAR_CAPE_PART_MASK
+        VANILLA_AVATAR_MODEL_PART_CAPE
     ));
     assert!(!upside_down(&store, 91));
 
@@ -423,7 +420,7 @@ fn entity_model_sources_project_player_upside_down() {
     assert!(set_customization(
         &mut store,
         92,
-        VANILLA_AVATAR_CAPE_PART_MASK
+        VANILLA_AVATAR_MODEL_PART_CAPE
     ));
     assert!(upside_down(&store, 92));
 }
