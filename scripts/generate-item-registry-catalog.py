@@ -11,7 +11,8 @@ import sys
 from pathlib import Path
 
 from item_registry_catalog_extractor import extract_item_registry_catalog
-from vanilla_java_source import parse_source
+from sound_event_catalog_extractor import direct_sound_event_entries
+from vanilla_java_source import expression_fact, parse_source
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +22,8 @@ DEFAULT_TYPES_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/item_types.rs"
 ITEMS_PATH = Path("net/minecraft/world/item/Items.java")
 ITEM_PATH = Path("net/minecraft/world/item/Item.java")
 ITEM_IDS_PATH = Path("net/minecraft/references/ItemIds.java")
+DATA_COMPONENTS_PATH = Path("net/minecraft/core/component/DataComponents.java")
+SOUND_EVENTS_PATH = Path("net/minecraft/sounds/SoundEvents.java")
 
 
 def parse_args() -> argparse.Namespace:
@@ -93,7 +96,118 @@ def _resource_ids(declaration: dict, constants: dict[str, str]) -> list[str]:
     raise ValueError(f"Items.{field}: unsupported root registration {name!r}")
 
 
-def _render_types(resource_paths: list[str], item_constants: dict[str, int]) -> str:
+def _walk_facts(expression: dict):
+    yield expression
+    object_fact = expression.get("object")
+    if object_fact is not None:
+        yield from _walk_facts(object_fact)
+    for key in ("arguments", "children"):
+        for child in expression.get(key, []):
+            yield from _walk_facts(child)
+
+
+def _break_sound_constant(expression: dict, call_names: set[str]) -> str | None:
+    matches = []
+    for fact in _walk_facts(expression):
+        if fact.get("kind") != "method_invocation" or fact.get("name") not in call_names:
+            continue
+        arguments = fact.get("arguments", [])
+        if len(arguments) < 2:
+            continue
+        component = _field_access(arguments[0], "DataComponents")
+        if component is None and arguments[0].get("canonical") == "BREAK_SOUND":
+            component = "BREAK_SOUND"
+        sound = _field_access(arguments[1], "SoundEvents")
+        if component == "BREAK_SOUND" and sound is not None:
+            matches.append(sound)
+    if len(matches) > 1:
+        raise ValueError(f"multiple break-sound component assignments: {matches}")
+    return matches[0] if matches else None
+
+
+def _method_break_sound_constant(source, owner: str, method_name: str) -> str:
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == method_name and method.body is not None
+    ]
+    if len(methods) != 1:
+        raise ValueError(f"expected exactly one {owner}.{method_name} method")
+    method = methods[0]
+    matches = []
+    for call in source.calls_for(owner):
+        if (
+            call.name == "component"
+            and method.body.start_byte <= call.span.start_byte
+            and call.span.end_byte <= method.body.end_byte
+        ):
+            fact = expression_fact(source, source.expression(call.node))
+            sound = _break_sound_constant(fact, {"component"})
+            if sound is not None:
+                matches.append(sound)
+    if len(matches) != 1:
+        raise ValueError(
+            f"expected exactly one break-sound assignment in {owner}.{method_name}, got {matches}"
+        )
+    return matches[0]
+
+
+def _default_break_sounds(
+    declarations: list[dict],
+    item_id_constants: dict[str, str],
+    item_source,
+    data_components_source,
+    sound_events_source,
+) -> tuple[str, dict[str, str]]:
+    sounds = {
+        entry.constant_name: entry.resource_id
+        for entry in direct_sound_event_entries(sound_events_source)
+    }
+    common_fields = [
+        field
+        for field in data_components_source.fields_for(
+            "net.minecraft.core.component.DataComponents"
+        )
+        if field.name == "COMMON_ITEM_COMPONENTS" and field.initializer is not None
+    ]
+    if len(common_fields) != 1:
+        raise ValueError("expected exactly one DataComponents.COMMON_ITEM_COMPONENTS field")
+    common_constant = _break_sound_constant(
+        expression_fact(data_components_source, common_fields[0].initializer), {"set"}
+    )
+    if common_constant is None:
+        raise ValueError("COMMON_ITEM_COMPONENTS lacks a BREAK_SOUND assignment")
+    common_sound = sounds[common_constant]
+    wolf_armor_constant = _method_break_sound_constant(
+        item_source, "net.minecraft.world.item.Item.Properties", "wolfArmor"
+    )
+
+    overrides: dict[str, str] = {}
+    for declaration in declarations:
+        sound_constant = _break_sound_constant(
+            declaration["initializer"], {"component"}
+        )
+        if sound_constant is None and any(
+            fact.get("kind") == "method_invocation" and fact.get("name") == "wolfArmor"
+            for fact in _walk_facts(declaration["initializer"])
+        ):
+            sound_constant = wolf_armor_constant
+        if sound_constant is None:
+            continue
+        sound = sounds[sound_constant]
+        if sound == common_sound:
+            continue
+        for resource_id in _resource_ids(declaration, item_id_constants):
+            overrides["minecraft:" + resource_id] = sound
+    return common_sound, overrides
+
+
+def _render_types(
+    resource_paths: list[str],
+    item_constants: dict[str, int],
+    common_break_sound: str,
+    break_sound_overrides: dict[str, str],
+) -> str:
     if len(resource_paths) != 1506:
         raise ValueError(f"expected 1506 vanilla item ids, got {len(resource_paths)}")
     resources = ["minecraft:" + path for path in resource_paths]
@@ -101,7 +215,7 @@ def _render_types(resource_paths: list[str], item_constants: dict[str, int]) -> 
         raise ValueError("duplicate vanilla item resource id")
     lines = [
         "// @generated by scripts/generate-item-registry-catalog.py; do not edit manually.",
-        "// Sources: vanilla 26.1 Items.java registration order and Item.java constants through the shared Tree-sitter Java frontend.",
+        "// Sources: vanilla 26.1 Items.java registrations, Item.java helpers, DataComponents.java defaults, and SoundEvents.java ids through the shared Tree-sitter Java frontend.",
         "// Update: scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py",
         "// Check: scripts/vanilla-source-tools.sh scripts/generate-item-registry-catalog.py --check",
         "",
@@ -113,6 +227,7 @@ def _render_types(resource_paths: list[str], item_constants: dict[str, int]) -> 
         "",
         f"pub const VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE: i32 = {item_constants['DEFAULT_MAX_STACK_SIZE']};",
         f"pub const VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE: i32 = {item_constants['ABSOLUTE_MAX_STACK_SIZE']};",
+        f'pub const VANILLA_ITEM_DEFAULT_BREAK_SOUND_RESOURCE_ID: &str = "{common_break_sound}";',
         "",
     ]
     for item_id, resource_id in enumerate(resources):
@@ -137,6 +252,19 @@ def _render_types(resource_paths: list[str], item_constants: dict[str, int]) -> 
         "pub fn vanilla_item_resource_id_matches_type(resource_id: &str, item_type_id: i32) -> bool {",
         "    vanilla_item_type(item_type_id).is_some_and(|entry| entry.resource_id == resource_id)",
         "}", "",
+        "pub fn vanilla_item_default_break_sound_resource_id(item_type_id: i32) -> Option<&'static str> {",
+        "    vanilla_item_type(item_type_id)?;",
+        "    Some(match item_type_id {",
+    ))
+    for resource_id, sound in sorted(
+        break_sound_overrides.items(), key=lambda entry: resources.index(entry[0])
+    ):
+        suffix = resource_id.removeprefix("minecraft:").upper()
+        lines.append(f'        VANILLA_ITEM_{suffix}_ID => "{sound}",')
+    lines.extend((
+        "        _ => VANILLA_ITEM_DEFAULT_BREAK_SOUND_RESOURCE_ID,",
+        "    })",
+        "}", "",
         "#[cfg(test)]", "mod tests {", "    use std::{collections::HashSet, fs, path::Path};", "", "    use super::*;", "",
         "    #[test]", "    fn item_catalog_is_complete_contiguous_and_unique() {",
         "        assert_eq!(VANILLA_ITEM_TYPES.len(), 1506);", "        let mut resources = HashSet::new();",
@@ -153,6 +281,10 @@ def _render_types(resource_paths: list[str], item_constants: dict[str, int]) -> 
         '        assert!(vanilla_item_resource_id_matches_type("minecraft:snowball", VANILLA_ITEM_SNOWBALL_ID));',
         '        assert!(!vanilla_item_resource_id_matches_type("snowball", VANILLA_ITEM_SNOWBALL_ID));',
         '        assert!(!vanilla_item_resource_id_matches_type("minecraft:snowball", VANILLA_ITEM_EGG_ID));',
+        "        assert_eq!(vanilla_item_default_break_sound_resource_id(VANILLA_ITEM_STONE_ID), Some(\"minecraft:entity.item.break\"));",
+        "        assert_eq!(vanilla_item_default_break_sound_resource_id(VANILLA_ITEM_SHIELD_ID), Some(\"minecraft:item.shield.break\"));",
+        "        assert_eq!(vanilla_item_default_break_sound_resource_id(VANILLA_ITEM_WOLF_ARMOR_ID), Some(\"minecraft:item.wolf_armor.break\"));",
+        "        assert_eq!(vanilla_item_default_break_sound_resource_id(-1), None);",
         "    }", "", "    #[test]", "    fn item_stack_size_consumers_use_generated_constants() {",
         "        assert_eq!(VANILLA_ITEM_DEFAULT_MAX_STACK_SIZE, 64);",
         "        assert_eq!(VANILLA_ITEM_ABSOLUTE_MAX_STACK_SIZE, 99);",
@@ -241,13 +373,31 @@ def generate(source_root: Path) -> tuple[str, str]:
     items = parse_source(ITEMS_PATH.as_posix(), (source_root / ITEMS_PATH).read_bytes())
     item = parse_source(ITEM_PATH.as_posix(), (source_root / ITEM_PATH).read_bytes())
     item_ids = parse_source(ITEM_IDS_PATH.as_posix(), (source_root / ITEM_IDS_PATH).read_bytes())
+    data_components = parse_source(
+        DATA_COMPONENTS_PATH.as_posix(), (source_root / DATA_COMPONENTS_PATH).read_bytes()
+    )
+    sound_events = parse_source(
+        SOUND_EVENTS_PATH.as_posix(), (source_root / SOUND_EVENTS_PATH).read_bytes()
+    )
     extracted = extract_item_registry_catalog(items, item_ids, item)
     value = extracted.as_json_value()
     facts = json.dumps(value, indent=2, sort_keys=True) + "\n"
     resource_paths: list[str] = []
     for declaration in value["declarations"]:
         resource_paths.extend(_resource_ids(declaration, value["item_id_constants"]))
-    return facts, _render_types(resource_paths, extracted.item_constants)
+    common_break_sound, break_sound_overrides = _default_break_sounds(
+        value["declarations"],
+        value["item_id_constants"],
+        item,
+        data_components,
+        sound_events,
+    )
+    return facts, _render_types(
+        resource_paths,
+        extracted.item_constants,
+        common_break_sound,
+        break_sound_overrides,
+    )
 
 
 def _check(path: Path, generated: str) -> bool:
