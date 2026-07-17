@@ -10586,12 +10586,12 @@ fn hud_inventory_tooltip_uses_local_player_base_attributes_for_default_weapon() 
             entity_id: 42,
             attributes: vec![
                 bbb_protocol::packets::AttributeSnapshot {
-                    attribute_id: 2,
+                    attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
                     base: 2.5,
                     modifiers: Vec::new(),
                 },
                 bbb_protocol::packets::AttributeSnapshot {
-                    attribute_id: 4,
+                    attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ATTACK_SPEED_ID,
                     base: 5.0,
                     modifiers: Vec::new(),
                 },

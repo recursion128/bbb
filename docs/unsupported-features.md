@@ -149,6 +149,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Attribute-modifier semantic consumers and fixtures must likewise use the generated
   `AttributeModifier.Operation` constants; the generator guard must cover numeric construction,
   assignment, and comparison outside separately owned protocol wire samples.
+  `UpdateAttributes` semantic snapshots in net, world entity/level, and native runtime must use
+  generated Attribute registry ids; custom registry-order fixtures stay explicitly scoped to
+  their resolver tests rather than being mistaken for built-in holder ids.
   Baby-capable entity membership and the per-family wire index/default must remain derived from
   the generated `DATA_BABY_ID` accessor hierarchy rather than an entity-type table.
   Zoglin's independently declared `DATA_BABY_ID` must use that nearest-owner resolver in native

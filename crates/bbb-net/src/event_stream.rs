@@ -1582,7 +1582,7 @@ mod tests {
         let attributes = packets::UpdateAttributes {
             entity_id: 123,
             attributes: vec![packets::AttributeSnapshot {
-                attribute_id: 21,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
                 base: 20.0,
                 modifiers: vec![packets::AttributeModifier {
                     id: "minecraft:health_bonus".to_string(),

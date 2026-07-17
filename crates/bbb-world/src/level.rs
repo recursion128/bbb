@@ -2292,7 +2292,7 @@ mod tests {
         assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
             entity_id: 123,
             attributes: vec![ProtocolAttributeSnapshot {
-                attribute_id: 21,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
                 base: 0.1,
                 modifiers: vec![ProtocolAttributeModifier {
                     id: "minecraft:test_speed".to_string(),

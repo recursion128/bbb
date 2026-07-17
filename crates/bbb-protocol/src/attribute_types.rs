@@ -455,6 +455,82 @@ mod tests {
         );
     }
 
+    fn contains_numeric_attribute_id_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction = compact.match_indices("attribute_id:").any(|(offset, _)| {
+            compact[offset + "attribute_id:".len()..]
+                .chars()
+                .next()
+                .is_some_and(|character| character.is_ascii_digit())
+        });
+        numeric_construction
+            || compact.match_indices(".attribute_id").any(|(offset, _)| {
+                let suffix = &compact[offset + ".attribute_id".len()..];
+                [",", "==", "!=", "="].iter().any(|separator| {
+                    suffix.strip_prefix(separator).is_some_and(|value| {
+                        value
+                            .chars()
+                            .next()
+                            .is_some_and(|character| character.is_ascii_digit())
+                    })
+                })
+            })
+    }
+
+    #[test]
+    fn numeric_attribute_id_guard_covers_construction_and_comparison() {
+        assert!(contains_numeric_attribute_id_reference("attribute_id: 19,"));
+        assert!(contains_numeric_attribute_id_reference(
+            "assert_eq!(snapshot.attribute_id,\n 22);"
+        ));
+        assert!(!contains_numeric_attribute_id_reference(
+            "attribute_id: VANILLA_ATTRIBUTE_MAX_HEALTH_ID,"
+        ));
+        assert!(!contains_numeric_attribute_id_reference(
+            "assert_eq!(snapshot.attribute_id, VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID);"
+        ));
+    }
+
+    #[test]
+    fn update_attribute_semantic_sources_use_generated_catalog_ids() {
+        fn visit(path: &Path, violations: &mut Vec<String>) {
+            if path.is_dir() {
+                for entry in fs::read_dir(path).unwrap() {
+                    visit(&entry.unwrap().path(), violations);
+                }
+                return;
+            }
+            if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                return;
+            }
+            let source = fs::read_to_string(path).unwrap();
+            if contains_numeric_attribute_id_reference(&source) {
+                violations.push(format!(
+                    "{}: numeric attribute_id reference",
+                    path.display()
+                ));
+            }
+        }
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut violations = Vec::new();
+        for path in [
+            crates.join("bbb-net/src"),
+            crates.join("bbb-world/src/entities"),
+            crates.join("bbb-world/src/level.rs"),
+            crates.join("bbb-native/src/runtime"),
+        ] {
+            visit(&path, &mut violations);
+        }
+        assert!(
+            violations.is_empty(),
+            "semantic UpdateAttributes consumers restored numeric attribute ids:\n{}",
+            violations.join("\n")
+        );
+    }
+
     #[test]
     fn attribute_fixtures_do_not_restore_fixed_scale_or_max_health_ids() {
         let player_pose = include_str!(

@@ -101,7 +101,7 @@ fn entity_metadata_ignored_counters_update_world_counters() {
         UpdateAttributes {
             entity_id: 124,
             attributes: vec![AttributeSnapshot {
-                attribute_id: 21,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
                 base: 20.0,
                 modifiers: Vec::new(),
             }],

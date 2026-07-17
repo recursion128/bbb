@@ -244,7 +244,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         entity_id: 123,
         attributes: vec![
             ProtocolAttributeSnapshot {
-                attribute_id: 21,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
                 base: 20.0,
                 modifiers: vec![ProtocolAttributeModifier {
                     id: "minecraft:health_bonus".to_string(),
@@ -253,7 +253,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
                 }],
             },
             ProtocolAttributeSnapshot {
-                attribute_id: 26,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
                 base: 0.7,
                 modifiers: Vec::new(),
             },
@@ -262,7 +262,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert!(store.apply_update_attributes(ProtocolUpdateAttributes {
         entity_id: 123,
         attributes: vec![ProtocolAttributeSnapshot {
-            attribute_id: 26,
+            attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
             base: 0.9,
             modifiers: vec![ProtocolAttributeModifier {
                 id: "minecraft:speed_bonus".to_string(),
@@ -274,7 +274,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert!(!store.apply_update_attributes(ProtocolUpdateAttributes {
         entity_id: 999,
         attributes: vec![ProtocolAttributeSnapshot {
-            attribute_id: 21,
+            attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
             base: 20.0,
             modifiers: Vec::new(),
         }],
@@ -284,7 +284,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
         entity.attributes,
         vec![
             ProtocolAttributeSnapshot {
-                attribute_id: 21,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
                 base: 20.0,
                 modifiers: vec![ProtocolAttributeModifier {
                     id: "minecraft:health_bonus".to_string(),
@@ -293,7 +293,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
                 }],
             },
             ProtocolAttributeSnapshot {
-                attribute_id: 26,
+                attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MOVEMENT_SPEED_ID,
                 base: 0.9,
                 modifiers: vec![ProtocolAttributeModifier {
                     id: "minecraft:speed_bonus".to_string(),
@@ -894,7 +894,7 @@ fn update_attributes_ignores_non_living_entities() {
     assert!(!store.apply_update_attributes(ProtocolUpdateAttributes {
         entity_id: 124,
         attributes: vec![ProtocolAttributeSnapshot {
-            attribute_id: 21,
+            attribute_id: bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID,
             base: 20.0,
             modifiers: Vec::new(),
         }],

@@ -18932,3 +18932,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Extended the gameplay-id generator's reverse guard to scan those semantic owners, including
   split test modules and inline tests, for numeric operation construction, assignment, or
   comparison. Protocol codec wire samples remain outside this semantic guard.
+
+# 2026-07-17: Derive UpdateAttributes holder ids
+
+- Replaced stale numeric health, movement-speed, attack-damage, and attack-speed ids in net,
+  canonical world, and native runtime `UpdateAttributes` semantic fixtures with the generated
+  fixed Attribute registry constants. This also updates health/speed examples that still reflected
+  an older registry order.
+- Added a generator-emitted reverse guard over those UpdateAttributes owners, including split and
+  inline tests, while leaving item-model resolver tests free to express explicit custom
+  `attribute_keys` order and unknown-holder samples.
