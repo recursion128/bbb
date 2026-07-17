@@ -8479,26 +8479,51 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         uv("component_condition_container_partial_villager_variant_tag_absent")
     );
 
-    let modifier_with_attribute =
-        |attribute_id, id: &str, amount: f64, operation_id, slot_id| AttributeModifierSummary {
+    let custom_attribute_id = |resource_id: &str| {
+        i32::try_from(
+            attribute_keys
+                .iter()
+                .position(|candidate| candidate == resource_id)
+                .expect("custom attribute registry sample key"),
+        )
+        .unwrap()
+    };
+    let unknown_attribute_id = i32::try_from(attribute_keys.len()).unwrap();
+    let modifier_with_attribute = |attribute_id, id: &str, amount: f64, slot_id| {
+        AttributeModifierSummary {
             attribute_id,
             modifier_id: id.to_string(),
             amount_bits: amount.to_bits(),
-            operation_id,
+            operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
             slot_id,
             display_id: 0,
             display_text: None,
             display_text_styled: None,
-        };
-    let modifier = |id: &str, amount: f64, operation_id, slot_id| AttributeModifierSummary {
-        attribute_id: 7,
-        modifier_id: id.to_string(),
-        amount_bits: amount.to_bits(),
-        operation_id,
-        slot_id,
-        display_id: 0,
-        display_text: None,
-        display_text_styled: None,
+        }
+    };
+    let add_modifier = |id: &str, amount: f64, slot_id| {
+        AttributeModifierSummary {
+            attribute_id: unknown_attribute_id,
+            modifier_id: id.to_string(),
+            amount_bits: amount.to_bits(),
+            operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
+            slot_id,
+            display_id: 0,
+            display_text: None,
+            display_text_styled: None,
+        }
+    };
+    let multiplied_base_modifier = |id: &str, amount: f64, slot_id| {
+        AttributeModifierSummary {
+            attribute_id: unknown_attribute_id,
+            modifier_id: id.to_string(),
+            amount_bits: amount.to_bits(),
+            operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
+            slot_id,
+            display_id: 0,
+            display_text: None,
+            display_text_styled: None,
+        }
     };
     assert_eq!(
         selected(59, DataComponentPatchSummary::default()),
@@ -8510,8 +8535,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             DataComponentPatchSummary {
                 added_type_ids: vec![16],
                 attribute_modifiers: vec![
-                    modifier("minecraft:test/speed", 1.5, 0, 1),
-                    modifier("minecraft:test/scale", 3.0, 1, 3),
+                    add_modifier("minecraft:test/speed", 1.5, 1),
+                    multiplied_base_modifier("minecraft:test/scale", 3.0, 3),
                 ],
                 ..DataComponentPatchSummary::default()
             }
@@ -8524,8 +8549,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             DataComponentPatchSummary {
                 added_type_ids: vec![16],
                 attribute_modifiers: vec![
-                    modifier("minecraft:test/speed", 0.5, 0, 1),
-                    modifier("minecraft:test/scale", 3.0, 1, 3),
+                    add_modifier("minecraft:test/speed", 0.5, 1),
+                    multiplied_base_modifier("minecraft:test/scale", 3.0, 3),
                 ],
                 ..DataComponentPatchSummary::default()
             }
@@ -8539,8 +8564,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                 added_type_ids: vec![16],
                 removed_type_ids: vec![16],
                 attribute_modifiers: vec![
-                    modifier("minecraft:test/speed", 1.5, 0, 1),
-                    modifier("minecraft:test/scale", 3.0, 1, 3),
+                    add_modifier("minecraft:test/speed", 1.5, 1),
+                    multiplied_base_modifier("minecraft:test/scale", 3.0, 3),
                 ],
                 ..DataComponentPatchSummary::default()
             }
@@ -8559,8 +8584,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     component_patch: DataComponentPatchSummary {
                         added_type_ids: vec![16],
                         attribute_modifiers: vec![
-                            modifier("minecraft:test/speed", 1.5, 0, 1),
-                            modifier("minecraft:test/scale", 3.0, 1, 3),
+                            add_modifier("minecraft:test/speed", 1.5, 1),
+                            multiplied_base_modifier("minecraft:test/scale", 3.0, 3),
                         ],
                         ..DataComponentPatchSummary::default()
                     },
@@ -8582,8 +8607,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
                     component_patch: DataComponentPatchSummary {
                         added_type_ids: vec![16],
                         attribute_modifiers: vec![
-                            modifier("minecraft:test/speed", 1.5, 0, 1),
-                            modifier("minecraft:test/heavy", 2.0, 0, 2),
+                            add_modifier("minecraft:test/speed", 1.5, 1),
+                            add_modifier("minecraft:test/heavy", 2.0, 2),
                         ],
                         ..DataComponentPatchSummary::default()
                     },
@@ -8593,8 +8618,18 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         ),
         uv("component_condition_container_partial_attribute_modifiers_absent")
     );
-    let attack_damage_modifier = modifier_with_attribute(0, "minecraft:test/speed", 1.5, 0, 1);
-    let scale_modifier = modifier_with_attribute(1, "minecraft:test/speed", 1.5, 0, 1);
+    let attack_damage_modifier = modifier_with_attribute(
+        custom_attribute_id("minecraft:attack_damage"),
+        "minecraft:test/speed",
+        1.5,
+        1,
+    );
+    let scale_modifier = modifier_with_attribute(
+        custom_attribute_id("minecraft:scale"),
+        "minecraft:test/speed",
+        1.5,
+        1,
+    );
     let attribute_patch = |modifier| DataComponentPatchSummary {
         added_type_ids: vec![16],
         attribute_modifiers: vec![modifier],
@@ -8651,8 +8686,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             66,
             bundle_attribute_modifiers_patch(vec![
-                modifier("minecraft:test/speed", 1.5, 0, 1),
-                modifier("minecraft:test/scale", 3.0, 1, 3),
+                add_modifier("minecraft:test/speed", 1.5, 1),
+                multiplied_base_modifier("minecraft:test/scale", 3.0, 3),
             ])
         ),
         uv("component_condition_bundle_partial_attribute_modifiers_present")
@@ -8661,8 +8696,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
         selected(
             66,
             bundle_attribute_modifiers_patch(vec![
-                modifier("minecraft:test/speed", 1.5, 0, 1),
-                modifier("minecraft:test/heavy", 2.0, 0, 2),
+                add_modifier("minecraft:test/speed", 1.5, 1),
+                add_modifier("minecraft:test/heavy", 2.0, 2),
             ])
         ),
         uv("component_condition_bundle_partial_attribute_modifiers_absent")
@@ -8673,8 +8708,8 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             DataComponentPatchSummary {
                 removed_type_ids: vec![50],
                 ..bundle_attribute_modifiers_patch(vec![
-                    modifier("minecraft:test/speed", 1.5, 0, 1),
-                    modifier("minecraft:test/scale", 3.0, 1, 3),
+                    add_modifier("minecraft:test/speed", 1.5, 1),
+                    multiplied_base_modifier("minecraft:test/scale", 3.0, 3),
                 ])
             }
         ),

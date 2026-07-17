@@ -148,7 +148,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   assertions in `bbb-protocol/src/packets/entities/tests.rs`, identified by its wire-sample marker.
   Attribute-modifier semantic consumers and fixtures must likewise use the generated
   `AttributeModifier.Operation` constants; the generator guard must cover numeric construction,
-  assignment, and comparison outside separately owned protocol wire samples.
+  assignment, comparison, and fixture helper arguments outside separately owned protocol wire
+  samples. Custom registry-order fixtures must derive their holder ids from the explicit key order
+  instead of mixing those ids with built-in constants.
   `UpdateAttributes` semantic snapshots in net, world entity/level, and native runtime must use
   generated Attribute registry ids; custom registry-order fixtures stay explicitly scoped to
   their resolver tests rather than being mistaken for built-in holder ids.

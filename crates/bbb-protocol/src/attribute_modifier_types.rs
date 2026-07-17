@@ -241,4 +241,22 @@ mod tests {
             "parallel attribute modifier type owners: {violations:?}"
         );
     }
+
+    #[test]
+    fn item_model_custom_registry_fixture_uses_generated_operation_constants() {
+        let source = include_str!("../../bbb-item-model/src/item_runtime/tests.rs");
+        let fixture = source
+            .split("let custom_attribute_id")
+            .nth(1)
+            .and_then(|source| source.split("let default_attribute_item").next())
+            .expect("item-model custom attribute fixture");
+        assert!(fixture.contains("VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID"));
+        assert!(fixture.contains("VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID"));
+        assert!(fixture.contains("custom_attribute_id(\"minecraft:attack_damage\")"));
+        assert!(fixture.contains("custom_attribute_id(\"minecraft:scale\")"));
+        assert!(!fixture.contains("operation_id, slot_id|"));
+        assert!(!fixture.contains("attribute_id: 7"));
+        assert!(!fixture.contains("modifier_with_attribute(0,"));
+        assert!(!fixture.contains("modifier_with_attribute(1,"));
+    }
 }

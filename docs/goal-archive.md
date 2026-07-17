@@ -18950,3 +18950,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   registry constants.
 - Extended the attribute generator's reverse guard over those built-in component owners without
   scanning the item-model custom-order/unknown-holder resolver fixtures.
+
+# 2026-07-17: Type item-model attribute fixture operations
+
+- Replaced the item-model custom-registry fixture's numeric operation arguments with helpers that
+  directly construct generated add-value or add-multiplied-base operations.
+- Derived the custom attack-damage, scale, and unknown holder ids from the fixture's explicit
+  `attribute_keys` order, and added a generator-emitted guard against restoring numeric helper
+  arguments or the old literal unknown id.
