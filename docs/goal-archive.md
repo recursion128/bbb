@@ -18342,3 +18342,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   统一消费 `MenuType.java` 生成的 `VANILLA_MENU_TYPE_MERCHANT_ID`。
 - gameplay-id generator 的 menu consumer reverse scan 纳入 `bbb-net/src/probe/play.rs`，禁止
   net probe 恢复本地 menu type id。
+
+## 2026-07-17：关闭固定 entity metadata id fixture 迁移
+
+- `bbb-native`、`bbb-world` 与 `bbb-net` 的语义消费者和 fixture 已不再直接写入数值
+  `data_id`，也不再声明数值 `_DATA_ID: u8` entity-metadata 局部 alias；每个已迁移字段都
+  消费 entity metadata schema 的最近 owner accessor、typed default 与 named flag，而不是
+  借用同索引的其他 family。容器 `ContainerData` 的 `i16` 槽位仍由各自 inventory owner 管理。
+- entity metadata generator 现在递归扫描上述三个 crate 的 Rust 源码，排除拥有权威生成事实及
+  反向校验的 schema owner，拒绝数值 `data_id` 字段或局部 `_DATA_ID` alias 回流。
+- protocol raw-wire 样本仍独立验证解码器 ordinal；18 个 numeric `serializer_id` 继续由
+  gameplay-id generator 的专用 wire-sample 边界守卫负责，不属于语义 fixture 迁移范围。

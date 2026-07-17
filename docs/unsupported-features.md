@@ -148,30 +148,6 @@ Owner: `scripts/` + each generated catalog's semantic crate
 - Complete the remaining cross-crate ordinal/serializer-id and entity
   renderer-class/event-dispatch membership discovery audit.
   Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
-  Continue the remaining fixed metadata-id fixture-alias pass across `bbb-native`
-  entity-scene/input tests and `bbb-world` entity test submodules, including the remaining
-  baby-state fixtures outside specialized/creature pick-bounds, model-source, small-mob animation,
-  visibility/equipment body-layer, native mount-inventory, native entity-scene body-layer, and native
-  early animal render-state, native farm-variant, native base aquatic/animal model-kind, and native
-  specialized-animal model-kind, native PolarBear/Panda model-kind, native Villager/WanderingTrader,
-  native companion-animal model-kind, native Cat registry-order, native mount model-kind, and native
-  input debug-save fixtures and production AgeableMob save projection, world mount-inventory fixture
-  and production visibility projection, world animal audio fixture coverage, and native entity-scene
-  production model/baby and Mob aggressive fixtures, world combat-state Mob flag fixtures, and native
-  input debug-save Mob flag and AgeLocked fixtures/production projection, plus
-  pose/shared-base fixtures outside
-  movement/swim, combat-state, player-sleeping,
-  creature pick-bounds projection, transient Breeze animation, aquatic Frog walk animation,
-  small-mob animation, visibility/equipment shared-flags coverage, and native ItemFrame invisibility
-  and entity-scene pose coverage, plus native input base save/pose/invisibility and world play-apply
-  silent-event fixtures and world/native AbstractVillager unhappy fixtures; migrate only families
-  whose exact inherited accessor is already
-  owned by the generated schema, without substituting a same-index accessor from another class.
-  Living health fixtures in combat-state, player-pose, small-mob animation, and native runtime-event
-  coverage already use the generated inherited accessor/default and remain guarded against fixed
-  aliases.
-  LivingEntity use-item flag fixtures must likewise derive the inherited BYTE wire index, default
-  and named using-item mask from the generated accessor bundle rather than fixed aliases.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression
