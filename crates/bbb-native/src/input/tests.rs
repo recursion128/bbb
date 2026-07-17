@@ -2,8 +2,20 @@ use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::builtin_enum_component_values::{
+    VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_CYAN_ID,
     VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID,
-    VANILLA_DYE_COLOR_VALUES,
+    VANILLA_DYE_COLOR_VALUES, VANILLA_DYE_COLOR_WHITE_ID, VANILLA_FOX_VARIANT_SNOW_ID,
+    VANILLA_HORSE_VARIANT_DARK_BROWN_ID, VANILLA_LLAMA_VARIANT_GRAY_ID,
+    VANILLA_MOOSHROOM_VARIANT_BROWN_ID, VANILLA_PARROT_VARIANT_GRAY_ID,
+    VANILLA_RABBIT_VARIANT_EVIL_ID, VANILLA_SALMON_VARIANT_LARGE_ID,
+};
+use bbb_protocol::data_component_types::{
+    VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID, VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID, VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
+    VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID, VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
 };
 use bbb_protocol::entity_poses::VANILLA_ENTITY_POSE_SLEEPING_ID;
 use bbb_protocol::entity_types::{
@@ -10014,18 +10026,54 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
         cat_variant_id: Some(10),
         cat_sound_variant_id: Some(1),
         builtin_enum_component_ids: BTreeMap::from([
-            (84, 14),
-            (85, 1),
-            (86, 2),
-            (87, 4),
-            (91, 1),
-            (92, 99),
-            (101, 6),
-            (103, 3),
-            (104, 4),
-            (107, 15),
-            (108, 9),
-            (109, 0),
+            (
+                VANILLA_DATA_COMPONENT_WOLF_COLLAR_TYPE_ID,
+                VANILLA_DYE_COLOR_RED_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_FOX_VARIANT_TYPE_ID,
+                VANILLA_FOX_VARIANT_SNOW_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_SALMON_SIZE_TYPE_ID,
+                VANILLA_SALMON_VARIANT_LARGE_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_PARROT_VARIANT_TYPE_ID,
+                VANILLA_PARROT_VARIANT_GRAY_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_MOOSHROOM_VARIANT_TYPE_ID,
+                VANILLA_MOOSHROOM_VARIANT_BROWN_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_RABBIT_VARIANT_TYPE_ID,
+                VANILLA_RABBIT_VARIANT_EVIL_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_HORSE_VARIANT_TYPE_ID,
+                VANILLA_HORSE_VARIANT_DARK_BROWN_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_LLAMA_VARIANT_TYPE_ID,
+                VANILLA_LLAMA_VARIANT_GRAY_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_AXOLOTL_VARIANT_TYPE_ID,
+                VANILLA_AXOLOTL_VARIANT_BLUE_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_CAT_COLLAR_TYPE_ID,
+                VANILLA_DYE_COLOR_BLACK_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_SHEEP_COLOR_TYPE_ID,
+                VANILLA_DYE_COLOR_CYAN_ID,
+            ),
+            (
+                VANILLA_DATA_COMPONENT_SHULKER_COLOR_TYPE_ID,
+                VANILLA_DYE_COLOR_WHITE_ID,
+            ),
         ]),
         ..DataComponentPatchSummary::default()
     };

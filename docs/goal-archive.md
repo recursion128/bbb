@@ -19040,3 +19040,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   layers across native input, item-model tooltip, and world dialog fixtures.
 - Generalized the generated tropical-fish color guard to reject numeric DyeColor construction and
   comparison throughout semantic crates while leaving protocol wire samples separately owned.
+
+# 2026-07-17: Derive built-in enum component map ids
+
+- Replaced all numeric keys and values in the native item-patch built-in enum component map with
+  generated DataComponentType and enum value constants.
+- Added a generator-owned tuple guard that checks both map keys and values, covering DyeColor and
+  the eight generated animal enum value catalogs without touching protocol wire samples.

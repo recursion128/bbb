@@ -160,6 +160,8 @@ Owner: `scripts/` + each generated catalog's semantic crate
   fixtures derive the first invalid id from the generated catalog length.
   Other semantic DyeColor consumers, including dye/base-color components and banner pattern
   layers, must use the same generated value constants and are covered by that generator guard.
+  Built-in enum component maps must pair generated DataComponentType keys with the generated enum
+  value constants on both tuple sides; the gameplay-id generator guards semantic fixtures.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test
