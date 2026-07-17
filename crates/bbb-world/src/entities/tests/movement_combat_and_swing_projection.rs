@@ -17,7 +17,6 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
     // drying timer advances `shakeAnim += 0.05` after the wolf leaves water and reaches white at 40 dry
     // ticks; f32 accumulation clears the wet state once the previous value compares `>= 2.0`.
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
-    const AIR_BLOCK_STATE_ID: i32 = 0;
 
     let mut store = WorldStore::with_dimension(crate::WorldDimension {
         min_y: 0,
@@ -105,7 +104,7 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
         "a wolf still in water has not started the drying shake"
     );
 
-    fill(&mut store, AIR_BLOCK_STATE_ID);
+    fill(&mut store, crate::vanilla_air_block_state_id());
     store.advance_entity_client_animations(1);
     assert_eq!(
         shake(&store, 0.0),

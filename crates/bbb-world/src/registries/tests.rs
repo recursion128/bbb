@@ -1,7 +1,11 @@
 use bbb_protocol::packets::{
     RegistryData, RegistryDataEntry, RegistryTags, TagNetworkPayload, UpdateTags,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    path::Path,
+};
 
 use crate::{FurnaceFuelRule, RegistryEntrySource};
 use crate::{RegistryPacketEntry, RegistrySet, UnresolvedRegistryTagHolder, WorldStore};
@@ -52,6 +56,45 @@ fn vanilla_block_state_queries_use_the_embedded_report() {
     assert_eq!(
         crate::vanilla_block_state_id("minecraft:missing", &BTreeMap::new()),
         None
+    );
+}
+
+#[test]
+fn block_state_fixtures_do_not_restore_fixed_air_id_aliases() {
+    fn visit(directory: &Path, violations: &mut Vec<String>) {
+        for entry in fs::read_dir(directory).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                visit(&path, violations);
+                continue;
+            }
+            if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                continue;
+            }
+            let source = fs::read_to_string(&path).unwrap();
+            for (line_index, line) in source.lines().enumerate() {
+                let declaration = line.trim_start();
+                let name = declaration
+                    .strip_prefix("const ")
+                    .and_then(|rest| rest.split_once(':'))
+                    .map(|(name, _)| name);
+                if matches!(
+                    name,
+                    Some("AIR_BLOCK_STATE_ID" | "VANILLA_AIR_BLOCK_STATE_ID")
+                ) {
+                    violations.push(format!("{}:{}", path.display(), line_index + 1));
+                }
+            }
+        }
+    }
+
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let mut violations = Vec::new();
+    visit(&crates.join("bbb-world/src"), &mut violations);
+    visit(&crates.join("bbb-native/src"), &mut violations);
+    assert!(
+        violations.is_empty(),
+        "fixed air block-state fixture aliases: {violations:?}"
     );
 }
 

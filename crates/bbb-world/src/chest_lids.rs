@@ -392,8 +392,6 @@ mod tests {
     };
     use std::collections::BTreeMap;
 
-    const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
-
     fn world_with_air_chunk() -> WorldStore {
         let mut world = WorldStore::with_dimension(WorldDimension {
             min_y: 0,
@@ -409,7 +407,7 @@ mod tests {
                 block_states: single_value_container(
                     PaletteDomain::BlockStates,
                     4096,
-                    VANILLA_AIR_BLOCK_STATE_ID,
+                    crate::vanilla_air_block_state_id(),
                 ),
                 biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
             }],

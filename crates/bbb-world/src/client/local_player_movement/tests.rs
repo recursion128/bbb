@@ -23,7 +23,6 @@ use crate::{
     PalettedContainerData, WorldCardinalLighting, WorldDimension, WorldLevelInfo,
 };
 
-const AIR_BLOCK_STATE_ID: i32 = 0;
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 const OAK_TOP_SLAB_BLOCK_STATE_ID: i32 = 13331;
 const OAK_BOTTOM_SLAB_BLOCK_STATE_ID: i32 = 13333;
@@ -5140,7 +5139,7 @@ fn empty_test_chunk() -> ChunkColumn {
             block_states: single_value_container(
                 PaletteDomain::BlockStates,
                 4096,
-                AIR_BLOCK_STATE_ID,
+                crate::vanilla_air_block_state_id(),
             ),
             biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
         }],

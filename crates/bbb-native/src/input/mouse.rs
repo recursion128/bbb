@@ -666,7 +666,6 @@ mod tests {
     use uuid::Uuid;
 
     const CROSSHAIR_BLOCK_POS: BlockPos = BlockPos { x: 0, y: 1, z: 3 };
-    const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
     const VANILLA_WORLD_BORDER_ABSOLUTE_MAX_SIZE: i32 = 29_999_984;
 
@@ -1297,7 +1296,7 @@ mod tests {
                 .probe_block(CROSSHAIR_BLOCK_POS)
                 .unwrap()
                 .block_state_id,
-            VANILLA_AIR_BLOCK_STATE_ID
+            bbb_world::vanilla_air_block_state_id()
         );
         assert_eq!(world.local_block_predictions().len(), 1);
         assert_eq!(counters.player_action_commands_queued, 1);
@@ -1748,7 +1747,7 @@ mod tests {
                 .probe_block(CROSSHAIR_BLOCK_POS)
                 .unwrap()
                 .block_state_id,
-            VANILLA_AIR_BLOCK_STATE_ID
+            bbb_world::vanilla_air_block_state_id()
         );
         assert_eq!(world.local_block_predictions().len(), 1);
         assert_eq!(world.local_block_predictions()[0].sequence, 1);
@@ -1932,7 +1931,7 @@ mod tests {
                 .probe_block(CROSSHAIR_BLOCK_POS)
                 .unwrap()
                 .block_state_id,
-            VANILLA_AIR_BLOCK_STATE_ID
+            bbb_world::vanilla_air_block_state_id()
         );
         assert_eq!(world.local_block_predictions().len(), 1);
         assert_eq!(counters.player_action_commands_queued, 1);
@@ -2876,7 +2875,7 @@ mod tests {
                 block_states: single_value_container(
                     PaletteDomain::BlockStates,
                     4096,
-                    VANILLA_AIR_BLOCK_STATE_ID,
+                    bbb_world::vanilla_air_block_state_id(),
                 ),
                 biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
             }],

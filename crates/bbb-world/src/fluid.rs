@@ -129,7 +129,6 @@ mod tests {
         PalettedContainerData, WorldDimension,
     };
 
-    const AIR_BLOCK_STATE_ID: i32 = 0;
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
     const FLOWING_WATER_LEVEL_3_BLOCK_STATE_ID: i32 = 89;
 
@@ -296,7 +295,7 @@ mod tests {
                 block_states: single_value_container(
                     PaletteDomain::BlockStates,
                     4096,
-                    AIR_BLOCK_STATE_ID,
+                    crate::vanilla_air_block_state_id(),
                 ),
                 biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
             }],

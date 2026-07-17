@@ -415,7 +415,6 @@ fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
     // out of water it randomizes — deferred, so the value is HELD. `GuardianRenderState.spikesAnimation`
     // lerps it, and `setupAnim` turns it into `withdrawal = (1 - it) · 0.55`.
     const SOURCE_WATER_BLOCK_STATE_ID: i32 = 86;
-    const AIR_BLOCK_STATE_ID: i32 = 0;
 
     let spikes = |store: &WorldStore| {
         store
@@ -493,7 +492,7 @@ fn guardian_spikes_withdrawal_branches_match_vanilla_ai_step() {
 
     // Out of water (drain the column): vanilla randomizes, which is deferred, so the value is HELD at
     // the last frame regardless of the still-set moving flag.
-    fill(&mut store, AIR_BLOCK_STATE_ID);
+    fill(&mut store, crate::vanilla_air_block_state_id());
     store.advance_entity_client_animations(1);
     assert!(
         (spikes(&store) - retracting).abs() < 1.0e-5,

@@ -1066,7 +1066,6 @@ mod tests {
     };
     use uuid::Uuid;
 
-    const VANILLA_AIR_BLOCK_STATE_ID: i32 = 0;
     const VANILLA_GRASS_BLOCK_STATE_ID: i32 = 9;
 
     fn ender_dragon_phase_data(phase_id: i32) -> EntityDataValue {
@@ -1873,7 +1872,7 @@ mod tests {
                 block_states: single_value_container(
                     PaletteDomain::BlockStates,
                     4096,
-                    VANILLA_AIR_BLOCK_STATE_ID,
+                    bbb_world::vanilla_air_block_state_id(),
                 ),
                 biomes: single_value_container(PaletteDomain::Biomes, 64, 0),
             }],

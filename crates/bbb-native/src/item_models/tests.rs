@@ -25,7 +25,6 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
-const AIR_BLOCK_STATE_ID: i32 = 0;
 const GRASS_BLOCK_STATE_ID: i32 = 9;
 
 #[test]
@@ -591,7 +590,7 @@ fn entity_block_attachments_apply_falling_block_state_and_should_render_gate() {
     ));
     assert!(entity_block_attachments(&[falling], &world, None, 1.0).is_empty());
 
-    set_entity_block_test_block(&mut world, feet, AIR_BLOCK_STATE_ID);
+    set_entity_block_test_block(&mut world, feet, bbb_world::vanilla_air_block_state_id());
     assert!(falling_block_should_render(
         &falling,
         &world,
