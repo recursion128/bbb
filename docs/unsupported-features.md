@@ -88,9 +88,8 @@ Owner: `bbb-protocol`
   direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
   complete.
 - Complete play Login session initialization beyond the current player-id and
-  partial dimension/gameplay projection: acquire the services profile-key set,
-  validate signed profile keys, and reset the remaining level-bound
-  debug/camera/player state.
+  partial dimension/gameplay projection: acquire the services profile-key set
+  and validate signed profile keys.
 - Complete play Respawn lifecycle from
   `ClientPacketListener.handleRespawn`: reconstruct the local player according
   to both keep bits and reset music/debug-subscriber state. The current world

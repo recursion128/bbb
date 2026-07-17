@@ -18826,3 +18826,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   that ownership boundary.
 - Closed Start Configuration coverage after rebuilding every current per-listener manager. Typed
   debug-subscription codecs and renderers remain separately open on their owning packet families.
+
+# 2026-07-17: Rebuild the local player on Login
+
+- Matched `Minecraft.clearClientLevel` plus `ClientPacketListener.handleLogin` by replacing stale
+  level and local-player state, clearing subscriber values, assigning the new player id, and
+  returning the camera to that player.
+- Initialized invulnerability, flight, may-fly, and instant-build flags from the Login game type
+  with Vanilla's default flying/walking speeds. Later Player Abilities packets remain authoritative.
+- Focused coverage seeds stale chunks, entities, health, experience, pose, slot, camera, and
+  abilities, then proves the new Login state while preserving cumulative packet counters. The Login
+  ledger now leaves only services profile-key acquisition and signed-key validation open.

@@ -285,7 +285,7 @@ impl WorldStore {
 
     pub fn apply_login(&mut self, login: &ProtocolPlayLogin) {
         self.counters.play_logins_received += 1;
-        self.advance_client_level_generation();
+        self.clear_client_level();
         self.reset_chat_session_state();
         self.available_levels = login.levels.iter().cloned().collect();
         self.server_enforces_secure_chat = Some(login.enforces_secure_chat);
@@ -300,15 +300,12 @@ impl WorldStore {
             center: None,
             radius: Some(login.chunk_radius),
         };
-        self.local_player.simulation_distance = Some(login.simulation_distance);
-        self.removed_player_vehicle_id = None;
-        if let Some(local_player_id) = self.local_player_id {
-            self.clear_local_player_mount(local_player_id);
-        } else {
-            self.local_player_vehicle_id = None;
-        }
+        self.reset_local_player_for_login(
+            login.player_id,
+            i32::from(login.common_spawn_info.game_type),
+        );
         self.local_player_id = Some(login.player_id);
-        self.reset_local_player_permission_level();
+        self.local_player.simulation_distance = Some(login.simulation_distance);
         self.gameplay.show_death_screen = login.show_death_screen;
         self.gameplay.do_limited_crafting = login.do_limited_crafting;
         self.gameplay.reduced_debug_info = login.reduced_debug_info;
@@ -1261,6 +1258,76 @@ mod tests {
         assert!(store.local_player_has_reduced_debug_info());
         store.advance_client_time(3);
         assert_eq!(store.local_player().portal_cooldown, 4);
+    }
+
+    #[test]
+    fn login_rebuilds_local_player_camera_and_game_mode_abilities() {
+        let mut store = WorldStore::new();
+        store.local_player_id = Some(7);
+        store.chunks.push(stale_chunk());
+        store.apply_add_entity(protocol_add_entity(99));
+        store.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {
+            invulnerable: false,
+            flying: true,
+            can_fly: true,
+            instabuild: true,
+            flying_speed: 0.2,
+            walking_speed: 0.3,
+        });
+        store.apply_player_health(ProtocolPlayerHealth {
+            health: 4.0,
+            food: 7,
+            saturation: 0.5,
+        });
+        store.apply_player_experience(ProtocolPlayerExperience {
+            progress: 0.25,
+            level: 3,
+            total: 40,
+        });
+        assert!(store.set_local_selected_hotbar_slot(8));
+        store.local_player.camera = CameraState {
+            entity_id: Some(99),
+            follows_player: false,
+            entity_known: true,
+        };
+        store.local_player.pose = Some(LocalPlayerPoseState::default());
+
+        let mut login = login_packet(0, "minecraft:overworld");
+        login.common_spawn_info.game_type = 3;
+        login.common_spawn_info.portal_cooldown = 4;
+        store.apply_login(&login);
+
+        assert_eq!(store.local_player_id(), Some(42));
+        assert_eq!(store.chunk_count(), 0);
+        assert_eq!(store.entity_count(), 0);
+        assert_eq!(
+            store.local_player().abilities,
+            Some(crate::LocalPlayerAbilitiesState {
+                invulnerable: true,
+                flying: true,
+                can_fly: true,
+                instabuild: false,
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            })
+        );
+        assert!(store.local_player().health.is_none());
+        assert!(store.local_player().experience.is_none());
+        assert_eq!(store.local_player().selected_hotbar_slot, 0);
+        assert_eq!(store.local_player().simulation_distance, Some(6));
+        assert_eq!(store.local_player().portal_cooldown, 4);
+        assert!(store.local_player().pose.is_none());
+        assert_eq!(
+            store.local_player().camera,
+            CameraState {
+                entity_id: Some(42),
+                follows_player: true,
+                entity_known: true,
+            }
+        );
+        assert_eq!(store.counters().player_abilities_packets, 1);
+        assert_eq!(store.counters().player_health_packets, 1);
+        assert_eq!(store.counters().player_experience_packets, 1);
     }
 
     #[test]

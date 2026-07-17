@@ -1,4 +1,5 @@
 use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_ARMOR_ID;
+use bbb_protocol::game_types::GameType;
 use bbb_protocol::packets::{
     DataComponentPatchSummary, Direction as ProtocolDirection, EntityAnchor, InteractionHand,
     ItemStackSummary as ProtocolItemStackSummary, PlayerAbilities as ProtocolPlayerAbilities,
@@ -307,8 +308,14 @@ impl WorldStore {
         true
     }
 
-    pub(crate) fn reset_local_player_permission_level(&mut self) {
-        self.local_player.permission_level = LocalPlayerPermissionLevel::default();
+    pub(crate) fn reset_local_player_for_login(&mut self, player_id: i32, game_type_id: i32) {
+        self.local_player = LocalPlayerState::default();
+        self.local_player.abilities = Some(login_player_abilities(GameType::from_id(game_type_id)));
+        self.local_player.camera = CameraState {
+            entity_id: Some(player_id),
+            follows_player: true,
+            entity_known: true,
+        };
     }
 
     pub(crate) fn apply_local_player_permission_entity_event(
@@ -737,6 +744,22 @@ impl WorldStore {
     }
 }
 
+fn login_player_abilities(game_type: GameType) -> LocalPlayerAbilitiesState {
+    let (invulnerable, flying, can_fly, instabuild) = match game_type {
+        GameType::Creative => (true, false, true, true),
+        GameType::Spectator => (true, true, true, false),
+        GameType::Survival | GameType::Adventure => (false, false, false, false),
+    };
+    LocalPlayerAbilitiesState {
+        invulnerable,
+        flying,
+        can_fly,
+        instabuild,
+        flying_speed: 0.05,
+        walking_speed: 0.1,
+    }
+}
+
 fn apply_look_at_to_pose(
     pose: LocalPlayerPoseState,
     from_anchor: EntityAnchor,
@@ -782,6 +805,42 @@ mod tests {
         PLAYER_RELATIVE_Y_ROT,
     };
     use uuid::Uuid;
+
+    #[test]
+    fn login_player_abilities_match_vanilla_game_types() {
+        let survival = LocalPlayerAbilitiesState {
+            invulnerable: false,
+            flying: false,
+            can_fly: false,
+            instabuild: false,
+            flying_speed: 0.05,
+            walking_speed: 0.1,
+        };
+        assert_eq!(login_player_abilities(GameType::Survival), survival);
+        assert_eq!(login_player_abilities(GameType::Adventure), survival);
+        assert_eq!(
+            login_player_abilities(GameType::Creative),
+            LocalPlayerAbilitiesState {
+                invulnerable: true,
+                flying: false,
+                can_fly: true,
+                instabuild: true,
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            }
+        );
+        assert_eq!(
+            login_player_abilities(GameType::Spectator),
+            LocalPlayerAbilitiesState {
+                invulnerable: true,
+                flying: true,
+                can_fly: true,
+                instabuild: false,
+                flying_speed: 0.05,
+                walking_speed: 0.1,
+            }
+        );
+    }
 
     #[test]
     fn local_player_packets_update_canonical_state() {
