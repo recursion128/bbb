@@ -18473,3 +18473,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - renderer generator 输出反向守卫，禁止 native kind dispatch 恢复两个 entity-type 分支。
 - metadata generator 的 baby projection guard 改为验证所有调用都携带 entity type，而不是
   锁死会随合法 family 合并变化的调用点数量。
+
+## 2026-07-17：生成 entity-event override dispatch owner
+
+- metadata generator 现在沿每个 fixed entity runtime class 的 vanilla 父链解析最近声明
+  `handleEntityEvent(byte)` 的 class，并把 157 项 dispatch owner 写入 checked-in catalog。
+- Squid/GlowSquid 的 event 19 分派不再借用通用 Squid class-family query，而是消费精确的
+  `Squid.handleEntityEvent` owner membership；Guardian 与未知 id 作为负例。
+- generator 输出反向守卫，禁止该事件分派恢复 Squid/GlowSquid type 常量或旧 family query；
+  完整 override/event-id/listener-special-case 语义矩阵仍按 unsupported ledger 继续审计。

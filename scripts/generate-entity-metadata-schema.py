@@ -2494,6 +2494,49 @@ def method_single_return_expression(
     return source.expression(returns[0].named_children[0]).canonical
 
 
+def class_nearest_method_owner(
+    result: ExtractionResult,
+    class_map: dict[str, JavaType],
+    owner: str,
+    method_name: str,
+    parameter_count: int,
+    cache: dict[str, str],
+) -> str:
+    """Resolve the nearest class declaration of one method along a class hierarchy."""
+    if owner in cache:
+        return cache[owner]
+    item = class_map.get(owner)
+    if item is None:
+        raise ExtractionError(f"unknown class in {method_name} hierarchy: {owner}")
+    source = source_for_owner(result, owner)
+    methods = [
+        method
+        for method in source.methods_for(owner)
+        if method.name == method_name and len(method.parameters) == parameter_count
+    ]
+    if len(methods) > 1:
+        raise ExtractionError(
+            f"{owner}.{method_name}/{parameter_count}: expected at most one method"
+        )
+    if methods:
+        cache[owner] = owner
+        return owner
+    if item.superclass is None:
+        raise ExtractionError(
+            f"{owner}: no {method_name}/{parameter_count} declaration or superclass"
+        )
+    resolved = class_nearest_method_owner(
+        result,
+        class_map,
+        item.superclass,
+        method_name,
+        parameter_count,
+        cache,
+    )
+    cache[owner] = resolved
+    return resolved
+
+
 def class_zero_argument_boolean_method(
     result: ExtractionResult,
     class_map: dict[str, JavaType],
@@ -3285,6 +3328,7 @@ def render(result: ExtractionResult) -> str:
     sanitize_scale_behavior_cache: dict[str, str | None] = {}
     can_use_every_slot_cache: dict[str, bool] = {}
     illager_celebrating_cache: dict[str, bool] = {}
+    handle_entity_event_owner_cache: dict[str, str] = {}
     for java_class in class_map:
         source = source_for_owner(result, java_class)
         if any(
@@ -3628,6 +3672,7 @@ def render(result: ExtractionResult) -> str:
                 f"        resource_id: {rust_string(item.resource_id)},",
                 f"        runtime_class: {option_string(item.runtime_class)},",
                 f"        schema_class: {option_string(schema_class(item.runtime_class))},",
+                f"        handle_entity_event_owner: {option_string(class_nearest_method_owner(result, class_map, item.runtime_class, 'handleEntityEvent', 1, handle_entity_event_owner_cache) if item.runtime_class is not None else None)},",
                 f"        is_pickable_by_class: {str(class_is_pickable_without_type_tag(result, class_map, item.runtime_class, pickable_cache)).lower()},",
                 f"        sound_source_kind: VanillaEntitySoundSourceKind::{class_sound_source_kind(result, class_map, item.runtime_class, sound_source_cache)},",
                 f"        pushability_kind: VanillaEntityPushabilityKind::{class_pushability_kind(result, class_map, item.runtime_class, pushability_cache)},",
@@ -4888,6 +4933,21 @@ def render(result: ExtractionResult) -> str:
             '        for removed in ["VANILLA_ENTITY_TYPE_HOGLIN_ID", "VANILLA_ENTITY_TYPE_ZOGLIN_ID"] {',
             '            assert!(!fixture.contains(removed), "fixture restored {removed}");',
             '        }',
+            "    }",
+            "",
+            "    #[test]",
+            "    fn squid_entity_event_consumer_uses_generated_override_dispatch() {",
+            '        let source = include_str!("../animations.rs");',
+            '        let body = source',
+            '            .split("pub(crate) fn handle_entity_event")',
+            "            .nth(1)",
+            '            .and_then(|source| source.split("    pub(crate) fn ").next())',
+            '            .expect("entity event dispatch source");',
+            '        assert!(body.contains("vanilla_entity_metadata_type_uses_squid_entity_event_handler"));',
+            '        assert!(!body.contains("vanilla_entity_type_is_squid(entity_type_id)"));',
+            '        for removed in ["VANILLA_ENTITY_TYPE_SQUID_ID", "VANILLA_ENTITY_TYPE_GLOW_SQUID_ID"] {',
+            '            assert!(!body.contains(removed), "event dispatch restored {removed}");',
+            "        }",
             "    }",
             "",
             "    #[test]",

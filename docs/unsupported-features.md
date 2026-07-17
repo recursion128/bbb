@@ -148,6 +148,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
 - Complete the remaining cross-crate ordinal/serializer-id and entity
   renderer-class/event-dispatch membership discovery audit.
   Migrate each homogeneous family through schema-owned accessors and generator-emitted reverse guards.
+  The nearest `handleEntityEvent(byte)` declaration owner for every fixed entity runtime class must
+  remain extracted into the metadata class catalog; inherited event-family dispatch must consume
+  that owner rather than borrowing a renderer/model membership or restoring entity-type lists.
   The 155 explicit
   `EntityRenderers` provider registrations (PLAYER/MANNEQUIN use the separate avatar
   path), their static-full-block-light behavior, and exact `NoopRenderer` model suppression

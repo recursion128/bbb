@@ -660,6 +660,8 @@ pub struct VanillaEntityTypeMetadataCatalogEntry {
     pub resource_id: &'static str,
     pub runtime_class: Option<&'static str>,
     pub schema_class: Option<&'static str>,
+    /// Nearest vanilla class that declares `handleEntityEvent(byte)` for this runtime type.
+    pub handle_entity_event_owner: Option<&'static str>,
     pub is_pickable_by_class: bool,
     pub sound_source_kind: VanillaEntitySoundSourceKind,
     pub pushability_kind: VanillaEntityPushabilityKind,
@@ -3953,6 +3955,26 @@ pub fn vanilla_entity_metadata_type_is_living(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+/// Returns the nearest generated vanilla `handleEntityEvent(byte)` declaration owner.
+///
+/// Event ids and their client-side effects remain behavior owned by the world/runtime paths;
+/// this query only exposes source-derived subclass dispatch membership.
+pub fn vanilla_entity_metadata_handle_entity_event_owner(
+    entity_type_id: i32,
+) -> Option<&'static str> {
+    VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)
+        .and_then(|entry| entry.handle_entity_event_owner)
+}
+
+/// Returns whether entity event dispatch reaches `Squid.handleEntityEvent(byte)` first.
+pub(crate) fn vanilla_entity_metadata_type_uses_squid_entity_event_handler(
+    entity_type_id: i32,
+) -> bool {
+    vanilla_entity_metadata_handle_entity_event_owner(entity_type_id)
+        == Some("net.minecraft.world.entity.animal.squid.Squid")
+}
+
 /// Returns whether vanilla's generated class hierarchy and entity-type tags make this type
 /// eligible for `Entity.isPickable` before per-instance state gates.
 ///
@@ -4415,6 +4437,42 @@ mod tests {
         assert!(!vanilla_entity_metadata_type_is_hoglin_base(
             VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32
         ));
+    }
+
+    #[test]
+    fn generated_handle_entity_event_owners_follow_nearest_class_declaration() {
+        const SQUID_OWNER: &str = "net.minecraft.world.entity.animal.squid.Squid";
+        let squid_dispatch_types = VANILLA_ENTITY_TYPE_METADATA_26_1
+            .iter()
+            .filter(|entry| entry.handle_entity_event_owner == Some(SQUID_OWNER))
+            .map(|entry| entry.entity_type_id)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            squid_dispatch_types,
+            vec![
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_GLOW_SQUID_ID,
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_SQUID_ID,
+            ]
+        );
+        for entity_type_id in squid_dispatch_types {
+            assert!(vanilla_entity_metadata_type_uses_squid_entity_event_handler(entity_type_id));
+            assert_eq!(
+                vanilla_entity_metadata_handle_entity_event_owner(entity_type_id),
+                Some(SQUID_OWNER)
+            );
+        }
+        assert!(
+            !vanilla_entity_metadata_type_uses_squid_entity_event_handler(
+                VANILLA_ENTITY_TYPE_GUARDIAN_ID
+            )
+        );
+        assert_eq!(vanilla_entity_metadata_handle_entity_event_owner(-1), None);
+        assert_eq!(
+            vanilla_entity_metadata_handle_entity_event_owner(
+                VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32
+            ),
+            None
+        );
     }
 
     #[test]

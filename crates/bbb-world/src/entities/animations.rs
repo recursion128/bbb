@@ -40,6 +40,7 @@ use super::schema::{
     vanilla_entity_metadata_sniffer_state_accessor_for_entity_type,
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
+    vanilla_entity_metadata_type_uses_squid_entity_event_handler,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,
     vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type,
@@ -4202,7 +4203,7 @@ impl EntityClientAnimationState {
             self.warden_combat
                 .get_or_insert_with(WardenCombatAnimationState::default)
                 .start_sonic_boom(self.age_ticks);
-        } else if vanilla_entity_type_is_squid(entity_type_id)
+        } else if vanilla_entity_metadata_type_uses_squid_entity_event_handler(entity_type_id)
             && event_id == SQUID_RESET_MOVEMENT_EVENT_ID
         {
             // Vanilla `Squid.handleEntityEvent(19)`: `tentacleMovement = 0`. Only an
