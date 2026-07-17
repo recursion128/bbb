@@ -581,7 +581,7 @@ fn player_info_events_update_world_and_world_counters() {
     assert_eq!(entry.display_name.as_deref(), Some("Ada Lovelace"));
     assert!(entry.show_hat);
     assert_eq!(entry.list_order, 3);
-    assert!(entry.chat_session_present);
+    assert!(!entry.chat_session_present);
     assert!(world.listed_players().contains(&profile_id));
     assert!(world.player_info_entry(removed_profile_id).is_none());
     assert!(!world.listed_players().contains(&removed_profile_id));

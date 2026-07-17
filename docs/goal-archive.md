@@ -18837,3 +18837,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Focused coverage seeds stale chunks, entities, health, experience, pose, slot, camera, and
   abilities, then proves the new Login state while preserving cumulative packet counters. The Login
   ledger now leaves only services profile-key acquisition and signed-key validation open.
+
+# 2026-07-17: Validate Services profile keys
+
+- Matched Authlib `YggdrasilAuthenticationService` and `YggdrasilServicesKeyInfo` by fetching
+  `playerCertificateKeys` from the Minecraft Services `/publickeys` endpoint, bounding the response,
+  decoding X.509 DER, and accepting only RSA-4096 service keys.
+- Matched `ProfilePublicKey.Data.signedPayload` and `ClientPacketListener.initializeChatSession` by
+  validating `profile UUID + expires-at epoch milliseconds + canonical player public-key DER` with
+  SHA1withRSA before retaining a remote chat session.
+- Routed the acquired public key set from the net connection owner into canonical world state before
+  play Login, so secure-chat enforcement and the insecure-server warning use actual validation
+  capability. Local profile key-pair refresh and outbound message signing remain in the signed-chat
+  queue.

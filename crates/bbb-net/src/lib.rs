@@ -7,6 +7,7 @@ mod login;
 mod play_bundle;
 mod probe;
 mod resource_pack;
+mod services_profile_keys;
 mod status;
 mod types;
 

@@ -51,6 +51,15 @@ pub async fn run_event_stream(
     events: mpsc::Sender<NetEvent>,
     commands: mpsc::Receiver<NetCommand>,
 ) -> Result<()> {
+    #[cfg(not(test))]
+    let services_profile_keys =
+        match crate::services_profile_keys::fetch_services_profile_keys(options.timeout).await {
+            Ok(keys) => keys,
+            Err(error) => {
+                tracing::warn!(%error, "Services profile public keys are unavailable");
+                Vec::new()
+            }
+        };
     let conn = timeout(
         options.timeout,
         RawConnection::connect(&options.address, None),
@@ -75,6 +84,14 @@ pub async fn run_event_stream(
         &stream.events,
         NetEvent::StateChanged {
             state: stream.state,
+        },
+    )
+    .await?;
+    #[cfg(not(test))]
+    emit(
+        &stream.events,
+        NetEvent::ServicesProfileKeys {
+            public_keys: services_profile_keys,
         },
     )
     .await?;

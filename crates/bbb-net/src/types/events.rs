@@ -24,6 +24,12 @@ pub enum NetEvent {
     StateChanged {
         state: ConnectionState,
     },
+    /// RSA-4096 public keys acquired from the Minecraft Services key set.
+    /// World state uses them to validate player profile keys before retaining
+    /// remote chat sessions.
+    ServicesProfileKeys {
+        public_keys: Vec<Vec<u8>>,
+    },
     StartConfiguration {
         pending_chat_acknowledgement:
             oneshot::Sender<Option<bbb_protocol::packets::ChatAcknowledgement>>,

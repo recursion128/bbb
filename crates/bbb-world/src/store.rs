@@ -46,10 +46,11 @@ pub struct WorldStore {
     /// chat additionally depends on profile-key validation support.
     #[serde(default)]
     pub(crate) server_enforces_secure_chat: Option<bool>,
-    /// Whether the active services key set can validate signed profile keys.
-    /// The native client currently has no such key set, so this defaults false.
+    /// X.509 DER-encoded RSA public keys from the Minecraft Services key set.
+    /// These survive level replacement and connection reconfiguration like
+    /// Vanilla's process-owned `Services` instance.
     #[serde(default)]
-    pub(crate) profile_key_validation_available: bool,
+    pub(crate) services_profile_keys: Vec<Vec<u8>>,
     /// Vanilla carries this once-per-connection-chain warning guard through
     /// reconfiguration and TransferState.
     #[serde(default)]

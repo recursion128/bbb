@@ -4490,7 +4490,7 @@ mod tests {
         assert_eq!(entry.display_name.as_deref(), Some("Ada Lovelace"));
         assert!(entry.show_hat);
         assert_eq!(entry.list_order, 3);
-        assert!(entry.chat_session_present);
+        assert!(!entry.chat_session_present);
         assert!(report.world.listed_players().contains(&profile_id));
         assert!(report.world.player_info_entry(removed_profile_id).is_none());
         assert!(!report.world.listed_players().contains(&removed_profile_id));

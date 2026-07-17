@@ -3,9 +3,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbb_protocol::packets::{
     GameProfile as ProtocolGameProfile, GameProfileProperty as ProtocolGameProfileProperty,
     GameType as ProtocolGameType, PlayerInfoAction as ProtocolPlayerInfoAction,
+    PlayerInfoChatSession as ProtocolPlayerInfoChatSession,
     PlayerInfoRemove as ProtocolPlayerInfoRemove, PlayerInfoUpdate as ProtocolPlayerInfoUpdate,
 };
+use rsa::{
+    pkcs8::{DecodePublicKey, EncodePublicKey},
+    Pkcs1v15Sign, RsaPublicKey,
+};
 use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
 use uuid::Uuid;
 
 use crate::WorldStore;
@@ -35,6 +41,8 @@ pub struct PlayerInfoEntryState {
     pub display_name: Option<String>,
     pub show_hat: bool,
     pub list_order: i32,
+    /// True only after the advertised profile key validates against the
+    /// active Minecraft Services key set.
     pub chat_session_present: bool,
 }
 
@@ -95,6 +103,16 @@ impl WorldStore {
 
         let mut applied = 0;
         for entry in packet.entries {
+            let validated_chat_session = packet
+                .actions
+                .contains(&ProtocolPlayerInfoAction::InitializeChat)
+                && entry.chat_session.as_ref().is_some_and(|session| {
+                    profile_key_signature_is_valid(
+                        &self.services_profile_keys,
+                        entry.profile_id,
+                        session,
+                    )
+                });
             let Some(info) = self.player_info.entries.get_mut(&entry.profile_id) else {
                 continue;
             };
@@ -103,7 +121,7 @@ impl WorldStore {
                 match action {
                     ProtocolPlayerInfoAction::AddPlayer => {}
                     ProtocolPlayerInfoAction::InitializeChat => {
-                        info.chat_session_present = entry.chat_session.is_some();
+                        info.chat_session_present = validated_chat_session;
                     }
                     ProtocolPlayerInfoAction::UpdateGameMode => {
                         info.game_mode = player_info_game_mode_name(entry.game_mode).to_string();
@@ -200,6 +218,35 @@ impl WorldStore {
     }
 }
 
+fn profile_key_signature_is_valid(
+    services_profile_keys: &[Vec<u8>],
+    profile_id: Uuid,
+    chat_session: &ProtocolPlayerInfoChatSession,
+) -> bool {
+    let Ok(player_public_key) = RsaPublicKey::from_public_key_der(&chat_session.public_key) else {
+        return false;
+    };
+    let Ok(canonical_player_key) = player_public_key.to_public_key_der() else {
+        return false;
+    };
+    let mut payload = Vec::with_capacity(24 + canonical_player_key.as_bytes().len());
+    payload.extend_from_slice(profile_id.as_bytes());
+    payload.extend_from_slice(&chat_session.expires_at_epoch_millis.to_be_bytes());
+    payload.extend_from_slice(canonical_player_key.as_bytes());
+    let digest = Sha1::digest(payload);
+
+    services_profile_keys.iter().any(|key| {
+        RsaPublicKey::from_public_key_der(key).is_ok_and(|key| {
+            key.verify(
+                Pkcs1v15Sign::new::<Sha1>(),
+                &digest,
+                &chat_session.key_signature,
+            )
+            .is_ok()
+        })
+    })
+}
+
 fn player_info_game_mode_name(game_mode: ProtocolGameType) -> &'static str {
     game_mode.serialized_name()
 }
@@ -209,10 +256,11 @@ mod tests {
     use super::*;
     use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_PLAYER_ID;
     use bbb_protocol::packets::{
-        AddEntity as ProtocolAddEntity, PlayerInfoChatSession as ProtocolPlayerInfoChatSession,
-        PlayerInfoEntry as ProtocolPlayerInfoEntry, Transfer as ProtocolTransfer,
-        Vec3d as ProtocolVec3d,
+        AddEntity as ProtocolAddEntity, PlayerInfoEntry as ProtocolPlayerInfoEntry,
+        Transfer as ProtocolTransfer, Vec3d as ProtocolVec3d,
     };
+    use rand::SeedableRng;
+    use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey};
 
     #[test]
     fn player_info_adds_player_with_profile_and_fields() {
@@ -226,7 +274,9 @@ mod tests {
         entry.display_name = Some("{\"text\":\"Ada Lovelace\"}".to_string());
         entry.show_hat = true;
         entry.list_order = 7;
-        entry.chat_session = Some(protocol_player_info_chat_session());
+        let (services_key, chat_session) = signed_player_info_chat_session(id);
+        store.replace_services_profile_keys(vec![services_key]);
+        entry.chat_session = Some(chat_session);
 
         let applied = store.apply_player_info_update(ProtocolPlayerInfoUpdate {
             actions: vec![
@@ -348,7 +398,9 @@ mod tests {
         let mut store = WorldStore::new();
         let id = Uuid::from_u128(0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
         let mut with_chat = listed_player_info_entry(id, "Margaret", false);
-        with_chat.chat_session = Some(protocol_player_info_chat_session());
+        let (services_key, chat_session) = signed_player_info_chat_session(id);
+        store.replace_services_profile_keys(vec![services_key]);
+        with_chat.chat_session = Some(chat_session);
         store.apply_player_info_update(ProtocolPlayerInfoUpdate {
             actions: vec![
                 ProtocolPlayerInfoAction::AddPlayer,
@@ -368,6 +420,49 @@ mod tests {
         assert_eq!(applied, 1);
         assert!(!store.player_info_entry(id).unwrap().chat_session_present);
         assert_eq!(store.counters().player_info_update_packets, 2);
+    }
+
+    #[test]
+    fn player_info_rejects_unvalidated_profile_keys() {
+        let id = Uuid::from_u128(0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee);
+        let (services_key, chat_session) = signed_player_info_chat_session(id);
+
+        let mut without_services_key = WorldStore::new();
+        let mut entry = listed_player_info_entry(id, "Margaret", false);
+        entry.chat_session = Some(chat_session.clone());
+        without_services_key.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![
+                ProtocolPlayerInfoAction::AddPlayer,
+                ProtocolPlayerInfoAction::InitializeChat,
+            ],
+            entries: vec![entry],
+        });
+        assert!(
+            !without_services_key
+                .player_info_entry(id)
+                .unwrap()
+                .chat_session_present
+        );
+
+        let mut invalid_signature = WorldStore::new();
+        invalid_signature.replace_services_profile_keys(vec![services_key]);
+        let mut entry = listed_player_info_entry(id, "Margaret", false);
+        let mut chat_session = chat_session;
+        chat_session.key_signature[0] ^= 0xff;
+        entry.chat_session = Some(chat_session);
+        invalid_signature.apply_player_info_update(ProtocolPlayerInfoUpdate {
+            actions: vec![
+                ProtocolPlayerInfoAction::AddPlayer,
+                ProtocolPlayerInfoAction::InitializeChat,
+            ],
+            entries: vec![entry],
+        });
+        assert!(
+            !invalid_signature
+                .player_info_entry(id)
+                .unwrap()
+                .chat_session_present
+        );
     }
 
     #[test]
@@ -477,13 +572,38 @@ mod tests {
         entry
     }
 
-    fn protocol_player_info_chat_session() -> ProtocolPlayerInfoChatSession {
-        ProtocolPlayerInfoChatSession {
-            session_id: Uuid::from_u128(0x12345678123456781234567812345678),
-            expires_at_epoch_millis: 1_700_000_000_000,
-            public_key: vec![1, 2, 3],
-            key_signature: vec![4, 5, 6],
-        }
+    fn signed_player_info_chat_session(
+        profile_id: Uuid,
+    ) -> (Vec<u8>, ProtocolPlayerInfoChatSession) {
+        let mut random = rand::rngs::StdRng::seed_from_u64(0x5e7a_1ce5);
+        let services_private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
+        let player_private_key = RsaPrivateKey::new(&mut random, 1024).unwrap();
+        let player_public_key = RsaPublicKey::from(&player_private_key)
+            .to_public_key_der()
+            .unwrap();
+        let expires_at_epoch_millis = 1_700_000_000_000i64;
+        let mut payload = Vec::with_capacity(24 + player_public_key.as_bytes().len());
+        payload.extend_from_slice(profile_id.as_bytes());
+        payload.extend_from_slice(&expires_at_epoch_millis.to_be_bytes());
+        payload.extend_from_slice(player_public_key.as_bytes());
+        let key_signature = services_private_key
+            .sign(Pkcs1v15Sign::new::<Sha1>(), &Sha1::digest(payload))
+            .unwrap();
+        let services_public_key = RsaPublicKey::from(&services_private_key)
+            .to_public_key_der()
+            .unwrap()
+            .as_bytes()
+            .to_vec();
+
+        (
+            services_public_key,
+            ProtocolPlayerInfoChatSession {
+                session_id: Uuid::from_u128(0x12345678123456781234567812345678),
+                expires_at_epoch_millis,
+                public_key: player_public_key.as_bytes().to_vec(),
+                key_signature,
+            },
+        )
     }
 
     fn protocol_player_entity(id: i32, uuid: Uuid) -> ProtocolAddEntity {

@@ -205,6 +205,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     }
                 }
             }
+            NetEvent::ServicesProfileKeys { public_keys } => {
+                world.replace_services_profile_keys(public_keys);
+            }
             NetEvent::CookieRequest {
                 key,
                 response_payload_present,

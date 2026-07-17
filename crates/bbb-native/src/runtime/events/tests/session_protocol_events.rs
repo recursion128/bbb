@@ -2,6 +2,24 @@ use super::*;
 use std::time::{Duration, Instant};
 
 #[test]
+fn services_profile_keys_event_enables_world_validation() {
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::ServicesProfileKeys {
+        public_keys: vec![vec![1, 2, 3]],
+    })
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert!(!world.profile_key_validation_available());
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert!(world.profile_key_validation_available());
+}
+
+#[test]
 fn keep_alive_event_queues_response_before_expiry() {
     let (event_tx, mut event_rx) = mpsc::channel(1);
     event_tx

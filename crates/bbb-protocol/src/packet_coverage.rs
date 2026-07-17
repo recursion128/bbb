@@ -2745,7 +2745,7 @@ mod tests {
     }
 
     #[test]
-    fn play_login_keeps_full_session_initialization_open() {
+    fn play_login_closes_full_session_initialization() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2759,10 +2759,7 @@ mod tests {
                 (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect", "tests"])
-        );
+        assert!(partial.is_empty());
     }
 
     #[test]
