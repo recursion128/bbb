@@ -343,6 +343,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Chicken/Cow/Pig variant and sound-variant membership, wire indices and registry-resource virtual
   defaults must remain derived together from the generated farm-animal bundle; world/native
   consumers and semantic fixtures must not restore fixed accessor/default aliases.
+  Cat/Wolf variant and sound-variant membership, wire indices and registry-resource virtual defaults
+  must remain derived together from the generated companion bundle; native dynamic-texture and
+  world audio consumers/fixtures must not restore fixed accessor/default aliases.
   TamableAnimal sitting/tame/owner membership, inherited wire indices, typed defaults and two named
   masks must remain derived together from generated `TamableAnimal.DATA_FLAGS_ID`,
   `DATA_OWNERUUID_ID` and their `FLAG_*`; world/native presentation, mount inventory, native debug

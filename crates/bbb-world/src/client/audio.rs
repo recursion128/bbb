@@ -17,8 +17,6 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-#[cfg(test)]
-use crate::entities::VANILLA_CAT_SOUND_VARIANT_DATA_ID;
 use crate::entities::{
     vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
     vanilla_entity_metadata_farm_animal_variant_accessors_for_entity_type,
@@ -2848,8 +2846,12 @@ mod tests {
     }
 
     fn cat_sound_variant_entity_data(registry_id: i32) -> EntityDataValue {
+        let accessors = vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_CAT_ID,
+        )
+        .expect("generated Cat variant metadata accessors");
         EntityDataValue {
-            data_id: VANILLA_CAT_SOUND_VARIANT_DATA_ID,
+            data_id: accessors.sound_variant_data_id,
             serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_SOUND_VARIANT_ID,
             value: EntityDataValueKind::RegistryId {
                 serializer: EntityDataRegistryHolder::CatSoundVariant,

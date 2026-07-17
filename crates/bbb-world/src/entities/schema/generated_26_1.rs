@@ -24531,6 +24531,23 @@ mod generated_catalog_guards {
                 );
             }
         }
+        let variant_textures =
+            include_str!("../../../../bbb-native/src/entity_variant_textures.rs");
+        for source in [audio, variant_textures] {
+            assert!(source
+                .contains("vanilla_entity_metadata_companion_variant_accessors_for_entity_type"));
+            for removed in [
+                "CAT_VARIANT_DATA_ID",
+                "CAT_SOUND_VARIANT_DATA_ID",
+                "WOLF_VARIANT_DATA_ID",
+                "WOLF_SOUND_VARIANT_DATA_ID",
+            ] {
+                assert!(
+                    !source.contains(removed),
+                    "companion audio/texture fixture restored {removed}"
+                );
+            }
+        }
     }
 
     #[test]

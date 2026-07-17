@@ -18244,3 +18244,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   `FLAG_CRIT` 与 `FLAG_NOPHYSICS` named masks；schema 测试不再手抄 wire indices/defaults。
 - world trident lifecycle 与 native Arrow/SpectralArrow/ThrownTrident F3+I production/fixtures
   删除固定 mask aliases；projectile-family reverse guard 纳入两份完整 fixtures。
+
+## 2026-07-16：统一 companion variant texture/audio fixtures
+
+- native Cat/Wolf synchronized dynamic-texture fixtures 与 world Cat sound-variant helper 改由
+  generated companion bundle 构造 registry-holder metadata，删除三处固定 wire id。
+- companion reverse guard 纳入完整 entity-variant texture 与 audio sources，禁止四组
+  variant/sound-variant accessor aliases 回流；session holder order 与 serializer 保持不变。

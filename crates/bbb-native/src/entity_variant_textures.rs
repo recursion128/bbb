@@ -263,9 +263,10 @@ mod tests {
     };
     use bbb_renderer::{EntityModelKind, ZombieNautilusModelVariant};
     use bbb_world::{
+        vanilla_entity_metadata_companion_variant_accessors_for_entity_type,
         vanilla_entity_metadata_frog_variant_accessor_for_entity_type,
         vanilla_entity_metadata_zombie_nautilus_variant_accessor_for_entity_type,
-        COW_VARIANT_REGISTRY, VANILLA_CAT_VARIANT_DATA_ID, VANILLA_WOLF_VARIANT_DATA_ID,
+        COW_VARIANT_REGISTRY,
     };
     use uuid::Uuid;
 
@@ -412,10 +413,14 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         });
+        let accessors = vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_CAT_ID,
+        )
+        .expect("generated Cat variant metadata accessors");
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 73,
             values: vec![EntityDataValue {
-                data_id: VANILLA_CAT_VARIANT_DATA_ID,
+                data_id: accessors.variant_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_CAT_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::CatVariant,
@@ -588,10 +593,14 @@ mod tests {
             y_head_rot: 0.0,
             data: 0,
         });
+        let accessors = vanilla_entity_metadata_companion_variant_accessors_for_entity_type(
+            VANILLA_ENTITY_TYPE_WOLF_ID,
+        )
+        .expect("generated Wolf variant metadata accessors");
         assert!(world.apply_set_entity_data(SetEntityData {
             id: 76,
             values: vec![EntityDataValue {
-                data_id: VANILLA_WOLF_VARIANT_DATA_ID,
+                data_id: accessors.variant_data_id,
                 serializer_id: VANILLA_ENTITY_DATA_SERIALIZER_WOLF_VARIANT_ID,
                 value: EntityDataValueKind::RegistryId {
                     serializer: EntityDataRegistryHolder::WolfVariant,
