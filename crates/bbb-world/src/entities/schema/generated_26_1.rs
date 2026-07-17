@@ -22520,6 +22520,9 @@ mod generated_catalog_guards {
             include_str!("../../../../bbb-native/src/runtime/events/tests.rs");
         assert!(native_runtime_tests
             .contains("vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type"));
+        let net_probe_tests = include_str!("../../../../bbb-net/src/probe/play.rs");
+        assert!(net_probe_tests
+            .contains("vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type"));
         for source in [
             store,
             entities,
@@ -22527,6 +22530,7 @@ mod generated_catalog_guards {
             play_apply,
             native_item_model_tests,
             native_runtime_tests,
+            net_probe_tests,
         ] {
             for removed in [
                 "VANILLA_ITEM_ENTITY_STACK_DATA_ID",

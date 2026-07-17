@@ -239,8 +239,8 @@ mod tests {
     };
     use bbb_world::{
         advance_growth_level_event_particle_randoms, vanilla_entity_metadata_entity_accessors,
-        BlockPos, ChunkPos, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
-        LocalPlayerPoseState, RegistrySet,
+        vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type, BlockPos, ChunkPos,
+        LevelEventGrowthRandomMode, LevelEventSoundRandomState, LocalPlayerPoseState, RegistrySet,
     };
     use bytes::BytesMut;
     use std::{collections::BTreeMap, time::Duration};
@@ -5082,8 +5082,12 @@ mod tests {
     }
 
     fn item_stack_entity_data(item: ItemStackSummary) -> EntityDataValue {
+        let data_id = vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(
+            VANILLA_ENTITY_TYPE_ITEM_ID,
+        )
+        .expect("generated ItemEntity item accessor must resolve");
         EntityDataValue {
-            data_id: 8,
+            data_id,
             serializer_id:
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
             value: EntityDataValueKind::ItemStack(item),
