@@ -150,29 +150,77 @@ mod tests {
         );
     }
 
+    fn starts_with_numeric_or_optional_numeric(value: &str) -> bool {
+        let value = value.strip_prefix("Some(").unwrap_or(value);
+        let mut characters = value.chars();
+        let Some(first) = characters.next() else {
+            return false;
+        };
+        first.is_ascii_digit()
+            || (first == '-'
+                && characters
+                    .next()
+                    .is_some_and(|character| character.is_ascii_digit()))
+    }
+
     fn contains_numeric_attribute_modifier_operation_reference(source: &str) -> bool {
         let compact: String = source
             .chars()
             .filter(|character| !character.is_whitespace())
             .collect();
         let numeric_construction = compact.match_indices("operation_id:").any(|(offset, _)| {
-            compact[offset + "operation_id:".len()..]
-                .chars()
-                .next()
-                .is_some_and(|character| character.is_ascii_digit())
+            starts_with_numeric_or_optional_numeric(&compact[offset + "operation_id:".len()..])
         });
         numeric_construction
             || compact.match_indices(".operation_id").any(|(offset, _)| {
                 let suffix = &compact[offset + ".operation_id".len()..];
                 [",", "==", "!=", "="].iter().any(|separator| {
-                    suffix.strip_prefix(separator).is_some_and(|value| {
-                        value
-                            .chars()
-                            .next()
-                            .is_some_and(|character| character.is_ascii_digit())
-                    })
+                    suffix
+                        .strip_prefix(separator)
+                        .is_some_and(starts_with_numeric_or_optional_numeric)
                 })
             })
+    }
+
+    fn contains_numeric_attribute_modifier_slot_or_display_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_slot_construction =
+            compact.match_indices("slot_group_id:").any(|(offset, _)| {
+                starts_with_numeric_or_optional_numeric(&compact[offset + "slot_group_id:".len()..])
+            });
+        let numeric_slot_reference = compact.match_indices(".slot_group_id").any(|(offset, _)| {
+            let suffix = &compact[offset + ".slot_group_id".len()..];
+            [",", "==", "!=", "="].iter().any(|separator| {
+                suffix
+                    .strip_prefix(separator)
+                    .is_some_and(starts_with_numeric_or_optional_numeric)
+            })
+        });
+        let numeric_display_construction = compact
+            .match_indices("DialogAttributeModifierDisplayState{type_id:")
+            .any(|(offset, _)| {
+                starts_with_numeric_or_optional_numeric(
+                    &compact[offset + "DialogAttributeModifierDisplayState{type_id:".len()..],
+                )
+            });
+        let numeric_display_reference =
+            compact
+                .match_indices(".display.type_id")
+                .any(|(offset, _)| {
+                    let suffix = &compact[offset + ".display.type_id".len()..];
+                    [",", "==", "!=", "="].iter().any(|separator| {
+                        suffix
+                            .strip_prefix(separator)
+                            .is_some_and(starts_with_numeric_or_optional_numeric)
+                    })
+                });
+        numeric_slot_construction
+            || numeric_slot_reference
+            || numeric_display_construction
+            || numeric_display_reference
     }
 
     #[test]
@@ -181,7 +229,13 @@ mod tests {
             "operation_id: 0,"
         ));
         assert!(contains_numeric_attribute_modifier_operation_reference(
+            "operation_id: Some(1),"
+        ));
+        assert!(contains_numeric_attribute_modifier_operation_reference(
             "assert_eq!(modifier.operation_id,\n 2);"
+        ));
+        assert!(contains_numeric_attribute_modifier_operation_reference(
+            "assert_eq!(modifier.operation_id, Some(2));"
         ));
         assert!(!contains_numeric_attribute_modifier_operation_reference(
             "operation_id: VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,"
@@ -189,6 +243,32 @@ mod tests {
         assert!(!contains_numeric_attribute_modifier_operation_reference(
             "assert_eq!(modifier.operation_id, VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID);"
         ));
+    }
+
+    #[test]
+    fn numeric_attribute_modifier_slot_and_display_guard_covers_semantic_fixtures() {
+        assert!(contains_numeric_attribute_modifier_slot_or_display_reference("slot_group_id: 0,"));
+        assert!(
+            contains_numeric_attribute_modifier_slot_or_display_reference(
+                "slot_group_id: Some(3),"
+            )
+        );
+        assert!(
+            contains_numeric_attribute_modifier_slot_or_display_reference(
+                "DialogAttributeModifierDisplayState { type_id: 2 }"
+            )
+        );
+        assert!(
+            contains_numeric_attribute_modifier_slot_or_display_reference(
+                "assert_eq!(modifier.display.type_id, 1);"
+            )
+        );
+        assert!(
+            !contains_numeric_attribute_modifier_slot_or_display_reference(
+                "slot_group_id: VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,"
+            )
+        );
+        assert!(!contains_numeric_attribute_modifier_slot_or_display_reference("DialogAttributeModifierDisplayState { type_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID }"));
     }
 
     #[test]
@@ -211,6 +291,12 @@ mod tests {
                 if contains_numeric_attribute_modifier_operation_reference(&source) {
                     violations.push(format!(
                         "{}: numeric operation_id reference",
+                        path.display()
+                    ));
+                }
+                if contains_numeric_attribute_modifier_slot_or_display_reference(&source) {
+                    violations.push(format!(
+                        "{}: numeric attribute-modifier slot/display reference",
                         path.display()
                     ));
                 }

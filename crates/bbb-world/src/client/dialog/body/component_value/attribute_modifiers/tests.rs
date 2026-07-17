@@ -1,10 +1,11 @@
 use bbb_protocol::{
     attribute_modifier_types::{
-        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_TYPES, VANILLA_ATTRIBUTE_MODIFIER_OPERATIONS,
+        VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID, VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_TYPES,
+        VANILLA_ATTRIBUTE_MODIFIER_OPERATIONS,
     },
-    attribute_types::VANILLA_ATTRIBUTE_TYPES,
+    attribute_types::{VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID, VANILLA_ATTRIBUTE_TYPES},
     data_component_types::VANILLA_DATA_COMPONENT_ATTRIBUTE_MODIFIERS_TYPE_ID,
-    equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUPS,
+    equipment_slots::{VANILLA_EQUIPMENT_SLOT_GROUPS, VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID},
     packets::inventory::{AttributeModifierSummary, DataComponentPatchSummary},
     NbtSummaryEntry, NbtSummaryValue,
 };
@@ -34,17 +35,17 @@ fn decodes_attribute_modifier_defaults_and_component_dispatch() {
         modifiers,
         vec![DialogAttributeModifierState {
             attribute: DialogRegistryHolderReferenceState {
-                holder_id: 2,
+                holder_id: VANILLA_ATTRIBUTE_ATTACK_DAMAGE_ID,
                 resource_id: "minecraft:attack_damage".to_string(),
             },
             modifier_id: "minecraft:base_attack_damage".to_string(),
             amount_bits: (-2.5f64).to_bits(),
             operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
             operation: "add_value".to_string(),
-            slot_group_id: 0,
+            slot_group_id: VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
             slot_group: "any".to_string(),
             display: DialogAttributeModifierDisplayState {
-                type_id: 0,
+                type_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
                 serialized_name: "default".to_string(),
                 value: None,
             },

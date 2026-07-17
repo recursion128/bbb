@@ -19002,3 +19002,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Corrected placeholder zero ids for max-stack-size, rarity, container, and attribute-modifier
   fixtures without changing their canonical JSON behavior. A generator-emitted reverse guard now
   rejects numeric component or predicate type fields throughout the world dialog component owner.
+
+# 2026-07-17: Derive dialog attribute-modifier ordinals
+
+- Replaced numeric optional operation ids, equipment-slot-group ids, display-type ids, and the
+  built-in attack-damage holder in world dialog attribute-modifier fixtures with their generated
+  gameplay catalog constants.
+- Extended the gameplay-id generator's operation guard to cover `Some(n)` construction/comparison
+  and added slot/display construction and comparison coverage across semantic consumers. Protocol
+  wire samples remain under their codec owner.

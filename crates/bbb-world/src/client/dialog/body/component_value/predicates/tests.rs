@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::{
+    attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
     data_component_types::{
         VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
         VANILLA_DATA_COMPONENT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
@@ -8,6 +9,7 @@ use bbb_protocol::{
         VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
     },
+    equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_HAND_ID,
     packets::inventory::{
         BlockHolderSetSummary, DataComponentPatchSummary, StatePropertyMatcherSummary,
         StatePropertyValueMatcherSummary,
@@ -603,8 +605,14 @@ fn decodes_attribute_firework_and_book_predicate_details() {
     assert_eq!(modifier.modifier_id.as_deref(), Some("example:bonus"));
     assert_eq!(modifier.amount.min_bits, Some((-1.0f64).to_bits()));
     assert_eq!(modifier.amount.max_bits, Some(nan_bits));
-    assert_eq!(modifier.operation_id, Some(1));
-    assert_eq!(modifier.slot_group_id, Some(3));
+    assert_eq!(
+        modifier.operation_id,
+        Some(VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID)
+    );
+    assert_eq!(
+        modifier.slot_group_id,
+        Some(VANILLA_EQUIPMENT_SLOT_GROUP_HAND_ID)
+    );
 
     let DialogPartialDataComponentPredicateState::Concrete {
         value:

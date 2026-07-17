@@ -716,12 +716,14 @@ fn double_bounds_len(bounds: &DialogDoubleBoundsState) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
+    use bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID;
     use bbb_protocol::data_component_types::{
         VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_ATTRIBUTE_MODIFIERS_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID,
         VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
     };
+    use bbb_protocol::equipment_slots::VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID;
     use bbb_protocol::item_component_value_types::FireworkExplosionShapeSummary;
     use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
@@ -971,9 +973,9 @@ mod tests {
                                 min_bits: Some(1.5f64.to_bits()),
                                 max_bits: Some(1.5f64.to_bits()),
                             },
-                            operation_id: Some(0),
+                            operation_id: Some(VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID),
                             operation: Some("add_value".to_string()),
-                            slot_group_id: Some(0),
+                            slot_group_id: Some(VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID),
                             slot_group: Some("any".to_string()),
                         },
                     )),

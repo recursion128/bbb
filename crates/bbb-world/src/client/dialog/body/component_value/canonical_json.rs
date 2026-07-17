@@ -1,6 +1,13 @@
 use bbb_protocol::item_component_value_types::ItemUseAnimationSummary;
 use bbb_protocol::item_types::{vanilla_item_type, VANILLA_ITEM_BRICK_ID};
 use bbb_protocol::packets::inventory::FireworkExplosionSummary;
+#[cfg(test)]
+use bbb_protocol::{
+    attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
+    equipment_slots::{
+        VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID, VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
+    },
+};
 use bbb_protocol::{
     attribute_modifier_types::{
         VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
@@ -2090,10 +2097,10 @@ mod tests {
                     amount_bits: (-2.5f64).to_bits(),
                     operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_VALUE_ID,
                     operation: "add_value".to_string(),
-                    slot_group_id: 0,
+                    slot_group_id: VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
                     slot_group: "any".to_string(),
                     display: DialogAttributeModifierDisplayState {
-                        type_id: 0,
+                        type_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_DEFAULT_ID,
                         serialized_name: "default".to_string(),
                         value: None,
                     },
@@ -2111,10 +2118,10 @@ mod tests {
                     amount_bits: 0.25f64.to_bits(),
                     operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_BASE_ID,
                     operation: "add_multiplied_base".to_string(),
-                    slot_group_id: 1,
+                    slot_group_id: VANILLA_EQUIPMENT_SLOT_GROUP_MAINHAND_ID,
                     slot_group: "mainhand".to_string(),
                     display: DialogAttributeModifierDisplayState {
-                        type_id: 1,
+                        type_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_HIDDEN_ID,
                         serialized_name: "hidden".to_string(),
                         value: None,
                     },
@@ -2132,10 +2139,10 @@ mod tests {
                     amount_bits: 1.5f64.to_bits(),
                     operation_id: bbb_protocol::attribute_modifier_types::VANILLA_ATTRIBUTE_MODIFIER_OPERATION_ADD_MULTIPLIED_TOTAL_ID,
                     operation: "add_multiplied_total".to_string(),
-                    slot_group_id: 7,
+                    slot_group_id: VANILLA_EQUIPMENT_SLOT_GROUP_HEAD_ID,
                     slot_group: "head".to_string(),
                     display: DialogAttributeModifierDisplayState {
-                        type_id: 2,
+                        type_id: VANILLA_ATTRIBUTE_MODIFIER_DISPLAY_OVERRIDE_ID,
                         serialized_name: "override".to_string(),
                         value: Some(super::super::DialogTextState {
                             text: String::new(),
