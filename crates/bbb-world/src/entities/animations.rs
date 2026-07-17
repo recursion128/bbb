@@ -41,6 +41,7 @@ use super::schema::{
     vanilla_entity_metadata_type_is_camel, vanilla_entity_metadata_type_is_guardian,
     vanilla_entity_metadata_type_is_hoglin_base, vanilla_entity_metadata_type_is_slime,
     vanilla_entity_metadata_type_uses_squid_entity_event_handler,
+    vanilla_entity_metadata_type_uses_wolf_entity_event_handler,
     vanilla_entity_metadata_vehicle_accessors_for_entity_type,
     vanilla_entity_metadata_warden_anger_level_accessor_for_entity_type,
     vanilla_entity_metadata_wither_side_head_target_accessors_for_entity_type,
@@ -238,6 +239,9 @@ const WARDEN_POSE_UNSET: i32 = -1;
 /// `tentacleMovement` wraps past `2π`). Without it the client tentacles freeze at
 /// `2π` after the first cycle.
 const SQUID_RESET_MOVEMENT_EVENT_ID: i8 = 19;
+/// Vanilla `Wolf.handleEntityEvent`: event `8` starts the drying shake and event `56` cancels it.
+const WOLF_START_SHAKING_EVENT_ID: i8 = 8;
+const WOLF_CANCEL_SHAKING_EVENT_ID: i8 = 56;
 /// Vanilla `Goat.handleEntityEvent`: event `58` sets `isLoweringHead = true` (the goat begins a ram),
 /// event `59` clears it. The client `aiStep` then advances `lowerHeadTick` toward / away from the cap.
 const GOAT_LOWER_HEAD_EVENT_ID: i8 = 58;
@@ -1479,10 +1483,9 @@ pub struct FoxAnimationState {
 
 /// Canonical client-side wolf wet/drying shade state, mirroring the `Wolf.tick` fields that
 /// `Wolf.getWetShade(partialTick)` reads. While `isInWaterOrRain()` is true, vanilla marks the wolf
-/// wet and `getWetShade` returns the `0.75` floor (re-entering water also cancels any drying shake, as
-/// vanilla event `56` does). After leaving water, the server broadcasts the shake event when
-/// grounded/path-free; bbb reconstructs the common world-side visual timer from the same `isInWater()`
-/// and `onGround()` facts, incrementing `shakeAnim` by `0.05` until the wet shade has lerped back to
+/// wet and `getWetShade` returns the `0.75` floor. The server broadcasts event `8` after leaving
+/// water when grounded/path-free and event `56` when water/rain interrupts a shake; the client only
+/// applies those events, then increments `shakeAnim` by `0.05` until the wet shade has lerped back to
 /// white. The same `shakeAnim` is also projected for `WolfRenderState.getBodyRollAngle`.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct WolfWetAnimationState {
@@ -1493,19 +1496,22 @@ pub struct WolfWetAnimationState {
 }
 
 impl WolfWetAnimationState {
-    fn advance_client_tick(&mut self, in_water: bool, on_ground: bool) {
+    fn start_shaking(&mut self) {
+        self.is_shaking = true;
+        self.previous_shake_anim = 0.0;
+        self.current_shake_anim = 0.0;
+    }
+
+    fn cancel_shake(&mut self) {
+        self.is_shaking = false;
+        self.previous_shake_anim = 0.0;
+        self.current_shake_anim = 0.0;
+    }
+
+    fn advance_client_tick(&mut self, in_water: bool) {
         if in_water {
             self.is_wet = true;
-            self.is_shaking = false;
-            self.previous_shake_anim = 0.0;
-            self.current_shake_anim = 0.0;
             return;
-        }
-
-        if self.is_wet && !self.is_shaking && on_ground {
-            self.is_shaking = true;
-            self.previous_shake_anim = 0.0;
-            self.current_shake_anim = 0.0;
         }
 
         if (self.is_wet || self.is_shaking) && self.is_shaking {
@@ -4212,6 +4218,27 @@ impl EntityClientAnimationState {
             if let Some(squid) = self.squid.as_mut() {
                 squid.reset_movement();
             }
+        } else if vanilla_entity_metadata_type_uses_wolf_entity_event_handler(entity_type_id)
+            && matches!(
+                event_id,
+                WOLF_START_SHAKING_EVENT_ID | WOLF_CANCEL_SHAKING_EVENT_ID
+            )
+        {
+            if event_id == WOLF_START_SHAKING_EVENT_ID {
+                self.wolf_wet
+                    .get_or_insert(WolfWetAnimationState {
+                        is_wet: false,
+                        is_shaking: false,
+                        previous_shake_anim: 0.0,
+                        current_shake_anim: 0.0,
+                    })
+                    .start_shaking();
+            } else if let Some(wolf_wet) = self.wolf_wet.as_mut() {
+                wolf_wet.cancel_shake();
+                if wolf_wet.is_settled() {
+                    self.wolf_wet = None;
+                }
+            }
         } else if entity_type_id == VANILLA_ENTITY_TYPE_GOAT_ID
             && matches!(
                 event_id,
@@ -5650,7 +5677,7 @@ impl EntityClientAnimationState {
                         previous_shake_anim: 0.0,
                         current_shake_anim: 0.0,
                     });
-                    wolf_wet.advance_client_tick(in_water, transform.on_ground.unwrap_or(false));
+                    wolf_wet.advance_client_tick(in_water);
                     if wolf_wet.is_settled() {
                         self.wolf_wet = None;
                     }

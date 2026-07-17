@@ -18492,3 +18492,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - vanilla trusting 与 tamable/horse feedback 的 AABB 采样、`+0.5` Y offset 和
   `nextGaussian() * 0.02` 完全一致，因此复用现有 typed state 与 native particle resolver；
   world/native tests 分别锁定路由、尺寸、success 标志和 sink batch。
+
+## 2026-07-17：Wolf shake entity events
+
+- 依据 vanilla 26.1 `Wolf.aiStep` / `tick` / `handleEntityEvent`，world 不再以客户端
+  “离水且着地”近似启动 shake，也不再在检测到水时自行取消；原版的 pathfinding、ground、
+  water-or-rain 判定均由服务器完成并广播事件 `8` / `56`。
+- generated nearest override owner 精确限制 Wolf event dispatch；事件 `8` 重置并启动
+  `shakeAnimO/shakeAnim`，事件 `56` 调用等价 `cancelShake`，湿润 shade 与每 tick `+0.05`
+  计时保持 client-owned。
+- world 测试锁定离水后等待事件、事件启动、入水前保持状态、取消重置和完整 40-tick
+  干燥曲线；generator reverse guard 禁止恢复 Wolf type-id event arm。

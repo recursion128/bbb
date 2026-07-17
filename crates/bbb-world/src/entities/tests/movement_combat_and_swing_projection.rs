@@ -107,6 +107,16 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
     fill(&mut store, crate::vanilla_air_block_state_id());
     store.advance_entity_client_animations(1);
     assert_eq!(
+        shake(&store, 1.0),
+        0.0,
+        "the client waits for the server's Wolf event 8 before shaking"
+    );
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 82,
+        event_id: 8,
+    }));
+    store.advance_entity_client_animations(1);
+    assert_eq!(
         shake(&store, 0.0),
         0.0,
         "partial 0 reads shakeAnimO before the first dry tick increment"
@@ -127,6 +137,25 @@ fn wolf_wet_shade_follows_vanilla_get_wet_shade_timer() {
         "partial 1 reads shakeAnim after one 0.05 increment: {}",
         shade(&store, 1.0)
     );
+
+    // Entering water does not cancel the client state locally: the server broadcasts event 56
+    // after its isInWaterOrRain check, and `Wolf.handleEntityEvent` resets both shake endpoints.
+    fill(&mut store, SOURCE_WATER_BLOCK_STATE_ID);
+    store.advance_entity_client_animations(1);
+    assert!((shake(&store, 1.0) - 0.05).abs() < 1.0e-6);
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 82,
+        event_id: 56,
+    }));
+    assert_eq!(shake(&store, 1.0), 0.0);
+    assert!((shade(&store, 1.0) - 0.75).abs() < 1.0e-6);
+
+    fill(&mut store, crate::vanilla_air_block_state_id());
+    assert!(store.apply_entity_event(ProtocolEntityEvent {
+        entity_id: 82,
+        event_id: 8,
+    }));
+    store.advance_entity_client_animations(1);
 
     store.advance_entity_client_animations(39);
     assert!(

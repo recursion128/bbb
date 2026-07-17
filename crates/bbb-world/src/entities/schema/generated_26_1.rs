@@ -23535,6 +23535,20 @@ mod generated_catalog_guards {
     }
 
     #[test]
+    fn wolf_shake_events_use_generated_override_dispatch() {
+        let source = include_str!("../animations.rs");
+        let body = source
+            .split("pub(crate) fn handle_entity_event")
+            .nth(1)
+            .and_then(|source| source.split("    pub(crate) fn ").next())
+            .expect("entity event dispatch source");
+        assert!(body.contains("vanilla_entity_metadata_type_uses_wolf_entity_event_handler"));
+        assert!(!body.contains("VANILLA_ENTITY_TYPE_WOLF_ID"));
+        assert!(body.contains("WOLF_START_SHAKING_EVENT_ID"));
+        assert!(body.contains("WOLF_CANCEL_SHAKING_EVENT_ID"));
+    }
+
+    #[test]
     fn illager_celebrating_consumers_do_not_restore_parallel_metadata_or_types() {
         let source = include_str!("../../../../bbb-native/src/entity_scene/variants.rs");
         let native_scene = include_str!("../../../../bbb-native/src/entity_scene.rs");
