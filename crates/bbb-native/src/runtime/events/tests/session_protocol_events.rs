@@ -869,7 +869,7 @@ fn take_item_entity_event_emits_pickup_particle_state_before_removal() {
         PlayClientbound::SetEntityData(SetEntityData {
             id: 10,
             values: vec![EntityDataValue {
-                data_id: 8,
+                data_id: item_entity_stack_data_id(),
                 serializer_id: bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_ITEM_STACK_ID,
                 value: EntityDataValueKind::ItemStack(item_stack(42, 5)),
             }],

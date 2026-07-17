@@ -22507,12 +22507,17 @@ mod generated_catalog_guards {
             include_str!("../../../../bbb-native/src/item_models/tests.rs");
         assert!(native_item_model_tests
             .contains("vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type"));
+        let native_runtime_tests =
+            include_str!("../../../../bbb-native/src/runtime/events/tests.rs");
+        assert!(native_runtime_tests
+            .contains("vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type"));
         for source in [
             store,
             entities,
             world_tests,
             play_apply,
             native_item_model_tests,
+            native_runtime_tests,
         ] {
             for removed in [
                 "VANILLA_ITEM_ENTITY_STACK_DATA_ID",

@@ -49,6 +49,7 @@ use bbb_protocol::packets::{
 use bbb_world::{
     advance_cobweb_place_particle_randoms, vanilla_entity_metadata_arrow_accessors_for_entity_type,
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
+    vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState, BlockPos,
     ChunkPos, DolphinHappyParticleState, EntityTamingParticleState,
@@ -131,6 +132,11 @@ fn throwable_item_stack_data_id(entity_type_id: i32) -> u8 {
     );
     assert_eq!(accessor.java_name, "DATA_ITEM_STACK");
     accessor.data_id
+}
+
+fn item_entity_stack_data_id() -> u8 {
+    vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type(VANILLA_ENTITY_TYPE_ITEM_ID)
+        .expect("generated ItemEntity item accessor must resolve")
 }
 
 fn firework_item_entity_data(entity_id: i32, explosions_count: Option<usize>) -> SetEntityData {
