@@ -613,7 +613,8 @@ fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usi
 pub(crate) struct ClientAnimationTickState {
     last_entity_animation_at: Option<Instant>,
     entity_animation_tick_residual: f64,
-    low_disk_space_toast: LowDiskSpaceToastState,
+    insecure_chat_toast: SystemToastAnimationState,
+    low_disk_space_toast: SystemToastAnimationState,
 }
 
 impl ClientAnimationTickState {
@@ -623,7 +624,7 @@ impl ClientAnimationTickState {
 }
 
 #[derive(Debug, Default)]
-struct LowDiskSpaceToastState {
+struct SystemToastAnimationState {
     seen_warning_count: usize,
     animation_started_at: Option<Instant>,
     became_fully_visible_at: Option<Instant>,
@@ -635,13 +636,13 @@ struct LowDiskSpaceToastState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct LowDiskSpaceToastFrame {
+struct SystemToastAnimationFrame {
     visible_portion: f32,
     visibility_sound: Option<&'static str>,
 }
 
-impl LowDiskSpaceToastState {
-    fn update(&mut self, warning_count: usize, now: Instant) -> Option<LowDiskSpaceToastFrame> {
+impl SystemToastAnimationState {
+    fn update(&mut self, warning_count: usize, now: Instant) -> Option<SystemToastAnimationFrame> {
         if warning_count < self.seen_warning_count {
             *self = Self::default();
         }
@@ -702,7 +703,7 @@ impl LowDiskSpaceToastState {
                 self.animation_started_at
                     .expect("toast animation start is initialized"),
             ) > Duration::from_millis(600);
-        (!self.finished).then_some(LowDiskSpaceToastFrame {
+        (!self.finished).then_some(SystemToastAnimationFrame {
             visible_portion: self.visible_portion.clamp(0.0, 1.0),
             visibility_sound: (showing_before_update != self.showing).then_some(if self.showing {
                 "minecraft:ui.toast.in"
@@ -2382,12 +2383,8 @@ pub(crate) fn pump_network_and_terrain(
             surface_size,
         )
     };
-    let (hud_system_toast, hud_system_toast_sound) = hud_low_disk_space_toast(
-        &mut client_animation_ticks.low_disk_space_toast,
-        world,
-        item_runtime,
-        now,
-    );
+    let (hud_system_toast, hud_system_toast_sound) =
+        hud_system_toast(client_animation_ticks, world, item_runtime, now);
     if let (Some(audio_events), Some(sound)) =
         (audio_events.as_deref_mut(), hud_system_toast_sound.as_ref())
     {
@@ -3600,23 +3597,52 @@ fn localized_gui_text(
         .to_string()
 }
 
-fn hud_low_disk_space_toast(
-    state: &mut LowDiskSpaceToastState,
+fn hud_system_toast(
+    state: &mut ClientAnimationTickState,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     now: Instant,
 ) -> (Option<HudSystemToast>, Option<LocalSoundEventState>) {
-    let Some(frame) = state.update(world.low_disk_space_warning_count(), now) else {
-        return (None, None);
-    };
-    (
-        Some(HudSystemToast {
-            title: localized_gui_text(item_runtime, "chunk.toast.lowDiskSpace", "Low disk space!"),
-            message: localized_gui_text(
+    let (frame, title, message, multiline) = if let Some(frame) = state
+        .insecure_chat_toast
+        .update(world.insecure_chat_warning_count(), now)
+    {
+        (
+            frame,
+            localized_gui_text(
+                item_runtime,
+                "multiplayer.unsecureserver.toast.title",
+                "Chat messages can't be verified",
+            ),
+            localized_gui_text(
+                item_runtime,
+                "multiplayer.unsecureserver.toast",
+                "Messages sent on this server may be modified and might not reflect the original message",
+            ),
+            true,
+        )
+    } else if let Some(frame) = state
+        .low_disk_space_toast
+        .update(world.low_disk_space_warning_count(), now)
+    {
+        (
+            frame,
+            localized_gui_text(item_runtime, "chunk.toast.lowDiskSpace", "Low disk space!"),
+            localized_gui_text(
                 item_runtime,
                 "chunk.toast.lowDiskSpace.description",
                 "Might not be able to save the world.",
             ),
+            false,
+        )
+    } else {
+        return (None, None);
+    };
+    (
+        Some(HudSystemToast {
+            title,
+            message,
+            multiline,
             visible_portion: frame.visible_portion,
         }),
         frame.visibility_sound.map(|location| LocalSoundEventState {

@@ -18753,3 +18753,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Closed configuration and play Transfer runtime coverage after locking both remaining
   `TransferState` members against vanilla `ClientCommonPacketListenerImpl`,
   `ClientPacketListener`, and `TransferState`.
+
+# 2026-07-17: Present the insecure-server system toast
+
+- Consumed the canonical once-per-Transfer-chain warning edge in native and selected the exact
+  `multiplayer.unsecureserver.toast.*` text through the existing asset localization owner, with
+  the local 26.1 English strings as fallback.
+- Generalized the existing low-disk toast animation state so both warnings use Vanilla's ten-second
+  display window, 600ms squared slide curve, and visibility sounds. The insecure warning has queue
+  priority and a pending low-disk warning begins after it finishes.
+- Added renderer support for `SystemToast.multiline`: messages wrap at 200 font pixels, the
+  background grows by 12 pixels per line, and each line uses Vanilla's title/message offsets.

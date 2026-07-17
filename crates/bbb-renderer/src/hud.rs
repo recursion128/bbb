@@ -347,6 +347,9 @@ pub struct HudStatsScreen {
 pub struct HudSystemToast {
     pub title: String,
     pub message: String,
+    /// Whether the message follows `SystemToast.multiline` and wraps at the
+    /// vanilla 200-pixel line width.
+    pub multiline: bool,
     pub visible_portion: f32,
 }
 
@@ -7578,10 +7581,15 @@ fn push_hud_system_toast<'a>(
             [0.15, 0.15, 0.15, 0.95],
         );
     }
-    for (text, y, tint) in [
-        (toast.title.as_str(), 7.0, hud_argb_to_tint(0xFFFFFF00)),
-        (toast.message.as_str(), 18.0, HUD_TINT_WHITE),
-    ] {
+    let mut text_lines = vec![(toast.title.as_str(), 7.0, hud_argb_to_tint(0xFFFFFF00))];
+    let message_lines = hud_system_toast_message_lines(toast, glyphs);
+    text_lines.extend(
+        message_lines
+            .iter()
+            .enumerate()
+            .map(|(index, line)| (line.as_str(), 18.0 + index as f32 * 12.0, HUD_TINT_WHITE)),
+    );
+    for (text, y, tint) in text_lines {
         let runs = [HudStyledTextRun::plain(text)];
         let geometry = hud_styled_text_pass_geometry(
             &runs,
@@ -7611,12 +7619,39 @@ fn hud_system_toast_layout(
     toast: &HudSystemToast,
     glyphs: &HudFontGlyphMap,
 ) -> (HudRect, f32, u32, u32) {
-    let text_width = hud_plain_text_width(&toast.title, glyphs)
-        .max(hud_plain_text_width(&toast.message, glyphs));
-    let width = 160u32.max(text_width.saturating_add(30));
-    let height = 32;
+    let message_lines = hud_system_toast_message_lines(toast, glyphs);
+    let message_width = message_lines
+        .iter()
+        .map(|line| hud_plain_text_width(line, glyphs))
+        .max()
+        .unwrap_or_default();
+    let width = if toast.multiline {
+        200u32.max(message_width).saturating_add(30)
+    } else {
+        160u32.max(
+            hud_plain_text_width(&toast.title, glyphs)
+                .max(message_width)
+                .saturating_add(30),
+        )
+    };
+    let height = 20u32.saturating_add(
+        u32::try_from(message_lines.len().max(1))
+            .unwrap_or(u32::MAX)
+            .saturating_mul(12),
+    );
     let x = surface_size.width as f32 - width as f32 * toast.visible_portion;
     (absolute_hud_rect(x, 0.0, width, height), x, width, height)
+}
+
+fn hud_system_toast_message_lines(toast: &HudSystemToast, glyphs: &HudFontGlyphMap) -> Vec<String> {
+    if !toast.multiline {
+        return vec![toast.message.clone()];
+    }
+    let chars = toast.message.chars().collect::<Vec<_>>();
+    hud_multiline_lines(&toast.message, 200, glyphs)
+        .into_iter()
+        .map(|line| chars[line.begin..line.end].iter().collect())
+        .collect()
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -13599,11 +13634,18 @@ fn sanitize_hud_system_toast(toast: HudSystemToast) -> Option<HudSystemToast> {
     if !toast.visible_portion.is_finite() {
         return None;
     }
+    let multiline = toast.multiline;
     let title = sanitize_hud_text_line(toast.title)?;
-    let message = sanitize_hud_text_line(toast.message)?;
+    let message = if multiline {
+        let message = sanitize_hud_multiline_text(toast.message, 256);
+        (!message.is_empty()).then_some(message)?
+    } else {
+        sanitize_hud_text_line(toast.message)?
+    };
     (!title.is_empty() && !message.is_empty()).then_some(HudSystemToast {
         title,
         message,
+        multiline,
         visible_portion: toast.visible_portion.clamp(0.0, 1.0),
     })
 }
@@ -14064,6 +14106,7 @@ mod tests {
         let toast = sanitize_hud_system_toast(HudSystemToast {
             title: "Low\ndisk".to_string(),
             message: "Might not\tsave".to_string(),
+            multiline: false,
             visible_portion: 2.0,
         })
         .unwrap();
@@ -14073,6 +14116,7 @@ mod tests {
         assert!(sanitize_hud_system_toast(HudSystemToast {
             title: "Low disk".to_string(),
             message: "Warning".to_string(),
+            multiline: false,
             visible_portion: f32::NAN,
         })
         .is_none());
@@ -14083,6 +14127,7 @@ mod tests {
         let toast = HudSystemToast {
             title: "Low disk space!".to_string(),
             message: "Might not be able to save the world.".to_string(),
+            multiline: false,
             visible_portion: 1.0,
         };
         let (_, x, width, height) =
@@ -14116,12 +14161,42 @@ mod tests {
             &HudSystemToast {
                 title: "a".to_string(),
                 message: "a".repeat(30),
+                multiline: false,
                 visible_portion: 1.0,
             },
             &glyphs,
         );
         assert_eq!(wide_width, 210);
         assert_eq!(wide_x, 110.0);
+    }
+
+    #[test]
+    fn multiline_system_toast_wraps_at_two_hundred_pixels_and_grows_height() {
+        let mut glyphs = HudFontGlyphMap::new();
+        glyphs.insert_first_wins(
+            'a',
+            HudAsciiGlyph {
+                advance: 6,
+                width: 5,
+                height: 8,
+                ..HudAsciiGlyph::default()
+            },
+        );
+        let toast = HudSystemToast {
+            title: "Warning".to_string(),
+            message: "a".repeat(40),
+            multiline: true,
+            visible_portion: 1.0,
+        };
+
+        let lines = hud_system_toast_message_lines(&toast, &glyphs);
+        let (_, x, width, height) =
+            hud_system_toast_layout(PhysicalSize::new(320, 240), &toast, &glyphs);
+
+        assert_eq!(lines.iter().map(String::len).collect::<Vec<_>>(), [33, 7]);
+        assert_eq!(width, 230);
+        assert_eq!(height, 44);
+        assert_eq!(x, 90.0);
     }
 
     #[test]

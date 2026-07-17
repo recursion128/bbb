@@ -7801,11 +7801,11 @@ fn hud_stats_screen_clamps_pixel_scroll_to_projected_content() {
 #[test]
 fn low_disk_space_toast_uses_ten_second_visible_window_and_square_slides() {
     let start = std::time::Instant::now();
-    let mut state = LowDiskSpaceToastState::default();
+    let mut state = SystemToastAnimationState::default();
     assert_eq!(state.update(0, start), None);
     assert_eq!(
         state.update(1, start),
-        Some(LowDiskSpaceToastFrame {
+        Some(SystemToastAnimationFrame {
             visible_portion: 0.0,
             visibility_sound: Some("minecraft:ui.toast.in"),
         })
@@ -7830,7 +7830,7 @@ fn low_disk_space_toast_uses_ten_second_visible_window_and_square_slides() {
     );
     assert_eq!(
         state.update(1, start + Duration::from_millis(10_600)),
-        Some(LowDiskSpaceToastFrame {
+        Some(SystemToastAnimationFrame {
             visible_portion: 1.0,
             visibility_sound: Some("minecraft:ui.toast.out"),
         })
@@ -7845,7 +7845,7 @@ fn low_disk_space_toast_uses_ten_second_visible_window_and_square_slides() {
 
     assert_eq!(
         state.update(2, start + Duration::from_millis(12_000)),
-        Some(LowDiskSpaceToastFrame {
+        Some(SystemToastAnimationFrame {
             visible_portion: 0.0,
             visibility_sound: Some("minecraft:ui.toast.in"),
         })
@@ -7856,20 +7856,21 @@ fn low_disk_space_toast_uses_ten_second_visible_window_and_square_slides() {
 fn low_disk_space_warning_projects_one_server_driven_system_toast() {
     let start = std::time::Instant::now();
     let mut world = WorldStore::new();
-    let mut state = LowDiskSpaceToastState::default();
+    let mut state = ClientAnimationTickState::default();
 
     assert_eq!(
-        hud_low_disk_space_toast(&mut state, &world, None, start),
+        hud_system_toast(&mut state, &world, None, start),
         (None, None)
     );
 
     world.apply_low_disk_space_warning();
-    let (toast, sound) = hud_low_disk_space_toast(&mut state, &world, None, start);
+    let (toast, sound) = hud_system_toast(&mut state, &world, None, start);
     assert_eq!(
         toast,
         Some(HudSystemToast {
             title: "Low disk space!".to_string(),
             message: "Might not be able to save the world.".to_string(),
+            multiline: false,
             visible_portion: 0.0,
         })
     );
@@ -7878,7 +7879,7 @@ fn low_disk_space_warning_projects_one_server_driven_system_toast() {
         Some("minecraft:ui.toast.in".to_string())
     );
     assert_eq!(
-        hud_low_disk_space_toast(&mut state, &world, None, start + Duration::from_millis(600),)
+        hud_system_toast(&mut state, &world, None, start + Duration::from_millis(600),)
             .0
             .map(|toast| toast.visible_portion),
         Some(1.0)
@@ -7886,7 +7887,7 @@ fn low_disk_space_warning_projects_one_server_driven_system_toast() {
 
     world.apply_low_disk_space_warning();
     assert_eq!(
-        hud_low_disk_space_toast(
+        hud_system_toast(
             &mut state,
             &world,
             None,
@@ -7897,7 +7898,7 @@ fn low_disk_space_warning_projects_one_server_driven_system_toast() {
         Some(1.0)
     );
     assert_eq!(
-        hud_low_disk_space_toast(
+        hud_system_toast(
             &mut state,
             &world,
             None,
@@ -7906,6 +7907,61 @@ fn low_disk_space_warning_projects_one_server_driven_system_toast() {
         .0
         .map(|toast| toast.visible_portion),
         Some(1.0)
+    );
+}
+
+#[test]
+fn insecure_chat_warning_projects_multiline_toast_before_low_disk_queue() {
+    let start = std::time::Instant::now();
+    let mut world = world_with_custom_dimension_environment();
+    let mut state = ClientAnimationTickState::default();
+    assert_eq!(world.insecure_chat_warning_count(), 1);
+
+    let (toast, sound) = hud_system_toast(&mut state, &world, None, start);
+    assert_eq!(
+        toast,
+        Some(HudSystemToast {
+            title: "Chat messages can't be verified".to_string(),
+            message: "Messages sent on this server may be modified and might not reflect the original message".to_string(),
+            multiline: true,
+            visible_portion: 0.0,
+        })
+    );
+    assert_eq!(
+        sound.and_then(|sound| sound.sound.location),
+        Some("minecraft:ui.toast.in".to_string())
+    );
+
+    world.apply_low_disk_space_warning();
+    assert_eq!(
+        hud_system_toast(&mut state, &world, None, start + Duration::from_millis(600))
+            .0
+            .unwrap()
+            .title,
+        "Chat messages can't be verified"
+    );
+    assert_eq!(
+        hud_system_toast(
+            &mut state,
+            &world,
+            None,
+            start + Duration::from_millis(10_600),
+        )
+        .1
+        .and_then(|sound| sound.sound.location),
+        Some("minecraft:ui.toast.out".to_string())
+    );
+
+    let (toast, sound) = hud_system_toast(
+        &mut state,
+        &world,
+        None,
+        start + Duration::from_millis(11_201),
+    );
+    assert_eq!(toast.unwrap().title, "Low disk space!");
+    assert_eq!(
+        sound.and_then(|sound| sound.sound.location),
+        Some("minecraft:ui.toast.in".to_string())
     );
 }
 
