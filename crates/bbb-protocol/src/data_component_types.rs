@@ -895,6 +895,22 @@ pub struct DataComponentPredicateTypeCatalogEntry {
     pub resource_id: &'static str,
 }
 
+pub const VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID: i32 = 0;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_ENCHANTMENTS_TYPE_ID: i32 = 1;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_STORED_ENCHANTMENTS_TYPE_ID: i32 = 2;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_POTIONS_TYPE_ID: i32 = 3;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_CUSTOM_DATA_TYPE_ID: i32 = 4;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID: i32 = 5;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_BUNDLE_CONTENTS_TYPE_ID: i32 = 6;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_FIREWORK_EXPLOSION_TYPE_ID: i32 = 7;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_FIREWORKS_TYPE_ID: i32 = 8;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_WRITABLE_BOOK_TYPE_ID: i32 = 9;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_WRITTEN_BOOK_TYPE_ID: i32 = 10;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_ATTRIBUTE_MODIFIERS_TYPE_ID: i32 = 11;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_ARMOR_TRIM_TYPE_ID: i32 = 12;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_JUKEBOX_PLAYABLE_TYPE_ID: i32 = 13;
+pub const VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID: i32 = 14;
+
 pub const VANILLA_DATA_COMPONENT_PREDICATE_TYPES: &[DataComponentPredicateTypeCatalogEntry] = &[
     DataComponentPredicateTypeCatalogEntry {
         type_id: 0,
@@ -1603,5 +1619,97 @@ mod tests {
         );
         assert_eq!(vanilla_data_component_predicate_resource_id(-1), None);
         assert_eq!(vanilla_data_component_predicate_resource_id(15), None);
+        assert_eq!(VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID, 0);
+        assert_eq!(VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID, 5);
+        assert_eq!(
+            VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID,
+            14
+        );
+    }
+
+    fn starts_with_integer_literal(value: &str) -> bool {
+        let mut characters = value.chars();
+        let Some(first) = characters.next() else {
+            return false;
+        };
+        first.is_ascii_digit()
+            || (first == '-'
+                && characters
+                    .next()
+                    .is_some_and(|character| character.is_ascii_digit()))
+    }
+
+    fn contains_numeric_dialog_component_type_id_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        ["component_type_id:", "predicate_type_id:"]
+            .iter()
+            .any(|field| {
+                compact.match_indices(field).any(|(offset, _)| {
+                    let boundary = offset == 0
+                        || compact[..offset]
+                            .chars()
+                            .next_back()
+                            .is_some_and(|character| {
+                                !character.is_ascii_alphanumeric() && character != '_'
+                            });
+                    boundary && starts_with_integer_literal(&compact[offset + field.len()..])
+                })
+            })
+    }
+
+    #[test]
+    fn numeric_dialog_component_type_id_guard_covers_component_and_predicate_fields() {
+        assert!(contains_numeric_dialog_component_type_id_reference(
+            "component_type_id: 12,"
+        ));
+        assert!(contains_numeric_dialog_component_type_id_reference(
+            "predicate_type_id: 5,"
+        ));
+        assert!(!contains_numeric_dialog_component_type_id_reference(
+            "component_type_id: VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,"
+        ));
+        assert!(!contains_numeric_dialog_component_type_id_reference(
+            "predicate_type_id: VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID,"
+        ));
+        assert!(!contains_numeric_dialog_component_type_id_reference(
+            "particle_type_id: 5,"
+        ));
+    }
+
+    #[test]
+    fn dialog_component_fixtures_do_not_restore_numeric_type_ids() {
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                if contains_numeric_dialog_component_type_id_reference(&source) {
+                    violations.push(format!(
+                        "{}: numeric dialog component type id",
+                        path.display()
+                    ));
+                }
+            }
+        }
+        let mut violations = Vec::new();
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        visit(
+            &crates.join("bbb-world/src/client/dialog/body/component_value"),
+            &mut violations,
+        );
+        assert!(
+            violations.is_empty(),
+            "dialog component fixtures restored numeric type ids:\n{}",
+            violations.join("\n")
+        );
     }
 }

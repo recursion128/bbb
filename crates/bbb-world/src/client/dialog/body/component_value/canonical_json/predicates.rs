@@ -716,6 +716,12 @@ fn double_bounds_len(bounds: &DialogDoubleBoundsState) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
+    use bbb_protocol::data_component_types::{
+        VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_ATTRIBUTE_MODIFIERS_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID, VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
+    };
     use bbb_protocol::item_component_value_types::FireworkExplosionShapeSummary;
     use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
@@ -756,14 +762,14 @@ mod tests {
             }])),
             components: DialogDataComponentMatchersState {
                 exact: vec![DialogExactDataComponentPredicateState {
-                    component_type_id: 0,
+                    component_type_id: VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
                     resource_id: "minecraft:max_stack_size".to_string(),
                     value: DialogDataComponentValueState::Integer { value: 64 },
                     persistent_value: Some(NbtSummaryValue::Int(64)),
                 }],
                 partial: vec![
                     DialogPartialDataComponentPredicateState::Concrete {
-                        predicate_type_id: 0,
+                        predicate_type_id: VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID,
                         resource_id: "minecraft:damage".to_string(),
                         value: DialogDataComponentPredicateState::Damage {
                             durability: DialogIntBoundsState {
@@ -778,7 +784,7 @@ mod tests {
                         wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
                     },
                     DialogPartialDataComponentPredicateState::AnyComponent {
-                        component_type_id: 0,
+                        component_type_id: VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
                         resource_id: "minecraft:rarity".to_string(),
                         wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
                     },
@@ -820,7 +826,7 @@ mod tests {
             components: DialogDataComponentMatchersState {
                 exact: Vec::new(),
                 partial: vec![DialogPartialDataComponentPredicateState::AnyComponent {
-                    component_type_id: 0,
+                    component_type_id: VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
                     resource_id: "minecraft:rarity".to_string(),
                     wire_value: Some(NbtSummaryValue::Compound(Vec::new())),
                 }],
@@ -835,7 +841,7 @@ mod tests {
             components: DialogDataComponentMatchersState {
                 exact: Vec::new(),
                 partial: vec![DialogPartialDataComponentPredicateState::Concrete {
-                    predicate_type_id: 0,
+                    predicate_type_id: VANILLA_DATA_COMPONENT_PREDICATE_CONTAINER_TYPE_ID,
                     resource_id: "minecraft:container".to_string(),
                     value: DialogDataComponentPredicateState::Container {
                         items: Some(DialogCollectionPredicateState {
@@ -1011,7 +1017,7 @@ mod tests {
             components: DialogDataComponentMatchersState {
                 exact: Vec::new(),
                 partial: vec![DialogPartialDataComponentPredicateState::Concrete {
-                    predicate_type_id: 0,
+                    predicate_type_id: VANILLA_DATA_COMPONENT_PREDICATE_ATTRIBUTE_MODIFIERS_TYPE_ID,
                     resource_id: "minecraft:attribute_modifiers".to_string(),
                     value: DialogDataComponentPredicateState::AttributeModifiers {
                         modifiers: Some(DialogCollectionPredicateState {

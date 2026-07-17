@@ -4,6 +4,8 @@ use bbb_protocol::{
     data_component_types::{
         VANILLA_DATA_COMPONENT_CAN_BREAK_TYPE_ID, VANILLA_DATA_COMPONENT_CAN_PLACE_ON_TYPE_ID,
         VANILLA_DATA_COMPONENT_LOCK_TYPE_ID, VANILLA_DATA_COMPONENT_MAX_STACK_SIZE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID,
+        VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID,
         VANILLA_DATA_COMPONENT_RARITY_TYPE_ID,
     },
     packets::inventory::{
@@ -490,7 +492,7 @@ fn decodes_all_concrete_component_predicate_types() {
     assert!(matches!(
         predicate.components.partial.first(),
         Some(DialogPartialDataComponentPredicateState::Concrete {
-            predicate_type_id: 0,
+            predicate_type_id: VANILLA_DATA_COMPONENT_PREDICATE_DAMAGE_TYPE_ID,
             value: DialogDataComponentPredicateState::Damage { .. },
             ..
         })
@@ -498,7 +500,7 @@ fn decodes_all_concrete_component_predicate_types() {
     assert!(matches!(
         predicate.components.partial.last(),
         Some(DialogPartialDataComponentPredicateState::Concrete {
-            predicate_type_id: 14,
+            predicate_type_id: VANILLA_DATA_COMPONENT_PREDICATE_VILLAGER_VARIANT_TYPE_ID,
             value: DialogDataComponentPredicateState::VillagerVariant { .. },
             ..
         })

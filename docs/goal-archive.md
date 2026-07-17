@@ -18993,3 +18993,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   sentinel. Extended the core-registry generator with a reverse guard over semantic construction,
   assignment, comparison, JSON projection, and particle helper fixtures while leaving protocol
   wire samples under the packet-codec owner.
+
+# 2026-07-17: Derive dialog component predicate type ids
+
+- Added generated named constants for all 15 `DataComponentPredicates` registration ordinals and
+  replaced numeric dialog canonicalization/decoder fixtures with the DataComponentType or
+  DataComponentPredicateType constant matching each fixture's resource id.
+- Corrected placeholder zero ids for max-stack-size, rarity, container, and attribute-modifier
+  fixtures without changing their canonical JSON behavior. A generator-emitted reverse guard now
+  rejects numeric component or predicate type fields throughout the world dialog component owner.
