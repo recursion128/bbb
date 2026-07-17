@@ -725,7 +725,12 @@ impl EntityModelSink for TexturedSink<'_> {
         } else {
             self.model(CamelModel::new(family, baby), transform, instance, &passes);
         }
-        render_camel_saddle_layer(self.meshes, *instance, self.atlas);
+        render_camel_saddle_layer(
+            self.meshes,
+            *instance,
+            self.atlas,
+            self.dynamic_player_texture_atlas,
+        );
     }
 
     fn llama_model(

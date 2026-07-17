@@ -600,6 +600,10 @@ pub(super) fn entity_model_instance(
             source.strider_saddle_trim.as_ref(),
             variant_registries,
         ))
+        .with_camel_saddle_trim(armor_trim(
+            source.camel_saddle_trim.as_ref(),
+            variant_registries,
+        ))
         .with_player_left_shoulder_parrot(
             source
                 .player_left_shoulder_parrot
@@ -823,6 +827,7 @@ pub(super) fn entity_model_instance(
         with_strider_saddle strider_saddle,
         with_strider_saddle_foil strider_saddle_foil,
         with_camel_saddle camel_saddle,
+        with_camel_saddle_foil camel_saddle_foil,
         with_camel_saddle_ridden camel_saddle_ridden,
         with_nautilus_saddle nautilus_saddle,
         with_nautilus_body_armor_foil nautilus_body_armor_foil,

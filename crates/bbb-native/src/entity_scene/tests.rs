@@ -6738,6 +6738,18 @@ fn entity_model_instances_project_strider_saddle_and_ridden_render_state() {
 #[test]
 fn entity_model_instances_project_camel_saddle_and_ridden_render_state() {
     const SADDLE_ITEM_ID: i32 = 743;
+    let camel_trim_texture = EntityDynamicTexture { handle: 42_4315 };
+    let camel_trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/camel_saddle/sentry_iron",
+        texture: camel_trim_texture,
+        missing_texture: None,
+    };
+    let husk_trim_texture = EntityDynamicTexture { handle: 42_4316 };
+    let husk_trim_lookup = ReadyArmorTrimLookup {
+        asset_id: "minecraft:trims/entity/camel_husk_saddle/sentry_iron",
+        texture: husk_trim_texture,
+        missing_texture: None,
+    };
 
     let saddle = |entity_id: i32| SetEquipment {
         entity_id,
@@ -6746,17 +6758,29 @@ fn entity_model_instances_project_camel_saddle_and_ridden_render_state() {
             item: ItemStackSummary {
                 item_id: Some(SADDLE_ITEM_ID),
                 count: 1,
-                component_patch: DataComponentPatchSummary::default(),
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
             },
         }],
     };
-    let camel_saddle = |world: &WorldStore, id: i32| {
-        let render_state = entity_model_instances_from_world_at_partial_tick(world, None, 0.0)
-            .into_iter()
-            .find(|instance| instance.entity_id == id)
-            .unwrap()
-            .render_state;
-        (render_state.camel_saddle, render_state.camel_saddle_ridden)
+    let camel_saddle = |world: &WorldStore, id: i32, lookup: &ReadyArmorTrimLookup| {
+        entity_model_instances_from_world_with_registry_at_partial_tick(
+            world,
+            None,
+            0.0,
+            Some(lookup),
+        )
+        .into_iter()
+        .find(|instance| instance.entity_id == id)
+        .unwrap()
+        .render_state
     };
 
     let mut world = WorldStore::new();
@@ -6776,26 +6800,53 @@ fn entity_model_instances_project_camel_saddle_and_ridden_render_state() {
         [3.0, 64.0, -3.0],
     ));
     assert!(world.apply_set_equipment(saddle(115)));
-    assert_eq!(
-        camel_saddle(&world, 115),
-        (false, false),
+    let unresolved = camel_saddle(&world, 115, &camel_trim_lookup);
+    assert!(
+        !unresolved.camel_saddle,
         "without the item registry's saddle-slot map, a raw item id is not enough"
     );
+    assert!(!unresolved.camel_saddle_ridden);
+    assert_eq!(unresolved.camel_saddle_trim, None);
+    assert!(!unresolved.camel_saddle_foil);
 
     world.set_default_item_equipment_slots(std::collections::BTreeMap::from([(
         SADDLE_ITEM_ID,
         ItemEquipmentSlot::Saddle,
     )]));
-    assert_eq!(camel_saddle(&world, 115), (true, false));
+    let saddled = camel_saddle(&world, 115, &camel_trim_lookup);
+    assert!(saddled.camel_saddle);
+    assert!(!saddled.camel_saddle_ridden);
+    assert!(saddled.camel_saddle_foil);
+    assert_eq!(
+        saddled.camel_saddle_trim,
+        Some(EntityArmorTrim {
+            texture: camel_trim_texture,
+            decal: false,
+        })
+    );
 
     assert!(world.apply_set_passengers(SetPassengers {
         vehicle_id: 115,
         passenger_ids: vec![117],
     }));
-    assert_eq!(camel_saddle(&world, 115), (true, true));
+    let ridden = camel_saddle(&world, 115, &camel_trim_lookup);
+    assert!(ridden.camel_saddle);
+    assert!(ridden.camel_saddle_ridden);
+    assert!(ridden.camel_saddle_foil);
+    assert_eq!(ridden.camel_saddle_trim, saddled.camel_saddle_trim);
 
     assert!(world.apply_set_equipment(saddle(116)));
-    assert_eq!(camel_saddle(&world, 116), (true, false));
+    let husk = camel_saddle(&world, 116, &husk_trim_lookup);
+    assert!(husk.camel_saddle);
+    assert!(!husk.camel_saddle_ridden);
+    assert!(husk.camel_saddle_foil);
+    assert_eq!(
+        husk.camel_saddle_trim,
+        Some(EntityArmorTrim {
+            texture: husk_trim_texture,
+            decal: false,
+        })
+    );
 }
 
 #[test]

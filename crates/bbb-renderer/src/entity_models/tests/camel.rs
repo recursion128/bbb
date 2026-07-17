@@ -1,6 +1,7 @@
 use super::*;
 
 use crate::entity_models::model::ModelCube;
+use crate::DynamicEntityTextureImage;
 
 #[test]
 fn camel_model_cubes_and_poses_match_vanilla_26_1_body_layers() {
@@ -589,6 +590,100 @@ fn camel_saddle_submission_survives_missing_saddle_texture_atlas_entry() {
     assert!(meshes.eyes.vertices.is_empty());
     assert!(meshes.scroll.vertices.is_empty());
     assert!(meshes.scroll_additive.vertices.is_empty());
+}
+
+#[test]
+fn camel_saddle_foil_and_trim_use_family_specific_equipment_layers() {
+    let (atlas, _) = build_entity_model_texture_atlas(&texture_images(&[
+        CAMEL_TEXTURE_REF,
+        CAMEL_BABY_TEXTURE_REF,
+        CAMEL_HUSK_TEXTURE_REF,
+        CAMEL_SADDLE_TEXTURE_REF,
+        CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        ENCHANTED_GLINT_ARMOR_TEXTURE_REF,
+    ]))
+    .unwrap();
+    let trim_texture = EntityDynamicTexture { handle: 76_401 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: trim_texture.handle,
+        size: [128, 128],
+        rgba: vec![0xff; 128 * 128 * 4],
+    }])
+    .unwrap()
+    .0;
+    let trimmed_saddle = |entity_id, family, baby| {
+        EntityModelInstance::camel(entity_id, [0.0, 64.0, 0.0], 0.0, family, baby)
+            .with_camel_saddle(true)
+            .with_camel_saddle_foil(true)
+            .with_camel_saddle_trim(Some(EntityArmorTrim {
+                texture: trim_texture,
+                decal: false,
+            }))
+    };
+
+    for (instance, saddle_texture) in [
+        (
+            trimmed_saddle(764, CamelModelFamily::Camel, false),
+            CAMEL_SADDLE_TEXTURE_REF,
+        ),
+        (
+            trimmed_saddle(765, CamelModelFamily::CamelHusk, false),
+            CAMEL_HUSK_SADDLE_TEXTURE_REF,
+        ),
+    ] {
+        let meshes = entity_model_textured_meshes_with_dynamic_textures(
+            &[instance],
+            &atlas,
+            None,
+            Some(&dynamic_atlas),
+        );
+        assert_eq!(meshes.submissions.len(), 4);
+        let saddle = meshes.submissions[1];
+        assert_eq!(saddle.texture, saddle_texture);
+        assert_eq!(
+            saddle.render_type,
+            EntityModelLayerRenderType::ArmorCutoutNoCull
+        );
+        assert_eq!((saddle.order, saddle.submit_sequence), (0, 1));
+        let foil = meshes.submissions[2];
+        assert_eq!(foil.texture, ENCHANTED_GLINT_ARMOR_TEXTURE_REF);
+        assert_eq!(
+            foil.render_type,
+            EntityModelLayerRenderType::ArmorEntityGlint
+        );
+        assert_eq!((foil.order, foil.submit_sequence), (1, 2));
+        let trim = meshes.submissions[3];
+        assert_eq!(trim.texture, saddle_texture);
+        assert_eq!(trim.dynamic_texture, Some(trim_texture));
+        assert_eq!(
+            trim.render_type,
+            EntityModelLayerRenderType::ArmorTrimCutoutNoCull
+        );
+        assert_eq!((trim.order, trim.submit_sequence), (2, 3));
+        for submit in [saddle, foil, trim] {
+            assert_eq!(submit.transform, entity_model_root_transform(instance));
+            assert_eq!(submit.light, instance.render_state.shader_light());
+            assert_eq!(submit.overlay, [0.0, 10.0]);
+        }
+        assert_eq!(meshes.armor_cutout.vertices.len(), 480);
+        assert_eq!(meshes.armor_entity_glint.vertices.len(), 480);
+        assert_eq!(meshes.dynamic_player_texture_armor_trim.vertices.len(), 480);
+    }
+
+    let baby = trimmed_saddle(766, CamelModelFamily::Camel, true);
+    let baby_meshes = entity_model_textured_meshes_with_dynamic_textures(
+        &[baby],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+    );
+    assert_eq!(baby_meshes.submissions.len(), 1);
+    assert!(baby_meshes.armor_cutout.vertices.is_empty());
+    assert!(baby_meshes.armor_entity_glint.vertices.is_empty());
+    assert!(baby_meshes
+        .dynamic_player_texture_armor_trim
+        .vertices
+        .is_empty());
 }
 
 /// The adult camel's depth-first emit order: body `[0, 24)`, hump `[24, 48)`, the zero-thickness

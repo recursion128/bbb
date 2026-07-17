@@ -2203,6 +2203,12 @@ entity_model_source_state! {
     /// equipment layer.
     #[serde(default)]
     pub camel_saddle: bool,
+    /// Vanilla armor-trim sprite for a camel's family-specific `CAMEL*_SADDLE` equipment layer.
+    #[serde(default)]
+    pub camel_saddle_trim: Option<ArmorTrimSprite>,
+    /// Vanilla `ItemStack.hasFoil()` for the camel saddle item.
+    #[serde(default)]
+    pub camel_saddle_foil: bool,
     /// Vanilla `CamelRenderState.isRidden`: true when a saddled camel/camel_husk has passengers, which
     /// makes `CamelSaddleModel` show the `reins` part.
     #[serde(default)]

@@ -1221,13 +1221,21 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
             component_patch: Default::default(),
         }
     }
-    fn camel_saddle_state(store: &WorldStore, entity_id: i32) -> (bool, bool) {
+    fn camel_saddle_state(
+        store: &WorldStore,
+        entity_id: i32,
+    ) -> (bool, bool, Option<ArmorTrimSprite>, bool) {
         let source = store
             .entity_model_sources_at_partial_tick(0.0)
             .into_iter()
             .find(|source| source.entity_id == entity_id)
             .unwrap();
-        (source.camel_saddle, source.camel_saddle_ridden)
+        (
+            source.camel_saddle,
+            source.camel_saddle_ridden,
+            source.camel_saddle_trim,
+            source.camel_saddle_foil,
+        )
     }
 
     let mut store = WorldStore::new();
@@ -1248,7 +1256,7 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
         VANILLA_ENTITY_TYPE_COW_ID,
     ));
 
-    assert_eq!(camel_saddle_state(&store, 68), (false, false));
+    assert_eq!(camel_saddle_state(&store, 68), (false, false, None, false));
 
     assert!(store.apply_set_passengers(ProtocolSetPassengers {
         vehicle_id: 68,
@@ -1256,7 +1264,7 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
     }));
     assert_eq!(
         camel_saddle_state(&store, 68),
-        (false, false),
+        (false, false, None, false),
         "the reins gate is only useful when the saddle layer itself renders"
     );
 
@@ -1264,19 +1272,63 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
         entity_id: 68,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Saddle,
-            item: stack(SADDLE_ITEM_ID, 1),
+            item: ItemStackSummary {
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
+                ..stack(SADDLE_ITEM_ID, 1)
+            },
         }],
     }));
-    assert_eq!(camel_saddle_state(&store, 68), (true, true));
+    assert_eq!(
+        camel_saddle_state(&store, 68),
+        (
+            true,
+            true,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/camel_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 69,
         slots: vec![EquipmentSlotUpdate {
             slot: EquipmentSlot::Saddle,
-            item: stack(SADDLE_ITEM_ID, 1),
+            item: ItemStackSummary {
+                component_patch: DataComponentPatchSummary {
+                    enchantments: vec![ItemEnchantmentSummary {
+                        holder_id: 12,
+                        level: 1,
+                    }],
+                    armor_trim_material_id: Some(1), // iron
+                    armor_trim_pattern_id: Some(0),  // sentry
+                    ..Default::default()
+                },
+                ..stack(SADDLE_ITEM_ID, 1)
+            },
         }],
     }));
-    assert_eq!(camel_saddle_state(&store, 69), (true, false));
+    assert_eq!(
+        camel_saddle_state(&store, 69),
+        (
+            true,
+            false,
+            Some(ArmorTrimSprite {
+                sprite_id: "minecraft:trims/entity/camel_husk_saddle/sentry_iron".to_string(),
+                decal: false,
+            }),
+            true,
+        )
+    );
 
     assert!(store.apply_set_equipment(ProtocolSetEquipment {
         entity_id: 70,
@@ -1287,7 +1339,7 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
     }));
     assert_eq!(
         camel_saddle_state(&store, 70),
-        (false, false),
+        (false, false, None, false),
         "non-camels do not project the camel saddle flag"
     );
 
@@ -1298,7 +1350,7 @@ fn entity_model_sources_project_camel_saddle_and_ridden_state() {
             item: stack(PLAIN_ITEM_ID, 1),
         }],
     }));
-    assert_eq!(camel_saddle_state(&store, 68), (false, false));
+    assert_eq!(camel_saddle_state(&store, 68), (false, false, None, false));
 }
 
 #[test]

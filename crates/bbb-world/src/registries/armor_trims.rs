@@ -41,6 +41,8 @@ struct TrimPatternPresentation {
 /// paths ad hoc as non-humanoid equipment renderers are added.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ArmorTrimLayer {
+    CamelHuskSaddle,
+    CamelSaddle,
     Humanoid,
     HumanoidLeggings,
     HorseBody,
@@ -55,6 +57,8 @@ pub(crate) enum ArmorTrimLayer {
 impl ArmorTrimLayer {
     const fn asset_id(self) -> &'static str {
         match self {
+            Self::CamelHuskSaddle => "camel_husk_saddle",
+            Self::CamelSaddle => "camel_saddle",
             Self::Humanoid => "humanoid",
             Self::HumanoidLeggings => "humanoid_leggings",
             Self::HorseBody => "horse_body",

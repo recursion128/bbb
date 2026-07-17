@@ -18653,3 +18653,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   model.
 - Focused world, native, and renderer tests cover saddle-slot filtering, ridden-state independence,
   exact collector order, submission metadata, missing base-atlas behavior, and adult-only geometry.
+
+# 2026-07-17: Render camel saddle armor trims and foil
+
+- Added saddle foil and armor-trim projection for both camel renderer families. Adult camels resolve
+  `trims/entity/camel_saddle`, while camel husks resolve
+  `trims/entity/camel_husk_saddle`; both use the vanilla `minecraft:saddle` equipment asset.
+- The family-specific saddle model/texture now submits base → foil → regular/decal trim with
+  no-overlay metadata and retains the ridden-reins pose. Baby camels continue to suppress the
+  complete saddle layer because vanilla supplies no baby saddle model.
+- Focused world, native, and renderer tests lock both trim prefixes, family-specific base textures,
+  runtime-atlas resolution, exact collector order, ridden state, and adult-only geometry.

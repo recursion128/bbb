@@ -1103,6 +1103,10 @@ entity_render_state! {
     /// A non-empty saddle item renders `CamelSaddleModel`; baby camels skip it because vanilla supplies
     /// no baby saddle model.
     (with_camel_saddle) camel_saddle: bool = false;
+    /// Vanilla armor-trim atlas sprite for the family-specific `CAMEL*_SADDLE` equipment model.
+    (with_camel_saddle_trim) camel_saddle_trim: Option<EntityArmorTrim> = None;
+    /// Vanilla `ItemStack.hasFoil()` for the camel saddle item.
+    (with_camel_saddle_foil) camel_saddle_foil: bool = false;
     /// Vanilla `CamelRenderState.isRidden`: the camel saddle layer shows its `reins` part only while
     /// the camel is a vehicle. `false` for unridden camels and every non-camel entity.
     (with_camel_saddle_ridden) camel_saddle_ridden: bool = false;
@@ -3114,6 +3118,8 @@ mod tests {
                 strider_saddle_trim: None,
                 strider_saddle_foil: false,
                 camel_saddle: false,
+                camel_saddle_trim: None,
+                camel_saddle_foil: false,
                 camel_saddle_ridden: false,
                 nautilus_saddle: false,
                 nautilus_body_armor: None,

@@ -1655,6 +1655,14 @@ impl EntityStore {
         let strider_saddle_foil = saddle_foil(strider_saddle);
         let camel_saddle = vanilla_camel_saddle_type(identity.entity_type_id)
             && saddle_slot_contains_saddle_item();
+        let camel_saddle_trim_layer =
+            if identity.entity_type_id == VANILLA_ENTITY_TYPE_CAMEL_HUSK_ID {
+                ArmorTrimLayer::CamelHuskSaddle
+            } else {
+                ArmorTrimLayer::CamelSaddle
+            };
+        let camel_saddle_trim = saddle_trim(camel_saddle, camel_saddle_trim_layer);
+        let camel_saddle_foil = saddle_foil(camel_saddle);
         let camel_saddle_ridden = camel_saddle
             && mount
                 .as_ref()
@@ -2594,6 +2602,8 @@ impl EntityStore {
             strider_saddle_trim,
             strider_saddle_foil,
             camel_saddle,
+            camel_saddle_trim,
+            camel_saddle_foil,
             camel_saddle_ridden,
             nautilus_saddle,
             guardian_beam: self.guardian_beam_source(
