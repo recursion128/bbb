@@ -76,6 +76,7 @@ impl ProbeContext {
 mod tests {
     use super::*;
     use crate::connection::RawConnection;
+    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
     use bbb_protocol::{
         codec::Decoder,
         ids,
@@ -175,7 +176,7 @@ mod tests {
         probe.world.apply_add_entity(AddEntity {
             id: 55,
             uuid: uuid::Uuid::from_u128(55),
-            entity_type_id: 7,
+            entity_type_id: VANILLA_ENTITY_TYPE_AXOLOTL_ID,
             position: ProtocolVec3d {
                 x: 1.0,
                 y: 64.0,

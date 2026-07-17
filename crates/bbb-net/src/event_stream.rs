@@ -314,6 +314,7 @@ fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
     use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::{
         codec::{Decoder, Encoder},
@@ -1446,7 +1447,7 @@ mod tests {
         let add_entity = packets::AddEntity {
             id: 123,
             uuid: uuid::Uuid::from_u128(0x12345678_1234_5678_90ab_cdef12345678),
-            entity_type_id: 7,
+            entity_type_id: VANILLA_ENTITY_TYPE_AXOLOTL_ID,
             position: packets::Vec3d {
                 x: 1.0,
                 y: 64.0,

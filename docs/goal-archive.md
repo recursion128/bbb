@@ -18966,3 +18966,11 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Derived unknown-holder samples from the generated catalog length and extended the mob-effect
   generator with a reverse guard over construction, assignment, lookup, comparison, and dialog
   holder projection paths outside protocol-owned wire samples.
+
+# 2026-07-17: Derive semantic entity-type ids
+
+- Replaced the remaining native, world, and net semantic Axolotl fixture ordinals with the
+  generated EntityType constant and derived unknown entity-type samples from catalog length.
+- Extended the core-registry generator with a reverse guard over entity-type construction and
+  comparison while leaving generated schema/renderer catalogs and protocol wire evidence under
+  their existing owners.

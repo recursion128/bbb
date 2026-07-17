@@ -10,7 +10,8 @@ use bbb_pack::{
     FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, ItemRegistryCatalog,
 };
 use bbb_protocol::entity_types::{
-    VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID, VANILLA_ENTITY_TYPE_PLAYER_ID,
+    VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+    VANILLA_ENTITY_TYPE_PLAYER_ID,
 };
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_TYPES;
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
@@ -8394,7 +8395,7 @@ fn renderer_camera_pose_follows_active_camera_entity() {
     world.apply_add_entity(bbb_protocol::packets::AddEntity {
         id: 123,
         uuid: uuid::Uuid::from_u128(123),
-        entity_type_id: 7,
+        entity_type_id: VANILLA_ENTITY_TYPE_AXOLOTL_ID,
         position: bbb_protocol::packets::Vec3d {
             x: 1.0,
             y: 2.0,
@@ -8453,7 +8454,7 @@ fn audio_scene_command_tracks_listener_and_entity_positions() {
     world.apply_add_entity(bbb_protocol::packets::AddEntity {
         id: 123,
         uuid: uuid::Uuid::from_u128(123),
-        entity_type_id: 7,
+        entity_type_id: VANILLA_ENTITY_TYPE_AXOLOTL_ID,
         position: bbb_protocol::packets::Vec3d {
             x: 1.0,
             y: 2.0,

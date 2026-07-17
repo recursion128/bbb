@@ -136,8 +136,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   compatibility lookup functions whose only behavior is forwarding an
   id/resource lookup across an unrelated crate boundary, and have the owner
   generator reject those bridges from production sources.
-  Native test setup must also consume generated entity-type constants rather than
-  restoring version-number aliases for catalog ids.
+  Native, world, and net semantic test setup must consume generated entity-type constants rather
+  than restoring numeric catalog ids; unknown-id fixtures derive the first invalid id from the
+  generated catalog length. The owner-generated reverse guard excludes generated schema/renderer
+  catalogs and separately owned protocol wire samples.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test

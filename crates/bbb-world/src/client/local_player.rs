@@ -800,6 +800,7 @@ mod tests {
     use super::super::local_player_movement::LOCAL_INPUT_WALK_SPEED_BLOCKS_PER_SECOND;
     use super::*;
     use bbb_protocol::attribute_types::VANILLA_ATTRIBUTE_MAX_HEALTH_ID;
+    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, EntityEvent as ProtocolEntityEvent, PlayerLookAtTarget,
         Vec3d as ProtocolVec3d, PLAYER_RELATIVE_DELTA_X, PLAYER_RELATIVE_X, PLAYER_RELATIVE_X_ROT,
@@ -1627,7 +1628,7 @@ mod tests {
         ProtocolAddEntity {
             id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678),
-            entity_type_id: 7,
+            entity_type_id: VANILLA_ENTITY_TYPE_AXOLOTL_ID,
             position,
             delta_movement: ProtocolVec3d {
                 x: 0.0,

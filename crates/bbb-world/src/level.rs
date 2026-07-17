@@ -1152,6 +1152,7 @@ fn positive_tick_steps(tick_steps: i32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
     use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
@@ -2362,7 +2363,7 @@ mod tests {
         ProtocolAddEntity {
             id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678),
-            entity_type_id: 7,
+            entity_type_id: VANILLA_ENTITY_TYPE_AXOLOTL_ID,
             position: ProtocolVec3d {
                 x: 1.0,
                 y: 64.0,

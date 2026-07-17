@@ -12,6 +12,7 @@ use bbb_protocol::entity_poses::{
     VANILLA_ENTITY_POSE_SHOOTING_ID, VANILLA_ENTITY_POSE_SLIDING_ID,
     VANILLA_ENTITY_POSE_STANDING_ID,
 };
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
 
 fn entity_pose_data(pose_id: i32) -> ProtocolEntityDataValue {
     let accessors = vanilla_entity_metadata_entity_accessors()
@@ -1905,7 +1906,7 @@ fn probes_entity_status_from_world_store() {
     let status = store.probe_entity_status(123).unwrap();
 
     assert_eq!(status.id, 123);
-    assert_eq!(status.entity_type_id, 7);
+    assert_eq!(status.entity_type_id, VANILLA_ENTITY_TYPE_AXOLOTL_ID);
     assert_eq!(status.last_animation_action, Some(3));
     assert_eq!(status.last_event_id, Some(35));
     assert_eq!(status.last_hurt_yaw, Some(45.5));

@@ -5248,7 +5248,7 @@ mod tests {
         AddEntity {
             id,
             uuid: Uuid::from_u128(0x12345678123456781234567812345678),
-            entity_type_id: 7,
+            entity_type_id: VANILLA_ENTITY_TYPE_AXOLOTL_ID,
             position: ProtocolVec3d {
                 x: 1.0,
                 y: 64.0,

@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
 
 #[test]
 fn tracks_entity_lifecycle_and_absolute_state_updates() {
@@ -6,7 +7,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     store.apply_add_entity(protocol_add_entity(123));
 
     let entity = store.probe_entity(123).unwrap();
-    assert_eq!(entity.entity_type_id, 7);
+    assert_eq!(entity.entity_type_id, VANILLA_ENTITY_TYPE_AXOLOTL_ID);
     assert_eq!(
         entity.position,
         EntityVec3 {

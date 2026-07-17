@@ -10381,6 +10381,7 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
         registry,
         EquipmentAssetCatalog::default(),
     );
+    let unknown_entity_type_id = i32::try_from(VANILLA_ENTITY_TYPES.len()).unwrap();
     let stack = ProtocolItemStackSummary {
         item_id: Some(0),
         count: 1,
@@ -10404,14 +10405,14 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
                 component_patch: DataComponentPatchSummary::default(),
             }],
             bundle_contents_item_count: Some(1),
-            entity_data_entity_type_id: Some(999),
+            entity_data_entity_type_id: Some(unknown_entity_type_id),
             entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
             block_entity_data_type_id: Some(999),
             block_entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
             bees_present: true,
             bees_count: 1,
             bees: vec![bbb_protocol::packets::BeeOccupantSummary {
-                entity_type_id: 999,
+                entity_type_id: unknown_entity_type_id,
                 entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
                 ticks_in_hive: 0,
                 min_ticks_in_hive: 600,
