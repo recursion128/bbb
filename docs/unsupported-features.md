@@ -960,9 +960,9 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   packed variant projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
   `inBlockState` and `item`, attribute-modifier override-display Component trees,
-  and lossless persistent reconstruction for direct instrument, direct trim
-  material/pattern, direct provides-trim-material, direct jukebox-song, and direct
-  painting-variant network holders. Keep their dispatch owned by the protocol
+  and lossless persistent reconstruction for direct instrument, direct
+  jukebox-song, and direct painting-variant network holders. Keep their dispatch
+  owned by the protocol
   generated-metadata/handler descriptor catalog and native persistent SNBT encoder registry
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,
   minimum-attack-charge/potion-duration-scale)/

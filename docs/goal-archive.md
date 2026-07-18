@@ -19143,3 +19143,15 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Added a borrow-pinned `FrozenRegistryAccess` surface that exposes session/content/tag revisions,
   server raw/NBT payloads, known-pack stubs, vanilla-fallback source identity, and resolved versus
   unresolved tag holders without exposing pending configuration state.
+
+# 2026-07-18: Project synchronized armor trim registries
+
+- Retained exact Component NBT for direct trim material/pattern holders and added one world-owned
+  typed decoder for synchronized asset fields, descriptions, overrides, and decal values with
+  current-session holder order and field-level malformed-payload diagnostics.
+- Routed armor sprites and localized item tooltips through the typed projection. Only known vanilla
+  data-less stubs use resource-identity fallback; custom stubs, unavailable payloads, malformed
+  entries, and unknown holder ids remain unresolved instead of falling back by bootstrap ordinal.
+- Reconstructed persistent named, direct, and mixed armor-trim holders plus direct
+  `provides_trim_material` from exact retained Component trees. Generated holder-consumer coverage
+  now assigns the trim network and persistent factories to complete, locator-checked families.

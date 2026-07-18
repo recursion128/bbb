@@ -2612,82 +2612,100 @@
     {
       "call_site": "net/minecraft/world/item/equipment/trim/TrimMaterial.java:25:60:RegistryFileCodec.create",
       "column": 60,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#fn encode_armor_trim",
+      "decision": "Persistent trim holder codecs now reconstruct named holders from the current-session resource id and inline holders from their normalized asset fields plus the exact retained Component NBT. ArmorTrim supports named/direct mixtures, provides_trim_material uses the same material encoder, missing Component trees fail closed, and synchronized holder reorder is preserved.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/world/item/equipment/trim/ArmorTrim.java#public static final Codec<ArmorTrim> CODEC",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_direct_trim_material",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_direct_trim_pattern",
+        "crates/bbb-native/src/input/component_patch.rs#fn provides_trim_material_encoder_supports_named_and_exact_direct_holders",
+        "crates/bbb-native/src/input/component_patch.rs#fn armor_trim_encoder_supports_named_direct_and_mixed_holders",
+        "crates/bbb-native/src/input/component_patch.rs#fn trim_encoders_use_synchronized_holder_order_when_available"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-trims",
       "kind": "persistent_holder_or_inline",
       "line": 25,
       "owner": "net.minecraft.world.item.equipment.trim.TrimMaterial",
       "registry_expression": "Registries.TRIM_MATERIAL",
       "resource_id": "minecraft:trim_material",
       "source_path": "net/minecraft/world/item/equipment/trim/TrimMaterial.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/equipment/trim/TrimMaterial.java:26:98:ByteBufCodecs.holder",
       "column": 98,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/armor_trims.rs#fn synchronized_presentation",
+      "decision": "Vanilla 26.1 synchronizes TrimMaterial.DIRECT_CODEC and TrimPattern.DIRECT_CODEC and sends named or direct holders in item components. Protocol retains direct Component NBT; world decodes synchronized assets, descriptions, overrides, and decal through current-session holder order with exact field diagnostics; renderer and tooltip consumers share that typed projection. Only known vanilla data-less stubs use resource-identity fallback, while custom stubs, malformed payloads, and unknown holders never fall back by bootstrap ordinal.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
-        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
-        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.TRIM_PATTERN, TrimPattern.DIRECT_CODEC)",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.TRIM_MATERIAL, TrimMaterial.DIRECT_CODEC)",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_direct_trim_material_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_direct_trim_pattern_summary",
+        "crates/bbb-world/src/registries/armor_trims.rs#fn synchronized_presentations_follow_server_order_and_keep_component_trees",
+        "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#fn entity_model_sources_project_synchronized_custom_armor_trim_payloads",
+        "crates/bbb-native/src/item_models/tests.rs#fn trim_tooltip_context_keeps_valid_payloads_and_only_known_vanilla_stubs",
+        "crates/bbb-item-model/src/item_runtime/tests.rs#fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
       ],
       "factory": "ByteBufCodecs.holder",
-      "family": "network-holder-or-inline",
+      "family": "network-holder-or-inline-trims-synchronized",
       "kind": "network_holder_or_inline",
       "line": 26,
       "owner": "net.minecraft.world.item.equipment.trim.TrimMaterial",
       "registry_expression": "Registries.TRIM_MATERIAL",
       "resource_id": "minecraft:trim_material",
       "source_path": "net/minecraft/world/item/equipment/trim/TrimMaterial.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/equipment/trim/TrimPattern.java:33:59:RegistryFileCodec.create",
       "column": 59,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#fn encode_armor_trim",
+      "decision": "Persistent trim holder codecs now reconstruct named holders from the current-session resource id and inline holders from their normalized asset fields plus the exact retained Component NBT. ArmorTrim supports named/direct mixtures, provides_trim_material uses the same material encoder, missing Component trees fail closed, and synchronized holder reorder is preserved.",
       "evidence": [
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/world/item/equipment/trim/ArmorTrim.java#public static final Codec<ArmorTrim> CODEC",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_direct_trim_material",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_direct_trim_pattern",
+        "crates/bbb-native/src/input/component_patch.rs#fn provides_trim_material_encoder_supports_named_and_exact_direct_holders",
+        "crates/bbb-native/src/input/component_patch.rs#fn armor_trim_encoder_supports_named_direct_and_mixed_holders",
+        "crates/bbb-native/src/input/component_patch.rs#fn trim_encoders_use_synchronized_holder_order_when_available"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-trims",
       "kind": "persistent_holder_or_inline",
       "line": 33,
       "owner": "net.minecraft.world.item.equipment.trim.TrimPattern",
       "registry_expression": "Registries.TRIM_PATTERN",
       "resource_id": "minecraft:trim_pattern",
       "source_path": "net/minecraft/world/item/equipment/trim/TrimPattern.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/equipment/trim/TrimPattern.java:34:97:ByteBufCodecs.holder",
       "column": 97,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/armor_trims.rs#fn synchronized_presentation",
+      "decision": "Vanilla 26.1 synchronizes TrimMaterial.DIRECT_CODEC and TrimPattern.DIRECT_CODEC and sends named or direct holders in item components. Protocol retains direct Component NBT; world decodes synchronized assets, descriptions, overrides, and decal through current-session holder order with exact field diagnostics; renderer and tooltip consumers share that typed projection. Only known vanilla data-less stubs use resource-identity fallback, while custom stubs, malformed payloads, and unknown holders never fall back by bootstrap ordinal.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
-        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
-        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.TRIM_PATTERN, TrimPattern.DIRECT_CODEC)",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.TRIM_MATERIAL, TrimMaterial.DIRECT_CODEC)",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_direct_trim_material_summary",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_direct_trim_pattern_summary",
+        "crates/bbb-world/src/registries/armor_trims.rs#fn synchronized_presentations_follow_server_order_and_keep_component_trees",
+        "crates/bbb-world/src/entities/tests/visibility_equipment_and_mount_projection.rs#fn entity_model_sources_project_synchronized_custom_armor_trim_payloads",
+        "crates/bbb-native/src/item_models/tests.rs#fn trim_tooltip_context_keeps_valid_payloads_and_only_known_vanilla_stubs",
+        "crates/bbb-item-model/src/item_runtime/tests.rs#fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback"
       ],
       "factory": "ByteBufCodecs.holder",
-      "family": "network-holder-or-inline",
+      "family": "network-holder-or-inline-trims-synchronized",
       "kind": "network_holder_or_inline",
       "line": 34,
       "owner": "net.minecraft.world.item.equipment.trim.TrimPattern",
       "registry_expression": "Registries.TRIM_PATTERN",
       "resource_id": "minecraft:trim_pattern",
       "source_path": "net/minecraft/world/item/equipment/trim/TrimPattern.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/trading/TradeSet.java:17:13:RegistryCodecs.homogeneousList",
