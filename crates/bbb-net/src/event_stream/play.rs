@@ -4,7 +4,7 @@ use tokio::sync::oneshot;
 
 use crate::{
     driver::send_chat_acknowledgement,
-    event_stream::{deferred_keep_alive_event, emit, EventStreamContext},
+    event_stream::{emit, EventStreamContext},
     resource_pack::response_action_for_push_with_policy,
     types::{ConnectionState, NetEvent, ServerResourcePackPolicy},
 };
@@ -27,7 +27,12 @@ impl EventStreamContext {
         match packet {
             PlayClientbound::BundleDelimiter => {}
             PlayClientbound::KeepAlive { id } => {
-                emit(&self.events, deferred_keep_alive_event(id)).await?;
+                // Vanilla answers keep-alives on the connection thread
+                // (ClientCommonPacketListenerImpl.handleKeepAlive has no
+                // ensureRunningOnSameThread), so a stalled render loop must
+                // not cost the session its liveness.
+                let (id, payload) = packets::encode_play_keep_alive(id);
+                self.conn.send_packet(id, &payload).await?;
             }
             PlayClientbound::Ping { id } => {
                 let (id, payload) = packets::encode_play_pong(id);

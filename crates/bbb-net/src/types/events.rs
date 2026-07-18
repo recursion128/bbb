@@ -5,7 +5,6 @@ use bbb_protocol::packets::{
     ResourcePackResponseAction, ServerLinks, ShowDialog, Transfer, UpdateEnabledFeatures,
     UpdateTags,
 };
-use std::time::Instant;
 use tokio::sync::oneshot;
 
 use super::ConnectionState;
@@ -43,10 +42,6 @@ pub enum NetEvent {
     },
     CompressionSet {
         threshold: i32,
-    },
-    KeepAlive {
-        id: i64,
-        expires_at: Instant,
     },
     PacketSeen {
         state: ConnectionState,

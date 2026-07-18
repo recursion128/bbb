@@ -1,8 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    net::Ipv6Addr,
-    time::{Duration, Instant},
-};
+use std::{collections::BTreeMap, net::Ipv6Addr};
 
 use anyhow::{anyhow, Context, Result};
 #[cfg(test)]
@@ -34,15 +30,6 @@ use crate::{
 mod configuration;
 mod login;
 mod play;
-
-const KEEP_ALIVE_RESPONSE_TIMEOUT: Duration = Duration::from_secs(60);
-
-fn deferred_keep_alive_event(id: i64) -> NetEvent {
-    NetEvent::KeepAlive {
-        id,
-        expires_at: Instant::now() + KEEP_ALIVE_RESPONSE_TIMEOUT,
-    }
-}
 
 struct EventStreamContext {
     conn: RawConnection,
@@ -561,20 +548,14 @@ mod tests {
             })
             .await
             .unwrap();
-        assert!(timeout(Duration::from_millis(50), server.read_packet())
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
-            .is_err());
-        let event = timeout(Duration::from_secs(1), events_rx.recv())
-            .await
-            .expect("configuration keepalive should be deferred to the client event loop")
+            .expect("configuration keepalive should be answered on the connection")
             .unwrap();
-        match event {
-            NetEvent::KeepAlive { id, expires_at } => {
-                assert_eq!(id, -123_456_789);
-                assert!(expires_at > std::time::Instant::now());
-            }
-            other => panic!("expected deferred keepalive event, got {other:?}"),
-        }
+        assert_eq!(packet_id, ids::configuration::SERVERBOUND_KEEP_ALIVE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), -123_456_789);
+        assert!(decoder.is_empty());
 
         stream
             .handle_configuration_packet(packets::ConfigurationClientbound::Ping {
@@ -1182,7 +1163,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn play_keep_alive_defers_while_ping_sends_immediately() {
+    async fn play_keep_alive_and_ping_answer_on_the_connection() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(1);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
@@ -1212,27 +1193,26 @@ mod tests {
 
         let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
             .await
+            .expect("keepalive response should be sent")
+            .unwrap();
+        assert_eq!(packet_id, ids::play::SERVERBOUND_KEEP_ALIVE);
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_i64().unwrap(), 0x1122_3344_5566_7788);
+        assert!(decoder.is_empty());
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
             .expect("pong response should be sent")
             .unwrap();
         assert_eq!(packet_id, ids::play::SERVERBOUND_PONG);
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_i32().unwrap(), 0x0a0b_0c0d);
         assert!(decoder.is_empty());
-        assert!(timeout(Duration::from_millis(50), server.read_packet())
-            .await
-            .is_err());
 
-        let event = timeout(Duration::from_secs(1), events_rx.recv())
-            .await
-            .expect("play keepalive should be deferred to the client event loop")
-            .unwrap();
-        match event {
-            NetEvent::KeepAlive { id, expires_at } => {
-                assert_eq!(id, 0x1122_3344_5566_7788);
-                assert!(expires_at > std::time::Instant::now());
-            }
-            other => panic!("expected deferred keepalive event, got {other:?}"),
-        }
+        assert!(
+            events_rx.try_recv().is_err(),
+            "connection-owned keepalive/ping must not defer events to the client loop"
+        );
     }
 
     #[tokio::test]

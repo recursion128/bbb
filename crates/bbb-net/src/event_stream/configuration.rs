@@ -4,7 +4,7 @@ use bbb_protocol::packets::{self, ConfigurationClientbound, Transfer};
 use bbb_world::code_of_conduct_text_hash;
 
 use crate::{
-    event_stream::{deferred_keep_alive_event, emit, EventStreamContext},
+    event_stream::{emit, EventStreamContext},
     resource_pack::response_action_for_push_with_policy,
     types::{ConnectionState, NetEvent, ServerResourcePackPolicy},
 };
@@ -43,7 +43,8 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::CustomPayload(update)).await?;
             }
             ConfigurationClientbound::KeepAlive { id } => {
-                emit(&self.events, deferred_keep_alive_event(id)).await?;
+                let (id, payload) = packets::encode_configuration_keep_alive(id);
+                self.conn.send_packet(id, &payload).await?;
             }
             ConfigurationClientbound::Ping { id } => {
                 let (id, payload) = packets::encode_configuration_pong(id);

@@ -18,24 +18,6 @@ use crate::{
     types::{ConnectionState, PlayerMoveCommand, VehicleMoveCommand},
 };
 
-pub(super) async fn send_keep_alive_response(
-    conn: &mut RawConnection,
-    state: ConnectionState,
-    keep_alive_id: i64,
-) -> Result<()> {
-    let packet = match state {
-        ConnectionState::Configuration => {
-            Some(packets::encode_configuration_keep_alive(keep_alive_id))
-        }
-        ConnectionState::Play => Some(packets::encode_play_keep_alive(keep_alive_id)),
-        ConnectionState::Handshake | ConnectionState::Status | ConnectionState::Login => None,
-    };
-    if let Some((packet_id, payload)) = packet {
-        conn.send_packet(packet_id, &payload).await?;
-    }
-    Ok(())
-}
-
 pub(super) async fn send_resource_pack_response(
     conn: &mut RawConnection,
     state: ConnectionState,

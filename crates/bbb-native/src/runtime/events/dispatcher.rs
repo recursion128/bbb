@@ -20,7 +20,6 @@ use bbb_world::{
     SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
     ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
-use std::time::Instant;
 use tokio::sync::mpsc;
 
 use crate::audio_runtime::AudioEventSink;
@@ -146,9 +145,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
         apply_control_projection_event(&event, counters);
 
         match event {
-            NetEvent::KeepAlive { id, expires_at } => {
-                queue_keep_alive_response(net_commands, id, expires_at);
-            }
             NetEvent::PlayerPosition {
                 update,
                 acknowledged_state,
@@ -300,19 +296,6 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
         }
     }
     drained
-}
-
-fn queue_keep_alive_response(
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    id: i64,
-    expires_at: Instant,
-) {
-    if Instant::now() >= expires_at {
-        return;
-    }
-    if let Some(tx) = net_commands {
-        let _ = tx.blocking_send(NetCommand::KeepAliveResponse(id));
-    }
 }
 
 /// Runtime sink routing for `WorldStore::apply_play_packet`.
