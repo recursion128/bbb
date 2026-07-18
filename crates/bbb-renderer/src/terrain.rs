@@ -727,9 +727,9 @@ pub fn build_terrain_mesh_layers_with_atlas_and_camera(
 /// Builds only `target` while retaining cross-chunk lookup against its loaded
 /// neighborhood. Native's incremental terrain cache uses this to avoid
 /// re-meshing unchanged neighbors after a localized world revision.
-pub fn build_terrain_chunk_mesh_layers_with_atlas_and_camera(
-    target: &TerrainChunkSnapshot,
-    neighborhood: &[TerrainChunkSnapshot],
+pub fn build_terrain_chunk_mesh_layers_with_atlas_and_camera<'a>(
+    target: &'a TerrainChunkSnapshot,
+    neighborhood: impl IntoIterator<Item = &'a TerrainChunkSnapshot>,
     atlas: &TerrainTextureAtlas,
     camera_position: [f32; 3],
 ) -> TerrainMeshLayers {

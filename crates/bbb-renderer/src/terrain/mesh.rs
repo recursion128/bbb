@@ -582,9 +582,14 @@ impl<'a> TerrainChunkLookup<'a> {
 
     pub(super) fn with_target(
         target: &'a TerrainChunkSnapshot,
-        neighborhood: &'a [TerrainChunkSnapshot],
+        neighborhood: impl IntoIterator<Item = &'a TerrainChunkSnapshot>,
     ) -> Self {
-        let mut lookup = Self::new(neighborhood);
+        let mut lookup = Self {
+            chunks: neighborhood
+                .into_iter()
+                .map(|snapshot| ((snapshot.chunk_x, snapshot.chunk_z), snapshot))
+                .collect(),
+        };
         lookup
             .chunks
             .insert((target.chunk_x, target.chunk_z), target);

@@ -909,10 +909,11 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
 - `chunk_section_paths`, `chunk_section_octree`, and
   `chunk_section_visibility` are `deferred` until the renderer retains
   per-section residency plus a repo-native `SectionOcclusionGraph`/octree and
-  compiled-section face-visibility matrix. Restart when terrain upload no
-  longer collapses each chunk into layer-wide meshes and can expose vanilla
-  node step/source directions, octree node bounds/depth/frustum state, and
-  `facesCanSeeEachother` without reconstructing them heuristically.
+  compiled-section face-visibility matrix. The current incremental cache owns
+  one full-height mesh per chunk; restart by refining that cache to per-section
+  residency able to expose vanilla node step/source directions, octree node
+  bounds/depth/frustum state, and `facesCanSeeEachother` without reconstructing
+  them heuristically.
 - `visualize_chunks_on_server` is `not-needed`: vanilla 26.1
   `ChunkDebugRenderer.emitGizmos` refreshes data only when
   `Minecraft.getSingleplayerServer()` returns an `IntegratedServer`, and its

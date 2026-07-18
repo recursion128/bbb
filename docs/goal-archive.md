@@ -19255,3 +19255,18 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   （vanilla 同语义），主线程 ClientTickEnd 改 try_send。连接任务自此没有任何
   等待游戏线程的 await，main↔stream 死锁环消除。live 验证：服务端 playerdata
   证实移动/转向/pick/destroy 全部经新协议同步，live gate 8 阶段全绿。
+
+## 2026-07-18：terrain 按 chunk 增量重建
+
+- [x] world 为每个 chunk 分离 canonical content revision 与跨边界 mesh revision；
+  chunk 装载/替换/移除、block 边界、light、biome、view center/radius 和 level clear
+  都以单调 revision 使自身或 3×3 邻域失效，并限制 revision map 只保留 resident
+  邻域。该边界对齐 vanilla `LevelRenderer.setBlockDirty/setBlocksDirty` 与
+  `SectionRenderDispatcher.RenderSection` dirty/replace 语义。
+- [x] renderer 提供仅构建目标 chunk、但从已加载 3×3 邻域做 face/light lookup 的
+  mesh 入口；native 为最多 49 个可见 chunk 缓存转换后快照和分层 CPU mesh，每帧只
+  刷新一个快照或重建一个 dirty chunk，再从借用缓存拼接 GPU residency。邻块
+  biome blend 依赖也参与快照 revision，未变化 chunk 不再重复转换或重 mesh。
+- [x] 删除 250ms debounce 与 20s 全量重建节流；首次加载、普通更新、F3+T reload、
+  chunk 选择变化和空 world 都走同一预算调度与显式清理。透明层缓存上传会按当前
+  camera 重新生成块内 indices 和跨块 far-to-near 顺序，避免复用旧 camera 排序。

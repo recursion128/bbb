@@ -2174,9 +2174,10 @@ impl Renderer {
             }
         }
         // The translucent section set just changed (full replace is the only
-        // add/remove path); refresh the far→near draw order so it stays a valid,
-        // camera-correct permutation of `terrain_translucent`.
-        self.rebuild_translucent_section_order();
+        // add/remove path). Rebuild both section order and each borrowed CPU
+        // cache mesh's indices for the current camera; unchanged cached meshes
+        // may have last been built at an older camera position.
+        self.resort_translucent_terrain_for_camera();
 
         self.update_camera();
         self.refresh_terrain_counters();
@@ -2295,12 +2296,7 @@ impl Renderer {
 
         let bounds = TerrainBounds::from_vertices(&mesh.vertices);
         let translucent_sort = (mesh.translucent_faces > 0)
-            .then(|| {
-                TerrainTranslucentSortState::from_vertices(
-                    &mesh.vertices,
-                    self.camera_sort_position(),
-                )
-            })
+            .then(|| TerrainTranslucentSortState::from_vertices(&mesh.vertices, None))
             .flatten();
         let vertex_bytes = bytemuck::cast_slice(&mesh.vertices);
         let index_bytes = bytemuck::cast_slice(&mesh.indices);
