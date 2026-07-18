@@ -2881,7 +2881,7 @@
         "state_guard": {
           "evidence": [
             "crates/bbb-world/src/client/chat.rs#record_processed_player_chat_signature",
-            "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_update_for_outbound_chat",
+            "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_for_outbound_chat",
             "crates/bbb-world/src/client/chat.rs#take_pending_player_chat_acknowledgement",
             "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::StartConfiguration",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#markMessageAsProcessed",
@@ -3007,9 +3007,9 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-protocol/src/packets/serverbound.rs#unsigned_arguments",
-            "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_update_for_outbound_chat",
-            "crates/bbb-world/src/commands.rs#command_requires_signed_arguments",
+            "crates/bbb-net/src/chat_session.rs#prepare_outbound_chat_command",
+            "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_for_outbound_chat",
+            "crates/bbb-world/src/commands.rs#signable_arguments",
             "vanilla:net/minecraft/commands/arguments/ArgumentSignatures.java#signCommand",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#collectSignedArguments"
           ],
@@ -3071,8 +3071,8 @@
         "state_guard": {
           "evidence": [
             "crates/bbb-native/src/input.rs#normalize_chat_entry",
-            "crates/bbb-protocol/src/packets/serverbound.rs#unsigned",
-            "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_update_for_outbound_chat",
+            "crates/bbb-net/src/chat_session.rs#prepare_outbound_chat_message",
+            "crates/bbb-world/src/client/chat.rs#take_last_seen_messages_for_outbound_chat",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#sendChat",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#getSignedMessage"
           ],
