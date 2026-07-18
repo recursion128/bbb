@@ -29,6 +29,9 @@ use bbb_protocol::{
         VANILLA_PARTICLE_TYPE_CRIT_ID, VANILLA_PARTICLE_TYPE_ENTITY_EFFECT_ID,
         VANILLA_PARTICLE_TYPE_SMOKE_ID,
     },
+    recipe_wire_types::{
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
+    },
     MC_VERSION,
 };
 use bbb_renderer::{
@@ -11306,7 +11309,7 @@ fn stonecutter_slot_display_item_stack(display: &SlotDisplaySummary) -> Option<I
         return None;
     }
     match display_type_id {
-        4 => {
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID => {
             let item_id = decoder.read_var_i32().ok()?;
             (item_id >= 0).then_some(ItemStackSummary {
                 item_id: Some(item_id),
@@ -11314,7 +11317,7 @@ fn stonecutter_slot_display_item_stack(display: &SlotDisplaySummary) -> Option<I
                 component_patch: Default::default(),
             })
         }
-        5 => {
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID => {
             let item_id = decoder.read_var_i32().ok()?;
             let count = decoder.read_var_i32().ok()?;
             if item_id < 0 || count <= 0 {

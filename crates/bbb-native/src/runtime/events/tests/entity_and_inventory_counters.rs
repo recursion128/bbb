@@ -1,5 +1,6 @@
 use super::*;
 use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
+use bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID;
 
 #[test]
 fn transient_entity_event_ignored_counters_update_world_counters() {
@@ -451,7 +452,7 @@ fn update_recipes_event_replaces_world_recipe_access_state_and_world_counters() 
                     item_ids: vec![11, 12],
                 },
                 option_display: SlotDisplaySummary {
-                    display_type_id: 4,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                     raw_payload: vec![4, 77],
                     item_stack: None,
                     tag: None,

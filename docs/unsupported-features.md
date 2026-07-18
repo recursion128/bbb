@@ -169,6 +169,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Semantic recipe-display type projections must likewise use the generated `RecipeDisplays`
   constants; the same generator rejects numeric `recipe_display_type_id` construction and
   comparison outside its generated owner.
+  Known vanilla slot-display branches and semantic fixtures must use the generated
+  `SlotDisplays.bootstrap` constants across protocol, world, net, control, and native consumers;
+  the recipe catalog generator rejects numeric `display_type_id` construction, matching, and
+  comparison while leaving raw wire payload samples under the protocol codec owner.
   Heightmap sampler membership, semantic packet/state fixtures, queries, and comparisons must
   consume the generated `Heightmap.Types` catalog and named ids; the gameplay-id generator rejects
   numeric kind references outside protocol-owned raw codec samples.

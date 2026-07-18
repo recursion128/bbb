@@ -17,7 +17,11 @@ use bbb_protocol::packets::{
     UpdateTags as ProtocolUpdateTags, UseEffectsSummary as ProtocolUseEffectsSummary,
     Vec3d as ProtocolVec3d,
 };
-use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID;
+use bbb_protocol::recipe_wire_types::{
+    VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID, VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
+};
 use uuid::Uuid;
 
 fn open_test_container(store: &mut WorldStore, container_id: i32) {
@@ -9041,7 +9045,7 @@ fn item_stack(item_id: i32, count: i32) -> ProtocolItemStackSummary {
 
 fn slot_display_empty() -> SlotDisplaySummary {
     SlotDisplaySummary {
-        display_type_id: 0,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
         raw_payload: vec![0],
         item_stack: None,
         tag: None,
@@ -9050,7 +9054,7 @@ fn slot_display_empty() -> SlotDisplaySummary {
 
 fn slot_display_item(item_id: i32) -> SlotDisplaySummary {
     SlotDisplaySummary {
-        display_type_id: 4,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
         raw_payload: vec![4, item_id as u8],
         item_stack: Some(item_stack(item_id, 1)),
         tag: None,
@@ -9059,7 +9063,7 @@ fn slot_display_item(item_id: i32) -> SlotDisplaySummary {
 
 fn slot_display_item_stack(item_id: i32, count: i32) -> SlotDisplaySummary {
     SlotDisplaySummary {
-        display_type_id: 5,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
         raw_payload: vec![5, item_id as u8, count as u8, 0, 0],
         item_stack: Some(item_stack(item_id, count)),
         tag: None,
@@ -9068,7 +9072,7 @@ fn slot_display_item_stack(item_id: i32, count: i32) -> SlotDisplaySummary {
 
 fn slot_display_tag(tag: &str) -> SlotDisplaySummary {
     SlotDisplaySummary {
-        display_type_id: 6,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
         raw_payload: tag.as_bytes().to_vec(),
         item_stack: None,
         tag: Some(tag.to_string()),
@@ -9333,7 +9337,7 @@ fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary 
             item_ids,
         },
         option_display: SlotDisplaySummary {
-            display_type_id: 0,
+            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
             raw_payload: Vec::new(),
             item_stack: None,
             tag: None,

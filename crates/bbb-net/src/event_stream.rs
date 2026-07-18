@@ -8,7 +8,10 @@ use anyhow::{anyhow, Context, Result};
 #[cfg(test)]
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
 #[cfg(test)]
-use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID;
+use bbb_protocol::recipe_wire_types::{
+    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID,
+};
 #[cfg(test)]
 use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 use bbb_protocol::{
@@ -3936,7 +3939,7 @@ mod tests {
                     item_ids: vec![1],
                 },
                 option_display: packets::SlotDisplaySummary {
-                    display_type_id: 2,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID,
                     raw_payload: vec![9, 8, 7],
                     item_stack: None,
                     tag: None,

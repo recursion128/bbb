@@ -28,7 +28,12 @@ use bbb_protocol::packets::{
     SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
     ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
-use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID;
+use bbb_protocol::recipe_wire_types::{
+    VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID, VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID, VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
+};
 use bbb_protocol::stat_types::{
     VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID,
     VANILLA_STAT_TYPE_ENTITY_KILLED_BY_ID, VANILLA_STAT_TYPE_ENTITY_KILLED_ID,
@@ -11224,7 +11229,7 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                     ],
                     result: stonecutter_item_stack_display(0, 2),
                     crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 0,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                         raw_payload: Vec::new(),
                         item_stack: None,
                         tag: None,
@@ -11312,7 +11317,7 @@ fn hud_inventory_screen_projects_crafting_table_ghost_recipe_slots() {
                     ingredients: vec![stonecutter_item_display(1)],
                     result: stonecutter_item_display(0),
                     crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 0,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                         raw_payload: Vec::new(),
                         item_stack: None,
                         tag: None,
@@ -11391,7 +11396,7 @@ fn hud_inventory_screen_resolves_tag_ghost_recipe_ingredients() {
                     ingredients: vec![slot_display_tag("minecraft:planks")],
                     result: stonecutter_item_display(0),
                     crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 0,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                         raw_payload: Vec::new(),
                         item_stack: None,
                         tag: None,
@@ -11434,7 +11439,7 @@ fn hud_inventory_screen_cycles_tag_ghost_recipe_ingredients() {
                     ingredients: vec![slot_display_tag("minecraft:planks")],
                     result: stonecutter_item_display(0),
                     crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 0,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                         raw_payload: Vec::new(),
                         item_stack: None,
                         tag: None,
@@ -11488,7 +11493,7 @@ fn hud_inventory_screen_cycles_composite_ghost_recipe_ingredients() {
                     ])],
                     result: stonecutter_item_display(0),
                     crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 0,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                         raw_payload: Vec::new(),
                         item_stack: None,
                         tag: None,
@@ -11537,7 +11542,7 @@ fn hud_inventory_screen_projects_local_inventory_ghost_result_without_big_slot_f
                     ingredients: vec![stonecutter_item_display(1)],
                     result: stonecutter_item_display(0),
                     crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 0,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                         raw_payload: Vec::new(),
                         item_stack: None,
                         tag: None,
@@ -11797,13 +11802,13 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
                         bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                             ingredients: Vec::new(),
                             result: bbb_protocol::packets::SlotDisplaySummary {
-                                display_type_id: 5,
+                                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
                                 raw_payload: Vec::new(),
                                 item_stack: Some(item_stack(99, 1)),
                                 tag: None,
                             },
                             crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                                display_type_id: 0,
+                                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                                 raw_payload: Vec::new(),
                                 item_stack: None,
                                 tag: None,
@@ -16970,7 +16975,7 @@ fn stonecutter_slot_display_item_stack_projects_direct_item_displays() {
     );
     assert_eq!(
         stonecutter_slot_display_item_stack(&bbb_protocol::packets::SlotDisplaySummary {
-            display_type_id: 6,
+            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
             raw_payload: vec![6, 4, b't', b'e', b's', b't'],
             item_stack: None,
             tag: Some("minecraft:test".to_string()),
@@ -17829,7 +17834,7 @@ fn stonecutter_item_display(item_id: i32) -> bbb_protocol::packets::SlotDisplayS
     bbb_protocol::codec::write_var_i32_to(&mut raw_payload, 4);
     bbb_protocol::codec::write_var_i32_to(&mut raw_payload, item_id);
     bbb_protocol::packets::SlotDisplaySummary {
-        display_type_id: 4,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
         raw_payload,
         item_stack: Some(item_stack(item_id, 1)),
         tag: None,
@@ -17847,7 +17852,7 @@ fn stonecutter_item_stack_display(
     bbb_protocol::codec::write_var_i32_to(&mut raw_payload, 0);
     bbb_protocol::codec::write_var_i32_to(&mut raw_payload, 0);
     bbb_protocol::packets::SlotDisplaySummary {
-        display_type_id: 5,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
         raw_payload,
         item_stack: Some(item_stack(item_id, count)),
         tag: None,
@@ -17859,7 +17864,7 @@ fn slot_display_tag(tag: &str) -> bbb_protocol::packets::SlotDisplaySummary {
     raw_payload.write_var_i32(6);
     raw_payload.write_string(tag);
     bbb_protocol::packets::SlotDisplaySummary {
-        display_type_id: 6,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
         raw_payload: raw_payload.into_inner(),
         item_stack: None,
         tag: Some(tag.to_string()),
@@ -17876,7 +17881,7 @@ fn slot_display_composite(
         raw_payload.write_bytes(&content.raw_payload);
     }
     bbb_protocol::packets::SlotDisplaySummary {
-        display_type_id: 10,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID,
         raw_payload: raw_payload.into_inner(),
         item_stack: None,
         tag: None,
@@ -17892,7 +17897,7 @@ fn slot_display_with_remainder(
     raw_payload.write_bytes(&input.raw_payload);
     raw_payload.write_bytes(&remainder.raw_payload);
     bbb_protocol::packets::SlotDisplaySummary {
-        display_type_id: 9,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
         raw_payload: raw_payload.into_inner(),
         item_stack: None,
         tag: None,
@@ -18159,13 +18164,13 @@ fn shapeless_crafting_recipe_book_entry_with_requirement_summaries(
                     bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                         ingredients: Vec::new(),
                         result: bbb_protocol::packets::SlotDisplaySummary {
-                            display_type_id: 5,
+                            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
                             raw_payload: Vec::new(),
                             item_stack: Some(item_stack(result_item_id, 1)),
                             tag: None,
                         },
                         crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                            display_type_id: 0,
+                            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                             raw_payload: Vec::new(),
                             item_stack: None,
                             tag: None,
@@ -18254,7 +18259,7 @@ fn furnace_recipe_display_body(
         fuel: stonecutter_item_display(fuel_item_id),
         result: stonecutter_item_stack_display(result_item_id, 1),
         crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-            display_type_id: 0,
+            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
             raw_payload: vec![0],
             item_stack: None,
             tag: None,

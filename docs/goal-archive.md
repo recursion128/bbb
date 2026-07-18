@@ -19092,3 +19092,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   generated from `RecipeDisplays.bootstrap` registration order.
 - Extended the recipe catalog generator's reverse guard over semantic construction and comparison,
   preventing world and future cross-crate consumers from restoring a second ordinal source.
+
+# 2026-07-18: Derive semantic SlotDisplay type ids
+
+- Extended the recipe wire catalog generator with all eleven `SlotDisplays.bootstrap`
+  registrations and named ids, preserving vanilla registration order for protocol decoding.
+- Replaced numeric SlotDisplay branches and semantic fixtures across protocol, world, net,
+  control, and native consumers. A generator-emitted reverse guard rejects numeric field
+  construction, matching, and comparison while leaving raw packet payload samples under their
+  codec owner.

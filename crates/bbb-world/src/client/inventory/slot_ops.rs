@@ -6,6 +6,7 @@
 //! focused on the store itself.
 
 use super::*;
+use bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID;
 
 pub(super) fn mount_horse_saddle_slot_is_active(
     entity_type_id: i32,
@@ -962,7 +963,7 @@ pub(super) fn simple_shaped_slot_display_ingredients(
     displays
         .iter()
         .map(|display| {
-            if display.display_type_id == 0 {
+            if display.display_type_id == VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID {
                 Some(CraftingIngredientMatch::Empty)
             } else {
                 Some(CraftingIngredientMatch::OneItem(
@@ -980,7 +981,7 @@ pub(super) fn shaped_requirement_ingredients<'a>(
     let mut requirements = requirements.iter();
     let mut ingredients = Vec::with_capacity(displays.len());
     for display in displays {
-        if display.display_type_id == 0 {
+        if display.display_type_id == VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID {
             ingredients.push(CraftingIngredientMatch::Empty);
         } else {
             ingredients.push(CraftingIngredientMatch::Requirement(requirements.next()?));

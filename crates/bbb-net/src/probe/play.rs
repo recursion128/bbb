@@ -1,6 +1,8 @@
 use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, ChatAcknowledgement, PlayClientbound};
 #[cfg(test)]
+use bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID;
+#[cfg(test)]
 use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 use bbb_world::{
     ChunkPos, PlayApplyEffects, RemovedPlayerVehicleTeleportRecovery, VehicleMoveReport,
@@ -3004,7 +3006,7 @@ mod tests {
                         item_ids: vec![11, 12],
                     },
                     option_display: SlotDisplaySummary {
-                        display_type_id: 4,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                         raw_payload: vec![4, 77],
                         item_stack: None,
                         tag: None,
@@ -3031,7 +3033,7 @@ mod tests {
             recipes.stonecutter_recipes[0]
                 .option_display
                 .display_type_id,
-            4
+            VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID
         );
         assert_eq!(
             recipes.stonecutter_recipes[0].option_display.raw_payload,

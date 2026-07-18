@@ -21,6 +21,9 @@ use bbb_protocol::packets::{
     SetPlayerInventory, SlotDisplaySummary, StonecutterSelectableRecipeSummary, TagNetworkPayload,
     UpdateRecipes, UpdateTags, Vec3d,
 };
+use bbb_protocol::recipe_wire_types::{
+    VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
+};
 use uuid::Uuid;
 
 const TEST_HASH_OPS_INT_7_HASH: i32 = -1_726_626_450;
@@ -8058,7 +8061,7 @@ fn stonecutter_recipe(item_ids: Vec<i32>) -> StonecutterSelectableRecipeSummary 
             item_ids,
         },
         option_display: SlotDisplaySummary {
-            display_type_id: 0,
+            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
             raw_payload: Vec::new(),
             item_stack: None,
             tag: None,
@@ -8193,13 +8196,13 @@ fn crafting_recipe_book_entry_with_requirement_summaries(
                     bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                         ingredients: Vec::new(),
                         result: SlotDisplaySummary {
-                            display_type_id: 5,
+                            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
                             raw_payload: Vec::new(),
                             item_stack: Some(item_stack(result_item_id, 1)),
                             tag: None,
                         },
                         crafting_station: SlotDisplaySummary {
-                            display_type_id: 0,
+                            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                             raw_payload: Vec::new(),
                             item_stack: None,
                             tag: None,

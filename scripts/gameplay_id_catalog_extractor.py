@@ -330,6 +330,13 @@ class RecipeDisplayTypeEntry:
 
 
 @dataclass(frozen=True)
+class SlotDisplayTypeEntry:
+    constant_name: str
+    type_id: int
+    resource_id: str
+
+
+@dataclass(frozen=True)
 class NamedComponentValueEntry:
     constant_name: str
     value_id: int
@@ -2078,6 +2085,74 @@ def recipe_wire_type_entries(
         )
     _validate(search_categories, "search recipe book category")
     return books, displays, categories, search_categories
+
+
+def slot_display_type_entries(source: JavaSource) -> list[SlotDisplayTypeEntry]:
+    top_types = [
+        java_type
+        for java_type in source.types
+        if java_type.node.parent.type == "program"
+        and java_type.simple_name == "SlotDisplays"
+    ]
+    if len(top_types) != 1:
+        raise GameplayIdExtractionError(
+            f"{source.relative_path}: expected one SlotDisplays type"
+        )
+    register_calls = [
+        call
+        for call in source.calls_for(top_types[0])
+        if call.name == "register"
+        and call.qualifier is not None
+        and call.qualifier.canonical == "Registry"
+    ]
+    expected_type_refs = [
+        "SlotDisplay.Empty.TYPE",
+        "SlotDisplay.AnyFuel.TYPE",
+        "SlotDisplay.WithAnyPotion.TYPE",
+        "SlotDisplay.OnlyWithComponent.TYPE",
+        "SlotDisplay.ItemSlotDisplay.TYPE",
+        "SlotDisplay.ItemStackSlotDisplay.TYPE",
+        "SlotDisplay.TagSlotDisplay.TYPE",
+        "SlotDisplay.DyedSlotDemo.TYPE",
+        "SlotDisplay.SmithingTrimDemoSlotDisplay.TYPE",
+        "SlotDisplay.WithRemainder.TYPE",
+        "SlotDisplay.Composite.TYPE",
+    ]
+    entries = []
+    for type_id, call in enumerate(register_calls):
+        if len(call.arguments) != 3:
+            _fail(
+                source,
+                source.expression(call.node),
+                "slot display register call must have three arguments",
+            )
+        if call.arguments[0].canonical != "registry":
+            _fail(
+                source,
+                call.arguments[0],
+                "slot display registration must target the bootstrap registry",
+            )
+        resource_path = _string(source, call.arguments[1])
+        type_ref = call.arguments[2].canonical
+        if type_id >= len(expected_type_refs) or type_ref != expected_type_refs[type_id]:
+            _fail(
+                source,
+                call.arguments[2],
+                f"unexpected slot display type reference {type_ref}",
+            )
+        entries.append(
+            SlotDisplayTypeEntry(
+                resource_path.upper(), type_id, "minecraft:" + resource_path
+            )
+        )
+    if len(entries) != len(expected_type_refs):
+        raise GameplayIdExtractionError(
+            f"expected {len(expected_type_refs)} slot display registrations, "
+            f"extracted {len(entries)}"
+        )
+    _validate(entries, "slot display type", "type_id")
+    _validate(entries, "slot display type", "resource_id")
+    return entries
 
 
 def item_component_value_type_entries(

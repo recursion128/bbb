@@ -5,7 +5,12 @@ use crate::{
     packets::{
         decode_play_clientbound, DataComponentPatchSummary, ItemStackSummary, PlayClientbound,
     },
-    recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID,
+    recipe_wire_types::{
+        VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID, VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
+        VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID, VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID,
+        VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
+    },
 };
 
 #[test]
@@ -226,26 +231,26 @@ fn decodes_recipe_book_add_with_structured_shaped_crafting_display() {
             height: 1,
             ingredients: vec![
                 SlotDisplaySummary {
-                    display_type_id: 4,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                     raw_payload: vec![4, 42],
                     item_stack: Some(item_stack(42, 1)),
                     tag: None,
                 },
                 SlotDisplaySummary {
-                    display_type_id: 5,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
                     raw_payload: vec![5, 43, 1, 0, 0],
                     item_stack: Some(item_stack(43, 1)),
                     tag: None,
                 },
             ],
             result: SlotDisplaySummary {
-                display_type_id: 5,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
                 raw_payload: vec![5, 90, 2, 0, 0],
                 item_stack: Some(item_stack(90, 2)),
                 tag: None,
             },
             crafting_station: SlotDisplaySummary {
-                display_type_id: 0,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                 raw_payload: vec![0],
                 item_stack: None,
                 tag: None,
@@ -287,26 +292,26 @@ fn decodes_recipe_book_add_with_structured_shapeless_crafting_display() {
         Some(CraftingRecipeDisplaySummary::Shapeless {
             ingredients: vec![
                 SlotDisplaySummary {
-                    display_type_id: 4,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                     raw_payload: vec![4, 42],
                     item_stack: Some(item_stack(42, 1)),
                     tag: None,
                 },
                 SlotDisplaySummary {
-                    display_type_id: 4,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                     raw_payload: vec![4, 43],
                     item_stack: Some(item_stack(43, 1)),
                     tag: None,
                 },
             ],
             result: SlotDisplaySummary {
-                display_type_id: 4,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                 raw_payload: vec![4, 91],
                 item_stack: Some(item_stack(91, 1)),
                 tag: None,
             },
             crafting_station: SlotDisplaySummary {
-                display_type_id: 0,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                 raw_payload: vec![0],
                 item_stack: None,
                 tag: None,
@@ -352,25 +357,25 @@ fn decodes_recipe_book_add_with_structured_furnace_display() {
         entry.display.furnace,
         Some(FurnaceRecipeDisplaySummary {
             ingredient: SlotDisplaySummary {
-                display_type_id: 4,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                 raw_payload: vec![4, 42],
                 item_stack: Some(item_stack(42, 1)),
                 tag: None,
             },
             fuel: SlotDisplaySummary {
-                display_type_id: 1,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
                 raw_payload: vec![1],
                 item_stack: None,
                 tag: None,
             },
             result: SlotDisplaySummary {
-                display_type_id: 5,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
                 raw_payload: vec![5, 90, 2, 0, 0],
                 item_stack: Some(item_stack(90, 2)),
                 tag: None,
             },
             crafting_station: SlotDisplaySummary {
-                display_type_id: 0,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                 raw_payload: vec![0],
                 item_stack: None,
                 tag: None,
@@ -490,7 +495,7 @@ fn decodes_update_recipes_packet_wire_order() {
                     item_ids: Vec::new(),
                 },
                 option_display: SlotDisplaySummary {
-                    display_type_id: 4,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                     raw_payload: vec![4, 77],
                     item_stack: Some(item_stack(77, 1)),
                     tag: None,
@@ -570,7 +575,7 @@ fn decodes_update_recipes_with_direct_trim_pattern_slot_display() {
                     item_ids: vec![11],
                 },
                 option_display: SlotDisplaySummary {
-                    display_type_id: 8,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID,
                     raw_payload: option_display,
                     item_stack: None,
                     tag: None,
@@ -605,7 +610,7 @@ fn decodes_update_recipes_with_tag_slot_display() {
                     item_ids: vec![11],
                 },
                 option_display: SlotDisplaySummary {
-                    display_type_id: 6,
+                    display_type_id: VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
                     raw_payload: option_display,
                     item_stack: None,
                     tag: Some("minecraft:planks".to_string()),
@@ -630,13 +635,13 @@ fn slot_display_summary_exposes_composite_stack_resolving_children() {
         option_display.stack_resolving_children(),
         vec![
             SlotDisplaySummary {
-                display_type_id: 4,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                 raw_payload: item_display,
                 item_stack: Some(item_stack(77, 1)),
                 tag: None,
             },
             SlotDisplaySummary {
-                display_type_id: 6,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_TAG_ID,
                 raw_payload: tag_display,
                 item_stack: None,
                 tag: Some("minecraft:planks".to_string()),
@@ -658,7 +663,7 @@ fn slot_display_summary_exposes_with_remainder_input_for_stack_resolution() {
     assert_eq!(
         option_display.stack_resolving_children(),
         vec![SlotDisplaySummary {
-            display_type_id: 4,
+            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
             raw_payload: input_display,
             item_stack: Some(item_stack(55, 1)),
             tag: None,

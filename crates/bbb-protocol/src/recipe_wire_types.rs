@@ -280,6 +280,87 @@ impl RecipeDisplayType {
     }
 }
 
+pub const VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID: i32 = 0;
+pub const VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID: i32 = 1;
+pub const VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID: i32 = 2;
+pub const VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID: i32 = 3;
+pub const VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID: i32 = 4;
+pub const VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID: i32 = 5;
+pub const VANILLA_SLOT_DISPLAY_TYPE_TAG_ID: i32 = 6;
+pub const VANILLA_SLOT_DISPLAY_TYPE_DYED_ID: i32 = 7;
+pub const VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID: i32 = 8;
+pub const VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID: i32 = 9;
+pub const VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID: i32 = 10;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SlotDisplayTypeCatalogEntry {
+    pub id: i32,
+    pub constant_name: &'static str,
+    pub resource_id: &'static str,
+}
+
+pub const VANILLA_SLOT_DISPLAY_TYPES: &[SlotDisplayTypeCatalogEntry] = &[
+    SlotDisplayTypeCatalogEntry {
+        id: 0,
+        constant_name: "EMPTY",
+        resource_id: "minecraft:empty",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 1,
+        constant_name: "ANY_FUEL",
+        resource_id: "minecraft:any_fuel",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 2,
+        constant_name: "WITH_ANY_POTION",
+        resource_id: "minecraft:with_any_potion",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 3,
+        constant_name: "ONLY_WITH_COMPONENT",
+        resource_id: "minecraft:only_with_component",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 4,
+        constant_name: "ITEM",
+        resource_id: "minecraft:item",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 5,
+        constant_name: "ITEM_STACK",
+        resource_id: "minecraft:item_stack",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 6,
+        constant_name: "TAG",
+        resource_id: "minecraft:tag",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 7,
+        constant_name: "DYED",
+        resource_id: "minecraft:dyed",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 8,
+        constant_name: "SMITHING_TRIM",
+        resource_id: "minecraft:smithing_trim",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 9,
+        constant_name: "WITH_REMAINDER",
+        resource_id: "minecraft:with_remainder",
+    },
+    SlotDisplayTypeCatalogEntry {
+        id: 10,
+        constant_name: "COMPOSITE",
+        resource_id: "minecraft:composite",
+    },
+];
+
+pub fn vanilla_slot_display_type(id: i32) -> Option<&'static SlotDisplayTypeCatalogEntry> {
+    VANILLA_SLOT_DISPLAY_TYPES.get(usize::try_from(id).ok()?)
+}
+
 #[cfg(test)]
 mod tests {
     use std::{collections::HashSet, fs, path::Path};
@@ -292,6 +373,7 @@ mod tests {
         assert_eq!(VANILLA_RECIPE_BOOK_CATEGORIES.len(), 13);
         assert_eq!(VANILLA_RECIPE_BOOK_SEARCH_CATEGORIES.len(), 4);
         assert_eq!(VANILLA_RECIPE_DISPLAY_TYPES.len(), 5);
+        assert_eq!(VANILLA_SLOT_DISPLAY_TYPES.len(), 11);
         let mut constants = HashSet::new();
         for (ordinal, entry) in VANILLA_RECIPE_BOOK_TYPES.iter().enumerate() {
             assert_eq!(entry.ordinal, ordinal as i32);
@@ -310,6 +392,14 @@ mod tests {
         for (id, entry) in VANILLA_RECIPE_DISPLAY_TYPES.iter().enumerate() {
             assert_eq!(entry.id, id as i32);
             assert_eq!(entry.display_type.id(), entry.id);
+            assert!(constants.insert(entry.constant_name));
+            assert!(resources.insert(entry.resource_id));
+        }
+        constants.clear();
+        resources.clear();
+        for (id, entry) in VANILLA_SLOT_DISPLAY_TYPES.iter().enumerate() {
+            assert_eq!(entry.id, id as i32);
+            assert_eq!(vanilla_slot_display_type(entry.id), Some(entry));
             assert!(constants.insert(entry.constant_name));
             assert!(resources.insert(entry.resource_id));
         }
@@ -335,6 +425,11 @@ mod tests {
             Some(RecipeDisplayType::Furnace)
         );
         assert_eq!(RecipeDisplayType::from_id(5), None);
+        assert_eq!(VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID, 0);
+        assert_eq!(VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID, 4);
+        assert_eq!(VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID, 9);
+        assert_eq!(VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID, 10);
+        assert_eq!(vanilla_slot_display_type(11), None);
     }
 
     #[test]
@@ -443,6 +538,73 @@ mod tests {
         numeric_construction || numeric_field_comparison
     }
 
+    fn contains_numeric_slot_display_type_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction = compact
+            .match_indices("display_type_id:")
+            .any(|(offset, _)| {
+                let boundary = offset == 0
+                    || !compact.as_bytes()[offset - 1].is_ascii_alphanumeric()
+                        && compact.as_bytes()[offset - 1] != b'_';
+                boundary
+                    && starts_with_integer_literal(&compact[offset + "display_type_id:".len()..])
+            });
+        let numeric_field_comparison =
+            compact
+                .match_indices(".display_type_id")
+                .any(|(offset, _)| {
+                    let suffix = &compact[offset + ".display_type_id".len()..];
+                    [",", "==", "!=", "="].iter().any(|separator| {
+                        suffix
+                            .strip_prefix(separator)
+                            .is_some_and(starts_with_integer_literal)
+                    })
+                });
+        let numeric_json_comparison =
+            compact
+                .match_indices("[\"display_type_id\"]")
+                .any(|(offset, _)| {
+                    let suffix = &compact[offset + "[\"display_type_id\"]".len()..];
+                    [",", "==", "!=", "="].iter().any(|separator| {
+                        suffix
+                            .strip_prefix(separator)
+                            .is_some_and(starts_with_integer_literal)
+                    })
+                });
+        let numeric_match_arm =
+            compact
+                .match_indices("matchdisplay_type_id{")
+                .any(|(offset, _)| {
+                    let body = &compact[offset + "matchdisplay_type_id{".len()..];
+                    let mut depth = 0usize;
+                    for (index, character) in body.char_indices() {
+                        match character {
+                            '{' => depth += 1,
+                            '}' if depth == 0 => return false,
+                            '}' => depth -= 1,
+                            character if depth == 0 && character.is_ascii_digit() => {
+                                let suffix = &body[index..];
+                                let digit_count =
+                                    suffix.bytes().take_while(u8::is_ascii_digit).count();
+                                let after = &suffix[digit_count..];
+                                if after.starts_with("=>") || after.starts_with('|') {
+                                    return true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    false
+                });
+        numeric_construction
+            || numeric_field_comparison
+            || numeric_json_comparison
+            || numeric_match_arm
+    }
+
     #[test]
     fn numeric_recipe_book_category_guard_covers_semantic_fixtures() {
         assert!(contains_numeric_recipe_book_category_reference(
@@ -476,6 +638,28 @@ mod tests {
     }
 
     #[test]
+    fn numeric_slot_display_type_guard_covers_semantic_consumers() {
+        assert!(contains_numeric_slot_display_type_reference(
+            "display_type_id: 4,"
+        ));
+        assert!(contains_numeric_slot_display_type_reference(
+            "assert_eq!(entry.display_type_id, 5);"
+        ));
+        assert!(contains_numeric_slot_display_type_reference(
+            "assert_eq!(entry[\"display_type_id\"], 6);"
+        ));
+        assert!(contains_numeric_slot_display_type_reference(
+            "match display_type_id { 9 => child(), 10 => list(), _ => none() }"
+        ));
+        assert!(!contains_numeric_slot_display_type_reference(
+            "display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,"
+        ));
+        assert!(!contains_numeric_slot_display_type_reference(
+            "recipe_display_type_id: 3,"
+        ));
+    }
+
+    #[test]
     fn production_sources_do_not_redeclare_recipe_wire_facts() {
         fn visit(directory: &Path, violations: &mut Vec<String>) {
             for entry in fs::read_dir(directory).unwrap() {
@@ -501,6 +685,12 @@ mod tests {
                 if contains_numeric_recipe_display_type_reference(&source) {
                     violations.push(format!(
                         "{}: numeric recipe-display type reference",
+                        path.display()
+                    ));
+                }
+                if contains_numeric_slot_display_type_reference(&source) {
+                    violations.push(format!(
+                        "{}: numeric slot-display type reference",
                         path.display()
                     ));
                 }

@@ -48,6 +48,7 @@ from gameplay_id_catalog_extractor import (  # noqa: E402
     recipe_wire_type_entries,
     remote_debug_sample_type_entries,
     sound_source_entries,
+    slot_display_type_entries,
     stat_catalog_entries,
     tropical_fish_pattern_entries,
     scoreboard_display_slot_entries,
@@ -1231,6 +1232,7 @@ public enum SearchRecipeBookCategory {
                 ("SMITHING", 4, "minecraft:smithing"),
             ],
         )
+
         self.assertEqual(
             [
                 (entry.constant_name, entry.included_category_constants)
@@ -1273,6 +1275,48 @@ public enum SearchRecipeBookCategory {
                 ("STONECUTTER", 10, "minecraft:stonecutter"),
                 ("SMITHING", 11, "minecraft:smithing"),
                 ("CAMPFIRE", 12, "minecraft:campfire"),
+            ],
+        )
+
+    def test_slot_display_types_preserve_bootstrap_order(self) -> None:
+        source = parse_source(
+            "fixture/SlotDisplays.java",
+            b"""
+package fixture;
+public class SlotDisplays {
+  public static Type<?> bootstrap(Registry<Type<?>> registry) {
+    Registry.register(registry, "empty", SlotDisplay.Empty.TYPE);
+    Registry.register(registry, "any_fuel", SlotDisplay.AnyFuel.TYPE);
+    Registry.register(registry, "with_any_potion", SlotDisplay.WithAnyPotion.TYPE);
+    Registry.register(registry, "only_with_component", SlotDisplay.OnlyWithComponent.TYPE);
+    Registry.register(registry, "item", SlotDisplay.ItemSlotDisplay.TYPE);
+    Registry.register(registry, "item_stack", SlotDisplay.ItemStackSlotDisplay.TYPE);
+    Registry.register(registry, "tag", SlotDisplay.TagSlotDisplay.TYPE);
+    Registry.register(registry, "dyed", SlotDisplay.DyedSlotDemo.TYPE);
+    Registry.register(registry, "smithing_trim", SlotDisplay.SmithingTrimDemoSlotDisplay.TYPE);
+    Registry.register(registry, "with_remainder", SlotDisplay.WithRemainder.TYPE);
+    return Registry.register(registry, "composite", SlotDisplay.Composite.TYPE);
+  }
+}
+""",
+        )
+        self.assertEqual(
+            [
+                (entry.constant_name, entry.type_id, entry.resource_id)
+                for entry in slot_display_type_entries(source)
+            ],
+            [
+                ("EMPTY", 0, "minecraft:empty"),
+                ("ANY_FUEL", 1, "minecraft:any_fuel"),
+                ("WITH_ANY_POTION", 2, "minecraft:with_any_potion"),
+                ("ONLY_WITH_COMPONENT", 3, "minecraft:only_with_component"),
+                ("ITEM", 4, "minecraft:item"),
+                ("ITEM_STACK", 5, "minecraft:item_stack"),
+                ("TAG", 6, "minecraft:tag"),
+                ("DYED", 7, "minecraft:dyed"),
+                ("SMITHING_TRIM", 8, "minecraft:smithing_trim"),
+                ("WITH_REMAINDER", 9, "minecraft:with_remainder"),
+                ("COMPOSITE", 10, "minecraft:composite"),
             ],
         )
 

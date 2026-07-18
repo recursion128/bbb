@@ -2,6 +2,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::codec::{Decoder, ProtocolError, Result};
 pub use crate::recipe_wire_types::{RecipeBookType, RecipeDisplayType};
+use crate::recipe_wire_types::{
+    VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID, VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_DYED_ID, VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID, VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_TAG_ID, VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID,
+};
 
 use super::super::read_resource_location;
 use super::super::{inventory, DataComponentPatchSummary, ItemStackSummary};
@@ -76,12 +84,12 @@ impl SlotDisplaySummary {
             return Ok(Vec::new());
         }
         let children = match display_type_id {
-            9 => {
+            VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID => {
                 let input = decode_slot_display_summary(&mut decoder)?;
                 decode_slot_display_summary(&mut decoder)?;
                 vec![input]
             }
-            10 => decode_slot_display_list(&mut decoder)?,
+            VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID => decode_slot_display_list(&mut decoder)?,
             _ => Vec::new(),
         };
         if !decoder.is_empty() {
@@ -493,17 +501,19 @@ fn decode_slot_display_body(
     display_type_id: i32,
 ) -> Result<SlotDisplayBodySummary> {
     match display_type_id {
-        0 | 1 => Ok(SlotDisplayBodySummary::default()),
-        2 => {
+        VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID | VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID => {
+            Ok(SlotDisplayBodySummary::default())
+        }
+        VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID => {
             skip_slot_display(decoder)?;
             Ok(SlotDisplayBodySummary::default())
         }
-        3 => {
+        VANILLA_SLOT_DISPLAY_TYPE_ONLY_WITH_COMPONENT_ID => {
             skip_slot_display(decoder)?;
             decoder.read_var_i32()?;
             Ok(SlotDisplayBodySummary::default())
         }
-        4 => Ok(SlotDisplayBodySummary {
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID => Ok(SlotDisplayBodySummary {
             item_stack: Some(ItemStackSummary {
                 item_id: Some(inventory::decode_item_holder_id(decoder)?),
                 count: 1,
@@ -511,7 +521,7 @@ fn decode_slot_display_body(
             }),
             tag: None,
         }),
-        5 => {
+        VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID => {
             let item_id = inventory::decode_non_empty_item_holder_id(decoder)?;
             let count = decoder.read_var_i32()?;
             if count <= 0 {
@@ -530,27 +540,27 @@ fn decode_slot_display_body(
                 tag: None,
             })
         }
-        6 => Ok(SlotDisplayBodySummary {
+        VANILLA_SLOT_DISPLAY_TYPE_TAG_ID => Ok(SlotDisplayBodySummary {
             item_stack: None,
             tag: Some(read_resource_location(decoder)?),
         }),
-        7 => {
+        VANILLA_SLOT_DISPLAY_TYPE_DYED_ID => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
             Ok(SlotDisplayBodySummary::default())
         }
-        8 => {
+        VANILLA_SLOT_DISPLAY_TYPE_SMITHING_TRIM_ID => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
             skip_trim_pattern_holder(decoder)?;
             Ok(SlotDisplayBodySummary::default())
         }
-        9 => {
+        VANILLA_SLOT_DISPLAY_TYPE_WITH_REMAINDER_ID => {
             skip_slot_display(decoder)?;
             skip_slot_display(decoder)?;
             Ok(SlotDisplayBodySummary::default())
         }
-        10 => {
+        VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID => {
             skip_slot_display_list(decoder)?;
             Ok(SlotDisplayBodySummary::default())
         }

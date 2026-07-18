@@ -107,6 +107,10 @@ use bbb_protocol::packets::{
     WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
+use bbb_protocol::recipe_wire_types::{
+    VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID, VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
+    VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID, VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
+};
 use bbb_protocol::stat_types::{
     VANILLA_STAT_TYPE_ENTITY_KILLED_ID, VANILLA_STAT_TYPE_ITEM_CRAFTED_ID,
 };
@@ -23435,13 +23439,13 @@ fn recipe_book_shapeless_entry_with_group(
                     bbb_protocol::packets::CraftingRecipeDisplaySummary::Shapeless {
                         ingredients: Vec::new(),
                         result: bbb_protocol::packets::SlotDisplaySummary {
-                            display_type_id: 5,
+                            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
                             raw_payload: Vec::new(),
                             item_stack: Some(test_item_stack(result_item_id, 1)),
                             tag: None,
                         },
                         crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                            display_type_id: 0,
+                            display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                             raw_payload: Vec::new(),
                             item_stack: None,
                             tag: None,
@@ -23475,14 +23479,14 @@ fn recipe_book_furnace_entry(
                 furnace: Some(bbb_protocol::packets::FurnaceRecipeDisplaySummary {
                     ingredient: recipe_book_slot_display_item(1),
                     fuel: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 1,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ANY_FUEL_ID,
                         raw_payload: vec![1],
                         item_stack: None,
                         tag: None,
                     },
                     result: recipe_book_slot_display_stack(result_item_id, 1),
                     crafting_station: bbb_protocol::packets::SlotDisplaySummary {
-                        display_type_id: 0,
+                        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_EMPTY_ID,
                         raw_payload: vec![0],
                         item_stack: None,
                         tag: None,
@@ -23503,7 +23507,7 @@ fn recipe_book_furnace_entry(
 
 fn recipe_book_slot_display_item(item_id: i32) -> bbb_protocol::packets::SlotDisplaySummary {
     bbb_protocol::packets::SlotDisplaySummary {
-        display_type_id: 4,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
         raw_payload: Vec::new(),
         item_stack: Some(test_item_stack(item_id, 1)),
         tag: None,
@@ -23515,7 +23519,7 @@ fn recipe_book_slot_display_stack(
     count: i32,
 ) -> bbb_protocol::packets::SlotDisplaySummary {
     bbb_protocol::packets::SlotDisplaySummary {
-        display_type_id: 5,
+        display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_STACK_ID,
         raw_payload: Vec::new(),
         item_stack: Some(test_item_stack(item_id, count)),
         tag: None,

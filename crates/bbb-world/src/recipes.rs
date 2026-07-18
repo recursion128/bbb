@@ -53,6 +53,7 @@ mod tests {
         IngredientSummary, RecipePropertySetSummary, SlotDisplaySummary,
         StonecutterSelectableRecipeSummary,
     };
+    use bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID;
 
     #[test]
     fn update_recipes_replaces_client_recipe_access_state() {
@@ -63,7 +64,7 @@ mod tests {
                 ("minecraft:furnace_input", vec![42, 43]),
                 ("minecraft:smithing_base", vec![99]),
             ],
-            vec![stonecutter_entry(vec![11, 12], 4, vec![4, 77])],
+            vec![stonecutter_entry(vec![11, 12], vec![4, 77])],
         ));
 
         assert_eq!(
@@ -99,7 +100,7 @@ mod tests {
         let mut store = WorldStore::new();
         store.apply_update_recipes(update_recipes(
             vec![("minecraft:furnace_input", vec![42, 43])],
-            vec![stonecutter_entry(vec![11, 12], 4, vec![4, 77])],
+            vec![stonecutter_entry(vec![11, 12], vec![4, 77])],
         ));
 
         store.clear_client_level();
@@ -129,7 +130,6 @@ mod tests {
 
     fn stonecutter_entry(
         item_ids: Vec<i32>,
-        display_type_id: i32,
         raw_payload: Vec<u8>,
     ) -> StonecutterSelectableRecipeSummary {
         StonecutterSelectableRecipeSummary {
@@ -138,7 +138,7 @@ mod tests {
                 item_ids,
             },
             option_display: SlotDisplaySummary {
-                display_type_id,
+                display_type_id: VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID,
                 raw_payload,
                 item_stack: None,
                 tag: None,
