@@ -191,6 +191,14 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                 world.clear_client_level();
             }
             NetEvent::StateChanged {
+                state: ConnectionState::Login,
+            } => {
+                // A login listener starts from the client built-in registry
+                // layer. Play reconfiguration reaches Configuration directly
+                // and intentionally retains the current frozen access.
+                world.reset_registry_session();
+            }
+            NetEvent::StateChanged {
                 state: ConnectionState::Configuration,
             } => {
                 world.clear_client_level();

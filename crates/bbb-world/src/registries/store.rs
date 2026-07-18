@@ -19,6 +19,25 @@ pub struct RegistryValidationError {
 }
 
 impl WorldStore {
+    /// Starts a fresh server session with only the client built-in fallback.
+    ///
+    /// Vanilla creates the configuration listener reached from login with
+    /// `ClientRegistryLayer.createRegistryAccess()`, while play reconfiguration
+    /// carries the current frozen access in `CommonListenerCookie`. Keep those
+    /// two entry paths distinct so a transfer cannot inherit the previous
+    /// server's holder order when the next server sends no registry contents.
+    pub fn reset_registry_session(&mut self) {
+        self.registries = super::RegistrySet::vanilla_26_1();
+        self.counters.last_registry_data_registry = None;
+        self.counters.last_registry_data_entry_count = 0;
+        self.counters.last_update_tags_registry_count = 0;
+        self.counters.last_update_tags_total_tag_count = 0;
+        self.counters.last_update_tags_total_value_count = 0;
+        self.sync_registry_counters();
+        self.sync_registry_tag_counters();
+        self.items.refresh_furnace_fuel_item_ids(&self.registries);
+    }
+
     pub fn begin_registry_configuration(&mut self) {
         self.registries.pending = Some(PendingRegistryCollection::default());
     }

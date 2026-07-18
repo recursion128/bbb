@@ -711,6 +711,56 @@ fn configuration_registry_collection_commits_atomically_and_replaces_holder_orde
 }
 
 #[test]
+fn new_server_session_drops_active_and_pending_remote_registry_state() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:item",
+        0,
+        vec![RegistryPacketEntry::stub("example:old_server_item")],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:old_server_tag".to_string(),
+                entries: vec![0],
+            }],
+        }],
+    });
+    store.begin_registry_configuration();
+    store.record_registry_data(RegistryData {
+        registry: "minecraft:item".to_string(),
+        entries: vec![RegistryDataEntry {
+            id: "example:pending_item".to_string(),
+            raw_data: None,
+        }],
+        raw_payload_len: 0,
+    });
+
+    store.reset_registry_session();
+
+    assert!(store
+        .resolved_registry_entry_by_resource_id("minecraft:item", "example:old_server_item")
+        .is_none());
+    assert!(store
+        .resolved_registry_entry_by_resource_id("minecraft:item", "example:pending_item")
+        .is_none());
+    assert!(store.registry_tags("minecraft:item").is_none());
+    assert_eq!(
+        store.registry_resource_id_by_holder_id(
+            "minecraft:item",
+            bbb_protocol::item_types::VANILLA_ITEM_SNOWBALL_ID,
+        ),
+        Some("minecraft:snowball")
+    );
+    assert_eq!(store.finish_registry_configuration(), Ok(()));
+    assert_eq!(store.counters().registries_seen, 0);
+    assert_eq!(store.counters().registry_content_registries_tracked, 0);
+    assert_eq!(store.counters().tag_registries_tracked, 0);
+    assert_eq!(store.counters().last_registry_data_registry, None);
+}
+
+#[test]
 fn configuration_registry_validation_rejects_empty_non_empty_registry_atomically() {
     let registry = "minecraft:wolf_variant";
     let mut store = WorldStore::new();

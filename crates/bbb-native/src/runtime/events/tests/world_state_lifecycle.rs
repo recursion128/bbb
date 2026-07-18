@@ -50,6 +50,55 @@ fn configuration_reentry_clears_online_client_level_state() {
 }
 
 #[test]
+fn login_starts_fresh_registry_session_but_play_reconfiguration_keeps_access() {
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        "minecraft:item",
+        0,
+        vec![RegistryPacketEntry::stub("example:first_server_item")],
+    );
+
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Play,
+    })
+    .unwrap();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+    assert_eq!(
+        world.registry_resource_id_by_holder_id("minecraft:item", 0),
+        Some("example:first_server_item")
+    );
+
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Login,
+    })
+    .unwrap();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        1
+    );
+    assert!(world
+        .resolved_registry_entry_by_resource_id("minecraft:item", "example:first_server_item")
+        .is_none());
+    assert_eq!(
+        world.registry_resource_id_by_holder_id(
+            "minecraft:item",
+            bbb_protocol::item_types::VANILLA_ITEM_SNOWBALL_ID,
+        ),
+        Some("minecraft:snowball")
+    );
+}
+
+#[test]
 fn chunk_cache_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Play(PlayClientbound::SetChunkCacheCenter(
