@@ -61,7 +61,14 @@ async fn handle_client(stream: TcpStream, state: ControlState) -> Result<()> {
     let mut lines = BufReader::new(reader).lines();
     while let Some(line) = lines.next_line().await? {
         let response = match serde_json::from_str::<ControlRequest>(&line) {
-            Ok(request) => dispatch(request, &state),
+            // dispatch blocks on the canonical world lock, which the native
+            // main thread can hold across a multi-second frame.  Run it on
+            // the blocking pool so stacked-up control requests cannot starve
+            // the async workers that drive the server connection.
+            Ok(request) => {
+                let dispatch_state = state.clone();
+                tokio::task::spawn_blocking(move || dispatch(request, &dispatch_state)).await?
+            }
             Err(err) => ControlResponse {
                 ok: false,
                 result: None,
