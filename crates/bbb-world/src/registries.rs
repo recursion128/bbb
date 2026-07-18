@@ -51,9 +51,11 @@ pub(crate) use sound_variants::{
     COW_SOUND_VARIANT_REGISTRY, PIG_SOUND_VARIANT_REGISTRY, WOLF_SOUND_VARIANT_REGISTRY,
 };
 pub use state::{
-    FrozenRegistryAccess, FrozenRegistryEntry, RegistryAccessRevision, RegistryContentState,
-    RegistryEntryPayload, RegistryEntrySource, RegistryPacket, RegistryPacketEntry, RegistrySet,
-    RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
+    FrozenRegistryAccess, FrozenRegistryEntry, FrozenRegistryHolderSet,
+    FrozenRegistryHolderSetKind, RegistryAccessRevision, RegistryContentState,
+    RegistryEntryPayload, RegistryEntrySource, RegistryPacket, RegistryPacketEntry,
+    RegistryResolutionError, RegistrySet, RegistryTagState, ResolvedRegistryEntry,
+    UnresolvedRegistryTagHolder,
 };
 pub use store::RegistryValidationError;
 pub use trim_materials::VanillaTrimMaterialIdentity;

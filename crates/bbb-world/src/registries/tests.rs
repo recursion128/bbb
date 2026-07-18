@@ -7,7 +7,9 @@ use std::{
     path::Path,
 };
 
-use crate::{FurnaceFuelRule, RegistryEntryPayload, RegistryEntrySource};
+use crate::{
+    FrozenRegistryHolderSetKind, FurnaceFuelRule, RegistryEntryPayload, RegistryEntrySource,
+};
 use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 
 #[test]
@@ -734,6 +736,112 @@ fn registry_tag_holder_resolution_is_ordered_and_reports_unknown_holders() {
     assert_eq!(
         store.registry_unresolved_holder_ids_for_tag("minecraft:test", "minecraft:invalid"),
         Some([7].as_slice())
+    );
+}
+
+#[test]
+fn frozen_registry_access_resolves_reference_and_holder_set_forms() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:test",
+        0,
+        vec![
+            RegistryPacketEntry::stub("example:custom"),
+            RegistryPacketEntry::stub("minecraft:first"),
+            RegistryPacketEntry::stub("minecraft:second"),
+        ],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:test".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:mixed".to_string(),
+                entries: vec![2, 9, 0],
+            }],
+        }],
+    });
+
+    let access = store.frozen_registry_access();
+    assert_eq!(
+        access
+            .require_entry_by_holder_id("minecraft:test", 0)
+            .unwrap()
+            .resource_id,
+        "example:custom"
+    );
+    assert_eq!(
+        access
+            .require_entry_by_resource_id("minecraft:test", "minecraft:first")
+            .unwrap()
+            .holder_id,
+        1
+    );
+
+    let direct = access
+        .holder_set_by_holder_ids("minecraft:test", &[2, 0])
+        .unwrap();
+    assert_eq!(direct.kind, FrozenRegistryHolderSetKind::Direct);
+    assert_eq!(
+        direct
+            .entries
+            .iter()
+            .map(|entry| entry.resource_id)
+            .collect::<Vec<_>>(),
+        vec!["minecraft:second", "example:custom"]
+    );
+
+    let resource_ids = ["minecraft:first".to_string(), "example:custom".to_string()];
+    let direct = access
+        .holder_set_by_resource_ids("minecraft:test", &resource_ids)
+        .unwrap();
+    assert_eq!(
+        direct
+            .entries
+            .iter()
+            .map(|entry| entry.holder_id)
+            .collect::<Vec<_>>(),
+        vec![1, 0]
+    );
+
+    let named = access
+        .holder_set_by_tag("minecraft:test", "example:mixed")
+        .unwrap();
+    assert_eq!(
+        named.kind,
+        FrozenRegistryHolderSetKind::Named {
+            tag: "example:mixed",
+            unresolved_holder_ids: &[9],
+        }
+    );
+    assert_eq!(
+        named
+            .entries
+            .iter()
+            .map(|entry| entry.resource_id)
+            .collect::<Vec<_>>(),
+        vec!["minecraft:second", "example:custom"]
+    );
+
+    assert_eq!(
+        access
+            .require_entry_by_holder_id("minecraft:test", 9)
+            .unwrap_err()
+            .to_string(),
+        "missing minecraft:test holder 9"
+    );
+    assert_eq!(
+        access
+            .require_entry_by_resource_id("minecraft:test", "example:missing")
+            .unwrap_err()
+            .to_string(),
+        "missing minecraft:test resource example:missing"
+    );
+    assert_eq!(
+        access
+            .holder_set_by_tag("minecraft:test", "example:missing")
+            .unwrap_err()
+            .to_string(),
+        "missing minecraft:test tag #example:missing"
     );
 }
 

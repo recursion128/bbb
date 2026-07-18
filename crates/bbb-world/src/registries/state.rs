@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, fmt, sync::Arc};
 
 use bbb_protocol::attribute_types::{
     vanilla_attribute_type, vanilla_attribute_type_for_resource_id,
@@ -150,6 +150,37 @@ pub enum RegistryEntryPayload<'a> {
         nbt: Option<&'a NbtPayloadSummary>,
     },
     VanillaFallback,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrozenRegistryHolderSet<'a> {
+    pub kind: FrozenRegistryHolderSetKind<'a>,
+    pub entries: Vec<FrozenRegistryEntry<'a>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrozenRegistryHolderSetKind<'a> {
+    Direct,
+    Named {
+        tag: &'a str,
+        unresolved_holder_ids: &'a [i32],
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RegistryResolutionError {
+    MissingHolderId {
+        registry: String,
+        holder_id: i32,
+    },
+    MissingResourceId {
+        registry: String,
+        resource_id: String,
+    },
+    MissingTag {
+        registry: String,
+        tag: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -427,6 +458,95 @@ impl<'a> FrozenRegistryAccess<'a> {
         self.entry_by_holder_id(registry, holder_id)
     }
 
+    pub fn require_entry_by_holder_id(
+        self,
+        registry: &str,
+        holder_id: i32,
+    ) -> Result<FrozenRegistryEntry<'a>, RegistryResolutionError> {
+        self.entry_by_holder_id(registry, holder_id).ok_or_else(|| {
+            RegistryResolutionError::MissingHolderId {
+                registry: registry.to_string(),
+                holder_id,
+            }
+        })
+    }
+
+    pub fn require_entry_by_resource_id(
+        self,
+        registry: &str,
+        resource_id: &str,
+    ) -> Result<FrozenRegistryEntry<'a>, RegistryResolutionError> {
+        self.entry_by_resource_id(registry, resource_id)
+            .ok_or_else(|| RegistryResolutionError::MissingResourceId {
+                registry: registry.to_string(),
+                resource_id: resource_id.to_string(),
+            })
+    }
+
+    pub fn holder_set_by_holder_ids(
+        self,
+        registry: &str,
+        holder_ids: &[i32],
+    ) -> Result<FrozenRegistryHolderSet<'a>, RegistryResolutionError> {
+        let entries = holder_ids
+            .iter()
+            .map(|holder_id| self.require_entry_by_holder_id(registry, *holder_id))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(FrozenRegistryHolderSet {
+            kind: FrozenRegistryHolderSetKind::Direct,
+            entries,
+        })
+    }
+
+    pub fn holder_set_by_resource_ids(
+        self,
+        registry: &str,
+        resource_ids: &[String],
+    ) -> Result<FrozenRegistryHolderSet<'a>, RegistryResolutionError> {
+        let entries = resource_ids
+            .iter()
+            .map(|resource_id| self.require_entry_by_resource_id(registry, resource_id))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(FrozenRegistryHolderSet {
+            kind: FrozenRegistryHolderSetKind::Direct,
+            entries,
+        })
+    }
+
+    pub fn holder_set_by_tag(
+        self,
+        registry: &str,
+        tag: &str,
+    ) -> Result<FrozenRegistryHolderSet<'a>, RegistryResolutionError> {
+        let (stored_registry, tags) =
+            self.registries
+                .tags
+                .get_key_value(registry)
+                .ok_or_else(|| RegistryResolutionError::MissingTag {
+                    registry: registry.to_string(),
+                    tag: tag.to_string(),
+                })?;
+        let (stored_tag, holder_ids) =
+            tags.tags
+                .get_key_value(tag)
+                .ok_or_else(|| RegistryResolutionError::MissingTag {
+                    registry: registry.to_string(),
+                    tag: tag.to_string(),
+                })?;
+        let entries = self
+            .holder_set_by_holder_ids(stored_registry, holder_ids)?
+            .entries;
+        Ok(FrozenRegistryHolderSet {
+            kind: FrozenRegistryHolderSetKind::Named {
+                tag: stored_tag,
+                unresolved_holder_ids: self
+                    .unresolved_holder_ids_for_tag(stored_registry, stored_tag)
+                    .unwrap_or_default(),
+            },
+            entries,
+        })
+    }
+
     pub fn holder_ids_for_tag(self, registry: &str, tag: &str) -> Option<&'a [i32]> {
         self.registries.holder_ids_for_tag(registry, tag)
     }
@@ -435,6 +555,26 @@ impl<'a> FrozenRegistryAccess<'a> {
         self.registries.unresolved_holder_ids_for_tag(registry, tag)
     }
 }
+
+impl fmt::Display for RegistryResolutionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingHolderId {
+                registry,
+                holder_id,
+            } => write!(formatter, "missing {registry} holder {holder_id}"),
+            Self::MissingResourceId {
+                registry,
+                resource_id,
+            } => write!(formatter, "missing {registry} resource {resource_id}"),
+            Self::MissingTag { registry, tag } => {
+                write!(formatter, "missing {registry} tag #{tag}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for RegistryResolutionError {}
 
 impl Default for RegistrySet {
     fn default() -> Self {
