@@ -5,6 +5,23 @@
     "world_snapshot": "scripts/fixtures/playable-gate/session-26.1.json"
   },
   "mode": "fixture",
+  "movement": {
+    "duration_seconds": 0.6,
+    "end_position": {
+      "x": 0.5,
+      "y": 64.0,
+      "z": 0.5
+    },
+    "horizontal_distance": 2.0,
+    "look_yaw_delta": 0.75,
+    "move_commands_queued_delta": 4,
+    "position_corrections": 0,
+    "start_position": {
+      "x": 0.5,
+      "y": 64.0,
+      "z": -1.5
+    }
+  },
   "schema": 1,
   "source": {
     "authority": [

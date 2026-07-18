@@ -61,6 +61,65 @@ class PlayableGateEvidenceTests(unittest.TestCase):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
 
+class PlayableGateMovementTests(unittest.TestCase):
+    def setUp(self):
+        fixture_path = (
+            REPO_ROOT
+            / "scripts"
+            / "fixtures"
+            / "playable-gate"
+            / "session-26.1.json"
+        )
+        self.fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        self.protocol_version = playable_gate._parse_protocol_version(
+            REPO_ROOT / "crates" / "bbb-protocol" / "src" / "lib.rs"
+        )
+
+    def test_missing_movement_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["movement"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "movement"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_short_movement_distance_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["movement"]["end_position"] = dict(
+            evidence["movement"]["start_position"]
+        )
+        evidence["movement"]["horizontal_distance"] = 0.0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "did not travel far enough"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_inconsistent_movement_distance_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["movement"]["horizontal_distance"] = 5.0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "does not match its start/end positions"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_server_position_correction_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["movement"]["position_corrections"] = 1
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "position"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_missing_look_yaw_delta_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["movement"]["look_yaw_delta"] = 0.0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "did not turn the camera"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+
 class PlayableGateTimelineTests(unittest.TestCase):
     def _packet_ledger(self):
         return json.loads(

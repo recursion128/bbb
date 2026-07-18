@@ -447,9 +447,12 @@ recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实�
 
 剩余阶段：
 
-1. **基础游玩**：通过 control/CLI 驱动移动、视角、破坏/放置、实体交互、hotbar、容器、
+1. **基础游玩**：通过 control/CLI 驱动破坏/放置、实体交互、hotbar、容器、
    inventory、chat/command、声音/粒子与 deterministic screenshot/readback，验证 server
    acknowledgement、world 结果和呈现 side effect，而不只检查命令入队。
+   移动与视角已闭环（2026-07-18）：`input.focus/key/look_delta` control 注入经真实
+   focus/key/mouse handler 驱动 local-player prediction，live gate 断言位置位移、
+   look yaw 变化、move 命令入队且服务器零位置纠正（fixture 同步等价 movement 断言）。
 2. **生命周期场景**：覆盖 respawn、dimension change、death、resource-pack push/pop、
    configuration re-entry、disconnect/reconnect 与第二 session registry；断言旧 world、
    registry、renderer/audio runtime 和 pending request 不泄漏。

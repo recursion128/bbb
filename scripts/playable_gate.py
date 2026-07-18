@@ -163,6 +163,70 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
     if not isinstance(local_player.get("pose"), dict):
         raise GateFailure("canonical local player pose was not initialized")
 
+    _validate_movement(evidence.get("movement"))
+
+
+MOVEMENT_MIN_HORIZONTAL_DISTANCE = 1.0
+MOVEMENT_MIN_LOOK_YAW_DELTA = 0.01
+
+
+def _finite_position(value: Any, path: str) -> tuple[float, float, float]:
+    position = _object(value, path)
+    coordinates = []
+    for axis in ("x", "y", "z"):
+        coordinate = position.get(axis)
+        if not isinstance(coordinate, (int, float)) or isinstance(coordinate, bool):
+            raise GateFailure(f"{path}.{axis} must be a number")
+        coordinate = float(coordinate)
+        if coordinate != coordinate or coordinate in (float("inf"), float("-inf")):
+            raise GateFailure(f"{path}.{axis} must be finite")
+        coordinates.append(coordinate)
+    return tuple(coordinates)
+
+
+def _validate_movement(movement: Any) -> None:
+    """Control-driven movement must be observed by the client and accepted by
+    the server: the position moved, move commands were sent, look input turned
+    the camera, and the server issued no forced position correction."""
+
+    movement = _object(movement, "movement")
+    start = _finite_position(movement.get("start_position"), "movement.start_position")
+    end = _finite_position(movement.get("end_position"), "movement.end_position")
+    distance = movement.get("horizontal_distance")
+    if not isinstance(distance, (int, float)) or isinstance(distance, bool):
+        raise GateFailure("movement.horizontal_distance must be a number")
+    recomputed = ((end[0] - start[0]) ** 2 + (end[2] - start[2]) ** 2) ** 0.5
+    if abs(float(distance) - recomputed) > 1e-6:
+        raise GateFailure(
+            "movement.horizontal_distance does not match its start/end positions: "
+            f"recorded {distance}, recomputed {recomputed}"
+        )
+    if recomputed < MOVEMENT_MIN_HORIZONTAL_DISTANCE:
+        raise GateFailure(
+            "control-driven movement did not travel far enough: "
+            f"{recomputed} < {MOVEMENT_MIN_HORIZONTAL_DISTANCE}"
+        )
+    moves = movement.get("move_commands_queued_delta")
+    if not isinstance(moves, int) or isinstance(moves, bool) or moves < 1:
+        raise GateFailure(
+            "movement must queue at least one serverbound move command, "
+            f"got {moves!r}"
+        )
+    corrections = movement.get("position_corrections")
+    if corrections != 0:
+        raise GateFailure(
+            "server rejected control-driven movement with a position "
+            f"correction: {corrections!r}"
+        )
+    yaw_delta = movement.get("look_yaw_delta")
+    if not isinstance(yaw_delta, (int, float)) or isinstance(yaw_delta, bool):
+        raise GateFailure("movement.look_yaw_delta must be a number")
+    if float(yaw_delta) < MOVEMENT_MIN_LOOK_YAW_DELTA:
+        raise GateFailure(
+            "control-driven look input did not turn the camera: "
+            f"{yaw_delta} < {MOVEMENT_MIN_LOOK_YAW_DELTA}"
+        )
+
 
 def _packet_descriptors(ledger: dict[str, Any]) -> dict[str, tuple[str, int]]:
     wanted = set(PACKET_DESCRIPTOR_STATES)
@@ -361,6 +425,74 @@ def _capture_control_snapshot(address: tuple[str, int]) -> dict[str, Any]:
     }
 
 
+def _press_key(address: tuple[str, int], key: str, pressed: bool) -> None:
+    _control_request(address, "input.key", {"key": key, "pressed": pressed})
+
+
+def _local_player_pose(address: tuple[str, int]) -> dict[str, Any]:
+    local_player = _control_request(address, "world.client_local_player")
+    pose = local_player.get("pose") if isinstance(local_player, dict) else None
+    if not isinstance(pose, dict):
+        raise GateFailure("live local player pose unavailable while driving movement")
+    return pose
+
+
+def _pose_xz(pose: dict[str, Any]) -> tuple[float, float]:
+    position = _object(pose.get("position"), "local_player.pose.position")
+    return float(position.get("x", 0.0)), float(position.get("z", 0.0))
+
+
+def drive_basic_movement(address: tuple[str, int], timeout_seconds: float) -> dict[str, Any]:
+    """Hold forward+jump and inject a look delta through the control input
+    surface, then wait until the local player's canonical position moved.  The
+    server acknowledges legal movement by NOT sending a position correction."""
+
+    start_pose = _local_player_pose(address)
+    start_x, start_z = _pose_xz(start_pose)
+    start_position = dict(_object(start_pose.get("position"), "local_player.pose.position"))
+    start_yaw = float(start_pose.get("y_rot", 0.0))
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    world_before = _object(_control_request(address, "world.counters"), "world.counters")
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    # Weston-headless surfaces never receive real keyboard focus, so the
+    # control surface drives the same focus handler the window event uses.
+    _control_request(address, "input.focus", {"focused": True})
+    _control_request(address, "input.look_delta", {"dx": 40.0, "dy": 0.0})
+    _press_key(address, "forward", True)
+    _press_key(address, "jump", True)
+    try:
+        while time.monotonic() < deadline:
+            x, z = _pose_xz(_local_player_pose(address))
+            distance = ((x - start_x) ** 2 + (z - start_z) ** 2) ** 0.5
+            if distance >= MOVEMENT_MIN_HORIZONTAL_DISTANCE:
+                break
+            time.sleep(0.1)
+    finally:
+        _press_key(address, "forward", False)
+        _press_key(address, "jump", False)
+
+    end_pose = _local_player_pose(address)
+    end_x, end_z = _pose_xz(end_pose)
+    end_position = dict(_object(end_pose.get("position"), "local_player.pose.position"))
+    end_yaw = float(end_pose.get("y_rot", 0.0))
+    net_after = _object(_control_request(address, "net.counters"), "net.counters")
+    world_after = _object(_control_request(address, "world.counters"), "world.counters")
+
+    return {
+        "start_position": start_position,
+        "end_position": end_position,
+        "horizontal_distance": ((end_x - start_x) ** 2 + (end_z - start_z) ** 2) ** 0.5,
+        "move_commands_queued_delta": int(net_after.get("player_move_commands_queued", 0))
+        - int(net_before.get("player_move_commands_queued", 0)),
+        "position_corrections": int(world_after.get("player_position_packets", 0))
+        - int(world_before.get("player_position_packets", 0)),
+        "look_yaw_delta": abs(end_yaw - start_yaw),
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
 def collect_live(args: argparse.Namespace) -> None:
     host, raw_port = args.control.rsplit(":", 1)
     address = (host, int(raw_port))
@@ -403,6 +535,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "timeline": [],
             "status": status,
             "world_snapshot": last_snapshot,
+            "movement": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
                 "timeline": str(args.client_log),
@@ -412,6 +545,14 @@ def collect_live(args: argparse.Namespace) -> None:
         }
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise GateFailure(evidence["failure"])
+
+    try:
+        movement = drive_basic_movement(
+            address, min(30.0, float(args.timeout))
+        )
+        last_snapshot = _capture_control_snapshot(address)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise GateFailure(f"control-driven movement failed: {error}") from error
 
     client_log = args.client_log.read_text(encoding="utf-8", errors="replace")
     try:
@@ -424,6 +565,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "timeline": [],
             "status": status,
             "world_snapshot": last_snapshot,
+            "movement": movement,
             "failure": str(error),
             "artifacts": {
                 "timeline": str(args.client_log),
@@ -440,6 +582,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "timeline": timeline,
         "status": status,
         "world_snapshot": last_snapshot,
+        "movement": movement,
         "artifacts": {
             "timeline": str(args.client_log),
             "world_snapshot": str(args.output),
