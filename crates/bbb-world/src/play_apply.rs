@@ -19,7 +19,7 @@ use crate::{
     advance_cobweb_place_particle_randoms,
     advance_vault_activation_particle_randoms_with_connections,
     advance_vault_deactivation_particle_randoms, AllayDuplicationParticleState,
-    AnimalLoveParticleState, ArrowEffectParticleState, BlockPos, ChunkPos,
+    AnimalLoveParticleState, ArrowEffectParticleState, BlockPos, ChatDisconnectReason, ChunkPos,
     DolphinHappyParticleState, EntityTamingParticleState, FireworkRocketExplosionParticleState,
     FoxEatParticleState, HoneyBlockParticleState, JukeboxLevelEventState,
     LevelEventSoundRandomState, LivingEntityDrownParticleState, LivingEntityItemBreakState,
@@ -94,6 +94,10 @@ pub trait PlayApplyEffects {
     fn stop_music(&mut self) {}
     fn jukebox_level_event(&mut self, _state: &JukeboxLevelEventState) {}
     fn chat_acknowledgement(&mut self, _command: ChatAcknowledgement) {}
+    fn chat_validation_epoch_millis(&mut self) -> i64 {
+        i64::MIN
+    }
+    fn chat_disconnect(&mut self, _reason: ChatDisconnectReason) {}
     fn container_close(&mut self, _container_id: i32) {}
     fn vehicle_move_report(&mut self, _report: VehicleMoveReport) {}
     fn removed_player_vehicle_teleport(&mut self, _recovery: RemovedPlayerVehicleTeleportRecovery) {
@@ -310,7 +314,9 @@ impl WorldStore {
                 self.apply_debug_sample(update);
             }
             PlayClientbound::DeleteChat(update) => {
-                self.apply_delete_chat(update);
+                if let Some(reason) = self.apply_delete_chat(update) {
+                    effects.chat_disconnect(reason);
+                }
             }
             PlayClientbound::DisguisedChat(update) => {
                 self.apply_disguised_chat(update);
@@ -739,8 +745,13 @@ impl WorldStore {
                 self.apply_player_abilities(update);
             }
             PlayClientbound::PlayerChat(update) => {
-                if let Some(command) = self.apply_player_chat(update) {
+                let now_epoch_millis = effects.chat_validation_epoch_millis();
+                let outcome = self.apply_player_chat_at(update, now_epoch_millis);
+                if let Some(command) = outcome.acknowledgement {
                     effects.chat_acknowledgement(command);
+                }
+                if let Some(reason) = outcome.disconnect {
+                    effects.chat_disconnect(reason);
                 }
             }
             PlayClientbound::SetExperience(update) => {
@@ -1670,11 +1681,11 @@ mod tests {
     const RAVAGER_ROAR_EVENT_ID: i8 = 69;
 
     use bbb_protocol::packets::{
-        AddEntity, BlockPos as ProtocolBlockPos, DamageEvent, EntityAnimation,
+        AddEntity, BlockPos as ProtocolBlockPos, DamageEvent, DeleteChat, EntityAnimation,
         EntityDataRegistryHolder, EntityDataValue, EntityDataValueKind, EntityEvent,
         EntityPositionSync, EquipmentSlot, EquipmentSlotUpdate, GameEvent, ItemStackSummary,
-        LevelEvent, PlayTime, PlayerHealth, RemoveEntities, SetEntityData, SetEquipment,
-        SetPassengers, SoundEvent, SoundEventHolder, SoundEventSummary, SoundSource,
+        LevelEvent, PackedMessageSignature, PlayTime, PlayerHealth, RemoveEntities, SetEntityData,
+        SetEquipment, SetPassengers, SoundEvent, SoundEventHolder, SoundEventSummary, SoundSource,
         TakeItemEntity, TeleportEntity, Vec3d,
     };
     use uuid::Uuid;
@@ -1716,6 +1727,7 @@ mod tests {
         honey_block_particles: Vec<HoneyBlockParticleState>,
         tracking_emitters: Vec<(i32, EntityTrackingEmitterParticleKind, u32)>,
         removed_vehicle_teleports: Vec<RemovedPlayerVehicleTeleportRecovery>,
+        chat_disconnects: Vec<ChatDisconnectReason>,
     }
 
     impl PlayApplyEffects for RecordingEffects {
@@ -1732,6 +1744,10 @@ mod tests {
             recovery: RemovedPlayerVehicleTeleportRecovery,
         ) {
             self.removed_vehicle_teleports.push(recovery);
+        }
+
+        fn chat_disconnect(&mut self, reason: ChatDisconnectReason) {
+            self.chat_disconnects.push(reason);
         }
 
         fn elder_guardian_effect_particles(&mut self, _world: &WorldStore, position: Vec3d) {
@@ -2073,6 +2089,33 @@ mod tests {
         );
         assert!(leftover.is_none());
         effects
+    }
+
+    #[test]
+    fn unresolved_delete_chat_routes_fatal_stream_effect_without_world_mutation() {
+        let mut store = WorldStore::new();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut effects = RecordingEffects::default();
+
+        let leftover = store.apply_play_packet(
+            PlayClientbound::DeleteChat(DeleteChat {
+                message_signature: PackedMessageSignature {
+                    cache_id: Some(0),
+                    full_signature: None,
+                },
+            }),
+            &mut random,
+            &mut effects,
+        );
+
+        assert!(leftover.is_none());
+        assert_eq!(
+            effects.chat_disconnects,
+            vec![ChatDisconnectReason::InvalidPackedSignature]
+        );
+        assert!(store.client_chat().deleted_messages.is_empty());
+        assert_eq!(store.counters().delete_chat_packets, 1);
+        assert_eq!(store.counters().chat_unknown_packed_signatures, 1);
     }
 
     #[test]

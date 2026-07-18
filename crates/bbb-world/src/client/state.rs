@@ -7,9 +7,9 @@ pub use crate::client::audio::{
     StopSoundEventState, TickableEntitySoundState, WorldBlockSoundProfile,
 };
 pub use crate::client::chat::{
-    ChatDecorationArgumentState, ChatDecorationState, ChatMessageKind, ChatMessageState,
-    ChatSignatureState, ChatTypeState, ChatValidationState, ClientChatState, DeletedChatState,
-    OutboundLastSeenMessages,
+    ChatDecorationArgumentState, ChatDecorationState, ChatDisconnectReason, ChatMessageKind,
+    ChatMessageState, ChatSignatureState, ChatTypeState, ChatValidationState, ClientChatState,
+    DeletedChatState, OutboundLastSeenMessages,
 };
 pub use crate::client::combat::{ClientCombatState, PlayerCombatEventState};
 pub use crate::client::command_suggestions::{

@@ -16464,17 +16464,14 @@ fn command_entry_with_signable_message_argument_submits_signed_command() {
             assert_eq!(signing.arguments[0].name, "message");
             assert_eq!(signing.arguments[0].value, "hello");
             assert_eq!(signing.last_seen.update.offset, 1);
-            assert_eq!(signing.last_seen.update.acknowledged, 1 << 19);
-            assert_ne!(
+            // The fixture sender has no PlayerInfo entry, so vanilla presents
+            // a validation error and advances only the hidden-message offset.
+            assert_eq!(signing.last_seen.update.acknowledged, 0);
+            assert_eq!(
                 signing.last_seen.update.checksum,
                 LastSeenMessagesUpdate::default().checksum
             );
-            assert_eq!(
-                signing.last_seen.signatures,
-                vec![MessageSignature {
-                    bytes: vec![12; 256]
-                }]
-            );
+            assert!(signing.last_seen.signatures.is_empty());
         }
         command => panic!("expected chat command request, got {command:?}"),
     }
@@ -16902,17 +16899,14 @@ fn chat_key_submits_message_with_pending_last_seen_update() {
         NetCommand::ChatMessage(packet) => {
             assert_eq!(packet.message, "reply");
             assert_eq!(packet.last_seen.update.offset, 1);
-            assert_eq!(packet.last_seen.update.acknowledged, 1 << 19);
-            assert_ne!(
+            // Unknown-sender validation errors are processed as not shown:
+            // their offset is acknowledged but no signature enters last-seen.
+            assert_eq!(packet.last_seen.update.acknowledged, 0);
+            assert_eq!(
                 packet.last_seen.update.checksum,
                 LastSeenMessagesUpdate::default().checksum
             );
-            assert_eq!(
-                packet.last_seen.signatures,
-                vec![MessageSignature {
-                    bytes: vec![12; 256]
-                }]
-            );
+            assert!(packet.last_seen.signatures.is_empty());
         }
         command => panic!("expected chat message command, got {command:?}"),
     }

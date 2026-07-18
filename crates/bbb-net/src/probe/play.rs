@@ -5,7 +5,8 @@ use bbb_protocol::recipe_wire_types::VANILLA_SLOT_DISPLAY_TYPE_ITEM_ID;
 #[cfg(test)]
 use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 use bbb_world::{
-    ChunkPos, PlayApplyEffects, RemovedPlayerVehicleTeleportRecovery, VehicleMoveReport,
+    ChatDisconnectReason, ChunkPos, PlayApplyEffects, RemovedPlayerVehicleTeleportRecovery,
+    VehicleMoveReport,
 };
 
 use crate::{probe::ProbeContext, resource_pack::response_action_for_push, types::ConnectionState};
@@ -18,11 +19,20 @@ struct ProbePlayEffects {
     vehicle_move_report: Option<VehicleMoveReport>,
     removed_vehicle_teleport: Option<RemovedPlayerVehicleTeleportRecovery>,
     inserted_chunk_pos: Option<ChunkPos>,
+    chat_disconnect: Option<ChatDisconnectReason>,
 }
 
 impl PlayApplyEffects for ProbePlayEffects {
     fn chat_acknowledgement(&mut self, command: ChatAcknowledgement) {
         self.chat_acknowledgement = Some(command);
+    }
+
+    fn chat_validation_epoch_millis(&mut self) -> i64 {
+        chrono::Utc::now().timestamp_millis()
+    }
+
+    fn chat_disconnect(&mut self, reason: ChatDisconnectReason) {
+        self.chat_disconnect = Some(reason);
     }
 
     fn vehicle_move_report(&mut self, report: VehicleMoveReport) {
@@ -47,6 +57,10 @@ impl ProbeContext {
         let connection_packet =
             self.world
                 .apply_play_packet(packet, &mut self.level_event_sound_random, &mut effects);
+
+        if let Some(reason) = effects.chat_disconnect {
+            bail!("invalid signed-chat stream: {reason:?}");
+        }
 
         if let Some(command) = effects.chat_acknowledgement.take() {
             let (id, payload) = packets::encode_play_chat_acknowledgement(command);
@@ -1022,7 +1036,11 @@ mod tests {
         assert_eq!(chat.messages.len(), 2);
         assert_eq!(chat.deleted_messages.len(), 1);
         assert_eq!(chat.messages[0].kind, bbb_world::ChatMessageKind::Player);
-        assert_eq!(chat.messages[0].content, "message 0");
+        assert_eq!(chat.messages[0].content, "chat.validation_error");
+        assert_eq!(
+            chat.messages[0].validation_state,
+            bbb_world::ChatValidationState::UnknownSender
+        );
         assert_eq!(chat.messages[1].kind, bbb_world::ChatMessageKind::Disguised);
         assert_eq!(chat.messages[1].content, "server notice");
         assert_eq!(chat.messages[1].sender_name, "Server");

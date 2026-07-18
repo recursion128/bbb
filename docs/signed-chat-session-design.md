@@ -6,11 +6,11 @@ session, outbound message chain, inbound chain validation needed to validate the
 server echo, and `DeleteChat` lifecycle. It does not turn the native client into
 an authentication launcher or duplicate Mojang's Brigadier/Authlib class trees.
 
-Implementation status: phases 1-3 are complete; phase 4 inbound trust and
-deletion closeout is current. Authenticated encrypted play sessions now fetch
-and refresh bounded Services keys without blocking packet reads, send each new
-public session before installing its signer, retain an unchanged or last valid
-chain, and reset at listener/configuration/reconnect boundaries.
+Implementation status: all four phases are complete. Authenticated encrypted
+play sessions fetch and refresh bounded Services keys without blocking packet
+reads, send each new public session before installing its signer, retain an
+unchanged or last valid local chain, validate installed remote sessions, and
+apply the complete `DeleteChat` lifecycle.
 
 ## Semantic Goal and Completion Criteria
 
@@ -40,10 +40,12 @@ Final completion requires all of the following:
   automatically emit `ServerboundChatSessionUpdatePacket`, replace the encoder
   only when the key changes, and clear all local/remote chain state on listener,
   configuration, reconnect, and shutdown boundaries.
-- Player chat with a present remote session validates timestamp order, link
-  index, sender/session identity, key expiry, and RSA signature. A broken chain
-  cannot silently resume; the secure-chat policy produces the vanilla-equivalent
-  disconnect/error outcome rather than presenting untrusted content as signed.
+- Player chat with a present remote session validates descendant link order,
+  sender/session identity, key expiry, and RSA signature. Vanilla 26.1 permits
+  skipped link indices and does not use body timestamp age/order as a validator
+  rejection. A broken chain cannot silently resume; the secure-chat policy
+  produces the vanilla-equivalent disconnect/error outcome rather than
+  presenting untrusted content as signed.
 - `ClientboundDeleteChatPacket` resolves its packed signature before any state
   mutation. An unresolved signature requests disconnect. A resolved signature
   leaves the last-seen pending set, is removed from any delayed presentation
@@ -159,6 +161,16 @@ Final completion requires all of the following:
    cache miss, pending removal, delayed queue removal, and the exact 60 GUI-tick
    lower bound. Update coverage/ledger/archive evidence, run affected complete
    crate tests, final full gate, and final playable gate.
+
+   Complete: Services-validated `PlayerInfo` sessions install an RSA-SHA256
+   validator with vanilla's eight-hour profile-key expiry grace and permanent
+   chain-break behavior. PlayerChat resolves and pushes the exact signature
+   cache before sender validation, reports unknown/missing/invalid trust through
+   `chat.validation_error`, and disconnects on global-index or packed-signature
+   stream corruption. DeleteChat resolves before mutation, removes pending and
+   delayed entries, and replaces visible messages with the gray italic deleted
+   marker at the exact 60-GUI-tick lower bound; native advances that clock on
+   raw client ticks and propagates fatal outcomes as disconnect commands.
 
 Every phase also runs formatting, diff checks, documentation lint when changed,
 P0 audit, and complete diff review before its normal commit. No phase may add a

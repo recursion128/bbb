@@ -607,24 +607,9 @@ Owner: `bbb-world` + `bbb-native` + `bbb-control`
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
 
-The local-session, outbound signing, server-echo validation, and deletion
-lifecycle work follows the serial ownership contract in
-[`signed-chat-session-design.md`](signed-chat-session-design.md).
-
-- Validate server broadcasts against the sender's installed remote chat session,
-  including sender/session/link identity, timestamp order, key expiry, RSA
-  signature, chain-break handling, and the secure-chat disconnect policy.
-- On DeleteChat, disconnect for a packed signature that cannot be resolved,
-  remove matching delayed-listener messages, and replace the visible message
-  with vanilla's deleted marker no earlier than 60 GUI ticks after insertion.
-  The current resolved-signature diagnostic record is not visible chat deletion.
-- Complete native `ChatListener` presentation beyond the registry-aware canonical
-  message state. PlayerChat/DisguisedChat now retain validated raw trusted
-  Components plus styled projections; numeric/direct `ChatType` holders resolve
-  through the frozen session RegistryAccess, and world retains typed
-  chat/narration translation keys, ordered rich arguments and style. Remaining
-  work is the receive-ability/secure-only gate, delayed queue, localized HUD
-  component rendering and interactions, narrator delivery, and reporting log.
+- Complete native `ChatListener` presentation: receive-ability and secure-only
+  gates, message-delay scheduling, localized rich HUD component rendering and
+  interactions, narrator delivery, and the reporting log.
 
 ## Crosshair entity interaction parity
 

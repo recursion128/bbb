@@ -12,13 +12,14 @@ use bbb_protocol::particle_types::{
 };
 use bbb_world::{
     AllayDuplicationParticleState, AnimalLoveParticleState, ArrowEffectParticleState,
-    BlockPos as WorldBlockPos, DolphinHappyParticleState, EntityTamingParticleState,
-    EntityTrackingEmitterParticleKind, FireworkRocketExplosionParticleState, FoxEatParticleState,
-    HoneyBlockParticleState, LevelEventGrowthRandomMode, LevelEventSoundRandomState,
-    LivingEntityDrownParticleState, LivingEntityItemBreakState, LivingEntityPoofParticleState,
-    LivingEntityPortalParticleState, PlayApplyEffects, RavagerRoarParticleState,
-    SnowballHitParticleState, TakeItemEntityPickupParticleState, TerrainFluidKind,
-    ThrownEggHitParticleState, VillagerParticleState, WitchMagicParticleState, WorldStore,
+    BlockPos as WorldBlockPos, ChatDisconnectReason, DolphinHappyParticleState,
+    EntityTamingParticleState, EntityTrackingEmitterParticleKind,
+    FireworkRocketExplosionParticleState, FoxEatParticleState, HoneyBlockParticleState,
+    LevelEventGrowthRandomMode, LevelEventSoundRandomState, LivingEntityDrownParticleState,
+    LivingEntityItemBreakState, LivingEntityPoofParticleState, LivingEntityPortalParticleState,
+    PlayApplyEffects, RavagerRoarParticleState, SnowballHitParticleState,
+    TakeItemEntityPickupParticleState, TerrainFluidKind, ThrownEggHitParticleState,
+    VillagerParticleState, WitchMagicParticleState, WorldStore,
 };
 use tokio::sync::mpsc;
 
@@ -376,6 +377,15 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
 
     fn chat_acknowledgement(&mut self, command: bbb_protocol::packets::ChatAcknowledgement) {
         queue_chat_acknowledgement(self.net_commands, self.counters, command);
+    }
+
+    fn chat_validation_epoch_millis(&mut self) -> i64 {
+        crate::runtime::wall_clock_millis_i64()
+    }
+
+    fn chat_disconnect(&mut self, reason: ChatDisconnectReason) {
+        tracing::error!(?reason, "disconnecting after invalid signed-chat stream");
+        queue_chat_disconnect(self.net_commands);
     }
 
     fn container_close(&mut self, container_id: i32) {
@@ -744,6 +754,16 @@ fn queue_chat_acknowledgement(
         {
             counters.chat_acknowledgement_commands_queued += 1;
         }
+    }
+}
+
+fn queue_chat_disconnect(net_commands: &Option<mpsc::Sender<NetCommand>>) {
+    let Some(tx) = net_commands else { return };
+    if let Err(err) = tx.try_send(NetCommand::Disconnect) {
+        tracing::error!(
+            ?err,
+            "dropped required disconnect after invalid signed-chat stream"
+        );
     }
 }
 

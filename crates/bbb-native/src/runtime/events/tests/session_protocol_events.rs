@@ -1164,27 +1164,18 @@ fn client_chat_events_update_world_and_world_counters() {
     assert_eq!(world.client_chat().deleted_messages.len(), 1);
     let player_chat = &world.client_chat().messages[0];
     assert_eq!(player_chat.kind, bbb_world::ChatMessageKind::Player);
-    assert_eq!(player_chat.content, "hello");
+    assert_eq!(player_chat.content, "chat.validation_error");
     assert_eq!(player_chat.sender, Some(sender));
     assert_eq!(player_chat.sender_name, "Alice");
     assert_eq!(player_chat.global_index, Some(0));
     assert_eq!(player_chat.message_index, Some(2));
     assert_eq!(player_chat.chat_type.registry_id, Some(0));
-    assert_eq!(
-        player_chat
-            .signature
-            .as_ref()
-            .map(|signature| signature.checksum),
-        Some(expected_signature_checksum)
-    );
-    assert_eq!(
-        player_chat.unsigned_content.as_deref(),
-        Some("unsigned hello")
-    );
-    assert_eq!(player_chat.filter_mask, "partially_filtered");
+    assert!(player_chat.signature.is_none());
+    assert!(player_chat.unsigned_content.is_none());
+    assert_eq!(player_chat.filter_mask, "pass_through");
     assert_eq!(
         player_chat.validation_state,
-        bbb_world::ChatValidationState::Unchecked
+        bbb_world::ChatValidationState::UnknownSender
     );
     let disguised_chat = &world.client_chat().messages[1];
     assert_eq!(disguised_chat.kind, bbb_world::ChatMessageKind::Disguised);
@@ -1207,7 +1198,32 @@ fn client_chat_events_update_world_and_world_counters() {
     assert_eq!(world_counters.deleted_chat_messages_tracked, 1);
     assert_eq!(world_counters.chat_signature_cache_entries, 1);
     assert_eq!(world_counters.player_chat_unsigned_content_packets, 1);
-    assert_eq!(world_counters.player_chat_filtered_packets, 1);
+    assert_eq!(world_counters.player_chat_filtered_packets, 0);
+}
+
+#[test]
+fn unresolved_delete_chat_queues_disconnect_command() {
+    let (event_tx, mut event_rx) = mpsc::channel(1);
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+    event_tx
+        .try_send(NetEvent::Play(PlayClientbound::DeleteChat(DeleteChat {
+            message_signature: PackedMessageSignature {
+                cache_id: Some(0),
+                full_signature: None,
+            },
+        })))
+        .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut event_rx, &mut world, &mut counters, &Some(command_tx),),
+        1
+    );
+
+    assert_eq!(command_rx.try_recv().unwrap(), NetCommand::Disconnect);
+    assert!(world.client_chat().deleted_messages.is_empty());
+    assert_eq!(world.counters().chat_unknown_packed_signatures, 1);
 }
 
 #[test]

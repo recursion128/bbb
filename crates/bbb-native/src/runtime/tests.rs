@@ -995,6 +995,24 @@ fn hud_text_timers_tick_before_projection_like_gui_tick() {
 }
 
 #[test]
+fn chat_deletion_timer_uses_raw_gui_ticks() {
+    // Vanilla `Minecraft.tick` advances `Gui.tick` even while the level tick
+    // rate is frozen. Deleted-chat replacement therefore follows raw client
+    // ticks beside the other GUI timers, not running level ticks.
+    let source = include_str!("../runtime.rs");
+    let running_tick = source
+        .find("world.advance_client_time(running_ticks);")
+        .expect("pump should tick the level clock with running ticks");
+    let hud_tick = source
+        .find("world.advance_hud_text_ticks(advanced_ticks);")
+        .expect("pump should tick GUI text with raw ticks");
+    let chat_tick = source
+        .find("world.advance_chat_gui_ticks(advanced_ticks);")
+        .expect("pump should tick deleted-chat replacement with raw ticks");
+    assert!(running_tick < hud_tick && hud_tick < chat_tick);
+}
+
+#[test]
 fn camera_fov_tick_state_eases_player_abilities_modifier_like_vanilla() {
     let mut world = world_with_dimension(0, "minecraft:overworld");
     world.apply_player_abilities(bbb_protocol::packets::PlayerAbilities {

@@ -2,13 +2,15 @@ use bbb_protocol::{
     packets::{
         ChatAcknowledgement as ProtocolChatAcknowledgement,
         ChatTypeHolder as ProtocolChatTypeHolder, DeleteChat as ProtocolDeleteChat,
-        DisguisedChat as ProtocolDisguisedChat, FilterMaskKind as ProtocolFilterMaskKind,
-        LastSeenMessagesUpdate, MessageSignature as ProtocolMessageSignature,
-        PackedMessageSignature, PlayerChat,
+        DisguisedChat as ProtocolDisguisedChat, FilterMask as ProtocolFilterMask,
+        FilterMaskKind as ProtocolFilterMaskKind, LastSeenMessagesUpdate,
+        MessageSignature as ProtocolMessageSignature, PackedMessageSignature, PlayerChat,
     },
     ComponentStyle, NbtSummaryValue, StyledTextRun,
 };
+use rsa::{pkcs8::DecodePublicKey, Pkcs1v15Sign, RsaPublicKey};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
@@ -21,11 +23,17 @@ use crate::{
 const SIGNATURE_CACHE_CAPACITY: usize = 128;
 const LAST_SEEN_MESSAGES_TRACKER_CAPACITY: usize = 20;
 const CHAT_ACKNOWLEDGEMENT_OFFSET_THRESHOLD: i32 = 64;
+const PROFILE_PUBLIC_KEY_EXPIRY_GRACE_MILLIS: i64 = 8 * 60 * 60 * 1_000;
+const CHAT_DELETION_DELAY_TICKS: u64 = 60;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientChatState {
     pub messages: Vec<ChatMessageState>,
+    #[serde(default)]
+    pub delayed_messages: Vec<ChatMessageState>,
     pub deleted_messages: Vec<DeletedChatState>,
+    #[serde(default)]
+    pub gui_ticks: u64,
     pub expected_player_chat_global_index: i32,
     pub signature_cache: Vec<Option<ChatSignatureState>>,
     #[serde(default)]
@@ -38,7 +46,9 @@ impl Default for ClientChatState {
     fn default() -> Self {
         Self {
             messages: Vec::new(),
+            delayed_messages: Vec::new(),
             deleted_messages: Vec::new(),
+            gui_ticks: 0,
             expected_player_chat_global_index: 0,
             signature_cache: vec![None; SIGNATURE_CACHE_CAPACITY],
             acknowledgement: ChatAcknowledgementState::default(),
@@ -71,6 +81,10 @@ pub struct ChatMessageState {
     pub unsigned_content: Option<String>,
     pub filter_mask: String,
     pub validation_state: ChatValidationState,
+    #[serde(default)]
+    pub added_tick: u64,
+    #[serde(skip)]
+    pub(crate) full_signature: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -125,6 +139,8 @@ pub struct ChatDecorationArgumentState {
 pub struct ChatSignatureState {
     pub checksum: i32,
     pub bytes_len: usize,
+    #[serde(skip)]
+    pub(crate) bytes: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -171,27 +187,96 @@ pub struct DeletedChatState {
     pub signature: Option<ChatSignatureState>,
     pub cache_id: Option<i32>,
     pub resolved: bool,
+    #[serde(default)]
+    pub requested_tick: u64,
+    #[serde(default)]
+    pub deletable_after_tick: Option<u64>,
+    #[serde(default)]
+    pub visible_replaced: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ChatValidationState {
     Unchecked,
+    Validated,
     Unsigned,
     UnknownSender,
+    MissingProfileKey,
     UnknownCachedSignature,
+    ExpiredProfileKey,
+    InvalidSignature,
     OutOfOrder,
+    ChainBroken,
 }
 
 impl ChatValidationState {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Unchecked => "unchecked",
+            Self::Validated => "validated",
             Self::Unsigned => "unsigned",
             Self::UnknownSender => "unknown_sender",
+            Self::MissingProfileKey => "missing_profile_key",
             Self::UnknownCachedSignature => "unknown_cached_signature",
+            Self::ExpiredProfileKey => "expired_profile_key",
+            Self::InvalidSignature => "invalid_signature",
             Self::OutOfOrder => "out_of_order",
+            Self::ChainBroken => "chain_broken",
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChatDisconnectReason {
+    BadGlobalIndex,
+    InvalidPackedSignature,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RemoteChatSessionState {
+    session_id: Uuid,
+    expires_at_epoch_millis: i64,
+    public_key_der: Vec<u8>,
+    chain_valid: bool,
+    last_message: Option<ValidatedRemoteChatMessageState>,
+}
+
+impl RemoteChatSessionState {
+    pub(crate) fn new(
+        session_id: Uuid,
+        expires_at_epoch_millis: i64,
+        public_key_der: Vec<u8>,
+    ) -> Self {
+        Self {
+            session_id,
+            expires_at_epoch_millis,
+            public_key_der,
+            chain_valid: true,
+            last_message: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ValidatedRemoteChatMessageState {
+    index: i32,
+    sender: Uuid,
+    session_id: Uuid,
+    signature: Vec<u8>,
+    content: String,
+    timestamp_millis: i64,
+    salt: i64,
+    last_seen: Vec<Vec<u8>>,
+    unsigned_content: Option<String>,
+    unsigned_content_styled: Option<Vec<StyledTextRun>>,
+    unsigned_content_component: Option<NbtSummaryValue>,
+    filter_mask: ProtocolFilterMask,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct PlayerChatApplyOutcome {
+    pub(crate) acknowledgement: Option<ProtocolChatAcknowledgement>,
+    pub(crate) disconnect: Option<ChatDisconnectReason>,
 }
 
 impl WorldStore {
@@ -203,6 +288,7 @@ impl WorldStore {
 
     pub fn clear_client_chat_display_messages(&mut self) {
         self.client_chat.messages.clear();
+        self.client_chat.delayed_messages.clear();
         self.client_chat.deleted_messages.clear();
         refresh_chat_counters(self);
     }
@@ -282,104 +368,157 @@ impl WorldStore {
             unsigned_content: None,
             filter_mask: ProtocolFilterMaskKind::PassThrough.as_str().to_string(),
             validation_state: ChatValidationState::Unsigned,
+            added_tick: self.client_chat.gui_ticks,
+            full_signature: None,
         });
         refresh_chat_counters(self);
     }
 
     pub fn apply_player_chat(&mut self, packet: PlayerChat) -> Option<ProtocolChatAcknowledgement> {
+        self.apply_player_chat_at(packet, i64::MIN).acknowledgement
+    }
+
+    pub(crate) fn apply_player_chat_at(
+        &mut self,
+        packet: PlayerChat,
+        now_epoch_millis: i64,
+    ) -> PlayerChatApplyOutcome {
         let resolved_chat_type =
             resolve_chat_type(self.frozen_registry_access(), &packet.chat_type.chat_type);
         self.counters.player_chat_packets += 1;
-        let mut validation_state = if packet.signature.is_some() {
-            ChatValidationState::Unchecked
-        } else {
-            ChatValidationState::Unsigned
-        };
 
         let expected_global_index = self.client_chat.expected_player_chat_global_index;
         self.client_chat.expected_player_chat_global_index = self
             .client_chat
             .expected_player_chat_global_index
-            .saturating_add(1);
-        let index_matches = packet.global_index == expected_global_index;
-        if !index_matches {
+            .wrapping_add(1);
+        if packet.global_index != expected_global_index {
             self.counters.player_chat_index_mismatches += 1;
-            validation_state = ChatValidationState::OutOfOrder;
+            refresh_chat_counters(self);
+            return PlayerChatApplyOutcome {
+                disconnect: Some(ChatDisconnectReason::BadGlobalIndex),
+                ..PlayerChatApplyOutcome::default()
+            };
         }
 
-        if index_matches {
-            let mut resolved_last_seen = Vec::with_capacity(packet.body.last_seen.len());
-            let mut unknown_cached_signature = false;
-            let cache_snapshot = self.client_chat.signature_cache.clone();
-            for packed in &packet.body.last_seen {
-                match resolve_packed_signature(&cache_snapshot, packed) {
-                    Some(signature) => resolved_last_seen.push(signature),
-                    None => {
-                        unknown_cached_signature = true;
-                        self.counters.chat_unknown_packed_signatures += 1;
-                    }
-                }
-            }
-            if unknown_cached_signature {
-                validation_state = ChatValidationState::UnknownCachedSignature;
-            } else {
-                let own_signature = packet.signature.as_ref().map(chat_signature_state);
-                push_signature_cache(
-                    &mut self.client_chat.signature_cache,
-                    resolved_last_seen,
-                    own_signature.clone(),
-                );
-            }
+        let mut resolved_last_seen = Vec::with_capacity(packet.body.last_seen.len());
+        let cache_snapshot = self.client_chat.signature_cache.clone();
+        for packed in &packet.body.last_seen {
+            let Some(signature) = resolve_packed_signature(&cache_snapshot, packed) else {
+                self.counters.chat_unknown_packed_signatures += 1;
+                refresh_chat_counters(self);
+                return PlayerChatApplyOutcome {
+                    disconnect: Some(ChatDisconnectReason::InvalidPackedSignature),
+                    ..PlayerChatApplyOutcome::default()
+                };
+            };
+            resolved_last_seen.push(signature);
         }
+        let own_signature = packet.signature.as_ref().map(chat_signature_state);
+        push_signature_cache(
+            &mut self.client_chat.signature_cache,
+            resolved_last_seen.clone(),
+            own_signature,
+        );
+
+        let enforces_secure_chat = self.effectively_enforces_secure_chat();
+        let validation_state = match self.player_info.entries.get_mut(&packet.sender) {
+            None => ChatValidationState::UnknownSender,
+            Some(sender) => match sender.chat_session.as_mut() {
+                Some(session) => validate_remote_player_chat(
+                    session,
+                    &packet,
+                    &resolved_last_seen,
+                    now_epoch_millis,
+                ),
+                None if enforces_secure_chat => ChatValidationState::MissingProfileKey,
+                None => ChatValidationState::Unsigned,
+            },
+        };
+        let validation_error = matches!(
+            validation_state,
+            ChatValidationState::UnknownSender
+                | ChatValidationState::MissingProfileKey
+                | ChatValidationState::ExpiredProfileKey
+                | ChatValidationState::InvalidSignature
+                | ChatValidationState::OutOfOrder
+                | ChatValidationState::ChainBroken
+        );
 
         if packet.unsigned_content.is_some() {
             self.counters.player_chat_unsigned_content_packets += 1;
         }
-        let was_shown = packet.filter_mask.kind != ProtocolFilterMaskKind::FullyFiltered;
-        let acknowledgement = packet.signature.as_ref().and_then(|signature| {
-            self.record_processed_player_chat_signature(signature, was_shown)
-        });
+        let was_shown =
+            !validation_error && packet.filter_mask.kind != ProtocolFilterMaskKind::FullyFiltered;
+        let acknowledgement = if validation_state == ChatValidationState::Unsigned {
+            None
+        } else {
+            packet.signature.as_ref().and_then(|signature| {
+                self.record_processed_player_chat_signature(signature, was_shown)
+            })
+        };
         match packet.filter_mask.kind {
-            ProtocolFilterMaskKind::FullyFiltered => {
+            ProtocolFilterMaskKind::FullyFiltered if !validation_error => {
                 self.counters.player_chat_fully_filtered_packets += 1;
             }
-            ProtocolFilterMaskKind::PartiallyFiltered => {
+            ProtocolFilterMaskKind::PartiallyFiltered if !validation_error => {
                 self.counters.player_chat_filtered_packets += 1;
             }
-            ProtocolFilterMaskKind::PassThrough => {}
+            ProtocolFilterMaskKind::PassThrough
+            | ProtocolFilterMaskKind::PartiallyFiltered
+            | ProtocolFilterMaskKind::FullyFiltered => {}
         }
 
-        let (styled_content, content_component) = packet
-            .unsigned_content
-            .as_ref()
-            .map(|unsigned| {
-                (
-                    nonempty_styled_or_plain(
-                        packet
-                            .unsigned_content_styled
-                            .as_deref()
-                            .unwrap_or_default(),
-                        unsigned,
-                    ),
-                    packet
-                        .unsigned_content_component
-                        .clone()
-                        .or_else(|| Some(NbtSummaryValue::String(unsigned.clone()))),
-                )
-            })
-            .unwrap_or_else(|| {
-                (
-                    plain_chat_styled_content(&packet.body.content),
-                    Some(NbtSummaryValue::String(packet.body.content.clone())),
-                )
-            });
-        let (chat_type, decoration, narration_decoration) = resolved_chat_state(
-            resolved_chat_type,
-            &packet.chat_type,
+        let displayed_content = if validation_error {
+            "chat.validation_error"
+        } else {
             packet
                 .unsigned_content
                 .as_deref()
-                .unwrap_or(&packet.body.content),
+                .unwrap_or(&packet.body.content)
+        };
+        let (styled_content, content_component) = if validation_error {
+            (
+                vec![StyledTextRun {
+                    text: displayed_content.to_string(),
+                    style: ComponentStyle {
+                        italic: Some(true),
+                        color: Some(0xff5555),
+                        ..ComponentStyle::default()
+                    },
+                }],
+                Some(NbtSummaryValue::String(displayed_content.to_string())),
+            )
+        } else {
+            packet
+                .unsigned_content
+                .as_ref()
+                .map(|unsigned| {
+                    (
+                        nonempty_styled_or_plain(
+                            packet
+                                .unsigned_content_styled
+                                .as_deref()
+                                .unwrap_or_default(),
+                            unsigned,
+                        ),
+                        packet
+                            .unsigned_content_component
+                            .clone()
+                            .or_else(|| Some(NbtSummaryValue::String(unsigned.clone()))),
+                    )
+                })
+                .unwrap_or_else(|| {
+                    (
+                        plain_chat_styled_content(&packet.body.content),
+                        Some(NbtSummaryValue::String(packet.body.content.clone())),
+                    )
+                })
+        };
+        let (chat_type, decoration, narration_decoration) = resolved_chat_state(
+            resolved_chat_type,
+            &packet.chat_type,
+            displayed_content,
             &styled_content,
             content_component.as_ref(),
         );
@@ -390,7 +529,11 @@ impl WorldStore {
             kind: ChatMessageKind::Player,
             styled_content,
             content_component,
-            content: packet.body.content,
+            content: if validation_error {
+                displayed_content.to_string()
+            } else {
+                packet.body.content.clone()
+            },
             content_translation_key,
             decoration,
             narration_decoration,
@@ -400,14 +543,30 @@ impl WorldStore {
             global_index: Some(packet.global_index),
             message_index: Some(packet.index),
             chat_type,
-            signature: packet.signature.as_ref().map(chat_signature_state),
-            unsigned_content: packet.unsigned_content,
-            filter_mask: packet.filter_mask.kind.as_str().to_string(),
+            signature: (!validation_error && validation_state == ChatValidationState::Validated)
+                .then(|| packet.signature.as_ref().map(chat_signature_state))
+                .flatten(),
+            unsigned_content: (!validation_error)
+                .then_some(packet.unsigned_content)
+                .flatten(),
+            filter_mask: if validation_error {
+                ProtocolFilterMaskKind::PassThrough.as_str().to_string()
+            } else {
+                packet.filter_mask.kind.as_str().to_string()
+            },
             validation_state,
+            added_tick: self.client_chat.gui_ticks,
+            full_signature: (!validation_error
+                && validation_state == ChatValidationState::Validated)
+                .then(|| packet.signature.map(|signature| signature.bytes))
+                .flatten(),
         };
         self.client_chat.messages.push(message);
         refresh_chat_counters(self);
-        acknowledgement
+        PlayerChatApplyOutcome {
+            acknowledgement,
+            disconnect: None,
+        }
     }
 
     pub fn apply_disguised_chat(&mut self, packet: ProtocolDisguisedChat) {
@@ -447,26 +606,86 @@ impl WorldStore {
             unsigned_content: None,
             filter_mask: ProtocolFilterMaskKind::PassThrough.as_str().to_string(),
             validation_state: ChatValidationState::Unsigned,
+            added_tick: self.client_chat.gui_ticks,
+            full_signature: None,
         });
         refresh_chat_counters(self);
     }
 
-    pub fn apply_delete_chat(&mut self, packet: ProtocolDeleteChat) {
+    pub fn apply_delete_chat(
+        &mut self,
+        packet: ProtocolDeleteChat,
+    ) -> Option<ChatDisconnectReason> {
         self.counters.delete_chat_packets += 1;
-        if let Some(signature) = packet.message_signature.full_signature.as_ref() {
-            self.ignore_pending_last_seen_message(&processed_chat_signature_state(signature));
-        }
         let signature =
             resolve_packed_signature(&self.client_chat.signature_cache, &packet.message_signature);
-        if signature.is_none() {
+        let Some(signature) = signature else {
             self.counters.chat_unknown_packed_signatures += 1;
-        }
-        let resolved = signature.is_some();
-        self.client_chat.deleted_messages.push(DeletedChatState {
-            signature,
-            cache_id: packet.message_signature.cache_id,
-            resolved,
+            refresh_chat_counters(self);
+            return Some(ChatDisconnectReason::InvalidPackedSignature);
+        };
+        self.ignore_pending_last_seen_message(&ProcessedChatSignatureState {
+            checksum: signature.checksum,
+            bytes: signature.bytes.clone(),
         });
+
+        let delayed_len = self.client_chat.delayed_messages.len();
+        self.client_chat
+            .delayed_messages
+            .retain(|message| message.full_signature.as_deref() != Some(&signature.bytes));
+        let removed_delayed = self.client_chat.delayed_messages.len() != delayed_len;
+        let (visible_replaced, deletable_after_tick) = if removed_delayed {
+            (false, None)
+        } else {
+            replace_visible_chat_message_or_delay(
+                &mut self.client_chat.messages,
+                &signature.bytes,
+                self.client_chat.gui_ticks,
+            )
+        };
+        self.client_chat.deleted_messages.push(DeletedChatState {
+            signature: Some(signature),
+            cache_id: packet.message_signature.cache_id,
+            resolved: true,
+            requested_tick: self.client_chat.gui_ticks,
+            deletable_after_tick,
+            visible_replaced,
+        });
+        refresh_chat_counters(self);
+        None
+    }
+
+    pub fn advance_chat_gui_ticks(&mut self, ticks: u32) {
+        self.client_chat.gui_ticks = self.client_chat.gui_ticks.saturating_add(u64::from(ticks));
+        let now = self.client_chat.gui_ticks;
+        let due: Vec<_> = self
+            .client_chat
+            .deleted_messages
+            .iter()
+            .enumerate()
+            .filter_map(|(index, deletion)| {
+                deletion
+                    .deletable_after_tick
+                    .is_some_and(|deadline| now >= deadline)
+                    .then(|| {
+                        deletion
+                            .signature
+                            .as_ref()
+                            .map(|signature| (index, signature.bytes.clone()))
+                    })
+                    .flatten()
+            })
+            .collect();
+        for (index, signature) in due {
+            let (replaced, next_deadline) = replace_visible_chat_message_or_delay(
+                &mut self.client_chat.messages,
+                &signature,
+                now,
+            );
+            let deletion = &mut self.client_chat.deleted_messages[index];
+            deletion.visible_replaced |= replaced;
+            deletion.deletable_after_tick = next_deadline;
+        }
         refresh_chat_counters(self);
     }
 
@@ -544,6 +763,7 @@ impl WorldStore {
             .as_ref()
             == Some(&processed_signature)
         {
+            refresh_chat_counters(self);
             return None;
         }
 
@@ -555,14 +775,18 @@ impl WorldStore {
             .pending_offset
             .saturating_add(1);
 
-        if self.client_chat.acknowledgement.pending_offset > CHAT_ACKNOWLEDGEMENT_OFFSET_THRESHOLD {
+        let acknowledgement = if self.client_chat.acknowledgement.pending_offset
+            > CHAT_ACKNOWLEDGEMENT_OFFSET_THRESHOLD
+        {
             let offset = self.client_chat.acknowledgement.pending_offset;
             self.client_chat.acknowledgement.pending_offset = 0;
             self.counters.player_chat_acknowledgement_packets += 1;
             Some(ProtocolChatAcknowledgement { offset })
         } else {
             None
-        }
+        };
+        refresh_chat_counters(self);
+        acknowledgement
     }
 
     fn add_last_seen_tracked_message(
@@ -620,6 +844,152 @@ fn resolve_packed_signature(
     cache.get(id)?.clone()
 }
 
+fn validate_remote_player_chat(
+    session: &mut RemoteChatSessionState,
+    packet: &PlayerChat,
+    last_seen: &[ChatSignatureState],
+    now_epoch_millis: i64,
+) -> ChatValidationState {
+    if !session.chain_valid {
+        return ChatValidationState::ChainBroken;
+    }
+    if session
+        .expires_at_epoch_millis
+        .saturating_add(PROFILE_PUBLIC_KEY_EXPIRY_GRACE_MILLIS)
+        < now_epoch_millis
+    {
+        session.chain_valid = false;
+        return ChatValidationState::ExpiredProfileKey;
+    }
+    let Some(signature) = packet.signature.as_ref() else {
+        session.chain_valid = false;
+        return ChatValidationState::InvalidSignature;
+    };
+    let candidate = ValidatedRemoteChatMessageState {
+        index: packet.index,
+        sender: packet.sender,
+        session_id: session.session_id,
+        signature: signature.bytes.clone(),
+        content: packet.body.content.clone(),
+        timestamp_millis: packet.body.timestamp_millis,
+        salt: packet.body.salt,
+        last_seen: last_seen
+            .iter()
+            .map(|signature| signature.bytes.clone())
+            .collect(),
+        unsigned_content: packet.unsigned_content.clone(),
+        unsigned_content_styled: packet.unsigned_content_styled.clone(),
+        unsigned_content_component: packet.unsigned_content_component.clone(),
+        filter_mask: packet.filter_mask.clone(),
+    };
+    if !remote_message_signature_is_valid(session, &candidate) {
+        session.chain_valid = false;
+        return ChatValidationState::InvalidSignature;
+    }
+    if session.last_message.as_ref() == Some(&candidate) {
+        return ChatValidationState::Validated;
+    }
+    if session.last_message.as_ref().is_some_and(|last| {
+        candidate.index <= last.index
+            || candidate.sender != last.sender
+            || candidate.session_id != last.session_id
+    }) {
+        session.chain_valid = false;
+        return ChatValidationState::OutOfOrder;
+    }
+    session.last_message = Some(candidate);
+    ChatValidationState::Validated
+}
+
+fn remote_message_signature_is_valid(
+    session: &RemoteChatSessionState,
+    message: &ValidatedRemoteChatMessageState,
+) -> bool {
+    let Ok(key) = RsaPublicKey::from_public_key_der(&session.public_key_der) else {
+        return false;
+    };
+    let mut payload = Vec::new();
+    payload.extend_from_slice(&1_i32.to_be_bytes());
+    payload.extend_from_slice(message.sender.as_bytes());
+    payload.extend_from_slice(message.session_id.as_bytes());
+    payload.extend_from_slice(&message.index.to_be_bytes());
+    payload.extend_from_slice(&message.salt.to_be_bytes());
+    payload.extend_from_slice(&message.timestamp_millis.div_euclid(1_000).to_be_bytes());
+    let Ok(content_len) = i32::try_from(message.content.len()) else {
+        return false;
+    };
+    payload.extend_from_slice(&content_len.to_be_bytes());
+    payload.extend_from_slice(message.content.as_bytes());
+    let Ok(last_seen_len) = i32::try_from(message.last_seen.len()) else {
+        return false;
+    };
+    payload.extend_from_slice(&last_seen_len.to_be_bytes());
+    for signature in &message.last_seen {
+        payload.extend_from_slice(signature);
+    }
+    let digest = Sha256::digest(payload);
+    key.verify(Pkcs1v15Sign::new::<Sha256>(), &digest, &message.signature)
+        .is_ok()
+}
+
+fn replace_visible_chat_message_or_delay(
+    messages: &mut [ChatMessageState],
+    signature: &[u8],
+    now: u64,
+) -> (bool, Option<u64>) {
+    let Some(message) = messages
+        .iter_mut()
+        .rev()
+        .find(|message| message.full_signature.as_deref() == Some(signature))
+    else {
+        return (false, None);
+    };
+    let deletable_after = message.added_tick.saturating_add(CHAT_DELETION_DELAY_TICKS);
+    if now < deletable_after {
+        return (false, Some(deletable_after));
+    }
+    let added_tick = message.added_tick;
+    *message = deleted_chat_marker(added_tick);
+    (true, None)
+}
+
+fn deleted_chat_marker(added_tick: u64) -> ChatMessageState {
+    ChatMessageState {
+        kind: ChatMessageKind::System,
+        content: "chat.deleted_marker".to_string(),
+        content_translation_key: Some("chat.deleted_marker".to_string()),
+        styled_content: vec![StyledTextRun {
+            text: "chat.deleted_marker".to_string(),
+            style: ComponentStyle {
+                italic: Some(true),
+                color: Some(0xaaaaaa),
+                ..ComponentStyle::default()
+            },
+        }],
+        content_component: Some(NbtSummaryValue::String("chat.deleted_marker".to_string())),
+        decoration: None,
+        narration_decoration: None,
+        sender: None,
+        sender_name: String::new(),
+        target_name: None,
+        global_index: None,
+        message_index: None,
+        chat_type: ChatTypeState {
+            registry_id: None,
+            resource_id: None,
+            source: None,
+            direct_translation_key: None,
+            resolution_error: None,
+        },
+        signature: None,
+        unsigned_content: None,
+        filter_mask: ProtocolFilterMaskKind::PassThrough.as_str().to_string(),
+        validation_state: ChatValidationState::Unsigned,
+        added_tick,
+        full_signature: None,
+    }
+}
+
 fn push_signature_cache(
     cache: &mut [Option<ChatSignatureState>],
     last_seen: Vec<ChatSignatureState>,
@@ -647,6 +1017,7 @@ fn chat_signature_state(signature: &ProtocolMessageSignature) -> ChatSignatureSt
     ChatSignatureState {
         checksum: signature.checksum(),
         bytes_len: signature.bytes.len(),
+        bytes: signature.bytes.clone(),
     }
 }
 
@@ -812,18 +1183,24 @@ fn refresh_chat_counters(store: &mut WorldStore) {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::OnceLock;
+
     use super::*;
     use crate::CHAT_TYPE_REGISTRY;
     use bbb_protocol::packets::{
         ChatTypeBound, ChatTypeDecorationSummary, ChatTypeHolder, CommonPlayerSpawnInfo,
-        FilterMask, FilterMaskKind, MessageSignature, PackedMessageSignature, PlayLogin,
+        FilterMask, FilterMaskKind, GameProfile, GameType, MessageSignature,
+        PackedMessageSignature, PlayLogin, PlayerInfoAction, PlayerInfoEntry, PlayerInfoUpdate,
         RegistryData, RegistryDataEntry, SignedMessageBody,
     };
+    use rand::{rngs::StdRng, SeedableRng};
+    use rsa::{pkcs8::EncodePublicKey, RsaPrivateKey, RsaPublicKey};
 
     #[test]
     fn player_chat_tracks_message_and_signature_cache() {
         let mut store = WorldStore::new();
         let sender = Uuid::from_u128(1);
+        add_player_without_session(&mut store, sender);
 
         let acknowledgement = store.apply_player_chat(PlayerChat {
             global_index: 0,
@@ -876,15 +1253,15 @@ mod tests {
         assert_eq!(decoration.arguments[1].summary, "unsigned");
         assert_eq!(message.sender, Some(sender));
         assert_eq!(message.sender_name, "Alice");
-        assert_eq!(message.validation_state, ChatValidationState::Unchecked);
-        assert!(message.signature.is_some());
+        assert_eq!(message.validation_state, ChatValidationState::Unsigned);
+        assert!(message.signature.is_none());
         assert_eq!(store.counters().player_chat_packets, 1);
         assert_eq!(store.counters().player_chat_unsigned_content_packets, 1);
         assert_eq!(store.counters().player_chat_filtered_packets, 1);
         assert_eq!(store.counters().chat_signature_cache_entries, 1);
         assert_eq!(
             store.counters().player_chat_acknowledgement_pending_offset,
-            1
+            0
         );
     }
 
@@ -895,14 +1272,14 @@ mod tests {
 
         for index in 0..65 {
             acknowledgement =
-                store.apply_player_chat(player_chat_with_signature(index, signature(index as u8)));
+                store.record_processed_player_chat_signature(&signature(index as u8), true);
         }
 
         assert_eq!(
             acknowledgement,
             Some(ProtocolChatAcknowledgement { offset: 65 })
         );
-        assert_eq!(store.counters().player_chat_packets, 65);
+        assert_eq!(store.counters().player_chat_packets, 0);
         assert_eq!(store.counters().player_chat_acknowledgement_packets, 1);
         assert_eq!(
             store.counters().player_chat_acknowledgement_pending_offset,
@@ -917,15 +1294,15 @@ mod tests {
         let duplicate = signature(7);
 
         assert_eq!(
-            store.apply_player_chat(player_chat_with_signature(0, duplicate.clone())),
+            store.record_processed_player_chat_signature(&duplicate, true),
             None
         );
         assert_eq!(
-            store.apply_player_chat(player_chat_with_signature(1, duplicate.clone())),
+            store.record_processed_player_chat_signature(&duplicate, true),
             None
         );
 
-        assert_eq!(store.counters().player_chat_packets, 2);
+        assert_eq!(store.counters().player_chat_packets, 0);
         assert_eq!(
             store.counters().player_chat_acknowledgement_pending_offset,
             1
@@ -945,7 +1322,7 @@ mod tests {
     fn take_pending_player_chat_acknowledgement_drains_below_threshold_offset() {
         let mut store = WorldStore::new();
         assert_eq!(
-            store.apply_player_chat(player_chat_with_signature(0, signature(11))),
+            store.record_processed_player_chat_signature(&signature(11), true),
             None
         );
 
@@ -967,7 +1344,7 @@ mod tests {
         let mut store = WorldStore::new();
         let seen = signature(12);
         assert_eq!(
-            store.apply_player_chat(player_chat_with_signature(0, seen.clone())),
+            store.record_processed_player_chat_signature(&seen, true),
             None
         );
 
@@ -1002,11 +1379,7 @@ mod tests {
     fn outbound_chat_last_seen_update_offsets_fully_filtered_messages_without_ack_bit() {
         let mut store = WorldStore::new();
         assert_eq!(
-            store.apply_player_chat(player_chat_with_signature_and_filter(
-                0,
-                signature(13),
-                FilterMaskKind::FullyFiltered,
-            )),
+            store.record_processed_player_chat_signature(&signature(13), false),
             None
         );
 
@@ -1030,7 +1403,7 @@ mod tests {
         let mut store = WorldStore::new();
         let deleted = signature(14);
         assert_eq!(
-            store.apply_player_chat(player_chat_with_signature(0, deleted.clone())),
+            store.record_processed_player_chat_signature(&deleted, true),
             None
         );
 
@@ -1064,7 +1437,7 @@ mod tests {
                     .wrapping_add(seen.checksum());
             }
             assert_eq!(
-                store.apply_player_chat(player_chat_with_signature(index, seen)),
+                store.record_processed_player_chat_signature(&seen, true),
                 None
             );
         }
@@ -1133,39 +1506,43 @@ mod tests {
     }
 
     #[test]
-    fn player_chat_out_of_order_is_counted() {
+    fn player_chat_bad_global_index_requests_disconnect_without_presentation() {
         let mut store = WorldStore::new();
-        let _ = store.apply_player_chat(PlayerChat {
-            global_index: 3,
-            sender: Uuid::from_u128(1),
-            index: 0,
-            signature: None,
-            body: SignedMessageBody {
-                content: "late".to_string(),
-                timestamp_millis: 1,
-                salt: 2,
-                last_seen: Vec::new(),
+        let outcome = store.apply_player_chat_at(
+            PlayerChat {
+                global_index: 3,
+                sender: Uuid::from_u128(1),
+                index: 0,
+                signature: None,
+                body: SignedMessageBody {
+                    content: "late".to_string(),
+                    timestamp_millis: 1,
+                    salt: 2,
+                    last_seen: Vec::new(),
+                },
+                unsigned_content: None,
+                unsigned_content_styled: None,
+                unsigned_content_component: None,
+                filter_mask: FilterMask {
+                    kind: FilterMaskKind::PassThrough,
+                    mask_words: Vec::new(),
+                },
+                chat_type: chat_type("Alice"),
             },
-            unsigned_content: None,
-            unsigned_content_styled: None,
-            unsigned_content_component: None,
-            filter_mask: FilterMask {
-                kind: FilterMaskKind::PassThrough,
-                mask_words: Vec::new(),
-            },
-            chat_type: chat_type("Alice"),
-        });
+            1,
+        );
 
         assert_eq!(store.counters().player_chat_index_mismatches, 1);
         assert_eq!(
-            store
-                .client_chat()
-                .messages
-                .last()
-                .unwrap()
-                .validation_state,
-            ChatValidationState::OutOfOrder
+            outcome.disconnect,
+            Some(ChatDisconnectReason::BadGlobalIndex)
         );
+        assert!(store.client_chat().messages.is_empty());
+        assert!(store
+            .client_chat()
+            .signature_cache
+            .iter()
+            .all(Option::is_none));
     }
 
     #[test]
@@ -1466,34 +1843,16 @@ mod tests {
     #[test]
     fn clear_client_chat_display_messages_preserves_signature_state() {
         let mut store = WorldStore::new();
-        let _ = store.apply_player_chat(PlayerChat {
-            global_index: 0,
-            sender: Uuid::from_u128(1),
-            index: 0,
-            signature: Some(signature(9)),
-            body: SignedMessageBody {
-                content: "hello".to_string(),
-                timestamp_millis: 1,
-                salt: 2,
-                last_seen: Vec::new(),
-            },
-            unsigned_content: None,
-            unsigned_content_styled: None,
-            unsigned_content_component: None,
-            filter_mask: FilterMask {
-                kind: FilterMaskKind::PassThrough,
-                mask_words: Vec::new(),
-            },
-            chat_type: chat_type("Alice"),
-        });
-        store.apply_delete_chat(ProtocolDeleteChat {
-            message_signature: PackedMessageSignature {
-                cache_id: Some(0),
-                full_signature: None,
-            },
-        });
+        let seen = signature(9);
+        store.push_client_system_chat_message("hello");
+        push_signature_cache(
+            &mut store.client_chat.signature_cache,
+            Vec::new(),
+            Some(chat_signature_state(&seen)),
+        );
+        let _ = store.record_processed_player_chat_signature(&seen, true);
         assert_eq!(store.client_chat().messages.len(), 1);
-        assert_eq!(store.client_chat().deleted_messages.len(), 1);
+        assert!(store.client_chat().deleted_messages.is_empty());
         assert!(store
             .client_chat()
             .signature_cache
@@ -1511,7 +1870,7 @@ mod tests {
 
         assert!(store.client_chat().messages.is_empty());
         assert!(store.client_chat().deleted_messages.is_empty());
-        assert_eq!(store.client_chat().expected_player_chat_global_index, 1);
+        assert_eq!(store.client_chat().expected_player_chat_global_index, 0);
         assert!(store
             .client_chat()
             .signature_cache
@@ -1525,8 +1884,8 @@ mod tests {
             .any(Option::is_some));
         assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
         assert_eq!(store.counters().reset_chat_packets, 0);
-        assert_eq!(store.counters().player_chat_packets, 1);
-        assert_eq!(store.counters().delete_chat_packets, 1);
+        assert_eq!(store.counters().player_chat_packets, 0);
+        assert_eq!(store.counters().delete_chat_packets, 0);
         assert_eq!(store.counters().chat_messages_tracked, 0);
         assert_eq!(store.counters().deleted_chat_messages_tracked, 0);
         assert_eq!(store.counters().chat_signature_cache_entries, 1);
@@ -1585,9 +1944,347 @@ mod tests {
         );
     }
 
+    #[test]
+    fn remote_session_validates_signature_link_order_and_vanilla_timestamp_behavior() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(41);
+        let session_id = Uuid::from_u128(42);
+        let private_key = install_remote_sender(&mut store, sender, session_id, 10_000);
+
+        let first = signed_player_chat(&private_key, sender, session_id, 0, 0, 2_000, "first");
+        let first_outcome = store.apply_player_chat_at(first, 1);
+        assert_eq!(first_outcome.disconnect, None);
+        assert_eq!(
+            store.client_chat().messages[0].validation_state,
+            ChatValidationState::Validated
+        );
+
+        // 26.1 `SignedMessageValidator.KeyBased` requires a descendant link,
+        // but it permits skipped indices and does not reject an older body
+        // timestamp. Timestamp age is diagnostic-only in this client path.
+        let second = signed_player_chat(&private_key, sender, session_id, 1, 2, 1_000, "second");
+        let second_outcome = store.apply_player_chat_at(second.clone(), 1);
+        assert_eq!(second_outcome.disconnect, None);
+        assert_eq!(
+            store.client_chat().messages[1].validation_state,
+            ChatValidationState::Validated
+        );
+
+        let mut duplicate = second;
+        duplicate.global_index = 2;
+        let duplicate_outcome = store.apply_player_chat_at(duplicate, 1);
+        assert_eq!(duplicate_outcome.disconnect, None);
+        assert_eq!(
+            store.client_chat().messages[2].validation_state,
+            ChatValidationState::Validated
+        );
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 2);
+    }
+
+    #[test]
+    fn invalid_remote_signature_breaks_chain_until_session_replacement() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(43);
+        let session_id = Uuid::from_u128(44);
+        let private_key = install_remote_sender(&mut store, sender, session_id, 10_000);
+        let mut invalid =
+            signed_player_chat(&private_key, sender, session_id, 0, 0, 1_000, "invalid");
+        invalid.signature.as_mut().unwrap().bytes[0] ^= 0xff;
+
+        let invalid_outcome = store.apply_player_chat_at(invalid, 1);
+        assert_eq!(invalid_outcome.disconnect, None);
+        assert_eq!(
+            store.client_chat().messages[0].validation_state,
+            ChatValidationState::InvalidSignature
+        );
+        assert_eq!(
+            store.client_chat().messages[0].content,
+            "chat.validation_error"
+        );
+
+        let valid = signed_player_chat(
+            &private_key,
+            sender,
+            session_id,
+            1,
+            1,
+            2_000,
+            "cannot resume",
+        );
+        let chained_outcome = store.apply_player_chat_at(valid, 1);
+        assert_eq!(chained_outcome.disconnect, None);
+        assert_eq!(
+            store.client_chat().messages[1].validation_state,
+            ChatValidationState::ChainBroken
+        );
+    }
+
+    #[test]
+    fn remote_key_expiry_uses_vanilla_eight_hour_grace() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(45);
+        let session_id = Uuid::from_u128(46);
+        let private_key = install_remote_sender(&mut store, sender, session_id, 100);
+        let packet = signed_player_chat(&private_key, sender, session_id, 0, 0, 1, "grace");
+
+        let within_grace =
+            store.apply_player_chat_at(packet, 100 + PROFILE_PUBLIC_KEY_EXPIRY_GRACE_MILLIS);
+        assert_eq!(within_grace.disconnect, None);
+        assert_eq!(
+            store.client_chat().messages[0].validation_state,
+            ChatValidationState::Validated
+        );
+
+        let replacement_key = install_remote_sender(&mut store, sender, session_id, 100);
+        let expired = signed_player_chat(&replacement_key, sender, session_id, 1, 0, 2, "expired");
+        let expired_outcome =
+            store.apply_player_chat_at(expired, 101 + PROFILE_PUBLIC_KEY_EXPIRY_GRACE_MILLIS);
+        assert_eq!(expired_outcome.disconnect, None);
+        assert_eq!(
+            store.client_chat().messages[1].validation_state,
+            ChatValidationState::ExpiredProfileKey
+        );
+    }
+
+    #[test]
+    fn secure_chat_without_remote_session_presents_error_and_acknowledges_hidden() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(47);
+        add_player_without_session(&mut store, sender);
+        store.services_profile_keys = vec![vec![1]];
+        store.server_enforces_secure_chat = Some(true);
+        let mut packet = player_chat_with_signature(0, signature(19));
+        packet.sender = sender;
+
+        let outcome = store.apply_player_chat_at(packet, 1);
+        assert_eq!(outcome.disconnect, None);
+        assert_eq!(
+            store.client_chat().messages[0].validation_state,
+            ChatValidationState::MissingProfileKey
+        );
+        assert_eq!(
+            store.client_chat().messages[0].content,
+            "chat.validation_error"
+        );
+        assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
+        assert!(store
+            .client_chat()
+            .last_seen_messages
+            .entries
+            .iter()
+            .all(Option::is_none));
+    }
+
+    #[test]
+    fn unknown_packed_signature_is_fatal_before_cache_or_presentation_mutation() {
+        let mut store = WorldStore::new();
+        let mut packet = player_chat_with_signature(0, signature(20));
+        packet.body.last_seen.push(PackedMessageSignature {
+            cache_id: Some(0),
+            full_signature: None,
+        });
+
+        let outcome = store.apply_player_chat_at(packet, 1);
+        assert_eq!(
+            outcome.disconnect,
+            Some(ChatDisconnectReason::InvalidPackedSignature)
+        );
+        assert!(store.client_chat().messages.is_empty());
+        assert!(store
+            .client_chat()
+            .signature_cache
+            .iter()
+            .all(Option::is_none));
+    }
+
+    #[test]
+    fn delete_chat_replaces_visible_message_on_sixtieth_gui_tick() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(48);
+        let session_id = Uuid::from_u128(49);
+        let private_key = install_remote_sender(&mut store, sender, session_id, 10_000);
+        let packet = signed_player_chat(&private_key, sender, session_id, 0, 0, 1, "delete me");
+        let signature = packet.signature.clone().unwrap();
+        let _ = store.apply_player_chat_at(packet, 1);
+
+        assert_eq!(
+            store.apply_delete_chat(ProtocolDeleteChat {
+                message_signature: PackedMessageSignature {
+                    cache_id: None,
+                    full_signature: Some(signature),
+                },
+            }),
+            None
+        );
+        assert_eq!(
+            store.client_chat().deleted_messages[0].deletable_after_tick,
+            Some(60)
+        );
+        store.advance_chat_gui_ticks(59);
+        assert_eq!(store.client_chat().messages[0].content, "delete me");
+        store.advance_chat_gui_ticks(1);
+        assert_eq!(
+            store.client_chat().messages[0]
+                .content_translation_key
+                .as_deref(),
+            Some("chat.deleted_marker")
+        );
+        assert!(store.client_chat().deleted_messages[0].visible_replaced);
+        assert_eq!(
+            store.client_chat().deleted_messages[0].deletable_after_tick,
+            None
+        );
+        assert_eq!(
+            store
+                .take_last_seen_messages_for_outbound_chat()
+                .update
+                .acknowledged,
+            0
+        );
+    }
+
+    #[test]
+    fn delete_chat_removes_delayed_message_and_cache_miss_is_fatal() {
+        let mut store = WorldStore::new();
+        let sender = Uuid::from_u128(50);
+        let session_id = Uuid::from_u128(51);
+        let private_key = install_remote_sender(&mut store, sender, session_id, 10_000);
+        let packet = signed_player_chat(&private_key, sender, session_id, 0, 0, 1, "delayed");
+        let signature = packet.signature.clone().unwrap();
+        let _ = store.apply_player_chat_at(packet, 1);
+        store
+            .client_chat
+            .delayed_messages
+            .push(store.client_chat.messages.pop().unwrap());
+
+        assert_eq!(
+            store.apply_delete_chat(ProtocolDeleteChat {
+                message_signature: PackedMessageSignature {
+                    cache_id: None,
+                    full_signature: Some(signature),
+                },
+            }),
+            None
+        );
+        assert!(store.client_chat().delayed_messages.is_empty());
+        assert_eq!(
+            store.client_chat().deleted_messages[0].deletable_after_tick,
+            None
+        );
+
+        let deleted_count = store.client_chat().deleted_messages.len();
+        assert_eq!(
+            store.apply_delete_chat(ProtocolDeleteChat {
+                message_signature: PackedMessageSignature {
+                    cache_id: Some(127),
+                    full_signature: None,
+                },
+            }),
+            Some(ChatDisconnectReason::InvalidPackedSignature)
+        );
+        assert_eq!(store.client_chat().deleted_messages.len(), deleted_count);
+    }
+
     fn signature(byte: u8) -> MessageSignature {
         MessageSignature {
             bytes: vec![byte; 256],
+        }
+    }
+
+    fn add_player_without_session(store: &mut WorldStore, sender: Uuid) {
+        let _ = store.apply_player_info_update(PlayerInfoUpdate {
+            actions: vec![PlayerInfoAction::AddPlayer],
+            entries: vec![PlayerInfoEntry {
+                profile_id: sender,
+                profile: Some(GameProfile {
+                    uuid: sender,
+                    name: "Alice".to_string(),
+                    properties: Vec::new(),
+                }),
+                listed: false,
+                latency: 0,
+                game_mode: GameType::Survival,
+                display_name: None,
+                show_hat: true,
+                list_order: 0,
+                chat_session: None,
+            }],
+        });
+    }
+
+    fn fixture_private_key() -> RsaPrivateKey {
+        static KEY: OnceLock<RsaPrivateKey> = OnceLock::new();
+        KEY.get_or_init(|| {
+            let mut random = StdRng::seed_from_u64(401);
+            RsaPrivateKey::new(&mut random, 2_048).unwrap()
+        })
+        .clone()
+    }
+
+    fn install_remote_sender(
+        store: &mut WorldStore,
+        sender: Uuid,
+        session_id: Uuid,
+        expires_at_epoch_millis: i64,
+    ) -> RsaPrivateKey {
+        add_player_without_session(store, sender);
+        let private_key = fixture_private_key();
+        let public_key_der = RsaPublicKey::from(&private_key)
+            .to_public_key_der()
+            .unwrap()
+            .as_bytes()
+            .to_vec();
+        let info = store.player_info.entries.get_mut(&sender).unwrap();
+        info.chat_session_present = true;
+        info.chat_session = Some(RemoteChatSessionState::new(
+            session_id,
+            expires_at_epoch_millis,
+            public_key_der,
+        ));
+        private_key
+    }
+
+    fn signed_player_chat(
+        private_key: &RsaPrivateKey,
+        sender: Uuid,
+        session_id: Uuid,
+        global_index: i32,
+        message_index: i32,
+        timestamp_millis: i64,
+        content: &str,
+    ) -> PlayerChat {
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&1_i32.to_be_bytes());
+        payload.extend_from_slice(sender.as_bytes());
+        payload.extend_from_slice(session_id.as_bytes());
+        payload.extend_from_slice(&message_index.to_be_bytes());
+        payload.extend_from_slice(&(message_index as i64 + 17).to_be_bytes());
+        payload.extend_from_slice(&timestamp_millis.div_euclid(1_000).to_be_bytes());
+        payload.extend_from_slice(&(content.len() as i32).to_be_bytes());
+        payload.extend_from_slice(content.as_bytes());
+        payload.extend_from_slice(&0_i32.to_be_bytes());
+        let signature = private_key
+            .sign(Pkcs1v15Sign::new::<Sha256>(), &Sha256::digest(payload))
+            .unwrap();
+        PlayerChat {
+            global_index,
+            sender,
+            index: message_index,
+            signature: Some(MessageSignature { bytes: signature }),
+            body: SignedMessageBody {
+                content: content.to_string(),
+                timestamp_millis,
+                salt: message_index as i64 + 17,
+                last_seen: Vec::new(),
+            },
+            unsigned_content: None,
+            unsigned_content_styled: None,
+            unsigned_content_component: None,
+            filter_mask: FilterMask {
+                kind: FilterMaskKind::PassThrough,
+                mask_words: Vec::new(),
+            },
+            chat_type: chat_type("Alice"),
         }
     }
 

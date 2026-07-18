@@ -19455,3 +19455,23 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   changed/unchanged key、失败保留、脱敏、reset/abort、session-update-before-signature 和 pending
   HTTP 不阻塞 packet；完整 `bbb-net` 249 项与 non-test check 通过。本 phase 在提交 tip 运行
   full gate 与 `playable-gate auto`，phase 4 才闭合 inbound remote trust 与 DeleteChat 生命周期。
+
+## 2026-07-18：签名聊天 phase 4 inbound trust and deletion closeout
+
+- [x] 对照本地 vanilla 26.1 `ClientPacketListener.handlePlayerChat/handleDeleteChat`、
+  `SignedMessageValidator.KeyBased`、`SignedMessageLink`、`MessageSignatureCache`、
+  `ChatListener` 与 `ChatComponent`，Services 验证通过的 `PlayerInfo` session 现在安装完整
+  remote validator；按精确 RSA-SHA256 payload、八小时 profile-key grace、descendant link
+  与永久 chain-break 语义验证。26.1 允许跳号 link，且 body timestamp age/order 只参与信任
+  诊断，不是 validator 拒绝条件。
+- [x] PlayerChat 先校验 global index、解析 packed last-seen，再按 vanilla 顺序把 last-seen 与
+  own signature 推入 128-entry cache；unknown sender、secure-session missing、expired/invalid
+  signature 与 broken chain 生成 `chat.validation_error` 并按 not-shown 更新 acknowledgement。
+  global-index mismatch 或未知 packed signature 作为致命 stream corruption 贯通 shared apply、
+  probe 和 native `NetCommand::Disconnect`。
+- [x] DeleteChat 在任何 mutation 前解析完整签名，清除 pending last-seen、移除 delayed entry，
+  或在插入后不早于第 60 个 GUI tick 将 visible entry 替换为 gray italic
+  `chat.deleted_marker`。native 在 tick-rate freeze 外按 raw client tick 推进该时钟；focused
+  regression 覆盖 exact 60-tick bound、delayed removal、cache miss disconnect、chain/expiry/
+  signature failure 与 native command propagation。coverage ledger 已关闭 remote trust 和
+  DeleteChat lifecycle，仅保留独立的完整 ChatListener 呈现 TODO。

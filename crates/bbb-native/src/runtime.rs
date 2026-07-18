@@ -2201,6 +2201,7 @@ pub(crate) fn advance_simulation(
     // 1145-1166), outside the tick-rate manager's freeze gate, so the action
     // bar / title countdowns advance on raw client ticks, not running ticks.
     world.advance_hud_text_ticks(advanced_ticks);
+    world.advance_chat_gui_ticks(advanced_ticks);
     world.advance_dialog_waiting_ticks(advanced_ticks);
     lightmap_ticks.advance_for_world(advanced_ticks, world);
     lightmap_ticks.advance_rain_fog_for_world(advanced_ticks, world, terrain_textures);

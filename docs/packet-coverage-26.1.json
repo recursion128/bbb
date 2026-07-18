@@ -3045,11 +3045,12 @@
         "ack_response": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chat.rs#decode_player_chat",
-            "crates/bbb-world/src/client/chat.rs#apply_player_chat",
+            "crates/bbb-world/src/client/chat.rs#validate_remote_player_chat",
+            "crates/bbb-world/src/client/chat.rs#remote_session_validates_signature_link_order_and_vanilla_timestamp_behavior",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#broadcastChatMessage"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
@@ -3113,11 +3114,12 @@
         "ack_response": {
           "evidence": [
             "crates/bbb-protocol/src/packets/player_info.rs#decode_optional_player_info_chat_session",
-            "crates/bbb-world/src/client/player_info.rs#apply_player_info_update",
+            "crates/bbb-world/src/client/player_info.rs#validated_remote_chat_session",
+            "crates/bbb-world/src/client/chat.rs#validate_remote_player_chat",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#resetPlayerChatState"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "command_surface": {
           "evidence": [
@@ -8200,11 +8202,12 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/chat.rs#apply_delete_chat",
-            "crates/bbb-world/src/client/chat.rs#delete_chat_resolves_cached_signature",
+            "crates/bbb-world/src/client/chat.rs#delete_chat_replaces_visible_message_on_sixtieth_gui_tick",
+            "crates/bbb-world/src/client/chat.rs#delete_chat_removes_delayed_message_and_cache_miss_is_fatal",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleDeleteChat"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -8224,20 +8227,25 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/chat.rs#delete_chat_ignores_pending_full_signature_for_last_seen_updates",
+            "crates/bbb-world/src/client/chat.rs#advance_chat_gui_ticks",
+            "crates/bbb-native/src/runtime.rs#advance_chat_gui_ticks",
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#queue_chat_disconnect",
+            "crates/bbb-native/src/runtime/tests.rs#chat_deletion_timer_uses_raw_gui_ticks",
             "vanilla:net/minecraft/client/gui/components/ChatComponent.java#deleteMessage"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/chat/tests.rs#decodes_delete_chat_with_full_signature",
             "crates/bbb-net/src/event_stream.rs#play_command_and_chat_packets_emit_matching_events_without_responses",
             "crates/bbb-net/src/probe/play.rs#probe_applies_delete_and_disguised_chat_to_world",
-            "crates/bbb-world/src/client/chat.rs#delete_chat_resolves_cached_signature",
             "crates/bbb-world/src/client/chat.rs#delete_chat_ignores_pending_full_signature_for_last_seen_updates",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_chat_events_update_world_and_world_counters"
+            "crates/bbb-world/src/client/chat.rs#delete_chat_replaces_visible_message_on_sixtieth_gui_tick",
+            "crates/bbb-world/src/client/chat.rs#delete_chat_removes_delayed_message_and_cache_miss_is_fatal",
+            "crates/bbb-world/src/play_apply.rs#unresolved_delete_chat_routes_fatal_stream_effect_without_world_mutation",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#unresolved_delete_chat_queues_disconnect_command"
           ],
           "gap": null,
           "status": "complete"
@@ -9187,7 +9195,7 @@
             "crates/bbb-world/src/level.rs#apply_login",
             "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login",
             "crates/bbb-world/src/client/chat.rs#reset_chat_session_state",
-            "crates/bbb-world/src/client/player_info.rs#profile_key_signature_is_valid",
+            "crates/bbb-world/src/client/player_info.rs#validated_remote_chat_session",
             "crates/bbb-world/src/level.rs#play_login_updates_world_dimension_and_level_info",
             "crates/bbb-world/src/level.rs#login_rebuilds_local_player_camera_and_game_mode_abilities",
             "crates/bbb-world/src/client/chat.rs#login_resets_chat_session_trackers_and_preserves_display_state",
@@ -9224,7 +9232,7 @@
             "crates/bbb-world/src/level.rs#apply_login",
             "crates/bbb-world/src/client/local_player.rs#reset_local_player_for_login",
             "crates/bbb-world/src/client/chat.rs#reset_chat_session_state",
-            "crates/bbb-world/src/client/player_info.rs#profile_key_signature_is_valid",
+            "crates/bbb-world/src/client/player_info.rs#validated_remote_chat_session",
             "crates/bbb-native/src/runtime.rs#hud_system_toast",
             "crates/bbb-native/src/runtime.rs#vanilla_lightmap_dimension_kind",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#login_tracks_local_player_id_in_world",
@@ -10069,12 +10077,15 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
-            "crates/bbb-world/src/client/chat.rs#apply_player_chat",
-            "crates/bbb-world/src/client/chat.rs#player_chat_tracks_message_and_signature_cache",
+            "crates/bbb-world/src/client/chat.rs#apply_player_chat_at",
+            "crates/bbb-world/src/client/chat.rs#validate_remote_player_chat",
+            "crates/bbb-world/src/client/chat.rs#remote_session_validates_signature_link_order_and_vanilla_timestamp_behavior",
+            "crates/bbb-world/src/client/chat.rs#invalid_remote_signature_breaks_chain_until_session_replacement",
+            "crates/bbb-world/src/client/chat.rs#remote_key_expiry_uses_vanilla_eight_hour_grace",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerChat"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -10082,23 +10093,24 @@
             "crates/bbb-protocol/src/packets/chat/tests.rs#rejects_unknown_filter_mask_type",
             "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerChatPacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
             "crates/bbb-world/src/play_apply.rs#PlayClientbound::PlayerChat",
-            "crates/bbb-world/src/client/chat.rs#apply_player_chat",
-            "crates/bbb-native/src/runtime/events/dispatcher.rs#take_pending_player_chat_acknowledgement"
+            "crates/bbb-world/src/client/chat.rs#apply_player_chat_at",
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#chat_disconnect"
           ],
           "gap": null,
           "status": "complete"
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-world/src/client/chat.rs#apply_player_chat",
+            "crates/bbb-world/src/client/chat.rs#apply_player_chat_at",
+            "crates/bbb-native/src/runtime/events/dispatcher.rs#chat_disconnect",
             "crates/bbb-net/src/probe/play.rs#probe_player_chat_sends_chat_acknowledgement_after_threshold",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerChat"
+            "vanilla:net/minecraft/client/multiplayer/chat/ChatListener.java#handlePlayerChatMessage"
           ],
           "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
@@ -10107,10 +10119,12 @@
           "evidence": [
             "crates/bbb-protocol/src/packets/chat/tests.rs#decodes_player_chat_wire_order",
             "crates/bbb-net/src/event_stream.rs#play_command_and_chat_packets_emit_matching_events_without_responses",
-            "crates/bbb-net/src/probe/play.rs#probe_player_chat_sends_chat_acknowledgement_after_threshold",
-            "crates/bbb-world/src/client/chat.rs#player_chat_generates_acknowledgement_after_vanilla_offset_threshold",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_chat_events_update_world_and_world_counters",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#player_chat_events_queue_vanilla_threshold_acknowledgement"
+            "crates/bbb-world/src/client/chat.rs#remote_session_validates_signature_link_order_and_vanilla_timestamp_behavior",
+            "crates/bbb-world/src/client/chat.rs#invalid_remote_signature_breaks_chain_until_session_replacement",
+            "crates/bbb-world/src/client/chat.rs#remote_key_expiry_uses_vanilla_eight_hour_grace",
+            "crates/bbb-world/src/client/chat.rs#secure_chat_without_remote_session_presents_error_and_acknowledges_hidden",
+            "crates/bbb-world/src/client/chat.rs#unknown_packed_signature_is_fatal_before_cache_or_presentation_mutation",
+            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#client_chat_events_update_world_and_world_counters"
           ],
           "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
           "status": "partial"
@@ -10338,15 +10352,15 @@
         "canonical_apply": {
           "evidence": [
             "crates/bbb-world/src/client/player_info.rs#apply_player_info_update",
-            "crates/bbb-world/src/client/player_info.rs#profile_key_signature_is_valid",
+            "crates/bbb-world/src/client/player_info.rs#validated_remote_chat_session",
             "crates/bbb-world/src/client/player_info.rs#player_info_adds_player_with_profile_and_fields",
             "crates/bbb-world/src/client/player_info.rs#player_info_rejects_unvalidated_profile_keys",
             "crates/bbb-world/src/client/player_info.rs#player_info_update_ignores_unknown_uuid",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handlePlayerInfoUpdate",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#initializeChatSession"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -10354,8 +10368,8 @@
             "crates/bbb-protocol/src/packets/player_info.rs#decodes_player_info_update_chat_session_null",
             "vanilla:net/minecraft/network/protocol/game/ClientboundPlayerInfoUpdatePacket.java#STREAM_CODEC"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "ownership": {
           "evidence": [
@@ -10368,14 +10382,14 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-net/src/services_profile_keys.rs#fetch_services_profile_keys",
-            "crates/bbb-world/src/client/player_info.rs#profile_key_signature_is_valid",
+            "crates/bbb-world/src/client/player_info.rs#validated_remote_chat_session",
+            "crates/bbb-world/src/client/chat.rs#validate_remote_player_chat",
             "crates/bbb-native/src/entity_scene/variants.rs#player_info_profile_resolvable",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#player_info_events_update_world_and_world_counters",
-            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#initializeChatSession",
-            "vanilla:net/minecraft/client/gui/screens/social/PlayerSocialManager.java#addPlayer"
+            "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#initializeChatSession"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -10391,8 +10405,8 @@
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#player_info_events_update_world_and_world_counters",
             "crates/bbb-native/src/entity_scene/tests.rs#entity_model_instances_use_player_info_profile_skin_for_players"
           ],
-          "gap": "docs/unsupported-features.md#signed-chat-and-chat-acknowledgement-production",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "clientbound",

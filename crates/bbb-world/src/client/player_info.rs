@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use uuid::Uuid;
 
-use crate::WorldStore;
+use crate::{client::chat::RemoteChatSessionState, WorldStore};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlayerInfoState {
@@ -44,6 +44,10 @@ pub struct PlayerInfoEntryState {
     /// True only after the advertised profile key validates against the
     /// active Minecraft Services key set.
     pub chat_session_present: bool,
+    /// Validated public session plus its per-sender message validator. This is
+    /// runtime trust state rather than a control/serde projection.
+    #[serde(skip)]
+    pub(crate) chat_session: Option<RemoteChatSessionState>,
 }
 
 impl PlayerInfoEntryState {
@@ -57,6 +61,7 @@ impl PlayerInfoEntryState {
             show_hat: false,
             list_order: 0,
             chat_session_present: false,
+            chat_session: None,
         }
     }
 
@@ -106,13 +111,16 @@ impl WorldStore {
             let validated_chat_session = packet
                 .actions
                 .contains(&ProtocolPlayerInfoAction::InitializeChat)
-                && entry.chat_session.as_ref().is_some_and(|session| {
-                    profile_key_signature_is_valid(
-                        &self.services_profile_keys,
-                        entry.profile_id,
-                        session,
-                    )
-                });
+                .then(|| {
+                    entry.chat_session.as_ref().and_then(|session| {
+                        validated_remote_chat_session(
+                            &self.services_profile_keys,
+                            entry.profile_id,
+                            session,
+                        )
+                    })
+                })
+                .flatten();
             let Some(info) = self.player_info.entries.get_mut(&entry.profile_id) else {
                 continue;
             };
@@ -121,7 +129,8 @@ impl WorldStore {
                 match action {
                     ProtocolPlayerInfoAction::AddPlayer => {}
                     ProtocolPlayerInfoAction::InitializeChat => {
-                        info.chat_session_present = validated_chat_session;
+                        info.chat_session_present = validated_chat_session.is_some();
+                        info.chat_session = validated_chat_session.clone();
                     }
                     ProtocolPlayerInfoAction::UpdateGameMode => {
                         info.game_mode = player_info_game_mode_name(entry.game_mode).to_string();
@@ -218,16 +227,16 @@ impl WorldStore {
     }
 }
 
-fn profile_key_signature_is_valid(
+fn validated_remote_chat_session(
     services_profile_keys: &[Vec<u8>],
     profile_id: Uuid,
     chat_session: &ProtocolPlayerInfoChatSession,
-) -> bool {
+) -> Option<RemoteChatSessionState> {
     let Ok(player_public_key) = RsaPublicKey::from_public_key_der(&chat_session.public_key) else {
-        return false;
+        return None;
     };
     let Ok(canonical_player_key) = player_public_key.to_public_key_der() else {
-        return false;
+        return None;
     };
     let mut payload = Vec::with_capacity(24 + canonical_player_key.as_bytes().len());
     payload.extend_from_slice(profile_id.as_bytes());
@@ -235,16 +244,25 @@ fn profile_key_signature_is_valid(
     payload.extend_from_slice(canonical_player_key.as_bytes());
     let digest = Sha1::digest(payload);
 
-    services_profile_keys.iter().any(|key| {
-        RsaPublicKey::from_public_key_der(key).is_ok_and(|key| {
-            key.verify(
-                Pkcs1v15Sign::new::<Sha1>(),
-                &digest,
-                &chat_session.key_signature,
-            )
-            .is_ok()
+    services_profile_keys
+        .iter()
+        .any(|key| {
+            RsaPublicKey::from_public_key_der(key).is_ok_and(|key| {
+                key.verify(
+                    Pkcs1v15Sign::new::<Sha1>(),
+                    &digest,
+                    &chat_session.key_signature,
+                )
+                .is_ok()
+            })
         })
-    })
+        .then(|| {
+            RemoteChatSessionState::new(
+                chat_session.session_id,
+                chat_session.expires_at_epoch_millis,
+                canonical_player_key.as_bytes().to_vec(),
+            )
+        })
 }
 
 fn player_info_game_mode_name(game_mode: ProtocolGameType) -> &'static str {
@@ -307,6 +325,7 @@ mod tests {
         assert!(info.show_hat);
         assert_eq!(info.list_order, 7);
         assert!(info.chat_session_present);
+        assert!(info.chat_session.is_some());
         assert_eq!(store.listed_players(), &BTreeSet::from([id]));
 
         let counters = store.counters();
@@ -409,6 +428,7 @@ mod tests {
             entries: vec![with_chat],
         });
         assert!(store.player_info_entry(id).unwrap().chat_session_present);
+        assert!(store.player_info_entry(id).unwrap().chat_session.is_some());
 
         let mut without_chat = protocol_player_info_entry(id);
         without_chat.chat_session = None;
@@ -419,6 +439,7 @@ mod tests {
 
         assert_eq!(applied, 1);
         assert!(!store.player_info_entry(id).unwrap().chat_session_present);
+        assert!(store.player_info_entry(id).unwrap().chat_session.is_none());
         assert_eq!(store.counters().player_info_update_packets, 2);
     }
 
@@ -443,6 +464,11 @@ mod tests {
                 .unwrap()
                 .chat_session_present
         );
+        assert!(without_services_key
+            .player_info_entry(id)
+            .unwrap()
+            .chat_session
+            .is_none());
 
         let mut invalid_signature = WorldStore::new();
         invalid_signature.replace_services_profile_keys(vec![services_key]);
@@ -463,6 +489,11 @@ mod tests {
                 .unwrap()
                 .chat_session_present
         );
+        assert!(invalid_signature
+            .player_info_entry(id)
+            .unwrap()
+            .chat_session
+            .is_none());
     }
 
     #[test]
