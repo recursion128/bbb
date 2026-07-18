@@ -371,8 +371,9 @@ mod tests {
         let chat_types = include_str!("../../bbb-world/src/registries/chat_types.rs");
         for required in [
             "require_entry_by_holder_id(CHAT_TYPE_REGISTRY",
-            "RegistryEntryPayload::Server",
-            "RegistryEntryPayload::VanillaFallback",
+            "RegistryEntrySource::Server",
+            "RegistryEntrySource::VanillaFallback",
+            "entry.element_data",
             "fn decode_chat_type(",
         ] {
             assert!(
