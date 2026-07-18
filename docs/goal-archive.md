@@ -19119,3 +19119,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Extended the gameplay-id generator's menu catalog guard to reject numeric `menu_type_id`
   construction, assignment, and comparison throughout semantic consumers while preserving raw
   protocol decoder samples.
+
+# 2026-07-18: Interpolate relative entity movement targets
+
+- Preserved whether each decoded `ClientboundMoveEntityPacket` variant carries position, including
+  all-zero Pos deltas, and routed remote Pos/PosRot/Rot updates through a snapshot-retained
+  three-tick interpolation target instead of snapping handler-backed entities.
+- Derived handler membership from the generated vanilla entity class graph, including Shulker's
+  null override, zero-length Display handlers, and the old/new minecart feature split. Direct local
+  player and first-passenger root-boat updates retain local authority and only rebase the position
+  codec.

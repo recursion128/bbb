@@ -1058,6 +1058,7 @@ fn local_boat_relative_move_only_advances_server_position_base() {
 
     assert!(store.apply_entity_move(ProtocolEntityMove {
         id: 10,
+        has_position: true,
         delta_x: 4096,
         delta_y: 0,
         delta_z: -2048,
@@ -1123,6 +1124,78 @@ fn local_boat_position_sync_only_rebases_server_position_codec() {
             z: -9.0
         }
     );
+}
+
+#[test]
+fn local_player_relative_move_only_advances_server_position_base() {
+    let mut store = WorldStore::new();
+    store.apply_login(&protocol_play_login(99));
+    store.apply_add_entity(protocol_add_entity_with_type(
+        99,
+        VANILLA_ENTITY_TYPE_PLAYER_ID,
+    ));
+    let initial = store.probe_entity(99).unwrap();
+
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 99,
+        has_position: true,
+        delta_x: 4096,
+        delta_y: 0,
+        delta_z: -2048,
+        y_rot: Some(90.0),
+        x_rot: Some(30.0),
+        on_ground: true,
+    }));
+
+    let moved = store.probe_entity(99).unwrap();
+    assert_eq!(moved.position, initial.position);
+    assert_eq!(moved.y_rot, initial.y_rot);
+    assert_eq!(moved.x_rot, initial.x_rot);
+    assert_eq!(moved.on_ground, initial.on_ground);
+    assert_eq!(moved.interpolation, None);
+    assert_eq!(moved.position_base.x, initial.position_base.x + 1.0);
+    assert_eq!(moved.position_base.y, initial.position_base.y);
+    assert_eq!(moved.position_base.z, initial.position_base.z - 0.5);
+}
+
+#[test]
+fn relative_move_uses_old_minecart_interpolation_only_without_improvements() {
+    let move_packet = ProtocolEntityMove {
+        id: 10,
+        has_position: true,
+        delta_x: 4096,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: Some(90.0),
+        x_rot: Some(0.0),
+        on_ground: true,
+    };
+
+    let mut old = WorldStore::new();
+    old.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    let old_initial = old.probe_entity(10).unwrap();
+    assert!(old.apply_entity_move(move_packet));
+    let old_armed = old.probe_entity(10).unwrap();
+    assert_eq!(old_armed.position, old_initial.position);
+    assert_eq!(old_armed.interpolation.unwrap().remaining_steps, 3);
+    old.advance_entity_client_animations(3);
+    let old_finished = old.probe_entity(10).unwrap();
+    assert_eq!(old_finished.position, old_finished.position_base);
+    assert_eq!(old_finished.interpolation, None);
+
+    let mut improved = WorldStore::new();
+    enable_minecart_improvements(&mut improved);
+    improved.apply_add_entity(protocol_add_entity_with_type(
+        10,
+        VANILLA_ENTITY_TYPE_MINECART_ID,
+    ));
+    assert!(improved.apply_entity_move(move_packet));
+    let improved = improved.probe_entity(10).unwrap();
+    assert_eq!(improved.position, improved.position_base);
+    assert_eq!(improved.interpolation, None);
 }
 
 #[test]

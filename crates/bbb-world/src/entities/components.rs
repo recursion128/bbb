@@ -9,8 +9,8 @@ use uuid::Uuid;
 
 use super::status::{EntityDamageEventState, MobEffectState};
 use super::{
-    EntityClientAnimationState, EntityState, EntityVec3, HurtingProjectileState,
-    ProjectileLifecycleState,
+    EntityClientAnimationState, EntityInterpolationState, EntityState, EntityVec3,
+    HurtingProjectileState, ProjectileLifecycleState,
 };
 use crate::BlockPos;
 use crate::PaintingVariantClientProjection;
@@ -36,6 +36,7 @@ pub(crate) struct EntityTransform {
     pub(crate) x_rot: f32,
     pub(crate) y_head_rot: f32,
     pub(crate) on_ground: Option<bool>,
+    pub(crate) interpolation: Option<EntityInterpolationState>,
 }
 
 /// Client-side `Entity.mainSupportingBlockPos` plus the private
@@ -138,6 +139,7 @@ impl From<&EntityState> for EntityTransform {
             x_rot: state.x_rot,
             y_head_rot: state.y_head_rot,
             on_ground: state.on_ground,
+            interpolation: state.interpolation.clone(),
         }
     }
 }
@@ -429,6 +431,107 @@ impl From<EntityProjectileLifecycle> for ProjectileLifecycleState {
 }
 
 impl EntityTransform {
+    pub(crate) fn move_or_interpolate_to(
+        &mut self,
+        interpolation_steps: Option<u8>,
+        position: Option<EntityVec3>,
+        y_rot: Option<f32>,
+        x_rot: Option<f32>,
+    ) {
+        let Some(interpolation_steps) = interpolation_steps else {
+            self.cancel_interpolation();
+            if let Some(position) = position {
+                self.position = position;
+            }
+            if let Some(y_rot) = y_rot {
+                self.y_rot = y_rot % 360.0;
+            }
+            if let Some(x_rot) = x_rot {
+                self.x_rot = x_rot % 360.0;
+            }
+            return;
+        };
+
+        let current_target_position = self
+            .interpolation
+            .as_ref()
+            .map_or(self.position, |state| state.target_position);
+        let current_target_y_rot = self
+            .interpolation
+            .as_ref()
+            .map_or(self.y_rot, |state| state.target_y_rot);
+        let current_target_x_rot = self
+            .interpolation
+            .as_ref()
+            .map_or(self.x_rot, |state| state.target_x_rot);
+        let target_position = position.unwrap_or(current_target_position);
+        let target_y_rot = y_rot.unwrap_or(current_target_y_rot);
+        let target_x_rot = x_rot.unwrap_or(current_target_x_rot);
+
+        if interpolation_steps == 0 {
+            self.position = target_position;
+            self.y_rot = target_y_rot;
+            self.x_rot = target_x_rot;
+            self.cancel_interpolation();
+            return;
+        }
+        if self.interpolation.as_ref().is_some_and(|state| {
+            state.target_position == target_position
+                && state.target_y_rot == target_y_rot
+                && state.target_x_rot == target_x_rot
+        }) {
+            return;
+        }
+        self.interpolation = Some(EntityInterpolationState {
+            remaining_steps: interpolation_steps,
+            target_position,
+            target_y_rot,
+            target_x_rot,
+            previous_position: self.position,
+            previous_y_rot: self.y_rot,
+            previous_x_rot: self.x_rot,
+        });
+    }
+
+    pub(crate) fn advance_interpolation_tick(&mut self, has_interpolation_handler: bool) {
+        let Some(mut state) = self.interpolation.take() else {
+            return;
+        };
+        if !has_interpolation_handler || state.remaining_steps == 0 {
+            return;
+        }
+
+        // Vanilla carries independent client-side movement into the target when
+        // the shifted target bounding box remains collision-free. BBB does not
+        // yet simulate remote entity physics independently of these packet
+        // targets, so every current producer reaches this with a zero delta;
+        // retaining the algebra here keeps packet retargeting/state restoration
+        // exact and leaves the collision predicate as the remaining world slice.
+        state.target_position.x += self.position.x - state.previous_position.x;
+        state.target_position.y += self.position.y - state.previous_position.y;
+        state.target_position.z += self.position.z - state.previous_position.z;
+        state.target_y_rot += self.y_rot - state.previous_y_rot;
+        state.target_x_rot += self.x_rot - state.previous_x_rot;
+
+        let alpha = 1.0 / f64::from(state.remaining_steps);
+        self.position.x += (state.target_position.x - self.position.x) * alpha;
+        self.position.y += (state.target_position.y - self.position.y) * alpha;
+        self.position.z += (state.target_position.z - self.position.z) * alpha;
+        self.y_rot = rot_lerp(alpha as f32, self.y_rot, state.target_y_rot);
+        self.x_rot += (state.target_x_rot - self.x_rot) * alpha as f32;
+        state.remaining_steps -= 1;
+        state.previous_position = self.position;
+        state.previous_y_rot = self.y_rot;
+        state.previous_x_rot = self.x_rot;
+        if state.remaining_steps > 0 {
+            self.interpolation = Some(state);
+        }
+    }
+
+    pub(crate) fn cancel_interpolation(&mut self) {
+        self.interpolation = None;
+    }
+
     pub(crate) fn write_to_state(self, state: &mut EntityState) {
         state.position = self.position;
         state.position_base = self.position_base;
@@ -437,6 +540,7 @@ impl EntityTransform {
         state.x_rot = self.x_rot;
         state.y_head_rot = self.y_head_rot;
         state.on_ground = self.on_ground;
+        state.interpolation = self.interpolation;
     }
 }
 

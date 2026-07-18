@@ -2220,6 +2220,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::MoveEntity(EntityMove {
                 id: 999,
+                has_position: true,
                 delta_x: 4096,
                 delta_y: 0,
                 delta_z: -2048,
@@ -2335,6 +2336,7 @@ mod tests {
         probe
             .handle_play_packet(PlayClientbound::MoveEntity(EntityMove {
                 id: 123,
+                has_position: true,
                 delta_x: 4096,
                 delta_y: 0,
                 delta_z: -2048,

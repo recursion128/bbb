@@ -78,6 +78,11 @@ pub struct EntityPositionSync {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct EntityMove {
     pub id: i32,
+    /// Whether the concrete `ClientboundMoveEntityPacket` variant carries the
+    /// three relative position deltas. A position-bearing packet may encode
+    /// three zero deltas, so this fact cannot be reconstructed from the values.
+    #[serde(default)]
+    pub has_position: bool,
     pub delta_x: i16,
     pub delta_y: i16,
     pub delta_z: i16,
@@ -467,6 +472,7 @@ pub(super) fn decode_move_entity(
 
     let update = EntityMove {
         id,
+        has_position,
         delta_x,
         delta_y,
         delta_z,

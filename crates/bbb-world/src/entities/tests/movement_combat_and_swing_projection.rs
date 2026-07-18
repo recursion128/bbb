@@ -339,6 +339,7 @@ fn entity_model_sources_project_on_ground_from_movement() {
 
     assert!(store.apply_entity_move(ProtocolEntityMove {
         id: 60,
+        has_position: false,
         delta_x: 0,
         delta_y: 0,
         delta_z: 0,

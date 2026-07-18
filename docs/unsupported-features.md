@@ -661,10 +661,11 @@ Movement:
 - Implement the `minecraft:powder_snow` inside-block particle, extinguish, and
   fall-sound side effects.
 - Handle the remaining `MovePlayer.Rot` vehicle movement send edge cases.
-- Route relative entity Pos/PosRot/Rot targets through vanilla-equivalent
-  `moveOrInterpolateTo` state instead of snapping the canonical transform, and
-  resolve every entity-specific local-authority controller before deciding
-  whether a packet only advances the `VecDeltaCodec` base.
+- Complete the remaining relative-entity authority/interpolation edges: resolve
+  every entity-specific local-authority controller beyond the direct local player
+  and first-passenger root boat, apply vanilla's collision predicate before
+  carrying independent client motion into an active interpolation target, and
+  retain the previous-pose partial-tick presentation surface.
 - Complete `EntityPositionSync`/`TeleportEntity` ticking and distance-based
   interpolation, indirect-passenger reposition/old-pose reset, and locally-
   authoritative vehicle echo.
@@ -1311,9 +1312,9 @@ back into a todo. Do not delete these.
 
 ### Entity coverage matrix transform and interpolation
 
-- Complete vanilla remote `moveOrInterpolateTo`, teleport, head/body rotation,
-  distance-based interpolation, and family-specific transform exceptions beyond
-  the authoritative packet state already retained by the world store.
+- Complete vanilla remote teleport, head/body rotation, distance-based and
+  partial-tick interpolation, collision-aware target adjustment, and the remaining
+  family-specific local-authority/transform exceptions.
 
 ### Entity coverage matrix client tick and movement
 

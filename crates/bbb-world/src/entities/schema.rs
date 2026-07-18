@@ -4264,6 +4264,45 @@ pub fn vanilla_entity_metadata_type_is_minecart(entity_type_id: i32) -> bool {
         .unwrap_or(false)
 }
 
+/// Returns the vanilla client interpolation-handler length for an entity type.
+///
+/// The membership follows the generated 26.1 runtime-class graph rather than a
+/// hand-maintained registry-id list. `Shulker` overrides the inherited
+/// `LivingEntity` handler with `null`; displays keep their explicit zero-length
+/// handler; and minecarts expose the old-behavior handler only while the
+/// `minecart_improvements` feature is disabled.
+pub(crate) fn vanilla_entity_metadata_type_interpolation_steps(
+    entity_type_id: i32,
+    minecart_improvements_enabled: bool,
+) -> Option<u8> {
+    const ABSTRACT_BOAT: &str = "net.minecraft.world.entity.vehicle.boat.AbstractBoat";
+    const ABSTRACT_MINECART: &str = "net.minecraft.world.entity.vehicle.minecart.AbstractMinecart";
+    const DISPLAY: &str = "net.minecraft.world.entity.Display";
+    const EXPERIENCE_ORB: &str = "net.minecraft.world.entity.ExperienceOrb";
+    const FISHING_HOOK: &str = "net.minecraft.world.entity.projectile.FishingHook";
+    const LIVING_ENTITY: &str = "net.minecraft.world.entity.LivingEntity";
+    const SHULKER: &str = "net.minecraft.world.entity.monster.Shulker";
+
+    let runtime_class = VANILLA_ENTITY_TYPE_METADATA_26_1
+        .get(usize::try_from(entity_type_id).ok()?)?
+        .runtime_class?;
+    if vanilla_class_is_or_implements(runtime_class, SHULKER, 0) {
+        None
+    } else if vanilla_class_is_or_implements(runtime_class, DISPLAY, 0) {
+        Some(0)
+    } else if vanilla_class_is_or_implements(runtime_class, LIVING_ENTITY, 0)
+        || vanilla_class_is_or_implements(runtime_class, EXPERIENCE_ORB, 0)
+        || vanilla_class_is_or_implements(runtime_class, FISHING_HOOK, 0)
+        || vanilla_class_is_or_implements(runtime_class, ABSTRACT_BOAT, 0)
+        || (!minecart_improvements_enabled
+            && vanilla_class_is_or_implements(runtime_class, ABSTRACT_MINECART, 0))
+    {
+        Some(3)
+    } else {
+        None
+    }
+}
+
 pub fn vanilla_entity_metadata_type_is_abstract_horse(entity_type_id: i32) -> bool {
     VANILLA_ENTITY_TYPE_METADATA_26_1
         .get(usize::try_from(entity_type_id).unwrap_or(usize::MAX))
@@ -4700,6 +4739,58 @@ mod tests {
         assert!(!vanilla_entity_metadata_type_is_mob(
             VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32
         ));
+    }
+
+    #[test]
+    fn generated_class_graph_resolves_interpolation_handler_membership() {
+        for entity_type_id in [
+            VANILLA_ENTITY_TYPE_AXOLOTL_ID,
+            VANILLA_ENTITY_TYPE_EXPERIENCE_ORB_ID,
+            VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
+            VANILLA_ENTITY_TYPE_OAK_BOAT_ID,
+        ] {
+            assert_eq!(
+                vanilla_entity_metadata_type_interpolation_steps(entity_type_id, false),
+                Some(3)
+            );
+        }
+        assert_eq!(
+            vanilla_entity_metadata_type_interpolation_steps(
+                bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID,
+                false
+            ),
+            Some(0)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_interpolation_steps(VANILLA_ENTITY_TYPE_SHULKER_ID, false),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_interpolation_steps(VANILLA_ENTITY_TYPE_ITEM_ID, false),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_interpolation_steps(
+                VANILLA_ENTITY_TYPE_MINECART_ID,
+                false
+            ),
+            Some(3)
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_interpolation_steps(VANILLA_ENTITY_TYPE_MINECART_ID, true),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_interpolation_steps(-1, false),
+            None
+        );
+        assert_eq!(
+            vanilla_entity_metadata_type_interpolation_steps(
+                VANILLA_ENTITY_TYPE_METADATA_26_1.len() as i32,
+                false
+            ),
+            None
+        );
     }
 
     #[test]

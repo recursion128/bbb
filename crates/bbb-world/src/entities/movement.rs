@@ -9,18 +9,19 @@ use bbb_protocol::packets::{
 
 use crate::WorldStore;
 
+use super::schema::vanilla_entity_metadata_type_interpolation_steps;
 use super::{is_vanilla_minecart_type, EntityVec3};
 
 impl WorldStore {
     pub fn apply_entity_position_sync(&mut self, packet: ProtocolEntityPositionSync) -> bool {
         self.counters.entity_position_syncs_received += 1;
-        let locally_predicted_boat =
-            self.local_player_first_passenger_root_boat_vehicle_id() == Some(packet.id);
+        let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
             transform.position_base = entity_vec3(packet.position);
-            if locally_predicted_boat {
+            if locally_authoritative {
                 return;
             }
+            transform.cancel_interpolation();
             transform.position = entity_vec3(packet.position);
             transform.delta_movement = entity_vec3(packet.delta_movement);
             transform.y_rot = packet.y_rot;
@@ -30,7 +31,7 @@ impl WorldStore {
             self.counters.entity_position_syncs_ignored += 1;
             return false;
         };
-        if !locally_predicted_boat {
+        if !locally_authoritative {
             self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         }
         self.counters.entity_position_syncs_applied += 1;
@@ -39,10 +40,20 @@ impl WorldStore {
 
     pub fn apply_entity_move(&mut self, packet: ProtocolEntityMove) -> bool {
         self.counters.entity_moves_received += 1;
-        let locally_predicted_boat =
-            self.local_player_first_passenger_root_boat_vehicle_id() == Some(packet.id);
+        let locally_authoritative = self.entity_is_locally_authoritative(packet.id);
+        let minecart_improvements_enabled =
+            self.is_feature_enabled("minecraft:minecart_improvements");
+        let interpolation_steps =
+            self.entities
+                .entity_type_id(packet.id)
+                .and_then(|entity_type_id| {
+                    vanilla_entity_metadata_type_interpolation_steps(
+                        entity_type_id,
+                        minecart_improvements_enabled,
+                    )
+                });
         let Some(()) = self.entities.with_transform_mut(packet.id, |transform| {
-            if packet.delta_x != 0 || packet.delta_y != 0 || packet.delta_z != 0 {
+            let position = if packet.has_position {
                 let position = decode_entity_delta_position(
                     transform.position_base,
                     packet.delta_x,
@@ -50,25 +61,27 @@ impl WorldStore {
                     packet.delta_z,
                 );
                 transform.position_base = position;
-                if !locally_predicted_boat {
-                    transform.position = position;
-                }
-            }
-            if locally_predicted_boat {
+                Some(position)
+            } else {
+                None
+            };
+            if locally_authoritative {
                 return;
             }
-            if let Some(y_rot) = packet.y_rot {
-                transform.y_rot = y_rot;
-            }
-            if let Some(x_rot) = packet.x_rot {
-                transform.x_rot = x_rot;
+            if position.is_some() || packet.y_rot.is_some() || packet.x_rot.is_some() {
+                transform.move_or_interpolate_to(
+                    interpolation_steps,
+                    position,
+                    packet.y_rot,
+                    packet.x_rot,
+                );
             }
             transform.on_ground = Some(packet.on_ground);
         }) else {
             self.counters.entity_moves_ignored += 1;
             return false;
         };
-        if !locally_predicted_boat {
+        if !locally_authoritative {
             self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         }
         self.counters.entity_moves_applied += 1;
@@ -172,6 +185,7 @@ impl WorldStore {
                 packet.x_rot,
                 packet.relatives_mask,
             );
+            transform.cancel_interpolation();
             transform.position = absolute.position;
             transform.delta_movement = absolute.delta_movement;
             transform.y_rot = absolute.y_rot;
@@ -184,6 +198,11 @@ impl WorldStore {
         self.update_entity_supporting_block_from_packet(packet.id, packet.on_ground);
         self.counters.entity_teleports_applied += 1;
         (true, None)
+    }
+
+    fn entity_is_locally_authoritative(&self, entity_id: i32) -> bool {
+        self.local_player_id == Some(entity_id)
+            || self.local_player_first_passenger_root_boat_vehicle_id() == Some(entity_id)
     }
 }
 

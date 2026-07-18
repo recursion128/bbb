@@ -9421,6 +9421,7 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
+            "crates/bbb-world/src/entities/components.rs#EntityTransform::move_or_interpolate_to",
             "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
           ],
@@ -9444,6 +9445,7 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
             "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_relative_move_only_advances_server_position_base",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#moveOrInterpolateTo"
           ],
@@ -9470,6 +9472,7 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
+            "crates/bbb-world/src/entities/components.rs#EntityTransform::move_or_interpolate_to",
             "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
           ],
@@ -9493,6 +9496,7 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
             "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_relative_move_only_advances_server_position_base",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#moveOrInterpolateTo"
           ],
@@ -9576,6 +9580,7 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
+            "crates/bbb-world/src/entities/components.rs#EntityTransform::move_or_interpolate_to",
             "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
           ],
@@ -9599,6 +9604,7 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-world/src/entities/tests/lifecycle_and_queries.rs#tracks_entity_lifecycle_and_absolute_state_updates",
             "crates/bbb-world/src/entities/tests/passenger_and_vehicle_movement.rs#local_boat_relative_move_only_advances_server_position_base",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#moveOrInterpolateTo"
           ],

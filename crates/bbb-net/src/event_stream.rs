@@ -1209,6 +1209,7 @@ mod tests {
 
         let entity_move = packets::EntityMove {
             id: 123,
+            has_position: true,
             delta_x: 4096,
             delta_y: 0,
             delta_z: -2048,

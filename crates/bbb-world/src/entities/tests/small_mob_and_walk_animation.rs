@@ -58,6 +58,7 @@ fn entity_model_sources_project_chicken_wing_flap() {
     let set_on_ground = |store: &mut WorldStore, on_ground: bool| {
         assert!(store.apply_entity_move(ProtocolEntityMove {
             id: 80,
+            has_position: false,
             delta_x: 0,
             delta_y: 0,
             delta_z: 0,
@@ -151,6 +152,7 @@ fn entity_model_sources_project_slime_squish_from_ground_transitions() {
     let set_on_ground = |store: &mut WorldStore, on_ground: bool| {
         assert!(store.apply_entity_move(ProtocolEntityMove {
             id: 81,
+            has_position: false,
             delta_x: 0,
             delta_y: 0,
             delta_z: 0,
@@ -224,6 +226,7 @@ fn entity_model_sources_project_parrot_wing_flap() {
     let set_on_ground = |store: &mut WorldStore, on_ground: bool| {
         assert!(store.apply_entity_move(ProtocolEntityMove {
             id: 90,
+            has_position: false,
             delta_x: 0,
             delta_y: 0,
             delta_z: 0,
@@ -401,6 +404,7 @@ fn parrot_passenger_holds_its_wings() {
     // Mark the parrot airborne — without the passenger gate this would flap.
     assert!(store.apply_entity_move(ProtocolEntityMove {
         id: 91,
+        has_position: false,
         delta_x: 0,
         delta_y: 0,
         delta_z: 0,

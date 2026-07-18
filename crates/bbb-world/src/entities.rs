@@ -711,6 +711,17 @@ pub struct ItemFrameRenderState {
     pub map_id: Option<i32>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct EntityInterpolationState {
+    pub remaining_steps: u8,
+    pub target_position: EntityVec3,
+    pub target_y_rot: f32,
+    pub target_x_rot: f32,
+    pub previous_position: EntityVec3,
+    pub previous_y_rot: f32,
+    pub previous_x_rot: f32,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EntityState {
     pub id: i32,
@@ -724,6 +735,9 @@ pub struct EntityState {
     pub x_rot: f32,
     pub y_head_rot: f32,
     pub on_ground: Option<bool>,
+    /// Active vanilla `InterpolationHandler` target and previous-tick state.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interpolation: Option<EntityInterpolationState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub main_supporting_block_pos: Option<BlockPos>,
     #[serde(default, skip_serializing_if = "bool_is_false")]
@@ -2631,6 +2645,7 @@ impl WorldStore {
             x_rot: packet.x_rot,
             y_head_rot: packet.y_head_rot,
             on_ground: None,
+            interpolation: None,
         };
 
         self.entities

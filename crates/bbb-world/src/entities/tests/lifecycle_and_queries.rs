@@ -75,6 +75,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
 
     assert!(store.apply_entity_move(ProtocolEntityMove {
         id: 123,
+        has_position: true,
         delta_x: 4096,
         delta_y: 0,
         delta_z: -2048,
@@ -86,18 +87,33 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(
         entity.position,
         EntityVec3 {
+            x: 2.0,
+            y: 65.0,
+            z: -3.0,
+        }
+    );
+    assert_eq!(
+        entity.position_base,
+        EntityVec3 {
             x: 3.0,
             y: 65.0,
             z: -3.5,
         }
     );
-    assert_eq!(entity.position_base, entity.position);
-    assert_eq!(entity.y_rot, -90.0);
-    assert_eq!(entity.x_rot, 45.0);
+    assert_eq!(entity.interpolation.as_ref().unwrap().remaining_steps, 3);
+    assert_eq!(entity.y_rot, 180.0);
+    assert_eq!(entity.x_rot, 30.0);
     assert_eq!(entity.on_ground, Some(false));
+    store.advance_entity_client_animations(3);
+    let entity = store.probe_entity(123).unwrap();
+    assert_eq!(entity.position, entity.position_base);
+    assert_eq!(entity.y_rot, 270.0);
+    assert_eq!(entity.x_rot, 45.0);
+    assert_eq!(entity.interpolation, None);
 
     assert!(store.apply_entity_move(ProtocolEntityMove {
         id: 123,
+        has_position: false,
         delta_x: 0,
         delta_y: 0,
         delta_z: 0,
@@ -114,9 +130,15 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
             z: -3.5,
         }
     );
-    assert_eq!(entity.y_rot, 30.0);
-    assert_eq!(entity.x_rot, -15.0);
+    assert_eq!(entity.y_rot, 270.0);
+    assert_eq!(entity.x_rot, 45.0);
     assert_eq!(entity.on_ground, Some(true));
+    assert_eq!(entity.interpolation.as_ref().unwrap().remaining_steps, 3);
+    store.advance_entity_client_animations(3);
+    let entity = store.probe_entity(123).unwrap();
+    assert_eq!(entity.y_rot, 390.0);
+    assert_eq!(entity.x_rot, -15.0);
+    assert_eq!(entity.interpolation, None);
 
     assert!(store.apply_teleport_entity(ProtocolTeleportEntity {
         id: 123,
@@ -321,6 +343,7 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     );
     assert!(!store.apply_entity_move(ProtocolEntityMove {
         id: 999,
+        has_position: false,
         delta_x: 0,
         delta_y: 0,
         delta_z: 0,
@@ -384,6 +407,83 @@ fn tracks_entity_lifecycle_and_absolute_state_updates() {
     assert_eq!(store.counters().entities_removed, 1);
     assert_eq!(store.counters().entity_removes_ignored, 1);
     assert_eq!(store.counters().entities_tracked, 0);
+}
+
+#[test]
+fn relative_move_handler_overrides_snap_non_interpolating_entities() {
+    let mut store = WorldStore::new();
+    for (id, entity_type_id) in [
+        (201, VANILLA_ENTITY_TYPE_ITEM_ID),
+        (202, VANILLA_ENTITY_TYPE_SHULKER_ID),
+        (203, VANILLA_ENTITY_TYPE_BLOCK_DISPLAY_ID),
+    ] {
+        store.apply_add_entity(protocol_add_entity_with_type(id, entity_type_id));
+        assert!(store.apply_entity_move(ProtocolEntityMove {
+            id,
+            has_position: true,
+            delta_x: 4096,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: Some(450.0),
+            x_rot: Some(-450.0),
+            on_ground: true,
+        }));
+    }
+
+    for id in [201, 202, 203] {
+        let entity = store.probe_entity(id).unwrap();
+        assert_eq!(entity.position, entity.position_base);
+        assert_eq!(entity.interpolation, None);
+    }
+    for id in [201, 202] {
+        let entity = store.probe_entity(id).unwrap();
+        assert_eq!(entity.y_rot, 90.0);
+        assert_eq!(entity.x_rot, -90.0);
+    }
+    let display = store.probe_entity(203).unwrap();
+    assert_eq!(display.y_rot, 450.0);
+    assert_eq!(display.x_rot, -450.0);
+}
+
+#[test]
+fn rotation_only_retarget_keeps_the_active_position_target() {
+    let mut store = WorldStore::new();
+    store.apply_add_entity(protocol_add_entity(204));
+    let initial = store.probe_entity(204).unwrap();
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 204,
+        has_position: true,
+        delta_x: 4096,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: None,
+        x_rot: None,
+        on_ground: false,
+    }));
+    store.advance_entity_client_animations(1);
+    assert!(store.apply_entity_move(ProtocolEntityMove {
+        id: 204,
+        has_position: false,
+        delta_x: 0,
+        delta_y: 0,
+        delta_z: 0,
+        y_rot: Some(90.0),
+        x_rot: Some(0.0),
+        on_ground: false,
+    }));
+
+    let retargeted = store.probe_entity(204).unwrap();
+    let interpolation = retargeted.interpolation.unwrap();
+    assert_eq!(interpolation.remaining_steps, 3);
+    assert_eq!(interpolation.target_position.x, initial.position.x + 1.0);
+    assert_eq!(interpolation.target_position.y, initial.position.y);
+    assert_eq!(interpolation.target_position.z, initial.position.z);
+    store.advance_entity_client_animations(3);
+    let finished = store.probe_entity(204).unwrap();
+    assert_eq!(finished.position, finished.position_base);
+    assert_eq!(finished.y_rot, 90.0);
+    assert_eq!(finished.x_rot, 0.0);
+    assert_eq!(finished.interpolation, None);
 }
 
 #[test]

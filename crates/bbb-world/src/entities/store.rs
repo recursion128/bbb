@@ -121,6 +121,7 @@ use crate::entities::schema::{
     vanilla_entity_metadata_entity_accessors,
     vanilla_entity_metadata_living_entity_accessors_for_entity_type,
     vanilla_entity_metadata_mob_accessors_for_entity_type,
+    vanilla_entity_metadata_type_interpolation_steps,
     vanilla_entity_metadata_type_is_abstract_piglin, vanilla_entity_metadata_type_is_living,
     vanilla_entity_metadata_unique_accessor_for_entity_type_and_serializer,
     VANILLA_AVATAR_DEFAULT_MODEL_CUSTOMIZATION, VANILLA_AVATAR_MAIN_HAND_DATA_ID,
@@ -3608,6 +3609,7 @@ impl EntityStore {
                 x_rot,
                 y_head_rot: 0.0,
                 on_ground: None,
+                interpolation: None,
             };
         }
         if !keep_entity_data {
@@ -3919,6 +3921,17 @@ impl EntityStore {
     ) {
         let wither_head_targets_by_id = self.wither_head_targets_by_id();
         for _ in 0..ticks {
+            for (_, (identity, transform)) in self
+                .ecs
+                .query_mut::<(&EntityIdentity, &mut EntityTransform)>()
+            {
+                let has_interpolation_handler = vanilla_entity_metadata_type_interpolation_steps(
+                    identity.entity_type_id,
+                    minecart_improvements_enabled,
+                )
+                .is_some();
+                transform.advance_interpolation_tick(has_interpolation_handler);
+            }
             for (_, (transform, animations)) in self
                 .ecs
                 .query_mut::<(&mut EntityTransform, &mut EntityClientAnimations)>()
@@ -4263,6 +4276,7 @@ impl EntityStore {
             x_rot: transform.x_rot,
             y_head_rot: transform.y_head_rot,
             on_ground: transform.on_ground,
+            interpolation: None,
             main_supporting_block_pos: None,
             on_ground_no_blocks: false,
             data_values: Vec::new(),

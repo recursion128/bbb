@@ -32,6 +32,7 @@ fn entity_events_update_world_and_world_counters() {
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::MoveEntity(EntityMove {
         id: 123,
+        has_position: true,
         delta_x: 4096,
         delta_y: 0,
         delta_z: -2048,
@@ -73,6 +74,7 @@ fn entity_events_update_world_and_world_counters() {
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::MoveEntity(EntityMove {
         id: 999,
+        has_position: false,
         delta_x: 0,
         delta_y: 0,
         delta_z: 0,

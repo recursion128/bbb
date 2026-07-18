@@ -4567,6 +4567,7 @@ mod tests {
         set_block(&mut world, support_pos, air);
         assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
             id: entity_id,
+            has_position: false,
             delta_x: 0,
             delta_y: 0,
             delta_z: 0,
@@ -4600,6 +4601,7 @@ mod tests {
 
         assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
             id: entity_id,
+            has_position: false,
             delta_x: 0,
             delta_y: 0,
             delta_z: 0,
@@ -4735,6 +4737,7 @@ mod tests {
         // on a server-authoritative client entity, so fallDistance stays zero.
         assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
             id: entity_id,
+            has_position: true,
             delta_x: 0,
             delta_y: -16_384,
             delta_z: 0,
@@ -4742,6 +4745,7 @@ mod tests {
             x_rot: None,
             on_ground: true,
         }));
+        world.advance_entity_client_animations(3);
         assert_eq!(
             world.probe_entity(entity_id).unwrap().position.y,
             1.0,

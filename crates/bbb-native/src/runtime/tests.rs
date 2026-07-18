@@ -4170,6 +4170,7 @@ fn debug_supporting_block_cache_keeps_membership_but_reads_live_support_state() 
     for _ in 0..2 {
         assert!(world.apply_entity_move(bbb_protocol::packets::EntityMove {
             id: 52,
+            has_position: false,
             delta_x: 0,
             delta_y: 0,
             delta_z: 0,

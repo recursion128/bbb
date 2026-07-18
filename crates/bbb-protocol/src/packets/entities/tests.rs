@@ -95,6 +95,31 @@ fn decodes_entity_lifecycle_packets() {
     );
 
     let mut payload = Encoder::new();
+    payload.write_var_i32(124);
+    payload.write_i16(0);
+    payload.write_i16(0);
+    payload.write_i16(0);
+    payload.write_bool(true);
+    let packet = decode_play_clientbound(
+        ids::play::CLIENTBOUND_MOVE_ENTITY_POS,
+        &payload.into_inner(),
+    )
+    .unwrap();
+    assert_eq!(
+        packet,
+        PlayClientbound::MoveEntity(EntityMove {
+            id: 124,
+            has_position: true,
+            delta_x: 0,
+            delta_y: 0,
+            delta_z: 0,
+            y_rot: None,
+            x_rot: None,
+            on_ground: true,
+        })
+    );
+
+    let mut payload = Encoder::new();
     payload.write_var_i32(123);
     payload.write_i16(4096);
     payload.write_i16(0);
@@ -111,6 +136,7 @@ fn decodes_entity_lifecycle_packets() {
         packet,
         PlayClientbound::MoveEntity(EntityMove {
             id: 123,
+            has_position: true,
             delta_x: 4096,
             delta_y: 0,
             delta_z: -2048,
@@ -452,18 +478,29 @@ fn decodes_move_entity_variants_strictly() {
     rot.write_i8(32);
     rot.write_bool(true);
 
-    for (packet_id, payload) in [
-        (ids::play::CLIENTBOUND_MOVE_ENTITY_POS, pos.into_inner()),
+    for (packet_id, payload, has_position) in [
+        (
+            ids::play::CLIENTBOUND_MOVE_ENTITY_POS,
+            pos.into_inner(),
+            true,
+        ),
         (
             ids::play::CLIENTBOUND_MOVE_ENTITY_POS_ROT,
             pos_rot.into_inner(),
+            true,
         ),
-        (ids::play::CLIENTBOUND_MOVE_ENTITY_ROT, rot.into_inner()),
+        (
+            ids::play::CLIENTBOUND_MOVE_ENTITY_ROT,
+            rot.into_inner(),
+            false,
+        ),
     ] {
-        assert!(matches!(
-            decode_play_clientbound(packet_id, &payload).unwrap(),
-            PlayClientbound::MoveEntity(_)
-        ));
+        let PlayClientbound::MoveEntity(packet) =
+            decode_play_clientbound(packet_id, &payload).unwrap()
+        else {
+            panic!("expected move entity packet");
+        };
+        assert_eq!(packet.has_position, has_position);
         let mut trailing = payload;
         trailing.push(0);
         let error = decode_play_clientbound(packet_id, &trailing).unwrap_err();
