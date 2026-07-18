@@ -4743,7 +4743,7 @@ mod tests {
                     redirect: None,
                     name: Some("message".to_string()),
                     parser: Some(packets::CommandArgumentParser {
-                        type_id: 20,
+                        type_id: packets::VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
                         name: "minecraft:message".to_string(),
                         properties: vec![2],
                     }),

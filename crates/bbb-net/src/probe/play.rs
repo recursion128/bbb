@@ -187,6 +187,7 @@ mod tests {
     use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
     use bbb_protocol::menu_types::VANILLA_MENU_TYPE_MERCHANT_ID;
     use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
+    use bbb_protocol::packets::VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID;
     use bbb_protocol::packets::{
         AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary,
         AdvancementSummary, AttributeModifier, AttributeSnapshot, AwardStats, BlockChangedAck,
@@ -5219,7 +5220,7 @@ mod tests {
                     redirect: None,
                     name: Some("message".to_string()),
                     parser: Some(CommandArgumentParser {
-                        type_id: 20,
+                        type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
                         name: "minecraft:message".to_string(),
                         properties: vec![2],
                     }),

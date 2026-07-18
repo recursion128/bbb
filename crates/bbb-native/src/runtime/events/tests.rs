@@ -14,6 +14,7 @@ use bbb_protocol::codec::Encoder;
 use bbb_protocol::entity_types::*;
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
 use bbb_protocol::packets::PlayClientbound;
+use bbb_protocol::packets::VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID;
 use bbb_protocol::packets::{
     AddEntity, AdvancementCriterionProgressSummary, AdvancementProgressSummary, AdvancementSummary,
     AttributeSnapshot, AwardStats, BlockEntityData, BlockPos as ProtocolBlockPos, BlockUpdate,
@@ -327,7 +328,7 @@ fn command_tree_packet(literal: &str) -> bbb_protocol::packets::Commands {
                 redirect: None,
                 name: Some("message".to_string()),
                 parser: Some(bbb_protocol::packets::CommandArgumentParser {
-                    type_id: 5,
+                    type_id: VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
                     name: "brigadier:string".to_string(),
                     properties: vec![2],
                 }),

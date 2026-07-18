@@ -39,6 +39,7 @@ use bbb_protocol::packets::{
     TickingStep, TrackedWaypoint, TrackedWaypointPacket, Transfer, UpdateAdvancements,
     UpdateEnabledFeatures, UpdateMobEffect, UpdateRecipes, UpdateTags, Vec3d as ProtocolVec3d,
     WaypointData, WaypointIcon, WaypointIdentifier, WaypointOperation, WaypointVec3i,
+    VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
 };
 use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID;
 use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID;
@@ -4060,7 +4061,7 @@ fn command_tree(literal: &str) -> Commands {
                 redirect: None,
                 name: Some("message".to_string()),
                 parser: Some(CommandArgumentParser {
-                    type_id: 5,
+                    type_id: VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID,
                     name: "brigadier:string".to_string(),
                     properties: vec![1, 2],
                 }),

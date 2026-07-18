@@ -239,7 +239,11 @@ impl WorldStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bbb_protocol::packets::{CommandArgumentParser, CommandNode, CommandNodeType, Commands};
+    use bbb_protocol::packets::{
+        CommandArgumentParser, CommandNode, CommandNodeType, Commands,
+        VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
+        VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+    };
 
     #[test]
     fn commands_replace_current_command_tree_and_counters() {
@@ -353,9 +357,9 @@ mod tests {
                     name: Some("message".to_string()),
                     parser: Some(CommandArgumentParser {
                         type_id: if parser_name == "minecraft:message" {
-                            20
+                            VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID
                         } else {
-                            5
+                            VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID
                         },
                         name: parser_name.to_string(),
                         properties: vec![2],
@@ -401,7 +405,7 @@ mod tests {
                     redirect: None,
                     name: Some("target".to_string()),
                     parser: Some(CommandArgumentParser {
-                        type_id: 6,
+                        type_id: VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID,
                         name: "minecraft:entity".to_string(),
                         properties: Vec::new(),
                     }),
@@ -416,7 +420,7 @@ mod tests {
                     redirect: None,
                     name: Some("message".to_string()),
                     parser: Some(CommandArgumentParser {
-                        type_id: 20,
+                        type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
                         name: "minecraft:message".to_string(),
                         properties: Vec::new(),
                     }),

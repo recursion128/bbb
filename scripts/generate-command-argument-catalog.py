@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -17,6 +18,15 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_ROOT = Path.home() / "Work/mc-code/sources/26.1"
 DEFAULT_OUTPUT = REPO_ROOT / "crates/bbb-protocol/src/packets/commands/generated_26_1.rs"
 SOURCE = Path("net/minecraft/commands/synchronization/ArgumentTypeInfos.java")
+
+
+def rust_constant_suffix(resource_id: str) -> str:
+    namespace, path = resource_id.split(":", 1)
+    suffix = re.sub(r"[^A-Za-z0-9]+", "_", path).strip("_").upper()
+    if namespace == "minecraft":
+        return suffix
+    namespace = re.sub(r"[^A-Za-z0-9]+", "_", namespace).strip("_").upper()
+    return f"{namespace}_{suffix}"
 
 
 def parse_args() -> argparse.Namespace:
@@ -36,19 +46,62 @@ def generate(source_root: Path) -> str:
         "// Update: scripts/vanilla-source-tools.sh python scripts/generate-command-argument-catalog.py",
         "// Check: scripts/vanilla-source-tools.sh python scripts/generate-command-argument-catalog.py --check",
         "",
-        "pub(super) const COMMAND_ARGUMENT_PARSERS: &[&str] = &[",
+        *(
+            f"pub const VANILLA_COMMAND_ARGUMENT_TYPE_{rust_constant_suffix(entry.resource_id)}_ID: i32 = {type_id};"
+            for type_id, entry in enumerate(entries)
+        ),
+        "",
+        "pub const VANILLA_COMMAND_ARGUMENT_TYPES: &[&str] = &[",
         *(f'    "{entry.resource_id}",' for entry in entries),
         "];",
         "",
         "#[cfg(test)]",
         "mod tests {",
+        "    use std::{fs, path::Path};",
+        "",
         "    use super::*;",
         "",
         "    #[test]",
         "    fn command_argument_order_matches_vanilla_26_1() {",
-        "        assert_eq!(COMMAND_ARGUMENT_PARSERS.len(), 57);",
-        '        assert_eq!(COMMAND_ARGUMENT_PARSERS.first(), Some(&"brigadier:bool"));',
-        '        assert_eq!(COMMAND_ARGUMENT_PARSERS.last(), Some(&"minecraft:uuid"));',
+        "        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPES.len(), 57);",
+        '        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPES.first(), Some(&"brigadier:bool"));',
+        '        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPES.last(), Some(&"minecraft:uuid"));',
+        "        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, 5);",
+        "        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID, 6);",
+        "        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID, 20);",
+        "    }",
+        "",
+        "    fn contains_numeric_command_argument_parser_type(source: &str) -> bool {",
+        "        let compact: String = source.chars().filter(|character| !character.is_whitespace()).collect();",
+        "        let contains_integer_literal = |value: &str| value.char_indices().any(|(offset, character)| {",
+        "            character.is_ascii_digit() && value[..offset].chars().next_back().is_none_or(|previous| !previous.is_ascii_alphanumeric() && previous != '_')",
+        "        });",
+        "        compact.match_indices(\"CommandArgumentParser{\").any(|(offset, _)| {",
+        "            let parser = &compact[offset + \"CommandArgumentParser{\".len()..];",
+        "            let Some(type_value) = parser.split(\",name:\").next().and_then(|fields| fields.split(\"type_id:\").nth(1)) else { return false; };",
+        "            contains_integer_literal(type_value)",
+        "        })",
+        "    }",
+        "",
+        "    #[test]",
+        "    fn semantic_command_argument_parsers_use_generated_type_ids() {",
+        "        assert!(contains_numeric_command_argument_parser_type(\"CommandArgumentParser { type_id: 20, name: message }\"));",
+        "        assert!(contains_numeric_command_argument_parser_type(\"CommandArgumentParser { type_id: if message { 20 } else { 5 }, name: parser }\"));",
+        "        assert!(!contains_numeric_command_argument_parser_type(\"CommandArgumentParser { type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID, name: message }\"));",
+        "        assert!(!contains_numeric_command_argument_parser_type(\"CommandArgumentParser { type_id: VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID, name: position }\"));",
+        "        fn visit(directory: &Path, violations: &mut Vec<String>) {",
+        "            for entry in fs::read_dir(directory).unwrap() {",
+        "                let path = entry.unwrap().path();",
+        "                if path.is_dir() { visit(&path, violations); continue; }",
+        "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
+        "                let source = fs::read_to_string(&path).unwrap();",
+        "                if contains_numeric_command_argument_parser_type(&source) { violations.push(path.display().to_string()); }",
+        "            }",
+        "        }",
+        "        let crates = Path::new(env!(\"CARGO_MANIFEST_DIR\")).parent().unwrap();",
+        "        let mut violations = Vec::new();",
+        "        for directory in [\"bbb-native/src\", \"bbb-world/src\", \"bbb-net/src\", \"bbb-control/src\"] { visit(&crates.join(directory), &mut violations); }",
+        "        assert!(violations.is_empty(), \"numeric command argument parser type ids: {violations:?}\");",
         "    }",
         "}",
         "",

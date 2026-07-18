@@ -443,7 +443,10 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
-    use bbb_protocol::packets::{CommandArgumentParser, CommandNode, CommandNodeType, Commands};
+    use bbb_protocol::packets::{
+        CommandArgumentParser, CommandNode, CommandNodeType, Commands,
+        VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+    };
     use uuid::Uuid;
 
     #[test]
@@ -1628,7 +1631,7 @@ mod tests {
                     redirect: None,
                     name: Some("message".to_string()),
                     parser: Some(CommandArgumentParser {
-                        type_id: 20,
+                        type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
                         name: "minecraft:message".to_string(),
                         properties: Vec::new(),
                     }),

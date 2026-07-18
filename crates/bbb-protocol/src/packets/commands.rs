@@ -5,7 +5,7 @@ use crate::codec::{Decoder, ProtocolError, Result};
 
 mod generated_26_1;
 
-use generated_26_1::COMMAND_ARGUMENT_PARSERS;
+pub use generated_26_1::*;
 
 const MAX_COMMAND_NODES: usize = 65_536;
 const MAX_COMMAND_CHILDREN: usize = 65_536;
@@ -180,7 +180,7 @@ fn decode_command_node(decoder: &mut Decoder<'_>) -> Result<CommandNode> {
 
 fn command_argument_parser_name(type_id: i32) -> Option<&'static str> {
     let index = usize::try_from(type_id).ok()?;
-    COMMAND_ARGUMENT_PARSERS.get(index).copied()
+    VANILLA_COMMAND_ARGUMENT_TYPES.get(index).copied()
 }
 
 fn skip_command_argument_properties(decoder: &mut Decoder<'_>, type_id: i32) -> Result<()> {

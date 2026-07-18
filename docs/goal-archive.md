@@ -19066,3 +19066,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   catalog and `HeightmapUsage`, removing the remaining production `1|3|4|5` table. A
   generator-emitted reverse guard covers semantic construction, queries, comparisons, helper calls,
   and the old membership form while leaving protocol wire samples separately owned.
+
+# 2026-07-18: Derive semantic command argument type ids
+
+- Extended the dedicated `ArgumentTypeInfos.bootstrap` generator to expose named ids for all 57
+  command argument registrations while retaining the generated resource order used by protocol
+  decoding.
+- Replaced numeric Brigadier String, Entity, and Message parser ids across world, net, control, and
+  native command-tree fixtures. A generator-emitted structure-scoped guard rejects direct and
+  conditional numeric `CommandArgumentParser.type_id` values outside protocol wire samples.

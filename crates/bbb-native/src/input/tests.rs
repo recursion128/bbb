@@ -104,7 +104,7 @@ use bbb_protocol::packets::{
     SetEntityData as ProtocolSetEntityData, SetEntityLink, SetEquipment, SetPassengers,
     SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog as ProtocolShowDialog, SignUpdate,
     SignedMessageBody, StatUpdate, TagQuery, UpdateAdvancements, Vec3d as ProtocolVec3d,
-    WrittenBookContentSummary,
+    WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
 use bbb_protocol::tropical_fish_patterns::VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID;
@@ -1249,7 +1249,7 @@ fn signable_message_command_tree() -> Commands {
                 redirect: None,
                 name: Some("message".to_string()),
                 parser: Some(CommandArgumentParser {
-                    type_id: 20,
+                    type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
                     name: "minecraft:message".to_string(),
                     properties: Vec::new(),
                 }),

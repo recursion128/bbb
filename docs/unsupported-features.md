@@ -169,6 +169,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   Heightmap sampler membership, semantic packet/state fixtures, queries, and comparisons must
   consume the generated `Heightmap.Types` catalog and named ids; the gameplay-id generator rejects
   numeric kind references outside protocol-owned raw codec samples.
+  Command-tree semantic fixtures must use constants generated from
+  `ArgumentTypeInfos.bootstrap` for every `CommandArgumentParser.type_id`; the dedicated command
+  argument generator owns the public 57-entry catalog and reverse guard, while protocol decoder
+  wire samples remain separately owned.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test

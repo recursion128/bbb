@@ -787,7 +787,7 @@ mod tests {
         CommandSuggestionRequest, Commands, ContainerButtonClick, ContainerSlotStateChanged,
         Direction as ProtocolDirection, InteractEntity, InteractionHand, LastSeenMessagesUpdate,
         PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind, RecipeBookType,
-        RecipeDisplayId, UseItemOn,
+        RecipeDisplayId, UseItemOn, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
     };
     use bbb_protocol::packets::{
         ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
@@ -933,7 +933,7 @@ mod tests {
                     redirect: None,
                     name: Some("message".to_string()),
                     parser: Some(CommandArgumentParser {
-                        type_id: 20,
+                        type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
                         name: "minecraft:message".to_string(),
                         properties: Vec::new(),
                     }),

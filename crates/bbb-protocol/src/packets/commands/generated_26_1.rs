@@ -3,7 +3,65 @@
 // Update: scripts/vanilla-source-tools.sh python scripts/generate-command-argument-catalog.py
 // Check: scripts/vanilla-source-tools.sh python scripts/generate-command-argument-catalog.py --check
 
-pub(super) const COMMAND_ARGUMENT_PARSERS: &[&str] = &[
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_BOOL_ID: i32 = 0;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_FLOAT_ID: i32 = 1;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_DOUBLE_ID: i32 = 2;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_INTEGER_ID: i32 = 3;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_LONG_ID: i32 = 4;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID: i32 = 5;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID: i32 = 6;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_GAME_PROFILE_ID: i32 = 7;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_POS_ID: i32 = 8;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_COLUMN_POS_ID: i32 = 9;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID: i32 = 10;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_VEC2_ID: i32 = 11;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_STATE_ID: i32 = 12;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_BLOCK_PREDICATE_ID: i32 = 13;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_STACK_ID: i32 = 14;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_PREDICATE_ID: i32 = 15;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_COLOR_ID: i32 = 16;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_HEX_COLOR_ID: i32 = 17;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_COMPONENT_ID: i32 = 18;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_STYLE_ID: i32 = 19;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID: i32 = 20;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_NBT_COMPOUND_TAG_ID: i32 = 21;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_NBT_TAG_ID: i32 = 22;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_NBT_PATH_ID: i32 = 23;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_ID: i32 = 24;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_OBJECTIVE_CRITERIA_ID: i32 = 25;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_OPERATION_ID: i32 = 26;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_PARTICLE_ID: i32 = 27;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_ANGLE_ID: i32 = 28;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_ROTATION_ID: i32 = 29;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_SCOREBOARD_SLOT_ID: i32 = 30;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_SCORE_HOLDER_ID: i32 = 31;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_SWIZZLE_ID: i32 = 32;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_TEAM_ID: i32 = 33;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOT_ID: i32 = 34;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_ITEM_SLOTS_ID: i32 = 35;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_LOCATION_ID: i32 = 36;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_FUNCTION_ID: i32 = 37;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ANCHOR_ID: i32 = 38;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_INT_RANGE_ID: i32 = 39;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_FLOAT_RANGE_ID: i32 = 40;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_DIMENSION_ID: i32 = 41;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_GAMEMODE_ID: i32 = 42;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_TIME_ID: i32 = 43;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_ID: i32 = 44;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_OR_TAG_KEY_ID: i32 = 45;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_ID: i32 = 46;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_KEY_ID: i32 = 47;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_RESOURCE_SELECTOR_ID: i32 = 48;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_MIRROR_ID: i32 = 49;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_TEMPLATE_ROTATION_ID: i32 = 50;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_HEIGHTMAP_ID: i32 = 51;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_LOOT_TABLE_ID: i32 = 52;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_LOOT_PREDICATE_ID: i32 = 53;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_LOOT_MODIFIER_ID: i32 = 54;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_DIALOG_ID: i32 = 55;
+pub const VANILLA_COMMAND_ARGUMENT_TYPE_UUID_ID: i32 = 56;
+
+pub const VANILLA_COMMAND_ARGUMENT_TYPES: &[&str] = &[
     "brigadier:bool",
     "brigadier:float",
     "brigadier:double",
@@ -65,12 +123,94 @@ pub(super) const COMMAND_ARGUMENT_PARSERS: &[&str] = &[
 
 #[cfg(test)]
 mod tests {
+    use std::{fs, path::Path};
+
     use super::*;
 
     #[test]
     fn command_argument_order_matches_vanilla_26_1() {
-        assert_eq!(COMMAND_ARGUMENT_PARSERS.len(), 57);
-        assert_eq!(COMMAND_ARGUMENT_PARSERS.first(), Some(&"brigadier:bool"));
-        assert_eq!(COMMAND_ARGUMENT_PARSERS.last(), Some(&"minecraft:uuid"));
+        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPES.len(), 57);
+        assert_eq!(
+            VANILLA_COMMAND_ARGUMENT_TYPES.first(),
+            Some(&"brigadier:bool")
+        );
+        assert_eq!(
+            VANILLA_COMMAND_ARGUMENT_TYPES.last(),
+            Some(&"minecraft:uuid")
+        );
+        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, 5);
+        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID, 6);
+        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID, 20);
+    }
+
+    fn contains_numeric_command_argument_parser_type(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let contains_integer_literal = |value: &str| {
+            value.char_indices().any(|(offset, character)| {
+                character.is_ascii_digit()
+                    && value[..offset]
+                        .chars()
+                        .next_back()
+                        .is_none_or(|previous| !previous.is_ascii_alphanumeric() && previous != '_')
+            })
+        };
+        compact
+            .match_indices("CommandArgumentParser{")
+            .any(|(offset, _)| {
+                let parser = &compact[offset + "CommandArgumentParser{".len()..];
+                let Some(type_value) = parser
+                    .split(",name:")
+                    .next()
+                    .and_then(|fields| fields.split("type_id:").nth(1))
+                else {
+                    return false;
+                };
+                contains_integer_literal(type_value)
+            })
+    }
+
+    #[test]
+    fn semantic_command_argument_parsers_use_generated_type_ids() {
+        assert!(contains_numeric_command_argument_parser_type(
+            "CommandArgumentParser { type_id: 20, name: message }"
+        ));
+        assert!(contains_numeric_command_argument_parser_type(
+            "CommandArgumentParser { type_id: if message { 20 } else { 5 }, name: parser }"
+        ));
+        assert!(!contains_numeric_command_argument_parser_type("CommandArgumentParser { type_id: VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID, name: message }"));
+        assert!(!contains_numeric_command_argument_parser_type("CommandArgumentParser { type_id: VANILLA_COMMAND_ARGUMENT_TYPE_VEC3_ID, name: position }"));
+        fn visit(directory: &Path, violations: &mut Vec<String>) {
+            for entry in fs::read_dir(directory).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    visit(&path, violations);
+                    continue;
+                }
+                if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                    continue;
+                }
+                let source = fs::read_to_string(&path).unwrap();
+                if contains_numeric_command_argument_parser_type(&source) {
+                    violations.push(path.display().to_string());
+                }
+            }
+        }
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut violations = Vec::new();
+        for directory in [
+            "bbb-native/src",
+            "bbb-world/src",
+            "bbb-net/src",
+            "bbb-control/src",
+        ] {
+            visit(&crates.join(directory), &mut violations);
+        }
+        assert!(
+            violations.is_empty(),
+            "numeric command argument parser type ids: {violations:?}"
+        );
     }
 }
