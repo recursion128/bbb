@@ -2,6 +2,7 @@ mod animal_variants;
 mod armor_trims;
 mod biomes;
 mod block_states;
+mod chat_types;
 mod damage_types;
 mod enchantments;
 mod environment_attributes;
@@ -29,6 +30,10 @@ pub use biomes::{
 };
 pub use block_states::{
     vanilla_air_block_state_id, vanilla_block_state_id, BlockStateInfo, BlockStateRegistry,
+};
+pub(crate) use chat_types::{resolve_chat_type, ResolvedChatType};
+pub use chat_types::{
+    ChatTypeDecoration, ChatTypeDecorationParameter, ChatTypeProjectionError, CHAT_TYPE_REGISTRY,
 };
 pub use damage_types::{
     DamageTypeDeathMessageType, DamageTypeEffects, DamageTypePresentation,

@@ -469,9 +469,10 @@ pub use crate::play_apply::{
 pub use crate::recipe_book::*;
 pub use crate::recipes::*;
 pub use crate::registries::{
-    ArmorTrimSprite, EnchantmentTooltipDefinition, PaintingVariantClientProjection,
-    PaintingVariantProjectionError, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
-    VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity, PAINTING_VARIANT_REGISTRY,
+    ArmorTrimSprite, ChatTypeDecoration, ChatTypeDecorationParameter, ChatTypeProjectionError,
+    EnchantmentTooltipDefinition, PaintingVariantClientProjection, PaintingVariantProjectionError,
+    VanillaEnchantmentIdentity, VanillaInstrumentIdentity, VanillaTrimMaterialIdentity,
+    VanillaTrimPatternIdentity, CHAT_TYPE_REGISTRY, PAINTING_VARIANT_REGISTRY,
     TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 pub use crate::terrain_state::*;

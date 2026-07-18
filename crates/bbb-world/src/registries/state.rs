@@ -111,7 +111,8 @@ pub struct UnresolvedRegistryTagHolder {
     pub holder_id: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RegistryEntrySource {
     Server,
     VanillaFallback,
@@ -370,6 +371,7 @@ impl RegistrySet {
     fn vanilla_fallback_resource_id(&self, registry: &str, holder_id: i32) -> Option<&str> {
         match registry {
             "minecraft:attribute" => Some(vanilla_attribute_type(holder_id)?.resource_id),
+            "minecraft:chat_type" => super::chat_types::vanilla_chat_type_resource_id(holder_id),
             "minecraft:item" => Some(vanilla_item_type(holder_id)?.resource_id),
             "minecraft:block" => self.block_states.block_name_by_registry_id(holder_id),
             "minecraft:entity_type" => Some(vanilla_entity_type(holder_id)?.resource_id),
@@ -390,6 +392,7 @@ impl RegistrySet {
         }
         match registry {
             "minecraft:attribute" => Some(vanilla_attribute_type_for_resource_id(resource_id)?.id),
+            "minecraft:chat_type" => super::chat_types::vanilla_chat_type_holder_id(resource_id),
             "minecraft:item" => {
                 Some(bbb_protocol::item_types::vanilla_item_type_for_resource_id(resource_id)?.id)
             }

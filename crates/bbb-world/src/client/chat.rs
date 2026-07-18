@@ -6,12 +6,17 @@ use bbb_protocol::{
         LastSeenMessagesUpdate, MessageSignature as ProtocolMessageSignature,
         PackedMessageSignature, PlayerChat,
     },
-    ComponentStyle, StyledTextRun,
+    ComponentStyle, NbtSummaryValue, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::WorldStore;
+use crate::{
+    registries::{
+        resolve_chat_type, ChatTypeDecoration, ChatTypeDecorationParameter, ResolvedChatType,
+    },
+    RegistryEntrySource, WorldStore,
+};
 
 const SIGNATURE_CACHE_CAPACITY: usize = 128;
 const LAST_SEEN_MESSAGES_TRACKER_CAPACITY: usize = 20;
@@ -50,6 +55,12 @@ pub struct ChatMessageState {
     pub content_translation_key: Option<String>,
     #[serde(default)]
     pub styled_content: Vec<StyledTextRun>,
+    #[serde(default)]
+    pub content_component: Option<NbtSummaryValue>,
+    #[serde(default)]
+    pub decoration: Option<ChatDecorationState>,
+    #[serde(default)]
+    pub narration_decoration: Option<ChatDecorationState>,
     pub sender: Option<Uuid>,
     pub sender_name: String,
     pub target_name: Option<String>,
@@ -84,7 +95,30 @@ impl ChatMessageKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChatTypeState {
     pub registry_id: Option<i32>,
+    #[serde(default)]
+    pub resource_id: Option<String>,
+    #[serde(default)]
+    pub source: Option<RegistryEntrySource>,
     pub direct_translation_key: Option<String>,
+    #[serde(default)]
+    pub resolution_error: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatDecorationState {
+    pub translation_key: String,
+    pub arguments: Vec<ChatDecorationArgumentState>,
+    pub style: ComponentStyle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatDecorationArgumentState {
+    pub parameter: ChatTypeDecorationParameter,
+    pub summary: String,
+    #[serde(default)]
+    pub styled: Vec<StyledTextRun>,
+    #[serde(default)]
+    pub component: Option<NbtSummaryValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -223,6 +257,9 @@ impl WorldStore {
             content,
             content_translation_key,
             styled_content,
+            content_component: None,
+            decoration: None,
+            narration_decoration: None,
             sender: None,
             sender_name: String::new(),
             target_name: None,
@@ -230,7 +267,10 @@ impl WorldStore {
             message_index: None,
             chat_type: ChatTypeState {
                 registry_id: None,
+                resource_id: None,
+                source: None,
                 direct_translation_key: None,
+                resolution_error: None,
             },
             signature: None,
             unsigned_content: None,
@@ -241,6 +281,8 @@ impl WorldStore {
     }
 
     pub fn apply_player_chat(&mut self, packet: PlayerChat) -> Option<ProtocolChatAcknowledgement> {
+        let resolved_chat_type =
+            resolve_chat_type(self.frozen_registry_access(), &packet.chat_type.chat_type);
         self.counters.player_chat_packets += 1;
         let mut validation_state = if packet.signature.is_some() {
             ChatValidationState::Unchecked
@@ -301,17 +343,57 @@ impl WorldStore {
             ProtocolFilterMaskKind::PassThrough => {}
         }
 
+        let (styled_content, content_component) = packet
+            .unsigned_content
+            .as_ref()
+            .map(|unsigned| {
+                (
+                    nonempty_styled_or_plain(
+                        packet
+                            .unsigned_content_styled
+                            .as_deref()
+                            .unwrap_or_default(),
+                        unsigned,
+                    ),
+                    packet
+                        .unsigned_content_component
+                        .clone()
+                        .or_else(|| Some(NbtSummaryValue::String(unsigned.clone()))),
+                )
+            })
+            .unwrap_or_else(|| {
+                (
+                    plain_chat_styled_content(&packet.body.content),
+                    Some(NbtSummaryValue::String(packet.body.content.clone())),
+                )
+            });
+        let (chat_type, decoration, narration_decoration) = resolved_chat_state(
+            resolved_chat_type,
+            &packet.chat_type,
+            packet
+                .unsigned_content
+                .as_deref()
+                .unwrap_or(&packet.body.content),
+            &styled_content,
+            content_component.as_ref(),
+        );
+        let content_translation_key = decoration
+            .as_ref()
+            .map(|decoration| decoration.translation_key.clone());
         let message = ChatMessageState {
             kind: ChatMessageKind::Player,
-            styled_content: plain_chat_styled_content(&packet.body.content),
+            styled_content,
+            content_component,
             content: packet.body.content,
-            content_translation_key: None,
+            content_translation_key,
+            decoration,
+            narration_decoration,
             sender: Some(packet.sender),
             sender_name: packet.chat_type.name,
             target_name: packet.chat_type.target_name,
             global_index: Some(packet.global_index),
             message_index: Some(packet.index),
-            chat_type: chat_type_state(packet.chat_type.chat_type),
+            chat_type,
             signature: packet.signature.as_ref().map(chat_signature_state),
             unsigned_content: packet.unsigned_content,
             filter_mask: packet.filter_mask.kind.as_str().to_string(),
@@ -323,18 +405,38 @@ impl WorldStore {
     }
 
     pub fn apply_disguised_chat(&mut self, packet: ProtocolDisguisedChat) {
+        let resolved_chat_type =
+            resolve_chat_type(self.frozen_registry_access(), &packet.chat_type.chat_type);
         self.counters.disguised_chat_packets += 1;
+        let styled_content = nonempty_styled_or_plain(&packet.message_styled, &packet.message);
+        let content_component = packet
+            .message_component
+            .clone()
+            .or_else(|| Some(NbtSummaryValue::String(packet.message.clone())));
+        let (chat_type, decoration, narration_decoration) = resolved_chat_state(
+            resolved_chat_type,
+            &packet.chat_type,
+            &packet.message,
+            &styled_content,
+            content_component.as_ref(),
+        );
+        let content_translation_key = decoration
+            .as_ref()
+            .map(|decoration| decoration.translation_key.clone());
         self.client_chat.messages.push(ChatMessageState {
             kind: ChatMessageKind::Disguised,
-            styled_content: plain_chat_styled_content(&packet.message),
+            styled_content,
+            content_component,
             content: packet.message,
-            content_translation_key: None,
+            content_translation_key,
+            decoration,
+            narration_decoration,
             sender: None,
             sender_name: packet.chat_type.name,
             target_name: packet.chat_type.target_name,
             global_index: None,
             message_index: None,
-            chat_type: chat_type_state(packet.chat_type.chat_type),
+            chat_type,
             signature: None,
             unsigned_content: None,
             filter_mask: ProtocolFilterMaskKind::PassThrough.as_str().to_string(),
@@ -550,16 +652,132 @@ fn last_seen_checksum_byte(checksum: i32) -> u8 {
     }
 }
 
-fn chat_type_state(chat_type: ProtocolChatTypeHolder) -> ChatTypeState {
-    match chat_type {
-        ProtocolChatTypeHolder::Registry { id } => ChatTypeState {
-            registry_id: Some(id),
-            direct_translation_key: None,
-        },
-        ProtocolChatTypeHolder::Direct { chat, .. } => ChatTypeState {
-            registry_id: None,
-            direct_translation_key: Some(chat.translation_key),
-        },
+fn nonempty_styled_or_plain(styled: &[StyledTextRun], plain: &str) -> Vec<StyledTextRun> {
+    if styled.is_empty() {
+        plain_chat_styled_content(plain)
+    } else {
+        styled.to_vec()
+    }
+}
+
+fn resolved_chat_state(
+    resolved: Result<ResolvedChatType, crate::ChatTypeProjectionError>,
+    bound: &bbb_protocol::packets::ChatTypeBound,
+    content: &str,
+    content_styled: &[StyledTextRun],
+    content_component: Option<&NbtSummaryValue>,
+) -> (
+    ChatTypeState,
+    Option<ChatDecorationState>,
+    Option<ChatDecorationState>,
+) {
+    match resolved {
+        Ok(resolved) => {
+            let chat = chat_decoration_state(
+                &resolved.chat,
+                bound,
+                content,
+                content_styled,
+                content_component,
+            );
+            let narration = chat_decoration_state(
+                &resolved.narration,
+                bound,
+                content,
+                content_styled,
+                content_component,
+            );
+            let direct_translation_key = resolved
+                .holder_id
+                .is_none()
+                .then(|| resolved.chat.translation_key.clone());
+            (
+                ChatTypeState {
+                    registry_id: resolved.holder_id,
+                    resource_id: resolved.resource_id,
+                    source: resolved.source,
+                    direct_translation_key,
+                    resolution_error: None,
+                },
+                Some(chat),
+                Some(narration),
+            )
+        }
+        Err(error) => {
+            let (registry_id, direct_translation_key) = match &bound.chat_type {
+                ProtocolChatTypeHolder::Registry { id } => (Some(*id), None),
+                ProtocolChatTypeHolder::Direct { chat, .. } => {
+                    (None, Some(chat.translation_key.clone()))
+                }
+            };
+            (
+                ChatTypeState {
+                    registry_id,
+                    resource_id: None,
+                    source: None,
+                    direct_translation_key,
+                    resolution_error: Some(error.to_string()),
+                },
+                None,
+                None,
+            )
+        }
+    }
+}
+
+fn chat_decoration_state(
+    decoration: &ChatTypeDecoration,
+    bound: &bbb_protocol::packets::ChatTypeBound,
+    content: &str,
+    content_styled: &[StyledTextRun],
+    content_component: Option<&NbtSummaryValue>,
+) -> ChatDecorationState {
+    let arguments = decoration
+        .parameters
+        .iter()
+        .map(|parameter| {
+            let (summary, styled, component) = match parameter {
+                ChatTypeDecorationParameter::Sender => (
+                    bound.name.clone(),
+                    nonempty_styled_or_plain(&bound.name_styled, &bound.name),
+                    bound
+                        .name_component
+                        .clone()
+                        .or_else(|| Some(NbtSummaryValue::String(bound.name.clone()))),
+                ),
+                ChatTypeDecorationParameter::Target => {
+                    let summary = bound.target_name.clone().unwrap_or_default();
+                    let styled = bound
+                        .target_name_styled
+                        .as_deref()
+                        .map(|styled| nonempty_styled_or_plain(styled, &summary))
+                        .unwrap_or_default();
+                    let component = bound.target_name_component.clone().or_else(|| {
+                        bound
+                            .target_name
+                            .as_ref()
+                            .map(|target| NbtSummaryValue::String(target.clone()))
+                    });
+                    (summary, styled, component)
+                }
+                ChatTypeDecorationParameter::Content => (
+                    content.to_string(),
+                    content_styled.to_vec(),
+                    content_component.cloned(),
+                ),
+            };
+            ChatDecorationArgumentState {
+                parameter: *parameter,
+                summary,
+                styled,
+                component,
+            }
+        })
+        .collect();
+    ChatDecorationState {
+        translation_key: decoration.translation_key.clone(),
+        arguments,
+        style: decoration.style.clone(),
     }
 }
 
@@ -579,9 +797,11 @@ fn refresh_chat_counters(store: &mut WorldStore) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::CHAT_TYPE_REGISTRY;
     use bbb_protocol::packets::{
-        ChatTypeBound, ChatTypeHolder, CommonPlayerSpawnInfo, FilterMask, FilterMaskKind,
-        MessageSignature, PackedMessageSignature, PlayLogin, SignedMessageBody,
+        ChatTypeBound, ChatTypeDecorationSummary, ChatTypeHolder, CommonPlayerSpawnInfo,
+        FilterMask, FilterMaskKind, MessageSignature, PackedMessageSignature, PlayLogin,
+        RegistryData, RegistryDataEntry, SignedMessageBody,
     };
 
     #[test]
@@ -617,10 +837,27 @@ mod tests {
         assert_eq!(
             message.styled_content,
             vec![StyledTextRun {
-                text: "hello".to_string(),
+                text: "unsigned".to_string(),
                 style: ComponentStyle::default(),
             }]
         );
+        assert_eq!(
+            message.content_translation_key.as_deref(),
+            Some("chat.type.text")
+        );
+        assert_eq!(message.chat_type.registry_id, Some(0));
+        assert_eq!(
+            message.chat_type.resource_id.as_deref(),
+            Some("minecraft:chat")
+        );
+        assert_eq!(
+            message.chat_type.source,
+            Some(RegistryEntrySource::VanillaFallback)
+        );
+        let decoration = message.decoration.as_ref().unwrap();
+        assert_eq!(decoration.arguments.len(), 2);
+        assert_eq!(decoration.arguments[0].summary, "Alice");
+        assert_eq!(decoration.arguments[1].summary, "unsigned");
         assert_eq!(message.sender, Some(sender));
         assert_eq!(message.sender_name, "Alice");
         assert_eq!(message.validation_state, ChatValidationState::Unchecked);
@@ -920,6 +1157,190 @@ mod tests {
     }
 
     #[test]
+    fn synchronized_chat_type_uses_server_order_and_typed_decoration() {
+        let mut store = WorldStore::new();
+        store.record_registry_data(RegistryData {
+            registry: CHAT_TYPE_REGISTRY.to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "example:team_notice".to_string(),
+                    raw_data: Some(chat_type_payload(
+                        "example.chat.team_notice",
+                        &["target", "content"],
+                        "example.chat.team_notice.narrate",
+                        &["sender", "content"],
+                        true,
+                    )),
+                },
+                RegistryDataEntry {
+                    id: "minecraft:chat".to_string(),
+                    raw_data: Some(chat_type_payload(
+                        "chat.type.text",
+                        &["sender", "content"],
+                        "chat.type.text.narrate",
+                        &["sender", "content"],
+                        false,
+                    )),
+                },
+            ],
+            raw_payload_len: 128,
+        });
+        let mut bound = chat_type("Server");
+        bound.target_name = Some("Blue".to_string());
+        bound.target_name_styled = Some(plain_chat_styled_content("Blue"));
+        bound.target_name_component = Some(NbtSummaryValue::String("Blue".to_string()));
+        store.apply_disguised_chat(ProtocolDisguisedChat {
+            message: "custom notice".to_string(),
+            message_styled: plain_chat_styled_content("custom notice"),
+            message_component: Some(NbtSummaryValue::String("custom notice".to_string())),
+            chat_type: bound,
+        });
+        let mut vanilla_bound = chat_type("Alex");
+        vanilla_bound.chat_type = ChatTypeHolder::Registry { id: 1 };
+        store.apply_disguised_chat(ProtocolDisguisedChat {
+            message: "vanilla moved".to_string(),
+            message_styled: plain_chat_styled_content("vanilla moved"),
+            message_component: Some(NbtSummaryValue::String("vanilla moved".to_string())),
+            chat_type: vanilla_bound,
+        });
+
+        let message = &store.client_chat().messages[0];
+        assert_eq!(message.chat_type.registry_id, Some(0));
+        assert_eq!(
+            message.chat_type.resource_id.as_deref(),
+            Some("example:team_notice")
+        );
+        assert_eq!(message.chat_type.source, Some(RegistryEntrySource::Server));
+        assert_eq!(message.chat_type.resolution_error, None);
+        let decoration = message.decoration.as_ref().unwrap();
+        assert_eq!(decoration.translation_key, "example.chat.team_notice");
+        assert_eq!(decoration.style.bold, Some(true));
+        assert_eq!(
+            decoration
+                .arguments
+                .iter()
+                .map(|argument| (argument.parameter, argument.summary.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                (ChatTypeDecorationParameter::Target, "Blue"),
+                (ChatTypeDecorationParameter::Content, "custom notice"),
+            ]
+        );
+        let vanilla = &store.client_chat().messages[1];
+        assert_eq!(vanilla.chat_type.registry_id, Some(1));
+        assert_eq!(
+            vanilla.chat_type.resource_id.as_deref(),
+            Some("minecraft:chat")
+        );
+        assert_eq!(
+            vanilla.content_translation_key.as_deref(),
+            Some("chat.type.text")
+        );
+    }
+
+    #[test]
+    fn direct_chat_type_preserves_style_and_vanilla_zero_parameter_fallback() {
+        let mut store = WorldStore::new();
+        store.apply_disguised_chat(ProtocolDisguisedChat {
+            message: "direct notice".to_string(),
+            message_styled: plain_chat_styled_content("direct notice"),
+            message_component: Some(NbtSummaryValue::String("direct notice".to_string())),
+            chat_type: ChatTypeBound {
+                chat_type: ChatTypeHolder::Direct {
+                    chat: ChatTypeDecorationSummary {
+                        translation_key: "example.direct".to_string(),
+                        parameters: vec![99, 2],
+                        style: ComponentStyle {
+                            italic: Some(true),
+                            ..ComponentStyle::default()
+                        },
+                    },
+                    narration: ChatTypeDecorationSummary {
+                        translation_key: "example.direct.narrate".to_string(),
+                        parameters: vec![0, 2],
+                        style: ComponentStyle::default(),
+                    },
+                },
+                name: "Server".to_string(),
+                name_styled: plain_chat_styled_content("Server"),
+                name_component: Some(NbtSummaryValue::String("Server".to_string())),
+                target_name: None,
+                target_name_styled: None,
+                target_name_component: None,
+            },
+        });
+
+        let message = store.client_chat().messages.last().unwrap();
+        assert_eq!(message.chat_type.registry_id, None);
+        assert_eq!(message.chat_type.source, None);
+        assert_eq!(
+            message.chat_type.direct_translation_key.as_deref(),
+            Some("example.direct")
+        );
+        let decoration = message.decoration.as_ref().unwrap();
+        assert_eq!(decoration.style.italic, Some(true));
+        assert_eq!(
+            decoration.arguments[0].parameter,
+            ChatTypeDecorationParameter::Sender
+        );
+        assert_eq!(
+            decoration.arguments[1].parameter,
+            ChatTypeDecorationParameter::Content
+        );
+    }
+
+    #[test]
+    fn synchronized_chat_type_stub_malformed_and_unknown_stay_diagnostic() {
+        let mut store = WorldStore::new();
+        store.record_registry_data(RegistryData {
+            registry: CHAT_TYPE_REGISTRY.to_string(),
+            entries: vec![
+                RegistryDataEntry {
+                    id: "example:stub".to_string(),
+                    raw_data: None,
+                },
+                RegistryDataEntry {
+                    id: "example:broken".to_string(),
+                    raw_data: Some(vec![10, 0]),
+                },
+            ],
+            raw_payload_len: 16,
+        });
+
+        for id in 0..3 {
+            let mut bound = chat_type("Server");
+            bound.chat_type = ChatTypeHolder::Registry { id };
+            store.apply_disguised_chat(ProtocolDisguisedChat {
+                message: format!("notice {id}"),
+                message_styled: Vec::new(),
+                message_component: None,
+                chat_type: bound,
+            });
+        }
+
+        let messages = &store.client_chat().messages;
+        assert!(messages[0]
+            .chat_type
+            .resolution_error
+            .as_deref()
+            .unwrap()
+            .contains("missing example:stub chat type payload"));
+        assert!(messages[1]
+            .chat_type
+            .resolution_error
+            .as_deref()
+            .unwrap()
+            .contains("malformed example:broken chat type payload"));
+        assert!(messages[2]
+            .chat_type
+            .resolution_error
+            .as_deref()
+            .unwrap()
+            .contains("missing minecraft:chat_type holder 2"));
+        assert!(messages.iter().all(|message| message.decoration.is_none()));
+    }
+
+    #[test]
     fn client_system_chat_tracks_local_display_message_without_protocol_counters() {
         let mut store = WorldStore::new();
 
@@ -1175,6 +1596,62 @@ mod tests {
             target_name_styled: None,
             target_name_component: None,
         }
+    }
+
+    fn chat_type_payload(
+        chat_key: &str,
+        chat_parameters: &[&str],
+        narration_key: &str,
+        narration_parameters: &[&str],
+        bold: bool,
+    ) -> Vec<u8> {
+        let mut out = vec![10];
+        write_chat_type_decoration_nbt(&mut out, "chat", chat_key, chat_parameters, bold);
+        write_chat_type_decoration_nbt(
+            &mut out,
+            "narration",
+            narration_key,
+            narration_parameters,
+            false,
+        );
+        out.push(0);
+        out
+    }
+
+    fn write_chat_type_decoration_nbt(
+        out: &mut Vec<u8>,
+        name: &str,
+        translation_key: &str,
+        parameters: &[&str],
+        bold: bool,
+    ) {
+        out.push(10);
+        write_nbt_string(out, name);
+        out.push(8);
+        write_nbt_string(out, "translation_key");
+        write_nbt_string(out, translation_key);
+        out.push(9);
+        write_nbt_string(out, "parameters");
+        out.push(8);
+        out.extend_from_slice(&(parameters.len() as i32).to_be_bytes());
+        for parameter in parameters {
+            write_nbt_string(out, parameter);
+        }
+        if bold {
+            out.push(10);
+            write_nbt_string(out, "style");
+            out.push(1);
+            write_nbt_string(out, "bold");
+            out.push(1);
+            out.push(0);
+        }
+        out.push(0);
+    }
+
+    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+        let bytes = value.as_bytes();
+        out.extend_from_slice(&(bytes.len() as u16).to_be_bytes());
+        out.extend_from_slice(bytes);
     }
 
     fn login_packet() -> PlayLogin {
