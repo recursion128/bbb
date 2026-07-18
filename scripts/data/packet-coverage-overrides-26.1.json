@@ -4767,7 +4767,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-world/src/registries/tests.rs#update_tags_replace_network_tag_state",
-          "crates/bbb-world/src/registries/tests.rs#registry_tag_holder_resolution_is_ordered_and_rejects_unknown_holders",
+          "crates/bbb-world/src/registries/tests.rs#registry_tag_holder_resolution_is_ordered_and_reports_unknown_holders",
           "crates/bbb-world/src/registries/tests.rs#registry_lookup_uses_static_fallback_only_without_server_contents",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_block_tags",
           "crates/bbb-native/src/runtime/tests.rs#hud_debug_overlay_projects_custom_looking_at_entity_tags",
