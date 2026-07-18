@@ -5,10 +5,7 @@ use bbb_protocol::{
     styled_runs_summary_text, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 
-use crate::{
-    chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
-    WorldStore,
-};
+use crate::WorldStore;
 
 mod generated_26_1;
 
@@ -116,8 +113,8 @@ impl WorldStore {
                 .iter()
                 .map(|entry| {
                     entry
-                        .raw_data()
-                        .and_then(decode_enchantment_tooltip_definition)
+                        .element_data()
+                        .and_then(|data| decode_enchantment_tooltip_definition(&data.value))
                 })
                 .collect(),
         )
@@ -138,7 +135,10 @@ impl WorldStore {
             else {
                 continue;
             };
-            let Some(definition) = entry.raw_data().and_then(decode_enchantment_definition) else {
+            let Some(definition) = entry
+                .element_data()
+                .and_then(|data| decode_enchantment_definition(&data.value))
+            else {
                 continue;
             };
             for effect in definition.attribute_effects {
@@ -175,8 +175,8 @@ impl WorldStore {
             else {
                 continue;
             };
-            let effect = match entry.raw_data() {
-                Some(raw_data) => decode_crossbow_charge_time_effect(raw_data).flatten(),
+            let effect = match entry.element_data() {
+                Some(data) => decode_crossbow_charge_time_effect(&data.value).flatten(),
                 None if !entry.has_data => vanilla_crossbow_charge_time_effect(&entry.id),
                 None => None,
             };
@@ -188,22 +188,23 @@ impl WorldStore {
     }
 }
 
-fn decode_enchantment_tooltip_definition(raw_data: &[u8]) -> Option<EnchantmentTooltipDefinition> {
-    let root = decode_nbt_root(raw_data).ok()??;
-    let NbtValue::Compound(fields) = root else {
+fn decode_enchantment_tooltip_definition(
+    value: &NbtSummaryValue,
+) -> Option<EnchantmentTooltipDefinition> {
+    let NbtSummaryValue::Compound(fields) = value else {
         return None;
     };
-    let description = find_nbt_entry(&fields, "description")?;
+    let description = nbt_field(fields, "description")?;
     let description_fields = nbt_compound(Some(description));
     let description_translation_key = description_fields
-        .and_then(|fields| nbt_string(find_nbt_entry(fields, "translate")))
+        .and_then(|fields| nbt_string(nbt_field(fields, "translate")))
         .map(str::to_string);
     let description_translation_fallback = description_fields
-        .and_then(|fields| nbt_string(find_nbt_entry(fields, "fallback")))
+        .and_then(|fields| nbt_string(nbt_field(fields, "fallback")))
         .map(str::to_string);
-    let description_styled = styled_component_runs_from_nbt_value(&nbt_summary_value(description)?);
+    let description_styled = styled_component_runs_from_nbt_value(description);
     let description = styled_runs_summary_text(&description_styled);
-    let max_level = nbt_i32(find_nbt_entry(&fields, "max_level")?)?;
+    let max_level = nbt_i32(nbt_field(fields, "max_level")?)?;
     if !(1..=255).contains(&max_level) {
         return None;
     }
@@ -279,16 +280,17 @@ impl EnchantmentValueEffect {
     }
 }
 
-fn decode_crossbow_charge_time_effect(raw_data: &[u8]) -> Option<Option<EnchantmentValueEffect>> {
-    let root = decode_nbt_root(raw_data).ok()??;
-    let NbtValue::Compound(fields) = root else {
+fn decode_crossbow_charge_time_effect(
+    value: &NbtSummaryValue,
+) -> Option<Option<EnchantmentValueEffect>> {
+    let NbtSummaryValue::Compound(fields) = value else {
         return None;
     };
-    let Some(effects) = find_nbt_entry(&fields, "effects") else {
+    let Some(effects) = nbt_field(fields, "effects") else {
         return Some(None);
     };
     let effects = nbt_compound(Some(effects))?;
-    let Some(effect) = find_nbt_entry(effects, "minecraft:crossbow_charge_time") else {
+    let Some(effect) = nbt_field(effects, "minecraft:crossbow_charge_time") else {
         return Some(None);
     };
     Some(Some(parse_enchantment_value_effect(effect)?))
@@ -303,31 +305,31 @@ fn vanilla_crossbow_charge_time_effect(resource_id: &str) -> Option<EnchantmentV
     }))
 }
 
-fn parse_enchantment_value_effect(value: &NbtValue) -> Option<EnchantmentValueEffect> {
+fn parse_enchantment_value_effect(value: &NbtSummaryValue) -> Option<EnchantmentValueEffect> {
     let fields = nbt_compound(Some(value))?;
-    let effect_type = nbt_string(find_nbt_entry(fields, "type"))?;
+    let effect_type = nbt_string(nbt_field(fields, "type"))?;
     let effect_type = effect_type
         .strip_prefix("minecraft:")
         .unwrap_or(effect_type);
     match effect_type {
         "add" => Some(EnchantmentValueEffect::Add(parse_level_based_value(
-            find_nbt_entry(fields, "value")?,
+            nbt_field(fields, "value")?,
         )?)),
         "all_of" => Some(EnchantmentValueEffect::AllOf(
-            nbt_list(find_nbt_entry(fields, "effects"))?
+            nbt_list(nbt_field(fields, "effects"))?
                 .iter()
                 .map(parse_enchantment_value_effect)
                 .collect::<Option<Vec<_>>>()?,
         )),
         "multiply" => Some(EnchantmentValueEffect::Multiply(parse_level_based_value(
-            find_nbt_entry(fields, "factor")?,
+            nbt_field(fields, "factor")?,
         )?)),
         "exponential" => Some(EnchantmentValueEffect::Exponential {
-            base: parse_level_based_value(find_nbt_entry(fields, "base")?)?,
-            exponent: parse_level_based_value(find_nbt_entry(fields, "exponent")?)?,
+            base: parse_level_based_value(nbt_field(fields, "base")?)?,
+            exponent: parse_level_based_value(nbt_field(fields, "exponent")?)?,
         }),
         "set" => Some(EnchantmentValueEffect::Set(parse_level_based_value(
-            find_nbt_entry(fields, "value")?,
+            nbt_field(fields, "value")?,
         )?)),
         // Vanilla `RemoveBinomial` needs the holder's mutable RandomSource.
         "remove_binomial" => None,
@@ -335,20 +337,19 @@ fn parse_enchantment_value_effect(value: &NbtValue) -> Option<EnchantmentValueEf
     }
 }
 
-fn decode_enchantment_definition(raw_data: &[u8]) -> Option<EnchantmentDefinition> {
-    let root = decode_nbt_root(raw_data).ok()??;
-    let NbtValue::Compound(fields) = root else {
+fn decode_enchantment_definition(value: &NbtSummaryValue) -> Option<EnchantmentDefinition> {
+    let NbtSummaryValue::Compound(fields) = value else {
         return None;
     };
-    let slots = nbt_list(find_nbt_entry(&fields, "slots"))?
+    let slots = nbt_list(nbt_field(fields, "slots"))?
         .iter()
         .map(|value| {
             let slot = nbt_string(Some(value))?;
             vanilla_equipment_slot_group_for_serialized_name(slot).map(|_| slot.to_string())
         })
         .collect::<Option<Vec<_>>>()?;
-    let effects = nbt_compound(find_nbt_entry(&fields, "effects"))?;
-    let attribute_effects = match find_nbt_entry(effects, "minecraft:attributes") {
+    let effects = nbt_compound(nbt_field(fields, "effects"))?;
+    let attribute_effects = match nbt_field(effects, "minecraft:attributes") {
         Some(value) => nbt_list(Some(value))?
             .iter()
             .map(parse_attribute_effect)
@@ -361,34 +362,31 @@ fn decode_enchantment_definition(raw_data: &[u8]) -> Option<EnchantmentDefinitio
     })
 }
 
-fn parse_attribute_effect(value: &NbtValue) -> Option<EnchantmentAttributeEffect> {
+fn parse_attribute_effect(value: &NbtSummaryValue) -> Option<EnchantmentAttributeEffect> {
     let fields = nbt_compound(Some(value))?;
     Some(EnchantmentAttributeEffect {
-        id: nbt_string(find_nbt_entry(fields, "id"))?.to_string(),
-        attribute: nbt_string(find_nbt_entry(fields, "attribute"))?.to_string(),
-        amount: parse_level_based_value(find_nbt_entry(fields, "amount")?)?,
-        operation_id: attribute_modifier_operation_id(nbt_string(find_nbt_entry(
-            fields,
-            "operation",
-        ))?)?,
+        id: nbt_string(nbt_field(fields, "id"))?.to_string(),
+        attribute: nbt_string(nbt_field(fields, "attribute"))?.to_string(),
+        amount: parse_level_based_value(nbt_field(fields, "amount")?)?,
+        operation_id: attribute_modifier_operation_id(nbt_string(nbt_field(fields, "operation"))?)?,
     })
 }
 
-fn parse_level_based_value(value: &NbtValue) -> Option<LevelBasedValue> {
+fn parse_level_based_value(value: &NbtSummaryValue) -> Option<LevelBasedValue> {
     if let Some(value) = nbt_f32(value) {
         return Some(LevelBasedValue::Constant(value));
     }
     let fields = nbt_compound(Some(value))?;
-    let value_type = nbt_string(find_nbt_entry(fields, "type"))?;
+    let value_type = nbt_string(nbt_field(fields, "type"))?;
     let value_type = value_type.strip_prefix("minecraft:").unwrap_or(value_type);
     match value_type {
-        "constant" => Some(LevelBasedValue::Constant(nbt_f32(find_nbt_entry(
+        "constant" => Some(LevelBasedValue::Constant(nbt_f32(nbt_field(
             fields, "value",
         )?)?)),
         "clamped" => {
-            let min = nbt_f32(find_nbt_entry(fields, "min")?)?;
-            let max = nbt_f32(find_nbt_entry(fields, "max")?)?;
-            let value = parse_level_based_value(find_nbt_entry(fields, "value")?)?;
+            let min = nbt_f32(nbt_field(fields, "min")?)?;
+            let max = nbt_f32(nbt_field(fields, "max")?)?;
+            let value = parse_level_based_value(nbt_field(fields, "value")?)?;
             (max > min).then_some(LevelBasedValue::Clamped {
                 value: Box::new(value),
                 min,
@@ -396,111 +394,79 @@ fn parse_level_based_value(value: &NbtValue) -> Option<LevelBasedValue> {
             })
         }
         "exponent" => Some(LevelBasedValue::Exponent {
-            base: Box::new(parse_level_based_value(find_nbt_entry(fields, "base")?)?),
-            power: Box::new(parse_level_based_value(find_nbt_entry(fields, "power")?)?),
+            base: Box::new(parse_level_based_value(nbt_field(fields, "base")?)?),
+            power: Box::new(parse_level_based_value(nbt_field(fields, "power")?)?),
         }),
         "fraction" => Some(LevelBasedValue::Fraction {
-            numerator: Box::new(parse_level_based_value(find_nbt_entry(
-                fields,
-                "numerator",
-            )?)?),
-            denominator: Box::new(parse_level_based_value(find_nbt_entry(
-                fields,
-                "denominator",
-            )?)?),
+            numerator: Box::new(parse_level_based_value(nbt_field(fields, "numerator")?)?),
+            denominator: Box::new(parse_level_based_value(nbt_field(fields, "denominator")?)?),
         }),
         "levels_squared" => Some(LevelBasedValue::LevelsSquared {
-            added: nbt_f32(find_nbt_entry(fields, "added")?)?,
+            added: nbt_f32(nbt_field(fields, "added")?)?,
         }),
         "linear" => Some(LevelBasedValue::Linear {
-            base: nbt_f32(find_nbt_entry(fields, "base")?)?,
-            per_level_above_first: nbt_f32(find_nbt_entry(fields, "per_level_above_first")?)?,
+            base: nbt_f32(nbt_field(fields, "base")?)?,
+            per_level_above_first: nbt_f32(nbt_field(fields, "per_level_above_first")?)?,
         }),
         "lookup" => Some(LevelBasedValue::Lookup {
-            values: nbt_list(find_nbt_entry(fields, "values"))?
+            values: nbt_list(nbt_field(fields, "values"))?
                 .iter()
                 .map(nbt_f32)
                 .collect::<Option<Vec<_>>>()?,
-            fallback: Box::new(parse_level_based_value(find_nbt_entry(
-                fields, "fallback",
-            )?)?),
+            fallback: Box::new(parse_level_based_value(nbt_field(fields, "fallback")?)?),
         }),
         _ => None,
     }
 }
 
-fn nbt_compound(value: Option<&NbtValue>) -> Option<&[(String, NbtValue)]> {
-    let NbtValue::Compound(entries) = value? else {
+fn nbt_field<'a>(entries: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    entries
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
+}
+
+fn nbt_compound(value: Option<&NbtSummaryValue>) -> Option<&[NbtSummaryEntry]> {
+    let NbtSummaryValue::Compound(entries) = value? else {
         return None;
     };
     Some(entries)
 }
 
-fn nbt_list(value: Option<&NbtValue>) -> Option<&[NbtValue]> {
-    let NbtValue::List(values) = value? else {
+fn nbt_list(value: Option<&NbtSummaryValue>) -> Option<&[NbtSummaryValue]> {
+    let NbtSummaryValue::List(values) = value? else {
         return None;
     };
     Some(values)
 }
 
-fn nbt_string(value: Option<&NbtValue>) -> Option<&str> {
-    let NbtValue::String(value) = value? else {
+fn nbt_string(value: Option<&NbtSummaryValue>) -> Option<&str> {
+    let NbtSummaryValue::String(value) = value? else {
         return None;
     };
     Some(value)
 }
 
-fn nbt_f32(value: &NbtValue) -> Option<f32> {
+fn nbt_f32(value: &NbtSummaryValue) -> Option<f32> {
     match value {
-        NbtValue::Byte(value) => Some(f32::from(*value)),
-        NbtValue::Short(value) => Some(f32::from(*value)),
-        NbtValue::Int(value) => Some(*value as f32),
-        NbtValue::Long(value) => Some(*value as f32),
-        NbtValue::Float(value) => Some(*value),
-        NbtValue::Double(value) => Some(*value as f32),
+        NbtSummaryValue::Byte(value) => Some(f32::from(*value)),
+        NbtSummaryValue::Short(value) => Some(f32::from(*value)),
+        NbtSummaryValue::Int(value) => Some(*value as f32),
+        NbtSummaryValue::Long(value) => Some(*value as f32),
+        NbtSummaryValue::Float(bits) => Some(f32::from_bits(*bits)),
+        NbtSummaryValue::Double(bits) => Some(f64::from_bits(*bits) as f32),
         _ => None,
     }
 }
 
-fn nbt_i32(value: &NbtValue) -> Option<i32> {
+fn nbt_i32(value: &NbtSummaryValue) -> Option<i32> {
     match value {
-        NbtValue::Byte(value) => Some(i32::from(*value)),
-        NbtValue::Short(value) => Some(i32::from(*value)),
-        NbtValue::Int(value) => Some(*value),
-        NbtValue::Long(value) => i32::try_from(*value).ok(),
+        NbtSummaryValue::Byte(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Short(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Int(value) => Some(*value),
+        NbtSummaryValue::Long(value) => i32::try_from(*value).ok(),
         _ => None,
     }
-}
-
-fn nbt_summary_value(value: &NbtValue) -> Option<NbtSummaryValue> {
-    Some(match value {
-        NbtValue::Byte(value) => NbtSummaryValue::Byte(*value),
-        NbtValue::Short(value) => NbtSummaryValue::Short(*value),
-        NbtValue::Int(value) => NbtSummaryValue::Int(*value),
-        NbtValue::Long(value) => NbtSummaryValue::Long(*value),
-        NbtValue::Float(value) => NbtSummaryValue::Float(value.to_bits()),
-        NbtValue::Double(value) => NbtSummaryValue::Double(value.to_bits()),
-        NbtValue::String(value) => NbtSummaryValue::String(value.clone()),
-        NbtValue::List(values) => NbtSummaryValue::List(
-            values
-                .iter()
-                .map(nbt_summary_value)
-                .collect::<Option<Vec<_>>>()?,
-        ),
-        NbtValue::Compound(entries) => NbtSummaryValue::Compound(
-            entries
-                .iter()
-                .map(|(name, value)| {
-                    Some(NbtSummaryEntry {
-                        name: name.clone(),
-                        value: nbt_summary_value(value)?,
-                    })
-                })
-                .collect::<Option<Vec<_>>>()?,
-        ),
-        NbtValue::IntArray(values) => NbtSummaryValue::IntArray(values.clone()),
-        NbtValue::Other => return None,
-    })
 }
 
 #[cfg(test)]
@@ -599,6 +565,41 @@ mod tests {
                 max_level: 7,
             })
         );
+    }
+
+    #[test]
+    fn decodes_known_pack_json_through_the_same_enchantment_projections() {
+        let data = super::super::element_value::decode_known_pack_element(
+            br#"{
+                "description": {"translate": "enchantment.example.known"},
+                "max_level": 3,
+                "slots": ["mainhand"],
+                "effects": {
+                    "minecraft:attributes": [{
+                        "id": "example:known",
+                        "attribute": "minecraft:mining_efficiency",
+                        "amount": {
+                            "type": "minecraft:linear",
+                            "base": 1.0,
+                            "per_level_above_first": 0.5
+                        },
+                        "operation": "add_value"
+                    }]
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let tooltip = decode_enchantment_tooltip_definition(&data.value).unwrap();
+        assert_eq!(
+            tooltip.description_translation_key.as_deref(),
+            Some("enchantment.example.known")
+        );
+        assert_eq!(tooltip.max_level, 3);
+        let definition = decode_enchantment_definition(&data.value).unwrap();
+        assert_eq!(definition.slots, ["mainhand"]);
+        assert_eq!(definition.attribute_effects.len(), 1);
+        assert_eq!(definition.attribute_effects[0].amount.calculate(3), 2.0);
     }
 
     #[test]
@@ -751,14 +752,19 @@ mod tests {
         ]);
 
         assert_eq!(effect.process(2, 99.0), 1.5);
-        assert!(parse_enchantment_value_effect(&NbtValue::Compound(vec![
-            (
-                "type".to_string(),
-                NbtValue::String("minecraft:remove_binomial".to_string()),
-            ),
-            ("chance".to_string(), NbtValue::Float(0.5)),
-        ]))
-        .is_none());
+        assert!(
+            parse_enchantment_value_effect(&NbtSummaryValue::Compound(vec![
+                NbtSummaryEntry {
+                    name: "type".to_string(),
+                    value: NbtSummaryValue::String("minecraft:remove_binomial".to_string()),
+                },
+                NbtSummaryEntry {
+                    name: "chance".to_string(),
+                    value: NbtSummaryValue::Double(0.5_f64.to_bits()),
+                },
+            ]))
+            .is_none()
+        );
     }
 
     fn test_enchantment_nbt() -> Vec<u8> {
