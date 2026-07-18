@@ -9,6 +9,7 @@ use crate::entity_models::model_layers::{
     MODEL_LAYER_WALL_BANNER, MODEL_LAYER_WALL_BANNER_FLAG, STANDING_BANNER_FLAG_POSE,
     WALL_BANNER_FLAG_POSE,
 };
+use crate::DynamicEntityTextureImage;
 use glam::Vec3;
 use std::f32::consts::PI;
 
@@ -25,11 +26,11 @@ fn banner_instance(
 fn two_layers() -> [Option<BannerPatternLayer>; 16] {
     let mut layers = [None; 16];
     layers[0] = Some(BannerPatternLayer {
-        pattern: BannerPatternKind::StripeTop,
+        texture: BannerPatternTexture::Builtin(BannerPatternKind::StripeTop),
         color: EntityDyeColor::Purple,
     });
     layers[1] = Some(BannerPatternLayer {
-        pattern: BannerPatternKind::Creeper,
+        texture: BannerPatternTexture::Builtin(BannerPatternKind::Creeper),
         color: EntityDyeColor::White,
     });
     layers
@@ -255,7 +256,7 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
     let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
     let mut layers = [None; 16];
     layers[0] = Some(BannerPatternLayer {
-        pattern: BannerPatternKind::Creeper,
+        texture: BannerPatternTexture::Builtin(BannerPatternKind::Creeper),
         color: EntityDyeColor::Black,
     });
     let instance = banner_instance([3.0, 4.0, 5.0], 0.0, false, EntityDyeColor::Lime, layers)
@@ -298,4 +299,65 @@ fn banner_textured_mesh_bakes_frame_flag_and_pattern_layers() {
     assert_eq!(meshes.translucent.vertices.len(), 48);
     assert_eq!(meshes.translucent.indices.len(), 72);
     assert!(meshes.cutout.vertices.is_empty());
+}
+
+#[test]
+fn banner_runtime_pattern_uses_dynamic_atlas_without_replacing_static_layers() {
+    let images: Vec<EntityModelTextureImage> = banner_entity_texture_refs()
+        .iter()
+        .map(|texture| {
+            let len = usize::try_from(texture.size[0] * texture.size[1] * 4).unwrap();
+            EntityModelTextureImage::new(*texture, vec![7; len])
+        })
+        .collect();
+    let (atlas, _) = build_entity_model_texture_atlas(&images).unwrap();
+    let texture = EntityDynamicTexture { handle: 91_002 };
+    let dynamic_atlas = build_dynamic_player_texture_atlas(&[DynamicEntityTextureImage {
+        handle: texture.handle,
+        size: [64, 64],
+        rgba: vec![0xff; 64 * 64 * 4],
+    }])
+    .unwrap()
+    .0;
+    let mut layers = [None; 16];
+    layers[0] = Some(BannerPatternLayer {
+        texture: BannerPatternTexture::Runtime(texture),
+        color: EntityDyeColor::Cyan,
+    });
+    let instance = banner_instance([3.0, 4.0, 5.0], 0.0, false, EntityDyeColor::Lime, layers);
+
+    let meshes = entity_model_textured_meshes_with_dynamic_textures_for_camera(
+        &[instance],
+        &atlas,
+        None,
+        Some(&dynamic_atlas),
+        Some([0.0, 0.0, 0.0]),
+    );
+
+    assert_eq!(meshes.submissions.len(), 4);
+    assert_eq!(meshes.submissions[2].dynamic_texture, None);
+    assert_eq!(meshes.submissions[3].dynamic_texture, Some(texture));
+    assert_eq!(
+        meshes.submissions[3].tint,
+        EntityDyeColor::Cyan.texture_diffuse_color()
+    );
+    assert_eq!(meshes.translucent.vertices.len(), 24);
+    assert_eq!(meshes.dynamic_player_texture_translucent.vertices.len(), 24);
+    assert_eq!(meshes.sorted_main_translucent_draws.len(), 2);
+    let EntityModelTranslucentDrawRange::Textured(base_draw) =
+        meshes.sorted_main_translucent_draws[0]
+    else {
+        panic!("expected static base-mask draw");
+    };
+    let EntityModelTranslucentDrawRange::Textured(pattern_draw) =
+        meshes.sorted_main_translucent_draws[1]
+    else {
+        panic!("expected dynamic pattern draw");
+    };
+    assert_eq!(base_draw.atlas, EntityModelTexturedDrawAtlas::Static);
+    assert_eq!(
+        pattern_draw.atlas,
+        EntityModelTexturedDrawAtlas::DynamicPlayerTexture
+    );
+    assert!(base_draw.insertion_index < pattern_draw.insertion_index);
 }

@@ -1590,12 +1590,21 @@ pub enum BellShakeDirection {
     West,
 }
 
-/// One banner pattern layer — vanilla `BannerPatternLayers.Layer`: the pattern sprite plus the
-/// dye whose `getTextureDiffuseColor` tints the layer's flag-geometry submit
+/// Texture source for one banner-pattern sheet. Known bootstrap patterns retain a static fallback
+/// for pack-unavailable/offline paths; synchronized and resource-pack sprites use the shared
+/// runtime entity atlas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BannerPatternTexture {
+    Builtin(BannerPatternKind),
+    Runtime(EntityDynamicTexture),
+}
+
+/// One banner pattern layer — vanilla `BannerPatternLayers.Layer`: the pattern sprite plus the dye
+/// whose `getTextureDiffuseColor` tints the layer's flag-geometry submit
 /// (`BannerRenderer.submitPatternLayer`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BannerPatternLayer {
-    pub pattern: BannerPatternKind,
+    pub texture: BannerPatternTexture,
     pub color: EntityDyeColor,
 }
 

@@ -15,12 +15,12 @@
 use glam::{Mat4, Vec3};
 
 use super::catalog::{
-    BoatModelFamily, CamelModelFamily, DonkeyModelFamily, EntityCustomHeadSkull, EntityDyeColor,
-    EntityDynamicPlayerSkinAtlasLayout, EntityDynamicPlayerTextureAtlasLayout, EntityModelKind,
-    EntityModelTextureAtlasLayout, EntityPlayerSkin, HorseColorVariant, HorseMarkings,
-    IllagerModelFamily, LlamaModelFamily, LlamaVariant, PiglinModelFamily,
-    PlayerModelPartVisibility, SkeletonModelFamily, UndeadHorseModelFamily,
-    ZombieVariantModelFamily,
+    BannerPatternTexture, BoatModelFamily, CamelModelFamily, DonkeyModelFamily,
+    EntityCustomHeadSkull, EntityDyeColor, EntityDynamicPlayerSkinAtlasLayout,
+    EntityDynamicPlayerTextureAtlasLayout, EntityModelKind, EntityModelTextureAtlasLayout,
+    EntityPlayerSkin, HorseColorVariant, HorseMarkings, IllagerModelFamily, LlamaModelFamily,
+    LlamaVariant, PiglinModelFamily, PlayerModelPartVisibility, SkeletonModelFamily,
+    UndeadHorseModelFamily, ZombieVariantModelFamily,
 };
 use super::colored::{
     arrow_model_root_transform, banner_model_root_transform, bed_model_root_transform,
@@ -604,6 +604,41 @@ impl EntityModelSink for TexturedSink<'_> {
         passes: &[EntityModelLayerPass],
     ) {
         model.prepare(instance);
+        if let EntityModelKind::Banner { layers, .. } = &instance.kind {
+            // The frame, flag, and base-color mask remain in the static entity atlas. Every
+            // pattern then selects its own atlas entry while preserving `submitPatterns` order;
+            // this avoids forcing one dynamic handle onto the whole banner instance.
+            render_textured_layers(
+                self.meshes,
+                &model,
+                transform,
+                passes.iter().take(3).cloned(),
+                self.atlas,
+            );
+            for (layer, pass) in layers.iter().flatten().zip(passes.iter().skip(3)) {
+                match layer.texture {
+                    BannerPatternTexture::Builtin(_) => render_textured_layers(
+                        self.meshes,
+                        &model,
+                        transform,
+                        std::iter::once(*pass),
+                        self.atlas,
+                    ),
+                    BannerPatternTexture::Runtime(texture) => {
+                        render_textured_layers_with_dynamic_texture(
+                            self.meshes,
+                            &model,
+                            transform,
+                            std::iter::once(*pass),
+                            texture,
+                            self.atlas,
+                            self.dynamic_player_texture_atlas,
+                        )
+                    }
+                }
+            }
+            return;
+        }
         if let Some(dynamic_texture) = instance.dynamic_texture {
             render_textured_layers_with_dynamic_texture(
                 self.meshes,

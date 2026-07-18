@@ -44,13 +44,15 @@ impl DynamicEntityTextureUploader for Renderer {
 }
 
 /// Owns startup-pack-backed runtime entity textures for synchronized animal presentations and the
-/// generated armor-trim atlas. Entries never become visible to entity extraction until their image
-/// upload succeeds.
+/// generated armor-trim/banner-pattern atlases. Entries never become visible to entity extraction
+/// until their image upload succeeds.
 pub(crate) struct NativeEntityVariantTextureRuntime {
     pack_roots: Option<PackRoots>,
     entries: HashMap<String, EntityVariantTextureEntry>,
     rejected_presentations: HashSet<(String, i32)>,
     armor_trim_atlas_synchronized: bool,
+    banner_pattern_atlas_synchronized: bool,
+    banner_pattern_atlas_ready: bool,
 }
 
 impl NativeEntityVariantTextureRuntime {
@@ -60,6 +62,8 @@ impl NativeEntityVariantTextureRuntime {
             entries: HashMap::new(),
             rejected_presentations: HashSet::new(),
             armor_trim_atlas_synchronized: false,
+            banner_pattern_atlas_synchronized: false,
+            banner_pattern_atlas_ready: false,
         }
     }
 
@@ -77,12 +81,27 @@ impl NativeEntityVariantTextureRuntime {
             .map(|entry| entry.texture)
     }
 
+    /// Resolves one `Sheets.BANNER_MAPPER` sprite from the startup banner-pattern atlas. Once the
+    /// atlas itself is ready, an undeclared data-driven sprite follows vanilla's atlas lookup to
+    /// `missingno`; a failed/unavailable atlas leaves the caller free to use its static fallback.
+    pub(crate) fn ready_banner_pattern_texture(
+        &self,
+        sprite_id: &str,
+    ) -> Option<EntityDynamicTexture> {
+        if !self.banner_pattern_atlas_ready {
+            return None;
+        }
+        self.ready_texture(sprite_id)
+            .or_else(|| self.ready_texture("minecraft:missingno"))
+    }
+
     fn synchronize_with_uploader(
         &mut self,
         world: &WorldStore,
         uploader: &mut impl DynamicEntityTextureUploader,
     ) {
         self.synchronize_armor_trim_atlas(uploader);
+        self.synchronize_banner_pattern_atlas(uploader);
         for (_, registry) in vanilla_data_component_animal_texture_variant_registries() {
             let Some(entry_count) = world
                 .registry_resource_ids_in_holder_order(registry)
@@ -158,16 +177,42 @@ impl NativeEntityVariantTextureRuntime {
             return;
         }
         self.armor_trim_atlas_synchronized = true;
+        self.synchronize_texture_atlas("armor_trims", "armor-trim", uploader);
+    }
+
+    fn synchronize_banner_pattern_atlas(
+        &mut self,
+        uploader: &mut impl DynamicEntityTextureUploader,
+    ) {
+        if self.banner_pattern_atlas_synchronized {
+            return;
+        }
+        self.banner_pattern_atlas_synchronized = true;
+        self.banner_pattern_atlas_ready =
+            self.synchronize_texture_atlas("banner_patterns", "banner-pattern", uploader);
+    }
+
+    fn synchronize_texture_atlas(
+        &mut self,
+        atlas_name: &'static str,
+        description: &'static str,
+        uploader: &mut impl DynamicEntityTextureUploader,
+    ) -> bool {
         let images = match self
             .pack_roots
             .as_ref()
             .ok_or_else(|| anyhow!("pack roots are unavailable"))
-            .and_then(|roots| roots.load_atlas_texture_images("armor_trims"))
+            .and_then(|roots| roots.load_atlas_texture_images(atlas_name))
         {
             Ok(images) => images,
             Err(error) => {
-                tracing::warn!(?error, "continuing without armor-trim atlas sprites");
-                return;
+                tracing::warn!(
+                    ?error,
+                    atlas_name,
+                    description,
+                    "continuing without runtime entity atlas sprites"
+                );
+                return false;
             }
         };
 
@@ -200,24 +245,30 @@ impl NativeEntityVariantTextureRuntime {
             let entry = self
                 .entries
                 .get_mut(id)
-                .expect("pending armor-trim texture entry must remain present");
+                .expect("pending runtime atlas texture entry must remain present");
             entry.status = if result.is_ok() {
                 EntityVariantTextureStatus::Ready
             } else {
                 EntityVariantTextureStatus::Failed
             };
         }
+        let ready = result.is_ok();
         match result {
             Ok(()) => tracing::info!(
                 textures = ids.len(),
-                "loaded generated armor-trim atlas sprites"
+                atlas_name,
+                description,
+                "loaded runtime entity atlas sprites"
             ),
             Err(error) => tracing::warn!(
                 ?error,
                 textures = ids.len(),
-                "continuing without armor-trim atlas sprites"
+                atlas_name,
+                description,
+                "continuing without runtime entity atlas sprites"
             ),
         }
+        ready
     }
 
     fn record_rejected_presentation(
@@ -490,6 +541,54 @@ mod tests {
             .ready_texture("example:trims/entity/humanoid/spiral_ruby")
             .expect("successful batch publishes the trim texture handle");
         assert_eq!(uploader.images[1].handle, trim.handle);
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.images.len(), 2);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn banner_pattern_atlas_uploads_custom_sprites_and_uses_missingno() {
+        let root = unique_temp_dir("banner-pattern-texture-runtime");
+        let sources = root.join("sources/26.1");
+        let atlas_path = sources.join("assets/minecraft/atlases/banner_patterns.json");
+        std::fs::create_dir_all(atlas_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &atlas_path,
+            r#"{"sources":[{"type":"minecraft:single","resource":"example:entity/banner/custom"}]}"#,
+        )
+        .unwrap();
+        write_png(
+            &sources.join("assets/example/textures/entity/banner/custom.png"),
+            64,
+            64,
+        );
+        let roots = PackRoots {
+            mc_code_root: root.clone(),
+            sources_dir: sources.clone(),
+            assets_dir: sources.join("assets/minecraft"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+        let world = WorldStore::new();
+
+        runtime.synchronize_with_uploader(&world, &mut uploader);
+
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.images.len(), 2, "missingno plus the custom sprite");
+        let custom = runtime
+            .ready_banner_pattern_texture("example:entity/banner/custom")
+            .expect("successful batch publishes the custom banner sprite");
+        assert_eq!(uploader.images[1].handle, custom.handle);
+        assert_eq!(uploader.images[1].size, [64, 64]);
+        let missing = runtime
+            .ready_banner_pattern_texture("example:entity/banner/undeclared")
+            .expect("an undeclared sprite resolves through the atlas missingno entry");
+        assert_eq!(uploader.images[0].handle, missing.handle);
 
         runtime.synchronize_with_uploader(&world, &mut uploader);
         assert_eq!(uploader.batch_calls, 1);

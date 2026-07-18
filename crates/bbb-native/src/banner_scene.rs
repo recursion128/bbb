@@ -10,11 +10,16 @@
 //! registry-id -> sprite mapping happens here, mirroring
 //! `Sheets.getBannerSprite` over `BannerPatterns.bootstrap`.
 
-use bbb_renderer::{BannerPatternKind, BannerPatternLayer, EntityDyeColor, EntityModelInstance};
+use bbb_renderer::{
+    BannerPatternKind, BannerPatternLayer, BannerPatternTexture, EntityDyeColor,
+    EntityDynamicTexture, EntityModelInstance,
+};
 use bbb_world::{
     BannerBlockForm as WorldBannerBlockForm, BannerDyeColorKind as WorldBannerDyeColorKind,
     BannerModelSourceState, BannerPatternLayerState, TerrainLight, WorldStore,
 };
+
+use crate::entity_variant_textures::NativeEntityVariantTextureRuntime;
 
 /// Like chests/bells/pots, banner instances are projected from block states,
 /// not the entity list, so they carry a sentinel id no server entity can use.
@@ -28,17 +33,19 @@ const BANNER_BLOCK_MODEL_ENTITY_ID: i32 = -1;
 pub(crate) fn banner_model_instances_from_world_at_partial_tick(
     world: &WorldStore,
     partial_tick: f32,
+    textures: Option<&NativeEntityVariantTextureRuntime>,
 ) -> Vec<EntityModelInstance> {
     world
         .banner_model_source_states(partial_tick)
         .into_iter()
-        .map(|source| banner_model_instance(&source, world))
+        .map(|source| banner_model_instance(&source, world, textures))
         .collect()
 }
 
 fn banner_model_instance(
     source: &BannerModelSourceState,
     world: &WorldStore,
+    textures: Option<&NativeEntityVariantTextureRuntime>,
 ) -> EntityModelInstance {
     let mut instance = EntityModelInstance::banner(
         BANNER_BLOCK_MODEL_ENTITY_ID,
@@ -50,7 +57,9 @@ fn banner_model_instance(
         -source.angle_degrees,
         source.form == WorldBannerBlockForm::Wall,
         banner_dye_color(source.base_color),
-        banner_pattern_layers(world, &source.layers),
+        banner_pattern_layers(world, &source.layers, |sprite_id| {
+            textures.and_then(|textures| textures.ready_banner_pattern_texture(sprite_id))
+        }),
     )
     .with_banner_flag_phase(source.phase);
     if let Some(light) = world.sample_block_light(source.pos) {
@@ -84,30 +93,50 @@ fn banner_dye_color(color: WorldBannerDyeColorKind) -> EntityDyeColor {
 
 /// Maps the stored raw pattern layers onto the renderer's fixed-size layer
 /// array (the vanilla `BannerRenderer.MAX_PATTERNS = 16` render cap). Any
-/// unknown pattern id or dye name folds the whole stack to empty, like the
-/// vanilla `BannerPatternLayers.CODEC` failing the registry/dye lookup and
-/// `loadAdditional` falling back to `BannerPatternLayers.EMPTY` (a
-/// data-driven pattern bbb has no texture for lands in that fold too).
+/// invalid pattern value or dye name folds the whole stack to empty, like the vanilla
+/// `BannerPatternLayers.CODEC` failing the registry/dye lookup and `loadAdditional` falling back to
+/// `BannerPatternLayers.EMPTY`. Data-driven patterns use `Sheets.BANNER_MAPPER`'s runtime atlas;
+/// known bootstrap patterns retain the static sheet only when that atlas is unavailable.
 fn banner_pattern_layers(
     world: &WorldStore,
     layers: &[BannerPatternLayerState],
+    mut ready_texture: impl FnMut(&str) -> Option<EntityDynamicTexture>,
 ) -> [Option<BannerPatternLayer>; 16] {
     let mut out = [None; 16];
     for (index, layer) in layers.iter().enumerate() {
         let Ok(Some(presentation)) = world.banner_pattern_presentation(&layer.pattern) else {
             return [None; 16];
         };
-        let Some(pattern) = BannerPatternKind::for_resource_id(&presentation.asset_id) else {
-            return [None; 16];
-        };
         let Some(color) = banner_layer_dye_color(&layer.color) else {
             return [None; 16];
         };
+        let Some(sprite_id) = banner_pattern_sprite_id(&presentation.asset_id) else {
+            return [None; 16];
+        };
+        let texture = ready_texture(&sprite_id)
+            .map(BannerPatternTexture::Runtime)
+            .or_else(|| {
+                BannerPatternKind::for_resource_id(&presentation.asset_id)
+                    .map(BannerPatternTexture::Builtin)
+            });
+        let Some(texture) = texture else {
+            return [None; 16];
+        };
         if index < out.len() {
-            out[index] = Some(BannerPatternLayer { pattern, color });
+            out[index] = Some(BannerPatternLayer { texture, color });
         }
     }
     out
+}
+
+/// Vanilla `Sheets.BANNER_MAPPER = new MaterialMapper(BLOCK_SHEET, "entity/banner")` prefixes the
+/// direct banner-pattern `asset_id` path while preserving its namespace.
+fn banner_pattern_sprite_id(asset_id: &str) -> Option<String> {
+    let (namespace, path) = asset_id.split_once(':')?;
+    if namespace.is_empty() || path.is_empty() {
+        return None;
+    }
+    Some(format!("{namespace}:entity/banner/{path}"))
 }
 
 /// The `DyeColor.CODEC` name mapping, strict: an unknown name fails the
@@ -279,17 +308,17 @@ mod tests {
             ]),
         );
 
-        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.5);
+        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.5, None);
         assert_eq!(instances.len(), 2);
         let standing = &instances[0];
         let wall = &instances[1];
         let mut layers = [None; 16];
         layers[0] = Some(BannerPatternLayer {
-            pattern: BannerPatternKind::StripeTop,
+            texture: BannerPatternTexture::Builtin(BannerPatternKind::StripeTop),
             color: EntityDyeColor::Purple,
         });
         layers[1] = Some(BannerPatternLayer {
-            pattern: BannerPatternKind::Creeper,
+            texture: BannerPatternTexture::Builtin(BannerPatternKind::Creeper),
             color: EntityDyeColor::White,
         });
         assert_eq!(
@@ -344,15 +373,48 @@ mod tests {
             banner_nbt(&[("minecraft:stripe_top", "red")]),
         );
 
-        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0, None);
         let EntityModelKind::Banner { layers, .. } = instances[0].kind else {
             panic!("expected banner instance");
         };
         assert_eq!(
             layers[0],
             Some(BannerPatternLayer {
-                pattern: BannerPatternKind::Creeper,
+                texture: BannerPatternTexture::Builtin(BannerPatternKind::Creeper),
                 color: EntityDyeColor::Red,
+            })
+        );
+    }
+
+    #[test]
+    fn data_driven_pattern_uses_mapper_sprite_and_runtime_texture() {
+        let mut world = WorldStore::new();
+        world.record_registry_entries(
+            bbb_world::BANNER_PATTERN_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                "example:custom",
+                banner_pattern_registry_nbt("example:custom_asset", "block.example.banner.custom"),
+            )],
+        );
+        let texture = EntityDynamicTexture { handle: 91_001 };
+        let layers = banner_pattern_layers(
+            &world,
+            &[BannerPatternLayerState {
+                pattern: bbb_world::BannerPatternHolderState::Named("example:custom".to_string()),
+                color: "cyan".to_string(),
+            }],
+            |sprite_id| {
+                assert_eq!(sprite_id, "example:entity/banner/custom_asset");
+                Some(texture)
+            },
+        );
+
+        assert_eq!(
+            layers[0],
+            Some(BannerPatternLayer {
+                texture: BannerPatternTexture::Runtime(texture),
+                color: EntityDyeColor::Cyan,
             })
         );
     }
@@ -375,7 +437,7 @@ mod tests {
                 ("minecraft:not_a_pattern", "red"),
             ]),
         );
-        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0, None);
         assert_eq!(
             instances[0].kind,
             EntityModelKind::Banner {
@@ -390,7 +452,7 @@ mod tests {
             pos,
             banner_nbt(&[("minecraft:creeper", "not_a_color")]),
         );
-        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0, None);
         assert_eq!(
             instances[0].kind,
             EntityModelKind::Banner {
@@ -413,7 +475,7 @@ mod tests {
         );
         let stack: Vec<(&str, &str)> = (0..18).map(|_| ("minecraft:creeper", "black")).collect();
         apply_banner_patterns(&mut world, pos, banner_nbt(&stack));
-        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0, None);
         let EntityModelKind::Banner { layers, .. } = instances[0].kind else {
             panic!("expected a banner kind");
         };

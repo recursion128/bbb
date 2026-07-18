@@ -2590,6 +2590,7 @@ pub(crate) fn pump_network_and_terrain(
     entity_instances.extend(banner_model_instances_from_world_at_partial_tick(
         world,
         entity_partial_tick,
+        Some(entity_variant_textures),
     ));
     // The enchanting-table hovering book (animated, nearest-player-facing) and
     // the lectern's static open book share the same `BookModel` in the stream.
