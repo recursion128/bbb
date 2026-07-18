@@ -278,7 +278,7 @@ echo "playable gate: launching bbb-native with bbb-control on 127.0.0.1:$control
 RUST_LOG=${RUST_LOG:-bbb_net=debug,bbb_native=info,bbb_control=info} \
   setsid "$client_bin" \
     --server "127.0.0.1:$server_port" \
-    --username bbb-playable-gate \
+    --username bbb-playablegate \
     --connect-server \
     --control "127.0.0.1:$control_port" \
     --client-vsync false \
