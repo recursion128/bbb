@@ -585,12 +585,14 @@ fn entity_model_sources_project_synchronized_custom_armor_trim_payloads() {
         write_nbt_string(&mut out, "override_armor_assets");
         write_nbt_string_tag(&mut out, "minecraft:iron", "opal_darker");
         out.push(0);
+        write_nbt_string_tag(&mut out, "description", "Opal");
         out.push(0);
         out
     }
     fn pattern_nbt() -> Vec<u8> {
         let mut out = vec![10];
         write_nbt_string_tag(&mut out, "asset_id", "example:spire");
+        write_nbt_string_tag(&mut out, "description", "Spire");
         out.push(1);
         write_nbt_string(&mut out, "decal");
         out.push(1);

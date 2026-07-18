@@ -25,7 +25,11 @@ pub use animal_variants::{
     ZOMBIE_NAUTILUS_VARIANT_REGISTRY,
 };
 pub(crate) use armor_trims::{armor_trim_sprite, ArmorTrimLayer};
-pub use armor_trims::{ArmorTrimSprite, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY};
+pub use armor_trims::{
+    direct_trim_material_presentation, direct_trim_pattern_presentation, ArmorTrimSprite,
+    TrimMaterialPresentation, TrimPatternPresentation, TrimRegistryProjectionError,
+    TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
+};
 pub use biomes::{
     BiomeClientProjection, BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier,
 };

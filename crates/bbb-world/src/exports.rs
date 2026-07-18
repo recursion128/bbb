@@ -469,9 +469,11 @@ pub use crate::play_apply::{
 pub use crate::recipe_book::*;
 pub use crate::recipes::*;
 pub use crate::registries::{
-    ArmorTrimSprite, ChatTypeDecoration, ChatTypeDecorationParameter, ChatTypeProjectionError,
+    direct_trim_material_presentation, direct_trim_pattern_presentation, ArmorTrimSprite,
+    ChatTypeDecoration, ChatTypeDecorationParameter, ChatTypeProjectionError,
     EnchantmentTooltipDefinition, JukeboxSongPresentation, JukeboxSongProjectionError,
     JukeboxSoundEvent, PaintingVariantClientProjection, PaintingVariantProjectionError,
+    TrimMaterialPresentation, TrimPatternPresentation, TrimRegistryProjectionError,
     VanillaEnchantmentIdentity, VanillaInstrumentIdentity, VanillaTrimMaterialIdentity,
     VanillaTrimPatternIdentity, CHAT_TYPE_REGISTRY, JUKEBOX_SONG_REGISTRY,
     PAINTING_VARIANT_REGISTRY, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
