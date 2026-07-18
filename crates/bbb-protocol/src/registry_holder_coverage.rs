@@ -139,7 +139,7 @@ mod tests {
                 *counts.entry(entry.family.as_str()).or_insert(0usize) += 1;
                 counts
             });
-        assert_eq!(counts["network-holder-or-inline"], 5);
+        assert_eq!(counts["network-holder-or-inline"], 3);
         assert_eq!(counts["network-holder-or-inline-chat-type-synchronized"], 1);
         assert_eq!(counts["network-holder-or-inline-dialog-synchronized"], 1);
         assert_eq!(
@@ -147,6 +147,7 @@ mod tests {
             1
         );
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
+        assert_eq!(counts["network-holder-or-inline-trims-synchronized"], 2);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
         assert_eq!(counts["network-holder-reference-attribute-built-in"], 1);
         assert_eq!(counts["network-holder-reference-cat-variant"], 1);
@@ -175,8 +176,9 @@ mod tests {
         assert_eq!(counts["network-tag"], 1);
         assert_eq!(counts["persistent-hashed-tag"], 7);
         assert_eq!(counts["persistent-holder-or-inline-dialog-synchronized"], 1);
-        assert_eq!(counts["persistent-holder-or-inline"], 26);
+        assert_eq!(counts["persistent-holder-or-inline"], 24);
         assert_eq!(counts["persistent-holder-reference"], 41);
+        assert_eq!(counts["persistent-holder-or-inline-trims"], 2);
         assert_eq!(counts["persistent-holder-set-custom"], 3);
         assert_eq!(
             counts["persistent-holder-set-or-inline-dialog-synchronized"],
@@ -191,7 +193,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            160
+            156
         );
         assert_eq!(
             ledger
@@ -214,7 +216,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 31);
+        assert_eq!(complete.len(), 35);
         assert_eq!(
             complete
                 .iter()
@@ -242,6 +244,8 @@ mod tests {
                 "minecraft:pig_sound_variant",
                 "minecraft:potion",
                 "minecraft:sound_event",
+                "minecraft:trim_material",
+                "minecraft:trim_pattern",
                 "minecraft:villager_profession",
                 "minecraft:villager_type",
                 "minecraft:wolf_sound_variant",
@@ -352,6 +356,77 @@ mod tests {
             assert!(
                 item_models.contains(required),
                 "jukebox tooltip path lost structural guard {required}"
+            );
+        }
+    }
+
+    #[test]
+    fn complete_trim_families_keep_typed_session_and_persistent_guards() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        for (family, expected_count) in [
+            ("network-holder-or-inline-trims-synchronized", 2),
+            ("persistent-holder-or-inline-trims", 2),
+        ] {
+            let entries = ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.family == family)
+                .collect::<Vec<_>>();
+            assert_eq!(entries.len(), expected_count);
+            assert!(entries
+                .iter()
+                .all(|entry| entry.status == RegistryHolderCoverageStatus::Complete));
+        }
+
+        let protocol = include_str!("packets/data_components.rs");
+        for required in [
+            "fn decode_direct_trim_material_summary(",
+            "fn decode_direct_trim_pattern_summary(",
+            "description_nbt: description_nbt.map(Box::new)",
+        ] {
+            assert!(
+                protocol.contains(required),
+                "trim protocol path lost structural guard {required}"
+            );
+        }
+
+        let world = include_str!("../../bbb-world/src/registries/armor_trims.rs");
+        for required in [
+            "pub fn synchronized_trim_material_presentation(",
+            "pub fn synchronized_trim_pattern_presentation(",
+            "fn synchronized_presentation<T>(",
+            "VanillaTrimMaterialIdentity::for_resource_id(&entry.id)",
+            "VanillaTrimPatternIdentity::for_resource_id(&entry.id)",
+        ] {
+            assert!(
+                world.contains(required),
+                "trim world path lost structural guard {required}"
+            );
+        }
+
+        let tooltip = include_str!("../../bbb-item-model/src/item_runtime/tooltip.rs");
+        for required in [
+            "direct_trim_material_presentation(material)?",
+            "direct_trim_pattern_presentation(pattern)?",
+            "trim_material_presentations",
+            "trim_pattern_presentations",
+        ] {
+            assert!(
+                tooltip.contains(required),
+                "trim tooltip path lost structural guard {required}"
+            );
+        }
+
+        let persistent = include_str!("../../bbb-native/src/input/component_patch.rs");
+        for required in [
+            "fn encode_direct_trim_material(",
+            "fn encode_direct_trim_pattern(",
+            "material.description_nbt.as_ref()?",
+            "pattern.description_nbt.as_ref()?",
+        ] {
+            assert!(
+                persistent.contains(required),
+                "trim persistent path lost structural guard {required}"
             );
         }
     }
