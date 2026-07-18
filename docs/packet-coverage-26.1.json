@@ -1033,8 +1033,7 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-native/src/runtime/events/dispatcher.rs#NetEvent::KeepAlive",
-            "crates/bbb-net/src/types/commands.rs#KeepAliveResponse"
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::KeepAlive"
           ],
           "gap": null,
           "status": "complete"
@@ -1048,16 +1047,15 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state"
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::KeepAlive",
+            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
           ],
           "gap": null,
           "status": "complete"
         },
         "tests": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
-            "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#keep_alive_event_queues_response_before_expiry"
+            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
           ],
           "gap": null,
           "status": "complete"
@@ -1535,10 +1533,8 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::KeepAlive",
             "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#expired_keep_alive_event_drops_response",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#keep_alive_event_queues_response_before_expiry",
-            "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleKeepAlive"
           ],
           "gap": null,
@@ -1546,9 +1542,7 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#expired_keep_alive_event_drops_response",
-            "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state"
+            "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
           ],
           "gap": null,
           "status": "complete"
@@ -4154,8 +4148,7 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-native/src/runtime/events/dispatcher.rs#NetEvent::KeepAlive",
-            "crates/bbb-net/src/types/commands.rs#KeepAliveResponse"
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::KeepAlive"
           ],
           "gap": null,
           "status": "complete"
@@ -4170,7 +4163,8 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state"
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::KeepAlive",
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"
           ],
           "gap": null,
           "status": "complete"
@@ -4178,8 +4172,7 @@
         "tests": {
           "evidence": [
             "crates/bbb-protocol/src/packets/tests.rs#encodes_play_connection_lifecycle_packets",
-            "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#keep_alive_event_queues_response_before_expiry"
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"
           ],
           "gap": null,
           "status": "complete"
@@ -5127,7 +5120,7 @@
         },
         "state_guard": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#play_keep_alive_defers_while_ping_sends_immediately"
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"
           ],
           "gap": null,
           "status": "complete"
@@ -8915,10 +8908,8 @@
         },
         "runtime_side_effect": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#play_keep_alive_defers_while_ping_sends_immediately",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#expired_keep_alive_event_drops_response",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#keep_alive_event_queues_response_before_expiry",
-            "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state",
+            "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::KeepAlive",
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleKeepAlive"
           ],
           "gap": null,
@@ -8926,9 +8917,7 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#play_keep_alive_defers_while_ping_sends_immediately",
-            "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#expired_keep_alive_event_drops_response",
-            "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state"
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"
           ],
           "gap": null,
           "status": "complete"
@@ -9885,7 +9874,7 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#play_keep_alive_defers_while_ping_sends_immediately"
+            "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"
           ],
           "gap": null,
           "status": "complete"
