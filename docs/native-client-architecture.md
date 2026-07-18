@@ -234,7 +234,10 @@ Its target gives the mutable world and canonical input/tick path to one
 simulation thread; the winit thread retains window, renderer, GPU upload,
 platform, and backend resources and consumes immutable publications plus
 ordered effects. Migration phases must not create selectable direct/threaded
-gameplay paths.
+gameplay paths. The current synchronous `SimulationCore` is the sole field
+owner for the live world, input, network receiver/counters, and tick state;
+its explicit `SimulationStepContext` records the backend borrows that the next
+effect-isolation phase must remove before thread activation.
 
 ### `bbb-item-model`
 

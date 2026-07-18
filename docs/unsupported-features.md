@@ -607,6 +607,9 @@ Owner: `bbb-world` + `bbb-native` + `bbb-control`
   described by `docs/simulation-render-thread-design.md`; renderer and control
   must consume the same immutable world generation, and no render-side cache may
   become a mutable gameplay authority.
+- Replace the synchronous simulation step's direct renderer/audio/particle and
+  resource-upload borrows with ordered value effect batches before routing
+  input through the mailbox or activating the simulation thread.
 
 ## Signed chat and chat acknowledgement production
 

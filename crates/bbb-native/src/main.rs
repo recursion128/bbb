@@ -48,6 +48,7 @@ mod resource_reload;
 mod runtime;
 mod shulker_box_scene;
 mod sign_scene;
+mod simulation;
 mod skull_scene;
 mod sky_assets;
 mod spawner_scene;
@@ -89,11 +90,12 @@ use runtime::{
     handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
     handle_dialog_mouse_input_with_modifiers_and_measurer, handle_dialog_mouse_wheel,
     handle_dialog_text_input_with_measurer, narrate_command_suggestion_change, publish_snapshot,
-    pump_network_and_terrain, request_net_disconnect, snapshot_is_running, take_control_screenshot,
-    CameraFovTickState, ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
+    request_net_disconnect, snapshot_is_running, take_control_screenshot, CameraFovTickState,
+    ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
     DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
     LevelEventSoundRandomState, LightmapTickState,
 };
+use simulation::{SimulationCore, SimulationStepContext};
 use sky_assets::load_sky_textures;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
@@ -209,7 +211,7 @@ fn main() -> Result<()> {
     let control_requests = control.requests.clone();
     let mut world = WorldStore::new();
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
-    let mut net_counters = NetCounters::default();
+    let net_counters = NetCounters::default();
     let code_of_conduct_store_path = args
         .code_of_conduct_store
         .clone()
@@ -227,7 +229,7 @@ fn main() -> Result<()> {
             }
         };
     let NetworkHandles {
-        events: mut net_events,
+        events: net_events,
         commands: net_commands,
     } = start_network_if_requested(
         &runtime,
@@ -238,7 +240,7 @@ fn main() -> Result<()> {
     let profile_id = args
         .profile_id
         .unwrap_or_else(|| bbb_protocol::codec::offline_player_uuid(&args.username));
-    let mut server_resource_pack_runtime = ServerResourcePackRuntime::new(
+    let server_resource_pack_runtime = ServerResourcePackRuntime::new(
         runtime.handle().clone(),
         args.server_resource_pack_cache_dir
             .clone()
@@ -435,21 +437,20 @@ fn main() -> Result<()> {
     let exit_after_screenshot = args.exit_after_screenshot;
     let mut terrain_upload = TerrainUploadState::default();
     let mut level_load_runtime = LevelLoadRuntime::default();
-    let mut client_animation_ticks = ClientAnimationTickState::default();
-    let mut camera_fov_ticks = CameraFovTickState::default();
-    let mut hud_debug_fps_sampler = HudDebugFpsSampler::default();
-    let mut hud_debug_network_sampler = HudDebugNetworkSampler::default();
-    let mut hud_debug_tps_sampler = HudDebugTpsSampler::default();
-    let mut debug_collision_cache = DebugCollisionCache::default();
-    let mut debug_supporting_block_cache = DebugSupportingBlockCache::default();
-    let mut debug_sky_light_section_cache = DebugSkyLightSectionCache::default();
+    let client_animation_ticks = ClientAnimationTickState::default();
+    let camera_fov_ticks = CameraFovTickState::default();
+    let hud_debug_fps_sampler = HudDebugFpsSampler::default();
+    let hud_debug_network_sampler = HudDebugNetworkSampler::default();
+    let hud_debug_tps_sampler = HudDebugTpsSampler::default();
+    let debug_collision_cache = DebugCollisionCache::default();
+    let debug_supporting_block_cache = DebugSupportingBlockCache::default();
+    let debug_sky_light_section_cache = DebugSkyLightSectionCache::default();
     let mut debug_profiler = DebugProfiler::default();
-    let mut lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
+    let lightmap_ticks = LightmapTickState::with_brightness_factor_and_hide_lightning_flash(
         args.client_gamma,
         args.hide_lightning_flash,
     );
-    let mut level_event_sound_random =
-        LevelEventSoundRandomState::with_seed(world.next_sound_seed());
+    let level_event_sound_random = LevelEventSoundRandomState::with_seed(world.next_sound_seed());
     let mut net_disconnect_requested = false;
     let mut code_of_conduct_overlay = CodeOfConductOverlayState::default();
     let mut cursor_position = None;
@@ -458,13 +459,31 @@ fn main() -> Result<()> {
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
+    let mut simulation = SimulationCore {
+        net_events,
+        net_commands,
+        server_resource_packs: server_resource_pack_runtime,
+        input,
+        world,
+        net_counters,
+        client_animation_ticks,
+        camera_fov_ticks,
+        hud_debug_fps_sampler,
+        hud_debug_network_sampler,
+        hud_debug_tps_sampler,
+        debug_collision_cache,
+        debug_supporting_block_cache,
+        debug_sky_light_section_cache,
+        lightmap_ticks,
+        level_event_sound_random,
+    };
 
     event_loop.run(move |event, target| {
         if let Some(narrator) = narrator_runtime.as_mut() {
             narrator.tick();
         }
         narrate_command_suggestion_change(
-            input.command_suggestion_narration(),
+            simulation.input.command_suggestion_narration(),
             &mut last_command_suggestion_narration,
             item_runtime.as_ref(),
             narrator_runtime
@@ -476,7 +495,6 @@ fn main() -> Result<()> {
                 .map(|_| ControlFlow::WaitUntil(next_redraw_at))
                 .unwrap_or(ControlFlow::Poll),
         );
-        let mut world = &mut world;
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => target.exit(),
@@ -484,38 +502,38 @@ fn main() -> Result<()> {
                 WindowEvent::CursorMoved { position, .. } => {
                     let previous_cursor_position = cursor_position;
                     cursor_position = Some(position);
-                    if input.handle_debug_game_mode_switcher_cursor_moved(
+                    if simulation.input.handle_debug_game_mode_switcher_cursor_moved(
                         cursor_position,
                         window.inner_size(),
                     ) {
                         return;
                     }
-                    if input.debug_options_screen_is_open() {
-                        input.handle_debug_options_screen_cursor_moved_with_text_measurer(
+                    if simulation.input.debug_options_screen_is_open() {
+                        simulation.input.handle_debug_options_screen_cursor_moved_with_text_measurer(
                             cursor_position,
                             window.inner_size(),
                             &renderer,
                         );
                         return;
                     }
-                    if input.handle_debug_pause_screen_cursor_moved(cursor_position) {
+                    if simulation.input.handle_debug_pause_screen_cursor_moved(cursor_position) {
                         return;
                     }
-                    if world.dialog_screen_is_open() {
-                        input.update_screen_cursor_position(cursor_position);
+                    if simulation.world.dialog_screen_is_open() {
+                        simulation.input.update_screen_cursor_position(cursor_position);
                         handle_dialog_cursor_moved_with_measurer(
-                            &mut world,
+                            &mut simulation.world,
                             cursor_position,
                             window.inner_size(),
                             &renderer,
                         );
                         return;
                     }
-                    if input.handle_command_suggestion_cursor_moved(&world, cursor_position) {
+                    if simulation.input.handle_command_suggestion_cursor_moved(&simulation.world, cursor_position) {
                         return;
                     }
-                    if input.handle_stats_screen_cursor_moved(
-                        &world,
+                    if simulation.input.handle_stats_screen_cursor_moved(
+                        &simulation.world,
                         cursor_position,
                         window.inner_size(),
                     ) {
@@ -523,19 +541,19 @@ fn main() -> Result<()> {
                             .after_input(ScreenNarrationInput::MouseMove, Instant::now());
                         return;
                     }
-                    if world.advancements_screen_is_open() {
+                    if simulation.world.advancements_screen_is_open() {
                         handle_advancements_screen_cursor_moved(
-                            &mut input,
-                            &world,
+                            &mut simulation.input,
+                            &simulation.world,
                             previous_cursor_position,
                             cursor_position,
                         );
                     }
                     handle_inventory_cursor_moved(
-                        &mut input,
-                        &mut world,
-                        &mut net_counters,
-                        &net_commands,
+                        &mut simulation.input,
+                        &mut simulation.world,
+                        &mut simulation.net_counters,
+                        &simulation.net_commands,
                         cursor_position,
                         window.inner_size(),
                     );
@@ -545,60 +563,60 @@ fn main() -> Result<()> {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
                     handle_focus_change(
-                        &mut input,
-                        &mut world,
-                        &mut net_counters,
-                        &net_commands,
+                        &mut simulation.input,
+                        &mut simulation.world,
+                        &mut simulation.net_counters,
+                        &simulation.net_commands,
                         focused,
                     );
                 }
                 WindowEvent::KeyboardInput { event, .. } => {
-                    if code_of_conduct_overlay.is_visible(&world) {
+                    if code_of_conduct_overlay.is_visible(&simulation.world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    let pause_was_open = input.debug_pause_screen_is_open();
-                    if input.handle_debug_pause_screen_key(event.physical_key, event.state) {
-                        if runtime_wants_cursor(&input, &world) {
+                    let pause_was_open = simulation.input.debug_pause_screen_is_open();
+                    if simulation.input.handle_debug_pause_screen_key(event.physical_key, event.state) {
+                        if runtime_wants_cursor(&simulation.input, &simulation.world) {
                             set_cursor_capture(&window, &mut cursor_captured, false);
                         } else if pause_was_open {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }
                         return;
                     }
-                    if input.handle_debug_options_screen_key_with_clipboard(
+                    if simulation.input.handle_debug_options_screen_key_with_clipboard(
                         event.physical_key,
                         event.state,
                         Some(&mut debug_clipboard),
                     ) {
-                        if runtime_wants_cursor(&input, &world) {
+                        if runtime_wants_cursor(&simulation.input, &simulation.world) {
                             set_cursor_capture(&window, &mut cursor_captured, false);
                         }
                         return;
                     }
-                    if input.handle_debug_overlay_key_with_clipboard_and_net(
+                    if simulation.input.handle_debug_overlay_key_with_clipboard_and_net(
                         event.physical_key,
                         event.state,
-                        Some(&mut world),
+                        Some(&mut simulation.world),
                         Some(&mut terrain_upload),
                         Some(&mut debug_clipboard),
                         item_runtime.as_ref(),
-                        &mut net_counters,
-                        &net_commands,
+                        &mut simulation.net_counters,
+                        &simulation.net_commands,
                     ) {
-                        if runtime_wants_cursor(&input, &world) {
+                        if runtime_wants_cursor(&simulation.input, &simulation.world) {
                             set_cursor_capture(&window, &mut cursor_captured, false);
                         }
-                        let reload_requests = input.take_debug_resource_pack_reload_requests();
+                        let reload_requests = simulation.input.take_debug_resource_pack_reload_requests();
                         if reload_requests > 0 {
-                            server_resource_pack_runtime.request_reload();
+                            simulation.server_resource_packs.request_reload();
                             tracing::info!(
                                 reload_requests,
                                 "resource pack reload requested by debug hotkey"
                             );
                         }
                         let dynamic_texture_dump_requests =
-                            input.take_debug_dynamic_texture_dump_requests();
+                            simulation.input.take_debug_dynamic_texture_dump_requests();
                         if dynamic_texture_dump_requests > 0 {
                             let debug_texture_path = std::path::Path::new(
                                 input::DEBUG_DYNAMIC_TEXTURE_DUMP_RELATIVE_PATH,
@@ -626,7 +644,7 @@ fn main() -> Result<()> {
                                 }
                             }
                         }
-                        let profiling_toggle_requests = input.take_debug_profiling_toggle_requests();
+                        let profiling_toggle_requests = simulation.input.take_debug_profiling_toggle_requests();
                         if !profiling_toggle_requests.is_empty() {
                             let profiling_start_requests = profiling_toggle_requests
                                 .iter()
@@ -658,7 +676,7 @@ fn main() -> Result<()> {
                             );
                         }
                         let profiler_chart_navigation_requests =
-                            input.take_debug_profiler_chart_navigation_requests();
+                            simulation.input.take_debug_profiler_chart_navigation_requests();
                         let profiler_chart_navigation_request_count =
                             profiler_chart_navigation_requests.len();
                         let last_digit = profiler_chart_navigation_requests.last().copied();
@@ -673,7 +691,7 @@ fn main() -> Result<()> {
                                 "profiler chart navigation requested"
                             );
                         }
-                        let debug_frustum_requests = input.take_debug_frustum_requests();
+                        let debug_frustum_requests = simulation.input.take_debug_frustum_requests();
                         if !debug_frustum_requests.is_empty() {
                             let capture_requests = debug_frustum_requests
                                 .iter()
@@ -691,7 +709,7 @@ fn main() -> Result<()> {
                             );
                         }
                         let debug_feature_count_requests =
-                            input.take_debug_feature_count_requests();
+                            simulation.input.take_debug_feature_count_requests();
                         if !debug_feature_count_requests.is_empty() {
                             let log_requests = debug_feature_count_requests
                                 .iter()
@@ -711,38 +729,38 @@ fn main() -> Result<()> {
                             );
                         }
                         let debug_options_screen_requests =
-                            input.take_debug_options_screen_requests();
+                            simulation.input.take_debug_options_screen_requests();
                         if debug_options_screen_requests > 0 {
                             for _ in 0..debug_options_screen_requests {
-                                if input.debug_options_screen_is_open() {
-                                    input.close_debug_options_screen();
+                                if simulation.input.debug_options_screen_is_open() {
+                                    simulation.input.close_debug_options_screen();
                                 } else {
                                     release_active_input(
-                                        &mut input,
-                                        &mut world,
-                                        &mut net_counters,
-                                        &net_commands,
+                                        &mut simulation.input,
+                                        &mut simulation.world,
+                                        &mut simulation.net_counters,
+                                        &simulation.net_commands,
                                     );
-                                    input.open_debug_options_screen();
+                                    simulation.input.open_debug_options_screen();
                                 }
                             }
                             set_cursor_capture(&window, &mut cursor_captured, false);
                             tracing::info!(
                                 debug_options_screen_requests,
-                                open = input.debug_options_screen_is_open(),
+                                open = simulation.input.debug_options_screen_is_open(),
                                 "debug options screen toggled by debug hotkey"
                             );
                         }
                         let recreate_server_query_requests =
-                            input.take_debug_recreate_server_query_requests_for_level(
-                                world.client_level_generation(),
+                            simulation.input.take_debug_recreate_server_query_requests_for_level(
+                                simulation.world.client_level_generation(),
                             );
                         let recreate_server_query_request_count =
                             recreate_server_query_requests.len();
                         for request in recreate_server_query_requests {
                             queue_debug_recreate_server_query_request(
-                                &mut net_counters,
-                                &net_commands,
+                                &mut simulation.net_counters,
+                                &simulation.net_commands,
                                 request,
                             );
                         }
@@ -753,15 +771,15 @@ fn main() -> Result<()> {
                             );
                         }
                         let pause_without_menu_requests =
-                            input.take_debug_pause_without_menu_requests();
+                            simulation.input.take_debug_pause_without_menu_requests();
                         if pause_without_menu_requests > 0 {
                             release_active_input(
-                                &mut input,
-                                &mut world,
-                                &mut net_counters,
-                                &net_commands,
+                                &mut simulation.input,
+                                &mut simulation.world,
+                                &mut simulation.net_counters,
+                                &simulation.net_commands,
                             );
-                            input.open_debug_pause_screen_without_menu();
+                            simulation.input.open_debug_pause_screen_without_menu();
                             set_cursor_capture(&window, &mut cursor_captured, false);
                             tracing::info!(
                                 pause_without_menu_requests,
@@ -770,53 +788,53 @@ fn main() -> Result<()> {
                         }
                         return;
                     }
-                    let container_open = world.open_container_id().is_some();
-                    let dialog_open = world.dialog_screen_is_open();
-                    let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
-                    let book_open = world.current_book().is_some();
-                    let advancements_open = world.advancements_screen_is_open();
-                    let stats_open = world.stats_screen_is_open();
-                    let debug_options_open = input.debug_options_screen_is_open();
-                    let pause_open = input.debug_pause_screen_is_open();
-                    let command_entry_open = input.command_entry_is_active();
+                    let container_open = simulation.world.open_container_id().is_some();
+                    let dialog_open = simulation.world.dialog_screen_is_open();
+                    let sign_editor_open = simulation.input.sign_editor_is_active_or_pending(&simulation.world);
+                    let book_open = simulation.world.current_book().is_some();
+                    let advancements_open = simulation.world.advancements_screen_is_open();
+                    let stats_open = simulation.world.stats_screen_is_open();
+                    let debug_options_open = simulation.input.debug_options_screen_is_open();
+                    let pause_open = simulation.input.debug_pause_screen_is_open();
+                    let command_entry_open = simulation.input.command_entry_is_active();
                     if dialog_open {
-                        input.update_screen_modifier_keys(event.physical_key, event.state);
+                        simulation.input.update_screen_modifier_keys(event.physical_key, event.state);
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_dialog_key_input_with_modifiers_for_surface_and_measurer(
-                            &mut net_counters,
-                            &mut world,
-                            &net_commands,
+                            &mut simulation.net_counters,
+                            &mut simulation.world,
+                            &simulation.net_commands,
                             Some(&mut debug_clipboard),
                             event.physical_key,
                             event.state,
-                            input.shift_down(),
-                            input.control_down(),
+                            simulation.input.shift_down(),
+                            simulation.input.control_down(),
                             window.inner_size(),
                             &renderer,
                         );
-                        drain_dialog_open_url_requests(&mut world);
-                        if !runtime_wants_cursor(&input, &world) {
+                        drain_dialog_open_url_requests(&mut simulation.world);
+                        if !runtime_wants_cursor(&simulation.input, &simulation.world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }
                         return;
                     }
                     let ordinary_pause_escape = matches!(event.state, ElementState::Pressed)
                         && matches!(event.physical_key, PhysicalKey::Code(KeyCode::Escape))
-                        && !input.command_entry_is_active()
+                        && !simulation.input.command_entry_is_active()
                         && !sign_editor_open
                         && !book_open
                         && !advancements_open
                         && !stats_open
                         && !debug_options_open
                         && !pause_open
-                        && !world_wants_cursor(&world);
+                        && !world_wants_cursor(&simulation.world);
                     if ordinary_pause_escape {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         release_active_input(
-                            &mut input,
-                            &mut world,
-                            &mut net_counters,
-                            &net_commands,
+                            &mut simulation.input,
+                            &mut simulation.world,
+                            &mut simulation.net_counters,
+                            &simulation.net_commands,
                         );
                     }
                     if sign_editor_open
@@ -849,59 +867,59 @@ fn main() -> Result<()> {
                         return;
                     }
                     handle_key_input_with_item_runtime(
-                        &mut input,
-                        &mut net_counters,
-                        &mut world,
-                        &net_commands,
+                        &mut simulation.input,
+                        &mut simulation.net_counters,
+                        &mut simulation.world,
+                        &simulation.net_commands,
                         item_runtime.as_ref(),
                         event.physical_key,
                         event.state,
                         window.inner_size(),
                     );
                     if command_entry_open
-                        && !input.command_entry_is_active()
-                        && !runtime_wants_cursor(&input, &world)
+                        && !simulation.input.command_entry_is_active()
+                        && !runtime_wants_cursor(&simulation.input, &simulation.world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, true);
                     }
                 }
                 WindowEvent::Ime(Ime::Preedit(text, cursor_range)) => {
-                    if code_of_conduct_overlay.is_visible(&world) {
-                        input.clear_dialog_ime_preedit();
+                    if code_of_conduct_overlay.is_visible(&simulation.world) {
+                        simulation.input.clear_dialog_ime_preedit();
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if world.dialog_screen_is_open() {
+                    if simulation.world.dialog_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        input.handle_dialog_ime_preedit(
+                        simulation.input.handle_dialog_ime_preedit(
                             &text,
                             cursor_range,
-                            world.dialog_screen_revision(),
+                            simulation.world.dialog_screen_revision(),
                         );
                     } else {
-                        input.clear_dialog_ime_preedit();
+                        simulation.input.clear_dialog_ime_preedit();
                     }
                 }
                 WindowEvent::Ime(Ime::Commit(text)) => {
-                    input.clear_dialog_ime_preedit();
-                    if code_of_conduct_overlay.is_visible(&world) {
+                    simulation.input.clear_dialog_ime_preedit();
+                    if code_of_conduct_overlay.is_visible(&simulation.world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    let sign_editor_open = input.sign_editor_is_active_or_pending(&world);
-                    let container_open = world.open_container_id().is_some();
-                    let book_open = world.current_book().is_some();
-                    let advancements_open = world.advancements_screen_is_open();
-                    let stats_open = world.stats_screen_is_open();
-                    let command_entry_open = input.command_entry_is_active();
-                    if input.debug_options_screen_is_open() {
+                    let sign_editor_open = simulation.input.sign_editor_is_active_or_pending(&simulation.world);
+                    let container_open = simulation.world.open_container_id().is_some();
+                    let book_open = simulation.world.current_book().is_some();
+                    let advancements_open = simulation.world.advancements_screen_is_open();
+                    let stats_open = simulation.world.stats_screen_is_open();
+                    let command_entry_open = simulation.input.command_entry_is_active();
+                    if simulation.input.debug_options_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        input.handle_debug_options_screen_text_input(&text);
+                        simulation.input.handle_debug_options_screen_text_input(&text);
                         return;
                     }
-                    if world.dialog_screen_is_open() {
+                    if simulation.world.dialog_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_dialog_text_input_with_measurer(&mut world, &text, &renderer);
+                        handle_dialog_text_input_with_measurer(&mut simulation.world, &text, &renderer);
                         return;
                     }
                     if book_open || advancements_open || stats_open {
@@ -919,20 +937,20 @@ fn main() -> Result<()> {
                         return;
                     }
                     handle_text_input_with_item_runtime(
-                        &mut input,
-                        &mut net_counters,
-                        &mut world,
-                        &net_commands,
+                        &mut simulation.input,
+                        &mut simulation.net_counters,
+                        &mut simulation.world,
+                        &simulation.net_commands,
                         item_runtime.as_ref(),
                         &text,
                     );
                 }
-                WindowEvent::Ime(Ime::Disabled) => input.clear_dialog_ime_preedit(),
+                WindowEvent::Ime(Ime::Disabled) => simulation.input.clear_dialog_ime_preedit(),
                 WindowEvent::Ime(Ime::Enabled) => {}
                 WindowEvent::MouseInput { state, button, .. } => {
-                    if code_of_conduct_overlay.is_visible(&world) {
+                    if code_of_conduct_overlay.is_visible(&simulation.world) {
                         if code_of_conduct_overlay.handle_mouse_input(
-                            &world,
+                            &simulation.world,
                             &control_requests,
                             button,
                             state,
@@ -941,111 +959,111 @@ fn main() -> Result<()> {
                         ) {
                             code_of_conduct_overlay.update_renderer(
                                 &mut renderer,
-                                &world,
-                                code_of_conduct_acceptance.current_world_acceptance_matches(&world),
+                                &simulation.world,
+                                code_of_conduct_acceptance.current_world_acceptance_matches(&simulation.world),
                             );
                         }
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if input.debug_game_mode_switcher_is_open() {
+                    if simulation.input.debug_game_mode_switcher_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if input.debug_options_screen_is_open() {
+                    if simulation.input.debug_options_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        input.handle_debug_options_screen_mouse_input_with_text_measurer(
+                        simulation.input.handle_debug_options_screen_mouse_input_with_text_measurer(
                             button,
                             state,
                             cursor_position,
                             window.inner_size(),
-                            world.local_player_has_reduced_debug_info(),
+                            simulation.world.local_player_has_reduced_debug_info(),
                             &renderer,
                         );
                         return;
                     }
-                    if input.debug_pause_screen_is_open() {
+                    if simulation.input.debug_pause_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        input.handle_debug_pause_screen_mouse_input(
-                            &mut net_counters,
-                            &mut world,
-                            &net_commands,
+                        simulation.input.handle_debug_pause_screen_mouse_input(
+                            &mut simulation.net_counters,
+                            &mut simulation.world,
+                            &simulation.net_commands,
                             button,
                             state,
                             cursor_position,
                             window.inner_size(),
                         );
-                        drain_pause_screen_link_requests(&mut input);
-                        if input.pause_screen_disconnect_requested() {
-                            request_net_disconnect(&net_commands, &mut net_disconnect_requested);
+                        drain_pause_screen_link_requests(&mut simulation.input);
+                        if simulation.input.pause_screen_disconnect_requested() {
+                            request_net_disconnect(&simulation.net_commands, &mut net_disconnect_requested);
                         }
-                        if !runtime_wants_cursor(&input, &world) {
+                        if !runtime_wants_cursor(&simulation.input, &simulation.world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }
                         return;
                     }
-                    if world.stats_screen_is_open() {
+                    if simulation.world.stats_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         stats_screen_narration
                             .after_input(ScreenNarrationInput::MouseAction, Instant::now());
-                        input.handle_stats_screen_mouse_input(
-                            &mut net_counters,
-                            &mut world,
-                            &net_commands,
+                        simulation.input.handle_stats_screen_mouse_input(
+                            &mut simulation.net_counters,
+                            &mut simulation.world,
+                            &simulation.net_commands,
                             button,
                             state,
                             cursor_position,
                             window.inner_size(),
                         );
-                        if !runtime_wants_cursor(&input, &world) {
+                        if !runtime_wants_cursor(&simulation.input, &simulation.world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }
                         return;
                     }
-                    if world.dialog_screen_is_open() {
+                    if simulation.world.dialog_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        let double_click = input.dialog_mouse_click_is_double(
+                        let double_click = simulation.input.dialog_mouse_click_is_double(
                             button,
                             state,
-                            world.dialog_screen_revision(),
+                            simulation.world.dialog_screen_revision(),
                         );
                         handle_dialog_mouse_input_with_modifiers_and_measurer(
-                            &mut net_counters,
-                            &mut world,
-                            &net_commands,
+                            &mut simulation.net_counters,
+                            &mut simulation.world,
+                            &simulation.net_commands,
                             Some(&mut debug_clipboard),
                             button,
                             state,
                             cursor_position,
                             window.inner_size(),
-                            input.shift_down(),
+                            simulation.input.shift_down(),
                             double_click,
                             &renderer,
                         );
-                        drain_dialog_open_url_requests(&mut world);
-                        if !runtime_wants_cursor(&input, &world) {
+                        drain_dialog_open_url_requests(&mut simulation.world);
+                        if !runtime_wants_cursor(&simulation.input, &simulation.world) {
                             set_cursor_capture(&window, &mut cursor_captured, true);
                         }
                         return;
                     }
-                    if input.command_entry_is_active() {
+                    if simulation.input.command_entry_is_active() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        input.handle_command_suggestion_mouse_input(
-                            &world,
+                        simulation.input.handle_command_suggestion_mouse_input(
+                            &simulation.world,
                             button,
                             state,
                             cursor_position,
                         );
                         return;
                     }
-                    if input.sign_editor_is_active_or_pending(&world) {
+                    if simulation.input.sign_editor_is_active_or_pending(&simulation.world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if world.current_book().is_some() {
+                    if simulation.world.current_book().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_book_screen_mouse_input(
-                            &mut world,
+                            &mut simulation.world,
                             button,
                             state,
                             cursor_position,
@@ -1053,13 +1071,13 @@ fn main() -> Result<()> {
                         );
                         return;
                     }
-                    if world.advancements_screen_is_open() {
+                    if simulation.world.advancements_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_advancements_screen_mouse_input(
-                            &mut input,
-                            &mut net_counters,
-                            &mut world,
-                            &net_commands,
+                            &mut simulation.input,
+                            &mut simulation.net_counters,
+                            &mut simulation.world,
+                            &simulation.net_commands,
                             button,
                             state,
                             cursor_position,
@@ -1067,13 +1085,13 @@ fn main() -> Result<()> {
                         );
                         return;
                     }
-                    if world.open_container_id().is_some() {
+                    if simulation.world.open_container_id().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_inventory_mouse_input_with_item_runtime(
-                            &mut input,
-                            &mut world,
-                            &mut net_counters,
-                            &net_commands,
+                            &mut simulation.input,
+                            &mut simulation.world,
+                            &mut simulation.net_counters,
+                            &simulation.net_commands,
                             item_runtime.as_ref(),
                             button,
                             state,
@@ -1083,7 +1101,7 @@ fn main() -> Result<()> {
                         return;
                     }
                     if matches!(state, ElementState::Pressed) && !cursor_captured {
-                        if runtime_wants_cursor(&input, &world) {
+                        if runtime_wants_cursor(&simulation.input, &simulation.world) {
                             set_cursor_capture(&window, &mut cursor_captured, false);
                             return;
                         }
@@ -1094,74 +1112,74 @@ fn main() -> Result<()> {
                         return;
                     }
                     handle_mouse_input_at_partial_tick(
-                        &mut input,
-                        &mut world,
-                        &mut net_counters,
-                        &net_commands,
+                        &mut simulation.input,
+                        &mut simulation.world,
+                        &mut simulation.net_counters,
+                        &simulation.net_commands,
                         button,
                         state,
-                        client_animation_ticks.entity_partial_tick(),
+                        simulation.client_animation_ticks.entity_partial_tick(),
                     );
                 }
                 WindowEvent::MouseWheel { delta, .. } => {
-                    if code_of_conduct_overlay.is_visible(&world) {
+                    if code_of_conduct_overlay.is_visible(&simulation.world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if input.debug_options_screen_is_open() {
+                    if simulation.input.debug_options_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        input.handle_debug_options_screen_mouse_wheel(delta, window.inner_size());
+                        simulation.input.handle_debug_options_screen_mouse_wheel(delta, window.inner_size());
                         return;
                     }
-                    if world.dialog_screen_is_open() {
+                    if simulation.world.dialog_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_dialog_mouse_wheel(
-                            &mut world,
+                            &mut simulation.world,
                             delta,
                             cursor_position,
                             window.inner_size(),
                         );
                         return;
                     }
-                    if input.command_entry_is_active() {
+                    if simulation.input.command_entry_is_active() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        input.handle_command_suggestion_mouse_wheel(delta);
+                        simulation.input.handle_command_suggestion_mouse_wheel(delta);
                         return;
                     }
-                    if input.sign_editor_is_active_or_pending(&world) {
+                    if simulation.input.sign_editor_is_active_or_pending(&simulation.world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if world.stats_screen_is_open() {
+                    if simulation.world.stats_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         stats_screen_narration
                             .after_input(ScreenNarrationInput::MouseAction, Instant::now());
-                        input.handle_stats_screen_mouse_wheel(&world, delta);
+                        simulation.input.handle_stats_screen_mouse_wheel(&simulation.world, delta);
                         return;
                     }
-                    if world.current_book().is_some() {
+                    if simulation.world.current_book().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
-                    if world.advancements_screen_is_open() {
+                    if simulation.world.advancements_screen_is_open() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
-                        handle_advancements_screen_mouse_wheel(&mut input, &world, delta);
+                        handle_advancements_screen_mouse_wheel(&mut simulation.input, &simulation.world, delta);
                         return;
                     }
-                    if world.open_container_id().is_some() {
+                    if simulation.world.open_container_id().is_some() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         handle_inventory_mouse_wheel(
-                            &mut input,
-                            &mut world,
-                            &mut net_counters,
-                            &net_commands,
+                            &mut simulation.input,
+                            &mut simulation.world,
+                            &mut simulation.net_counters,
+                            &simulation.net_commands,
                             delta,
                             cursor_position,
                             window.inner_size(),
                         );
                         return;
                     }
-                    if runtime_wants_cursor(&input, &world) {
+                    if runtime_wants_cursor(&simulation.input, &simulation.world) {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         return;
                     }
@@ -1169,26 +1187,26 @@ fn main() -> Result<()> {
                         return;
                     }
                     handle_mouse_wheel(
-                        &mut input,
-                        &mut world,
-                        &mut net_counters,
-                        &net_commands,
+                        &mut simulation.input,
+                        &mut simulation.world,
+                        &mut simulation.net_counters,
+                        &simulation.net_commands,
                         delta,
                     );
                 }
                 WindowEvent::RedrawRequested => {
                     let profiler_frame_started_at = Instant::now();
-                    if code_of_conduct_overlay.is_visible(&world)
-                        || runtime_wants_cursor(&input, &world)
+                    if code_of_conduct_overlay.is_visible(&simulation.world)
+                        || runtime_wants_cursor(&simulation.input, &simulation.world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         release_active_input(
-                            &mut input,
-                            &mut world,
-                            &mut net_counters,
-                            &net_commands,
+                            &mut simulation.input,
+                            &mut simulation.world,
+                            &mut simulation.net_counters,
+                            &simulation.net_commands,
                         );
-                    } else if input.command_entry_is_active() {
+                    } else if simulation.input.command_entry_is_active() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
                     if let Some(items) = item_runtime.as_ref() {
@@ -1197,54 +1215,38 @@ fn main() -> Result<()> {
                     }
                     let profiler_update_started_at = Instant::now();
                     let code_of_conduct_overlay_visible =
-                        code_of_conduct_overlay.is_visible(&world);
-                    if !pump_network_and_terrain(
-                        &mut net_events,
-                        &net_commands,
-                        &mut server_resource_pack_runtime,
-                        audio_runtime
+                        code_of_conduct_overlay.is_visible(&simulation.world);
+                    if !simulation.step(SimulationStepContext {
+                        audio_events: audio_runtime
                             .as_mut()
                             .map(|runtime| runtime as &mut dyn AudioEventSink),
-                        &audio_status,
-                        particle_runtime
+                        audio_status: &audio_status,
+                        particle_events: particle_runtime
                             .as_mut()
                             .map(|runtime| runtime as &mut dyn ParticleEventSink),
-                        &mut input,
-                        &mut world,
-                        &mut renderer,
-                        window.inner_size(),
-                        &mut net_counters,
-                        &mut client_animation_ticks,
-                        &mut camera_fov_ticks,
-                        &mut hud_debug_fps_sampler,
-                        &mut hud_debug_network_sampler,
-                        &mut hud_debug_tps_sampler,
-                        &mut debug_collision_cache,
-                        &mut debug_supporting_block_cache,
-                        &mut debug_sky_light_section_cache,
-                        &mut lightmap_ticks,
-                        &mut level_event_sound_random,
-                        &mut terrain_upload,
-                        &mut level_load_runtime,
-                        &mut terrain_textures,
-                        &mut entity_variant_textures,
-                        item_runtime.as_ref(),
-                        &snapshot,
-                        &control_requests,
-                        Some(&mut code_of_conduct_acceptance),
+                        renderer: &mut renderer,
+                        surface_size: window.inner_size(),
+                        terrain_upload: &mut terrain_upload,
+                        level_load_runtime: &mut level_load_runtime,
+                        terrain_textures: &mut terrain_textures,
+                        entity_variant_textures: &mut entity_variant_textures,
+                        item_runtime: item_runtime.as_ref(),
+                        snapshot: &snapshot,
+                        control_requests: &control_requests,
+                        code_of_conduct: Some(&mut code_of_conduct_acceptance),
                         code_of_conduct_overlay_visible,
-                        args.render_distance_chunks,
-                        args.client_framerate_limit,
-                        args.client_vsync,
-                        args.hide_lightning_flash,
-                        args.damage_tilt_strength,
-                        debug_profiler.chart(),
-                    ) {
+                        render_distance_chunks: args.render_distance_chunks,
+                        client_framerate_limit: args.client_framerate_limit,
+                        client_vsync: args.client_vsync,
+                        hide_lightning_flash: args.hide_lightning_flash,
+                        damage_tilt_strength: args.damage_tilt_strength,
+                        hud_debug_profiler_chart: debug_profiler.chart(),
+                    }) {
                         target.exit();
                         return;
                     }
                     apply_pending_server_resource_pack_reload(
-                        &mut server_resource_pack_runtime,
+                        &mut simulation.server_resource_packs,
                         &base_pack_roots,
                         &mut pack_roots,
                         &mut audio_runtime,
@@ -1254,25 +1256,25 @@ fn main() -> Result<()> {
                         &mut terrain_textures,
                         &mut entity_variant_textures,
                         &mut terrain_upload,
-                        &mut world,
+                        &mut simulation.world,
                         &mut renderer,
                         &args.client_locale,
                         client_particle_status,
                         &player_skin_cache_dir,
                     );
                     stats_screen_narration.tick(
-                        world
+                        simulation.world
                             .stats_screen_is_open()
-                            .then(|| client_animation_ticks.stats_screen_narration())
+                            .then(|| simulation.client_animation_ticks.stats_screen_narration())
                             .flatten(),
                         Instant::now(),
                         narrator_runtime.as_mut().map(|narrator| {
                             narrator as &mut dyn narrator_runtime::SystemNarrator
                         }),
                     );
-                    let dialog_preedit = input.dialog_ime_preedit_hud_state();
+                    let dialog_preedit = simulation.input.dialog_ime_preedit_hud_state();
                     if let Some((position, size)) = dialog_ime_cursor_area(
-                        &world,
+                        &simulation.world,
                         dialog_preedit.as_ref(),
                         window.inner_size(),
                         &renderer,
@@ -1280,26 +1282,26 @@ fn main() -> Result<()> {
                         window.set_ime_cursor_area(position, size);
                     }
                     let profiler_update_duration = profiler_update_started_at.elapsed();
-                    input.consume_debug_recreate_server_query_response(
-                        &mut world,
+                    simulation.input.consume_debug_recreate_server_query_response(
+                        &mut simulation.world,
                         &mut debug_clipboard,
                     );
                     code_of_conduct_overlay.update_renderer(
                         &mut renderer,
-                        &world,
-                        code_of_conduct_acceptance.current_world_acceptance_matches(&world),
+                        &simulation.world,
+                        code_of_conduct_acceptance.current_world_acceptance_matches(&simulation.world),
                     );
-                    if code_of_conduct_overlay.is_visible(&world)
-                        || runtime_wants_cursor(&input, &world)
+                    if code_of_conduct_overlay.is_visible(&simulation.world)
+                        || runtime_wants_cursor(&simulation.input, &simulation.world)
                     {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                         release_active_input(
-                            &mut input,
-                            &mut world,
-                            &mut net_counters,
-                            &net_commands,
+                            &mut simulation.input,
+                            &mut simulation.world,
+                            &mut simulation.net_counters,
+                            &simulation.net_commands,
                         );
-                    } else if input.command_entry_is_active() {
+                    } else if simulation.input.command_entry_is_active() {
                         set_cursor_capture(&window, &mut cursor_captured, false);
                     }
 
@@ -1339,9 +1341,9 @@ fn main() -> Result<()> {
                     let published = publish_snapshot(
                         &snapshot,
                         &published_world,
-                        &world,
+                        &simulation.world,
                         control_renderer_counters(renderer.counters()),
-                        &net_counters,
+                        &simulation.net_counters,
                         &audio_counters,
                     );
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
@@ -1388,9 +1390,9 @@ fn main() -> Result<()> {
                 event: DeviceEvent::MouseMotion { delta },
                 ..
             } => {
-                if code_of_conduct_overlay.is_visible(&world)
-                    || runtime_wants_cursor(&input, &world)
-                    || input.command_entry_is_active()
+                if code_of_conduct_overlay.is_visible(&simulation.world)
+                    || runtime_wants_cursor(&simulation.input, &simulation.world)
+                    || simulation.input.command_entry_is_active()
                 {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                     return;
@@ -1398,11 +1400,11 @@ fn main() -> Result<()> {
                 if !cursor_captured {
                     return;
                 }
-                handle_mouse_motion(&mut input, delta);
+                handle_mouse_motion(&mut simulation.input, delta);
             }
             Event::UserEvent(()) => {
                 if !snapshot_is_running(&snapshot) {
-                    request_net_disconnect(&net_commands, &mut net_disconnect_requested);
+                    request_net_disconnect(&simulation.net_commands, &mut net_disconnect_requested);
                     target.exit();
                     return;
                 }
@@ -1412,70 +1414,54 @@ fn main() -> Result<()> {
             }
             Event::AboutToWait => {
                 if !snapshot_is_running(&snapshot) {
-                    request_net_disconnect(&net_commands, &mut net_disconnect_requested);
+                    request_net_disconnect(&simulation.net_commands, &mut net_disconnect_requested);
                     target.exit();
                     return;
                 }
-                if code_of_conduct_overlay.is_visible(&world)
-                    || runtime_wants_cursor(&input, &world)
+                if code_of_conduct_overlay.is_visible(&simulation.world)
+                    || runtime_wants_cursor(&simulation.input, &simulation.world)
                 {
                     set_cursor_capture(&window, &mut cursor_captured, false);
-                    release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
-                } else if input.command_entry_is_active() {
+                    release_active_input(&mut simulation.input, &mut simulation.world, &mut simulation.net_counters, &simulation.net_commands);
+                } else if simulation.input.command_entry_is_active() {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                 }
                 if let Some(items) = item_runtime.as_ref() {
                     items.drain_profile_resolution_results();
                     drain_dynamic_player_skin_downloads(items, &mut renderer);
                 }
-                let code_of_conduct_overlay_visible = code_of_conduct_overlay.is_visible(&world);
-                if !pump_network_and_terrain(
-                    &mut net_events,
-                    &net_commands,
-                    &mut server_resource_pack_runtime,
-                    audio_runtime
+                let code_of_conduct_overlay_visible = code_of_conduct_overlay.is_visible(&simulation.world);
+                if !simulation.step(SimulationStepContext {
+                    audio_events: audio_runtime
                         .as_mut()
                         .map(|runtime| runtime as &mut dyn AudioEventSink),
-                    &audio_status,
-                    particle_runtime
+                    audio_status: &audio_status,
+                    particle_events: particle_runtime
                         .as_mut()
                         .map(|runtime| runtime as &mut dyn ParticleEventSink),
-                    &mut input,
-                    &mut world,
-                    &mut renderer,
-                    window.inner_size(),
-                    &mut net_counters,
-                    &mut client_animation_ticks,
-                    &mut camera_fov_ticks,
-                    &mut hud_debug_fps_sampler,
-                    &mut hud_debug_network_sampler,
-                    &mut hud_debug_tps_sampler,
-                    &mut debug_collision_cache,
-                    &mut debug_supporting_block_cache,
-                    &mut debug_sky_light_section_cache,
-                    &mut lightmap_ticks,
-                    &mut level_event_sound_random,
-                    &mut terrain_upload,
-                    &mut level_load_runtime,
-                    &mut terrain_textures,
-                    &mut entity_variant_textures,
-                    item_runtime.as_ref(),
-                    &snapshot,
-                    &control_requests,
-                    Some(&mut code_of_conduct_acceptance),
+                    renderer: &mut renderer,
+                    surface_size: window.inner_size(),
+                    terrain_upload: &mut terrain_upload,
+                    level_load_runtime: &mut level_load_runtime,
+                    terrain_textures: &mut terrain_textures,
+                    entity_variant_textures: &mut entity_variant_textures,
+                    item_runtime: item_runtime.as_ref(),
+                    snapshot: &snapshot,
+                    control_requests: &control_requests,
+                    code_of_conduct: Some(&mut code_of_conduct_acceptance),
                     code_of_conduct_overlay_visible,
-                    args.render_distance_chunks,
-                    args.client_framerate_limit,
-                    args.client_vsync,
-                    args.hide_lightning_flash,
-                    args.damage_tilt_strength,
-                    debug_profiler.chart(),
-                ) {
+                    render_distance_chunks: args.render_distance_chunks,
+                    client_framerate_limit: args.client_framerate_limit,
+                    client_vsync: args.client_vsync,
+                    hide_lightning_flash: args.hide_lightning_flash,
+                    damage_tilt_strength: args.damage_tilt_strength,
+                    hud_debug_profiler_chart: debug_profiler.chart(),
+                }) {
                     target.exit();
                     return;
                 }
                 apply_pending_server_resource_pack_reload(
-                    &mut server_resource_pack_runtime,
+                    &mut simulation.server_resource_packs,
                     &base_pack_roots,
                     &mut pack_roots,
                     &mut audio_runtime,
@@ -1485,37 +1471,37 @@ fn main() -> Result<()> {
                     &mut terrain_textures,
                     &mut entity_variant_textures,
                     &mut terrain_upload,
-                    &mut world,
+                    &mut simulation.world,
                     &mut renderer,
                     &args.client_locale,
                     client_particle_status,
                     &player_skin_cache_dir,
                 );
                 stats_screen_narration.tick(
-                    world
+                    simulation.world
                         .stats_screen_is_open()
-                        .then(|| client_animation_ticks.stats_screen_narration())
+                        .then(|| simulation.client_animation_ticks.stats_screen_narration())
                         .flatten(),
                     Instant::now(),
                     narrator_runtime
                         .as_mut()
                         .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                 );
-                input.consume_debug_recreate_server_query_response(
-                    &mut world,
+                simulation.input.consume_debug_recreate_server_query_response(
+                    &mut simulation.world,
                     &mut debug_clipboard,
                 );
                 code_of_conduct_overlay.update_renderer(
                     &mut renderer,
-                    &world,
-                    code_of_conduct_acceptance.current_world_acceptance_matches(&world),
+                    &simulation.world,
+                    code_of_conduct_acceptance.current_world_acceptance_matches(&simulation.world),
                 );
-                if code_of_conduct_overlay.is_visible(&world)
-                    || runtime_wants_cursor(&input, &world)
+                if code_of_conduct_overlay.is_visible(&simulation.world)
+                    || runtime_wants_cursor(&simulation.input, &simulation.world)
                 {
                     set_cursor_capture(&window, &mut cursor_captured, false);
-                    release_active_input(&mut input, &mut world, &mut net_counters, &net_commands);
-                } else if input.command_entry_is_active() {
+                    release_active_input(&mut simulation.input, &mut simulation.world, &mut simulation.net_counters, &simulation.net_commands);
+                } else if simulation.input.command_entry_is_active() {
                     set_cursor_capture(&window, &mut cursor_captured, false);
                 }
                 if frame_interval.is_none() || Instant::now() >= next_redraw_at {
@@ -1524,7 +1510,7 @@ fn main() -> Result<()> {
             }
             Event::LoopExiting => {
                 set_cursor_capture(&window, &mut cursor_captured, false);
-                request_net_disconnect(&net_commands, &mut net_disconnect_requested);
+                request_net_disconnect(&simulation.net_commands, &mut net_disconnect_requested);
                 snapshot.rcu(|current| {
                     let mut next = (**current).clone();
                     next.app.running = false;

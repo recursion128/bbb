@@ -17574,6 +17574,32 @@ fn entity_client_tick_cadence_preserves_residual_across_rate_changes_and_freeze(
 }
 
 #[test]
+fn entity_client_tick_catch_up_is_capped_at_ten_per_step() {
+    let start = Instant::now();
+    let mut ticks = ClientAnimationTickState::default();
+    let mut world = WorldStore::new();
+
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, start),
+        0
+    );
+    let delayed = start + Duration::from_millis(1_050);
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, delayed),
+        VANILLA_MAX_CLIENT_TICKS_PER_STEP
+    );
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, delayed),
+        VANILLA_MAX_CLIENT_TICKS_PER_STEP
+    );
+    assert_eq!(
+        advance_entity_client_animations(&mut world, &mut ticks, delayed),
+        1
+    );
+    assert_eq!(ticks.entity_partial_tick(), 0.0);
+}
+
+#[test]
 fn local_prediction_consumes_the_runtime_client_tick_batch() {
     let source = include_str!("../runtime.rs");
     assert!(source.contains(

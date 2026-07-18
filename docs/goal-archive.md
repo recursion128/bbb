@@ -19297,3 +19297,14 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 工程迁移分为 owner shell、effect isolation、single input mailbox、immutable render
   publication、thread activation、closeout 六个串行可构建阶段；线程激活前保持同步执行以
   定位语义回归，并预声明 phase 2/4/5/final full gate、playable gate 与安全停点。
+
+## 2026-07-18：模拟/渲染拆分 phase 1 owner shell
+
+- [x] 新增单一 `SimulationCore`，集中持有 live `WorldStore`、canonical input、net
+  event/command/counters、client tick/FOV/lightmap clock 与 tick-owned debug/random state；
+  winit 两个 pump 入口均改经同步 `SimulationCore::step`，没有增加运行时模式或第二输入路径。
+- [x] renderer/audio/particle、terrain/resource upload、window surface 与 control/platform
+  仍以显式 `SimulationStepContext` 借入，形成 phase 2 必须消除的可审计清单；main 中原事件
+  分支只机械改读写 owner 字段，完整 native 2120 项回归覆盖其行为。
+- [x] client catch-up 对齐 vanilla `Minecraft.runTick` 的单 step 最多十次 tick；超额 residual
+  留给后续 step，回归覆盖 21 tick 延迟按 10/10/1 消费且最终 partial tick 归零。

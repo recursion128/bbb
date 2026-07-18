@@ -214,6 +214,7 @@ use dialog_screen::{
 };
 
 const VANILLA_CLIENT_TICK_INTERVAL: Duration = Duration::from_millis(50);
+const VANILLA_MAX_CLIENT_TICKS_PER_STEP: u32 = 10;
 const VANILLA_OVERWORLD_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-16_119_286);
 const VANILLA_NETHER_SKY_LIGHT_COLOR: [f32; 3] = [122.0 / 255.0, 122.0 / 255.0, 1.0];
 const VANILLA_NETHER_AMBIENT_LIGHT_COLOR: [f32; 3] = rgb24(-13_621_215);
@@ -12651,7 +12652,11 @@ fn advance_entity_client_animations(
         return 0;
     }
 
-    let advanced_ticks = raw_ticks.min(f64::from(u32::MAX)) as u32;
+    // `Minecraft.runTick` caps one catch-up batch at ten `Minecraft.tick`
+    // calls. Keep any excess in the accumulator so a following simulation step
+    // can continue without allowing one slow frame to create an unbounded
+    // mutation batch.
+    let advanced_ticks = raw_ticks.min(f64::from(VANILLA_MAX_CLIENT_TICKS_PER_STEP)) as u32;
     ticks.entity_animation_tick_residual -= f64::from(advanced_ticks);
     world.advance_entity_client_animations(advanced_ticks);
     advanced_ticks
