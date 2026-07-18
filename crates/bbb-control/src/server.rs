@@ -1,9 +1,7 @@
-use std::{
-    net::SocketAddr,
-    sync::{Arc, RwLock},
-};
+use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::{Context, Result};
+use arc_swap::ArcSwap;
 use bbb_world::{BlockPos, ChunkPos};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -30,7 +28,7 @@ use self::params::{
 };
 
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
-    Arc::new(RwLock::new(ControlSnapshot {
+    Arc::new(ArcSwap::from_pointee(ControlSnapshot {
         app: AppStatus {
             version: version.into(),
             running: true,
@@ -85,8 +83,11 @@ async fn handle_client(stream: TcpStream, state: ControlState) -> Result<()> {
 
 fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
     if request.method == "app.quit" {
-        let mut snapshot_guard = state.snapshot.write().expect("control snapshot poisoned");
-        snapshot_guard.app.running = false;
+        state.snapshot.rcu(|current| {
+            let mut next = (**current).clone();
+            next.app.running = false;
+            next
+        });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({"running": false})),
@@ -1235,24 +1236,45 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         };
     }
 
-    let snapshot_view = state
-        .snapshot
-        .read()
-        .expect("control snapshot poisoned")
-        .clone();
-    let world_guard = state.world.read().expect("control world poisoned");
-    let json = match request.method.as_str() {
-        "app.status" => Ok(serde_json::json!({
+    let snapshot_view = state.snapshot.load_full();
+    let snapshot_json: Option<serde_json::Result<serde_json::Value>> = match request.method.as_str()
+    {
+        "app.status" => Some(Ok(serde_json::json!({
             "app": &snapshot_view.app,
             "net": &snapshot_view.net,
             "audio": &snapshot_view.audio,
             "renderer": &snapshot_view.renderer,
-            "world": world_guard.counters(),
-        })),
-        "net.counters" => serde_json::to_value(&snapshot_view.net),
-        "audio.counters" => serde_json::to_value(&snapshot_view.audio),
-        "renderer.counters" => serde_json::to_value(&snapshot_view.renderer),
-        "world.counters" => serde_json::to_value(world_guard.counters()),
+            "world": snapshot_view.world.counters(),
+        }))),
+        "net.counters" => Some(serde_json::to_value(&snapshot_view.net)),
+        "audio.counters" => Some(serde_json::to_value(&snapshot_view.audio)),
+        "renderer.counters" => Some(serde_json::to_value(&snapshot_view.renderer)),
+        "world.counters" => Some(serde_json::to_value(snapshot_view.world.counters())),
+        "world.client_local_player" => Some(serde_json::to_value(
+            snapshot_view.world.client_local_player(),
+        )),
+        "world.probe_block" => {
+            let x = i32_param(&request.params, "x");
+            let y = i32_param(&request.params, "y");
+            let z = i32_param(&request.params, "z");
+            let result = match (x, y, z) {
+                (Some(x), Some(y), Some(z)) => snapshot_view
+                    .world
+                    .probe_block(BlockPos { x, y, z })
+                    .map(|probe| serde_json::to_value(probe).expect("block probe serializes"))
+                    .unwrap_or(serde_json::Value::Null),
+                _ => serde_json::Value::Null,
+            };
+            Some(Ok(result))
+        }
+        _ => None,
+    };
+    if let Some(json) = snapshot_json {
+        return control_response_from_json(json);
+    }
+
+    let world_guard = state.world.read().expect("control world poisoned");
+    let json = match request.method.as_str() {
         "world.apply_diagnostics" => serde_json::to_value(world_guard.apply_diagnostics()),
         "world.registries" => serde_json::to_value(world_guard.registries()),
         "world.level_state" => Ok(serde_json::json!({
@@ -1275,7 +1297,6 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         "world.client_debug_game" => serde_json::to_value(world_guard.client_debug_game()),
         "world.client_hud" => serde_json::to_value(world_guard.client_hud()),
         "world.client_inventory" => serde_json::to_value(world_guard.inventory()),
-        "world.client_local_player" => serde_json::to_value(world_guard.client_local_player()),
         "world.client_player_info" => serde_json::to_value(world_guard.player_info()),
         "world.client_recipe_book" => serde_json::to_value(world_guard.recipe_book()),
         "world.client_recipes" => serde_json::to_value(world_guard.recipes()),
@@ -1368,19 +1389,6 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
             let partial_tick = f32_param(&request.params, "partial_tick").unwrap_or(1.0);
             serde_json::to_value(world_guard.entity_pick_targets_at_partial_tick(partial_tick))
         }
-        "world.probe_block" => {
-            let x = i32_param(&request.params, "x");
-            let y = i32_param(&request.params, "y");
-            let z = i32_param(&request.params, "z");
-            let result = match (x, y, z) {
-                (Some(x), Some(y), Some(z)) => world_guard
-                    .probe_block(BlockPos { x, y, z })
-                    .map(|probe| serde_json::to_value(probe).expect("block probe serializes"))
-                    .unwrap_or(serde_json::Value::Null),
-                _ => serde_json::Value::Null,
-            };
-            Ok(result)
-        }
         "world.terrain_chunk_summary" => {
             let x = i32_param(&request.params, "x");
             let z = i32_param(&request.params, "z");
@@ -1405,6 +1413,10 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         }
     };
 
+    control_response_from_json(json)
+}
+
+fn control_response_from_json(json: serde_json::Result<serde_json::Value>) -> ControlResponse {
     match json {
         Ok(value) => ControlResponse {
             ok: true,

@@ -2,6 +2,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
     path::PathBuf,
+    sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
@@ -1985,10 +1986,7 @@ fn vanilla_lightmap_dimension_kind(level: &WorldLevelInfo) -> VanillaLightmapDim
 }
 
 pub(crate) fn snapshot_is_running(snapshot: &SharedSnapshot) -> bool {
-    snapshot
-        .read()
-        .map(|guard| guard.app.running)
-        .unwrap_or(false)
+    snapshot.load().app.running
 }
 
 pub(crate) fn request_net_disconnect(
@@ -2926,16 +2924,7 @@ pub(crate) fn pump_network_and_terrain(
             &world.tickable_entity_sounds(),
         );
     }
-    let audio_counters = audio_events
-        .as_deref()
-        .map(AudioEventSink::counters)
-        .unwrap_or_else(|| audio_status.clone());
-    publish_snapshot(
-        snapshot,
-        control_renderer_counters(renderer.counters()),
-        net_counters,
-        &audio_counters,
-    )
+    snapshot_is_running(snapshot)
 }
 
 fn renderer_particle_block_fluid_surface_sample(
@@ -13964,18 +13953,21 @@ pub(crate) fn control_renderer_counters(
 
 pub(crate) fn publish_snapshot(
     snapshot: &SharedSnapshot,
+    world: &WorldStore,
     renderer: RendererCounters,
     net: &NetCounters,
     audio: &AudioCounters,
 ) -> bool {
-    if let Ok(mut guard) = snapshot.write() {
-        guard.renderer = renderer;
-        guard.net = net.clone();
-        guard.audio = audio.clone();
-        guard.app.running
-    } else {
-        false
-    }
+    let world = Arc::new(world.clone());
+    snapshot.rcu(|current| {
+        let mut next = (**current).clone();
+        next.renderer = renderer.clone();
+        next.net = net.clone();
+        next.audio = audio.clone();
+        next.world = Arc::clone(&world);
+        next
+    });
+    snapshot.load().app.running
 }
 
 #[cfg(test)]

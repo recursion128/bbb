@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 use super::params::{
     EDIT_BOOK_MAX_PAGES, EDIT_BOOK_MAX_PAGE_CHARS, EDIT_BOOK_MAX_TITLE_CHARS,
@@ -49,12 +52,21 @@ use bbb_protocol::recipe_wire_types::{
 use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 use bbb_world::{
     BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, LightData,
-    PaletteDomain, PaletteKind, PalettedContainerData, ResourcePackFailureStage,
-    ResourcePackRuntimeFailure, ResourcePackRuntimePhase, ResourcePackRuntimeState, WorldDimension,
-    WorldStore,
+    LocalPlayerPoseState, PaletteDomain, PaletteKind, PalettedContainerData,
+    ResourcePackFailureStage, ResourcePackRuntimeFailure, ResourcePackRuntimePhase,
+    ResourcePackRuntimeState, WorldDimension, WorldStore,
 };
 use serde_json::json;
 use uuid::Uuid;
+
+fn publish_test_world_snapshot(state: &ControlState, world: &WorldStore) {
+    let world = Arc::new(world.clone());
+    state.snapshot.rcu(|current| {
+        let mut next = (**current).clone();
+        next.world = Arc::clone(&world);
+        next
+    });
+}
 
 #[test]
 fn app_quit_marks_snapshot_not_running() {
@@ -68,7 +80,7 @@ fn app_quit_marks_snapshot_not_running() {
     );
 
     assert!(response.ok);
-    assert!(!state.snapshot.read().unwrap().app.running);
+    assert!(!state.snapshot.load().app.running);
 }
 
 #[test]
@@ -77,12 +89,17 @@ fn app_status_reads_world_counters_from_world_store() {
     {
         let mut store = WorldStore::new();
         store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
-        state.snapshot.write().unwrap().audio = AudioCounters {
-            enabled: true,
-            catalog_events: 123,
-            commands_submitted: 4,
-            ..AudioCounters::default()
-        };
+        state.snapshot.rcu(|current| {
+            let mut next = (**current).clone();
+            next.audio = AudioCounters {
+                enabled: true,
+                catalog_events: 123,
+                commands_submitted: 4,
+                ..AudioCounters::default()
+            };
+            next
+        });
+        publish_test_world_snapshot(&state, &store);
         *state.world.write().unwrap() = store;
     }
 
@@ -105,17 +122,84 @@ fn app_status_reads_world_counters_from_world_store() {
 }
 
 #[test]
+fn high_frequency_queries_match_the_published_world_without_taking_the_live_lock() {
+    let state = ControlState::new("test");
+    let mut world = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    world.insert_decoded_chunk(single_section_chunk());
+    world.apply_block_changed_ack(BlockChangedAck { sequence: 23 });
+    world.set_local_player_pose(LocalPlayerPoseState {
+        position: ProtocolVec3d {
+            x: 17.25,
+            y: 1.0,
+            z: -30.75,
+        },
+        y_rot: 35.0,
+        x_rot: -12.0,
+        ..LocalPlayerPoseState::default()
+    });
+    let expected_counters = serde_json::to_value(world.counters()).unwrap();
+    let expected_local = serde_json::to_value(world.client_local_player()).unwrap();
+    let expected_block = serde_json::to_value(
+        world
+            .probe_block(bbb_world::BlockPos {
+                x: 17,
+                y: 0,
+                z: -31,
+            })
+            .unwrap(),
+    )
+    .unwrap();
+    publish_test_world_snapshot(&state, &world);
+
+    // Keeping the compatibility world's write guard proves these migrated
+    // reads cannot be waiting on the live-world RwLock.
+    let _live_world_write = state.world.write().unwrap();
+    let counters = dispatch(
+        ControlRequest {
+            method: "world.counters".to_string(),
+            params: serde_json::Value::Null,
+        },
+        &state,
+    );
+    let local = dispatch(
+        ControlRequest {
+            method: "world.client_local_player".to_string(),
+            params: serde_json::Value::Null,
+        },
+        &state,
+    );
+    let block = dispatch(
+        ControlRequest {
+            method: "world.probe_block".to_string(),
+            params: json!({"x": 17, "y": 0, "z": -31}),
+        },
+        &state,
+    );
+
+    assert_eq!(counters.result.unwrap(), expected_counters);
+    assert_eq!(local.result.unwrap(), expected_local);
+    assert_eq!(block.result.unwrap(), expected_block);
+}
+
+#[test]
 fn audio_counters_reads_runtime_projection() {
     let state = ControlState::new("test");
-    state.snapshot.write().unwrap().audio = AudioCounters {
-        enabled: false,
-        disabled_reason: Some("initialize Kira audio runtime".to_string()),
-        resolve_failures: 2,
-        submit_failures: 1,
-        last_resolve_error: Some("missing sound event minecraft:missing".to_string()),
-        last_submit_error: Some("failed to submit audio command".to_string()),
-        ..AudioCounters::default()
-    };
+    state.snapshot.rcu(|current| {
+        let mut next = (**current).clone();
+        next.audio = AudioCounters {
+            enabled: false,
+            disabled_reason: Some("initialize Kira audio runtime".to_string()),
+            resolve_failures: 2,
+            submit_failures: 1,
+            last_resolve_error: Some("missing sound event minecraft:missing".to_string()),
+            last_submit_error: Some("failed to submit audio command".to_string()),
+            ..AudioCounters::default()
+        };
+        next
+    });
 
     let response = dispatch(
         ControlRequest {
@@ -3394,6 +3478,7 @@ fn client_local_player_reads_canonical_world_state() {
             pitch: -10.0,
         });
         store.apply_simulation_distance(SetSimulationDistance { distance: 12 });
+        publish_test_world_snapshot(&state, &store);
         *state.world.write().unwrap() = store;
     }
 
@@ -3809,6 +3894,7 @@ fn probes_chunk_and_block_from_world_store() {
         });
         store.insert_decoded_chunk(single_section_chunk());
 
+        publish_test_world_snapshot(&state, &store);
         *state.world.write().unwrap() = store;
     }
 

@@ -28,15 +28,16 @@ use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary, AdvancementDisplaySummary, AdvancementFrameType,
     AdvancementIconSummary, AdvancementProgressSummary, AdvancementSummary, AwardStats,
-    BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
-    BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
-    BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
-    DataComponentPatchSummary, DialogHolder, EntityEvent as ProtocolEntityEvent,
-    GameEvent as ProtocolGameEvent, InitializeBorder as ProtocolInitializeBorder, InteractionHand,
-    MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime,
-    RemoveMobEffect, SetBorderLerpSize as ProtocolSetBorderLerpSize,
-    SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
-    ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
+    BlockChangedAck, BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
+    BossBarColor, BossBarOverlay, BossEvent as ProtocolBossEvent,
+    BossEventFlags as ProtocolBossEventFlags, BossEventOperation as ProtocolBossEventOperation,
+    CommonPlayerSpawnInfo, DataComponentPatchSummary, DialogHolder,
+    EntityEvent as ProtocolEntityEvent, GameEvent as ProtocolGameEvent,
+    InitializeBorder as ProtocolInitializeBorder, InteractionHand, MerchantOffer, MerchantOffers,
+    MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
+    SetBorderLerpSize as ProtocolSetBorderLerpSize, SetCursorItem as ProtocolSetCursorItem,
+    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, StatUpdate, UpdateAdvancements,
+    UpdateMobEffect, WrittenBookContentSummary,
 };
 use bbb_protocol::recipe_wire_types::{
     VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID, VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID,
@@ -17652,15 +17653,44 @@ fn publish_snapshot_includes_audio_runtime_counters() {
         ..AudioCounters::default()
     };
     let net = NetCounters::default();
+    let world = WorldStore::new();
 
     assert!(publish_snapshot(
         &snapshot,
+        &world,
         RendererCounters::default(),
         &net,
         &audio,
     ));
 
-    assert_eq!(snapshot.read().unwrap().audio, audio);
+    assert_eq!(snapshot.load().audio, audio);
+}
+
+#[test]
+fn publish_snapshot_preserves_control_quit_and_freezes_world_generation() {
+    let snapshot = bbb_control::shared_snapshot("test");
+    snapshot.rcu(|current| {
+        let mut next = (**current).clone();
+        next.app.running = false;
+        next
+    });
+    let mut world = WorldStore::new();
+    world.apply_block_changed_ack(BlockChangedAck { sequence: 4 });
+
+    assert!(!publish_snapshot(
+        &snapshot,
+        &world,
+        RendererCounters::default(),
+        &NetCounters::default(),
+        &AudioCounters::default(),
+    ));
+    let published = snapshot.load_full();
+    assert!(!published.app.running);
+    assert_eq!(published.world.counters().block_changed_ack_packets, 1);
+
+    world.apply_block_changed_ack(BlockChangedAck { sequence: 5 });
+    assert_eq!(published.world.counters().block_changed_ack_packets, 1);
+    assert_eq!(world.counters().block_changed_ack_packets, 2);
 }
 
 fn local_player_pose(position: [f64; 3], y_rot: f32, x_rot: f32) -> LocalPlayerPoseState {

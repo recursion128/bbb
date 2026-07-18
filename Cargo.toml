@@ -23,6 +23,7 @@ publish = false
 aes = "0.8"
 anyhow = "1"
 arboard = { version = "3.6.1", default-features = false, features = ["wayland-data-control"] }
+arc-swap = "1"
 base64 = "0.22"
 bytes = "1"
 bytemuck = { version = "1", features = ["derive"] }

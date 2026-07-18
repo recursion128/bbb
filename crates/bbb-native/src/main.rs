@@ -1343,6 +1343,7 @@ fn main() -> Result<()> {
                         .unwrap_or_else(|| audio_status.clone());
                     let published = publish_snapshot(
                         &snapshot,
+                        &world,
                         control_renderer_counters(renderer.counters()),
                         &net_counters,
                         &audio_counters,
@@ -1528,10 +1529,12 @@ fn main() -> Result<()> {
             Event::LoopExiting => {
                 set_cursor_capture(&window, &mut cursor_captured, false);
                 request_net_disconnect(&net_commands, &mut net_disconnect_requested);
-                if let Ok(mut guard) = snapshot.write() {
-                    guard.app.running = false;
-                    guard.net.connected = false;
-                }
+                snapshot.rcu(|current| {
+                    let mut next = (**current).clone();
+                    next.app.running = false;
+                    next.net.connected = false;
+                    next
+                });
             }
             _ => {}
         }

@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+arc-swap = { workspace = true }
 bbb-world = { path = "../bbb-world" }
 serde = { workspace = true }
 serde_json = { workspace = true }

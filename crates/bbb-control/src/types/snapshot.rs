@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, Mutex, RwLock},
 };
 
+use arc_swap::ArcSwap;
 use bbb_world::WorldStore;
 use serde::{Deserialize, Serialize};
 
@@ -341,18 +342,20 @@ where
         .collect()
 }
 
-/// Pure derived view published by the native runtime once per frame. It only
-/// carries counters projected out of the runtime; the authoritative
-/// `WorldStore` is shared via [`SharedWorld`] and never copied here.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// Immutable control-plane view published atomically by the native runtime.
+/// `world` is a derived copy of the canonical live [`WorldStore`]; readers
+/// retain one `Arc` generation for the whole request and never lock the live
+/// runtime owner.
+#[derive(Debug, Clone, Default)]
 pub struct ControlSnapshot {
     pub app: AppStatus,
     pub net: NetCounters,
     pub audio: AudioCounters,
     pub renderer: RendererCounters,
+    pub world: Arc<WorldStore>,
 }
 
-pub type SharedSnapshot = Arc<RwLock<ControlSnapshot>>;
+pub type SharedSnapshot = Arc<ArcSwap<ControlSnapshot>>;
 
 /// Control-plane input queues: produced by the control API server (and the
 /// native code-of-conduct overlay) and drained by the native runtime each
@@ -386,7 +389,7 @@ pub struct ControlState {
 impl ControlState {
     pub fn new(version: impl Into<String>) -> Self {
         Self {
-            snapshot: Arc::new(RwLock::new(ControlSnapshot {
+            snapshot: Arc::new(ArcSwap::from_pointee(ControlSnapshot {
                 app: AppStatus {
                     version: version.into(),
                     running: true,
