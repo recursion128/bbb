@@ -238,6 +238,7 @@ mod tests {
         assert_eq!(main.matches(".consume_render_effects(").count(), 1);
         assert!(!main.contains("SimulationStepContext"));
         assert!(!main.contains("simulation.step("));
+        assert!(!main.contains("snapshot_is_running"));
         assert_eq!(thread.matches("core.step(now)").count(), 1);
         assert!(thread.contains(".name(\"bbb-simulation\".to_string())"));
         assert!(!main.contains("pump_network_and_terrain("));

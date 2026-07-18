@@ -4,15 +4,16 @@ This document freezes the ownership and migration contract for moving native
 client simulation off the winit/render thread. It is the prerequisite design
 for the `goal.md` simulation/render decoupling engineering slice.
 
-Implementation status: phases 1-5 are complete; phase 6 closeout is current.
-The named simulation thread, deadline/producer wakeups, immutable publication,
-ordered effect transport, and joined failure/shutdown path are active.
+Implementation status: all six phases are complete. The named simulation
+thread, deadline/producer wakeups, immutable publication, ordered effect
+transport, measured render backlog, and joined failure/shutdown path are
+active.
 
-The target is not to make the current `pump_network_and_terrain` function
-`Send`. That function currently combines packet application, input, client
-ticks, audio and particle effects, HUD extraction, terrain uploads, and GPU
-state. The target separates those responsibilities before introducing a
-thread boundary.
+The migration did not make the former `pump_network_and_terrain` function
+`Send`. It separated packet application, input, client ticks, backend effects,
+render extraction, terrain uploads, and GPU state before introducing the
+thread boundary; the old pump and render-thread running-snapshot adapter no
+longer exist.
 
 ## Semantic Goal
 
@@ -302,6 +303,14 @@ otherwise.
    architecture/ledger/archive evidence, measure snapshot/backlog behavior, and
    run the final full and playable gates at delivered `HEAD`.
 
+The closeout instruments the unbounded simulation-output FIFO with current and
+peak pending counts. A slow-frame record also reports the newest-publication
+generation lag and ordered-effect sequence lag relative to the generation the
+renderer may safely consume. The blocked-render regression proves pending
+outputs grow while tick deadlines and external network wakeups continue, then
+return to zero when the renderer drains the FIFO. These metrics diagnose a slow
+render owner without turning observation into simulation backpressure.
+
 No phase may introduce a temporary second gameplay path. Phase 3 switches each
 input family atomically to commands; phase 4 switches each render projection to
 the publication while the simulation remains synchronous. The actual thread
@@ -334,10 +343,11 @@ Useful deterministic regressions include:
 
 ## Failure Localization and Safe Stops
 
-Phases 1-4 deliberately run the core synchronously. A regression before the
-thread activation is therefore attributable to ownership extraction, effect
+Phases 1-4 deliberately ran the core synchronously. A regression before the
+thread activation was therefore attributable to ownership extraction, effect
 routing, input routing, or snapshot projection rather than scheduling. Phase 5
-has fake-clock and blocked-render tests that isolate scheduler failures.
+added fake-clock and blocked-render tests that isolate scheduler failures; the
+phase 6 pending/peak and generation-lag metrics localize render-consumer stalls.
 
 Safe stops are the clean, gated tips after phases 2 and 4. After phase 5 starts,
 the slice stops only at its successful gate, an explicit blocker, or a normal

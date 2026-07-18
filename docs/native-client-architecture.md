@@ -249,6 +249,10 @@ path. It resolves packet/tick/platform side effects into one owned,
 sequence-numbered unbounded `RenderEffectBatch` stream; the winit owner consumes audio,
 particles, window, clipboard, URI, stats-screen narration input, debug-renderer,
 screenshot, and reload work at most once in FIFO order before render extraction.
+The stream records current and peak pending output counts without blocking its
+producer. Slow-frame diagnostics pair those counts with the newest immutable
+publication's generation lag and ordered-effect sequence lag, so renderer/GPU
+stalls are measurable while the simulation remains deadline-driven.
 Resource reload is the terminal batch effect: render-owned asset/GPU work returns a
 generation acknowledgement, and only a matching mailbox acknowledgement
 commits world defaults and the simulation particle resolver. The
@@ -262,6 +266,8 @@ simulation fields. Its effect sequence prevents render from adopting a newer
 publication until all preceding effects have been consumed. The event loop
 joins clean shutdowns and propagates caught worker failures; `SimulationThread`
 also joins on drop. `SimulationRenderContext` carries backend/cache owners only.
+The event loop has no fallback direct pump and does not consult the control
+snapshot as a second lifecycle authority.
 
 ### `bbb-item-model`
 

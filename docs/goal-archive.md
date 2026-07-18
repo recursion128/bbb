@@ -19389,3 +19389,18 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   项与 `bbb-native` 2141 项回归通过；`playable-gate auto` 的 checked-in fixture smoke 通过 8 个
   有序阶段，因未配置 `BBB_PLAYABLE_JAVA` 未运行 live Java 部分。本 phase 在提交 tip 运行
   full gate 与同一 playable gate，下一阶段只做兼容清理、backlog/publication 测量和最终交付。
+
+## 2026-07-18：模拟/渲染拆分 phase 6 closeout
+
+- [x] 删除 winit `UserEvent` / `AboutToWait` 对 control snapshot 的旧 running 门闩及
+  `snapshot_is_running` adapter；退出只由 simulation publication、命名线程完成/失败和
+  有序 platform exit effect 决定。主循环仍无 `pump_network_and_terrain`、同步 step 或
+  selectable gameplay fallback，`SimulationThread` shutdown/join 是唯一可变 owner 的回收边界。
+- [x] 无界 simulation-output FIFO 新增无锁 current/peak pending 计数；slow-frame 诊断同时
+  报告 pending/peak、最新 publication 相对 renderer-safe publication 的 generation lag，及
+  尚未消费 effect sequence lag。blocked-render 回归量到至少五个 pending 输出，同时证明
+  deadline tick 与 external network wake/apply 继续，恢复 drain 后 pending 精确归零；观测不会
+  对 simulation 施加反压。
+- [x] 所有权文档与设计合同更新为六阶段完成；`goal.md` 移除已完成工程项，unsupported
+  ledger 反查没有 simulation-thread compatibility 行需要删除。最终 focused tests、full gate
+  与 playable gate 结果随本提交交付记录报告。

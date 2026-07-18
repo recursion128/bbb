@@ -3,7 +3,11 @@
 use std::{
     any::Any,
     panic::{self, AssertUnwindSafe},
-    sync::mpsc::{self, Receiver, TryRecvError},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        mpsc::{self, Receiver, TryRecvError},
+        Arc,
+    },
     thread::{self, JoinHandle},
     time::Instant,
 };
@@ -12,8 +16,21 @@ use super::{commands::SimulationMailbox, SimulationCore, SimulationStepResult};
 
 pub(crate) struct SimulationThread {
     outputs: Receiver<SimulationStepResult>,
+    output_backlog: Arc<OutputBacklog>,
     join: Option<JoinHandle<Result<(), String>>>,
     mailbox: SimulationMailbox,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct SimulationOutputBacklog {
+    pub(crate) pending: usize,
+    pub(crate) peak: usize,
+}
+
+#[derive(Default)]
+struct OutputBacklog {
+    pending: AtomicUsize,
+    peak: AtomicUsize,
 }
 
 impl SimulationThread {
@@ -24,22 +41,30 @@ impl SimulationThread {
         let mailbox = core.command_mailbox.clone();
         let scheduler_mailbox = mailbox.clone();
         let (output_tx, outputs) = mpsc::channel();
+        let output_backlog = Arc::new(OutputBacklog::default());
+        let scheduler_backlog = Arc::clone(&output_backlog);
         let join = thread::Builder::new()
             .name("bbb-simulation".to_string())
             .spawn(move || {
                 let _exit_wake = ExitWake(&render_wake);
                 let result = panic::catch_unwind(AssertUnwindSafe(|| {
                     let mut core = core;
-                    run_scheduled(scheduler_mailbox, output_tx, &render_wake, move |now| {
-                        let output = core.step(now);
-                        let running = output.running();
-                        let deadline = core.next_tick_deadline(now);
-                        ScheduledStep {
-                            output,
-                            running,
-                            deadline,
-                        }
-                    })
+                    run_scheduled(
+                        scheduler_mailbox,
+                        output_tx,
+                        scheduler_backlog,
+                        &render_wake,
+                        move |now| {
+                            let output = core.step(now);
+                            let running = output.running();
+                            let deadline = core.next_tick_deadline(now);
+                            ScheduledStep {
+                                output,
+                                running,
+                                deadline,
+                            }
+                        },
+                    )
                 }));
                 match result {
                     Ok(result) => result,
@@ -51,13 +76,18 @@ impl SimulationThread {
             })?;
         Ok(Self {
             outputs,
+            output_backlog,
             join: Some(join),
             mailbox,
         })
     }
 
     pub(crate) fn try_recv(&self) -> Result<SimulationStepResult, TryRecvError> {
-        self.outputs.try_recv()
+        receive_output(&self.outputs, &self.output_backlog)
+    }
+
+    pub(crate) fn output_backlog(&self) -> SimulationOutputBacklog {
+        self.output_backlog.snapshot()
     }
 
     /// Joins an already-finished worker without ever blocking the event loop.
@@ -106,6 +136,7 @@ impl<F: Fn()> Drop for ExitWake<'_, F> {
 fn run_scheduled<T>(
     mailbox: SimulationMailbox,
     outputs: mpsc::Sender<T>,
+    output_backlog: Arc<OutputBacklog>,
     render_wake: impl Fn(),
     mut step: impl FnMut(Instant) -> ScheduledStep<T>,
 ) -> Result<(), String> {
@@ -116,14 +147,50 @@ fn run_scheduled<T>(
         let scheduled = step(Instant::now());
         let running = scheduled.running;
         let deadline = scheduled.deadline;
-        outputs
-            .send(scheduled.output)
-            .map_err(|_| "simulation output receiver closed".to_string())?;
+        output_backlog.record_enqueue();
+        if outputs.send(scheduled.output).is_err() {
+            output_backlog.record_dequeue();
+            return Err("simulation output receiver closed".to_string());
+        }
         render_wake();
         if !running {
             return Ok(());
         }
         mailbox.wait_for_wake_since(observed_wake, deadline);
+    }
+}
+
+fn receive_output<T>(
+    outputs: &Receiver<T>,
+    output_backlog: &OutputBacklog,
+) -> Result<T, TryRecvError> {
+    let result = outputs.try_recv();
+    if result.is_ok() {
+        output_backlog.record_dequeue();
+    }
+    result
+}
+
+impl OutputBacklog {
+    fn record_enqueue(&self) {
+        let pending = self.pending.fetch_add(1, Ordering::Relaxed) + 1;
+        self.peak.fetch_max(pending, Ordering::Relaxed);
+    }
+
+    fn record_dequeue(&self) {
+        let previous = self.pending.fetch_sub(1, Ordering::Relaxed);
+        debug_assert!(previous > 0, "output backlog underflow");
+    }
+
+    fn snapshot(&self) -> SimulationOutputBacklog {
+        let pending = self.pending.load(Ordering::Relaxed);
+        SimulationOutputBacklog {
+            pending,
+            // The producer updates pending immediately before peak. Preserve
+            // the gauge invariant if a render-thread sample lands between
+            // those two relaxed atomic operations.
+            peak: self.peak.load(Ordering::Relaxed).max(pending),
+        }
     }
 }
 
@@ -165,6 +232,8 @@ mod tests {
         let stepped = Arc::new(AtomicUsize::new(0));
         let network_applied = Arc::new(AtomicUsize::new(0));
         let (output_tx, output_rx) = mpsc::channel::<usize>();
+        let output_backlog = Arc::new(OutputBacklog::default());
+        let worker_backlog = Arc::clone(&output_backlog);
         let (progress_tx, progress_rx) = mpsc::channel();
         let worker_network = Arc::clone(&network_pending);
         let worker_stepped = Arc::clone(&stepped);
@@ -174,6 +243,7 @@ mod tests {
             run_scheduled(
                 scheduler_mailbox,
                 output_tx,
+                worker_backlog,
                 || {},
                 move |now| {
                     let commands = worker_mailbox.drain_through_barrier();
@@ -196,7 +266,6 @@ mod tests {
 
         // Keep the fake renderer blocked by deliberately retaining but never
         // draining its unbounded output receiver.
-        let _blocked_renderer = output_rx;
         assert_eq!(
             progress_rx
                 .recv_timeout(Duration::from_millis(200))
@@ -215,22 +284,30 @@ mod tests {
                 .recv_timeout(Duration::from_millis(200))
                 .expect("tick deadline should continue while render is blocked");
         }
-
         mailbox.enqueue(SimulationCommand::Shutdown);
         assert_eq!(worker.join().unwrap(), Ok(()));
         assert!(network_applied.load(Ordering::SeqCst) >= 1);
         assert!(stepped.load(Ordering::SeqCst) >= 5);
+        let blocked_backlog = output_backlog.snapshot();
+        assert!(blocked_backlog.pending >= 5);
+        assert!(blocked_backlog.peak >= blocked_backlog.pending);
+        while receive_output(&output_rx, &output_backlog).is_ok() {}
+        let drained_backlog = output_backlog.snapshot();
+        assert_eq!(drained_backlog.pending, 0);
+        assert!(drained_backlog.peak >= blocked_backlog.peak);
     }
 
     #[test]
     fn worker_panic_is_reported_as_a_join_failure() {
         let mailbox = SimulationMailbox::default();
         let (output_tx, _outputs) = mpsc::channel::<()>();
+        let output_backlog = Arc::new(OutputBacklog::default());
         let join = thread::spawn(move || {
             panic::catch_unwind(AssertUnwindSafe(|| {
                 run_scheduled(
                     mailbox,
                     output_tx,
+                    output_backlog,
                     || {},
                     |_now| -> ScheduledStep<()> { panic!("fake simulation failure") },
                 )

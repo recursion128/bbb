@@ -5,7 +5,7 @@ use std::{
 };
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
-use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
+use bbb_control::{AudioCounters, NetCounters, RendererCounters};
 use bbb_item_model::{
     ItemModelKeybindContext, NativeItemMapTooltipData, NativeItemRuntime, NativeItemTooltipOptions,
 };
@@ -1995,10 +1995,6 @@ fn vanilla_lightmap_dimension_kind(level: &WorldLevelInfo) -> VanillaLightmapDim
         }
         _ => VanillaLightmapDimensionKind::Other,
     }
-}
-
-pub(crate) fn snapshot_is_running(snapshot: &SharedSnapshot) -> bool {
-    snapshot.load().app.running
 }
 
 pub(crate) fn request_net_disconnect(

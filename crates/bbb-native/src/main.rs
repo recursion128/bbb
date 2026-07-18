@@ -78,8 +78,8 @@ use resource_reload::{
 };
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, narrate_command_suggestion_change,
-    snapshot_is_running, world_client_tick_interval, CameraFovTickState, ClientAnimationTickState,
-    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
+    world_client_tick_interval, CameraFovTickState, ClientAnimationTickState, DebugCollisionCache,
+    DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
     HudDebugNetworkSampler, HudDebugTpsSampler, HudRenderRuntime, LevelEventSoundRandomState,
     LightmapTickState,
 };
@@ -863,8 +863,17 @@ fn main() -> Result<()> {
                     });
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
                     let profiler_frame_duration = profiler_frame_started_at.elapsed();
+                    let output_backlog = simulation_thread.output_backlog();
+                    let newest_publication = shared_publication.load();
+                    let publication_generation_lag = newest_publication
+                        .generation
+                        .saturating_sub(render_publication.generation);
+                    let effect_sequence_lag = newest_publication
+                        .effect_sequence
+                        .saturating_sub(render_effect_consumer.last_sequence());
                     // Simulation now advances independently; this warning
-                    // localizes render-owner latency and any effect backlog
+                    // localizes render-owner latency and the measured output,
+                    // publication, and ordered-effect backlogs
                     // without implying that canonical input or ticks stalled.
                     if profiler_frame_duration > std::time::Duration::from_secs(1) {
                         tracing::warn!(
@@ -872,6 +881,10 @@ fn main() -> Result<()> {
                             update_millis = profiler_update_duration.as_millis() as u64,
                             render_millis = profiler_render_duration.as_millis() as u64,
                             publish_millis = profiler_publish_duration.as_millis() as u64,
+                            simulation_output_backlog = output_backlog.pending as u64,
+                            simulation_output_backlog_peak = output_backlog.peak as u64,
+                            publication_generation_lag,
+                            effect_sequence_lag,
                             "slow frame"
                         );
                     }
@@ -907,19 +920,11 @@ fn main() -> Result<()> {
                 }
             }
             Event::UserEvent(()) => {
-                if !snapshot_is_running(&snapshot) {
-                    target.exit();
-                    return;
-                }
                 if frame_interval.is_none() || Instant::now() >= next_redraw_at {
                     window.request_redraw();
                 }
             }
             Event::AboutToWait => {
-                if !snapshot_is_running(&snapshot) {
-                    target.exit();
-                    return;
-                }
                 if frame_interval.is_none() || Instant::now() >= next_redraw_at {
                     window.request_redraw();
                 }
