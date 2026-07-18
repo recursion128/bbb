@@ -19308,3 +19308,21 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   分支只机械改读写 owner 字段，完整 native 2120 项回归覆盖其行为。
 - [x] client catch-up 对齐 vanilla `Minecraft.runTick` 的单 step 最多十次 tick；超额 residual
   留给后续 step，回归覆盖 21 tick 延迟按 10/10/1 消费且最终 partial tick 归零。
+
+## 2026-07-18：模拟/渲染拆分 phase 2 effect isolation
+
+- [x] dispatcher 与 client-tick 不再借用 renderer/audio/particle backend：仿真侧粒子
+  resolver 与渲染侧 atlas/GPU runtime 分离，音频命令和解析后的 `ParticleSpawnBatch`
+  进入同一 owned `RenderEffectBatch`。每次同步 step 分配连续 sequence，render consumer
+  保持跨后端 FIFO、重复批次 at-most-once 丢弃、序号缺口 fail-fast；批次有 `Send`
+  回归，为后续 channel transport 固定值语义。
+- [x] server resource reload 改为 batch 的 terminal effect：只有 `SimulationCore` 能取得
+  generation request，render owner 完成 sound/item/particle/terrain/entity/HUD/sky 与 GPU
+  reload 后返回 ack；generation 不匹配不会提交或丢弃当前 barrier，匹配成功才更新 world
+  item/block defaults 和 simulation particle resolver。render-owned `NativeItemRuntime` 不跨
+  线程共享，ack 只携带可 `Send` 的 world-default value tables，不形成第二 gameplay owner。
+- [x] 两个 winit pump 都先消费效果再调用独立 render update，`ClientTickEnd` 在所有逻辑
+  粒子生成命令入批后进入网络 FIFO且不等待 backend；本地 vanilla 26.1
+  `Minecraft.tick` 的 particle/tick-end 顺序与冻结合同均有源码守卫。完整 `bbb-native`
+  2125 项回归通过；本 phase 按工程计划在提交 tip 运行 full gate，下一阶段仅推进 typed
+  single input mailbox。

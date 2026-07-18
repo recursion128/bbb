@@ -8289,8 +8289,7 @@ fn particle_texture_animation_tick_advances_at_vanilla_interval() {
     )
     .unwrap()])
     .unwrap();
-    let mut runtime = NativeParticleRuntime {
-        resolver: test_resolver(0),
+    let mut runtime = NativeParticleRenderRuntime {
         atlas,
         texture_animation_tick: 0,
         last_texture_animation_at: None,

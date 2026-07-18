@@ -54,8 +54,6 @@ const FIREWORK_ROCKET_TWINKLE_FAR_SOUND_EVENT_ID: &str =
     "minecraft:entity.firework_rocket.twinkle_far";
 
 pub(crate) trait ParticleEventSink {
-    fn maybe_upload_particle_atlas_animation(&mut self, _renderer: &mut Renderer) {}
-
     fn synchronize_terrain_textures(&mut self, _textures: &TerrainTextureState) {}
 
     fn spawn_level_particles(
@@ -250,14 +248,22 @@ impl LevelEventGrowthParticleSupport {
     }
 }
 
-pub(crate) struct NativeParticleRuntime {
-    resolver: ParticleCommandResolver,
+pub(crate) struct NativeParticleRenderRuntime {
     atlas: NativeParticleAtlas,
     texture_animation_tick: u64,
     last_texture_animation_at: Option<Instant>,
 }
 
-impl NativeParticleRuntime {
+pub(crate) struct NativeParticleRuntime {
+    resolver: ParticleCommandResolver,
+}
+
+pub(crate) struct NativeParticleResources {
+    pub(crate) simulation: NativeParticleRuntime,
+    pub(crate) render: NativeParticleRenderRuntime,
+}
+
+impl NativeParticleResources {
     pub(crate) fn load(roots: &PackRoots, particle_status: ClientParticleStatus) -> Result<Self> {
         let definitions = roots
             .load_particle_definition_catalog()
@@ -268,13 +274,19 @@ impl NativeParticleRuntime {
         let atlas = particle_atlas_from_images(sprites.sprites().values().cloned().collect())
             .context("stitch particle atlas")?;
         Ok(Self {
-            resolver: ParticleCommandResolver::new(definitions, sprites, particle_status),
-            atlas,
-            texture_animation_tick: 0,
-            last_texture_animation_at: None,
+            simulation: NativeParticleRuntime {
+                resolver: ParticleCommandResolver::new(definitions, sprites, particle_status),
+            },
+            render: NativeParticleRenderRuntime {
+                atlas,
+                texture_animation_tick: 0,
+                last_texture_animation_at: None,
+            },
         })
     }
+}
 
+impl NativeParticleRenderRuntime {
     pub(crate) fn upload_particle_atlas(&self, renderer: &mut Renderer) -> Result<()> {
         renderer.upload_particle_atlas(
             self.atlas.width,
@@ -282,14 +294,6 @@ impl NativeParticleRuntime {
             &self.atlas.rgba,
             self.atlas.sprite_uvs.clone(),
         )
-    }
-
-    pub(crate) fn set_terrain_particle_sprite_ids(&mut self, textures: &TerrainTextureState) {
-        self.resolver.set_terrain_particle_sprite_ids(textures);
-    }
-
-    pub(crate) fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
-        self.resolver.set_default_item_particle_sprite_ids(items);
     }
 
     pub(crate) fn maybe_upload_particle_atlas_animation(&mut self, renderer: &mut Renderer) {
@@ -326,11 +330,17 @@ impl NativeParticleRuntime {
     }
 }
 
-impl ParticleEventSink for NativeParticleRuntime {
-    fn maybe_upload_particle_atlas_animation(&mut self, renderer: &mut Renderer) {
-        NativeParticleRuntime::maybe_upload_particle_atlas_animation(self, renderer);
+impl NativeParticleRuntime {
+    pub(crate) fn set_terrain_particle_sprite_ids(&mut self, textures: &TerrainTextureState) {
+        self.resolver.set_terrain_particle_sprite_ids(textures);
     }
 
+    pub(crate) fn set_default_item_particle_sprite_ids(&mut self, items: &NativeItemRuntime) {
+        self.resolver.set_default_item_particle_sprite_ids(items);
+    }
+}
+
+impl ParticleEventSink for NativeParticleRuntime {
     fn synchronize_terrain_textures(&mut self, textures: &TerrainTextureState) {
         self.set_terrain_particle_sprite_ids(textures);
     }

@@ -4817,13 +4817,15 @@ fn particle_lights_refresh_after_particle_tick_and_frame_extract_inputs() {
         .find("let particle_entity_target_contexts =")
         .expect("pump should sample entity target state before particle tick");
     let primed_tnt_smoke = source
-        .find("submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);")
+        .find("submit_primed_tnt_smoke_particles(particle_batches, world, advanced_ticks);")
         .expect("pump should emit PrimedTnt client smoke before particle tick");
     let entity_client_tick_particles = source
-        .find("submit_entity_client_tick_particles(renderer, world, &mut particle_events);")
+        .find("submit_entity_client_tick_particles(particle_batches, world, &mut particle_events);")
         .expect("pump should emit entity client tick particles before particle tick");
     let ominous_item_spawner_particles = source
-        .find("submit_ominous_item_spawner_particles(renderer, world, &mut particle_events);")
+        .find(
+            "submit_ominous_item_spawner_particles(particle_batches, world, &mut particle_events);",
+        )
         .expect("pump should emit OminousItemSpawner client particles before particle tick");
     let particle_tick = source
         .find("renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(")
@@ -17646,7 +17648,7 @@ fn client_tick_end_commands_follow_movement_and_require_active_level() {
 }
 
 #[test]
-fn client_tick_end_is_queued_after_native_tick_commands_and_particles() {
+fn client_tick_end_is_queued_after_native_tick_commands_and_particle_effects() {
     let source = include_str!("../runtime.rs");
     let movement = source
         .find("    advance_player_input_for_client_ticks(\n        input,")
@@ -17655,8 +17657,8 @@ fn client_tick_end_is_queued_after_native_tick_commands_and_particles() {
         .find("    advance_using_item_at_partial_tick(\n        input,")
         .expect("pump should advance use-item input");
     let particles = source
-        .find("renderer.advance_particles_with_world_and_particle_contexts_and_sound_camera(")
-        .expect("pump should advance particles");
+        .find("    submit_ominous_item_spawner_particles(")
+        .expect("simulation should emit particle effects");
     let tick_end = source
         .find("    queue_client_tick_end_commands(world, net_commands, advanced_ticks);")
         .expect("pump should queue native client tick-end commands");

@@ -235,9 +235,19 @@ simulation thread; the winit thread retains window, renderer, GPU upload,
 platform, and backend resources and consumes immutable publications plus
 ordered effects. Migration phases must not create selectable direct/threaded
 gameplay paths. The current synchronous `SimulationCore` is the sole field
-owner for the live world, input, network receiver/counters, and tick state;
-its explicit `SimulationStepContext` records the backend borrows that the next
-effect-isolation phase must remove before thread activation.
+owner for the live world, input, network receiver/counters, and tick state.
+`SimulationCore::step` borrows no renderer, audio backend, particle renderer,
+or resource uploader. It resolves packet/tick side effects into one owned,
+sequence-numbered `RenderEffectBatch`; the winit owner consumes audio and
+particle values at most once in FIFO order before render extraction. Resource
+reload is the terminal batch effect: render-owned asset/GPU work returns a
+generation acknowledgement, and only a matching acknowledgement commits world
+defaults and the simulation particle resolver. The simulation-side resolver and
+render-side particle atlas runtime are distinct owners; the reload ack carries
+only `Send` world-default value tables and never shares the render-owned item
+asset runtime. `SimulationRenderContext` remains the synchronous render adapter
+until publication migration; the next phase routes all direct winit/control
+input mutation through the single typed simulation mailbox.
 
 ### `bbb-item-model`
 

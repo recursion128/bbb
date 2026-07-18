@@ -30,6 +30,7 @@ use crate::particle_runtime::{
     LevelEventParticleContext, LevelParticleEntityPosition, LevelParticleSpawnContext,
     ParticleBiomeSampler, ParticleEventSink, TrackingEmitterParticleState,
 };
+use crate::simulation::effects::ParticleBatchSink;
 
 use super::control_state::apply_control_projection_event;
 use crate::runtime::{HudDebugNetworkSampler, HudDebugTpsSampler};
@@ -92,10 +93,11 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     audio_events: Option<&mut dyn AudioEventSink>,
     particle_events: Option<&mut dyn ParticleEventSink>,
-    particle_renderer: Option<&mut bbb_renderer::Renderer>,
+    particle_target: Option<&mut bbb_renderer::Renderer>,
     item_runtime: Option<&NativeItemRuntime>,
     level_event_sound_random: &mut LevelEventSoundRandomState,
 ) -> usize {
+    let particle_target = particle_target.map(|renderer| renderer as &mut dyn ParticleBatchSink);
     drain_net_events_with_sinks_and_debug(
         rx,
         world,
@@ -103,7 +105,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         net_commands,
         audio_events,
         particle_events,
-        particle_renderer,
+        particle_target,
         item_runtime,
         None,
         None,
@@ -118,7 +120,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     mut audio_events: Option<&mut dyn AudioEventSink>,
     mut particle_events: Option<&mut dyn ParticleEventSink>,
-    mut particle_renderer: Option<&mut bbb_renderer::Renderer>,
+    mut particle_target: Option<&mut dyn ParticleBatchSink>,
     item_runtime: Option<&NativeItemRuntime>,
     mut hud_debug_network_sampler: Option<&mut HudDebugNetworkSampler>,
     mut hud_debug_tps_sampler: Option<&mut HudDebugTpsSampler>,
@@ -152,7 +154,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     net_commands,
                     audio_events: &mut audio_events,
                     particle_events: &mut particle_events,
-                    particle_renderer: &mut particle_renderer,
+                    particle_target: &mut particle_target,
                     item_runtime,
                 };
                 let _ = world.apply_play_packet(
@@ -177,7 +179,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     net_commands,
                     audio_events: &mut audio_events,
                     particle_events: &mut particle_events,
-                    particle_renderer: &mut particle_renderer,
+                    particle_target: &mut particle_target,
                     item_runtime,
                 };
                 // Other connection-owned leftovers (rotation/movement
@@ -327,7 +329,7 @@ struct NativePlayEffects<'a, 'b, 'c, 'audio, 'particle, 'renderer> {
     net_commands: &'b Option<mpsc::Sender<NetCommand>>,
     audio_events: &'c mut Option<&'audio mut dyn AudioEventSink>,
     particle_events: &'c mut Option<&'particle mut dyn ParticleEventSink>,
-    particle_renderer: &'c mut Option<&'renderer mut bbb_renderer::Renderer>,
+    particle_target: &'c mut Option<&'renderer mut dyn ParticleBatchSink>,
     item_runtime: Option<&'c NativeItemRuntime>,
 }
 
@@ -405,7 +407,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         let biome_sampler = WorldParticleBiomeSampler { world };
         emit_level_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             packet,
             level_particle_spawn_context(world, packet),
             Some(&biome_sampler),
@@ -416,7 +418,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     fn firework_empty_explosion_particles(&mut self, world: &WorldStore, position: [f64; 3]) {
         emit_firework_empty_explosion_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             position,
             camera_audio_position_from_world(world)
                 .map(|position| [position.x, position.y, position.z]),
@@ -430,7 +432,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     ) {
         emit_firework_explosion_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             state,
             camera_audio_position_from_world(world)
                 .map(|position| [position.x, position.y, position.z]),
@@ -440,7 +442,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     fn elder_guardian_effect_particles(&mut self, world: &WorldStore, position: ProtocolVec3d) {
         emit_elder_guardian_effect_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             position,
             camera_audio_position_from_world(world),
         );
@@ -455,7 +457,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     ) {
         emit_tracking_emitter_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             world,
             entity_id,
             kind,
@@ -468,15 +470,15 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         _world: &WorldStore,
         state: &TakeItemEntityPickupParticleState,
     ) {
-        emit_take_item_entity_pickup_particles(self.particle_events, self.particle_renderer, state);
+        emit_take_item_entity_pickup_particles(self.particle_events, self.particle_target, state);
     }
 
     fn ravager_roar_particles(&mut self, _world: &WorldStore, state: RavagerRoarParticleState) {
-        emit_ravager_roar_particles(self.particle_events, self.particle_renderer, state);
+        emit_ravager_roar_particles(self.particle_events, self.particle_target, state);
     }
 
     fn witch_magic_particles(&mut self, _world: &WorldStore, state: WitchMagicParticleState) {
-        emit_witch_magic_particles(self.particle_events, self.particle_renderer, state);
+        emit_witch_magic_particles(self.particle_events, self.particle_target, state);
     }
 
     fn living_entity_poof_particles(
@@ -484,7 +486,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         _world: &WorldStore,
         state: LivingEntityPoofParticleState,
     ) {
-        emit_living_entity_poof_particles(self.particle_events, self.particle_renderer, state);
+        emit_living_entity_poof_particles(self.particle_events, self.particle_target, state);
     }
 
     fn living_entity_item_break_particles(
@@ -494,7 +496,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     ) {
         emit_living_entity_item_break_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             state,
             self.item_runtime,
         );
@@ -505,7 +507,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         _world: &WorldStore,
         state: LivingEntityDrownParticleState,
     ) {
-        emit_living_entity_drown_particles(self.particle_events, self.particle_renderer, state);
+        emit_living_entity_drown_particles(self.particle_events, self.particle_target, state);
     }
 
     fn living_entity_portal_particles(
@@ -513,36 +515,36 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         _world: &WorldStore,
         state: LivingEntityPortalParticleState,
     ) {
-        emit_living_entity_portal_particles(self.particle_events, self.particle_renderer, state);
+        emit_living_entity_portal_particles(self.particle_events, self.particle_target, state);
     }
 
     fn arrow_effect_particles(&mut self, _world: &WorldStore, state: ArrowEffectParticleState) {
-        emit_arrow_effect_particles(self.particle_events, self.particle_renderer, state);
+        emit_arrow_effect_particles(self.particle_events, self.particle_target, state);
     }
 
     fn entity_taming_particles(&mut self, _world: &WorldStore, state: EntityTamingParticleState) {
-        emit_entity_taming_particles(self.particle_events, self.particle_renderer, state);
+        emit_entity_taming_particles(self.particle_events, self.particle_target, state);
     }
 
     fn villager_particles(&mut self, _world: &WorldStore, state: VillagerParticleState) {
-        emit_villager_particles(self.particle_events, self.particle_renderer, state);
+        emit_villager_particles(self.particle_events, self.particle_target, state);
     }
 
     fn dolphin_happy_particles(&mut self, _world: &WorldStore, state: DolphinHappyParticleState) {
-        emit_dolphin_happy_particles(self.particle_events, self.particle_renderer, state);
+        emit_dolphin_happy_particles(self.particle_events, self.particle_target, state);
     }
 
     fn fox_eat_particles(&mut self, _world: &WorldStore, state: FoxEatParticleState) {
         emit_fox_eat_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             state,
             self.item_runtime,
         );
     }
 
     fn animal_love_particles(&mut self, _world: &WorldStore, state: AnimalLoveParticleState) {
-        emit_animal_love_particles(self.particle_events, self.particle_renderer, state);
+        emit_animal_love_particles(self.particle_events, self.particle_target, state);
     }
 
     fn allay_duplication_particles(
@@ -550,13 +552,13 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
         _world: &WorldStore,
         state: AllayDuplicationParticleState,
     ) {
-        emit_allay_duplication_particles(self.particle_events, self.particle_renderer, state);
+        emit_allay_duplication_particles(self.particle_events, self.particle_target, state);
     }
 
     fn snowball_hit_particles(&mut self, _world: &WorldStore, state: SnowballHitParticleState) {
         emit_snowball_hit_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             state,
             self.item_runtime,
         );
@@ -565,14 +567,14 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     fn thrown_egg_hit_particles(&mut self, _world: &WorldStore, state: ThrownEggHitParticleState) {
         emit_thrown_egg_hit_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             state,
             self.item_runtime,
         );
     }
 
     fn honey_block_particles(&mut self, _world: &WorldStore, state: HoneyBlockParticleState) {
-        emit_honey_block_particles(self.particle_events, self.particle_renderer, state);
+        emit_honey_block_particles(self.particle_events, self.particle_target, state);
     }
 
     fn level_event_particles(
@@ -583,7 +585,7 @@ impl PlayApplyEffects for NativePlayEffects<'_, '_, '_, '_, '_, '_> {
     ) -> bool {
         emit_level_event_particles(
             self.particle_events,
-            self.particle_renderer,
+            self.particle_target,
             event,
             level_event_particle_context(world, event),
             random,
@@ -681,6 +683,15 @@ pub(crate) fn synchronize_audio_registries_from_world(
         .set_jukebox_song_registry(jukebox_song_registry_from_world(world).unwrap_or_default());
 }
 
+pub(crate) fn audio_registry_snapshot_from_world(
+    world: &WorldStore,
+) -> (SoundEventRegistry, JukeboxSongRegistry) {
+    (
+        sound_event_registry_from_world(world),
+        jukebox_song_registry_from_world(world).unwrap_or_default(),
+    )
+}
+
 fn emit_positioned_sound(
     audio_events: &mut Option<&mut dyn AudioEventSink>,
     state: &bbb_world::SoundEventState,
@@ -747,7 +758,7 @@ fn emit_stop_sound(
 
 fn emit_level_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     packet: &bbb_protocol::packets::LevelParticles,
     context: LevelParticleSpawnContext,
     biome_sampler: Option<&dyn ParticleBiomeSampler>,
@@ -756,44 +767,44 @@ fn emit_level_particles(
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch =
             particle_events.spawn_level_particles(packet, context, biome_sampler, item_runtime);
-        if let Some(renderer) = particle_renderer.as_deref_mut() {
-            renderer.submit_particle_spawns(batch);
+        if let Some(renderer) = particle_target.as_deref_mut() {
+            renderer.submit_particle_batch(batch);
         }
     }
 }
 
 fn emit_firework_empty_explosion_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     position: [f64; 3],
     camera_position: Option<[f64; 3]>,
 ) {
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch =
             particle_events.spawn_firework_empty_explosion_particles(position, camera_position);
-        if let Some(renderer) = particle_renderer.as_deref_mut() {
-            renderer.submit_particle_spawns(batch);
+        if let Some(renderer) = particle_target.as_deref_mut() {
+            renderer.submit_particle_batch(batch);
         }
     }
 }
 
 fn emit_firework_explosion_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: &FireworkRocketExplosionParticleState,
     camera_position: Option<[f64; 3]>,
 ) {
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch = particle_events.spawn_firework_explosion_particles(state, camera_position);
-        if let Some(renderer) = particle_renderer.as_deref_mut() {
-            renderer.submit_particle_spawns(batch);
+        if let Some(renderer) = particle_target.as_deref_mut() {
+            renderer.submit_particle_batch(batch);
         }
     }
 }
 
 fn emit_elder_guardian_effect_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     position: ProtocolVec3d,
     camera_position: Option<ProtocolVec3d>,
 ) {
@@ -820,15 +831,15 @@ fn emit_elder_guardian_effect_particles(
             None,
             None,
         );
-        if let Some(renderer) = particle_renderer.as_deref_mut() {
-            renderer.submit_particle_spawns(batch);
+        if let Some(renderer) = particle_target.as_deref_mut() {
+            renderer.submit_particle_batch(batch);
         }
     }
 }
 
 fn emit_tracking_emitter_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     world: &WorldStore,
     entity_id: i32,
     kind: EntityTrackingEmitterParticleKind,
@@ -862,70 +873,70 @@ fn emit_tracking_emitter_particles(
         lifetime_ticks,
     };
     let batch = particle_events.spawn_tracking_emitter_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_take_item_entity_pickup_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: &TakeItemEntityPickupParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_take_item_entity_pickup_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_ravager_roar_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: RavagerRoarParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_ravager_roar_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_witch_magic_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: WitchMagicParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_witch_magic_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_living_entity_poof_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: LivingEntityPoofParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_living_entity_poof_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_living_entity_item_break_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: LivingEntityItemBreakState,
     item_runtime: Option<&NativeItemRuntime>,
 ) {
@@ -933,42 +944,42 @@ fn emit_living_entity_item_break_particles(
         return;
     };
     let batch = particle_events.spawn_living_entity_item_break_particles(state, item_runtime);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_living_entity_drown_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: LivingEntityDrownParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_living_entity_drown_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_living_entity_portal_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: LivingEntityPortalParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_living_entity_portal_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_snowball_hit_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: SnowballHitParticleState,
     item_runtime: Option<&NativeItemRuntime>,
 ) {
@@ -976,14 +987,14 @@ fn emit_snowball_hit_particles(
         return;
     };
     let batch = particle_events.spawn_snowball_hit_particles(state, item_runtime);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_thrown_egg_hit_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: ThrownEggHitParticleState,
     item_runtime: Option<&NativeItemRuntime>,
 ) {
@@ -991,70 +1002,70 @@ fn emit_thrown_egg_hit_particles(
         return;
     };
     let batch = particle_events.spawn_thrown_egg_hit_particles(state, item_runtime);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_arrow_effect_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: ArrowEffectParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_arrow_effect_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_entity_taming_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: EntityTamingParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_entity_taming_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_villager_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: VillagerParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_villager_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_dolphin_happy_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: DolphinHappyParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_dolphin_happy_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_fox_eat_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: FoxEatParticleState,
     item_runtime: Option<&NativeItemRuntime>,
 ) {
@@ -1062,50 +1073,50 @@ fn emit_fox_eat_particles(
         return;
     };
     let batch = particle_events.spawn_fox_eat_particles(state, item_runtime);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_animal_love_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: AnimalLoveParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_animal_love_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_allay_duplication_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: AllayDuplicationParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_allay_duplication_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
 fn emit_honey_block_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     state: HoneyBlockParticleState,
 ) {
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     let batch = particle_events.spawn_honey_block_particles(state);
-    if let Some(renderer) = particle_renderer.as_deref_mut() {
-        renderer.submit_particle_spawns(batch);
+    if let Some(renderer) = particle_target.as_deref_mut() {
+        renderer.submit_particle_batch(batch);
     }
 }
 
@@ -1146,15 +1157,15 @@ fn level_particle_spawn_context(
 
 fn emit_level_event_particles(
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
-    particle_renderer: &mut Option<&mut bbb_renderer::Renderer>,
+    particle_target: &mut Option<&mut dyn ParticleBatchSink>,
     event: &bbb_protocol::packets::LevelEvent,
     context: LevelEventParticleContext,
     random: &mut LevelEventSoundRandomState,
 ) -> bool {
     if let Some(particle_events) = particle_events.as_deref_mut() {
         let batch = particle_events.spawn_level_event_particles(event, context, random);
-        if let Some(renderer) = particle_renderer.as_deref_mut() {
-            renderer.submit_particle_spawns(batch);
+        if let Some(renderer) = particle_target.as_deref_mut() {
+            renderer.submit_particle_batch(batch);
         }
         return true;
     }

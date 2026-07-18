@@ -1,5 +1,8 @@
+mod effects;
 mod random;
 pub(crate) mod resolver;
+
+pub(crate) use effects::AudioEffect;
 
 use anyhow::{Context, Result};
 use bbb_audio::{AudioCommand, KiraAudioRuntime, TickEntitySoundPositionsCommand};

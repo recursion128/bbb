@@ -79,10 +79,10 @@ use level_load_runtime::LevelLoadRuntime;
 use narrator_runtime::{
     NarratorStatus, NativeNarratorRuntime, ScreenNarrationInput, ScreenNarrationRuntime,
 };
-use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
+use particle_runtime::NativeParticleResources;
 use resource_pack_runtime::{default_server_resource_pack_cache_dir, ServerResourcePackRuntime};
 use resource_reload::{
-    apply_item_runtime_world_defaults, apply_pending_server_resource_pack_reload,
+    apply_item_runtime_world_defaults, apply_server_resource_pack_reload_effect,
     block_destroy_profiles_for_world, block_sound_profiles_for_world, item_particle_sprite_uvs,
 };
 use runtime::{
@@ -95,7 +95,9 @@ use runtime::{
     DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
     LevelEventSoundRandomState, LightmapTickState,
 };
-use simulation::{SimulationCore, SimulationStepContext};
+use simulation::{
+    effects::RenderEffectConsumer, SimulationCore, SimulationRenderContext, SimulationStepContext,
+};
 use sky_assets::load_sky_textures;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
@@ -276,14 +278,18 @@ fn main() -> Result<()> {
         );
     }
     let client_particle_status = args.client_particles.into();
-    let mut particle_runtime = pack_roots.as_ref().and_then(|roots| {
-        NativeParticleRuntime::load(roots, client_particle_status)
-            .map_err(|err| {
-                tracing::warn!(?err, "continuing without native particle runtime");
-                err
-            })
-            .ok()
-    });
+    let (mut particle_runtime, mut particle_render_runtime) = pack_roots
+        .as_ref()
+        .and_then(|roots| {
+            NativeParticleResources::load(roots, client_particle_status)
+                .map_err(|err| {
+                    tracing::warn!(?err, "continuing without native particle runtime");
+                    err
+                })
+                .ok()
+        })
+        .map(|resources| (Some(resources.simulation), Some(resources.render)))
+        .unwrap_or((None, None));
     let mut item_runtime = pack_roots.as_ref().and_then(|roots| {
         NativeItemRuntime::load_with_locale(roots, &args.client_locale)
             .map_err(|err| {
@@ -412,7 +418,7 @@ fn main() -> Result<()> {
     load_hud_textures(&mut renderer, pack_roots.as_ref());
     load_entity_model_textures(&mut renderer, pack_roots.as_ref());
     load_sky_textures(&mut renderer, pack_roots.as_ref());
-    if let Some(particles) = &particle_runtime {
+    if let Some(particles) = &particle_render_runtime {
         if let Err(err) = particles.upload_particle_atlas(&mut renderer) {
             tracing::warn!(?err, "continuing without native particle atlas");
         }
@@ -459,6 +465,7 @@ fn main() -> Result<()> {
     let mut next_redraw_at = Instant::now();
     let mut last_command_suggestion_narration = None;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
+    let mut render_effect_consumer = RenderEffectConsumer::default();
     let mut simulation = SimulationCore {
         net_events,
         net_commands,
@@ -476,6 +483,8 @@ fn main() -> Result<()> {
         debug_sky_light_section_cache,
         lightmap_ticks,
         level_event_sound_random,
+        particle_runtime,
+        next_effect_sequence: 1,
     };
 
     event_loop.run(move |event, target| {
@@ -1216,52 +1225,80 @@ fn main() -> Result<()> {
                     let profiler_update_started_at = Instant::now();
                     let code_of_conduct_overlay_visible =
                         code_of_conduct_overlay.is_visible(&simulation.world);
-                    if !simulation.step(SimulationStepContext {
-                        audio_events: audio_runtime
-                            .as_mut()
-                            .map(|runtime| runtime as &mut dyn AudioEventSink),
+                    let simulation_step = simulation.step(SimulationStepContext {
+                        audio_enabled: audio_runtime.is_some(),
                         audio_status: &audio_status,
-                        particle_events: particle_runtime
-                            .as_mut()
-                            .map(|runtime| runtime as &mut dyn ParticleEventSink),
-                        renderer: &mut renderer,
                         surface_size: window.inner_size(),
-                        terrain_upload: &mut terrain_upload,
-                        level_load_runtime: &mut level_load_runtime,
                         terrain_textures: &mut terrain_textures,
-                        entity_variant_textures: &mut entity_variant_textures,
                         item_runtime: item_runtime.as_ref(),
-                        snapshot: &snapshot,
                         control_requests: &control_requests,
                         code_of_conduct: Some(&mut code_of_conduct_acceptance),
                         code_of_conduct_overlay_visible,
                         render_distance_chunks: args.render_distance_chunks,
-                        client_framerate_limit: args.client_framerate_limit,
-                        client_vsync: args.client_vsync,
                         hide_lightning_flash: args.hide_lightning_flash,
-                        damage_tilt_strength: args.damage_tilt_strength,
-                        hud_debug_profiler_chart: debug_profiler.chart(),
-                    }) {
+                    });
+                    let (simulation_frame, resource_reload) =
+                        match simulation_step.consume_render_effects(
+                            &mut render_effect_consumer,
+                            audio_runtime
+                                .as_mut()
+                                .map(|runtime| runtime as &mut dyn AudioEventSink),
+                            &mut renderer,
+                        ) {
+                            Ok(result) => result,
+                            Err(error) => {
+                                tracing::error!(%error, "fatal simulation render-effect sequence gap");
+                                target.exit();
+                                return;
+                            }
+                        };
+                    if !simulation.update_renderer(
+                        simulation_frame,
+                        SimulationRenderContext {
+                            audio_events: audio_runtime
+                                .as_mut()
+                                .map(|runtime| runtime as &mut dyn AudioEventSink),
+                            audio_status: &audio_status,
+                            renderer: &mut renderer,
+                            surface_size: window.inner_size(),
+                            terrain_upload: &mut terrain_upload,
+                            level_load_runtime: &mut level_load_runtime,
+                            terrain_textures: &mut terrain_textures,
+                            entity_variant_textures: &mut entity_variant_textures,
+                            item_runtime: item_runtime.as_ref(),
+                            snapshot: &snapshot,
+                            render_distance_chunks: args.render_distance_chunks,
+                            client_framerate_limit: args.client_framerate_limit,
+                            client_vsync: args.client_vsync,
+                            damage_tilt_strength: args.damage_tilt_strength,
+                            hud_debug_profiler_chart: debug_profiler.chart(),
+                        },
+                    ) {
                         target.exit();
                         return;
                     }
-                    apply_pending_server_resource_pack_reload(
-                        &mut simulation.server_resource_packs,
-                        &base_pack_roots,
-                        &mut pack_roots,
-                        &mut audio_runtime,
-                        &mut audio_status,
-                        &mut particle_runtime,
-                        &mut item_runtime,
-                        &mut terrain_textures,
-                        &mut entity_variant_textures,
-                        &mut terrain_upload,
-                        &mut simulation.world,
-                        &mut renderer,
-                        &args.client_locale,
-                        client_particle_status,
-                        &player_skin_cache_dir,
-                    );
+                    if let Some(particles) = particle_render_runtime.as_mut() {
+                        particles.maybe_upload_particle_atlas_animation(&mut renderer);
+                    }
+                    if let Some(resource_reload) = resource_reload {
+                        let ack = apply_server_resource_pack_reload_effect(
+                            resource_reload,
+                            &base_pack_roots,
+                            &mut pack_roots,
+                            &mut audio_runtime,
+                            &mut audio_status,
+                            &mut particle_render_runtime,
+                            &mut item_runtime,
+                            &mut terrain_textures,
+                            &mut entity_variant_textures,
+                            &mut terrain_upload,
+                            &mut renderer,
+                            &args.client_locale,
+                            client_particle_status,
+                            &player_skin_cache_dir,
+                        );
+                        simulation.acknowledge_resource_reload(ack);
+                    }
                     stats_screen_narration.tick(
                         simulation.world
                             .stats_screen_is_open()
@@ -1431,52 +1468,80 @@ fn main() -> Result<()> {
                     drain_dynamic_player_skin_downloads(items, &mut renderer);
                 }
                 let code_of_conduct_overlay_visible = code_of_conduct_overlay.is_visible(&simulation.world);
-                if !simulation.step(SimulationStepContext {
-                    audio_events: audio_runtime
-                        .as_mut()
-                        .map(|runtime| runtime as &mut dyn AudioEventSink),
+                let simulation_step = simulation.step(SimulationStepContext {
+                    audio_enabled: audio_runtime.is_some(),
                     audio_status: &audio_status,
-                    particle_events: particle_runtime
-                        .as_mut()
-                        .map(|runtime| runtime as &mut dyn ParticleEventSink),
-                    renderer: &mut renderer,
                     surface_size: window.inner_size(),
-                    terrain_upload: &mut terrain_upload,
-                    level_load_runtime: &mut level_load_runtime,
                     terrain_textures: &mut terrain_textures,
-                    entity_variant_textures: &mut entity_variant_textures,
                     item_runtime: item_runtime.as_ref(),
-                    snapshot: &snapshot,
                     control_requests: &control_requests,
                     code_of_conduct: Some(&mut code_of_conduct_acceptance),
                     code_of_conduct_overlay_visible,
                     render_distance_chunks: args.render_distance_chunks,
-                    client_framerate_limit: args.client_framerate_limit,
-                    client_vsync: args.client_vsync,
                     hide_lightning_flash: args.hide_lightning_flash,
-                    damage_tilt_strength: args.damage_tilt_strength,
-                    hud_debug_profiler_chart: debug_profiler.chart(),
-                }) {
+                });
+                let (simulation_frame, resource_reload) =
+                    match simulation_step.consume_render_effects(
+                        &mut render_effect_consumer,
+                        audio_runtime
+                            .as_mut()
+                            .map(|runtime| runtime as &mut dyn AudioEventSink),
+                        &mut renderer,
+                    ) {
+                        Ok(result) => result,
+                        Err(error) => {
+                            tracing::error!(%error, "fatal simulation render-effect sequence gap");
+                            target.exit();
+                            return;
+                        }
+                    };
+                if !simulation.update_renderer(
+                    simulation_frame,
+                    SimulationRenderContext {
+                        audio_events: audio_runtime
+                            .as_mut()
+                            .map(|runtime| runtime as &mut dyn AudioEventSink),
+                        audio_status: &audio_status,
+                        renderer: &mut renderer,
+                        surface_size: window.inner_size(),
+                        terrain_upload: &mut terrain_upload,
+                        level_load_runtime: &mut level_load_runtime,
+                        terrain_textures: &mut terrain_textures,
+                        entity_variant_textures: &mut entity_variant_textures,
+                        item_runtime: item_runtime.as_ref(),
+                        snapshot: &snapshot,
+                        render_distance_chunks: args.render_distance_chunks,
+                        client_framerate_limit: args.client_framerate_limit,
+                        client_vsync: args.client_vsync,
+                        damage_tilt_strength: args.damage_tilt_strength,
+                        hud_debug_profiler_chart: debug_profiler.chart(),
+                    },
+                ) {
                     target.exit();
                     return;
                 }
-                apply_pending_server_resource_pack_reload(
-                    &mut simulation.server_resource_packs,
-                    &base_pack_roots,
-                    &mut pack_roots,
-                    &mut audio_runtime,
-                    &mut audio_status,
-                    &mut particle_runtime,
-                    &mut item_runtime,
-                    &mut terrain_textures,
-                    &mut entity_variant_textures,
-                    &mut terrain_upload,
-                    &mut simulation.world,
-                    &mut renderer,
-                    &args.client_locale,
-                    client_particle_status,
-                    &player_skin_cache_dir,
-                );
+                if let Some(particles) = particle_render_runtime.as_mut() {
+                    particles.maybe_upload_particle_atlas_animation(&mut renderer);
+                }
+                if let Some(resource_reload) = resource_reload {
+                    let ack = apply_server_resource_pack_reload_effect(
+                        resource_reload,
+                        &base_pack_roots,
+                        &mut pack_roots,
+                        &mut audio_runtime,
+                        &mut audio_status,
+                        &mut particle_render_runtime,
+                        &mut item_runtime,
+                        &mut terrain_textures,
+                        &mut entity_variant_textures,
+                        &mut terrain_upload,
+                        &mut renderer,
+                        &args.client_locale,
+                        client_particle_status,
+                        &player_skin_cache_dir,
+                    );
+                    simulation.acknowledge_resource_reload(ack);
+                }
                 stats_screen_narration.tick(
                     simulation.world
                         .stats_screen_is_open()

@@ -1053,6 +1053,31 @@ mod tests {
     }
 
     #[test]
+    fn stale_reload_ack_does_not_commit_or_discard_the_current_barrier() {
+        let mut world = WorldStore::new();
+        let id = Uuid::from_u128(1);
+        let key = push_accepted(&mut world, id, "https://example.test/server-pack.zip");
+        let mut runtime = test_runtime("stale-reload-ack");
+        runtime.reconcile_world(&world, true);
+        let root = ready_root(&runtime, "ready");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key });
+        runtime.apply_task_event(PackTaskEvent::Ready { key, root });
+        runtime.resolve_download_batches();
+
+        let reload = runtime.take_reload().unwrap();
+        assert!(!runtime.finish_reload(reload.generation + 1, Ok(())));
+        assert!(!runtime.packs[0].active);
+        assert!(runtime.take_reload().is_none());
+        assert!(runtime
+            .responses
+            .iter()
+            .all(|response| { response.action != ResourcePackResponseAction::SuccessfullyLoaded }));
+
+        assert!(runtime.finish_reload(reload.generation, Ok(())));
+        assert!(runtime.packs[0].active);
+    }
+
+    #[test]
     fn accepted_pack_runs_download_apply_pop_restore_lifecycle() {
         let mut world = WorldStore::new();
         let id = Uuid::from_u128(1);

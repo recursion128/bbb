@@ -79,7 +79,7 @@ pub(super) fn particle_atlas_from_images(images: Vec<SpriteImage>) -> Result<Nat
 }
 
 pub(super) fn advance_particle_texture_animation_tick(
-    runtime: &mut NativeParticleRuntime,
+    runtime: &mut NativeParticleRenderRuntime,
     now: Instant,
 ) -> Option<u64> {
     let Some(last) = runtime.last_texture_animation_at else {

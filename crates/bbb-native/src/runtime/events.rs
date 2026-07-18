@@ -10,12 +10,12 @@ use bbb_world::{
     advance_growth_level_event_particle_randoms, advance_potion_break_level_event_particle_randoms,
     advance_wax_on_level_event_particle_randoms,
 };
+pub(super) use dispatcher::audio_registry_snapshot_from_world;
 #[cfg(test)]
 pub(super) use dispatcher::drain_net_events_with_sinks;
 pub(super) use dispatcher::drain_net_events_with_sinks_and_debug;
 #[cfg(test)]
 use dispatcher::level_event_particle_context;
-pub(super) use dispatcher::synchronize_audio_registries_from_world;
 #[cfg(test)]
 pub(super) use dispatcher::{drain_net_events, drain_net_events_with_audio};
 

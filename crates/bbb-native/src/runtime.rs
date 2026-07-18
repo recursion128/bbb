@@ -172,6 +172,7 @@ use crate::{
     resource_pack_runtime::ServerResourcePackRuntime,
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
+    simulation::effects::ParticleBatchSink,
     skull_scene::skull_model_instances_from_world_at_partial_tick,
     spawner_scene::spawner_display_entity_instances_from_world_at_partial_tick,
     startup::VANILLA_UNLIMITED_FRAMERATE_LIMIT,
@@ -2004,11 +2005,10 @@ pub(crate) fn request_net_disconnect(
     }
 }
 
-pub(crate) fn synchronize_audio_runtime_from_world(
+pub(crate) fn audio_registry_snapshot_from_world(
     world: &WorldStore,
-    audio_events: &mut dyn AudioEventSink,
-) {
-    events::synchronize_audio_registries_from_world(world, audio_events);
+) -> (bbb_pack::SoundEventRegistry, bbb_pack::JukeboxSongRegistry) {
+    events::audio_registry_snapshot_from_world(world)
 }
 
 fn queue_client_tick_end_commands(
@@ -2042,16 +2042,35 @@ pub(crate) fn take_control_screenshot(requests: &SharedControlRequests) -> Optio
         .map(PathBuf::from)
 }
 
-pub(crate) fn pump_network_and_terrain(
+pub(crate) struct SimulationFrameState {
+    pump_started_at: Instant,
+    pump_net_drained_at: Instant,
+    pump_control_synced_at: Instant,
+    pump_client_ticked_at: Instant,
+    now: Instant,
+    advanced_ticks: u32,
+    entity_partial_tick: f32,
+    lightmap_environment: LightmapEnvironment,
+    clear_color: ClearColor,
+    fog_environment: FogEnvironment,
+    sky_environment: SkyEnvironment,
+    cloud_environment: CloudEnvironment,
+    particle_scope_context: Option<ParticleLocalPlayerScopeContext>,
+    particle_player_motion_contexts: Vec<ParticlePlayerMotionContext>,
+    particle_entity_target_contexts: Vec<ParticleEntityTargetContext>,
+    particle_sound_camera_position: Option<[f64; 3]>,
+    terrain_textures_changed: bool,
+}
+
+pub(crate) fn advance_simulation(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
     server_resource_packs: &mut ServerResourcePackRuntime,
     audio_events: Option<&mut dyn AudioEventSink>,
-    audio_status: &AudioCounters,
     particle_events: Option<&mut dyn ParticleEventSink>,
+    particle_batches: &mut dyn ParticleBatchSink,
     input: &mut ClientInputState,
     world: &mut WorldStore,
-    renderer: &mut bbb_renderer::Renderer,
     surface_size: winit::dpi::PhysicalSize<u32>,
     net_counters: &mut NetCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
@@ -2059,27 +2078,16 @@ pub(crate) fn pump_network_and_terrain(
     hud_debug_fps_sampler: &mut HudDebugFpsSampler,
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
-    debug_collision_cache: &mut DebugCollisionCache,
-    debug_supporting_block_cache: &mut DebugSupportingBlockCache,
-    debug_sky_light_section_cache: &mut DebugSkyLightSectionCache,
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
-    terrain_upload: &mut TerrainUploadState,
-    level_load_runtime: &mut LevelLoadRuntime,
     terrain_textures: &mut TerrainTextureState,
-    entity_variant_textures: &mut NativeEntityVariantTextureRuntime,
     item_runtime: Option<&NativeItemRuntime>,
-    snapshot: &SharedSnapshot,
     control_requests: &SharedControlRequests,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
     code_of_conduct_overlay_visible: bool,
     render_distance_chunks: u32,
-    client_framerate_limit: u32,
-    client_vsync: bool,
     hide_lightning_flash: bool,
-    damage_tilt_strength: f32,
-    hud_debug_profiler_chart: Option<HudDebugProfilerChart>,
-) -> bool {
+) -> SimulationFrameState {
     let pump_started_at = Instant::now();
     let mut audio_events = audio_events;
     let mut particle_events = particle_events;
@@ -2098,7 +2106,7 @@ pub(crate) fn pump_network_and_terrain(
             net_commands,
             audio_events_for_drain,
             particle_events_for_drain,
-            Some(renderer),
+            Some(&mut *particle_batches),
             item_runtime,
             Some(hud_debug_network_sampler),
             Some(hud_debug_tps_sampler),
@@ -2108,9 +2116,8 @@ pub(crate) fn pump_network_and_terrain(
     let pump_net_drained_at = Instant::now();
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
-    entity_variant_textures.synchronize(world, renderer);
-    if terrain_textures.synchronize_biome_registry(world) {
-        terrain_upload.request_reload_all_chunks();
+    let terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
+    if terrain_textures_changed {
         if let Some(particle_events) = particle_events.as_mut() {
             particle_events.synchronize_terrain_textures(terrain_textures);
         }
@@ -2274,9 +2281,97 @@ pub(crate) fn pump_network_and_terrain(
         particle_camera_pose.map(|camera| camera_eye_position(camera).map(f64::from));
     let particle_player_motion_contexts = particle_player_motion_contexts(world);
     let particle_entity_target_contexts = particle_entity_target_contexts(world);
-    submit_primed_tnt_smoke_particles(renderer, world, advanced_ticks);
-    submit_entity_client_tick_particles(renderer, world, &mut particle_events);
-    submit_ominous_item_spawner_particles(renderer, world, &mut particle_events);
+    submit_primed_tnt_smoke_particles(particle_batches, world, advanced_ticks);
+    submit_entity_client_tick_particles(particle_batches, world, &mut particle_events);
+    submit_ominous_item_spawner_particles(particle_batches, world, &mut particle_events);
+    if let Some(audio_events) = audio_events.as_deref_mut() {
+        audio_events.tick_entity_sound_positions(
+            audio_scene_command_from_world(world),
+            &world.tickable_entity_sounds(),
+        );
+    }
+    // Vanilla sends the marker after logical particle spawning. Backend
+    // particle execution consumes the owned batches on the render side and
+    // must not delay the connection command.
+    queue_client_tick_end_commands(world, net_commands, advanced_ticks);
+    let pump_client_ticked_at = Instant::now();
+    SimulationFrameState {
+        pump_started_at,
+        pump_net_drained_at,
+        pump_control_synced_at,
+        pump_client_ticked_at,
+        now,
+        advanced_ticks,
+        entity_partial_tick,
+        lightmap_environment,
+        clear_color,
+        fog_environment,
+        sky_environment,
+        cloud_environment,
+        particle_scope_context,
+        particle_player_motion_contexts,
+        particle_entity_target_contexts,
+        particle_sound_camera_position,
+        terrain_textures_changed,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn update_renderer_from_simulation(
+    state: SimulationFrameState,
+    audio_events: Option<&mut dyn AudioEventSink>,
+    audio_status: &AudioCounters,
+    input: &mut ClientInputState,
+    world: &mut WorldStore,
+    renderer: &mut Renderer,
+    surface_size: winit::dpi::PhysicalSize<u32>,
+    net_counters: &mut NetCounters,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    client_animation_ticks: &mut ClientAnimationTickState,
+    camera_fov_ticks: &CameraFovTickState,
+    hud_debug_fps_sampler: &HudDebugFpsSampler,
+    hud_debug_network_sampler: &HudDebugNetworkSampler,
+    hud_debug_tps_sampler: &HudDebugTpsSampler,
+    debug_collision_cache: &mut DebugCollisionCache,
+    debug_supporting_block_cache: &mut DebugSupportingBlockCache,
+    debug_sky_light_section_cache: &mut DebugSkyLightSectionCache,
+    lightmap_ticks: &LightmapTickState,
+    terrain_upload: &mut TerrainUploadState,
+    level_load_runtime: &mut LevelLoadRuntime,
+    terrain_textures: &mut TerrainTextureState,
+    entity_variant_textures: &mut NativeEntityVariantTextureRuntime,
+    item_runtime: Option<&NativeItemRuntime>,
+    snapshot: &SharedSnapshot,
+    render_distance_chunks: u32,
+    client_framerate_limit: u32,
+    client_vsync: bool,
+    damage_tilt_strength: f32,
+    hud_debug_profiler_chart: Option<HudDebugProfilerChart>,
+) -> bool {
+    let SimulationFrameState {
+        pump_started_at,
+        pump_net_drained_at,
+        pump_control_synced_at,
+        pump_client_ticked_at,
+        now,
+        advanced_ticks,
+        entity_partial_tick,
+        lightmap_environment,
+        clear_color,
+        fog_environment,
+        sky_environment,
+        cloud_environment,
+        particle_scope_context,
+        particle_player_motion_contexts,
+        particle_entity_target_contexts,
+        particle_sound_camera_position,
+        terrain_textures_changed,
+    } = state;
+    let mut audio_events = audio_events;
+    entity_variant_textures.synchronize(world, renderer);
+    if terrain_textures_changed {
+        terrain_upload.request_reload_all_chunks();
+    }
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render
     // extraction samples light from the particle positions advanced here. Player-coupled
     // particles sample the same post-input local player state (plus the current remote
@@ -2299,12 +2394,6 @@ pub(crate) fn pump_network_and_terrain(
     );
     let particle_sound_events = renderer.drain_particle_sound_events();
     emit_particle_sound_events(&mut audio_events, particle_sound_events);
-    // Vanilla `Minecraft.tick` sends `ServerboundClientTickEndPacket` only after
-    // the level and particle ticks (Minecraft.java:1842-1887). All movement,
-    // vehicle, destroy, and use commands produced by this client-tick batch are
-    // already ahead of these markers in the FIFO net-command channel.
-    queue_client_tick_end_commands(world, net_commands, advanced_ticks);
-    let pump_client_ticked_at = Instant::now();
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let local_player = world.local_player();
@@ -2892,9 +2981,6 @@ pub(crate) fn pump_network_and_terrain(
     );
     let pump_scene_extracted_at = Instant::now();
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
-    if let Some(particle_events) = particle_events.as_mut() {
-        particle_events.maybe_upload_particle_atlas_animation(renderer);
-    }
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     let player_section_compiled_and_visible =
         terrain_upload.is_player_section_compiled_and_visible(world);
@@ -2918,12 +3004,6 @@ pub(crate) fn pump_network_and_terrain(
             terrain_upload_millis =
                 (pump_elapsed - (pump_scene_extracted_at - pump_started_at)).as_millis() as u64,
             "slow pump sections"
-        );
-    }
-    if let Some(audio_events) = audio_events.as_mut() {
-        audio_events.tick_entity_sound_positions(
-            audio_scene_command_from_world(world),
-            &world.tickable_entity_sounds(),
         );
     }
     snapshot_is_running(snapshot)
@@ -2958,12 +3038,16 @@ fn emit_particle_sound_events(
     }
 }
 
-fn submit_primed_tnt_smoke_particles(renderer: &mut Renderer, world: &WorldStore, ticks: u32) {
+fn submit_primed_tnt_smoke_particles(
+    batches: &mut dyn ParticleBatchSink,
+    world: &WorldStore,
+    ticks: u32,
+) {
     if ticks == 0 {
         return;
     }
     let batch = primed_tnt_smoke_particle_batch(world.primed_tnt_smoke_particle_states(), ticks);
-    renderer.submit_particle_spawns(batch);
+    batches.submit_particle_batch(batch);
 }
 
 fn primed_tnt_smoke_particle_batch(
@@ -2989,7 +3073,7 @@ fn primed_tnt_smoke_particle_batch(
 }
 
 fn submit_entity_client_tick_particles(
-    renderer: &mut Renderer,
+    batches: &mut dyn ParticleBatchSink,
     world: &mut WorldStore,
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
 ) {
@@ -2999,19 +3083,18 @@ fn submit_entity_client_tick_particles(
         world.take_ravager_stun_particle_states(),
         world.take_evoker_fangs_crit_particle_states(),
     );
-    renderer.submit_particle_spawns(batch);
+    batches.submit_particle_batch(batch);
 
     let Some(particle_events) = particle_events.as_deref_mut() else {
         return;
     };
     for state in firework_rocket_trail_particles {
-        renderer
-            .submit_particle_spawns(particle_events.spawn_firework_rocket_trail_particles(state));
+        batches.submit_particle_batch(particle_events.spawn_firework_rocket_trail_particles(state));
     }
 }
 
 fn submit_ominous_item_spawner_particles(
-    renderer: &mut Renderer,
+    batches: &mut dyn ParticleBatchSink,
     world: &mut WorldStore,
     particle_events: &mut Option<&mut dyn ParticleEventSink>,
 ) {
@@ -3021,8 +3104,7 @@ fn submit_ominous_item_spawner_particles(
         return;
     };
     for state in ominous_item_spawner_particles {
-        renderer
-            .submit_particle_spawns(particle_events.spawn_ominous_item_spawner_particles(state));
+        batches.submit_particle_batch(particle_events.spawn_ominous_item_spawner_particles(state));
     }
 }
 
