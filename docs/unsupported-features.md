@@ -19,6 +19,11 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 - File and heading order are an ownership inventory, not an execution schedule.
   Ready todos join the global hardest-ready-first selection in `goal.md`; blocked,
   deferred, or prerequisite-incomplete work does not enter that candidate set.
+- A ready todo may become an atomic slice or a multi-stage engineering slice. Breadth,
+  cross-crate ownership, implementation size, and multiple normal commits are not
+  exclusion reasons when the semantic boundary, final completion criteria, phase
+  validation, and failure-localizing checkpoints are explicit. Excluding a large
+  target requires a real blocker under `goal.md`, not merely "scope too large".
 - Two states are not todos, and deleting one silently re-opens a decision that
   was already made:
   - **Deferred** — a real gap, intentionally not scheduled. Carries the

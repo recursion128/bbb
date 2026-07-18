@@ -35,9 +35,10 @@
   tint、light、overlay 不能凭记忆实现。
 - `bbb-renderer` 不得依赖 `bbb-pack`；`bbb-item-model` 不得依赖 `bbb-renderer`
   （renderer/native 共享的纯值类型放 `bbb-render-types`）。
-- 每个 slice 保持小而可合并，避免顺手重构和无关格式 churn。架构重构作为
-  专门 refactor slice 立项，不与 parity slice 混合；重构落地时同步把新约定
-  写成下方结构不变量，能加反向断言的加反向断言。
+- 每个 slice 保持单一、明确且有界的语义目标，避免顺手重构和无关格式 churn。
+  “有界”约束目标、非目标、完成标准和验证方式，不限制文件数、crate 数、提交数
+  或实现规模。架构重构作为专门 refactor slice 立项，不与无关 parity 目标混合；
+  重构落地时同步把新约定写成下方结构不变量，能加反向断言的加反向断言。
 - 每个 slice 必须更新 `docs/unsupported-features.md`；需要长期状态记录时
   同步更新 memory。
 - 测试必须断言语义（submission metadata / 状态化断言 / deterministic pixel
@@ -57,7 +58,7 @@
   frontend；禁止各 generator 另写易漂移的正则、tokenizer 或括号扫描器。通用
   frontend 只拥有 CST、source span 与声明/调用 IR，领域 extractor 只拥有领域
   识别/结构校验，typed/virtual 归一化留给对应 generator/semantic resolver。既有
-  generator 按独立小切片逐项迁移，不在新消费者中复制旧解析路径。
+  generator 按独立语义 slice 逐项迁移，不在新消费者中复制旧解析路径。
 
 ## 结构不变量（新 slice 不得回退；出处与日期见 goal-archive 与 memory）
 
@@ -101,11 +102,11 @@
 
 ## 提交前门禁
 
-每个 slice 提交前必须完成：受影响 crate 的 focused tests、
+每个原子 slice 提交或工程 slice 阶段提交前必须完成：受影响 crate 的 focused tests、
 `cargo fmt --all --check`、`git diff --check`、完整 diff review，以及文档有变化时的
 `scripts/docs-lint.sh`。纯文档/memory slice 没有受影响 crate 的 focused test，但其它
-切片检查不省略。检查通过后以正常提交保持工作树干净；低风险相关 slice 是否立即运行
-完整门禁，由下方 checkpoint 批次规则决定。
+检查不省略。每次检查通过后以正常提交保持工作树干净；低风险相关原子 slice 是否立即
+运行完整门禁，以及工程 slice 在何处设置里程碑门禁，由下方 checkpoint 规则决定。
 
 完整门禁统一入口 `scripts/cargo-dev.sh gate`，等价于：
 
@@ -129,6 +130,26 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
 选片 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0 clean 时不得停下
 等待确认，也不因历史 ledger 文字重开 P0。
 
+### Slice 形态与 ready 契约
+
+- 同一时间只推进一个语义目标，不并行展开多个完整功能。大型 slice 选中后持续推进到
+  最终完成、明确 blocker 或开工前定义的安全停止点，不在阶段之间穿插无关功能。
+- **原子 slice** 是适合一次正常提交的小型内聚闭环；**工程 slice** 是跨 crate、
+  跨所有权边界、涉及协议/状态机/架构，或需要多个串行阶段和多个正常提交的大型内聚
+  工程。两者平等参与 hardest-ready-first；工程 slice 无需先压缩成单提交微任务。
+- slice 的“有界”只表示语义目标、非目标、完成标准和验证方式有界，不表示文件、crate、
+  提交或实现规模必须很小。
+- 工程 slice 进入 ready 集必须具备：单一明确的语义目标；明确范围、非目标和最终完成
+  标准；关键前置依赖已满足；跨 crate/所有权边界的集成契约能在开工前冻结；可制定
+  串行阶段计划；每阶段都有可运行的 focused validation、可构建且可审查的正常提交；
+  失败能借阶段 checkpoint 定位。
+- 仍排除 `blocked`、`deferred`、真实前置依赖未满足、目标边界不清或持续扩张、无法定义
+  完成标准、无法分阶段验证/提交/定位失败，以及实际混合多个无关功能的目标。不得仅因
+  涉及文件多、crate 多、工作量大或需要多个提交而排除。
+- 工程 slice 开工前必须记录：最终语义目标与完成标准、明确非目标、涉及 crate/所有权
+  边界、vanilla 或 wire 依据、串行阶段及依赖顺序、每阶段 focused tests、checkpoint /
+  full-gate 位置，以及失败定位和安全停止方式。
+
 1. **收尾**：确认工作树；已验证未提交的 slice 先完成提交。
 2. **audit**：运行 `scripts/audit-p0.sh`；exit 0 且最近一次完整 gate 与已有
    playable/session smoke 没有回退迹象 ⇒ 无新 P0 blocker。exit 1 时人工归类新增命中，
@@ -138,19 +159,22 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
    吸收视觉 parity；未命中 → 立即进入 hardest-ready 候选选择，不等待确认。
 4. **Hardest-ready 候选选择**：从 P1～P4 路线图与
    `docs/unsupported-features.md` 的全部开放项建立候选集，不按章节顺序串行取项。
-   - 排除 `blocked`、`deferred`、前置依赖尚未满足的项目；候选必须能切成有界、
-     可独立测试、可正常提交的单 slice。不能满足这些条件的目标只作为依赖方向，
-     不直接进入实现。
-   - 对 ready 候选按五项综合评估实现难度：核心架构/协议/状态机风险，跨 crate 或
-     跨所有权边界的集成范围，vanilla 行为或 wire 事实不确定性，测试/fixture/回归
-     验证复杂度，以及失败影响范围与定位难度。默认选择难度最高者。
-   - 全局最难开放目标仍过大或依赖未就绪时，选择能解锁它的“最难且 ready 的有界
-     前置 slice”；不得借 hardest-first 同时展开多个功能，也不得扩大单 slice 范围。
+   - 按上方 ready 契约同时建立原子 slice 与工程 slice 候选；不得把能冻结契约、分阶段
+     验证的完整语义工程仅因不能压成一个小提交而降级成依赖方向。
+   - 在完整语义工程层面按五项综合评估实现难度：核心架构/协议/状态机风险，跨 crate
+     或跨所有权边界的集成范围，vanilla 行为或 wire 事实不确定性，测试/fixture/迁移/
+     回归验证复杂度，以及失败影响范围与定位难度。默认选择难度最高者；最难工程目标
+     已 ready 时直接选择该工程 slice。
+   - 只有最难工程存在真实 blocker 或集成契约尚不能冻结时，才选择能解锁它的“最难且
+     ready 的有界前置 slice”。实现规模较大本身不是 blocker；不得借 hardest-first
+     同时展开多个功能，也不得把完整工程无理由永久切碎成低价值微提交。
    - 难度相当时，依次选择：能解锁更多后续目标者；更接近 playable session 或最终
      交付闭环者；最后才按下方 P1～P4 与各节原有路线顺序裁决。这不是 P4→P1 倒序。
-   - 每轮开始的进度更新必须简记主要候选、被排除候选及原因、最终选择和上述难度
-     依据；子 agent 是否使用仍只按 `AGENTS.md` 的既有并行条件判断。
-5. **实现循环**（每个 slice）：
+   - 每轮开始的进度更新必须简记主要候选及其原子/工程形态、被排除候选及真实原因、
+     最终选择和上述难度依据，并说明它为何在完整工程层面是 hardest ready。排除大型
+     目标时必须写真实 blocker，不能只写“范围太大”；子 agent 是否使用仍只按
+     `AGENTS.md` 的既有并行条件判断。
+5. **实现循环**（原子 slice 或工程 slice 的每个串行阶段）：
    1. 先 grep 当前实现，确认缺口真实存在（历史上多次出现"账本以为缺失但
       代码已实现"）；
    2. 定位 vanilla 26.1 源码依据（常量/公式/顺序）；已批量提取过的先查
@@ -158,9 +182,13 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
    3. 实现 + focused test；随机行为用确定性 seed 或固定样本；
    4. 更新账本条目；已完成描述写入 `docs/goal-archive.md`（不是本文件）；
       本文件对应队列项划掉或改写其剩余部分；
-   5. 运行本节规定的 slice 检查，审查 diff 后独立提交（英文祈使句单行
-      message，沿用仓库风格）；再按下方 checkpoint 规则继续或结束批次。
-6. **Checkpoint 批次**：仍一次只实现一个完整 slice，不并行启动多个功能。
+   5. 运行本节规定的提交检查，审查 diff 后正常提交（英文祈使句单行 message，沿用
+      仓库风格）；工程阶段提交必须保持可构建、可审查，不得以最终会修好为由提交明显
+      损坏的中间状态，失败一律 normal fix-forward，不重写历史；再按下方 checkpoint
+      规则继续或结束。
+   工程 slice 的每次进度更新还必须报告当前阶段、已完成提交、focused test 结果和下一
+   checkpoint；在完成、明确 blocker 或预定义安全停止点之前不得插入无关 slice。
+6. **Checkpoint 批次与工程里程碑**：仍一次只实现一个完整 slice，不并行启动多个功能。
    连续 2～4 个语义相关且风险可局部界定的低风险 slice 可以组成一个批次；每个
    slice 各自完成 focused tests、fmt check、diff check、按需 docs lint、diff review
    和干净提交。正常批次只在最新提交运行一次 `scripts/cargo-dev.sh gate`，通过后批次
@@ -168,21 +196,28 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
    - 累计第 4 个提交后立即结束批次。即将切换语义领域，或即将向用户交付、停止、
      push、merge、发布时，也必须先结束当前批次并在 tip 运行完整门禁。因这些条件
      提前结束时，实际批次可以只有 1 个提交。
+   - 工程 slice 按开工前定义的阶段和里程碑推进；它的多个阶段提交仍属于同一个语义
+     目标，不是普通低风险 slice 批次，也不授权穿插其它功能。低风险工程在预定
+     checkpoint 以及上述强制边界运行完整门禁。
    - 修改协议编解码、Cargo/workspace 配置、构建脚本、代码生成器、`unsafe`、并发或
-     核心架构属于高风险：开始前先门禁并关闭已有低风险批次；该高风险 slice 自身
-     保持“一 slice、一完整门禁、一提交”，不得并入 checkpoint 批次。focused test
-     异常或风险无法局部界定时同样立即结束批次。
-   - 批次 tip 完整门禁失败时，先依据失败项和 focused tests 定位；仍无法确定引入
-     提交时，才运行 `scripts/cargo-dev.sh batch-gate <last-gated-commit>..HEAD` 查找首个
-     失败提交。`batch-gate` 不是正常批次入口。采用正常 fix-forward 提交修复，不重写
-     历史，然后重新门禁 tip；完整门禁通过前不得开始下一批或交付。
+     核心架构属于高风险。开始前先门禁并关闭已有低风险批次；原子高风险 slice 保持
+     “一 slice、一提交、一次完整门禁”。高风险工程 slice 可以包含多个串行正常提交，
+     但不得并入普通低风险 checkpoint 批次；必须在预定义高风险里程碑、累计最多 4 个
+     提交、跨越新的协议/架构状态、风险无法局部界定、准备停止或交付时运行完整门禁，
+     最终 HEAD 也必须通过。不得为减少 gate 次数把独立高风险目标伪装成一个工程 slice。
+     focused test 异常时同样立即运行完整门禁。
+   - 批次 tip 或工程 checkpoint 完整门禁失败时，先依据失败项和 focused tests 定位；
+     仍无法确定引入提交时，才运行
+     `scripts/cargo-dev.sh batch-gate <last-gated-commit>..HEAD` 查找首个失败提交。
+     `batch-gate` 不是正常批次或工程 checkpoint 入口。采用正常 fix-forward 提交修复，
+     不重写历史，然后重新门禁 tip；完整门禁通过前不得开始下一批、跨过安全停止点或交付。
    - 主 agent 必须记录最近一次通过完整门禁的 commit hash。进度更新和最终交付必须
-     报告本批次提交、focused test 结果、完整门禁结果和最近已门禁 commit。任何准备
-     交付或合并的 HEAD 都必须已通过完整门禁。
+     报告当前普通批次或工程里程碑包含的提交、focused test 结果、完整门禁结果和最近
+     已门禁 commit。任何准备交付或合并的 HEAD 都必须已通过完整门禁。
 7. **路线图维护**：P1～P4 继续记录 owner、依赖、里程碑、完成标准与同分顺序，
    不再作为默认串行消化队列。新发现工作在账本立条目并参与下一轮全局候选评估；
-   结转项只在重启判据满足后恢复为 ready 候选。垂直依赖若阻塞高难目标，只前移一个
-   最难且有界的必要前置 slice。
+   结转项只在重启判据满足后恢复为 ready 候选。只有真实依赖或尚不能冻结的集成契约
+   阻塞高难目标时，才前移一个最难且有界的必要前置 slice。
 
 ## P0 重新打开条件与 audit 分类
 
@@ -266,7 +301,8 @@ entity metadata extractor 是统一 Tree-sitter Java extraction foundation 的�
 消费者。尚未迁移的 Java generator 后续按独立 slice 处理；本阶段不要求一次改完，
 也不得把未迁移 generator 记为已完成。
 
-开放方向如下；每项切成可门禁、可提交的单 slice 后参与全局 hardest-ready 评估：
+开放方向如下；每项形成满足上文 ready 契约的原子或工程 slice 后参与全局
+hardest-ready 评估：
 
 1. **资源与 tag 派生表**：继续审计手写 block/item/entity membership；有精确 vanilla tag
    的直接从 tag 派生，没有精确 tag 的只在 class/property/registry source fact 能证明等价时
@@ -489,8 +525,8 @@ registry-backed variant cell 必须在上一队列的 custom reorder 测试通�
 该矩阵不是一个必须 157 项全部清空才允许后续工作的原子队列：matrix+schema+base
 lifecycle 为 foundation milestone，之后每个上述 family 是独立 milestone。每关闭一个
 family 都运行 playable-gate；其暴露的 registry、non-entity、screen 或 resource 垂直依赖
-进入下一轮全局候选，若阻塞更难目标则选择其中最难且 ready 的有界前置 slice。不得
-无证据跳过必要依赖，也不得
+进入下一轮全局候选；只有真实依赖或尚不能冻结的集成契约阻塞更难目标时，才选择其中
+最难且 ready 的有界前置 slice。不得无证据跳过必要依赖，也不得
 用“仍在 P1”长期阻塞已经具备独立验收面的 P2/P3 可玩性修复。
 
 完成标准：矩阵恰好覆盖 catalog 157 项；所有客户端适用 cell 均为 `complete`，其余仅
@@ -522,9 +558,9 @@ audio 与跨域 side effect。按用户可观察 vertical slice 推进，不按 
    resolver/runtime/render submission，覆盖 provider options、block/item context、entity
    following、category/attenuation、delayed/stop 与 missing asset diagnostics；随机链保持
    online/probe/fixture 确定性一致。
-5. **垂直关闭门禁**：每个 slice 同时断言 protocol summary、canonical state、runtime
-   command/counter 与适用 screenshot/audio resolver 结果；只完成 decode、只加 counter 或
-   只画 fallback 均不得删除最终用户可观察的 ledger 条目。
+5. **垂直关闭门禁**：原子 slice 或工程 slice 最终完成时同时断言 protocol summary、
+   canonical state、runtime command/counter 与适用 screenshot/audio resolver 结果；只完成
+   decode、只加 counter 或只画 fallback 均不得删除最终用户可观察的 ledger 条目。
 
 完成标准：unsupported ledger 每个非实体客户端行为条目都有唯一 queue owner；所有目标
 客户端适用条目完成或仅剩有 vanilla 依据的 `not-applicable`/带重启条件的 `deferred`；

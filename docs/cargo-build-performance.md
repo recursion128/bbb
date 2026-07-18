@@ -30,18 +30,21 @@ to relax correctness checks. The preferred order is:
 ## Checkpoint Gate Policy
 
 The authoritative rules live in `goal.md`; this section only explains their build-cache
-impact. Each slice runs affected-crate focused tests and the required cheap checks before
-its clean commit. Two to four related low-risk slice commits may share one full workspace
-gate at the batch tip. Domain changes, delivery/merge boundaries, abnormal focused tests,
-and the high-risk categories named in `goal.md` force an earlier checkpoint. This reduces
-repeated workspace test cost without changing the requirement that delivered or merged
-HEAD has passed the full gate.
+impact. Each atomic-slice commit and engineering-slice phase commit runs affected-crate
+focused tests and the required cheap checks before its clean commit. Two to four related
+low-risk atomic-slice commits may share one full workspace gate at the batch tip.
+Engineering slices use the serial milestone plan established before work; high-risk
+engineering milestones may cover several buildable phase commits but never join an
+ordinary low-risk batch. Domain changes, delivery/merge boundaries, abnormal focused
+tests, and the high-risk conditions named in `goal.md` force an earlier checkpoint. This
+reduces repeated workspace test cost without changing the requirement that delivered or
+merged HEAD has passed the full gate.
 
-For a normal green checkpoint, run `scripts/cargo-dev.sh gate` once at the latest commit.
-Do not run `batch-gate` merely because the checkpoint contains multiple commits.
-`batch-gate` is reserved for a failed tip gate whose introducing commit is still unclear
-after focused diagnosis; after locating the regression, fix it with a normal commit and
-rerun the full gate at the new tip.
+For a normal green batch or engineering checkpoint, run `scripts/cargo-dev.sh gate` once
+at the latest commit. Do not run `batch-gate` merely because the checkpoint contains
+multiple commits. `batch-gate` is reserved for a failed tip gate whose introducing commit
+is still unclear after focused diagnosis; after locating the regression, fix it with a
+normal commit and rerun the full gate at the new tip.
 
 ## Current sccache Decision
 

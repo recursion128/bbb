@@ -37,7 +37,8 @@ configuration UI.
 
 - The main agent owns the complete slice by default: task selection, planning,
   vanilla-source verification, implementation, focused tests, integration, review,
-  the slice commit, and the applicable checkpoint or high-risk full gate.
+  the atomic-slice commit or engineering-slice phase commits, and the applicable
+  checkpoint or high-risk full gate.
 - Subagents are optional concurrency tools, not a default topology. Do not spawn one
   merely because a role or execution slot is available.
 - Explorer agents are useful only for bounded, read-only questions that can be
@@ -57,27 +58,54 @@ on temporary branches and the main agent remains the only merger and final commi
 Use a single-slice pipeline rather than assigning several complete features at once.
 The default path is solo: the main agent verifies the gap and vanilla behavior,
 implements the slice, runs focused tests, updates documentation, reviews the diff,
-runs the per-slice checks, and commits without delegation. Related low-risk slices
-may share a later checkpoint gate under the policy in `goal.md`.
+runs the required per-commit checks, and commits without delegation. An atomic slice
+is a small cohesive closure that normally lands in one commit. An engineering slice
+is one cohesive semantic objective that may cross crates and ownership boundaries or
+require several serial phases and normal commits. Related low-risk atomic slices may
+share a later checkpoint gate under the policy in `goal.md`; engineering slices use
+the milestone plan defined before they start.
+
+Bounded means that the semantic goal, non-goals, completion criteria, and validation
+are bounded; it does not impose a small file, crate, commit, or implementation count.
+Only one semantic slice advances at a time. Once selected, an engineering slice
+continues to completion, an explicit blocker, or a predeclared safe stopping point,
+without interleaving unrelated feature work.
 
 After a clean P0 audit, select work by **hardest-ready-first** across all open roadmap
-and ledger items. Build a candidate set that excludes blocked/deferred work, unmet
-prerequisites, and work that cannot yet be cut into one bounded, independently
-testable, normally committable slice. Rank the remaining slices by architecture,
-protocol, or state-machine risk; cross-crate/ownership integration breadth; vanilla
-or wire uncertainty; test/fixture/regression complexity; and failure impact plus
-localization difficulty. Choose the hardest ready slice by default. If the hardest
-open target is still too large or not ready, choose its hardest ready, bounded
-prerequisite instead of expanding multiple features.
+and ledger items. Build both atomic-slice and engineering-slice candidates. A ready
+engineering slice has one clear semantic objective; explicit scope, non-goals, and
+final completion criteria; satisfied real prerequisites; a cross-boundary integration
+contract that can be frozen before work; a serial phase plan; focused validation and
+a buildable, reviewable normal commit for every phase; and checkpoints that localize
+failure. Do not exclude it merely because it spans many files or crates, is large, or
+needs multiple commits.
+
+Exclude blocked/deferred work, unmet real prerequisites, expanding or undefined
+scope, missing completion criteria, work that cannot be validated, committed, or
+failure-localized in stages, and grab bags of unrelated features. Rank the remaining
+complete semantic slices by architecture, protocol, or state-machine risk;
+cross-crate/ownership integration breadth; vanilla or wire uncertainty;
+test/fixture/migration/regression complexity; and failure impact plus localization
+difficulty. Choose the hardest ready slice by default, including a multi-stage
+engineering slice. Choose its hardest ready bounded prerequisite only when a real
+blocker remains or its integration contract cannot yet be frozen; size alone is not
+a blocker.
 
 For equally difficult candidates, prefer the slice that unlocks more later work,
 then the one closest to a playable-session or delivery closure, then the P1-P4/order
 already recorded in `goal.md`. This is not a P4-to-P1 reversal: those sections remain
 the roadmap, dependency map, and final tie-breaker. At the start of every round,
-briefly report the main candidates, excluded candidates and reasons, and the final
-selection with its difficulty basis. Hardest-ready-first changes task selection only;
-it does not enlarge slice scope, start multiple complete features, or make subagents
-the default.
+briefly report the main candidates and whether each is atomic or engineering, excluded
+candidates and their real blockers, and the final selection with why it is hardest at
+the complete-engineering level. Hardest-ready-first changes task selection only; it
+does not permit scope creep, start multiple complete features, or make subagents the
+default.
+
+Before an engineering slice starts, record its semantic goal and final completion
+criteria, non-goals, involved crates and ownership boundaries, vanilla or wire
+evidence, serial phases and dependency order, focused tests per phase, planned
+checkpoint/full-gate positions, and failure-localization and safe-stop strategy. The
+authoritative ready, commit, checkpoint, and full-gate rules remain in `goal.md`.
 
 Spawn a subagent only when the expected critical-path saving is greater than the
 setup, context-transfer, worktree, integration, and review cost. In particular, the
@@ -96,7 +124,8 @@ Prefer the solo path for small checklist items, cohesive single-owner changes,
 serial vanilla investigation, central-module edits, and slices where the main agent
 would otherwise wait for the subagent. Never fill available agent slots for their own
 sake. When parallelism is justified, use the fewest agents needed and split by
-semantic ownership rather than checklist count.
+semantic ownership rather than checklist count. A slice being a large engineering
+effort does not by itself authorize subagents.
 
 For a parallel slice, run three stages:
 
@@ -107,12 +136,13 @@ For a parallel slice, run three stages:
 2. **Disjoint implementation**: workers edit non-overlapping modules in independent
    worktrees while the main agent advances a separate integration path. Use the
    fewest workers that produce real critical-path savings. Do not start another
-   complete slice before the current slice is integrated and committed.
+   complete slice before the current slice reaches completion, an explicit blocker,
+   or its predeclared safe stopping point.
 3. **Review and closeout**: workers run focused tests only. The main agent reviews the
-   integrated diff, runs the required per-slice checks, and makes the slice commit.
-   The main agent then applies the checkpoint/high-risk full-gate policy from
-   `goal.md`. Add a read-only reviewer only when diff size, ambiguity, or regression
-   risk justifies the extra pass.
+   integrated diff, runs the required per-commit checks, and makes the atomic-slice or
+   engineering-phase commit. The main agent then applies the checkpoint/high-risk
+   full-gate policy from `goal.md`. Add a read-only reviewer only when diff size,
+   ambiguity, or regression risk justifies the extra pass.
 
 While a checkpoint full gate runs, an otherwise idle read-only agent may audit the
 next slice without editing files or launching Cargo, but the next implementation
@@ -128,10 +158,11 @@ required prerequisites.
 
 1. Start with `git status --short`.
 2. After the P0 audit, apply the hardest-ready-first policy above and record the main
-   candidates, exclusions, final selection, and difficulty basis in the progress
-   update.
+   candidates and slice shapes, exclusions and real blockers, final selection, and
+   complete-engineering difficulty basis in the progress update.
 3. Verify relevant vanilla wire format or behavior from local sources.
-4. Identify the semantic ownership involved, usually:
+4. For an engineering slice, record the pre-start contract required above; for every
+   slice, identify the semantic ownership involved, usually:
    - protocol: packet ids, structs, encode/decode, protocol tests
    - world: canonical state, counters, query APIs, world tests
    - net: event/command wiring and offline probe behavior
@@ -154,10 +185,13 @@ required prerequisites.
    asks for cleanup or the cache is disposable.
 9. Main agent removes temporary worktrees and branches after their diffs are
    integrated or explicitly abandoned.
-10. Run affected-crate focused tests, formatting and diff checks, documentation lint
-    when documentation changed, and review the complete diff.
-11. Make a normal clean-worktree commit, then either continue the current low-risk
-    checkpoint batch or run the full gate when `goal.md` requires it.
+10. Before an atomic-slice or engineering-phase commit, run affected-crate focused
+    tests, formatting and diff checks, documentation lint when documentation changed,
+    and review the complete diff. Do not commit a knowingly broken intermediate
+    state; fix failures forward with normal commits and never rewrite history.
+11. Make a normal clean-worktree commit, report the engineering stage, completed
+    commits, focused tests, and next checkpoint when applicable, then continue or run
+    the full gate when `goal.md` requires it.
 
 ## Worker Prompt Requirements
 
@@ -226,31 +260,37 @@ shared target cache in both directions (see `docs/cargo-build-performance.md`).
 Developers may optionally run `scripts/install-hooks.sh` to install the seconds-only local
 pre-commit checks; it is never installed automatically and does not replace the full gate.
 
-Every slice must run affected-crate focused tests, `cargo fmt --all --check`,
-`git diff --check`, documentation lint when documentation changed, and a complete
-diff review before its clean commit. A planned checkpoint batch contains two to four
-consecutive, semantically related, low-risk slice commits; it runs the full gate once
-at the batch tip. A forced checkpoint may contain only one commit when work must stop
-or change domains before a second related slice is ready.
+Every atomic slice and every engineering-slice phase commit must run affected-crate
+focused tests, `cargo fmt --all --check`, `git diff --check`, documentation lint when
+documentation changed, and a complete diff review before its clean commit. A planned
+ordinary checkpoint batch contains two to four consecutive, semantically related,
+low-risk atomic-slice commits; it runs the full gate once at the batch tip. A forced
+checkpoint may contain only one commit when work must stop or change domains before a
+second related slice is ready. Engineering slices use their predeclared milestones
+and the forced boundaries in `goal.md`.
 
 End the current batch and run the full gate immediately at four commits, before a
 semantic-domain switch, delivery, stopping, push, merge, or release, and whenever
 focused tests are abnormal or risk cannot be bounded locally. Protocol codecs,
 Cargo/workspace configuration, build scripts, generators, `unsafe`, concurrency, and
-core-architecture changes are high risk: close any prior batch first, then give that
-slice its own full gate and commit.
+core-architecture changes are high risk: close any prior batch first. An atomic
+high-risk slice keeps one commit and one full gate. A high-risk engineering slice may
+use serial phase commits, but it never joins an ordinary low-risk batch and must run
+the milestone and forced full gates defined in `goal.md`, including a final gate at
+its delivered HEAD.
 
-The normal batch path is one `scripts/cargo-dev.sh gate` at the latest commit.
+The normal batch or engineering-checkpoint path is one `scripts/cargo-dev.sh gate` at
+the latest commit.
 `scripts/cargo-dev.sh batch-gate <last-gated>..HEAD` is a failure-localization tool,
-not a routine batch gate: use it only when the tip gate has failed and focused
-diagnosis has not identified the introducing commit. Fix failures with a normal
-follow-up commit; do not rewrite history.
+not a routine batch or engineering-checkpoint gate: use it only when the tip gate has
+failed and focused diagnosis has not identified the introducing commit. Fix failures
+with a normal follow-up commit; do not rewrite history.
 
 The main agent must track the commit hash covered by the most recent successful full
-gate. Progress updates and final delivery must report the current batch commits,
-focused-test results, full-gate result, and that latest gated commit. Any HEAD being
-delivered or merged must have passed the full gate. If a required command cannot run,
-state the reason and residual risk.
+gate. Progress updates and final delivery must report the commits in the current
+ordinary batch or engineering milestone, focused-test results, full-gate result, and
+that latest gated commit. Any HEAD being delivered or merged must have passed the full
+gate. If a required command cannot run, state the reason and residual risk.
 
 For daily focused tests, agents may use `cargo test --profile fast-test` with an
 assigned external `CARGO_TARGET_DIR`; this does not replace the merge gate.
