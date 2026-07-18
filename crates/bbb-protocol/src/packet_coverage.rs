@@ -372,7 +372,7 @@ mod tests {
         assert!(runtime
             .evidence
             .iter()
-            .any(|item| item.contains("store.rs#materialize_pending_known_pack_data")));
+            .any(|item| item.contains("revision.rs#materialize_pending_known_pack_data")));
 
         let serverbound = entries
             .iter()

@@ -2105,7 +2105,7 @@
           "evidence": [
             "crates/bbb-pack/src/known_packs.rs#select_offered",
             "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::SelectKnownPacks",
-            "crates/bbb-world/src/registries/store.rs#materialize_pending_known_pack_data",
+            "crates/bbb-world/src/registries/revision.rs#materialize_pending_known_pack_data",
             "vanilla:net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java#trySelectingPacks"
           ],
           "gap": null,
