@@ -145,8 +145,8 @@ use crate::{
     item_models::{
         dropped_item_models, entity_block_models, first_person_item_models,
         first_person_player_arms, held_item_models, item_pickup_particle_item_models,
-        ominous_item_spawner_models, world_attribute_keys, world_enchantment_keys,
-        world_jukebox_song_tooltip_context, world_trim_material_keys,
+        ominous_item_spawner_models, world_attribute_keys, world_banner_pattern_tooltip_context,
+        world_enchantment_keys, world_jukebox_song_tooltip_context, world_trim_material_keys,
         world_trim_material_tooltip_context, world_trim_pattern_keys,
         world_trim_pattern_tooltip_context,
     },
@@ -10280,6 +10280,7 @@ fn hud_item_tooltip_lines(
     let trim_material_context = world_trim_material_tooltip_context(world);
     let trim_pattern_context = world_trim_pattern_tooltip_context(world);
     let jukebox_song_context = world_jukebox_song_tooltip_context(world);
+    let banner_pattern_context = world_banner_pattern_tooltip_context(world);
     let enchantment_definitions = world.enchantment_tooltip_definitions_in_holder_order();
     let enchantment_attribute_modifiers =
         world.enchantment_attribute_modifiers(&item.component_patch.enchantments);
@@ -10319,6 +10320,12 @@ fn hud_item_tooltip_lines(
                     .as_ref()
                     .map(|(keys, _)| keys.as_slice()),
                 jukebox_song_presentations: jukebox_song_context
+                    .as_ref()
+                    .map(|(_, presentations)| presentations.as_slice()),
+                banner_pattern_keys: banner_pattern_context
+                    .as_ref()
+                    .map(|(keys, _)| keys.as_slice()),
+                banner_pattern_presentations: banner_pattern_context
                     .as_ref()
                     .map(|(_, presentations)| presentations.as_slice()),
                 enchantment_keys: enchantment_keys.as_deref(),

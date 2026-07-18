@@ -111,6 +111,61 @@ fn trim_tooltip_context_keeps_valid_payloads_and_only_known_vanilla_stubs() {
 }
 
 #[test]
+fn banner_tooltip_context_keeps_typed_payloads_and_known_vanilla_stubs() {
+    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
+    }
+    fn write_string(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_nbt_string(out, name);
+        write_nbt_string(out, value);
+    }
+    fn pattern_nbt(asset_id: &str, translation_key: &str) -> Vec<u8> {
+        let mut out = vec![10];
+        write_string(&mut out, "asset_id", asset_id);
+        write_string(&mut out, "translation_key", translation_key);
+        out.push(0);
+        out
+    }
+
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        bbb_world::BANNER_PATTERN_REGISTRY,
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:custom",
+                pattern_nbt("example:banner/custom", "block.example.banner.custom"),
+            ),
+            bbb_world::RegistryPacketEntry::stub("minecraft:guster"),
+            bbb_world::RegistryPacketEntry::stub("example:unknown_stub"),
+            bbb_world::RegistryPacketEntry::with_data_len("minecraft:base", 12),
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:malformed",
+                pattern_nbt("Invalid Asset", "block.example.banner.invalid"),
+            ),
+        ],
+    );
+
+    let (keys, presentations) = world_banner_pattern_tooltip_context(&world).unwrap();
+    assert_eq!(keys, ["example:custom", "minecraft:guster", "", "", ""]);
+    assert_eq!(
+        presentations[0]
+            .as_ref()
+            .map(|presentation| presentation.translation_key.as_str()),
+        Some("block.example.banner.custom")
+    );
+    assert_eq!(
+        presentations[1]
+            .as_ref()
+            .map(|presentation| presentation.translation_key.as_str()),
+        Some("block.minecraft.banner.guster")
+    );
+    assert!(presentations[2..].iter().all(Option::is_none));
+}
+
+#[test]
 fn first_person_projection_does_not_restore_component_id_aliases() {
     let source = include_str!("first_person.rs");
     for old_alias in [

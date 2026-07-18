@@ -194,6 +194,33 @@ pub(crate) fn world_jukebox_song_tooltip_context(
     Some((keys, presentations))
 }
 
+pub(crate) fn world_banner_pattern_tooltip_context(
+    world: &WorldStore,
+) -> Option<(
+    Vec<String>,
+    Vec<Option<bbb_world::BannerPatternPresentation>>,
+)> {
+    let resource_ids = world_registry_keys(world, bbb_world::BANNER_PATTERN_REGISTRY)?;
+    let mut keys = Vec::with_capacity(resource_ids.len());
+    let mut presentations = Vec::with_capacity(resource_ids.len());
+    for (index, resource_id) in resource_ids.into_iter().enumerate() {
+        let projection = i32::try_from(index)
+            .ok()
+            .map(|holder_id| world.synchronized_banner_pattern_presentation(holder_id));
+        match projection {
+            Some(Ok(Some(presentation))) => {
+                keys.push(resource_id);
+                presentations.push(Some(presentation));
+            }
+            _ => {
+                keys.push(String::new());
+                presentations.push(None);
+            }
+        }
+    }
+    Some((keys, presentations))
+}
+
 pub(crate) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
     world_registry_keys(world, "minecraft:attribute")
 }

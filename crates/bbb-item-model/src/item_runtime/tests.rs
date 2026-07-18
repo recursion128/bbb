@@ -17,7 +17,7 @@ use bbb_protocol::tropical_fish_patterns::{
     VANILLA_TROPICAL_FISH_PATTERN_KOB_PACKED_ID, VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID,
 };
 use bbb_protocol::{ComponentStyle, StyledTextRun};
-use bbb_world::{TrimMaterialPresentation, TrimPatternPresentation};
+use bbb_world::{BannerPatternPresentation, TrimMaterialPresentation, TrimPatternPresentation};
 use chrono::TimeZone;
 use std::{
     collections::BTreeMap,
@@ -2077,7 +2077,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                     },
                     BannerPatternLayerSummary {
                         registry_id: None,
-                        asset_id: None,
+                        asset_id: Some("test:banner/custom".to_string()),
                         translation_key: Some("block.test.banner.custom".to_string()),
                         color_id: VANILLA_DYE_COLOR_BLUE_ID,
                     },
@@ -2125,6 +2125,55 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Red Base", TOOLTIP_TEXT_GRAY),
             tooltip_line("Red Base", TOOLTIP_TEXT_GRAY),
             lore_line("After banner patterns"),
+        ])
+    );
+
+    let synchronized_banner_patterns = [
+        Some(BannerPatternPresentation {
+            asset_id: "example:custom".to_string(),
+            translation_key: "block.test.banner.custom".to_string(),
+        }),
+        None,
+    ];
+    let synchronized_banner_keys = ["example:custom".to_string(), String::new()];
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    banner_pattern_layers: vec![
+                        BannerPatternLayerSummary {
+                            registry_id: Some(0),
+                            asset_id: None,
+                            translation_key: None,
+                            color_id: VANILLA_DYE_COLOR_BLUE_ID,
+                        },
+                        BannerPatternLayerSummary {
+                            registry_id: Some(1),
+                            asset_id: None,
+                            translation_key: None,
+                            color_id: VANILLA_DYE_COLOR_RED_ID,
+                        },
+                        BannerPatternLayerSummary {
+                            registry_id: None,
+                            asset_id: Some("Invalid Asset".to_string()),
+                            translation_key: Some("block.minecraft.banner.guster".to_string()),
+                            color_id: VANILLA_DYE_COLOR_BLACK_ID,
+                        },
+                    ],
+                    ..Default::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                banner_pattern_keys: Some(&synchronized_banner_keys),
+                banner_pattern_presentations: Some(&synchronized_banner_patterns),
+                ..Default::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Custom Blue", TOOLTIP_TEXT_GRAY),
         ])
     );
     assert_eq!(

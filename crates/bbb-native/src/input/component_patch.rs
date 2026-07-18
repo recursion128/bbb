@@ -12,7 +12,8 @@ use bbb_protocol::equipment_slots::{
 };
 use bbb_protocol::tropical_fish_patterns::vanilla_tropical_fish_pattern;
 use bbb_world::{
-    direct_trim_material_presentation, direct_trim_pattern_presentation, BlockStateRegistry,
+    direct_banner_pattern_presentation, direct_trim_material_presentation,
+    direct_trim_pattern_presentation, BlockStateRegistry,
 };
 
 type PersistentSnbtEncoder = for<'a> fn(
@@ -1748,10 +1749,14 @@ fn encode_banner_patterns(
                 let resource_id = debug_banner_pattern_resource_id(registry_id, context)?;
                 debug_snbt_string(&resource_id)
             } else {
+                let presentation = direct_banner_pattern_presentation(
+                    layer.asset_id.as_deref()?,
+                    layer.translation_key.as_deref()?,
+                )?;
                 format!(
                     "{{asset_id: {}, translation_key: {}}}",
-                    debug_snbt_string(layer.asset_id.as_deref()?),
-                    debug_snbt_string(layer.translation_key.as_deref()?)
+                    debug_snbt_string(&presentation.asset_id),
+                    debug_snbt_string(&presentation.translation_key)
                 )
             };
             Some(format!(
@@ -2843,6 +2848,8 @@ mod tests {
         assert_eq!(encode_added_component_value_snbt(72, &patch, None), None);
         patch.banner_pattern_layers.remove(0);
         patch.banner_pattern_layers[0].asset_id = None;
+        assert_eq!(encode_added_component_value_snbt(72, &patch, None), None);
+        patch.banner_pattern_layers[0].asset_id = Some("Invalid Asset".to_string());
         assert_eq!(encode_added_component_value_snbt(72, &patch, None), None);
         patch.banner_pattern_layers.clear();
         assert_eq!(

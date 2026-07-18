@@ -30,7 +30,8 @@ use bbb_render_types::BannerPatternKind;
 #[cfg(test)]
 use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
-    direct_trim_material_presentation, direct_trim_pattern_presentation, vanilla_painting_variant,
+    direct_banner_pattern_presentation, direct_trim_material_presentation,
+    direct_trim_pattern_presentation, vanilla_painting_variant, BannerPatternPresentation,
     EnchantmentAttributeModifier, EnchantmentTooltipDefinition, JukeboxSongPresentation,
     RegistrySet, TrimMaterialPresentation, TrimPatternPresentation, VanillaEnchantmentIdentity,
     VanillaInstrumentIdentity, VanillaPaintingVariant, VanillaTrimMaterialIdentity,
@@ -159,6 +160,8 @@ pub struct NativeItemTooltipOptions<'a> {
     pub trim_pattern_presentations: Option<&'a [Option<TrimPatternPresentation>]>,
     pub jukebox_song_keys: Option<&'a [String]>,
     pub jukebox_song_presentations: Option<&'a [Option<JukeboxSongPresentation>]>,
+    pub banner_pattern_keys: Option<&'a [String]>,
+    pub banner_pattern_presentations: Option<&'a [Option<BannerPatternPresentation>]>,
     pub enchantment_keys: Option<&'a [String]>,
     pub enchantment_definitions: Option<&'a [Option<EnchantmentTooltipDefinition>]>,
     pub enchantment_attribute_modifiers: Option<&'a [EnchantmentAttributeModifier]>,
@@ -592,15 +595,35 @@ fn push_tropical_fish_tooltip_lines(
 fn push_banner_pattern_tooltip_lines(
     language: &LanguageCatalog,
     layers: &[BannerPatternLayerSummary],
+    options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     for layer in layers.iter().take(6) {
-        let Some(translation_key) = layer.translation_key.as_deref().or_else(|| {
-            layer
-                .registry_id
-                .and_then(BannerPatternKind::for_vanilla_registry_id)
-                .map(BannerPatternKind::translation_key)
-        }) else {
+        let translation_key = if let (Some(asset_id), Some(translation_key)) =
+            (layer.asset_id.as_deref(), layer.translation_key.as_deref())
+        {
+            direct_banner_pattern_presentation(asset_id, translation_key)
+                .map(|presentation| presentation.translation_key)
+        } else if let Some(registry_id) = layer.registry_id {
+            let index = usize::try_from(registry_id).ok();
+            match options.banner_pattern_presentations {
+                Some(presentations) => index
+                    .and_then(|index| presentations.get(index))
+                    .and_then(Option::as_ref)
+                    .map(|presentation| presentation.translation_key.clone()),
+                None => match options.banner_pattern_keys {
+                    Some(keys) => index
+                        .and_then(|index| keys.get(index))
+                        .and_then(|resource_id| BannerPatternKind::for_resource_id(resource_id))
+                        .map(|pattern| pattern.translation_key().to_string()),
+                    None => BannerPatternKind::for_vanilla_registry_id(registry_id)
+                        .map(|pattern| pattern.translation_key().to_string()),
+                },
+            }
+        } else {
+            None
+        };
+        let Some(translation_key) = translation_key else {
             continue;
         };
         let color_name = dye_color_name(dye_color_id_or_white(Some(layer.color_id)));
@@ -3151,6 +3174,7 @@ impl NativeItemRuntime {
             push_banner_pattern_tooltip_lines(
                 &self.language,
                 &component_patch.banner_pattern_layers,
+                options,
                 lines,
             );
         }
