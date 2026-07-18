@@ -2087,18 +2087,20 @@ pub(crate) fn advance_simulation(
     lightmap_ticks: &mut LightmapTickState,
     level_event_sound_random: &mut LevelEventSoundRandomState,
     terrain_textures: &mut TerrainTextureState,
-    item_runtime: Option<&NativeItemRuntime>,
-    code_of_conduct: Option<&mut CodeOfConductAcceptance>,
+    item_runtime: &mut Option<NativeItemRuntime>,
+    code_of_conduct: &mut CodeOfConductAcceptance,
     commands: Vec<crate::simulation::commands::SequencedSimulationCommand>,
     input_runtime: &mut crate::simulation::input_commands::SimulationInputRuntime,
     level_load_runtime: &mut LevelLoadRuntime,
     platform_effects: &mut crate::simulation::effects::PlatformEffectCollector<'_>,
     render_distance_chunks: u32,
     hide_lightning_flash: bool,
+    now: Instant,
 ) -> SimulationFrameState {
     let pump_started_at = Instant::now();
     let mut audio_events = audio_events;
     let input_screen_was_open = input_screen_is_open(input, world);
+    let mut network_terminated = false;
     if let Some(rx) = net_events.as_mut() {
         let audio_events_for_drain = audio_events
             .as_mut()
@@ -2114,10 +2116,11 @@ pub(crate) fn advance_simulation(
             audio_events_for_drain,
             particle_events_for_drain,
             Some(&mut *particle_batches),
-            item_runtime,
+            item_runtime.as_ref(),
             Some(hud_debug_network_sampler),
             Some(hud_debug_tps_sampler),
             level_event_sound_random,
+            Some(&mut network_terminated),
         );
     }
     let pump_net_drained_at = Instant::now();
@@ -2148,11 +2151,15 @@ pub(crate) fn advance_simulation(
             server_resource_packs,
             particle_runtime,
             item_runtime,
-            code_of_conduct,
+            terrain_textures,
+            code_of_conduct: Some(code_of_conduct),
             entity_partial_tick: client_animation_ticks.entity_partial_tick(),
             platform: platform_effects,
         },
     );
+    if network_terminated {
+        input_runtime.request_network_terminal_shutdown(net_commands, platform_effects);
+    }
     sync_stonecutter_recipe_scroll_state(input, world);
     sync_beacon_effect_selection_state(input, world);
     sync_loom_pattern_state_for_hud(input, world);
@@ -2167,14 +2174,13 @@ pub(crate) fn advance_simulation(
     let _ = hud_stats_screen(
         input,
         world,
-        item_runtime,
+        item_runtime.as_ref(),
         terrain_textures,
         input.item_model_keybind_context(),
         client_animation_ticks.entity_partial_tick(),
         input_runtime.surface_size(),
     );
     let pump_control_synced_at = Instant::now();
-    let now = Instant::now();
     let player_section_ready = input_runtime.player_section_ready(world.client_level_generation());
     level_load_runtime.tick(now, world, net_commands, player_section_ready);
     hud_debug_network_sampler.advance_tick(
@@ -2303,7 +2309,7 @@ pub(crate) fn advance_simulation(
     world.advance_local_using_item_ticks(advanced_ticks);
     let particle_camera_pose = camera_pose_from_world(world);
     let particle_scope_context =
-        particle_local_player_scope_context(world, item_runtime, particle_camera_pose);
+        particle_local_player_scope_context(world, item_runtime.as_ref(), particle_camera_pose);
     let particle_sound_camera_position =
         particle_camera_pose.map(|camera| camera_eye_position(camera).map(f64::from));
     let particle_player_motion_contexts = particle_player_motion_contexts(world);
@@ -2407,7 +2413,8 @@ pub(crate) fn update_renderer_from_publication(
     hud_debug_fps_sampler.record_frame(render_started_at);
     let mut audio_events = audio_events;
     entity_variant_textures.synchronize(world, renderer);
-    if terrain_textures_changed {
+    let render_terrain_textures_changed = terrain_textures.synchronize_biome_registry(world);
+    if terrain_textures_changed || render_terrain_textures_changed {
         terrain_upload.request_reload_all_chunks();
     }
     // Vanilla `Minecraft.tick` handles gameplay input before `ParticleEngine.tick`; render

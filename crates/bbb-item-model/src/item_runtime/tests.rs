@@ -32,6 +32,28 @@ use std::{
 };
 
 #[test]
+fn independent_simulation_projection_copies_catalogs_without_renderer_async_caches() {
+    fn assert_send<T: Send>() {}
+
+    let runtime = NativeItemRuntime::empty_for_test().with_vanilla_item_registry_for_test();
+    runtime.set_local_time_epoch_millis_for_test(1234);
+    runtime.enable_http_profile_resolution();
+    runtime.enable_http_player_skin_downloads(unique_temp_dir("simulation-projection"));
+    let projection = runtime.independent_simulation_projection();
+
+    assert_send::<NativeItemRuntime>();
+    assert_eq!(projection.item_resource_id(0), runtime.item_resource_id(0));
+    assert_eq!(
+        projection.local_time_epoch_millis_override.get(),
+        Some(1234)
+    );
+    assert!(runtime.profile_resolutions.borrow().is_some());
+    assert!(runtime.dynamic_skins.borrow().is_some());
+    assert!(projection.profile_resolutions.borrow().is_none());
+    assert!(projection.dynamic_skins.borrow().is_none());
+}
+
+#[test]
 fn item_runtime_does_not_restore_removed_component_id_aliases() {
     let source = include_str!("../item_runtime.rs");
     for old_alias in [

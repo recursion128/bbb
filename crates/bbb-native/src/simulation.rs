@@ -1,11 +1,10 @@
 //! Native client simulation ownership.
 //!
-//! Phases one through four keep this owner on the winit thread. Phase five
-//! replaces the remaining borrowed resource context with owned simulation
-//! projections and moves this same core to the dedicated thread; it must not
-//! introduce a second mutation path.
+//! Phases one through four kept this owner on the winit thread. Phase five
+//! gives it owned simulation resource projections and moves this same core to
+//! the dedicated thread without introducing a second mutation path.
 
-use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use bbb_control::{AudioCounters, NetCounters, RendererCounters};
 use bbb_item_model::NativeItemRuntime;
@@ -18,6 +17,7 @@ pub(crate) mod commands;
 pub(crate) mod effects;
 pub(crate) mod input_commands;
 pub(crate) mod publication;
+pub(crate) mod thread;
 
 use crate::{
     audio_runtime::AudioEventSink,
@@ -42,10 +42,10 @@ use publication::{SimulationPublication, SimulationPublicationInput, SimulationP
 
 /// The single mutable owner of canonical state and the current client-tick path.
 ///
-/// Fields stay crate-visible while construction remains in `main`, but the
-/// event loop may only call [`SimulationCore::step`]. Winit/control mutation
-/// enters through the typed command mailbox and every render/control read uses
-/// the immutable publication sealed by that step.
+/// Fields stay crate-visible while construction remains in `main`, but only
+/// the named simulation executor calls [`SimulationCore::step`]. Winit/control
+/// mutation enters through the typed command mailbox and every render/control
+/// read uses the immutable publication sealed by that step.
 pub(crate) struct SimulationCore {
     pub(crate) net_events: Option<mpsc::Receiver<NetEvent>>,
     pub(crate) net_commands: Option<mpsc::Sender<NetCommand>>,
@@ -60,27 +60,19 @@ pub(crate) struct SimulationCore {
     pub(crate) lightmap_ticks: LightmapTickState,
     pub(crate) level_event_sound_random: LevelEventSoundRandomState,
     pub(crate) particle_runtime: Option<NativeParticleRuntime>,
+    pub(crate) terrain_textures: TerrainTextureState,
+    pub(crate) item_runtime: Option<NativeItemRuntime>,
+    pub(crate) code_of_conduct: CodeOfConductAcceptance,
     pub(crate) command_mailbox: SimulationMailbox,
     pub(crate) input_runtime: SimulationInputRuntime,
     pub(crate) level_load_runtime: LevelLoadRuntime,
     pub(crate) renderer_counters: RendererCounters,
     pub(crate) audio_counters: AudioCounters,
     pub(crate) publisher: SimulationPublisher,
-    pub(crate) next_effect_sequence: u64,
-}
-
-/// Backend/platform borrows that still surround one synchronous simulation step.
-///
-/// These are deliberately not fields of [`SimulationCore`]. Phase five
-/// replaces these resource and acceptance borrows with owned simulation
-/// projections before the core moves threads.
-pub(crate) struct SimulationStepContext<'a> {
     pub(crate) audio_enabled: bool,
-    pub(crate) terrain_textures: &'a mut TerrainTextureState,
-    pub(crate) item_runtime: Option<&'a NativeItemRuntime>,
-    pub(crate) code_of_conduct: Option<&'a mut CodeOfConductAcceptance>,
     pub(crate) render_distance_chunks: u32,
     pub(crate) hide_lightning_flash: bool,
+    pub(crate) next_effect_sequence: u64,
 }
 
 /// Render-owner borrows used only after the simulation step has sealed its
@@ -106,11 +98,9 @@ pub(crate) struct SimulationRenderContext<'a> {
 }
 
 impl SimulationCore {
-    /// Runs the existing ordered pump through the new single owner.
-    ///
-    /// This remains synchronous in phases one through four. Moving the core to
-    /// a thread changes the executor only after all backend borrows disappear.
-    pub(crate) fn step(&mut self, context: SimulationStepContext<'_>) -> SimulationStepResult {
+    /// Runs one ordered network/command/tick pump at the scheduler's monotonic
+    /// timestamp and publishes its immutable generation.
+    pub(crate) fn step(&mut self, now: Instant) -> SimulationStepResult {
         let effect_sequence = self.next_effect_sequence;
         self.next_effect_sequence = self.next_effect_sequence.saturating_add(1);
         let effects =
@@ -123,8 +113,7 @@ impl SimulationCore {
             &mut self.net_events,
             &self.net_commands,
             &mut self.server_resource_packs,
-            context
-                .audio_enabled
+            self.audio_enabled
                 .then_some(&mut audio_effects as &mut dyn AudioEventSink),
             &mut self.particle_runtime,
             &mut particle_batches,
@@ -139,15 +128,16 @@ impl SimulationCore {
             &mut self.hud_debug_tps_sampler,
             &mut self.lightmap_ticks,
             &mut self.level_event_sound_random,
-            context.terrain_textures,
-            context.item_runtime,
-            context.code_of_conduct,
+            &mut self.terrain_textures,
+            &mut self.item_runtime,
+            &mut self.code_of_conduct,
             commands,
             &mut self.input_runtime,
             &mut self.level_load_runtime,
             &mut platform_effects,
-            context.render_distance_chunks,
-            context.hide_lightning_flash,
+            self.render_distance_chunks,
+            self.hide_lightning_flash,
+            now,
         );
         drop((audio_effects, particle_batches, platform_effects));
         let resource_reload = self.server_resource_packs.take_reload().map(|request| {
@@ -160,6 +150,7 @@ impl SimulationCore {
         });
         let tick_anchor = frame.tick_anchor();
         let publication = self.publisher.publish(SimulationPublicationInput {
+            effect_sequence,
             world: &self.world,
             input: &self.input,
             input_runtime: self.input_runtime.publication(),
@@ -175,11 +166,28 @@ impl SimulationCore {
             camera_fov_ticks: self.camera_fov_ticks,
             hud_debug_network_sampler: &self.hud_debug_network_sampler,
             hud_debug_tps_sampler: &self.hud_debug_tps_sampler,
+            code_of_conduct_accepted: self
+                .code_of_conduct
+                .current_world_acceptance_matches(&self.world),
         });
         SimulationStepResult {
             effects: effects.finish(resource_reload),
-            publication,
+            running: publication.running,
         }
+    }
+
+    pub(crate) fn next_tick_deadline(&self, now: Instant) -> Instant {
+        let residual = f64::from(self.client_animation_ticks.entity_partial_tick());
+        let remaining = (1.0 - residual).clamp(0.0, 1.0);
+        let delay = self
+            .world_tick_interval()
+            .mul_f64(remaining)
+            .max(Duration::from_micros(1));
+        now.checked_add(delay).unwrap_or(now)
+    }
+
+    fn world_tick_interval(&self) -> Duration {
+        crate::runtime::world_client_tick_interval(&self.world)
     }
 }
 
@@ -192,37 +200,48 @@ pub(crate) fn update_renderer_from_publication(
 
 pub(crate) struct SimulationStepResult {
     effects: effects::RenderEffectBatch,
-    publication: Arc<SimulationPublication>,
+    running: bool,
 }
 
 impl SimulationStepResult {
+    pub(crate) fn running(&self) -> bool {
+        self.running
+    }
+
     pub(crate) fn consume_render_effects(
         self,
         consumer: &mut effects::RenderEffectConsumer,
         audio: Option<&mut dyn AudioEventSink>,
         render: &mut dyn effects::RenderEffectSink,
-    ) -> Result<
-        (
-            Arc<SimulationPublication>,
-            Option<effects::ResourceReloadEffect>,
-        ),
-        effects::RenderEffectSequenceError,
-    > {
-        let reload = consumer.consume(self.effects, audio, render)?;
-        Ok((self.publication, reload))
+    ) -> Result<Option<effects::ResourceReloadEffect>, effects::RenderEffectSequenceError> {
+        consumer.consume(self.effects, audio, render)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{SimulationCore, SimulationStepResult};
+
     #[test]
-    fn main_routes_both_pump_sites_through_the_single_simulation_owner() {
-        let source = include_str!("main.rs");
-        assert!(source.contains("let mut simulation = SimulationCore"));
-        assert_eq!(source.matches(".step(SimulationStepContext").count(), 2);
-        assert_eq!(source.matches(".consume_render_effects(").count(), 2);
-        assert!(!source.contains("pump_network_and_terrain("));
-        assert!(!source.contains(".server_resource_packs.take_reload("));
+    fn core_and_step_output_cross_the_thread_boundary_without_shared_mutation() {
+        fn assert_send<T: Send>() {}
+        assert_send::<SimulationCore>();
+        assert_send::<SimulationStepResult>();
+    }
+
+    #[test]
+    fn main_spawns_one_named_simulation_owner_and_only_consumes_its_outputs() {
+        let main = include_str!("main.rs");
+        let thread = include_str!("simulation/thread.rs");
+        assert!(main.contains("let simulation = SimulationCore"));
+        assert_eq!(main.matches("SimulationThread::spawn(").count(), 1);
+        assert_eq!(main.matches(".consume_render_effects(").count(), 1);
+        assert!(!main.contains("SimulationStepContext"));
+        assert!(!main.contains("simulation.step("));
+        assert_eq!(thread.matches("core.step(now)").count(), 1);
+        assert!(thread.contains(".name(\"bbb-simulation\".to_string())"));
+        assert!(!main.contains("pump_network_and_terrain("));
+        assert!(!main.contains(".server_resource_packs.take_reload("));
     }
 
     #[test]
@@ -259,11 +278,10 @@ mod tests {
     #[test]
     fn render_and_event_loop_cannot_read_the_live_simulation_owner() {
         let main = include_str!("main.rs");
-        assert_eq!(
-            main.matches("simulation.step(SimulationStepContext")
-                .count(),
-            2
-        );
+        assert_eq!(main.matches("update_renderer_from_publication(").count(), 1);
+        assert!(main.contains(
+            "latest_publication.effect_sequence <= render_effect_consumer.last_sequence()"
+        ));
         for forbidden in [
             "simulation.world",
             "simulation.input",
@@ -271,6 +289,7 @@ mod tests {
             "simulation.net_commands",
             "simulation.client_animation_ticks",
             "simulation.update_renderer",
+            "simulation.step",
         ] {
             assert!(
                 !main.contains(forbidden),

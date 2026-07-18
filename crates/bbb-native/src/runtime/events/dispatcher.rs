@@ -110,6 +110,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks(
         None,
         None,
         level_event_sound_random,
+        None,
     )
 }
 
@@ -125,6 +126,7 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
     mut hud_debug_network_sampler: Option<&mut HudDebugNetworkSampler>,
     mut hud_debug_tps_sampler: Option<&mut HudDebugTpsSampler>,
     level_event_sound_random: &mut LevelEventSoundRandomState,
+    mut network_terminal: Option<&mut bool>,
 ) -> usize {
     let mut drained = 0;
     while drained < 4096 {
@@ -133,10 +135,18 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             Err(mpsc::error::TryRecvError::Empty) => break,
             Err(mpsc::error::TryRecvError::Disconnected) => {
                 counters.connected = false;
+                if let Some(terminal) = network_terminal.as_deref_mut() {
+                    *terminal = true;
+                }
                 break;
             }
         };
         drained += 1;
+        if matches!(&event, NetEvent::Disconnected { .. }) {
+            if let Some(terminal) = network_terminal.as_deref_mut() {
+                *terminal = true;
+            }
+        }
 
         if let Some(sampler) = hud_debug_network_sampler.as_deref_mut() {
             sampler.record_net_event(&event);
@@ -1573,4 +1583,40 @@ fn camera_audio_position_from_world(world: &WorldStore) -> Option<ProtocolVec3d>
         y: pose.position.y + pose.eye_height(),
         z: pose.position.z,
     })
+}
+
+#[cfg(test)]
+mod terminal_tests {
+    use super::*;
+
+    #[test]
+    fn terminal_flag_observes_connected_and_disconnected_in_one_drain() {
+        let (tx, mut rx) = mpsc::channel(4);
+        tx.try_send(NetEvent::Connected).unwrap();
+        tx.try_send(NetEvent::Disconnected { reason: None })
+            .unwrap();
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+        let mut random = LevelEventSoundRandomState::with_seed(0);
+        let mut terminal = false;
+
+        let drained = drain_net_events_with_sinks_and_debug(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            &mut random,
+            Some(&mut terminal),
+        );
+
+        assert_eq!(drained, 2);
+        assert!(terminal);
+        assert!(!counters.connected);
+    }
 }

@@ -245,6 +245,10 @@ pub(crate) struct RenderEffectConsumer {
 }
 
 impl RenderEffectConsumer {
+    pub(crate) fn last_sequence(&self) -> u64 {
+        self.last_sequence
+    }
+
     pub(crate) fn consume(
         &mut self,
         batch: RenderEffectBatch,

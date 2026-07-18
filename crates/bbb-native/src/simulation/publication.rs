@@ -25,6 +25,7 @@ pub(crate) type SharedSimulationPublication = Arc<ArcSwap<SimulationPublication>
 #[derive(Debug)]
 pub(crate) struct SimulationPublication {
     pub(crate) generation: u64,
+    pub(crate) effect_sequence: u64,
     pub(crate) client_tick_index: u64,
     pub(crate) world: Arc<WorldStore>,
     pub(crate) input: Arc<ClientInputState>,
@@ -35,6 +36,7 @@ pub(crate) struct SimulationPublication {
     pub(crate) tick_anchor: Instant,
     pub(crate) frozen: bool,
     pub(crate) running: bool,
+    pub(crate) code_of_conduct_accepted: bool,
     pub(crate) terrain_revision: u64,
     pub(crate) client_level_generation: u64,
     pub(crate) net_counters: NetCounters,
@@ -50,6 +52,12 @@ impl SimulationPublication {
     /// simulation. A renderer delayed beyond the next tick clamps rather than
     /// extrapolating canonical state.
     pub(crate) fn partial_tick_at(&self, now: Instant) -> f32 {
+        // `DeltaTracker.Timer.getGameTimeDeltaPartialTick(false)` returns one
+        // while the level tick-rate manager is frozen (vanilla 26.1
+        // `DeltaTracker.java`), regardless of the carried timer residual.
+        if self.frozen {
+            return 1.0;
+        }
         let elapsed = now.saturating_duration_since(self.tick_anchor);
         let interval_seconds = self.tick_interval.as_secs_f32();
         let advanced = if interval_seconds > 0.0 {
@@ -69,6 +77,7 @@ pub(crate) struct SimulationPublisher {
 }
 
 pub(crate) struct SimulationPublicationInput<'a> {
+    pub(crate) effect_sequence: u64,
     pub(crate) world: &'a WorldStore,
     pub(crate) input: &'a ClientInputState,
     pub(crate) input_runtime: SimulationInputPublication,
@@ -78,6 +87,7 @@ pub(crate) struct SimulationPublicationInput<'a> {
     pub(crate) tick_residual: f32,
     pub(crate) tick_anchor: Instant,
     pub(crate) running: bool,
+    pub(crate) code_of_conduct_accepted: bool,
     pub(crate) net_counters: &'a NetCounters,
     pub(crate) renderer_counters: &'a RendererCounters,
     pub(crate) audio_counters: &'a AudioCounters,
@@ -128,6 +138,7 @@ fn build_publication(
     let world = Arc::new(input.world.clone());
     Arc::new(SimulationPublication {
         generation,
+        effect_sequence: input.effect_sequence,
         client_tick_index: input.client_tick_index,
         terrain_revision: world.terrain_revision(),
         client_level_generation: world.client_level_generation(),
@@ -140,6 +151,7 @@ fn build_publication(
         tick_residual: input.tick_residual,
         tick_anchor: input.tick_anchor,
         running: input.running,
+        code_of_conduct_accepted: input.code_of_conduct_accepted,
         net_counters: input.net_counters.clone(),
         renderer_counters: input.renderer_counters.clone(),
         audio_counters: input.audio_counters.clone(),
@@ -192,6 +204,7 @@ mod tests {
         now: Instant,
     ) -> SimulationPublicationInput<'a> {
         SimulationPublicationInput {
+            effect_sequence: 0,
             world,
             input: client_input,
             input_runtime: input_runtime.publication(),
@@ -201,6 +214,7 @@ mod tests {
             tick_residual: 0.25,
             tick_anchor: now,
             running: true,
+            code_of_conduct_accepted: false,
             net_counters: net,
             renderer_counters: renderer,
             audio_counters: audio,
@@ -284,6 +298,26 @@ mod tests {
             publication.partial_tick_at(now + Duration::from_millis(100)),
             1.0
         );
+
+        let mut frozen_input = input(
+            &world,
+            &client_input,
+            &input_runtime,
+            &net,
+            &renderer,
+            &audio,
+            &network,
+            &tps,
+            now,
+        );
+        let mut frozen_world = world.clone();
+        frozen_world.apply_ticking_state(bbb_protocol::packets::TickingState {
+            tick_rate: 20.0,
+            frozen: true,
+        });
+        frozen_input.world = &frozen_world;
+        let frozen = build_publication(2, frozen_input);
+        assert_eq!(frozen.partial_tick_at(now), 1.0);
     }
 
     #[test]

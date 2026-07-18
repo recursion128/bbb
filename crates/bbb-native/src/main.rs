@@ -78,10 +78,10 @@ use resource_reload::{
 };
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, narrate_command_suggestion_change,
-    request_net_disconnect, snapshot_is_running, world_client_tick_interval, CameraFovTickState,
-    ClientAnimationTickState, DebugCollisionCache, DebugSkyLightSectionCache,
-    DebugSupportingBlockCache, HudDebugFpsSampler, HudDebugNetworkSampler, HudDebugTpsSampler,
-    HudRenderRuntime, LevelEventSoundRandomState, LightmapTickState,
+    snapshot_is_running, world_client_tick_interval, CameraFovTickState, ClientAnimationTickState,
+    DebugCollisionCache, DebugSkyLightSectionCache, DebugSupportingBlockCache, HudDebugFpsSampler,
+    HudDebugNetworkSampler, HudDebugTpsSampler, HudRenderRuntime, LevelEventSoundRandomState,
+    LightmapTickState,
 };
 use simulation::{
     commands::{SimulationCommand, SimulationMailbox},
@@ -90,8 +90,8 @@ use simulation::{
         StatsScreenInput,
     },
     publication::{SimulationPublicationInput, SimulationPublisher},
+    thread::SimulationThread,
     update_renderer_from_publication, SimulationCore, SimulationRenderContext,
-    SimulationStepContext,
 };
 use sky_assets::load_sky_textures;
 use startup::{
@@ -345,6 +345,7 @@ fn main() -> Result<()> {
         &args,
         &mut code_of_conduct_acceptance,
         known_packs_manager,
+        &simulation_mailbox,
     )?;
     let profile_id = args
         .profile_id
@@ -566,7 +567,6 @@ fn main() -> Result<()> {
         args.hide_lightning_flash,
     );
     let level_event_sound_random = LevelEventSoundRandomState::with_seed(world.next_sound_seed());
-    let mut net_disconnect_requested = false;
     let mut cursor_captured = false;
     let frame_interval = client_framerate_limit_interval(args.client_framerate_limit);
     let mut next_redraw_at = Instant::now();
@@ -582,6 +582,7 @@ fn main() -> Result<()> {
     let renderer_counters = control_renderer_counters(renderer.counters());
     let publisher = SimulationPublisher::new(
         SimulationPublicationInput {
+            effect_sequence: 0,
             world: &world,
             input: &input,
             input_runtime: simulation_input_runtime.publication(),
@@ -591,6 +592,7 @@ fn main() -> Result<()> {
             tick_residual: client_animation_ticks.entity_partial_tick(),
             tick_anchor: Instant::now(),
             running: true,
+            code_of_conduct_accepted: false,
             net_counters: &net_counters,
             renderer_counters: &renderer_counters,
             audio_counters: &audio_status,
@@ -602,8 +604,10 @@ fn main() -> Result<()> {
         published_world.clone(),
     );
     let shared_publication = publisher.shared();
-    let event_loop_net_commands = net_commands.clone();
-    let mut simulation = SimulationCore {
+    let simulation_item_runtime = item_runtime
+        .as_ref()
+        .map(NativeItemRuntime::independent_simulation_projection);
+    let simulation = SimulationCore {
         net_events,
         net_commands,
         server_resource_packs: server_resource_pack_runtime,
@@ -617,22 +621,120 @@ fn main() -> Result<()> {
         lightmap_ticks,
         level_event_sound_random,
         particle_runtime,
+        terrain_textures: terrain_textures.clone(),
+        item_runtime: simulation_item_runtime,
+        code_of_conduct: code_of_conduct_acceptance,
         command_mailbox: simulation_mailbox.clone(),
         input_runtime: simulation_input_runtime,
         level_load_runtime: LevelLoadRuntime::default(),
         renderer_counters,
         audio_counters: audio_status.clone(),
         publisher,
+        audio_enabled: audio_runtime.is_some(),
+        render_distance_chunks: args.render_distance_chunks,
+        hide_lightning_flash: args.hide_lightning_flash,
         next_effect_sequence: 1,
     };
+    let simulation_event_proxy = event_loop.create_proxy();
+    let mut simulation_thread = SimulationThread::spawn(simulation, move || {
+        let _ = simulation_event_proxy.send_event(());
+    })?;
+    let mut render_publication = shared_publication.load_full();
 
     event_loop.run(move |event, target| {
+        if matches!(&event, Event::LoopExiting) {
+            set_cursor_capture(&window, &mut cursor_captured, false);
+            if let Err(error) = simulation_thread.shutdown_and_join() {
+                tracing::error!(%error, "failed to join simulation thread during shutdown");
+            }
+            snapshot.rcu(|current| {
+                let mut next = (**current).clone();
+                next.app.running = false;
+                next.net.connected = false;
+                next
+            });
+            return;
+        }
+        let mut resource_reloads = Vec::new();
+        loop {
+            let simulation_step = match simulation_thread.try_recv() {
+                Ok(step) => step,
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+            };
+            let render_effect_result = {
+                let mut render_effect_sink = NativeRenderEffectSink {
+                    renderer: &mut renderer,
+                    window: &window,
+                    cursor_captured: &mut cursor_captured,
+                    mailbox: &simulation_mailbox,
+                    clipboard: &mut debug_clipboard,
+                    terrain_upload: &mut terrain_upload,
+                    debug_profiler: &mut debug_profiler,
+                    stats_screen_narration: &mut stats_screen_narration,
+                    control_screenshots: &mut pending_control_screenshots,
+                    exit_requested: &mut platform_exit_requested,
+                };
+                simulation_step.consume_render_effects(
+                    &mut render_effect_consumer,
+                    audio_runtime
+                        .as_mut()
+                        .map(|runtime| runtime as &mut dyn AudioEventSink),
+                    &mut render_effect_sink,
+                )
+            };
+            match render_effect_result {
+                Ok(Some(reload)) => resource_reloads.push(reload),
+                Ok(None) => {}
+                Err(error) => {
+                    tracing::error!(%error, "fatal simulation render-effect sequence gap");
+                    target.exit();
+                    return;
+                }
+            }
+        }
+        for resource_reload in resource_reloads {
+            let ack = apply_server_resource_pack_reload_effect(
+                resource_reload,
+                &base_pack_roots,
+                &mut pack_roots,
+                &mut audio_runtime,
+                &mut audio_status,
+                &mut particle_render_runtime,
+                &mut item_runtime,
+                &mut terrain_textures,
+                &mut entity_variant_textures,
+                &mut terrain_upload,
+                &mut renderer,
+                &args.client_locale,
+                client_particle_status,
+                &player_skin_cache_dir,
+            );
+            simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
+                renderer.hud_text_measurements(),
+            ));
+            simulation_mailbox.enqueue(SimulationCommand::ResourceReloadAck(ack));
+        }
+        let latest_publication = shared_publication.load_full();
+        if latest_publication.effect_sequence <= render_effect_consumer.last_sequence() {
+            render_publication = latest_publication;
+        }
+        if let Some(result) = simulation_thread.poll_finished() {
+            if let Err(error) = result {
+                tracing::error!(%error, "simulation thread failed");
+            }
+            target.exit();
+            return;
+        }
+        if platform_exit_requested || !render_publication.running {
+            target.exit();
+            return;
+        }
         if let Some(narrator) = narrator_runtime.as_mut() {
             narrator.tick();
         }
-        let latest_publication = shared_publication.load_full();
         narrate_command_suggestion_change(
-            latest_publication.input.command_suggestion_narration(),
+            render_publication.input.command_suggestion_narration(),
             &mut last_command_suggestion_narration,
             item_runtime.as_ref(),
             narrator_runtime
@@ -663,53 +765,12 @@ fn main() -> Result<()> {
                         drain_dynamic_player_skin_downloads(items, &mut renderer);
                     }
                     let profiler_update_started_at = Instant::now();
-                    let simulation_step = simulation.step(SimulationStepContext {
-                        audio_enabled: audio_runtime.is_some(),
-                        terrain_textures: &mut terrain_textures,
-                        item_runtime: item_runtime.as_ref(),
-                        code_of_conduct: Some(&mut code_of_conduct_acceptance),
-                        render_distance_chunks: args.render_distance_chunks,
-                        hide_lightning_flash: args.hide_lightning_flash,
-                    });
-                    let render_effect_result = {
-                        let mut render_effect_sink = NativeRenderEffectSink {
-                            renderer: &mut renderer,
-                            window: &window,
-                            cursor_captured: &mut cursor_captured,
-                            mailbox: &simulation_mailbox,
-                            clipboard: &mut debug_clipboard,
-                            terrain_upload: &mut terrain_upload,
-                            debug_profiler: &mut debug_profiler,
-                            stats_screen_narration: &mut stats_screen_narration,
-                            control_screenshots: &mut pending_control_screenshots,
-                            exit_requested: &mut platform_exit_requested,
-                        };
-                        simulation_step.consume_render_effects(
-                            &mut render_effect_consumer,
-                            audio_runtime
-                                .as_mut()
-                                .map(|runtime| runtime as &mut dyn AudioEventSink),
-                            &mut render_effect_sink,
-                        )
-                    };
-                    let (publication, resource_reload) = match render_effect_result {
-                        Ok(result) => result,
-                        Err(error) => {
-                            tracing::error!(%error, "fatal simulation render-effect sequence gap");
-                            target.exit();
-                            return;
-                        }
-                    };
-                    if platform_exit_requested {
-                        target.exit();
-                        return;
-                    }
-                    if !publication.running {
-                        target.exit();
+                    if render_publication.frame.is_none() {
+                        window.request_redraw();
                         return;
                     }
                     update_renderer_from_publication(
-                        &publication,
+                        &render_publication,
                         SimulationRenderContext {
                             audio_events: audio_runtime
                                 .as_mut()
@@ -735,30 +796,8 @@ fn main() -> Result<()> {
                     if let Some(particles) = particle_render_runtime.as_mut() {
                         particles.maybe_upload_particle_atlas_animation(&mut renderer);
                     }
-                    if let Some(resource_reload) = resource_reload {
-                        let ack = apply_server_resource_pack_reload_effect(
-                            resource_reload,
-                            &base_pack_roots,
-                            &mut pack_roots,
-                            &mut audio_runtime,
-                            &mut audio_status,
-                            &mut particle_render_runtime,
-                            &mut item_runtime,
-                            &mut terrain_textures,
-                            &mut entity_variant_textures,
-                            &mut terrain_upload,
-                            &mut renderer,
-                            &args.client_locale,
-                            client_particle_status,
-                            &player_skin_cache_dir,
-                        );
-                        simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
-                            renderer.hud_text_measurements(),
-                        ));
-                        simulation_mailbox.enqueue(SimulationCommand::ResourceReloadAck(ack));
-                    }
                     stats_screen_narration.tick(
-                        publication
+                        render_publication
                             .world
                             .stats_screen_is_open()
                             .then(|| hud_render_runtime.stats_screen_narration())
@@ -768,9 +807,9 @@ fn main() -> Result<()> {
                             .as_mut()
                             .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
                     );
-                    let dialog_preedit = publication.input.dialog_ime_preedit_hud_state();
+                    let dialog_preedit = render_publication.input.dialog_ime_preedit_hud_state();
                     if let Some((position, size)) = dialog_ime_cursor_area(
-                        &publication.world,
+                        &render_publication.world,
                         dialog_preedit.as_ref(),
                         window.inner_size(),
                         &renderer,
@@ -780,10 +819,9 @@ fn main() -> Result<()> {
                     let profiler_update_duration = profiler_update_started_at.elapsed();
                     code_of_conduct_overlay_renderer.update_renderer(
                         &mut renderer,
-                        &publication.world,
-                        publication.input_runtime.code_of_conduct_overlay,
-                        code_of_conduct_acceptance
-                            .current_world_acceptance_matches(&publication.world),
+                        &render_publication.world,
+                        render_publication.input_runtime.code_of_conduct_overlay,
+                        render_publication.code_of_conduct_accepted,
                     );
 
                     let terrain_ready_for_screenshot =
@@ -825,9 +863,9 @@ fn main() -> Result<()> {
                     });
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
                     let profiler_frame_duration = profiler_frame_started_at.elapsed();
-                    // A frame this slow starves the synthetic-input queue and
-                    // every per-frame consumer; the section split tells which
-                    // stage to blame from the session log alone.
+                    // Simulation now advances independently; this warning
+                    // localizes render-owner latency and any effect backlog
+                    // without implying that canonical input or ticks stalled.
                     if profiler_frame_duration > std::time::Duration::from_secs(1) {
                         tracing::warn!(
                             frame_millis = profiler_frame_duration.as_millis() as u64,
@@ -870,7 +908,6 @@ fn main() -> Result<()> {
             }
             Event::UserEvent(()) => {
                 if !snapshot_is_running(&snapshot) {
-                    request_net_disconnect(&event_loop_net_commands, &mut net_disconnect_requested);
                     target.exit();
                     return;
                 }
@@ -880,146 +917,12 @@ fn main() -> Result<()> {
             }
             Event::AboutToWait => {
                 if !snapshot_is_running(&snapshot) {
-                    request_net_disconnect(&event_loop_net_commands, &mut net_disconnect_requested);
                     target.exit();
                     return;
                 }
-                if let Some(items) = item_runtime.as_ref() {
-                    items.drain_profile_resolution_results();
-                    drain_dynamic_player_skin_downloads(items, &mut renderer);
-                }
-                let simulation_step = simulation.step(SimulationStepContext {
-                    audio_enabled: audio_runtime.is_some(),
-                    terrain_textures: &mut terrain_textures,
-                    item_runtime: item_runtime.as_ref(),
-                    code_of_conduct: Some(&mut code_of_conduct_acceptance),
-                    render_distance_chunks: args.render_distance_chunks,
-                    hide_lightning_flash: args.hide_lightning_flash,
-                });
-                let render_effect_result = {
-                    let mut render_effect_sink = NativeRenderEffectSink {
-                        renderer: &mut renderer,
-                        window: &window,
-                        cursor_captured: &mut cursor_captured,
-                        mailbox: &simulation_mailbox,
-                        clipboard: &mut debug_clipboard,
-                        terrain_upload: &mut terrain_upload,
-                        debug_profiler: &mut debug_profiler,
-                        stats_screen_narration: &mut stats_screen_narration,
-                        control_screenshots: &mut pending_control_screenshots,
-                        exit_requested: &mut platform_exit_requested,
-                    };
-                    simulation_step.consume_render_effects(
-                        &mut render_effect_consumer,
-                        audio_runtime
-                            .as_mut()
-                            .map(|runtime| runtime as &mut dyn AudioEventSink),
-                        &mut render_effect_sink,
-                    )
-                };
-                let (publication, resource_reload) = match render_effect_result {
-                    Ok(result) => result,
-                    Err(error) => {
-                        tracing::error!(%error, "fatal simulation render-effect sequence gap");
-                        target.exit();
-                        return;
-                    }
-                };
-                if platform_exit_requested {
-                    target.exit();
-                    return;
-                }
-                if !publication.running {
-                    target.exit();
-                    return;
-                }
-                update_renderer_from_publication(
-                    &publication,
-                    SimulationRenderContext {
-                        audio_events: audio_runtime
-                            .as_mut()
-                            .map(|runtime| runtime as &mut dyn AudioEventSink),
-                        renderer: &mut renderer,
-                        mailbox: &simulation_mailbox,
-                        terrain_upload: &mut terrain_upload,
-                        terrain_textures: &mut terrain_textures,
-                        entity_variant_textures: &mut entity_variant_textures,
-                        item_runtime: item_runtime.as_ref(),
-                        hud_render_runtime: &mut hud_render_runtime,
-                        hud_debug_fps_sampler: &mut hud_debug_fps_sampler,
-                        debug_collision_cache: &mut debug_collision_cache,
-                        debug_supporting_block_cache: &mut debug_supporting_block_cache,
-                        debug_sky_light_section_cache: &mut debug_sky_light_section_cache,
-                        render_distance_chunks: args.render_distance_chunks,
-                        client_framerate_limit: args.client_framerate_limit,
-                        client_vsync: args.client_vsync,
-                        damage_tilt_strength: args.damage_tilt_strength,
-                        hud_debug_profiler_chart: debug_profiler.chart(),
-                    },
-                );
-                if let Some(particles) = particle_render_runtime.as_mut() {
-                    particles.maybe_upload_particle_atlas_animation(&mut renderer);
-                }
-                if let Some(resource_reload) = resource_reload {
-                    let ack = apply_server_resource_pack_reload_effect(
-                        resource_reload,
-                        &base_pack_roots,
-                        &mut pack_roots,
-                        &mut audio_runtime,
-                        &mut audio_status,
-                        &mut particle_render_runtime,
-                        &mut item_runtime,
-                        &mut terrain_textures,
-                        &mut entity_variant_textures,
-                        &mut terrain_upload,
-                        &mut renderer,
-                        &args.client_locale,
-                        client_particle_status,
-                        &player_skin_cache_dir,
-                    );
-                    simulation_mailbox.enqueue(SimulationCommand::TextMeasurements(
-                        renderer.hud_text_measurements(),
-                    ));
-                    simulation_mailbox.enqueue(SimulationCommand::ResourceReloadAck(ack));
-                }
-                stats_screen_narration.tick(
-                    publication
-                        .world
-                        .stats_screen_is_open()
-                        .then(|| hud_render_runtime.stats_screen_narration())
-                        .flatten(),
-                    Instant::now(),
-                    narrator_runtime
-                        .as_mut()
-                        .map(|narrator| narrator as &mut dyn narrator_runtime::SystemNarrator),
-                );
-                code_of_conduct_overlay_renderer.update_renderer(
-                    &mut renderer,
-                    &publication.world,
-                    publication.input_runtime.code_of_conduct_overlay,
-                    code_of_conduct_acceptance.current_world_acceptance_matches(&publication.world),
-                );
-                let audio_counters = audio_runtime
-                    .as_ref()
-                    .map(NativeAudioRuntime::counters)
-                    .unwrap_or_else(|| audio_status.clone());
-                simulation_mailbox.enqueue(SimulationCommand::BackendCounters {
-                    renderer: control_renderer_counters(renderer.counters()),
-                    audio: audio_counters,
-                });
                 if frame_interval.is_none() || Instant::now() >= next_redraw_at {
                     window.request_redraw();
                 }
-            }
-            Event::LoopExiting => {
-                set_cursor_capture(&window, &mut cursor_captured, false);
-                request_net_disconnect(&event_loop_net_commands, &mut net_disconnect_requested);
-                snapshot.rcu(|current| {
-                    let mut next = (**current).clone();
-                    next.app.running = false;
-                    next.net.connected = false;
-                    next
-                });
             }
             _ => {}
         }

@@ -105,15 +105,34 @@ impl SimulationInputRuntime {
             .is_some_and(|(generation, ready)| generation == level_generation && ready)
     }
 
+    pub(crate) fn request_network_terminal_shutdown(
+        &mut self,
+        net_commands: &Option<mpsc::Sender<NetCommand>>,
+        platform: &mut PlatformEffectCollector<'_>,
+    ) {
+        if self.shutdown_requested {
+            return;
+        }
+        self.shutdown_requested = true;
+        request_net_disconnect(net_commands, &mut self.net_disconnect_requested);
+        platform.submit(PlatformEffect::Exit);
+    }
+
     pub(crate) fn apply_commands(
         &mut self,
         commands: Vec<SequencedSimulationCommand>,
         context: &mut SimulationInputContext<'_, '_>,
     ) {
         for command in commands {
+            if self.shutdown_requested {
+                break;
+            }
             debug_assert!(command.sequence > self.last_applied_sequence);
             self.last_applied_sequence = command.sequence;
             self.apply_command(command.command, context);
+        }
+        if self.shutdown_requested {
+            return;
         }
         let queued_effects = RefCell::new(Vec::new());
         let mut clipboard = SimulationClipboard {
@@ -349,7 +368,7 @@ impl SimulationInputRuntime {
                 Some(context.world),
                 Some(&mut terrain_reload),
                 Some(&mut clipboard),
-                context.item_runtime,
+                context.item_runtime.as_ref(),
                 context.net_counters,
                 context.net_commands,
             )
@@ -448,7 +467,7 @@ impl SimulationInputRuntime {
             context.net_counters,
             context.world,
             context.net_commands,
-            context.item_runtime,
+            context.item_runtime.as_ref(),
             physical_key,
             state,
             self.surface_size,
@@ -658,7 +677,7 @@ impl SimulationInputRuntime {
             context.net_counters,
             context.world,
             context.net_commands,
-            context.item_runtime,
+            context.item_runtime.as_ref(),
             text,
         );
     }
@@ -832,7 +851,7 @@ impl SimulationInputRuntime {
                 context.world,
                 context.net_counters,
                 context.net_commands,
-                context.item_runtime,
+                context.item_runtime.as_ref(),
                 button,
                 state,
                 self.cursor_position,
@@ -1017,7 +1036,7 @@ impl SimulationInputRuntime {
             context.net_counters,
             context.world,
             context.net_commands,
-            context.item_runtime,
+            context.item_runtime.as_ref(),
             self.code_of_conduct_overlay.is_visible(context.world),
             self.surface_size,
             context.entity_partial_tick,
@@ -1037,12 +1056,7 @@ impl SimulationInputRuntime {
     }
 
     fn request_shutdown(&mut self, context: &mut SimulationInputContext<'_, '_>) {
-        if self.shutdown_requested {
-            return;
-        }
-        self.shutdown_requested = true;
-        request_net_disconnect(context.net_commands, &mut self.net_disconnect_requested);
-        context.platform.submit(PlatformEffect::Exit);
+        self.request_network_terminal_shutdown(context.net_commands, context.platform);
     }
 }
 
@@ -1055,7 +1069,8 @@ pub(crate) struct SimulationInputContext<'a, 'collector> {
     pub(crate) net_commands: &'a Option<mpsc::Sender<NetCommand>>,
     pub(crate) server_resource_packs: &'a mut ServerResourcePackRuntime,
     pub(crate) particle_runtime: &'a mut Option<crate::particle_runtime::NativeParticleRuntime>,
-    pub(crate) item_runtime: Option<&'a NativeItemRuntime>,
+    pub(crate) item_runtime: &'a mut Option<NativeItemRuntime>,
+    pub(crate) terrain_textures: &'a mut crate::terrain_runtime::TerrainTextureState,
     pub(crate) code_of_conduct: Option<&'a mut CodeOfConductAcceptance>,
     pub(crate) entity_partial_tick: f32,
     pub(crate) platform: &'a mut PlatformEffectCollector<'collector>,
@@ -1086,6 +1101,8 @@ fn apply_resource_reload_ack(
                 .world
                 .set_default_block_sound_profiles(commit.block_sound_profiles);
             *context.particle_runtime = Some(commit.particle_runtime);
+            *context.item_runtime = Some(commit.item_runtime);
+            *context.terrain_textures = commit.terrain_textures;
             tracing::info!(
                 generation = ack.generation,
                 "applied server resource pack reload"
@@ -1244,5 +1261,25 @@ mod tests {
 
         runtime.terrain_readiness = Some((8, false));
         assert!(!runtime.player_section_ready(8));
+    }
+
+    #[test]
+    fn network_terminal_shutdown_is_idempotent_and_requests_disconnect() {
+        let mut runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let (tx, mut rx) = mpsc::channel(2);
+        let effects = crate::simulation::effects::RenderEffectCollector::new(
+            1,
+            bbb_control::AudioCounters::default(),
+        );
+        let mut platform = effects.platform();
+
+        runtime.request_network_terminal_shutdown(&Some(tx), &mut platform);
+        runtime.request_network_terminal_shutdown(&None, &mut platform);
+
+        assert!(!runtime.running());
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::Disconnect)));
+        assert!(rx.try_recv().is_err());
+        drop(platform);
+        let _batch = effects.finish(None);
     }
 }

@@ -48,6 +48,8 @@ struct PreparedNativeResourceReload {
 
 pub(crate) struct ResourceReloadSimulationCommit {
     pub(crate) particle_runtime: NativeParticleRuntime,
+    pub(crate) item_runtime: NativeItemRuntime,
+    pub(crate) terrain_textures: TerrainTextureState,
     pub(crate) item_defaults: ItemRuntimeWorldDefaults,
     pub(crate) block_destroy_profiles: BTreeMap<String, WorldBlockDestroyProfile>,
     pub(crate) block_sound_profiles: BTreeMap<String, WorldBlockSoundProfile>,
@@ -192,6 +194,8 @@ fn apply_native_resource_reload(
 
     let NativeParticleResources { simulation, render } = prepared.particles;
     let item_defaults = ItemRuntimeWorldDefaults::from_runtime(&prepared.items);
+    let simulation_items = prepared.items.independent_simulation_projection();
+    let simulation_terrain_textures = next_terrain_textures.clone();
     *terrain_textures = next_terrain_textures;
     *entity_variant_textures = NativeEntityVariantTextureRuntime::new(Some(prepared.roots.clone()));
     *particle_render_runtime = Some(render);
@@ -200,6 +204,8 @@ fn apply_native_resource_reload(
     terrain_upload.request_reload_all_chunks();
     Ok(ResourceReloadSimulationCommit {
         particle_runtime: simulation,
+        item_runtime: simulation_items,
+        terrain_textures: simulation_terrain_textures,
         item_defaults,
         block_destroy_profiles: prepared.block_destroy_profiles,
         block_sound_profiles: prepared.block_sound_profiles,

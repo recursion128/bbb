@@ -19368,3 +19368,24 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   stale readiness 与 live-owner source guards 均有 focused regression；完整 `bbb-native` 2135 项
   回归通过。本 phase 在提交 tip 运行 full gate，下一阶段只推进 thread activation、deadline/
   wakeup、join/failure propagation 与 slow-render isolation。
+
+## 2026-07-18：模拟/渲染拆分 phase 5 thread activation
+
+- [x] `SimulationCore` 移入唯一命名 `bbb-simulation` 线程；scheduler 在 vanilla client-tick
+  deadline 到期时运行，并由 typed mailbox 或有序 network-event forwarder 的同一 condition
+  variable generation 立即唤醒。step 显式采样单调时刻，保留 packet/command-before-tick、
+  10-tick catch-up cap、动态 tick interval/residual 与 frozen partial-tick=1 语义；winit 主循环
+  不再调用 step，也没有 selectable synchronous gameplay path。
+- [x] render-owned `NativeItemRuntime`、terrain textures 与 simulation 查询资源成为启动/重载时
+  生成的独立 owner；异步 profile/skin、wobbler、GPU/upload cache 不跨线程共享或加锁。
+  Code-of-conduct store 直接归 simulation，接受状态随 publication 发布。resource reload 仍在
+  render 侧完成慢 I/O/GPU 工作，再用可 `Send` 的独立投影与 generation ack 原子提交。
+- [x] simulation 通过无界 FIFO 输出每步 effect batch，ArcSwap 只保留最新 publication；
+  `effect_sequence` 门闩禁止 renderer 越过尚未消费的 audio/particle/platform/reload effect。
+  命名线程 panic 被捕获、主动唤醒并传播给 event loop；所有 clean/error exit 都排入 shutdown、
+  发送网络 disconnect 并 join，`Drop` 另作兜底。blocked fake renderer 回归证明在完全不消费
+  输出时 tick deadline 与 external network wake/apply 仍继续；Send、wake visibility、join panic、
+  publication/effect gate 与无 live-owner 访问均有 focused regression。完整 `bbb-item-model` 107
+  项与 `bbb-native` 2141 项回归通过；`playable-gate auto` 的 checked-in fixture smoke 通过 8 个
+  有序阶段，因未配置 `BBB_PLAYABLE_JAVA` 未运行 live Java 部分。本 phase 在提交 tip 运行
+  full gate 与同一 playable gate，下一阶段只做兼容清理、backlog/publication 测量和最终交付。

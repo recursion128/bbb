@@ -2,7 +2,8 @@
 
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex, PoisonError},
+    sync::{Arc, Condvar, Mutex, PoisonError},
+    time::Instant,
 };
 
 use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
@@ -79,6 +80,7 @@ pub(crate) struct SequencedSimulationCommand {
 #[derive(Debug)]
 struct SimulationMailboxState {
     next_sequence: u64,
+    wake_generation: u64,
     coalescing_threshold: usize,
     commands: VecDeque<SequencedSimulationCommand>,
 }
@@ -87,10 +89,17 @@ impl Default for SimulationMailboxState {
     fn default() -> Self {
         Self {
             next_sequence: 1,
+            wake_generation: 0,
             coalescing_threshold: DEFAULT_COALESCING_THRESHOLD,
             commands: VecDeque::new(),
         }
     }
+}
+
+#[derive(Debug, Default)]
+struct SimulationMailboxShared {
+    state: Mutex<SimulationMailboxState>,
+    wake: Condvar,
 }
 
 /// Multi-producer, single-consumer command mailbox.
@@ -101,45 +110,108 @@ impl Default for SimulationMailboxState {
 /// therefore never silently lost and producers never wait for simulation.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct SimulationMailbox {
-    state: Arc<Mutex<SimulationMailboxState>>,
+    shared: Arc<SimulationMailboxShared>,
 }
 
 impl SimulationMailbox {
     #[cfg(test)]
     fn with_coalescing_threshold(coalescing_threshold: usize) -> Self {
         Self {
-            state: Arc::new(Mutex::new(SimulationMailboxState {
-                coalescing_threshold,
-                ..SimulationMailboxState::default()
-            })),
+            shared: Arc::new(SimulationMailboxShared {
+                state: Mutex::new(SimulationMailboxState {
+                    coalescing_threshold,
+                    ..SimulationMailboxState::default()
+                }),
+                wake: Condvar::new(),
+            }),
         }
     }
 
     /// Enqueues one command and returns its assigned monotonic sequence.
     pub(crate) fn enqueue(&self, command: SimulationCommand) -> u64 {
-        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
         let sequence = state.next_sequence;
         state.next_sequence = state
             .next_sequence
             .checked_add(1)
             .expect("simulation command sequence exhausted");
+        state.wake_generation = state.wake_generation.saturating_add(1);
 
         if state.commands.len() >= state.coalescing_threshold
             && try_coalesce_tail(&mut state.commands, sequence, &command)
         {
+            drop(state);
+            self.shared.wake.notify_one();
             return sequence;
         }
         state
             .commands
             .push_back(SequencedSimulationCommand { sequence, command });
+        drop(state);
+        self.shared.wake.notify_one();
         sequence
+    }
+
+    /// Wakes the simulation owner after a producer outside this command queue
+    /// (currently the ordered network-event forwarder) made work visible.
+    pub(crate) fn notify_external_work(&self) {
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        state.wake_generation = state.wake_generation.saturating_add(1);
+        drop(state);
+        self.shared.wake.notify_one();
+    }
+
+    pub(crate) fn wake_generation(&self) -> u64 {
+        self.shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .wake_generation
+    }
+
+    /// Blocks only the simulation consumer until a producer wake or the next
+    /// client-tick deadline. The observed generation closes the race between
+    /// a step's input barrier and entering the condition-variable wait.
+    pub(crate) fn wait_for_wake_since(&self, observed: u64, deadline: Instant) {
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        while state.wake_generation == observed {
+            let now = Instant::now();
+            if now >= deadline {
+                return;
+            }
+            let (next, wait) = self
+                .shared
+                .wake
+                .wait_timeout(state, deadline.saturating_duration_since(now))
+                .unwrap_or_else(PoisonError::into_inner);
+            state = next;
+            if wait.timed_out() {
+                return;
+            }
+        }
     }
 
     /// Captures the current producer barrier and drains only commands at or
     /// before it. Producers that acquire the mutex afterwards remain queued
     /// for the next simulation step.
     pub(crate) fn drain_through_barrier(&self) -> Vec<SequencedSimulationCommand> {
-        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut state = self
+            .shared
+            .state
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
         let barrier = state.next_sequence.saturating_sub(1);
         let drain_len = state
             .commands
@@ -150,7 +222,8 @@ impl SimulationMailbox {
     }
 
     pub(crate) fn pending_len(&self) -> usize {
-        self.state
+        self.shared
+            .state
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .commands

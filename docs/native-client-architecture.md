@@ -206,9 +206,9 @@ canonical world state.
 Owns external control-facing types, reports, and snapshots.
 
 - `NetCounters` and snapshot structs are derived views.
-- Native owns the mutable `WorldStore`; every synchronous
+- Native owns the mutable `WorldStore`; every named-thread
   `SimulationCore::step` seals an immutable `SimulationPublication` independently
-  of rendered-frame completion. Renderer and control reuse the exact same world
+  of render work. Renderer and control reuse the exact same world
   `Arc`, runtime counters, and generation through paired `ArcSwap` handles.
   Control reads retry on a generation mismatch and never lock or own the live
   world.
@@ -237,27 +237,31 @@ Its target gives the mutable world and canonical input/tick path to one
 simulation thread; the winit thread retains window, renderer, GPU upload,
 platform, and backend resources and consumes immutable publications plus
 ordered effects. Migration phases must not create selectable direct/threaded
-gameplay paths. The current synchronous `SimulationCore` is the sole field
-owner for the live world, input, network receiver/counters, and tick state.
+gameplay paths. The named `bbb-simulation` thread's `SimulationCore` is the sole
+field owner for the live world, input, network receiver/counters, and tick state.
 `SimulationCore::step` borrows no renderer, audio backend, particle renderer,
-or resource uploader. It drains one monotonic `SimulationMailbox` after network
-application and before client ticks; winit events, control writes, immutable
-font metrics, platform results, reload acknowledgements, and shutdown all use
-that path. It resolves packet/tick/platform side effects into one owned,
-sequence-numbered `RenderEffectBatch`; the winit owner consumes audio,
+or resource uploader. A condition-variable scheduler runs it at the next client
+tick deadline and wakes immediately after ordered mailbox or forwarded network
+work becomes visible. It drains one monotonic `SimulationMailbox` after network
+application and before client ticks; winit events, control writes, immutable font
+metrics, platform results, reload acknowledgements, and shutdown all use that
+path. It resolves packet/tick/platform side effects into one owned,
+sequence-numbered unbounded `RenderEffectBatch` stream; the winit owner consumes audio,
 particles, window, clipboard, URI, stats-screen narration input, debug-renderer,
 screenshot, and reload work at most once in FIFO order before render extraction.
 Resource reload is the terminal batch effect: render-owned asset/GPU work returns a
 generation acknowledgement, and only a matching mailbox acknowledgement
 commits world defaults and the simulation particle resolver. The
 simulation-side resolver and render-side particle atlas runtime are distinct
-owners; the reload ack carries only `Send` world-default value tables and never
-shares the render-owned item asset runtime. Render extraction, particles,
+owners. Item and terrain pack data are copied into independent simulation
+projections at startup/reload; renderer async/GPU caches are never shared or
+locked across the boundary. Render extraction, particles,
 terrain upload, cursor/overlay decisions, narration, and control reads consume
 one immutable publication; a source guard rejects event-loop reads of live
-simulation fields. `SimulationRenderContext` now carries backend/cache owners
-only. Execution remains synchronous until phase five moves the unchanged
-simulation step semantics onto the named thread.
+simulation fields. Its effect sequence prevents render from adopting a newer
+publication until all preceding effects have been consumed. The event loop
+joins clean shutdowns and propagates caught worker failures; `SimulationThread`
+also joins on drop. `SimulationRenderContext` carries backend/cache owners only.
 
 ### `bbb-item-model`
 

@@ -490,6 +490,60 @@ impl NativeItemRuntime {
         self.language.get_or_key(key)
     }
 
+    /// Creates an independent owner for simulation-side item queries.
+    ///
+    /// Immutable pack catalogs and atlas indices are copied, while renderer-only
+    /// asynchronous profile downloads, upload queues, and animation wobblers
+    /// start empty. The two owners therefore never share an interior-mutable
+    /// cache or require a render/simulation lock.
+    pub fn independent_simulation_projection(&self) -> Self {
+        Self {
+            item_definition_count: self.item_definition_count,
+            item_registry_count: self.item_registry_count,
+            resolved_model_count: self.resolved_model_count,
+            missing_model_ids: self.missing_model_ids.clone(),
+            missing_texture_ids: self.missing_texture_ids.clone(),
+            furnace_fuel_item_ids: self.furnace_fuel_item_ids.clone(),
+            freeze_immune_wearable_item_ids: self.freeze_immune_wearable_item_ids.clone(),
+            powder_snow_walkable_foot_item_ids: self.powder_snow_walkable_foot_item_ids.clone(),
+            recipe_specific_crafting_remainder_item_ids: self
+                .recipe_specific_crafting_remainder_item_ids
+                .clone(),
+            item_icon_models: self.item_icon_models.clone(),
+            item_display_transforms: self.item_display_transforms.clone(),
+            registry: self.registry.clone(),
+            item_tags: self.item_tags.clone(),
+            enchantment_tags: self.enchantment_tags.clone(),
+            trim_material_tags: self.trim_material_tags.clone(),
+            trim_pattern_tags: self.trim_pattern_tags.clone(),
+            jukebox_song_tags: self.jukebox_song_tags.clone(),
+            jukebox_songs: self.jukebox_songs.clone(),
+            potion_tags: self.potion_tags.clone(),
+            attribute_tags: self.attribute_tags.clone(),
+            villager_type_tags: self.villager_type_tags.clone(),
+            equipment_assets: self.equipment_assets.clone(),
+            language: self.language.clone(),
+            map_background_textures: self.map_background_textures.clone(),
+            map_decoration_textures: self.map_decoration_textures.clone(),
+            map_text_glyphs: self.map_text_glyphs.clone(),
+            textures: self.textures.clone(),
+            profile_resolutions: RefCell::default(),
+            dynamic_skins: RefCell::default(),
+            dynamic_textures: RefCell::default(),
+            profile_texture_resources: self.profile_texture_resources.clone(),
+            local_dynamic_skins: RefCell::default(),
+            local_dynamic_textures: RefCell::default(),
+            profile_skins: RefCell::default(),
+            local_time_epoch_millis_override: Cell::new(
+                self.local_time_epoch_millis_override.get(),
+            ),
+            time_wobblers: RefCell::default(),
+            time_randoms: RefCell::default(),
+            compass_wobblers: RefCell::default(),
+            compass_randoms: RefCell::default(),
+        }
+    }
+
     pub fn load(roots: &PackRoots) -> Result<Self> {
         Self::load_with_locale(roots, DEFAULT_LANGUAGE_CODE)
     }

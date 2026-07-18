@@ -4,6 +4,10 @@ This document freezes the ownership and migration contract for moving native
 client simulation off the winit/render thread. It is the prerequisite design
 for the `goal.md` simulation/render decoupling engineering slice.
 
+Implementation status: phases 1-5 are complete; phase 6 closeout is current.
+The named simulation thread, deadline/producer wakeups, immutable publication,
+ordered effect transport, and joined failure/shutdown path are active.
+
 The target is not to make the current `pump_network_and_terrain` function
 `Send`. That function currently combines packet application, input, client
 ticks, audio and particle effects, HUD extraction, terrain uploads, and GPU
@@ -260,8 +264,9 @@ may retain the previous active resources exactly as the existing barrier does.
 - The simulation thread stops accepting ordinary input, flushes required
   connection answers already produced, publishes `running=false`, and returns
   its owned state/result.
-- The event loop requests network disconnect, joins simulation outside a winit
-  callback borrow, and then drops renderer/audio/platform resources.
+- The simulation shutdown path requests network disconnect; `LoopExiting`
+  joins after all shorter winit/render borrows have ended and before dropping
+  renderer/audio/platform resources.
 - A panic or unexpected simulation exit is surfaced as a fatal native error;
   rendering stale state indefinitely is forbidden.
 - Channels closing is a state transition covered by tests, not an ignored send

@@ -27,7 +27,7 @@ use winit::{
 
 use crate::{
     code_of_conduct::CodeOfConductAcceptance, debug_entries::DebugScreenProfile,
-    narrator_runtime::NarratorStatus,
+    narrator_runtime::NarratorStatus, simulation::commands::SimulationMailbox,
 };
 
 pub(crate) const VANILLA_UNLIMITED_FRAMERATE_LIMIT: u32 = 260;
@@ -359,6 +359,7 @@ pub(crate) fn start_network_if_requested(
     args: &Args,
     code_of_conduct: &mut CodeOfConductAcceptance,
     known_packs_manager: Option<Arc<KnownPacksManager>>,
+    simulation_mailbox: &SimulationMailbox,
 ) -> Result<NetworkHandles> {
     if !args.connect_server {
         return Ok(NetworkHandles {
@@ -376,11 +377,21 @@ pub(crate) fn start_network_if_requested(
     // thread never stops reading because the game thread is slow.  Size both
     // directions so multi-minute render stalls cannot wedge the event stream
     // in emit() backpressure or drop queued gameplay commands.
-    let (tx, rx) = mpsc::channel(262_144);
+    let (network_tx, mut network_rx) = mpsc::channel(262_144);
+    let (simulation_tx, rx) = mpsc::channel(262_144);
     let (command_tx, command_rx) = mpsc::channel(8192);
-    let disconnect_tx = tx.clone();
+    let disconnect_tx = network_tx.clone();
+    let network_wake = simulation_mailbox.clone();
     runtime.spawn(async move {
-        let reason = match bbb_net::run_event_stream(options, tx, command_rx).await {
+        while let Some(event) = network_rx.recv().await {
+            if simulation_tx.send(event).await.is_err() {
+                break;
+            }
+            network_wake.notify_external_work();
+        }
+    });
+    runtime.spawn(async move {
+        let reason = match bbb_net::run_event_stream(options, network_tx, command_rx).await {
             Ok(()) => None,
             Err(err) => Some(err.to_string()),
         };
@@ -572,6 +583,18 @@ pub(crate) fn spawn_frame_tick(event_loop: &EventLoop<()>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn network_forwarder_preserves_visibility_before_simulation_wake() {
+        let source = include_str!("startup.rs");
+        let forwarded = source
+            .find("simulation_tx.send(event).await")
+            .expect("ordered network event forward");
+        let wake = source
+            .find("network_wake.notify_external_work()")
+            .expect("simulation network wake");
+        assert!(forwarded < wake);
+    }
 
     #[test]
     fn args_accept_delegated_status_server_and_reject_probe_conflict() {

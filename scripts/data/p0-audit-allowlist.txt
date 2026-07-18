@@ -9,6 +9,7 @@
 # Immutable simulation publication carries that same vanilla timer residual as
 # a numeric interpolation accumulator; construction sites only copy the value.
 ^crates/bbb-native/src/(main|simulation)[.]rs$	tick_residual: .*entity_partial_tick
+^crates/bbb-native/src/simulation[.]rs$	let residual = .*entity_partial_tick|remaining = .*residual
 ^crates/bbb-native/src/simulation/publication[.]rs$	tick_residual|timer residual
 
 # goal.md unsupported category: explicit renderer defensive failures.
