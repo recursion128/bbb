@@ -61,6 +61,16 @@ pub struct WorldStore {
     pub(crate) insecure_chat_warning_count: usize,
     pub(crate) registries: RegistrySet,
     pub(crate) chunks: Vec<ChunkColumn>,
+    /// Runtime extraction revisions for the chunk terrain cache. These are
+    /// deterministic derivatives of canonical chunk mutations, but are not
+    /// part of serialized world snapshots: a restored runtime starts with an
+    /// empty render cache and rebuilds every resident chunk once.
+    #[serde(skip)]
+    pub(crate) terrain_revision: u64,
+    #[serde(skip)]
+    pub(crate) terrain_chunk_content_revisions: BTreeMap<ChunkPos, u64>,
+    #[serde(skip)]
+    pub(crate) terrain_chunk_mesh_revisions: BTreeMap<ChunkPos, u64>,
     #[serde(default)]
     pub(crate) first_chunk: Option<ChunkPos>,
     #[serde(default)]

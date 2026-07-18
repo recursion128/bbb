@@ -818,6 +818,7 @@ impl WorldStore {
 
     fn clear_level_bound_state(&mut self) {
         self.chunks.clear();
+        self.clear_terrain_revisions();
         self.first_chunk = None;
         self.block_destructions.clear();
         self.block_events.clear();

@@ -67,6 +67,145 @@ fn decodes_level_chunk_with_light_structure() {
 }
 
 #[test]
+fn terrain_revisions_separate_chunk_content_from_neighbor_mesh_invalidation() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    let chunk = ChunkPos { x: 2, z: -3 };
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+
+    let inserted = store.terrain_revision();
+    assert!(inserted > 0);
+    assert_eq!(store.terrain_chunk_content_revision(chunk), inserted);
+    for dz in -1..=1 {
+        for dx in -1..=1 {
+            assert_eq!(
+                store.terrain_chunk_mesh_revision(ChunkPos {
+                    x: chunk.x + dx,
+                    z: chunk.z + dz,
+                }),
+                inserted
+            );
+        }
+    }
+
+    let west = ChunkPos {
+        x: chunk.x - 1,
+        z: chunk.z,
+    };
+    let east = ChunkPos {
+        x: chunk.x + 1,
+        z: chunk.z,
+    };
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 34,
+            y: 1,
+            z: -45,
+        },
+        block_state_id: 0,
+    }));
+    let interior = store.terrain_revision();
+    assert!(interior > inserted);
+    assert_eq!(store.terrain_chunk_content_revision(chunk), interior);
+    assert_eq!(store.terrain_chunk_mesh_revision(chunk), interior);
+    assert_eq!(store.terrain_chunk_mesh_revision(west), inserted);
+    assert_eq!(store.terrain_chunk_mesh_revision(east), inserted);
+
+    assert!(store.apply_block_update(ProtocolBlockUpdate {
+        pos: ProtocolBlockPos {
+            x: 32,
+            y: 1,
+            z: -45,
+        },
+        block_state_id: 9,
+    }));
+    let edge = store.terrain_revision();
+    assert!(edge > interior);
+    assert_eq!(store.terrain_chunk_content_revision(chunk), edge);
+    assert_eq!(store.terrain_chunk_mesh_revision(chunk), edge);
+    assert_eq!(store.terrain_chunk_mesh_revision(west), edge);
+    assert_eq!(store.terrain_chunk_mesh_revision(east), inserted);
+}
+
+#[test]
+fn light_and_chunk_removal_invalidate_neighbor_meshes_without_fabricating_content() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    let chunk = ChunkPos { x: 2, z: -3 };
+    let neighbor = ChunkPos { x: 1, z: -4 };
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let mut neighbor_column = store.probe_chunk(chunk).unwrap().clone();
+    neighbor_column.pos = neighbor;
+    store.insert_decoded_chunk(neighbor_column);
+    let inserted = store.terrain_revision();
+    let neighbor_content = store.terrain_chunk_content_revision(neighbor);
+
+    assert!(store
+        .apply_light_update(ProtocolLightUpdate {
+            chunk_x: chunk.x,
+            chunk_z: chunk.z,
+            light_data: light_update_data(&[], &[], &[], &[], Vec::new(), Vec::new()),
+        })
+        .unwrap());
+    let relit = store.terrain_revision();
+    assert!(relit > inserted);
+    assert_eq!(store.terrain_chunk_content_revision(chunk), relit);
+    assert_eq!(
+        store.terrain_chunk_content_revision(neighbor),
+        neighbor_content
+    );
+    assert_eq!(store.terrain_chunk_mesh_revision(neighbor), relit);
+
+    assert!(store.forget_chunk(chunk));
+    let forgotten = store.terrain_revision();
+    assert!(forgotten > relit);
+    assert_eq!(store.terrain_chunk_content_revision(chunk), 0);
+    assert_eq!(store.terrain_chunk_mesh_revision(chunk), 0);
+    assert_eq!(
+        store.terrain_chunk_content_revision(neighbor),
+        neighbor_content
+    );
+    assert_eq!(store.terrain_chunk_mesh_revision(neighbor), forgotten);
+}
+
+#[test]
+fn terrain_revision_tracks_view_selection_and_level_clear_lifecycle() {
+    let mut store = WorldStore::with_dimension(WorldDimension {
+        min_y: 0,
+        height: 16,
+    });
+    let initial = store.terrain_revision();
+
+    store.apply_set_chunk_cache_center(ProtocolSetChunkCacheCenter {
+        chunk_x: 2,
+        chunk_z: -3,
+    });
+    let recentered = store.terrain_revision();
+    assert!(recentered > initial);
+
+    let chunk = ChunkPos { x: 2, z: -3 };
+    store
+        .insert_level_chunk_with_light(synthetic_local_palette_chunk_packet())
+        .unwrap();
+    let inserted = store.terrain_revision();
+    assert!(inserted > recentered);
+    assert_eq!(store.terrain_chunk_content_revision(chunk), inserted);
+
+    store.clear_client_level();
+    assert!(store.terrain_revision() > inserted);
+    assert_eq!(store.terrain_chunk_content_revision(chunk), 0);
+    assert_eq!(store.terrain_chunk_mesh_revision(chunk), 0);
+}
+
+#[test]
 fn probes_chunk_summary_from_world_store() {
     let mut store = WorldStore::new();
     let pos = store

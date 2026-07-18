@@ -9,7 +9,7 @@ use bbb_protocol::{
         SetChunkCacheRadius as ProtocolSetChunkCacheRadius,
     },
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
     protocol_block_pos, section_biome_index, section_block_index,
@@ -72,6 +72,7 @@ impl WorldStore {
         } else {
             self.chunks.push(column);
         }
+        self.mark_terrain_chunk_and_neighbors_changed(pos);
     }
 
     pub fn apply_block_update(&mut self, update: ProtocolBlockUpdate) -> bool {
@@ -225,6 +226,7 @@ impl WorldStore {
 
         merge_light_data(&mut chunk.light, update_light);
         self.counters.light_updates_applied += 1;
+        self.mark_terrain_chunk_and_neighbors_changed(pos);
         Ok(true)
     }
 
@@ -254,12 +256,19 @@ impl WorldStore {
         }
 
         let applied = replacements.len();
+        let changed_positions: Vec<_> = replacements
+            .iter()
+            .filter_map(|(chunk_index, _)| self.chunks.get(*chunk_index).map(|chunk| chunk.pos))
+            .collect();
         for (chunk_index, biomes) in replacements {
             if let Some(chunk) = self.chunks.get_mut(chunk_index) {
                 for (section, biomes) in chunk.sections.iter_mut().zip(biomes) {
                     section.biomes = biomes;
                 }
             }
+        }
+        for pos in changed_positions {
+            self.mark_terrain_chunk_and_neighbors_changed(pos);
         }
         self.counters.biome_updates_applied += applied;
         self.counters.biome_updates_ignored += ignored;
@@ -276,6 +285,7 @@ impl WorldStore {
             z: update.chunk_z,
         });
         self.prune_chunks_outside_view();
+        self.advance_terrain_revision();
         self.chunk_view
     }
 
@@ -286,6 +296,7 @@ impl WorldStore {
         self.counters.chunk_cache_radius_updates_received += 1;
         self.chunk_view.radius = Some(update.radius);
         self.prune_chunks_outside_view();
+        self.advance_terrain_revision();
         self.chunk_view
     }
 
@@ -307,8 +318,18 @@ impl WorldStore {
 
     fn prune_chunks_outside_view(&mut self) {
         let view = self.chunk_view;
+        let removed: Vec<_> = self
+            .chunks
+            .iter()
+            .filter(|chunk| !chunk_is_in_view(view, chunk.pos))
+            .map(|chunk| chunk.pos)
+            .collect();
         self.chunks
             .retain(|chunk| chunk_is_in_view(view, chunk.pos));
+        for pos in removed {
+            self.mark_terrain_chunk_removed(pos);
+        }
+        self.retain_resident_terrain_revisions();
     }
 
     pub fn forget_chunk(&mut self, pos: ChunkPos) -> bool {
@@ -319,6 +340,8 @@ impl WorldStore {
         };
         self.chunks.remove(index);
         self.counters.chunks_forgotten += 1;
+        self.mark_terrain_chunk_removed(pos);
+        self.retain_resident_terrain_revisions();
         true
     }
 
@@ -710,6 +733,31 @@ impl WorldStore {
         self.chunks.len()
     }
 
+    /// Monotonic edge for renderer-relevant chunk contents, residency, or
+    /// view-selection changes. Native extraction uses this only as a cheap
+    /// "anything changed" guard; per-chunk revisions below own invalidation.
+    pub fn terrain_revision(&self) -> u64 {
+        self.terrain_revision
+    }
+
+    /// Revision of the canonical cells/light/biomes extracted for one chunk.
+    pub fn terrain_chunk_content_revision(&self, pos: ChunkPos) -> u64 {
+        self.terrain_chunk_content_revisions
+            .get(&pos)
+            .copied()
+            .unwrap_or(0)
+    }
+
+    /// Revision of the final mesh for one chunk. Neighbor changes can advance
+    /// this without changing the chunk's own extracted cell snapshot because
+    /// face culling and biome/light sampling cross chunk edges.
+    pub fn terrain_chunk_mesh_revision(&self, pos: ChunkPos) -> u64 {
+        self.terrain_chunk_mesh_revisions
+            .get(&pos)
+            .copied()
+            .unwrap_or(0)
+    }
+
     pub fn predict_local_destroy_block(&mut self, pos: BlockPos, sequence: i32) -> bool {
         let Some(block) = self.probe_block(pos) else {
             self.counters.local_block_predictions_failed += 1;
@@ -865,6 +913,7 @@ impl WorldStore {
                 }
             }
         }
+        self.mark_terrain_block_changed(pos);
         true
     }
 
@@ -882,6 +931,87 @@ impl WorldStore {
             .block_state_id_by_name_and_properties(name, &properties)
             .unwrap_or(0)
     }
+
+    pub(crate) fn clear_terrain_revisions(&mut self) {
+        self.terrain_chunk_content_revisions.clear();
+        self.terrain_chunk_mesh_revisions.clear();
+        self.advance_terrain_revision();
+    }
+
+    fn advance_terrain_revision(&mut self) -> u64 {
+        self.terrain_revision = self.terrain_revision.saturating_add(1);
+        self.terrain_revision
+    }
+
+    fn mark_terrain_chunk_and_neighbors_changed(&mut self, pos: ChunkPos) {
+        let revision = self.advance_terrain_revision();
+        self.terrain_chunk_content_revisions.insert(pos, revision);
+        for neighbor in chunk_neighborhood(pos) {
+            self.terrain_chunk_mesh_revisions.insert(neighbor, revision);
+        }
+    }
+
+    fn mark_terrain_chunk_removed(&mut self, pos: ChunkPos) {
+        let revision = self.advance_terrain_revision();
+        self.terrain_chunk_content_revisions.remove(&pos);
+        self.terrain_chunk_mesh_revisions.remove(&pos);
+        for neighbor in chunk_neighborhood(pos).filter(|neighbor| *neighbor != pos) {
+            self.terrain_chunk_mesh_revisions.insert(neighbor, revision);
+        }
+    }
+
+    fn mark_terrain_block_changed(&mut self, pos: BlockPos) {
+        let chunk = ChunkPos {
+            x: pos.x.div_euclid(16),
+            z: pos.z.div_euclid(16),
+        };
+        let revision = self.advance_terrain_revision();
+        self.terrain_chunk_content_revisions.insert(chunk, revision);
+
+        let x_offsets: &[i32] = match pos.x.rem_euclid(16) {
+            0 => &[-1, 0],
+            15 => &[0, 1],
+            _ => &[0],
+        };
+        let z_offsets: &[i32] = match pos.z.rem_euclid(16) {
+            0 => &[-1, 0],
+            15 => &[0, 1],
+            _ => &[0],
+        };
+        for dz in z_offsets {
+            for dx in x_offsets {
+                self.terrain_chunk_mesh_revisions.insert(
+                    ChunkPos {
+                        x: chunk.x + dx,
+                        z: chunk.z + dz,
+                    },
+                    revision,
+                );
+            }
+        }
+    }
+
+    fn retain_resident_terrain_revisions(&mut self) {
+        let resident: BTreeSet<_> = self.chunks.iter().map(|chunk| chunk.pos).collect();
+        let mesh_neighborhood: BTreeSet<_> = resident
+            .iter()
+            .copied()
+            .flat_map(chunk_neighborhood)
+            .collect();
+        self.terrain_chunk_content_revisions
+            .retain(|pos, _| resident.contains(pos));
+        self.terrain_chunk_mesh_revisions
+            .retain(|pos, _| mesh_neighborhood.contains(pos));
+    }
+}
+
+fn chunk_neighborhood(pos: ChunkPos) -> impl Iterator<Item = ChunkPos> {
+    (-1..=1).flat_map(move |dz| {
+        (-1..=1).map(move |dx| ChunkPos {
+            x: pos.x + dx,
+            z: pos.z + dz,
+        })
+    })
 }
 
 fn chunk_is_in_view(view: ChunkViewState, pos: ChunkPos) -> bool {
