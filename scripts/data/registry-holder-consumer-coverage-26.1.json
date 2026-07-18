@@ -45,12 +45,34 @@
       "decision": "Vanilla 26.1 synchronizes dialog definitions and uses Dialog.STREAM_CODEC only in ClientboundShowDialogPacket. The protocol preserves nonnegative session references or a bounded direct NBT compound and rejects invalid framing; world resolves server order and distinguishes valid, stub, malformed, and unknown entries, while direct and custom reordered referenced dialogs reach the complete native screen and nested-action lifecycle."
     },
     {
+      "id": "network-holder-or-inline-chat-type-synchronized",
+      "selector": {
+        "kind": "network_holder_or_inline",
+        "source_paths": [
+          "net/minecraft/network/chat/ChatType.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/chat_types.rs#pub(crate) fn resolve_chat_type",
+      "evidence": [
+        "vanilla:net/minecraft/network/chat/ChatType.java#ByteBufCodecs.holder(Registries.CHAT_TYPE",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.CHAT_TYPE, ChatType.DIRECT_CODEC)",
+        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
+        "crates/bbb-protocol/src/packets/chat/tests.rs#fn decodes_disguised_chat_with_direct_chat_type",
+        "crates/bbb-world/src/registries/chat_types.rs#fn decode_chat_type",
+        "crates/bbb-world/src/client/chat.rs#fn synchronized_chat_type_uses_server_order_and_typed_decoration",
+        "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#fn chat_type_event_uses_custom_session_holder_order"
+      ],
+      "decision": "Vanilla 26.1 synchronizes ChatType.DIRECT_CODEC values and sends named or direct holders in player/disguised chat. Protocol retains the trusted Component payloads and direct decoration style; world resolves named holders only through the frozen session order, decodes chat/narration parameters and style, retains stub/malformed/unknown diagnostics, and preserves the no-server vanilla fallback. The native event test proves a custom entry inserted before minecraft:chat is not interpreted as the vanilla holder."
+    },
+    {
       "id": "network-holder-or-inline",
       "selector": {
         "kind": "network_holder_or_inline",
         "exclude_source_paths": [
           "net/minecraft/sounds/SoundEvent.java",
-          "net/minecraft/server/dialog/Dialog.java"
+          "net/minecraft/server/dialog/Dialog.java",
+          "net/minecraft/network/chat/ChatType.java"
         ]
       },
       "status": "partial",

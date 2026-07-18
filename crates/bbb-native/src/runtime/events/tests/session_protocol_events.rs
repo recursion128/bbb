@@ -425,6 +425,67 @@ fn registry_data_event_updates_world_state_and_counters() {
 }
 
 #[test]
+fn chat_type_event_uses_custom_session_holder_order() {
+    let (tx, mut rx) = mpsc::channel(2);
+    tx.try_send(NetEvent::RegistryData(RegistryData {
+        registry: bbb_world::CHAT_TYPE_REGISTRY.to_string(),
+        raw_payload_len: 128,
+        entries: vec![
+            RegistryDataEntry {
+                id: "example:notice".to_string(),
+                raw_data: Some(chat_type_registry_payload(
+                    "example.chat.notice",
+                    &["sender", "content"],
+                )),
+            },
+            RegistryDataEntry {
+                id: "minecraft:chat".to_string(),
+                raw_data: Some(chat_type_registry_payload(
+                    "chat.type.text",
+                    &["sender", "content"],
+                )),
+            },
+        ],
+    }))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::DisguisedChat(
+        DisguisedChat {
+            message: "custom notice".to_string(),
+            message_styled: Vec::new(),
+            message_component: None,
+            chat_type: protocol_chat_type("Server"),
+        },
+    )))
+    .unwrap();
+
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &None),
+        2
+    );
+
+    let message = world.client_chat().messages.last().unwrap();
+    assert_eq!(message.chat_type.registry_id, Some(0));
+    assert_eq!(
+        message.chat_type.resource_id.as_deref(),
+        Some("example:notice")
+    );
+    assert_eq!(
+        message.chat_type.source,
+        Some(bbb_world::RegistryEntrySource::Server)
+    );
+    assert_eq!(
+        message.content_translation_key.as_deref(),
+        Some("example.chat.notice")
+    );
+    assert_eq!(
+        message.decoration.as_ref().unwrap().arguments[1].summary,
+        "custom notice"
+    );
+}
+
+#[test]
 fn update_tags_event_updates_world_state_and_counters() {
     let (tx, mut rx) = mpsc::channel(1);
     tx.try_send(NetEvent::UpdateTags(UpdateTags {
@@ -1406,4 +1467,44 @@ fn inventory_events_update_world_and_world_counters() {
     assert_eq!(world_counters.inventory_slot_updates_received, 1);
     assert_eq!(world_counters.inventory_slots_tracked, 1);
     assert_eq!(world_counters.cursor_item_updates_received, 1);
+}
+
+fn chat_type_registry_payload(translation_key: &str, parameters: &[&str]) -> Vec<u8> {
+    let mut out = vec![10];
+    write_chat_type_decoration_nbt(&mut out, "chat", translation_key, parameters);
+    write_chat_type_decoration_nbt(
+        &mut out,
+        "narration",
+        "chat.type.text.narrate",
+        &["sender", "content"],
+    );
+    out.push(0);
+    out
+}
+
+fn write_chat_type_decoration_nbt(
+    out: &mut Vec<u8>,
+    name: &str,
+    translation_key: &str,
+    parameters: &[&str],
+) {
+    out.push(10);
+    write_chat_nbt_string(out, name);
+    out.push(8);
+    write_chat_nbt_string(out, "translation_key");
+    write_chat_nbt_string(out, translation_key);
+    out.push(9);
+    write_chat_nbt_string(out, "parameters");
+    out.push(8);
+    out.extend_from_slice(&(parameters.len() as i32).to_be_bytes());
+    for parameter in parameters {
+        write_chat_nbt_string(out, parameter);
+    }
+    out.push(0);
+}
+
+fn write_chat_nbt_string(out: &mut Vec<u8>, value: &str) {
+    let bytes = value.as_bytes();
+    out.extend_from_slice(&(bytes.len() as u16).to_be_bytes());
+    out.extend_from_slice(bytes);
 }

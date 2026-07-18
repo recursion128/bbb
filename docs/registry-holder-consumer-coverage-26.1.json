@@ -562,23 +562,26 @@
     {
       "call_site": "net/minecraft/network/chat/ChatType.java:29:94:ByteBufCodecs.holder",
       "column": 94,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/chat_types.rs#pub(crate) fn resolve_chat_type",
+      "decision": "Vanilla 26.1 synchronizes ChatType.DIRECT_CODEC values and sends named or direct holders in player/disguised chat. Protocol retains the trusted Component payloads and direct decoration style; world resolves named holders only through the frozen session order, decodes chat/narration parameters and style, retains stub/malformed/unknown diagnostics, and preserves the no-server vanilla fallback. The native event test proves a custom entry inserted before minecraft:chat is not interpreted as the vanilla holder.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
+        "vanilla:net/minecraft/network/chat/ChatType.java#ByteBufCodecs.holder(Registries.CHAT_TYPE",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.CHAT_TYPE, ChatType.DIRECT_CODEC)",
         "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
-        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "crates/bbb-protocol/src/packets/chat/tests.rs#fn decodes_disguised_chat_with_direct_chat_type",
+        "crates/bbb-world/src/registries/chat_types.rs#fn decode_chat_type",
+        "crates/bbb-world/src/client/chat.rs#fn synchronized_chat_type_uses_server_order_and_typed_decoration",
+        "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#fn chat_type_event_uses_custom_session_holder_order"
       ],
       "factory": "ByteBufCodecs.holder",
-      "family": "network-holder-or-inline",
+      "family": "network-holder-or-inline-chat-type-synchronized",
       "kind": "network_holder_or_inline",
       "line": 29,
       "owner": "net.minecraft.network.chat.ChatType",
       "registry_expression": "Registries.CHAT_TYPE",
       "resource_id": "minecraft:chat_type",
       "source_path": "net/minecraft/network/chat/ChatType.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/network/codec/ByteBufCodecs.java:620:86:ByteBufCodecs.holderRegistry",

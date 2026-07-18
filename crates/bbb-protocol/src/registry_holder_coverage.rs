@@ -139,7 +139,8 @@ mod tests {
                 *counts.entry(entry.family.as_str()).or_insert(0usize) += 1;
                 counts
             });
-        assert_eq!(counts["network-holder-or-inline"], 7);
+        assert_eq!(counts["network-holder-or-inline"], 6);
+        assert_eq!(counts["network-holder-or-inline-chat-type-synchronized"], 1);
         assert_eq!(counts["network-holder-or-inline-dialog-synchronized"], 1);
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
@@ -186,7 +187,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            162
+            161
         );
         assert_eq!(
             ledger
@@ -209,7 +210,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 29);
+        assert_eq!(complete.len(), 30);
         assert_eq!(
             complete
                 .iter()
@@ -221,6 +222,7 @@ mod tests {
                 "minecraft:chicken_sound_variant",
                 "minecraft:cat_sound_variant",
                 "minecraft:cat_variant",
+                "minecraft:chat_type",
                 "minecraft:cow_sound_variant",
                 "minecraft:cow_variant",
                 "minecraft:damage_type",
@@ -243,5 +245,42 @@ mod tests {
                 "minecraft:zombie_nautilus_variant",
             ])
         );
+    }
+
+    #[test]
+    fn complete_chat_type_family_keeps_session_resolution_and_typed_payload_guards() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        let chat_type = ledger
+            .entries
+            .iter()
+            .find(|entry| entry.resource_id.as_deref() == Some("minecraft:chat_type"))
+            .unwrap();
+        assert_eq!(chat_type.status, RegistryHolderCoverageStatus::Complete);
+        assert_eq!(
+            chat_type.family,
+            "network-holder-or-inline-chat-type-synchronized"
+        );
+
+        let world_chat = include_str!("../../bbb-world/src/client/chat.rs");
+        assert_eq!(
+            world_chat
+                .matches("resolve_chat_type(self.frozen_registry_access()")
+                .count(),
+            2
+        );
+        assert!(!world_chat.contains("fn chat_type_state("));
+
+        let chat_types = include_str!("../../bbb-world/src/registries/chat_types.rs");
+        for required in [
+            "require_entry_by_holder_id(CHAT_TYPE_REGISTRY",
+            "RegistryEntryPayload::Server",
+            "RegistryEntryPayload::VanillaFallback",
+            "fn decode_chat_type(",
+        ] {
+            assert!(
+                chat_types.contains(required),
+                "chat type resolver lost structural guard {required}"
+            );
+        }
     }
 }
