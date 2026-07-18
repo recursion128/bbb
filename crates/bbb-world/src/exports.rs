@@ -470,10 +470,12 @@ pub use crate::recipe_book::*;
 pub use crate::recipes::*;
 pub use crate::registries::{
     ArmorTrimSprite, ChatTypeDecoration, ChatTypeDecorationParameter, ChatTypeProjectionError,
-    EnchantmentTooltipDefinition, PaintingVariantClientProjection, PaintingVariantProjectionError,
+    EnchantmentTooltipDefinition, JukeboxSongPresentation, JukeboxSongProjectionError,
+    JukeboxSoundEvent, PaintingVariantClientProjection, PaintingVariantProjectionError,
     VanillaEnchantmentIdentity, VanillaInstrumentIdentity, VanillaTrimMaterialIdentity,
-    VanillaTrimPatternIdentity, CHAT_TYPE_REGISTRY, PAINTING_VARIANT_REGISTRY,
-    TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    VanillaTrimPatternIdentity, CHAT_TYPE_REGISTRY, JUKEBOX_SONG_REGISTRY,
+    PAINTING_VARIANT_REGISTRY, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
+    VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 pub use crate::terrain_state::*;
 pub use crate::world_state::*;

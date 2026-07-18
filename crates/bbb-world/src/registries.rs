@@ -7,6 +7,7 @@ mod damage_types;
 mod enchantments;
 mod environment_attributes;
 mod instruments;
+mod jukebox_songs;
 mod painting_variants;
 mod sound_variants;
 mod state;
@@ -48,6 +49,9 @@ pub(crate) use environment_attributes::{
     decode_client_environment_attributes, EnvironmentAttributeProjectionError,
 };
 pub use instruments::VanillaInstrumentIdentity;
+pub use jukebox_songs::{
+    JukeboxSongPresentation, JukeboxSongProjectionError, JukeboxSoundEvent, JUKEBOX_SONG_REGISTRY,
+};
 pub use painting_variants::{
     PaintingVariantClientProjection, PaintingVariantProjectionError, PAINTING_VARIANT_REGISTRY,
 };
