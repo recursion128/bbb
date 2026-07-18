@@ -32,6 +32,7 @@ pub use crate::item_registry::{
     ItemRegistryCatalog, ItemUseAnimation, ItemUseEffects,
 };
 pub use crate::jukebox_song_registry::{JukeboxSongRegistry, JukeboxSongRegistryEntry};
+pub use crate::known_packs::{KnownPackDataSource, KnownPacksManager};
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};

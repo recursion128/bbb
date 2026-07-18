@@ -15,6 +15,7 @@ mod item_cuboid_models;
 mod item_models;
 mod item_registry;
 mod jukebox_song_registry;
+mod known_packs;
 mod language;
 mod metadata;
 mod mipmap;
