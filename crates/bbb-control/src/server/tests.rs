@@ -7,6 +7,7 @@ use super::params::{
 use super::*;
 use crate::types::{AudioCounters, NetCounters, RecipeBookTypeControl};
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
+use bbb_protocol::menu_types::{VANILLA_MENU_TYPE_GENERIC_9X3_ID, VANILLA_MENU_TYPE_MERCHANT_ID};
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, AdvancementSummary, AwardStats, BlockChangedAck,
     BlockDestruction, BlockEvent, BlockPos as ProtocolBlockPos, ChatFormatting, ChatTypeBound,
@@ -2059,7 +2060,7 @@ fn client_inventory_reads_canonical_world_state() {
         });
         store.apply_open_screen(OpenScreen {
             container_id: 7,
-            menu_type_id: 2,
+            menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
             title: "Chest".to_string(),
             title_styled: Vec::new(),
         });
@@ -2123,7 +2124,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
         let mut store = WorldStore::new();
         store.apply_open_screen(OpenScreen {
             container_id: 7,
-            menu_type_id: 19,
+            menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
             title: "Merchant".to_string(),
             title_styled: Vec::new(),
         });

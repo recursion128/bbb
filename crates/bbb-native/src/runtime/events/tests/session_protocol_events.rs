@@ -1,6 +1,7 @@
 use super::*;
 use std::time::{Duration, Instant};
 
+use bbb_protocol::menu_types::VANILLA_MENU_TYPE_LOOM_ID;
 use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 
 #[test]
@@ -1317,7 +1318,7 @@ fn inventory_events_update_world_and_world_counters() {
     let (tx, mut rx) = mpsc::channel(8);
     tx.try_send(NetEvent::Play(PlayClientbound::OpenScreen(OpenScreen {
         container_id: 7,
-        menu_type_id: 18,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Inventory".to_string(),
         title_styled: Vec::new(),
     })))

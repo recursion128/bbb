@@ -19110,3 +19110,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Extended the core-registry generator's reverse guard to cover BlockEntityData summary field
   construction, assignment, and comparison across semantic consumers while preserving protocol
   codec samples as wire evidence.
+
+# 2026-07-18: Derive semantic MenuType ids
+
+- Replaced numeric fixed menu ids across world, net, control, and native OpenScreen, container,
+  input, runtime-event, and HUD fixtures with constants generated from vanilla `MenuType.java`;
+  the invalid-menu fixture now derives the first index beyond the generated catalog.
+- Extended the gameplay-id generator's menu catalog guard to reject numeric `menu_type_id`
+  construction, assignment, and comparison throughout semantic consumers while preserving raw
+  protocol decoder samples.

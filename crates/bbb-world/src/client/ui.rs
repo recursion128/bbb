@@ -1539,6 +1539,7 @@ mod tests {
     use super::*;
     use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID;
     use bbb_protocol::entity_types::{VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_PLAYER_ID};
+    use bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X1_ID;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, BlockPos as ProtocolBlockPos, DataComponentPatchSummary,
         DialogHolder, InteractionHand, ItemStackSummary, OpenScreen as ProtocolOpenScreen,
@@ -2369,7 +2370,7 @@ mod tests {
         });
         container_store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
-            menu_type_id: 0,
+            menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
             title: "Container".to_string(),
             title_styled: Vec::new(),
         });

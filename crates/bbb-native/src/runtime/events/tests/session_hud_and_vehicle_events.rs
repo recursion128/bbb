@@ -1,4 +1,5 @@
 use super::*;
+use bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X3_ID;
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_MINING_FATIGUE_ID, VANILLA_MOB_EFFECT_TYPES,
 };
@@ -1041,7 +1042,7 @@ fn respawn_event_resets_local_player_runtime_state() {
     world.apply_add_entity(protocol_add_entity(55));
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });

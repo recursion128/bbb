@@ -144,6 +144,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   likewise use the generated BlockEntityType constants for their actual sign, banner, spawner,
   command-block, decorated-pot, end-gateway, jukebox, piston, or vault role instead of retaining
   numeric placeholders; the core-registry generator owns the reverse guard.
+  Semantic OpenScreen, container-state, input, and HUD fixtures must use the generated `MenuType`
+  constants for their fixed built-in menu role; unknown menu ids derive the first invalid catalog
+  index. The gameplay-id generator rejects numeric `menu_type_id` construction and comparison
+  across semantic consumers while leaving protocol wire samples under the packet codec owner.
   Semantic particle packet/state/runtime/renderer fixtures must use generated ParticleType
   constants or the generated resource-id lookup instead of numeric catalog ids; unknown ids derive
   the first invalid catalog index, while the non-Vanilla item-pickup sentinel remains explicitly

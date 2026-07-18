@@ -213,6 +213,106 @@ mod tests {
         assert_eq!(vanilla_menu_type(25), None);
     }
 
+    fn starts_with_integer_literal(value: &str) -> bool {
+        let mut characters = value.chars();
+        let Some(first) = characters.next() else {
+            return false;
+        };
+        first.is_ascii_digit()
+            || (first == '-'
+                && characters
+                    .next()
+                    .is_some_and(|character| character.is_ascii_digit()))
+    }
+
+    fn contains_numeric_menu_type_id_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction = compact.match_indices("menu_type_id:").any(|(offset, _)| {
+            let boundary = offset == 0
+                || compact[..offset]
+                    .chars()
+                    .next_back()
+                    .is_some_and(|character| {
+                        !character.is_ascii_alphanumeric() && character != '_'
+                    });
+            boundary && starts_with_integer_literal(&compact[offset + "menu_type_id:".len()..])
+        });
+        let numeric_field_reference = compact.match_indices(".menu_type_id").any(|(offset, _)| {
+            let suffix = &compact[offset + ".menu_type_id".len()..];
+            [",", "==", "!=", "="].iter().any(|separator| {
+                suffix
+                    .strip_prefix(separator)
+                    .is_some_and(starts_with_integer_literal)
+            }) || [",Some(", "==Some(", "!=Some(", "=Some("]
+                .iter()
+                .any(|separator| {
+                    suffix
+                        .strip_prefix(separator)
+                        .is_some_and(starts_with_integer_literal)
+                })
+        });
+        numeric_construction || numeric_field_reference
+    }
+
+    #[test]
+    fn numeric_menu_type_guard_covers_semantic_consumers() {
+        assert!(contains_numeric_menu_type_id_reference("menu_type_id: 2,"));
+        assert!(contains_numeric_menu_type_id_reference(
+            "assert_eq!(container.menu_type_id, Some(19));"
+        ));
+        assert!(contains_numeric_menu_type_id_reference(
+            "container.menu_type_id = Some(24);"
+        ));
+        assert!(!contains_numeric_menu_type_id_reference(
+            "menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,"
+        ));
+        assert!(!contains_numeric_menu_type_id_reference(
+            "assert_eq!(container.menu_type_id, Some(VANILLA_MENU_TYPE_MERCHANT_ID));"
+        ));
+    }
+
+    #[test]
+    fn semantic_consumers_use_generated_menu_type_ids() {
+        fn visit(path: &Path, violations: &mut Vec<String>) {
+            if path.is_dir() {
+                for entry in fs::read_dir(path).unwrap() {
+                    visit(&entry.unwrap().path(), violations);
+                }
+                return;
+            }
+            if path.extension().and_then(|value| value.to_str()) != Some("rs") {
+                return;
+            }
+            let source = fs::read_to_string(path).unwrap();
+            if contains_numeric_menu_type_id_reference(&source) {
+                violations.push(format!(
+                    "{}: numeric menu type id reference",
+                    path.display()
+                ));
+            }
+        }
+        let crates = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let mut violations = Vec::new();
+        for directory in [
+            "bbb-world/src",
+            "bbb-net/src",
+            "bbb-control/src",
+            "bbb-native/src",
+            "bbb-item-model/src",
+            "bbb-renderer/src",
+        ] {
+            visit(&crates.join(directory), &mut violations);
+        }
+        assert!(
+            violations.is_empty(),
+            "semantic consumers restored numeric menu type ids:\n{}",
+            violations.join("\n")
+        );
+    }
+
     #[test]
     fn menu_consumers_do_not_restore_local_id_aliases() {
         fn visit(path: &Path, violations: &mut Vec<String>) {

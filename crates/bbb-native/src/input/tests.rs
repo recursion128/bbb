@@ -79,6 +79,11 @@ use bbb_protocol::entity_types::{
 };
 use bbb_protocol::equipment_slots::VANILLA_PLAYER_INVENTORY_CHEST_SLOT;
 use bbb_protocol::item_types::VANILLA_ITEM_ELYTRA_ID;
+use bbb_protocol::menu_types::{
+    VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_CRAFTING_ID, VANILLA_MENU_TYPE_FURNACE_ID,
+    VANILLA_MENU_TYPE_GENERIC_9X1_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
+    VANILLA_MENU_TYPE_MERCHANT_ID,
+};
 use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_POISON_ID, VANILLA_MOB_EFFECT_REGENERATION_ID, VANILLA_MOB_EFFECT_SPEED_ID,
     VANILLA_MOB_EFFECT_TYPES,
@@ -20466,7 +20471,7 @@ fn escape_key_closes_open_container_and_queues_command() {
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -20533,7 +20538,7 @@ fn inventory_key_closes_open_container_before_open_inventory_command() {
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 8,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -20566,7 +20571,7 @@ fn inventory_key_is_consumed_by_focused_recipe_book_search() {
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 8,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -21151,7 +21156,7 @@ fn gameplay_keys_are_consumed_while_unsupported_container_is_open() {
     assert!(world.set_local_selected_hotbar_slot(0));
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 9,
-        menu_type_id: 19,
+        menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
         title_styled: Vec::new(),
     });
@@ -21305,7 +21310,7 @@ fn advancements_key_is_consumed_while_container_is_open() {
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 9,
-        menu_type_id: 19,
+        menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
         title_styled: Vec::new(),
     });
@@ -23350,7 +23355,7 @@ fn generic_9x1_container_world(
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id,
-        menu_type_id: 0,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X1_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -23371,7 +23376,7 @@ fn open_recipe_book_crafting_table_world() -> WorldStore {
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -23397,7 +23402,7 @@ fn open_recipe_book_furnace_world() -> WorldStore {
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 14,
+        menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
         title: "Furnace".to_string(),
         title_styled: Vec::new(),
     });
@@ -23549,7 +23554,7 @@ fn anvil_container_world(
     let mut world = WorldStore::new();
     world.apply_open_screen(ProtocolOpenScreen {
         container_id,
-        menu_type_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
         title_styled: Vec::new(),
     });

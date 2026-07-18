@@ -1153,6 +1153,7 @@ fn positive_tick_steps(tick_steps: i32) -> u32 {
 mod tests {
     use super::*;
     use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
+    use bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X3_ID;
     use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::packets::{
         AddEntity as ProtocolAddEntity, AttributeModifier as ProtocolAttributeModifier,
@@ -1418,7 +1419,7 @@ mod tests {
         }));
         store.apply_open_screen(ProtocolOpenScreen {
             container_id: 7,
-            menu_type_id: 2,
+            menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
             title: "Chest".to_string(),
             title_styled: Vec::new(),
         });

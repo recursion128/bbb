@@ -443,6 +443,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use super::*;
+    use bbb_protocol::menu_types::{VANILLA_MENU_TYPE_GENERIC_9X3_ID, VANILLA_MENU_TYPE_LOOM_ID};
     use bbb_protocol::packets::{
         CommandArgumentParser, CommandNode, CommandNodeType, Commands,
         VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
@@ -1220,7 +1221,7 @@ mod tests {
         let mut world = WorldStore::new();
         world.apply_open_screen(bbb_protocol::packets::OpenScreen {
             container_id: 7,
-            menu_type_id: 2,
+            menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
             title: "Chest".to_string(),
             title_styled: Vec::new(),
         });
@@ -1382,7 +1383,7 @@ mod tests {
         let mut world = WorldStore::new();
         world.apply_open_screen(bbb_protocol::packets::OpenScreen {
             container_id: 7,
-            menu_type_id: 18,
+            menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
             title: "Inventory".to_string(),
             title_styled: Vec::new(),
         });

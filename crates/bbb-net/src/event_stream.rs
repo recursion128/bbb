@@ -8,6 +8,8 @@ use anyhow::{anyhow, Context, Result};
 #[cfg(test)]
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
 #[cfg(test)]
+use bbb_protocol::menu_types::VANILLA_MENU_TYPE_MERCHANT_ID;
+#[cfg(test)]
 use bbb_protocol::recipe_wire_types::{
     VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID,
     VANILLA_SLOT_DISPLAY_TYPE_WITH_ANY_POTION_ID,
@@ -2519,7 +2521,7 @@ mod tests {
 
         let open_screen = packets::OpenScreen {
             container_id: 7,
-            menu_type_id: 19,
+            menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
             title: "Merchant".to_string(),
             title_styled: Vec::new(),
         };

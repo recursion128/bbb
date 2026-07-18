@@ -4,6 +4,9 @@ use crate::entities::{
     VANILLA_ENTITY_TYPE_HORSE_ID, VANILLA_ENTITY_TYPE_LLAMA_ID, VANILLA_ENTITY_TYPE_NAUTILUS_ID,
 };
 use bbb_protocol::data_component_types::VANILLA_DATA_COMPONENT_PROFILE_TYPE_ID;
+use bbb_protocol::menu_types::{
+    VANILLA_MENU_TYPES, VANILLA_MENU_TYPE_GENERIC_9X2_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
+};
 use bbb_protocol::packets::{
     AddEntity as ProtocolAddEntity, CraftingRecipeDisplaySummary,
     EntityDataValue as ProtocolEntityDataValue, EntityDataValueKind, IngredientSummary,
@@ -27,7 +30,7 @@ use uuid::Uuid;
 fn open_test_container(store: &mut WorldStore, container_id: i32) {
     store.apply_open_screen(ProtocolOpenScreen {
         container_id,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -61,7 +64,7 @@ fn tracks_player_inventory_and_container_state() {
 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -90,7 +93,10 @@ fn tracks_player_inventory_and_container_state() {
 
     let container = store.inventory().open_container.as_ref().unwrap();
     assert_eq!(container.container_id, 7);
-    assert_eq!(container.menu_type_id, Some(2));
+    assert_eq!(
+        container.menu_type_id,
+        Some(VANILLA_MENU_TYPE_GENERIC_9X3_ID)
+    );
     assert_eq!(container.title.as_deref(), Some("Chest"));
     assert_eq!(container.state_id, 13);
     assert_eq!(
@@ -204,7 +210,7 @@ fn container_set_data_only_updates_the_matching_active_menu() {
 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -234,7 +240,7 @@ fn container_content_only_updates_the_matching_active_menu() {
     });
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -1460,7 +1466,7 @@ fn local_container_close_does_not_count_clientbound_close_packet() {
 
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -1484,7 +1490,7 @@ fn merchant_offers_apply_only_to_matching_open_container() {
     assert!(!store.apply_merchant_offers(merchant_offers(7, 1)));
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 18,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Merchant".to_string(),
         title_styled: Vec::new(),
     });
@@ -1598,7 +1604,7 @@ fn build_container_click_slot_uses_open_container_state_and_cursor_item() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -2376,7 +2382,7 @@ fn apply_local_container_pickup_all_rejects_non_inventory_menu() {
     });
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 1,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -2642,7 +2648,7 @@ fn apply_local_container_quick_craft_rejects_non_inventory_menu() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 1,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -3470,7 +3476,7 @@ fn apply_local_generic_container_quick_move_moves_chest_to_player_reverse() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X6_ID,
         title: "Large Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -3513,7 +3519,7 @@ fn apply_local_generic_container_quick_move_merges_player_to_chest_forward() {
     store.set_default_item_max_stack_sizes(BTreeMap::from([(42, 16)]));
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 1,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -8551,7 +8557,7 @@ fn apply_local_container_quick_move_rejects_non_inventory_menu() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 99,
+        menu_type_id: i32::try_from(VANILLA_MENU_TYPES.len()).unwrap(),
         title: "Unsupported".to_string(),
         title_styled: Vec::new(),
     });
@@ -8670,7 +8676,7 @@ fn apply_local_container_throw_rejects_non_inventory_menu() {
     let mut store = WorldStore::new();
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 1,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -8851,7 +8857,7 @@ fn apply_local_container_swap_requires_empty_cursor_and_inventory_menu() {
     store.close_local_container(INVENTORY_MENU_CONTAINER_ID);
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 1,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -8880,7 +8886,7 @@ fn apply_local_container_clone_copies_slot_stack_to_cursor_at_max_count() {
     apply_player_instabuild(&mut store, true);
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 1,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -8915,7 +8921,7 @@ fn apply_local_container_clone_does_not_apply_without_instabuild() {
     apply_player_instabuild(&mut store, false);
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 1,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -8950,7 +8956,7 @@ fn apply_local_container_clone_does_not_apply_with_non_empty_cursor() {
     apply_player_instabuild(&mut store, true);
     store.apply_open_screen(ProtocolOpenScreen {
         container_id: 7,
-        menu_type_id: 1,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X2_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });

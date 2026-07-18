@@ -216,6 +216,7 @@ fn scroll_signum(value: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbb_protocol::menu_types::VANILLA_MENU_TYPE_GENERIC_9X3_ID;
     use bbb_protocol::packets::{
         ContainerSetContent, DataComponentPatchSummary, ItemStackSummary, OpenScreen,
         SetPlayerInventory,
@@ -335,7 +336,7 @@ mod tests {
         });
         world.apply_open_screen(OpenScreen {
             container_id: 7,
-            menu_type_id: 2,
+            menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
             title: "Chest".to_string(),
             title_styled: Vec::new(),
         });

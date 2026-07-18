@@ -15,6 +15,15 @@ use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_PLAYER_ID,
 };
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_TYPES;
+use bbb_protocol::menu_types::{
+    VANILLA_MENU_TYPE_ANVIL_ID, VANILLA_MENU_TYPE_BEACON_ID, VANILLA_MENU_TYPE_BREWING_STAND_ID,
+    VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID, VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
+    VANILLA_MENU_TYPE_CRAFTING_ID, VANILLA_MENU_TYPE_ENCHANTMENT_ID, VANILLA_MENU_TYPE_FURNACE_ID,
+    VANILLA_MENU_TYPE_GENERIC_3X3_ID, VANILLA_MENU_TYPE_GENERIC_9X3_ID,
+    VANILLA_MENU_TYPE_GENERIC_9X6_ID, VANILLA_MENU_TYPE_GRINDSTONE_ID, VANILLA_MENU_TYPE_HOPPER_ID,
+    VANILLA_MENU_TYPE_LECTERN_ID, VANILLA_MENU_TYPE_MERCHANT_ID, VANILLA_MENU_TYPE_SHULKER_BOX_ID,
+    VANILLA_MENU_TYPE_SMITHING_ID, VANILLA_MENU_TYPE_STONECUTTER_ID,
+};
 use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary, AdvancementDisplaySummary, AdvancementFrameType,
@@ -6437,7 +6446,7 @@ fn server_container_open_releases_held_movement() {
 
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -7042,7 +7051,7 @@ fn server_container_open_releases_held_mouse_actions() {
     assert!(matches!(rx.try_recv().unwrap(), NetCommand::UseItem(_)));
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -8855,7 +8864,7 @@ fn hud_container_screen_uses_selected_item_condition_for_server_opened_hotbar_sl
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 2,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X3_ID,
         title: "Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -10756,7 +10765,7 @@ fn hud_inventory_screen_projects_generic_container_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X6_ID,
         title: "Large Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -10809,7 +10818,7 @@ fn hud_inventory_screen_projects_generic_3x3_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 6,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
         title: "Dispenser".to_string(),
         title_styled: Vec::new(),
     });
@@ -10849,7 +10858,7 @@ fn hud_inventory_screen_projects_crafter_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
         title: "Crafter".to_string(),
         title_styled: Vec::new(),
     });
@@ -10902,7 +10911,7 @@ fn hud_inventory_screen_projects_crafter_state_layers() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 7,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTER_3X3_ID,
         title: "Crafter".to_string(),
         title_styled: Vec::new(),
     });
@@ -10978,7 +10987,7 @@ fn hud_inventory_screen_projects_crafting_table_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -11031,7 +11040,7 @@ fn hud_inventory_screen_highlights_recipe_book_button() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -11066,7 +11075,7 @@ fn hud_inventory_screen_projects_recipe_book_overlay_for_crafting_table() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -11580,7 +11589,7 @@ fn hud_inventory_screen_projects_recipe_book_search_box_text() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -11652,7 +11661,7 @@ fn hud_inventory_screen_projects_selected_recipe_book_tab() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -11772,7 +11781,7 @@ fn hud_inventory_screen_projects_crafting_recipe_book_buttons() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -12759,7 +12768,7 @@ fn hud_inventory_screen_highlights_recipe_book_filter_button() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -12803,7 +12812,7 @@ fn hud_inventory_screen_uses_furnace_recipe_book_filter_sprite() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 14,
+        menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
         title: "Furnace".to_string(),
         title_styled: Vec::new(),
     });
@@ -12845,7 +12854,7 @@ fn hud_inventory_screen_projects_enchanting_table_layout_and_lapis_slot_layer() 
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 13,
+        menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
         title: "Enchanting Table".to_string(),
         title_styled: Vec::new(),
     });
@@ -12925,7 +12934,7 @@ fn hud_inventory_screen_projects_enchanting_table_enabled_option_layers() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 13,
+        menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
         title: "Enchanting Table".to_string(),
         title_styled: Vec::new(),
     });
@@ -12994,7 +13003,7 @@ fn hud_inventory_screen_projects_enchanting_table_disabled_cost_label() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 13,
+        menu_type_id: VANILLA_MENU_TYPE_ENCHANTMENT_ID,
         title: "Enchanting Table".to_string(),
         title_styled: Vec::new(),
     });
@@ -13063,7 +13072,7 @@ fn hud_inventory_screen_projects_anvil_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
         title_styled: Vec::new(),
     });
@@ -13118,7 +13127,7 @@ fn hud_inventory_screen_projects_beacon_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 9,
+        menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
         title: "Beacon".to_string(),
         title_styled: Vec::new(),
     });
@@ -13238,7 +13247,7 @@ fn hud_inventory_screen_projects_active_beacon_confirm_button() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 9,
+        menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
         title: "Beacon".to_string(),
         title_styled: Vec::new(),
     });
@@ -13287,7 +13296,7 @@ fn hud_inventory_screen_projects_local_beacon_effect_selection() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 9,
+        menu_type_id: VANILLA_MENU_TYPE_BEACON_ID,
         title: "Beacon".to_string(),
         title_styled: Vec::new(),
     });
@@ -13384,7 +13393,7 @@ fn hud_inventory_screen_projects_anvil_text_field_and_error_layers() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
         title_styled: Vec::new(),
     });
@@ -13438,7 +13447,7 @@ fn hud_inventory_screen_projects_anvil_rename_text_label() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
         title_styled: Vec::new(),
     });
@@ -13486,7 +13495,7 @@ fn hud_inventory_screen_projects_anvil_cost_label() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
         title_styled: Vec::new(),
     });
@@ -13540,7 +13549,7 @@ fn hud_inventory_screen_projects_anvil_too_expensive_label() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 8,
+        menu_type_id: VANILLA_MENU_TYPE_ANVIL_ID,
         title: "Anvil".to_string(),
         title_styled: Vec::new(),
     });
@@ -13593,7 +13602,7 @@ fn hud_inventory_screen_projects_brewing_stand_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 11,
+        menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
         title: "Brewing Stand".to_string(),
         title_styled: Vec::new(),
     });
@@ -13637,7 +13646,7 @@ fn hud_inventory_screen_projects_brewing_stand_progress_layers() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 11,
+        menu_type_id: VANILLA_MENU_TYPE_BREWING_STAND_ID,
         title: "Brewing Stand".to_string(),
         title_styled: Vec::new(),
     });
@@ -13773,7 +13782,7 @@ fn hud_inventory_screen_projects_furnace_progress_layers() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 14,
+        menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
         title: "Furnace".to_string(),
         title_styled: Vec::new(),
     });
@@ -13854,7 +13863,7 @@ fn hud_inventory_screen_projects_grindstone_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 15,
+        menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
         title_styled: Vec::new(),
     });
@@ -13898,7 +13907,7 @@ fn hud_inventory_screen_projects_grindstone_error_layer() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 15,
+        menu_type_id: VANILLA_MENU_TYPE_GRINDSTONE_ID,
         title: "Grindstone".to_string(),
         title_styled: Vec::new(),
     });
@@ -13943,7 +13952,7 @@ fn hud_inventory_screen_projects_hopper_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 16,
+        menu_type_id: VANILLA_MENU_TYPE_HOPPER_ID,
         title: "Hopper".to_string(),
         title_styled: Vec::new(),
     });
@@ -14260,7 +14269,7 @@ fn hud_inventory_screen_projects_lectern_book_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 17,
+        menu_type_id: VANILLA_MENU_TYPE_LECTERN_ID,
         title: "Lectern".to_string(),
         title_styled: Vec::new(),
     });
@@ -14309,7 +14318,7 @@ fn hud_inventory_screen_projects_lectern_current_page_text() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 17,
+        menu_type_id: VANILLA_MENU_TYPE_LECTERN_ID,
         title: "Lectern".to_string(),
         title_styled: Vec::new(),
     });
@@ -15860,7 +15869,7 @@ fn hud_inventory_screen_projects_shulker_box_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 20,
+        menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
         title: "Shulker Box".to_string(),
         title_styled: Vec::new(),
     });
@@ -15902,7 +15911,7 @@ fn hud_inventory_screen_projects_loom_layout_and_empty_slot_layers() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 18,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Loom".to_string(),
         title_styled: Vec::new(),
     });
@@ -15986,7 +15995,7 @@ fn hud_inventory_screen_projects_loom_pattern_grid_and_scroller() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 18,
+        menu_type_id: VANILLA_MENU_TYPE_LOOM_ID,
         title: "Loom".to_string(),
         title_styled: Vec::new(),
     });
@@ -16066,7 +16075,7 @@ fn hud_inventory_screen_projects_merchant_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 19,
+        menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
         title_styled: Vec::new(),
     });
@@ -16113,7 +16122,7 @@ fn hud_inventory_screen_projects_merchant_trade_layers() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 19,
+        menu_type_id: VANILLA_MENU_TYPE_MERCHANT_ID,
         title: "Merchant".to_string(),
         title_styled: Vec::new(),
     });
@@ -16242,7 +16251,7 @@ fn hud_inventory_screen_projects_smithing_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 21,
+        menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
         title_styled: Vec::new(),
     });
@@ -16288,7 +16297,7 @@ fn hud_inventory_screen_projects_smithing_armor_stand_preview() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 21,
+        menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
         title_styled: Vec::new(),
     });
@@ -16477,7 +16486,7 @@ fn smithing_preview_for_result_stack(
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 21,
+        menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
         title_styled: Vec::new(),
     });
@@ -16588,7 +16597,7 @@ fn hud_inventory_screen_projects_smithing_error_layer() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 21,
+        menu_type_id: VANILLA_MENU_TYPE_SMITHING_ID,
         title: "Smithing".to_string(),
         title_styled: Vec::new(),
     });
@@ -16636,7 +16645,7 @@ fn hud_inventory_screen_projects_cartography_table_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 23,
+        menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
         title_styled: Vec::new(),
     });
@@ -16818,7 +16827,7 @@ fn hud_inventory_screen_projects_stonecutter_layout() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 24,
+        menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
         title_styled: Vec::new(),
     });
@@ -16871,7 +16880,7 @@ fn hud_inventory_screen_projects_stonecutter_recipe_buttons_and_scroller() {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 24,
+        menu_type_id: VANILLA_MENU_TYPE_STONECUTTER_ID,
         title: "Stonecutter".to_string(),
         title_styled: Vec::new(),
     });
@@ -17911,7 +17920,7 @@ fn cartography_table_world_with_items(
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 23,
+        menu_type_id: VANILLA_MENU_TYPE_CARTOGRAPHY_TABLE_ID,
         title: "Cartography Table".to_string(),
         title_styled: Vec::new(),
     });
@@ -17954,7 +17963,7 @@ fn open_recipe_book_crafting_table_world() -> WorldStore {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 12,
+        menu_type_id: VANILLA_MENU_TYPE_CRAFTING_ID,
         title: "Crafting".to_string(),
         title_styled: Vec::new(),
     });
@@ -17980,7 +17989,7 @@ fn open_recipe_book_furnace_world() -> WorldStore {
     let mut world = WorldStore::new();
     world.apply_open_screen(bbb_protocol::packets::OpenScreen {
         container_id: 7,
-        menu_type_id: 14,
+        menu_type_id: VANILLA_MENU_TYPE_FURNACE_ID,
         title: "Furnace".to_string(),
         title_styled: Vec::new(),
     });

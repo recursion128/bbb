@@ -119,7 +119,7 @@ fn generic_container_layout_matches_vanilla_chest_menu() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X6_ID,
         title: "Large Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -172,7 +172,7 @@ fn generic_3x3_layout_matches_vanilla_dispenser_menu() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 6,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
         title: "Dispenser".to_string(),
         title_styled: Vec::new(),
     });
@@ -786,7 +786,7 @@ fn hopper_layout_matches_vanilla_hopper_menu() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 16,
+        menu_type_id: VANILLA_MENU_TYPE_HOPPER_ID,
         title: "Hopper".to_string(),
         title_styled: Vec::new(),
     });
@@ -1103,7 +1103,7 @@ fn shulker_box_layout_matches_vanilla_menu() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 20,
+        menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
         title: "Shulker Box".to_string(),
         title_styled: Vec::new(),
     });
@@ -1455,7 +1455,7 @@ fn generic_container_hit_test_uses_vanilla_screen_height() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X6_ID,
         title: "Large Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -1484,7 +1484,7 @@ fn generic_3x3_hit_test_uses_vanilla_dispenser_slots() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 6,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
         title: "Dispenser".to_string(),
         title_styled: Vec::new(),
     });
@@ -1803,7 +1803,7 @@ fn hopper_hit_test_uses_vanilla_slots() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 16,
+        menu_type_id: VANILLA_MENU_TYPE_HOPPER_ID,
         title: "Hopper".to_string(),
         title_styled: Vec::new(),
     });
@@ -1951,7 +1951,7 @@ fn shulker_box_hit_test_uses_vanilla_slots() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 20,
+        menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
         title: "Shulker Box".to_string(),
         title_styled: Vec::new(),
     });
@@ -3520,7 +3520,7 @@ fn generic_container_mouse_click_queues_pickup() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X6_ID,
         title: "Large Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -4257,7 +4257,7 @@ fn generic_container_shift_click_queues_quick_move() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 5,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_9X6_ID,
         title: "Large Chest".to_string(),
         title_styled: Vec::new(),
     });
@@ -4313,7 +4313,7 @@ fn generic_3x3_shift_click_queues_quick_move() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 6,
+        menu_type_id: VANILLA_MENU_TYPE_GENERIC_3X3_ID,
         title: "Dispenser".to_string(),
         title_styled: Vec::new(),
     });
@@ -6949,7 +6949,7 @@ fn hopper_shift_click_queues_bidirectional_quick_move() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 16,
+        menu_type_id: VANILLA_MENU_TYPE_HOPPER_ID,
         title: "Hopper".to_string(),
         title_styled: Vec::new(),
     });
@@ -7037,7 +7037,7 @@ fn shulker_box_shift_click_queues_bidirectional_quick_move() {
     let mut world = WorldStore::new();
     world.apply_open_screen(OpenScreen {
         container_id: 7,
-        menu_type_id: 20,
+        menu_type_id: VANILLA_MENU_TYPE_SHULKER_BOX_ID,
         title: "Shulker Box".to_string(),
         title_styled: Vec::new(),
     });
