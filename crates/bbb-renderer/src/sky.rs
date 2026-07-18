@@ -41,7 +41,16 @@ const SKY_OVERLAY_BLEND: wgpu::BlendState = wgpu::BlendState {
 };
 
 fn sky_depth_stencil_state() -> Option<wgpu::DepthStencilState> {
-    None
+    // Vanilla sky layers draw with depth test and depth write disabled, but
+    // they run inside the main world pass, which always binds the shared depth
+    // attachment — so the pipelines must declare its format to satisfy wgpu.
+    Some(wgpu::DepthStencilState {
+        format: crate::gpu::DEPTH_FORMAT,
+        depth_write_enabled: false,
+        depth_compare: wgpu::CompareFunction::Always,
+        stencil: wgpu::StencilState::default(),
+        bias: wgpu::DepthBiasState::default(),
+    })
 }
 
 fn sky_cull_mode() -> Option<wgpu::Face> {
@@ -1818,7 +1827,10 @@ mod tests {
 
     #[test]
     fn sky_pipelines_match_vanilla_disc_and_sunrise_state() {
-        assert!(sky_depth_stencil_state().is_none());
+        let depth = sky_depth_stencil_state().expect("sky declares the main pass depth format");
+        assert_eq!(depth.format, crate::gpu::DEPTH_FORMAT);
+        assert!(!depth.depth_write_enabled);
+        assert_eq!(depth.depth_compare, wgpu::CompareFunction::Always);
         assert_eq!(sky_cull_mode(), Some(wgpu::Face::Back));
         assert!(sky_disc_blend_state().is_none());
 
