@@ -569,14 +569,44 @@ def _block_is_air(probe: dict[str, Any] | None) -> bool:
     return probe.get("block_state_id") == 0
 
 
+def _block_is_solid(probe: dict[str, Any] | None) -> bool:
+    return probe is not None and not _block_is_air(probe) and probe.get("fluid") is None
+
+
+def _net_counter(address: tuple[str, int], key: str) -> int:
+    counters = _object(_control_request(address, "net.counters"), "net.counters")
+    return int(counters.get(key, 0))
+
+
+def _await_input_pipeline(address: tuple[str, int], deadline: float) -> None:
+    """The render thread consumes synthetic input once per frame; a long
+    meshing frame queues injected clicks for tens of seconds and then
+    replays them all at once, wrecking any timed sequence.  Inject a tiny
+    look delta and wait for it to land in the pose so timed input starts
+    against a live frame loop."""
+
+    while time.monotonic() < deadline:
+        before = float(_local_player_pose(address).get("y_rot", 0.0))
+        _control_request(address, "input.look_delta", {"dx": 4.0, "dy": 0.0})
+        probe_deadline = min(deadline, time.monotonic() + 2.0)
+        while time.monotonic() < probe_deadline:
+            now = float(_local_player_pose(address).get("y_rot", 0.0))
+            if abs(((now - before + 180.0) % 360.0) - 180.0) > 0.2:
+                return
+            time.sleep(0.05)
+    raise GateFailure("render thread never consumed synthetic look input")
+
+
 def _look_to_pitch(address: tuple[str, int], target_pitch: float, deadline: float) -> None:
     """Closed-loop pitch steering: read x_rot, inject a conservative look
-    delta, repeat until converged (vanilla sensitivity ~0.12 deg/px here)."""
+    delta, repeat until converged (vanilla sensitivity ~0.12 deg/px here).
+    The tight tolerance keeps a straight-down crosshair ray from drifting
+    into a neighboring block column over a multi-block drop."""
 
     while time.monotonic() < deadline:
         pitch = float(_local_player_pose(address).get("x_rot", 0.0))
         error = target_pitch - pitch
-        if abs(error) < 2.0:
+        if abs(error) < 0.5:
             return
         _control_request(
             address,
@@ -585,6 +615,64 @@ def _look_to_pitch(address: tuple[str, int], target_pitch: float, deadline: floa
         )
         time.sleep(0.1)
     raise GateFailure(f"look steering did not reach pitch {target_pitch}")
+
+
+def _look_to_yaw(address: tuple[str, int], target_yaw: float, deadline: float) -> None:
+    """Closed-loop yaw steering with wraparound, mirroring _look_to_pitch."""
+
+    while time.monotonic() < deadline:
+        yaw = float(_local_player_pose(address).get("y_rot", 0.0))
+        error = ((target_yaw - yaw + 180.0) % 360.0) - 180.0
+        # A 5-degree walking heading error drifts the step by well under a
+        # tenth of a block; a tighter tolerance only burns the deadline.
+        if abs(error) < 5.0:
+            return
+        _control_request(
+            address,
+            "input.look_delta",
+            {"dx": max(-600.0, min(600.0, error / 0.12 * 0.7)), "dy": 0.0},
+        )
+        time.sleep(0.1)
+    raise GateFailure(f"look steering did not reach yaw {target_yaw}")
+
+
+def _center_on_block(address: tuple[str, int], deadline: float) -> dict[str, Any]:
+    """Sneak-walk the player toward the center of its block column so the
+    straight-down crosshair ray cannot cross into a neighboring column and
+    the vacated cell is the one the player falls into.  Sneaking keeps the
+    steps short and its edge clamp keeps the player on the support."""
+
+    pose = _await_settled_player(address, deadline)
+    _press_key(address, "sneak", True)
+    try:
+        for _ in range(24):
+            if time.monotonic() >= deadline:
+                break
+            position = _object(pose.get("position"), "local_player.pose.position")
+            center_x = math.floor(float(position["x"])) + 0.5
+            center_z = math.floor(float(position["z"])) + 0.5
+            offset_x = center_x - float(position["x"])
+            offset_z = center_z - float(position["z"])
+            distance = (offset_x**2 + offset_z**2) ** 0.5
+            # The player bounding box is 0.6 wide: anything looser than 0.2
+            # leaves the box straddling a seam, supported by the neighboring
+            # column, and the player never falls into the vacated cell.
+            if abs(offset_x) <= 0.15 and abs(offset_z) <= 0.15:
+                return pose
+            # Vanilla forward is (-sin(yaw), cos(yaw)) in the XZ plane.
+            target_yaw = math.degrees(math.atan2(-offset_x, offset_z))
+            _look_to_yaw(address, target_yaw, deadline)
+            # Sneaking moves at ~1.3 m/s: short taps close in without
+            # overshooting a full block.
+            _press_key(address, "forward", True)
+            time.sleep(min(0.4, max(0.05, distance / 1.3 * 0.7)))
+            _press_key(address, "forward", False)
+            # Let the post-release slide decay before re-reading the pose.
+            time.sleep(0.3)
+            pose = _local_player_pose(address)
+    finally:
+        _press_key(address, "sneak", False)
+    raise GateFailure("player never centered on its block column")
 
 
 def _occupied_player_slots(address: tuple[str, int]) -> int:
@@ -655,28 +743,32 @@ def drive_block_interaction(
     deadline = started_at + timeout_seconds
     _control_request(address, "input.focus", {"focused": True})
 
-    # The movement smoke ends mid-jump; wait for the player to land so the
-    # block under the feet is the real supporting block.
-    pose = _await_settled_player(address, deadline)
-    position = _object(pose.get("position"), "local_player.pose.position")
-    column_x = math.floor(float(position["x"]))
-    column_z = math.floor(float(position["z"]))
-    feet_y = math.floor(float(position["y"]))
-    # A settled player can straddle a block seam with air directly below the
-    # feet; the pitch-90 crosshair hits the first solid block straight down
-    # the center column, so that is the block this smoke drives.
+    # The movement smoke ends mid-jump; wait for the player to land, then
+    # center on the block column so the pitch-90 ray, the fall after the
+    # destroy, and the jump placement all target the same cell.  The cell
+    # below the target must also be solid: the player must fall exactly one
+    # block so the placement ray hits its top face and restores the target.
     target = None
     initial = None
-    for y in range(feet_y - 1, feet_y - 4, -1):
-        probe = _probe_block(address, column_x, y, column_z)
-        if probe is not None and not _block_is_air(probe) and probe.get("fluid") is None:
-            target = {"x": column_x, "y": y, "z": column_z}
-            initial = probe
+    for _ in range(4):
+        pose = _center_on_block(address, deadline)
+        position = _object(pose.get("position"), "local_player.pose.position")
+        column_x = math.floor(float(position["x"]))
+        column_z = math.floor(float(position["z"]))
+        feet_y = math.floor(float(position["y"]))
+        supporting = _probe_block(address, column_x, feet_y - 1, column_z)
+        below = _probe_block(address, column_x, feet_y - 2, column_z)
+        if _block_is_solid(supporting) and _block_is_solid(below):
+            target = {"x": column_x, "y": feet_y - 1, "z": column_z}
+            initial = supporting
             break
+        # Cavitied terrain under this column: step one block away and retry.
+        _press_key(address, "forward", True)
+        time.sleep(0.3)
+        _press_key(address, "forward", False)
     if target is None or initial is None:
         raise GateFailure(
-            "no solid block within reach straight below the player at "
-            f"({column_x}, {feet_y}, {column_z})"
+            "no centered column with two solid blocks below the player was found"
         )
 
     net_before = _object(_control_request(address, "net.counters"), "net.counters")
@@ -687,12 +779,24 @@ def drive_block_interaction(
     _look_to_pitch(address, 90.0, deadline)
 
     # Middle-click pick: the server answers by filling the creative hotbar.
-    # A wandering entity can transiently steal the crosshair, so re-tap a few
-    # times before giving up.
+    # Confirm each click was consumed by the frame loop (the pick counter
+    # moves) before judging the hotbar, so a long frame swallowing the click
+    # is waited out instead of misread; a wandering entity can still steal
+    # the crosshair transiently, so re-tap a few times before giving up.
     pick_confirmed = False
     for _ in range(3):
+        _await_input_pipeline(address, deadline)
+        picks_before = _net_counter(address, "pick_item_from_block_commands_queued")
         _press_mouse(address, "middle", True)
         _press_mouse(address, "middle", False)
+        consume_deadline = min(deadline, time.monotonic() + 10.0)
+        while time.monotonic() < consume_deadline:
+            if (
+                _net_counter(address, "pick_item_from_block_commands_queued")
+                > picks_before
+            ):
+                break
+            time.sleep(0.1)
         tap_deadline = min(deadline, time.monotonic() + 3.0)
         while time.monotonic() < tap_deadline:
             if _occupied_player_slots(address) > slots_before:
@@ -717,11 +821,20 @@ def drive_block_interaction(
     # Left-click tap: creative instant destroy, acknowledged by the server
     # block update flipping the canonical probe to air.  A held button keeps
     # the vanilla destroy loop digging into the exposed blocks below, so tap
-    # and re-tap instead of holding.
+    # and re-tap instead of holding -- and only after the previous tap was
+    # consumed by the frame loop (the swing counter moves), so a long frame
+    # cannot pile up queued taps that dig a shaft when it ends.
     destroyed = False
     while not destroyed and time.monotonic() < deadline:
+        _await_input_pipeline(address, deadline)
+        swings_before = _net_counter(address, "swing_commands_queued")
         _press_mouse(address, "left", True)
         _press_mouse(address, "left", False)
+        consume_deadline = min(deadline, time.monotonic() + 10.0)
+        while time.monotonic() < consume_deadline:
+            if _net_counter(address, "swing_commands_queued") > swings_before:
+                break
+            time.sleep(0.1)
         tap_deadline = min(deadline, time.monotonic() + 2.0)
         while time.monotonic() < tap_deadline:
             if _block_is_air(_probe_block(address, target["x"], target["y"], target["z"])):
@@ -731,29 +844,44 @@ def drive_block_interaction(
     if not destroyed:
         raise GateFailure(f"block at {target} was not destroyed by the synthetic click")
 
-    # Wait for the player to settle into the vacated cell.
+    # Wait for the player to settle into the vacated cell; if the feet are
+    # not at the target height the placement geometry is broken (the box was
+    # kept out of the hole by a neighboring column) and retrying clicks
+    # would only place blocks into the wrong cell.
+    settled_feet = None
     while time.monotonic() < deadline:
         pose = _local_player_pose(address)
         if pose.get("on_ground") is True:
-            break
+            position = _object(pose.get("position"), "local_player.pose.position")
+            settled_feet = math.floor(float(position["y"]))
+            if settled_feet == target["y"]:
+                break
         time.sleep(0.1)
+    if settled_feet != target["y"]:
+        raise GateFailure(
+            f"player settled with feet at {settled_feet} instead of falling "
+            f"into the vacated cell at {target}"
+        )
 
-    # Pillar-jump placement: right-click at the jump apex places the picked
-    # block into the cell the player occupied.
+    # Pillar-jump placement: right-clicks around the jump apex place the
+    # picked block into the cell the player occupied.  The clicks are timed
+    # blindly off the fixed 20 Hz jump physics instead of polling the pose --
+    # a slow control read would miss the ~0.35 s apex window every attempt,
+    # while an early click is harmlessly rejected by the server's collision
+    # check and the next one lands.
     restored = False
     while not restored and time.monotonic() < deadline:
-        base_y = float(_local_player_pose(address).get("position", {}).get("y", 0.0))
+        _await_input_pipeline(address, deadline)
+        jump_started = time.monotonic()
         _press_key(address, "jump", True)
-        apex_deadline = min(deadline, time.monotonic() + 1.5)
         try:
-            while time.monotonic() < apex_deadline:
-                y = float(_local_player_pose(address).get("position", {}).get("y", 0.0))
-                if y - base_y >= 1.0:
-                    _press_mouse(address, "right", True)
-                    time.sleep(0.1)
-                    _press_mouse(address, "right", False)
-                    break
-                time.sleep(0.02)
+            for offset in (0.35, 0.55, 0.75):
+                delay = jump_started + offset - time.monotonic()
+                if delay > 0:
+                    time.sleep(delay)
+                _press_mouse(address, "right", True)
+                time.sleep(0.08)
+                _press_mouse(address, "right", False)
         finally:
             _press_key(address, "jump", False)
         settle_deadline = min(deadline, time.monotonic() + 1.5)
