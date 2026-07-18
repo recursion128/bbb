@@ -372,8 +372,12 @@ pub(crate) fn start_network_if_requested(
     options.accepted_code_of_conduct_hash = code_of_conduct.accepted_hash_for_options(&options);
     options.known_packs_manager = known_packs_manager;
     code_of_conduct.set_connected_server(&options);
-    let (tx, rx) = mpsc::channel(8192);
-    let (command_tx, command_rx) = mpsc::channel(256);
+    // Vanilla's netty-to-game-thread queue is unbounded: the connection
+    // thread never stops reading because the game thread is slow.  Size both
+    // directions so multi-minute render stalls cannot wedge the event stream
+    // in emit() backpressure or drop queued gameplay commands.
+    let (tx, rx) = mpsc::channel(262_144);
+    let (command_tx, command_rx) = mpsc::channel(8192);
     let disconnect_tx = tx.clone();
     runtime.spawn(async move {
         let reason = match bbb_net::run_event_stream(options, tx, command_rx).await {
