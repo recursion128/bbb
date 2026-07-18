@@ -30,6 +30,8 @@
 ^crates/bbb-world/src/client/dialog(/action|/body|/input)?[.]rs$	unsupported dialog|unsupported scheme
 ^crates/bbb-world/src/registries/animal_variants[.]rs$	unsupported (farm-animal registry|model type)
 ^crates/bbb-world/src/registries/sound_variants[.]rs$	unsupported sound-variant registry
+# Timeline codecs reject unknown easing names with a bounded field diagnostic.
+^crates/bbb-world/src/registries/timelines[.]rs$	unsupported easing
 
 # goal.md explicitly classifies tests as non-P0 evidence/fixtures.
 ^crates/.*/tests[.]rs$	residual|fallback|unsupported
