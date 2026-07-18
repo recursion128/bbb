@@ -2482,24 +2482,17 @@ mod tests {
     }
 
     #[test]
-    fn play_delete_chat_keeps_visible_deletion_runtime_open() {
+    fn play_delete_chat_closes_visible_deletion_runtime() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
             .iter()
             .find(|entry| entry.state == "play" && entry.constant_name == "CLIENTBOUND_DELETE_CHAT")
             .expect("play delete chat coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "runtime_side_effect"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -2822,10 +2815,7 @@ mod tests {
                 (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
             })
             .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect", "tests"])
-        );
+        assert_eq!(partial, BTreeSet::from(["runtime_side_effect", "tests"]));
     }
 
     #[test]
@@ -2849,7 +2839,7 @@ mod tests {
     }
 
     #[test]
-    fn play_player_info_update_keeps_chat_session_and_social_semantics_open() {
+    fn play_player_info_update_closes_chat_session_and_social_semantics() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -2858,17 +2848,10 @@ mod tests {
                 entry.state == "play" && entry.constant_name == "CLIENTBOUND_PLAYER_INFO_UPDATE"
             })
             .expect("play player info update coverage row");
-        let partial: BTreeSet<_> = entry
+        assert!(entry
             .coverage
-            .iter()
-            .filter_map(|(dimension, cell)| {
-                (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from(["canonical_apply", "decode", "runtime_side_effect", "tests"])
-        );
+            .values()
+            .all(|cell| cell.status == PacketCoverageStatus::Complete));
     }
 
     #[test]
@@ -3214,7 +3197,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_chat_closes_signature_and_keeps_echo_open() {
+    fn play_serverbound_chat_closes_signature_and_echo_state() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3231,11 +3214,17 @@ mod tests {
 
         assert_eq!(
             complete,
-            BTreeSet::from(["command_surface", "encoder", "state_guard", "tests"])
+            BTreeSet::from([
+                "ack_response",
+                "command_surface",
+                "encoder",
+                "state_guard",
+                "tests"
+            ])
         );
         assert_eq!(
             entry.coverage["ack_response"].status,
-            PacketCoverageStatus::Partial
+            PacketCoverageStatus::Complete
         );
     }
 
@@ -3259,11 +3248,17 @@ mod tests {
 
         assert_eq!(
             complete,
-            BTreeSet::from(["command_surface", "encoder", "state_guard", "tests"])
+            BTreeSet::from([
+                "ack_response",
+                "command_surface",
+                "encoder",
+                "state_guard",
+                "tests"
+            ])
         );
         assert_eq!(
             entry.coverage["ack_response"].status,
-            PacketCoverageStatus::Partial
+            PacketCoverageStatus::Complete
         );
     }
 
