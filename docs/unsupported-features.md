@@ -87,6 +87,11 @@ Owner: `bbb-protocol`
   each typed revision. Raw NBT summaries, individual typed projections, and
   derived audio/variant registries are not that complete runtime. Complete the
   non-death consumers of synchronized animal sound-variant payloads.
+  Synchronized jukebox songs now use server holder order and typed
+  `JukeboxSong.DIRECT_CODEC` values across audio and `jukebox_playable` tooltips,
+  including named/direct sound events, rich descriptions, and direct fixed range;
+  a server-provided malformed or unknown entry never falls back through the
+  vanilla bootstrap ordinal.
   Dimension-type direct visual environment
   attributes now drive custom fog/sky/water-fog colors and distances plus lightmap tint/factor
   without classifying an unknown resource as a vanilla dimension. Remaining

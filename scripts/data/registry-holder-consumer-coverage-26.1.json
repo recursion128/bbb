@@ -66,13 +66,35 @@
       "decision": "Vanilla 26.1 synchronizes ChatType.DIRECT_CODEC values and sends named or direct holders in player/disguised chat. Protocol retains the trusted Component payloads and direct decoration style; world resolves named holders only through the frozen session order, decodes chat/narration parameters and style, retains stub/malformed/unknown diagnostics, and preserves the no-server vanilla fallback. The native event test proves a custom entry inserted before minecraft:chat is not interpreted as the vanilla holder."
     },
     {
+      "id": "network-holder-or-inline-jukebox-song-synchronized",
+      "selector": {
+        "kind": "network_holder_or_inline",
+        "source_paths": [
+          "net/minecraft/world/item/JukeboxSong.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/jukebox_songs.rs#pub fn synchronized_jukebox_song_presentation",
+      "evidence": [
+        "vanilla:net/minecraft/world/item/JukeboxSong.java#STREAM_CODEC = ByteBufCodecs.holder(",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.JUKEBOX_SONG, JukeboxSong.DIRECT_CODEC)",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_jukebox_song_holder",
+        "crates/bbb-world/src/registries/jukebox_songs.rs#pub fn synchronized_jukebox_song_presentation",
+        "crates/bbb-native/src/runtime/events/dispatcher.rs#fn jukebox_song_registry_from_world",
+        "crates/bbb-native/src/runtime/events/tests/trial_spawner_and_sculk_events.rs#fn jukebox_song_registry_data_updates_audio_resolution",
+        "crates/bbb-item-model/src/item_runtime/tooltip.rs#fn synchronized_jukebox_tooltip_uses_typed_description_and_safe_stub_fallback"
+      ],
+      "decision": "Vanilla 26.1 synchronizes JukeboxSong.DIRECT_CODEC values and uses named or direct holders in the jukebox_playable item component. Protocol retains direct-holder Component NBT; world resolves server holder order and decodes named/direct SoundEvent values, rich descriptions, positive length, and comparator output. Native audio and item tooltips consume the typed session value, including custom sound range and description, while data-less known-pack stubs alone may use resource-identity fallback and malformed or unknown entries never fall back by bootstrap ordinal."
+    },
+    {
       "id": "network-holder-or-inline",
       "selector": {
         "kind": "network_holder_or_inline",
         "exclude_source_paths": [
           "net/minecraft/sounds/SoundEvent.java",
           "net/minecraft/server/dialog/Dialog.java",
-          "net/minecraft/network/chat/ChatType.java"
+          "net/minecraft/network/chat/ChatType.java",
+          "net/minecraft/world/item/JukeboxSong.java"
         ]
       },
       "status": "partial",

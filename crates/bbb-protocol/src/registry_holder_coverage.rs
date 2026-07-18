@@ -139,9 +139,13 @@ mod tests {
                 *counts.entry(entry.family.as_str()).or_insert(0usize) += 1;
                 counts
             });
-        assert_eq!(counts["network-holder-or-inline"], 6);
+        assert_eq!(counts["network-holder-or-inline"], 5);
         assert_eq!(counts["network-holder-or-inline-chat-type-synchronized"], 1);
         assert_eq!(counts["network-holder-or-inline-dialog-synchronized"], 1);
+        assert_eq!(
+            counts["network-holder-or-inline-jukebox-song-synchronized"],
+            1
+        );
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
         assert_eq!(counts["network-holder-reference-attribute-built-in"], 1);
@@ -187,7 +191,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            161
+            160
         );
         assert_eq!(
             ledger
@@ -210,7 +214,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 30);
+        assert_eq!(complete.len(), 31);
         assert_eq!(
             complete
                 .iter()
@@ -231,6 +235,7 @@ mod tests {
                 "minecraft:enchantment",
                 "minecraft:frog_variant",
                 "minecraft:item",
+                "minecraft:jukebox_song",
                 "minecraft:map_decoration_type",
                 "minecraft:mob_effect",
                 "minecraft:pig_variant",
@@ -280,6 +285,73 @@ mod tests {
             assert!(
                 chat_types.contains(required),
                 "chat type resolver lost structural guard {required}"
+            );
+        }
+    }
+
+    #[test]
+    fn complete_jukebox_song_family_keeps_session_resolution_and_consumer_guards() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        let jukebox_song = ledger
+            .entries
+            .iter()
+            .find(|entry| {
+                entry.resource_id.as_deref() == Some("minecraft:jukebox_song")
+                    && entry.family == "network-holder-or-inline-jukebox-song-synchronized"
+            })
+            .unwrap();
+        assert_eq!(jukebox_song.status, RegistryHolderCoverageStatus::Complete);
+        assert_eq!(
+            jukebox_song.family,
+            "network-holder-or-inline-jukebox-song-synchronized"
+        );
+
+        let protocol = include_str!("packets/data_components.rs");
+        for required in [
+            "fn decode_jukebox_song_holder(",
+            "pub description_nbt: Option<Box<NbtSummaryValue>>",
+            "decode_styled_component_summary_with_nbt_from_decoder(decoder)",
+        ] {
+            assert!(
+                protocol.contains(required),
+                "jukebox protocol path lost structural guard {required}"
+            );
+        }
+
+        let world = include_str!("../../bbb-world/src/registries/jukebox_songs.rs");
+        for required in [
+            "registry_entry_by_holder_id(JUKEBOX_SONG_REGISTRY",
+            "fn decode_jukebox_song(",
+            "pub fn synchronized_jukebox_song_presentation(",
+        ] {
+            assert!(
+                world.contains(required),
+                "jukebox world path lost structural guard {required}"
+            );
+        }
+
+        let dispatcher = include_str!("../../bbb-native/src/runtime/events/dispatcher.rs");
+        for required in [
+            "fn jukebox_song_registry_from_world(",
+            ".synchronized_jukebox_song_presentation(holder_id)",
+            ".filter(|entry| !entry.has_data)",
+            "JukeboxSongRegistry::vanilla_26_1_sound_event_id(&song_id)",
+        ] {
+            assert!(
+                dispatcher.contains(required),
+                "jukebox audio path lost structural guard {required}"
+            );
+        }
+
+        let item_models = include_str!("../../bbb-native/src/item_models.rs");
+        for required in [
+            "fn world_jukebox_song_tooltip_context(",
+            "world.synchronized_jukebox_song_presentation(holder_id)",
+            "is_some_and(|entry| !entry.has_data)",
+        ] {
+            assert!(
+                item_models.contains(required),
+                "jukebox tooltip path lost structural guard {required}"
             );
         }
     }

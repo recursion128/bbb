@@ -1924,23 +1924,26 @@
     {
       "call_site": "net/minecraft/world/item/JukeboxSong.java:41:97:ByteBufCodecs.holder",
       "column": 97,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/jukebox_songs.rs#pub fn synchronized_jukebox_song_presentation",
+      "decision": "Vanilla 26.1 synchronizes JukeboxSong.DIRECT_CODEC values and uses named or direct holders in the jukebox_playable item component. Protocol retains direct-holder Component NBT; world resolves server holder order and decodes named/direct SoundEvent values, rich descriptions, positive length, and comparator output. Native audio and item tooltips consume the typed session value, including custom sound range and description, while data-less known-pack stubs alone may use resource-identity fallback and malformed or unknown entries never fall back by bootstrap ordinal.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
-        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
-        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "vanilla:net/minecraft/world/item/JukeboxSong.java#STREAM_CODEC = ByteBufCodecs.holder(",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.JUKEBOX_SONG, JukeboxSong.DIRECT_CODEC)",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_jukebox_song_holder",
+        "crates/bbb-world/src/registries/jukebox_songs.rs#pub fn synchronized_jukebox_song_presentation",
+        "crates/bbb-native/src/runtime/events/dispatcher.rs#fn jukebox_song_registry_from_world",
+        "crates/bbb-native/src/runtime/events/tests/trial_spawner_and_sculk_events.rs#fn jukebox_song_registry_data_updates_audio_resolution",
+        "crates/bbb-item-model/src/item_runtime/tooltip.rs#fn synchronized_jukebox_tooltip_uses_typed_description_and_safe_stub_fallback"
       ],
       "factory": "ByteBufCodecs.holder",
-      "family": "network-holder-or-inline",
+      "family": "network-holder-or-inline-jukebox-song-synchronized",
       "kind": "network_holder_or_inline",
       "line": 41,
       "owner": "net.minecraft.world.item.JukeboxSong",
       "registry_expression": "Registries.JUKEBOX_SONG",
       "resource_id": "minecraft:jukebox_song",
       "source_path": "net/minecraft/world/item/JukeboxSong.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/item/alchemy/Potion.java:18:54:Registry.holderByNameCodec",
