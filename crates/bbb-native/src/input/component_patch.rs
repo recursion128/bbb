@@ -11,7 +11,9 @@ use bbb_protocol::equipment_slots::{
     vanilla_equipment_slot_by_id, vanilla_equipment_slot_group, VANILLA_EQUIPMENT_SLOT_GROUP_ANY_ID,
 };
 use bbb_protocol::tropical_fish_patterns::vanilla_tropical_fish_pattern;
-use bbb_world::BlockStateRegistry;
+use bbb_world::{
+    direct_trim_material_presentation, direct_trim_pattern_presentation, BlockStateRegistry,
+};
 
 type PersistentSnbtEncoder = for<'a> fn(
     i32,
@@ -1430,8 +1432,8 @@ fn encode_provides_trim_material(
     if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
         return Some(debug_nbt_summary_snbt(persistent));
     }
-    if patch.provides_trim_material_direct.is_some() {
-        return None;
+    if let Some(material) = patch.provides_trim_material_direct.as_deref() {
+        return encode_direct_trim_material(material);
     }
     let holder_id = patch.provides_trim_material_id?;
     let resource_id =
@@ -1581,27 +1583,72 @@ fn encode_armor_trim(
     if let Some(persistent) = patch.codec_backed_nbt.get(&type_id) {
         return Some(debug_nbt_summary_snbt(persistent));
     }
-    if patch.armor_trim_material_direct.is_some() || patch.armor_trim_pattern_direct.is_some() {
-        return None;
+    let material = if let Some(material) = patch.armor_trim_material_direct.as_deref() {
+        encode_direct_trim_material(material)?
+    } else {
+        let holder_id = patch.armor_trim_material_id?;
+        let resource_id =
+            context.registry_resource_id("minecraft:trim_material", holder_id, |holder_id| {
+                VanillaTrimMaterialIdentity::for_vanilla_registry_id(holder_id)
+                    .map(VanillaTrimMaterialIdentity::resource_id)
+                    .map(str::to_string)
+            })?;
+        debug_snbt_string(&resource_id)
+    };
+    let pattern = if let Some(pattern) = patch.armor_trim_pattern_direct.as_deref() {
+        encode_direct_trim_pattern(pattern)?
+    } else {
+        let holder_id = patch.armor_trim_pattern_id?;
+        let resource_id =
+            context.registry_resource_id("minecraft:trim_pattern", holder_id, |holder_id| {
+                VanillaTrimPatternIdentity::for_vanilla_registry_id(holder_id)
+                    .map(VanillaTrimPatternIdentity::resource_id)
+                    .map(str::to_string)
+            })?;
+        debug_snbt_string(&resource_id)
+    };
+    Some(format!("{{material: {}, pattern: {}}}", material, pattern))
+}
+
+fn encode_direct_trim_material(
+    material: &bbb_protocol::packets::TrimMaterialSummary,
+) -> Option<String> {
+    let material = direct_trim_material_presentation(material)?;
+    let mut fields = vec![format!(
+        "asset_name: {}",
+        debug_snbt_string(&material.asset_name)
+    )];
+    if !material.override_armor_assets.is_empty() {
+        fields.push(format!(
+            "override_armor_assets: {{{}}}",
+            material
+                .override_armor_assets
+                .iter()
+                .map(|(asset, suffix)| format!(
+                    "{}: {}",
+                    debug_snbt_compound_key(asset),
+                    debug_snbt_string(suffix)
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
     }
-    let material_id = patch.armor_trim_material_id?;
-    let material =
-        context.registry_resource_id("minecraft:trim_material", material_id, |holder_id| {
-            VanillaTrimMaterialIdentity::for_vanilla_registry_id(holder_id)
-                .map(VanillaTrimMaterialIdentity::resource_id)
-                .map(str::to_string)
-        })?;
-    let pattern_id = patch.armor_trim_pattern_id?;
-    let pattern =
-        context.registry_resource_id("minecraft:trim_pattern", pattern_id, |holder_id| {
-            VanillaTrimPatternIdentity::for_vanilla_registry_id(holder_id)
-                .map(VanillaTrimPatternIdentity::resource_id)
-                .map(str::to_string)
-        })?;
+    fields.push(format!(
+        "description: {}",
+        debug_nbt_summary_snbt(material.description_nbt.as_ref()?)
+    ));
+    Some(format!("{{{}}}", fields.join(", ")))
+}
+
+fn encode_direct_trim_pattern(
+    pattern: &bbb_protocol::packets::TrimPatternSummary,
+) -> Option<String> {
+    let pattern = direct_trim_pattern_presentation(pattern)?;
     Some(format!(
-        "{{material: {}, pattern: {}}}",
-        debug_snbt_string(&material),
-        debug_snbt_string(&pattern)
+        "{{asset_id: {}, description: {}, decal: {}b}}",
+        debug_snbt_string(&pattern.asset_id),
+        debug_nbt_summary_snbt(pattern.description_nbt.as_ref()?),
+        u8::from(pattern.decal)
     ))
 }
 
@@ -2894,7 +2941,7 @@ mod tests {
     }
 
     #[test]
-    fn provides_trim_material_encoder_supports_vanilla_named_holders_only() {
+    fn provides_trim_material_encoder_supports_named_and_exact_direct_holders() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             provides_trim_material_id: Some(10),
             ..Default::default()
@@ -2910,16 +2957,33 @@ mod tests {
         patch.provides_trim_material_direct =
             Some(Box::new(bbb_protocol::packets::TrimMaterialSummary {
                 asset_name: "custom".to_string(),
-                override_armor_assets: Default::default(),
+                override_armor_assets: BTreeMap::from([(
+                    "minecraft:iron".to_string(),
+                    "custom_darker".to_string(),
+                )]),
                 description: "Custom material".to_string(),
                 description_styled: None,
                 description_nbt: None,
             }));
         assert_eq!(encode_added_component_value_snbt(62, &patch, None), None);
+        patch
+            .provides_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .description_nbt = Some(Box::new(bbb_protocol::packets::NbtSummaryValue::String(
+            "Custom material".to_string(),
+        )));
+        assert_eq!(
+            encode_added_component_value_snbt(62, &patch, None),
+            Some(
+                "{asset_name: \"custom\", override_armor_assets: {\"minecraft:iron\": \"custom_darker\"}, description: \"Custom material\"}"
+                    .to_string()
+            )
+        );
     }
 
     #[test]
-    fn armor_trim_encoder_supports_complete_vanilla_named_holders_only() {
+    fn armor_trim_encoder_supports_named_direct_and_mixed_holders() {
         let mut patch = bbb_protocol::packets::DataComponentPatchSummary {
             armor_trim_material_id: Some(1),
             armor_trim_pattern_id: Some(17),
@@ -2945,6 +3009,20 @@ mod tests {
                 description_nbt: None,
             }));
         assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
+        patch
+            .armor_trim_material_direct
+            .as_mut()
+            .unwrap()
+            .description_nbt = Some(Box::new(bbb_protocol::packets::NbtSummaryValue::String(
+            "Custom material".to_string(),
+        )));
+        assert_eq!(
+            encode_added_component_value_snbt(56, &patch, None),
+            Some(
+                "{material: {asset_name: \"custom\", description: \"Custom material\"}, pattern: \"minecraft:bolt\"}"
+                    .to_string()
+            )
+        );
         patch.armor_trim_material_direct = None;
         patch.armor_trim_pattern_direct =
             Some(Box::new(bbb_protocol::packets::TrimPatternSummary {
@@ -2955,6 +3033,20 @@ mod tests {
                 decal: false,
             }));
         assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
+        patch
+            .armor_trim_pattern_direct
+            .as_mut()
+            .unwrap()
+            .description_nbt = Some(Box::new(bbb_protocol::packets::NbtSummaryValue::String(
+            "Custom pattern".to_string(),
+        )));
+        assert_eq!(
+            encode_added_component_value_snbt(56, &patch, None),
+            Some(
+                "{material: \"minecraft:iron\", pattern: {asset_id: \"example:custom\", description: \"Custom pattern\", decal: 0b}}"
+                    .to_string()
+            )
+        );
     }
 
     #[test]

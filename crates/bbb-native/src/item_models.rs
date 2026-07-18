@@ -86,6 +86,77 @@ pub(crate) fn world_trim_pattern_keys(world: &WorldStore) -> Option<Vec<String>>
     world_registry_keys(world, "minecraft:trim_pattern")
 }
 
+pub(crate) fn world_trim_material_tooltip_context(
+    world: &WorldStore,
+) -> Option<(
+    Vec<String>,
+    Vec<Option<bbb_world::TrimMaterialPresentation>>,
+)> {
+    let resource_ids = world_trim_material_keys(world)?;
+    let mut keys = Vec::with_capacity(resource_ids.len());
+    let mut presentations = Vec::with_capacity(resource_ids.len());
+    for (index, resource_id) in resource_ids.into_iter().enumerate() {
+        let holder_id = i32::try_from(index).ok();
+        let projection = holder_id.map(|id| world.synchronized_trim_material_presentation(id));
+        let data_less_stub = holder_id
+            .and_then(|id| world.registry_entry_by_holder_id(bbb_world::TRIM_MATERIAL_REGISTRY, id))
+            .is_some_and(|entry| !entry.has_data);
+        match projection {
+            Some(Ok(Some(presentation))) => {
+                keys.push(resource_id);
+                presentations.push(Some(presentation));
+            }
+            Some(Ok(None))
+                if data_less_stub
+                    && bbb_world::VanillaTrimMaterialIdentity::for_resource_id(&resource_id)
+                        .is_some() =>
+            {
+                keys.push(resource_id);
+                presentations.push(None);
+            }
+            _ => {
+                keys.push(String::new());
+                presentations.push(None);
+            }
+        }
+    }
+    Some((keys, presentations))
+}
+
+pub(crate) fn world_trim_pattern_tooltip_context(
+    world: &WorldStore,
+) -> Option<(Vec<String>, Vec<Option<bbb_world::TrimPatternPresentation>>)> {
+    let resource_ids = world_trim_pattern_keys(world)?;
+    let mut keys = Vec::with_capacity(resource_ids.len());
+    let mut presentations = Vec::with_capacity(resource_ids.len());
+    for (index, resource_id) in resource_ids.into_iter().enumerate() {
+        let holder_id = i32::try_from(index).ok();
+        let projection = holder_id.map(|id| world.synchronized_trim_pattern_presentation(id));
+        let data_less_stub = holder_id
+            .and_then(|id| world.registry_entry_by_holder_id(bbb_world::TRIM_PATTERN_REGISTRY, id))
+            .is_some_and(|entry| !entry.has_data);
+        match projection {
+            Some(Ok(Some(presentation))) => {
+                keys.push(resource_id);
+                presentations.push(Some(presentation));
+            }
+            Some(Ok(None))
+                if data_less_stub
+                    && bbb_world::VanillaTrimPatternIdentity::for_resource_id(&resource_id)
+                        .is_some() =>
+            {
+                keys.push(resource_id);
+                presentations.push(None);
+            }
+            _ => {
+                keys.push(String::new());
+                presentations.push(None);
+            }
+        }
+    }
+    Some((keys, presentations))
+}
+
 pub(crate) fn world_jukebox_song_tooltip_context(
     world: &WorldStore,
 ) -> Option<(Vec<String>, Vec<Option<bbb_world::JukeboxSongPresentation>>)> {

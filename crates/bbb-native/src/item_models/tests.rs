@@ -43,6 +43,74 @@ fn synchronized_variant_registry_context_inventory_is_complete() {
 }
 
 #[test]
+fn trim_tooltip_context_keeps_valid_payloads_and_only_known_vanilla_stubs() {
+    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
+    }
+    fn write_string(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_nbt_string(out, name);
+        write_nbt_string(out, value);
+    }
+    fn trim_nbt(asset_field: &str, asset: &str, description: &str) -> Vec<u8> {
+        let mut out = vec![10];
+        write_string(&mut out, asset_field, asset);
+        write_string(&mut out, "description", description);
+        out.push(0);
+        out
+    }
+
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        bbb_world::TRIM_MATERIAL_REGISTRY,
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:opal",
+                trim_nbt("asset_name", "opal", "Opal"),
+            ),
+            bbb_world::RegistryPacketEntry::stub("minecraft:iron"),
+            bbb_world::RegistryPacketEntry::stub("example:custom_stub"),
+            bbb_world::RegistryPacketEntry::with_data_len("minecraft:diamond", 12),
+        ],
+    );
+    world.record_registry_entries(
+        bbb_world::TRIM_PATTERN_REGISTRY,
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:spiral",
+                trim_nbt("asset_id", "example:spiral", "Spiral"),
+            ),
+            bbb_world::RegistryPacketEntry::stub("minecraft:spire"),
+            bbb_world::RegistryPacketEntry::stub("example:custom_stub"),
+        ],
+    );
+
+    let (material_keys, material_presentations) =
+        world_trim_material_tooltip_context(&world).unwrap();
+    assert_eq!(material_keys, ["example:opal", "minecraft:iron", "", ""]);
+    assert_eq!(
+        material_presentations[0]
+            .as_ref()
+            .map(|material| material.description.as_str()),
+        Some("Opal")
+    );
+    assert!(material_presentations[1..].iter().all(Option::is_none));
+
+    let (pattern_keys, pattern_presentations) = world_trim_pattern_tooltip_context(&world).unwrap();
+    assert_eq!(pattern_keys, ["example:spiral", "minecraft:spire", ""]);
+    assert_eq!(
+        pattern_presentations[0]
+            .as_ref()
+            .map(|pattern| pattern.description.as_str()),
+        Some("Spiral")
+    );
+    assert!(pattern_presentations[1..].iter().all(Option::is_none));
+}
+
+#[test]
 fn first_person_projection_does_not_restore_component_id_aliases() {
     let source = include_str!("first_person.rs");
     for old_alias in [

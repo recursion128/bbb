@@ -17,6 +17,7 @@ use bbb_protocol::tropical_fish_patterns::{
     VANILLA_TROPICAL_FISH_PATTERN_KOB_PACKED_ID, VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID,
 };
 use bbb_protocol::{ComponentStyle, StyledTextRun};
+use bbb_world::{TrimMaterialPresentation, TrimPatternPresentation};
 use chrono::TimeZone;
 use std::{
     collections::BTreeMap,
@@ -459,6 +460,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                 "trim_material.minecraft.diamond": "Diamond Material",
                 "trim_pattern.minecraft.sentry": "Sentry Armor Trim",
                 "trim_pattern.minecraft.spire": "Spire Armor Trim",
+                "trim.custom.material": "Localized Opal",
+                "trim.custom.pattern": "Localized Spiral",
                 "item.minecraft.firework_rocket.flight": "Flight Duration:",
                 "item.minecraft.firework_rocket.single_star": "%s",
                 "item.minecraft.firework_rocket.multiple_stars": "%s x %s",
@@ -646,6 +649,8 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
     );
     let remapped_trim_material_keys = ["minecraft:diamond".to_string()];
     let remapped_trim_pattern_keys = ["minecraft:spire".to_string()];
+    let remapped_trim_material_presentations = [None];
+    let remapped_trim_pattern_presentations = [None];
     assert_eq!(
         runtime.tooltip_lines_for_stack_with_context(
             &ItemStackSummary {
@@ -659,7 +664,9 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             },
             NativeItemTooltipOptions {
                 trim_material_keys: Some(&remapped_trim_material_keys),
+                trim_material_presentations: Some(&remapped_trim_material_presentations),
                 trim_pattern_keys: Some(&remapped_trim_pattern_keys),
+                trim_pattern_presentations: Some(&remapped_trim_pattern_presentations),
                 ..NativeItemTooltipOptions::default()
             },
         ),
@@ -668,6 +675,148 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
             colored_trim_tooltip_line("Spire Armor Trim", 0x6E_EC_D2),
             colored_trim_tooltip_line("Diamond Material", 0x6E_EC_D2),
+        ])
+    );
+    let unresolved_trim_keys = [String::new()];
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    armor_trim_material_id: Some(0),
+                    armor_trim_pattern_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                trim_material_keys: Some(&unresolved_trim_keys),
+                trim_material_presentations: Some(&remapped_trim_material_presentations),
+                trim_pattern_keys: Some(&unresolved_trim_keys),
+                trim_pattern_presentations: Some(&remapped_trim_pattern_presentations),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![name_line(
+            "Test Combo",
+            TOOLTIP_TEXT_WHITE,
+            0xFF_FF_FF,
+            false
+        )])
+    );
+    let translated_component = |key: &str, fallback: &str, color: Option<&str>| {
+        let mut entries = vec![
+            NbtSummaryEntry {
+                name: "translate".to_string(),
+                value: NbtSummaryValue::String(key.to_string()),
+            },
+            NbtSummaryEntry {
+                name: "fallback".to_string(),
+                value: NbtSummaryValue::String(fallback.to_string()),
+            },
+        ];
+        if let Some(color) = color {
+            entries.push(NbtSummaryEntry {
+                name: "color".to_string(),
+                value: NbtSummaryValue::String(color.to_string()),
+            });
+        }
+        NbtSummaryValue::Compound(entries)
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack(&ItemStackSummary {
+            item_id: Some(0),
+            count: 1,
+            component_patch: DataComponentPatchSummary {
+                armor_trim_material_direct: Some(Box::new(TrimMaterialSummary {
+                    asset_name: "opal".to_string(),
+                    override_armor_assets: BTreeMap::new(),
+                    description: "stale material".to_string(),
+                    description_styled: None,
+                    description_nbt: Some(Box::new(translated_component(
+                        "trim.custom.material",
+                        "Fallback material",
+                        Some("#123456"),
+                    ))),
+                })),
+                armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
+                    asset_id: "example:spiral".to_string(),
+                    description: "stale pattern".to_string(),
+                    description_styled: None,
+                    description_nbt: Some(Box::new(translated_component(
+                        "trim.custom.pattern",
+                        "Fallback pattern",
+                        None,
+                    ))),
+                    decal: true,
+                })),
+                ..DataComponentPatchSummary::default()
+            },
+        }),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
+            colored_trim_tooltip_line("Localized Spiral", 0x12_34_56),
+            colored_trim_tooltip_line("Localized Opal", 0x12_34_56),
+        ])
+    );
+    let custom_material_keys = ["example:opal".to_string()];
+    let custom_pattern_keys = ["example:spiral".to_string()];
+    let custom_material_presentations = [Some(TrimMaterialPresentation {
+        asset_name: "opal".to_string(),
+        override_armor_assets: BTreeMap::new(),
+        description: "Fallback material".to_string(),
+        description_styled: vec![StyledTextRun {
+            text: "Fallback material".to_string(),
+            style: ComponentStyle {
+                color: Some(0x12_34_56),
+                ..ComponentStyle::default()
+            },
+        }],
+        description_nbt: Some(translated_component(
+            "trim.custom.material",
+            "Fallback material",
+            Some("#123456"),
+        )),
+    })];
+    let custom_pattern_presentations = [Some(TrimPatternPresentation {
+        asset_id: "example:spiral".to_string(),
+        description: "Fallback pattern".to_string(),
+        description_styled: vec![StyledTextRun {
+            text: "Fallback pattern".to_string(),
+            style: ComponentStyle::default(),
+        }],
+        description_nbt: Some(translated_component(
+            "trim.custom.pattern",
+            "Fallback pattern",
+            None,
+        )),
+        decal: true,
+    })];
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(0),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    armor_trim_material_id: Some(0),
+                    armor_trim_pattern_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                trim_material_keys: Some(&custom_material_keys),
+                trim_material_presentations: Some(&custom_material_presentations),
+                trim_pattern_keys: Some(&custom_pattern_keys),
+                trim_pattern_presentations: Some(&custom_pattern_presentations),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Upgrade: ", TOOLTIP_TEXT_GRAY),
+            colored_trim_tooltip_line("Localized Spiral", 0x12_34_56),
+            colored_trim_tooltip_line("Localized Opal", 0x12_34_56),
         ])
     );
     assert_eq!(

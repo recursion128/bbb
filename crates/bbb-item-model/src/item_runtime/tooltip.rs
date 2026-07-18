@@ -30,10 +30,11 @@ use bbb_render_types::BannerPatternKind;
 #[cfg(test)]
 use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
-    vanilla_painting_variant, EnchantmentAttributeModifier, EnchantmentTooltipDefinition,
-    JukeboxSongPresentation, RegistrySet, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
-    VanillaPaintingVariant, VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity,
-    VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    direct_trim_material_presentation, direct_trim_pattern_presentation, vanilla_painting_variant,
+    EnchantmentAttributeModifier, EnchantmentTooltipDefinition, JukeboxSongPresentation,
+    RegistrySet, TrimMaterialPresentation, TrimPatternPresentation, VanillaEnchantmentIdentity,
+    VanillaInstrumentIdentity, VanillaPaintingVariant, VanillaTrimMaterialIdentity,
+    VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 
 use super::icon_model::effective_attribute_modifiers;
@@ -153,7 +154,9 @@ pub struct NativeItemTooltipOptions<'a> {
     pub peaceful: bool,
     pub map_data: Option<NativeItemMapTooltipData>,
     pub trim_material_keys: Option<&'a [String]>,
+    pub trim_material_presentations: Option<&'a [Option<TrimMaterialPresentation>]>,
     pub trim_pattern_keys: Option<&'a [String]>,
+    pub trim_pattern_presentations: Option<&'a [Option<TrimPatternPresentation>]>,
     pub jukebox_song_keys: Option<&'a [String]>,
     pub jukebox_song_presentations: Option<&'a [Option<JukeboxSongPresentation>]>,
     pub enchantment_keys: Option<&'a [String]>,
@@ -2329,6 +2332,25 @@ fn push_jukebox_description(
     description_nbt: Option<&NbtSummaryValue>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
+    let (text, styled) =
+        localized_component_description(language, description, description_styled, description_nbt);
+    let base = ComponentStyle {
+        color: Some(TOOLTIP_GRAY_TEXT_COLOR),
+        ..ComponentStyle::default()
+    };
+    lines.push(NativeItemTooltipLine {
+        text: text.clone(),
+        tint: TOOLTIP_TEXT_GRAY,
+        runs: hud_runs_from_component(&styled, &text, &base),
+    });
+}
+
+fn localized_component_description(
+    language: &LanguageCatalog,
+    description: &str,
+    description_styled: &[StyledTextRun],
+    description_nbt: Option<&NbtSummaryValue>,
+) -> (String, Vec<StyledTextRun>) {
     let mut text = description.to_string();
     let mut styled = description_styled.to_vec();
     if let Some((translation_key, fallback)) =
@@ -2348,15 +2370,7 @@ fn push_jukebox_description(
             text = text.replacen(encoded_text, localized, 1);
         }
     }
-    let base = ComponentStyle {
-        color: Some(TOOLTIP_GRAY_TEXT_COLOR),
-        ..ComponentStyle::default()
-    };
-    lines.push(NativeItemTooltipLine {
-        text: text.clone(),
-        tint: TOOLTIP_TEXT_GRAY,
-        runs: hud_runs_from_component(&styled, &text, &base),
-    });
+    (text, styled)
 }
 
 fn component_translation_key_and_fallback(value: &NbtSummaryValue) -> Option<(&str, Option<&str>)> {
@@ -2389,17 +2403,27 @@ fn push_armor_trim_tooltip_lines(
     pattern_id: Option<i32>,
     pattern: Option<&TrimPatternSummary>,
     material_keys: Option<&[String]>,
+    material_presentations: Option<&[Option<TrimMaterialPresentation>]>,
     pattern_keys: Option<&[String]>,
+    pattern_presentations: Option<&[Option<TrimPatternPresentation>]>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
-    let Some(material_tooltip) =
-        armor_trim_material_tooltip(language, material_id, material, material_keys)
-    else {
+    let Some(material_tooltip) = armor_trim_material_tooltip(
+        language,
+        material_id,
+        material,
+        material_keys,
+        material_presentations,
+    ) else {
         return;
     };
-    let Some(pattern_description) =
-        armor_trim_pattern_description(language, pattern_id, pattern, pattern_keys)
-    else {
+    let Some(pattern_description) = armor_trim_pattern_description(
+        language,
+        pattern_id,
+        pattern,
+        pattern_keys,
+        pattern_presentations,
+    ) else {
         return;
     };
     lines.push(NativeItemTooltipLine::plain(
@@ -2433,18 +2457,35 @@ fn armor_trim_material_tooltip(
     material_id: Option<i32>,
     material: Option<&TrimMaterialSummary>,
     material_keys: Option<&[String]>,
+    material_presentations: Option<&[Option<TrimMaterialPresentation>]>,
 ) -> Option<ArmorTrimMaterialTooltip> {
     if let Some(material) = material {
-        let description = armor_trim_direct_description(
+        let material = direct_trim_material_presentation(material)?;
+        let description = armor_trim_component_description(
+            language,
             &material.description,
-            material.description_styled.as_deref(),
+            &material.description_styled,
+            material.description_nbt.as_ref(),
         );
         let style = armor_trim_material_style(&description.runs);
         return Some(ArmorTrimMaterialTooltip { description, style });
     }
     let material_id = material_id?;
+    let index = usize::try_from(material_id).ok()?;
+    if let Some(Some(material)) =
+        material_presentations.and_then(|presentations| presentations.get(index))
+    {
+        let description = armor_trim_component_description(
+            language,
+            &material.description,
+            &material.description_styled,
+            material.description_nbt.as_ref(),
+        );
+        let style = armor_trim_material_style(&description.runs);
+        return Some(ArmorTrimMaterialTooltip { description, style });
+    }
     let key = match material_keys {
-        Some(keys) => keys.get(usize::try_from(material_id).ok()?)?.as_str(),
+        Some(keys) => keys.get(index)?.as_str(),
         None => VanillaTrimMaterialIdentity::for_vanilla_registry_id(material_id)?.resource_id(),
     };
     let material = VanillaTrimMaterialIdentity::for_resource_id(key)?;
@@ -2472,16 +2513,31 @@ fn armor_trim_pattern_description(
     pattern_id: Option<i32>,
     pattern: Option<&TrimPatternSummary>,
     pattern_keys: Option<&[String]>,
+    pattern_presentations: Option<&[Option<TrimPatternPresentation>]>,
 ) -> Option<ArmorTrimDescription> {
     if let Some(pattern) = pattern {
-        return Some(armor_trim_direct_description(
+        let pattern = direct_trim_pattern_presentation(pattern)?;
+        return Some(armor_trim_component_description(
+            language,
             &pattern.description,
-            pattern.description_styled.as_deref(),
+            &pattern.description_styled,
+            pattern.description_nbt.as_ref(),
         ));
     }
     let pattern_id = pattern_id?;
+    let index = usize::try_from(pattern_id).ok()?;
+    if let Some(Some(pattern)) =
+        pattern_presentations.and_then(|presentations| presentations.get(index))
+    {
+        return Some(armor_trim_component_description(
+            language,
+            &pattern.description,
+            &pattern.description_styled,
+            pattern.description_nbt.as_ref(),
+        ));
+    }
     let key = match pattern_keys {
-        Some(keys) => keys.get(usize::try_from(pattern_id).ok()?)?.as_str(),
+        Some(keys) => keys.get(index)?.as_str(),
         None => VanillaTrimPatternIdentity::for_vanilla_registry_id(pattern_id)?.resource_id(),
     };
     let text = language
@@ -2496,21 +2552,22 @@ fn armor_trim_pattern_description(
     })
 }
 
-fn armor_trim_direct_description(
+fn armor_trim_component_description(
+    language: &LanguageCatalog,
     text: &str,
-    styled: Option<&[StyledTextRun]>,
+    styled: &[StyledTextRun],
+    nbt: Option<&NbtSummaryValue>,
 ) -> ArmorTrimDescription {
-    let runs = match styled {
-        Some(runs) if !runs.is_empty() => runs.to_vec(),
-        _ => vec![StyledTextRun {
+    let styled = if styled.is_empty() {
+        vec![StyledTextRun {
             text: text.to_string(),
             style: ComponentStyle::default(),
-        }],
+        }]
+    } else {
+        styled.to_vec()
     };
-    ArmorTrimDescription {
-        text: text.to_string(),
-        runs,
-    }
+    let (text, runs) = localized_component_description(language, text, &styled, nbt);
+    ArmorTrimDescription { text, runs }
 }
 
 fn armor_trim_material_style(runs: &[StyledTextRun]) -> ComponentStyle {
@@ -3155,7 +3212,9 @@ impl NativeItemRuntime {
                 component_patch.armor_trim_pattern_id,
                 component_patch.armor_trim_pattern_direct.as_deref(),
                 options.trim_material_keys,
+                options.trim_material_presentations,
                 options.trim_pattern_keys,
+                options.trim_pattern_presentations,
                 lines,
             );
         }
