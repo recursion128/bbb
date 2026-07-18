@@ -4,7 +4,7 @@ use std::{
 
 use anyhow::{ensure, Context, Result};
 use bbb_control::ControlState;
-use bbb_net::{ConnectionOptions, NetCommand, NetEvent};
+use bbb_net::{ConnectionOptions, NetCommand, NetEvent, ServerResourcePackPolicy};
 use bbb_pack::PackRoots;
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
@@ -60,6 +60,14 @@ pub(crate) struct Args {
     pub(crate) code_of_conduct_store: Option<PathBuf>,
     #[arg(long = "resource-pack-dir", value_name = "PATH")]
     pub(crate) resource_pack_dirs: Vec<PathBuf>,
+    #[arg(
+        long = "server-resource-pack-policy",
+        value_enum,
+        default_value = "decline"
+    )]
+    pub(crate) server_resource_pack_policy: ServerResourcePackPolicyArg,
+    #[arg(long = "server-resource-pack-cache-dir", value_name = "PATH")]
+    pub(crate) server_resource_pack_cache_dir: Option<PathBuf>,
     #[arg(long = "player-skin-cache-dir", value_name = "PATH")]
     pub(crate) player_skin_cache_dir: Option<PathBuf>,
     #[arg(long = "client-locale", default_value = "en_us")]
@@ -248,6 +256,21 @@ pub(crate) enum ClientParticleStatusArg {
     Minimal,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum ServerResourcePackPolicyArg {
+    Accept,
+    Decline,
+}
+
+impl From<ServerResourcePackPolicyArg> for ServerResourcePackPolicy {
+    fn from(value: ServerResourcePackPolicyArg) -> Self {
+        match value {
+            ServerResourcePackPolicyArg::Accept => Self::Accept,
+            ServerResourcePackPolicyArg::Decline => Self::Decline,
+        }
+    }
+}
+
 impl From<ClientParticleStatusArg> for ClientParticleStatus {
     fn from(value: ClientParticleStatusArg) -> Self {
         match value {
@@ -353,7 +376,7 @@ fn connection_options_from_args(args: &Args) -> Result<ConnectionOptions> {
         args.profile_id.is_some() == args.access_token.is_some(),
         "profile id and access token must be supplied together"
     );
-    match (args.profile_id, args.access_token.as_ref()) {
+    let mut options = match (args.profile_id, args.access_token.as_ref()) {
         (Some(profile_id), Some(access_token)) => ConnectionOptions::authenticated(
             &args.server,
             &args.username,
@@ -362,7 +385,9 @@ fn connection_options_from_args(args: &Args) -> Result<ConnectionOptions> {
         ),
         (None, None) => ConnectionOptions::offline(&args.server, &args.username),
         _ => unreachable!("paired session credential presence was checked"),
-    }
+    }?;
+    options.server_resource_pack_policy = args.server_resource_pack_policy.into();
+    Ok(options)
 }
 
 pub(crate) fn client_information_from_args(args: &Args) -> Result<ClientInformation> {
@@ -581,6 +606,45 @@ mod tests {
         assert_eq!(
             args.resource_pack_dirs,
             vec![PathBuf::from("packs/base"), PathBuf::from("packs/overlay")]
+        );
+    }
+
+    #[test]
+    fn args_select_server_resource_pack_policy_and_cache_directory() {
+        let defaults = Args::try_parse_from(["bbb-native"]).unwrap();
+        assert_eq!(
+            defaults.server_resource_pack_policy,
+            ServerResourcePackPolicyArg::Decline
+        );
+        assert_eq!(defaults.server_resource_pack_cache_dir, None);
+        assert_eq!(
+            connection_options_from_args(&defaults)
+                .unwrap()
+                .server_resource_pack_policy,
+            ServerResourcePackPolicy::Decline
+        );
+
+        let accepted = Args::try_parse_from([
+            "bbb-native",
+            "--server-resource-pack-policy",
+            "accept",
+            "--server-resource-pack-cache-dir",
+            "/tmp/bbb-server-packs",
+        ])
+        .unwrap();
+        assert_eq!(
+            accepted.server_resource_pack_policy,
+            ServerResourcePackPolicyArg::Accept
+        );
+        assert_eq!(
+            accepted.server_resource_pack_cache_dir,
+            Some(PathBuf::from("/tmp/bbb-server-packs"))
+        );
+        assert_eq!(
+            connection_options_from_args(&accepted)
+                .unwrap()
+                .server_resource_pack_policy,
+            ServerResourcePackPolicy::Accept
         );
     }
 

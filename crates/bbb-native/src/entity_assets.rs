@@ -17,7 +17,7 @@ pub(crate) fn load_entity_model_textures(
     }
 }
 
-fn try_load_entity_model_textures(
+pub(crate) fn try_load_entity_model_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: &PackRoots,
 ) -> Result<()> {

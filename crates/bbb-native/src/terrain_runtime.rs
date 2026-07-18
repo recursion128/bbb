@@ -21,7 +21,8 @@ use crate::camera_pose::camera_pose_from_world;
 
 mod textures;
 pub(crate) use textures::{
-    load_terrain_textures, BlockRenderPosition, TerrainParticleTintCatalog, TerrainTextureState,
+    load_terrain_textures, try_load_terrain_textures, BlockRenderPosition,
+    TerrainParticleTintCatalog, TerrainTextureState,
 };
 
 const MAX_TERRAIN_UPLOAD_CHUNKS: usize = 49;

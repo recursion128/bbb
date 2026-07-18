@@ -86,6 +86,17 @@ pub(crate) fn load_sky_textures(renderer: &mut bbb_renderer::Renderer, roots: Op
     }
 }
 
+pub(crate) fn try_load_sky_textures(
+    renderer: &mut bbb_renderer::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
+    try_load_end_sky_texture(renderer, roots)?;
+    try_load_celestial_textures(renderer, roots)?;
+    try_load_cloud_texture(renderer, roots)?;
+    try_load_weather_textures(renderer, roots)?;
+    try_load_world_border_texture(renderer, roots)
+}
+
 fn try_load_end_sky_texture(
     renderer: &mut bbb_renderer::Renderer,
     roots: &PackRoots,

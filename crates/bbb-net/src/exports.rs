@@ -7,5 +7,5 @@ pub use crate::resource_pack::{
 pub use crate::status::status_ping;
 pub use crate::types::{
     ChunkProbeSummary, ConnectionOptions, ConnectionState, NetCommand, NetEvent, PlayerMoveCommand,
-    ProbeReport, StatusPing, VehicleMoveCommand,
+    ProbeReport, ServerResourcePackPolicy, StatusPing, VehicleMoveCommand,
 };

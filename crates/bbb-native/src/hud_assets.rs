@@ -25,7 +25,10 @@ pub(crate) fn load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: Op
     }
 }
 
-fn try_load_hud_textures(renderer: &mut bbb_renderer::Renderer, roots: &PackRoots) -> Result<()> {
+pub(crate) fn try_load_hud_textures(
+    renderer: &mut bbb_renderer::Renderer,
+    roots: &PackRoots,
+) -> Result<()> {
     let sprites = load_gui_sprites(roots)?;
     let crosshair = hud_sprite(&sprites, "hud/crosshair")?;
     renderer.upload_hud_crosshair(crosshair.width, crosshair.height, &crosshair.rgba)?;

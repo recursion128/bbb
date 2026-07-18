@@ -2002,6 +2002,13 @@ pub(crate) fn request_net_disconnect(
     }
 }
 
+pub(crate) fn synchronize_audio_runtime_from_world(
+    world: &WorldStore,
+    audio_events: &mut dyn AudioEventSink,
+) {
+    events::synchronize_audio_registries_from_world(world, audio_events);
+}
+
 fn queue_client_tick_end_commands(
     world: &WorldStore,
     net_commands: &Option<mpsc::Sender<NetCommand>>,

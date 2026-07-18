@@ -1,10 +1,11 @@
 use std::{
-    collections::{HashSet, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicU64, Ordering},
         mpsc as std_mpsc,
     },
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use bbb_net::{download_server_pack, NetCommand, ServerPackDownloadRequest};
@@ -45,8 +46,25 @@ enum PackDownloadState {
 #[derive(Debug)]
 struct TrackedPack {
     key: PackKey,
+    download_batch: u64,
     state: PackDownloadState,
     removed: bool,
+    active: bool,
+    pending_terminal_response: Option<ResourcePackResponseAction>,
+}
+
+#[derive(Debug, Clone)]
+enum DownloadOutcome {
+    Pending,
+    Succeeded,
+    Failed,
+}
+
+#[derive(Debug)]
+struct DownloadBatch {
+    id: u64,
+    members: Vec<PackKey>,
+    outcomes: HashMap<PackKey, DownloadOutcome>,
 }
 
 #[derive(Debug)]
@@ -79,6 +97,20 @@ struct DeferredResponse {
     action: ResourcePackResponseAction,
 }
 
+#[derive(Debug)]
+struct ReloadTransaction {
+    generation: u64,
+    previous: Vec<PackKey>,
+    desired: Vec<PackKey>,
+    report_successful_loads: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ServerResourcePackReload {
+    pub(crate) generation: u64,
+    pub(crate) server_pack_roots: Vec<PathBuf>,
+}
+
 /// Owns server-pack downloads and archive materialization for one connection session.
 ///
 /// Canonical push/pop and response state stays in `WorldStore`. This runtime keys asynchronous
@@ -96,6 +128,12 @@ pub(crate) struct ServerResourcePackRuntime {
     packs: Vec<TrackedPack>,
     responses: VecDeque<DeferredResponse>,
     last_reported_ready_roots: Vec<PathBuf>,
+    next_reload_generation: u64,
+    reload: Option<ReloadTransaction>,
+    force_reload_requested: bool,
+    next_download_batch: u64,
+    download_batches: Vec<DownloadBatch>,
+    required_declines_disconnected: HashSet<PackKey>,
 }
 
 impl ServerResourcePackRuntime {
@@ -115,9 +153,14 @@ impl ServerResourcePackRuntime {
         profile_id: Uuid,
     ) -> Self {
         let session_serial = SESSION_SERIAL.fetch_add(1, Ordering::Relaxed);
-        let materialized_session_dir = cache_dir
-            .join("materialized")
-            .join(format!("session-{}-{session_serial}", std::process::id()));
+        let session_nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let materialized_session_dir = cache_dir.join("materialized").join(format!(
+            "session-{}-{session_serial}-{session_nonce}",
+            std::process::id()
+        ));
         let (task_tx, task_rx) = std_mpsc::channel();
         Self {
             runtime,
@@ -130,6 +173,12 @@ impl ServerResourcePackRuntime {
             packs: Vec::new(),
             responses: VecDeque::new(),
             last_reported_ready_roots: Vec::new(),
+            next_reload_generation: 1,
+            reload: None,
+            force_reload_requested: false,
+            next_download_batch: 1,
+            download_batches: Vec::new(),
+            required_declines_disconnected: HashSet::new(),
         }
     }
 
@@ -141,9 +190,109 @@ impl ServerResourcePackRuntime {
     ) {
         self.reconcile_world(world, connected);
         self.drain_task_events();
+        self.resolve_download_batches();
+        self.resolve_preparation_failures();
         self.cleanup_removed_packs();
         self.flush_responses(world, commands);
+        self.disconnect_for_required_declines(world, commands, connected);
+        self.cleanup_removed_packs();
         self.report_ready_stack_change();
+    }
+
+    pub(crate) fn take_reload(&mut self) -> Option<ServerResourcePackReload> {
+        if self.reload.is_some()
+            || self
+                .packs
+                .iter()
+                .any(|pack| !pack.removed && matches!(pack.state, PackDownloadState::Pending))
+        {
+            return None;
+        }
+        let previous = self
+            .packs
+            .iter()
+            .filter(|pack| pack.active)
+            .map(|pack| pack.key)
+            .collect::<Vec<_>>();
+        let desired = self
+            .packs
+            .iter()
+            .filter(|pack| !pack.removed)
+            .filter(|pack| matches!(pack.state, PackDownloadState::Ready(_)))
+            .map(|pack| pack.key)
+            .collect::<Vec<_>>();
+        let stack_changed = previous != desired;
+        if !stack_changed && !self.force_reload_requested {
+            return None;
+        }
+        self.force_reload_requested = false;
+        let server_pack_roots = desired
+            .iter()
+            .filter_map(|key| {
+                self.packs
+                    .iter()
+                    .find(|pack| pack.key == *key)
+                    .and_then(|pack| match &pack.state {
+                        PackDownloadState::Ready(root) => Some(root.clone()),
+                        PackDownloadState::Pending | PackDownloadState::Failed => None,
+                    })
+            })
+            .collect();
+        let generation = self.next_reload_generation;
+        self.next_reload_generation = self.next_reload_generation.saturating_add(1);
+        self.reload = Some(ReloadTransaction {
+            generation,
+            previous,
+            desired,
+            report_successful_loads: stack_changed,
+        });
+        Some(ServerResourcePackReload {
+            generation,
+            server_pack_roots,
+        })
+    }
+
+    pub(crate) fn request_reload(&mut self) {
+        self.force_reload_requested = true;
+    }
+
+    pub(crate) fn finish_reload(&mut self, generation: u64, succeeded: bool) -> bool {
+        let Some(reload) = self.reload.take() else {
+            return false;
+        };
+        if reload.generation != generation {
+            self.reload = Some(reload);
+            return false;
+        }
+        if succeeded {
+            for pack in &mut self.packs {
+                let should_be_active = reload.desired.contains(&pack.key);
+                pack.active = should_be_active;
+                if reload.report_successful_loads && should_be_active && !pack.removed {
+                    self.responses.push_back(DeferredResponse {
+                        key: pack.key,
+                        action: ResourcePackResponseAction::SuccessfullyLoaded,
+                    });
+                }
+            }
+        } else {
+            for pack in &mut self.packs {
+                if reload.desired.contains(&pack.key) && !reload.previous.contains(&pack.key) {
+                    if let PackDownloadState::Ready(root) = &pack.state {
+                        remove_materialized_root(root);
+                    }
+                    pack.removed = true;
+                    pack.state = PackDownloadState::Failed;
+                    self.responses.push_back(DeferredResponse {
+                        key: pack.key,
+                        action: ResourcePackResponseAction::FailedReload,
+                    });
+                }
+                pack.active = reload.previous.contains(&pack.key);
+            }
+        }
+        self.cleanup_removed_packs();
+        true
     }
 
     fn reconcile_world(&mut self, world: &WorldStore, connected: bool) {
@@ -167,20 +316,44 @@ impl ServerResourcePackRuntime {
         if !connected {
             return;
         }
-        for pack in canonical {
-            let key = PackKey::from_world(pack);
-            let accepted = pack
-                .last_response
-                .is_some_and(|response| response.action == ResourcePackResponseAction::Accepted);
-            if !accepted || self.packs.iter().any(|tracked| tracked.key == key) {
-                continue;
-            }
+        let additions = canonical
+            .into_iter()
+            .filter_map(|pack| {
+                let key = PackKey::from_world(pack);
+                let accepted = pack.last_response.is_some_and(|response| {
+                    response.action == ResourcePackResponseAction::Accepted
+                });
+                if !accepted || self.packs.iter().any(|tracked| tracked.key == key) {
+                    return None;
+                }
+                Some((key, pack.url.clone(), pack.hash.clone()))
+            })
+            .collect::<Vec<_>>();
+        if additions.is_empty() {
+            return;
+        }
+        let download_batch = self.next_download_batch;
+        self.next_download_batch = self.next_download_batch.saturating_add(1);
+        let members = additions.iter().map(|(key, _, _)| *key).collect::<Vec<_>>();
+        self.download_batches.push(DownloadBatch {
+            id: download_batch,
+            outcomes: members
+                .iter()
+                .copied()
+                .map(|key| (key, DownloadOutcome::Pending))
+                .collect(),
+            members,
+        });
+        for (key, url, hash) in additions {
             self.packs.push(TrackedPack {
                 key,
+                download_batch,
                 state: PackDownloadState::Pending,
                 removed: false,
+                active: false,
+                pending_terminal_response: None,
             });
-            self.start_pack_task(key, pack.url.clone(), pack.hash.clone());
+            self.start_pack_task(key, url, hash);
         }
         self.packs.sort_by_key(|pack| pack.key.push_sequence);
     }
@@ -264,12 +437,26 @@ impl ServerResourcePackRuntime {
 
     fn apply_task_event(&mut self, event: PackTaskEvent) {
         let key = event.key();
-        let Some(pack) = self.packs.iter_mut().find(|pack| pack.key == key) else {
+        match &event {
+            PackTaskEvent::Downloaded { .. } => {
+                self.record_download_outcome(key, DownloadOutcome::Succeeded);
+            }
+            PackTaskEvent::Failed {
+                action: ResourcePackResponseAction::FailedDownload,
+                ..
+            } => {
+                self.record_download_outcome(key, DownloadOutcome::Failed);
+            }
+            PackTaskEvent::Ready { .. } | PackTaskEvent::Failed { .. } => {}
+        }
+
+        let Some(pack_index) = self.packs.iter().position(|pack| pack.key == key) else {
             if let PackTaskEvent::Ready { root, .. } = event {
                 remove_materialized_root(&root);
             }
             return;
         };
+        let pack = &mut self.packs[pack_index];
         if pack.removed {
             match event {
                 PackTaskEvent::Downloaded { .. } => {}
@@ -283,12 +470,7 @@ impl ServerResourcePackRuntime {
         }
 
         match event {
-            PackTaskEvent::Downloaded { .. } => {
-                self.responses.push_back(DeferredResponse {
-                    key,
-                    action: ResourcePackResponseAction::Downloaded,
-                });
-            }
+            PackTaskEvent::Downloaded { .. } => {}
             PackTaskEvent::Ready { root, .. } => {
                 pack.state = PackDownloadState::Ready(root);
             }
@@ -301,14 +483,164 @@ impl ServerResourcePackRuntime {
                     "server resource pack preparation failed"
                 );
                 pack.state = PackDownloadState::Failed;
-                self.responses.push_back(DeferredResponse { key, action });
+                if action != ResourcePackResponseAction::FailedDownload {
+                    pack.pending_terminal_response = Some(action);
+                }
+            }
+        }
+    }
+
+    fn record_download_outcome(&mut self, key: PackKey, outcome: DownloadOutcome) {
+        let batch_id = self
+            .packs
+            .iter()
+            .find(|pack| pack.key == key)
+            .map(|pack| pack.download_batch);
+        let batch_index = batch_id
+            .and_then(|id| {
+                self.download_batches
+                    .iter()
+                    .position(|batch| batch.id == id)
+            })
+            .or_else(|| {
+                self.download_batches
+                    .iter()
+                    .position(|batch| batch.members.contains(&key))
+            });
+        if let Some(batch_index) = batch_index {
+            self.download_batches[batch_index]
+                .outcomes
+                .insert(key, outcome);
+        }
+    }
+
+    fn resolve_download_batches(&mut self) {
+        let resolved_ids = self
+            .download_batches
+            .iter()
+            .filter(|batch| {
+                batch
+                    .outcomes
+                    .values()
+                    .all(|outcome| !matches!(outcome, DownloadOutcome::Pending))
+            })
+            .map(|batch| batch.id)
+            .collect::<Vec<_>>();
+        for batch_id in &resolved_ids {
+            let Some(batch) = self
+                .download_batches
+                .iter()
+                .find(|batch| batch.id == *batch_id)
+            else {
+                continue;
+            };
+            let members = batch.members.clone();
+            let failed = batch
+                .outcomes
+                .iter()
+                .filter_map(|(key, outcome)| {
+                    matches!(outcome, DownloadOutcome::Failed).then_some(*key)
+                })
+                .collect::<HashSet<_>>();
+            if failed.is_empty() {
+                for key in members {
+                    let Some(pack) = self.packs.iter_mut().find(|pack| pack.key == key) else {
+                        continue;
+                    };
+                    if pack.removed {
+                        continue;
+                    }
+                    self.responses.push_back(DeferredResponse {
+                        key,
+                        action: ResourcePackResponseAction::Downloaded,
+                    });
+                }
+            } else {
+                for key in members {
+                    let Some(pack) = self.packs.iter_mut().find(|pack| pack.key == key) else {
+                        continue;
+                    };
+                    if pack.removed || pack.active {
+                        continue;
+                    }
+                    if let PackDownloadState::Ready(root) = &pack.state {
+                        remove_materialized_root(root);
+                    }
+                    pack.removed = true;
+                    pack.state = PackDownloadState::Failed;
+                    pack.pending_terminal_response = None;
+                    self.responses.push_back(DeferredResponse {
+                        key,
+                        action: if failed.contains(&key) {
+                            ResourcePackResponseAction::FailedDownload
+                        } else {
+                            ResourcePackResponseAction::Discarded
+                        },
+                    });
+                }
+            }
+        }
+        self.download_batches
+            .retain(|batch| !resolved_ids.contains(&batch.id));
+    }
+
+    fn resolve_preparation_failures(&mut self) {
+        let failed_batches = self
+            .packs
+            .iter()
+            .filter(|pack| {
+                !pack.removed
+                    && !pack.active
+                    && pack.pending_terminal_response
+                        == Some(ResourcePackResponseAction::FailedReload)
+            })
+            .map(|pack| pack.download_batch)
+            .collect::<HashSet<_>>();
+        for batch_id in failed_batches {
+            let waiting = self.packs.iter().any(|pack| {
+                pack.download_batch == batch_id
+                    && !pack.removed
+                    && !pack.active
+                    && matches!(pack.state, PackDownloadState::Pending)
+            });
+            if waiting {
+                continue;
+            }
+            let keys = self
+                .packs
+                .iter()
+                .filter(|pack| pack.download_batch == batch_id && !pack.removed && !pack.active)
+                .map(|pack| pack.key)
+                .collect::<Vec<_>>();
+            for key in keys {
+                let Some(pack) = self.packs.iter_mut().find(|pack| pack.key == key) else {
+                    continue;
+                };
+                if let PackDownloadState::Ready(root) = &pack.state {
+                    remove_materialized_root(root);
+                }
+                pack.removed = true;
+                pack.state = PackDownloadState::Failed;
+                pack.pending_terminal_response = None;
+                self.responses.push_back(DeferredResponse {
+                    key,
+                    action: ResourcePackResponseAction::FailedReload,
+                });
             }
         }
     }
 
     fn cleanup_removed_packs(&mut self) {
+        let pending_responses = self
+            .responses
+            .iter()
+            .map(|response| response.key)
+            .collect::<HashSet<_>>();
         self.packs.retain(|pack| {
-            if !pack.removed {
+            if !pack.removed || pack.active {
+                return true;
+            }
+            if pending_responses.contains(&pack.key) {
                 return true;
             }
             match &pack.state {
@@ -319,11 +651,6 @@ impl ServerResourcePackRuntime {
                 }
                 PackDownloadState::Failed => false,
             }
-        });
-        self.responses.retain(|response| {
-            self.packs
-                .iter()
-                .any(|pack| pack.key == response.key && !pack.removed)
         });
     }
 
@@ -354,6 +681,47 @@ impl ServerResourcePackRuntime {
                 }
                 Err(mpsc::error::TrySendError::Full(_)) => break,
                 Err(mpsc::error::TrySendError::Closed(_)) => break,
+            }
+        }
+    }
+
+    fn disconnect_for_required_declines(
+        &mut self,
+        world: &WorldStore,
+        commands: &Option<mpsc::Sender<NetCommand>>,
+        connected: bool,
+    ) {
+        if !connected {
+            self.required_declines_disconnected.clear();
+            return;
+        }
+        let Some(commands) = commands else {
+            return;
+        };
+        let declined = world
+            .resource_packs()
+            .values()
+            .filter(|pack| {
+                pack.required
+                    && pack.last_response.is_some_and(|response| {
+                        response.action == ResourcePackResponseAction::Declined
+                    })
+            })
+            .map(PackKey::from_world)
+            .find(|key| !self.required_declines_disconnected.contains(key));
+        let Some(key) = declined else {
+            return;
+        };
+        match commands.try_send(NetCommand::Disconnect) {
+            Ok(()) => {
+                self.required_declines_disconnected.insert(key);
+                tracing::warn!(
+                    pack_id = %key.id,
+                    push_sequence = key.push_sequence,
+                    "disconnecting because a required server resource pack was declined"
+                );
+            }
+            Err(mpsc::error::TrySendError::Full(_)) | Err(mpsc::error::TrySendError::Closed(_)) => {
             }
         }
     }
@@ -449,6 +817,7 @@ mod tests {
         let mut runtime = test_runtime("response");
         runtime.reconcile_world(&world, true);
         runtime.apply_task_event(PackTaskEvent::Downloaded { key });
+        runtime.resolve_download_batches();
         let (commands, mut command_rx) = mpsc::channel(1);
 
         runtime.flush_responses(&mut world, &Some(commands));
@@ -473,6 +842,28 @@ mod tests {
     }
 
     #[test]
+    fn required_decline_queues_one_local_disconnect() {
+        let mut world = WorldStore::new();
+        let id = Uuid::from_u128(1);
+        world.apply_resource_pack_push(ResourcePackPush {
+            id,
+            url: "https://example.test/required.zip".to_string(),
+            hash: String::new(),
+            required: true,
+            prompt: Some("Required pack".to_string()),
+        });
+        world.apply_resource_pack_response(id, ResourcePackResponseAction::Declined);
+        let mut runtime = test_runtime("required-decline");
+        let (commands, mut command_rx) = mpsc::channel(2);
+
+        runtime.disconnect_for_required_declines(&world, &Some(commands.clone()), true);
+        runtime.disconnect_for_required_declines(&world, &Some(commands), true);
+
+        assert_eq!(command_rx.try_recv().unwrap(), NetCommand::Disconnect);
+        assert!(command_rx.try_recv().is_err());
+    }
+
+    #[test]
     fn popped_pack_ignores_late_materialization_and_removes_its_root() {
         let mut world = WorldStore::new();
         let id = Uuid::from_u128(1);
@@ -488,6 +879,7 @@ mod tests {
             key,
             root: root.clone(),
         });
+        runtime.resolve_download_batches();
         runtime.cleanup_removed_packs();
 
         assert!(!root.exists());
@@ -517,6 +909,267 @@ mod tests {
         assert_eq!(runtime.packs.len(), 1);
         assert_eq!(runtime.packs[0].key, new);
         assert!(matches!(runtime.packs[0].state, PackDownloadState::Pending));
+    }
+
+    #[test]
+    fn ready_pack_reload_reports_success_only_after_barrier_completion() {
+        let mut world = WorldStore::new();
+        let id = Uuid::from_u128(1);
+        let key = push_accepted(&mut world, id, "https://example.test/server-pack.zip");
+        let mut runtime = test_runtime("reload-success");
+        runtime.reconcile_world(&world, true);
+        let root = ready_root(&runtime, "ready");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key,
+            root: root.clone(),
+        });
+        runtime.resolve_download_batches();
+
+        let reload = runtime.take_reload().unwrap();
+        assert_eq!(reload.server_pack_roots, vec![root]);
+        assert!(runtime
+            .responses
+            .iter()
+            .all(|response| { response.action != ResourcePackResponseAction::SuccessfullyLoaded }));
+        assert!(runtime.finish_reload(reload.generation, true));
+        assert!(runtime.packs[0].active);
+        assert_eq!(
+            runtime
+                .responses
+                .iter()
+                .map(|response| response.action)
+                .collect::<Vec<_>>(),
+            vec![
+                ResourcePackResponseAction::Downloaded,
+                ResourcePackResponseAction::SuccessfullyLoaded,
+            ]
+        );
+    }
+
+    #[test]
+    fn active_pop_keeps_root_until_unload_reload_succeeds() {
+        let mut world = WorldStore::new();
+        let id = Uuid::from_u128(1);
+        let key = push_accepted(&mut world, id, "https://example.test/server-pack.zip");
+        let mut runtime = test_runtime("reload-pop");
+        runtime.reconcile_world(&world, true);
+        let root = ready_root(&runtime, "active");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key,
+            root: root.clone(),
+        });
+        runtime.resolve_download_batches();
+        let load = runtime.take_reload().unwrap();
+        assert!(runtime.finish_reload(load.generation, true));
+        runtime.responses.clear();
+
+        world.apply_resource_pack_pop(ResourcePackPop { id: Some(id) });
+        runtime.reconcile_world(&world, true);
+        runtime.cleanup_removed_packs();
+        assert!(root.exists());
+        let unload = runtime.take_reload().unwrap();
+        assert!(unload.server_pack_roots.is_empty());
+
+        assert!(runtime.finish_reload(unload.generation, true));
+        assert!(!root.exists());
+        assert!(runtime.packs.is_empty());
+    }
+
+    #[test]
+    fn failed_reload_keeps_previous_active_stack_and_fails_only_new_pack() {
+        let mut world = WorldStore::new();
+        let old_id = Uuid::from_u128(1);
+        let old_key = push_accepted(&mut world, old_id, "https://example.test/old.zip");
+        let mut runtime = test_runtime("reload-failure");
+        runtime.reconcile_world(&world, true);
+        let old_root = ready_root(&runtime, "old");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key: old_key });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key: old_key,
+            root: old_root.clone(),
+        });
+        runtime.resolve_download_batches();
+        let load_old = runtime.take_reload().unwrap();
+        assert!(runtime.finish_reload(load_old.generation, true));
+        runtime.responses.clear();
+
+        let new_id = Uuid::from_u128(2);
+        let new_key = push_accepted(&mut world, new_id, "https://example.test/new.zip");
+        runtime.reconcile_world(&world, true);
+        let new_root = ready_root(&runtime, "new");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key: new_key });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key: new_key,
+            root: new_root.clone(),
+        });
+        runtime.resolve_download_batches();
+        let reload = runtime.take_reload().unwrap();
+        assert_eq!(
+            reload.server_pack_roots,
+            vec![old_root.clone(), new_root.clone()]
+        );
+
+        assert!(runtime.finish_reload(reload.generation, false));
+        assert!(old_root.exists());
+        assert!(!new_root.exists());
+        assert_eq!(
+            runtime
+                .responses
+                .iter()
+                .map(|response| response.action)
+                .collect::<Vec<_>>(),
+            vec![
+                ResourcePackResponseAction::Downloaded,
+                ResourcePackResponseAction::FailedReload,
+            ]
+        );
+        assert_eq!(runtime.packs.len(), 2);
+        assert!(runtime
+            .packs
+            .iter()
+            .any(|pack| pack.key == old_key && pack.active));
+        runtime.responses.clear();
+        runtime.cleanup_removed_packs();
+        assert_eq!(runtime.packs.len(), 1);
+        assert_eq!(runtime.packs[0].key, old_key);
+        assert!(runtime.take_reload().is_none());
+    }
+
+    #[test]
+    fn explicit_reload_rebuilds_unchanged_active_stack_once() {
+        let mut world = WorldStore::new();
+        let id = Uuid::from_u128(1);
+        let key = push_accepted(&mut world, id, "https://example.test/server-pack.zip");
+        let mut runtime = test_runtime("explicit-reload");
+        runtime.reconcile_world(&world, true);
+        let root = ready_root(&runtime, "active");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key,
+            root: root.clone(),
+        });
+        runtime.resolve_download_batches();
+        let initial = runtime.take_reload().unwrap();
+        assert!(runtime.finish_reload(initial.generation, true));
+        runtime.responses.clear();
+        assert!(runtime.take_reload().is_none());
+
+        runtime.request_reload();
+        let forced = runtime.take_reload().unwrap();
+        assert_eq!(forced.server_pack_roots, vec![root]);
+        assert!(runtime.finish_reload(forced.generation, true));
+        assert!(runtime.responses.is_empty());
+        assert!(runtime.take_reload().is_none());
+    }
+
+    #[test]
+    fn one_download_failure_discards_other_inactive_pack_in_the_same_batch() {
+        let mut world = WorldStore::new();
+        let first = push_accepted(
+            &mut world,
+            Uuid::from_u128(1),
+            "https://example.test/first.zip",
+        );
+        let second = push_accepted(
+            &mut world,
+            Uuid::from_u128(2),
+            "https://example.test/second.zip",
+        );
+        let mut runtime = test_runtime("batch-failure");
+        runtime.reconcile_world(&world, true);
+
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key: first });
+        runtime.apply_task_event(PackTaskEvent::Failed {
+            key: second,
+            action: ResourcePackResponseAction::FailedDownload,
+            error: "connection reset".to_string(),
+        });
+        runtime.resolve_download_batches();
+        runtime.cleanup_removed_packs();
+
+        assert_eq!(runtime.packs.len(), 2);
+        assert!(runtime.packs.iter().all(|pack| pack.removed));
+        assert_eq!(
+            runtime
+                .responses
+                .iter()
+                .map(|response| (response.key, response.action))
+                .collect::<Vec<_>>(),
+            vec![
+                (first, ResourcePackResponseAction::Discarded),
+                (second, ResourcePackResponseAction::FailedDownload),
+            ]
+        );
+        runtime.reconcile_world(&world, true);
+        assert_eq!(runtime.packs.len(), 2);
+        runtime.responses.clear();
+        runtime.cleanup_removed_packs();
+        assert!(runtime.packs.is_empty());
+        assert!(runtime.take_reload().is_none());
+    }
+
+    #[test]
+    fn one_preparation_failure_fails_every_new_pack_in_the_same_batch() {
+        let mut world = WorldStore::new();
+        let first = push_accepted(
+            &mut world,
+            Uuid::from_u128(1),
+            "https://example.test/first.zip",
+        );
+        let second = push_accepted(
+            &mut world,
+            Uuid::from_u128(2),
+            "https://example.test/second.zip",
+        );
+        let mut runtime = test_runtime("preparation-failure");
+        runtime.reconcile_world(&world, true);
+        let first_root = ready_root(&runtime, "first");
+
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key: first });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key: first,
+            root: first_root.clone(),
+        });
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key: second });
+        runtime.apply_task_event(PackTaskEvent::Failed {
+            key: second,
+            action: ResourcePackResponseAction::FailedReload,
+            error: "invalid pack metadata".to_string(),
+        });
+        runtime.resolve_download_batches();
+        runtime.resolve_preparation_failures();
+        runtime.cleanup_removed_packs();
+
+        assert!(!first_root.exists());
+        assert_eq!(runtime.packs.len(), 2);
+        assert!(runtime.packs.iter().all(|pack| pack.removed));
+        assert_eq!(
+            runtime
+                .responses
+                .iter()
+                .map(|response| (response.key, response.action))
+                .collect::<Vec<_>>(),
+            vec![
+                (first, ResourcePackResponseAction::Downloaded),
+                (second, ResourcePackResponseAction::Downloaded),
+                (first, ResourcePackResponseAction::FailedReload),
+                (second, ResourcePackResponseAction::FailedReload),
+            ]
+        );
+        runtime.reconcile_world(&world, true);
+        assert_eq!(runtime.packs.len(), 2);
+        runtime.responses.clear();
+        runtime.cleanup_removed_packs();
+        assert!(runtime.packs.is_empty());
+        assert!(runtime.take_reload().is_none());
+    }
+
+    fn ready_root(runtime: &ServerResourcePackRuntime, name: &str) -> PathBuf {
+        let root = runtime.materialized_session_dir.join(name);
+        std::fs::create_dir_all(&root).unwrap();
+        root
     }
 
     fn unique_temp_dir(label: &str) -> PathBuf {

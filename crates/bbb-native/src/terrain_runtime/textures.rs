@@ -1593,7 +1593,7 @@ pub(crate) fn load_terrain_textures(
     }
 }
 
-fn try_load_terrain_textures(
+pub(crate) fn try_load_terrain_textures(
     renderer: &mut bbb_renderer::Renderer,
     roots: &PackRoots,
 ) -> Result<TerrainTextureState> {

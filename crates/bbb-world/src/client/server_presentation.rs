@@ -205,6 +205,11 @@ impl WorldStore {
         removed
     }
 
+    pub fn reset_resource_pack_session(&mut self) {
+        self.presentation.resource_packs.clear();
+        self.update_resource_pack_count();
+    }
+
     pub fn apply_server_links(&mut self, packet: ProtocolServerLinks) -> usize {
         self.counters.server_link_packets += 1;
         let mut invalid_entries = 0usize;
@@ -672,6 +677,25 @@ mod tests {
         assert_eq!(counters.resource_pack_pop_updates_applied, 1);
         assert_eq!(counters.resource_pack_pop_updates_ignored, 1);
         assert_eq!(counters.resource_packs_tracked, 0);
+    }
+
+    #[test]
+    fn resource_pack_session_reset_clears_state_without_counting_a_packet() {
+        let mut store = WorldStore::new();
+        let id = Uuid::from_u128(0x11111111111111111111111111111111);
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            id,
+            "https://example.test/pack.zip",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            false,
+            None,
+        ));
+
+        store.reset_resource_pack_session();
+
+        assert!(store.resource_packs().is_empty());
+        assert_eq!(store.counters().resource_packs_tracked, 0);
+        assert_eq!(store.counters().resource_pack_pop_packets, 0);
     }
 
     #[test]

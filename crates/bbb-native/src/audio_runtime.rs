@@ -47,6 +47,10 @@ pub(crate) struct NativeAudioRuntime {
     counters: AudioCounters,
 }
 
+pub(crate) struct NativeAudioReload {
+    catalog: SoundCatalog,
+}
+
 impl NativeAudioRuntime {
     pub(crate) fn load(roots: &PackRoots) -> Result<Self> {
         let catalog = load_required_native_sound_catalog(roots)?;
@@ -71,6 +75,18 @@ impl NativeAudioRuntime {
 
     pub(crate) fn counters(&self) -> AudioCounters {
         self.counters.clone()
+    }
+
+    pub(crate) fn prepare_reload(roots: &PackRoots) -> Result<NativeAudioReload> {
+        Ok(NativeAudioReload {
+            catalog: load_required_native_sound_catalog(roots)?,
+        })
+    }
+
+    pub(crate) fn commit_reload(&mut self, reload: NativeAudioReload) {
+        self.counters.catalog_events = reload.catalog.len();
+        self.counters.sound_cache_buffers = reload.catalog.len();
+        self.catalog = reload.catalog;
     }
 
     fn handle_resolved_command(

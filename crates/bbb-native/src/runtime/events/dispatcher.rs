@@ -281,8 +281,10 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
                     synchronize_audio_registry_from_world(world, audio_events, &registry);
                 }
             }
-            NetEvent::Connected
-            | NetEvent::Disconnected { .. }
+            NetEvent::Connected => {
+                world.reset_resource_pack_session();
+            }
+            NetEvent::Disconnected { .. }
             | NetEvent::StateChanged { .. }
             | NetEvent::CompressionSet { .. }
             | NetEvent::PacketSeen { .. }
@@ -658,7 +660,7 @@ fn synchronize_audio_registry_from_world(
     }
 }
 
-fn synchronize_audio_registries_from_world(
+pub(crate) fn synchronize_audio_registries_from_world(
     world: &WorldStore,
     audio_events: &mut dyn AudioEventSink,
 ) {

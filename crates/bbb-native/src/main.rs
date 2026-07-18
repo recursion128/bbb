@@ -1,13 +1,7 @@
 use anyhow::Result;
 use bbb_control::{AudioCounters, ControlState, NetCounters};
-use bbb_pack::{
-    BlockDestroyProfile as PackBlockDestroyProfile, BlockDestroyProfileCatalog,
-    BlockSoundProfile as PackBlockSoundProfile, BlockSoundProfileCatalog, FurnaceFuelCatalog,
-    FurnaceFuelSourceRule,
-};
-use bbb_renderer::{ParticleSpriteUv, ParticleUvRect};
-use bbb_world::{FurnaceFuelRule, WorldBlockDestroyProfile, WorldBlockSoundProfile, WorldStore};
-use std::{collections::BTreeMap, time::Instant};
+use bbb_world::WorldStore;
+use std::time::Instant;
 use winit::{
     event::{DeviceEvent, ElementState, Event, Ime, WindowEvent},
     event_loop::ControlFlow,
@@ -50,6 +44,7 @@ mod particle_runtime;
 mod platform;
 mod recipe_book_ui;
 mod resource_pack_runtime;
+mod resource_reload;
 mod runtime;
 mod shulker_box_scene;
 mod sign_scene;
@@ -85,6 +80,10 @@ use narrator_runtime::{
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
 use resource_pack_runtime::{default_server_resource_pack_cache_dir, ServerResourcePackRuntime};
+use resource_reload::{
+    apply_item_runtime_world_defaults, apply_pending_server_resource_pack_reload,
+    block_destroy_profiles_for_world, block_sound_profiles_for_world, item_particle_sprite_uvs,
+};
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
     handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
@@ -196,7 +195,8 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let pack_roots = load_pack_roots(&args);
+    let mut pack_roots = load_pack_roots(&args);
+    let base_pack_roots = pack_roots.clone();
     let control = ControlState::new(format!(
         "bbb-native {} / protocol {}",
         bbb_protocol::MC_VERSION,
@@ -233,12 +233,14 @@ fn main() -> Result<()> {
         .unwrap_or_else(|| bbb_protocol::codec::offline_player_uuid(&args.username));
     let mut server_resource_pack_runtime = ServerResourcePackRuntime::new(
         runtime.handle().clone(),
-        default_server_resource_pack_cache_dir(),
+        args.server_resource_pack_cache_dir
+            .clone()
+            .unwrap_or_else(default_server_resource_pack_cache_dir),
         args.username.clone(),
         profile_id,
     );
     start_control_api(&runtime, args.control, &control);
-    let (mut audio_runtime, audio_status) = match pack_roots.as_ref() {
+    let (mut audio_runtime, mut audio_status) = match pack_roots.as_ref() {
         Some(roots) => match NativeAudioRuntime::load(roots) {
             Ok(runtime) => {
                 let status = runtime.counters();
@@ -264,15 +266,16 @@ fn main() -> Result<()> {
             "narrator requested without --narrator-command; continuing without TTS output"
         );
     }
+    let client_particle_status = args.client_particles.into();
     let mut particle_runtime = pack_roots.as_ref().and_then(|roots| {
-        NativeParticleRuntime::load(roots, args.client_particles.into())
+        NativeParticleRuntime::load(roots, client_particle_status)
             .map_err(|err| {
                 tracing::warn!(?err, "continuing without native particle runtime");
                 err
             })
             .ok()
     });
-    let item_runtime = pack_roots.as_ref().and_then(|roots| {
+    let mut item_runtime = pack_roots.as_ref().and_then(|roots| {
         NativeItemRuntime::load_with_locale(roots, &args.client_locale)
             .map_err(|err| {
                 tracing::warn!(?err, "continuing without native item asset runtime");
@@ -280,94 +283,14 @@ fn main() -> Result<()> {
             })
             .ok()
     });
+    let player_skin_cache_dir = args
+        .player_skin_cache_dir
+        .clone()
+        .unwrap_or_else(default_player_skin_cache_dir);
     if let Some(items) = &item_runtime {
         items.enable_http_profile_resolution();
-        let player_skin_cache_dir = args
-            .player_skin_cache_dir
-            .clone()
-            .unwrap_or_else(default_player_skin_cache_dir);
-        items.enable_http_player_skin_downloads(player_skin_cache_dir);
-        world.set_default_item_max_stack_sizes(items.item_max_stack_sizes_by_protocol_id());
-        world.set_default_item_max_damage(items.item_max_damage_by_protocol_id());
-        world.set_default_item_crafting_remainders(items.item_crafting_remainders_by_protocol_id());
-        world.set_recipe_specific_crafting_remainder_item_ids(
-            items.recipe_specific_crafting_remainder_item_ids_by_protocol_id(),
-        );
-        world.set_default_item_equipment_slots(items.item_equipment_slots_by_protocol_id());
-        world.set_item_armor_materials(items.item_armor_materials_by_protocol_id());
-        world.set_default_item_wings_equipment_assets(
-            items.item_wings_equipment_assets_by_protocol_id(),
-        );
-        world.set_default_mount_body_armor_kinds(items.mount_body_armor_kinds_by_protocol_id());
-        world.set_default_llama_body_decor_colors(items.llama_body_decor_colors_by_protocol_id());
-        world.set_default_happy_ghast_harness_colors(
-            items.happy_ghast_harness_colors_by_protocol_id(),
-        );
-        world.set_default_nautilus_body_armor_materials(
-            items.nautilus_body_armor_materials_by_protocol_id(),
-        );
-        world.set_default_horse_body_armor_materials(
-            items.horse_body_armor_materials_by_protocol_id(),
-        );
-        world.set_default_wolf_body_armor_materials(
-            items.wolf_body_armor_materials_by_protocol_id(),
-        );
-        world.set_default_item_attack_ranges(items.item_attack_ranges_by_protocol_id());
-        world.set_default_item_swing_animation_durations(
-            items.item_swing_animation_durations_by_protocol_id(),
-        );
-        world.set_default_piercing_weapon_item_ids(
-            items.default_piercing_weapon_item_ids_by_protocol_id(),
-        );
-        world.set_default_damageable_item_ids(items.default_damageable_item_ids_by_protocol_id());
-        world.set_default_item_use_effects(items.item_use_effects_by_protocol_id());
-        let initial_furnace_fuel_item_ids = items.furnace_fuel_item_ids_by_protocol_id();
-        match FurnaceFuelCatalog::source_rules() {
-            Ok(rules) => {
-                let rules = rules
-                    .into_iter()
-                    .map(|rule| match rule {
-                        FurnaceFuelSourceRule::AddItem(resource_id) => items
-                            .item_protocol_id(&resource_id)
-                            .map(FurnaceFuelRule::AddItem),
-                        FurnaceFuelSourceRule::AddTag(tag) => Some(FurnaceFuelRule::AddTag(tag)),
-                        FurnaceFuelSourceRule::RemoveTag(tag) => {
-                            Some(FurnaceFuelRule::RemoveTag(tag))
-                        }
-                    })
-                    .collect::<Option<Vec<_>>>();
-                if let Some(rules) = rules {
-                    world.set_furnace_fuel_profile(initial_furnace_fuel_item_ids, rules);
-                } else {
-                    tracing::warn!(
-                        "continuing without session furnace-fuel refresh rules because a direct item is unresolved"
-                    );
-                    world.set_furnace_fuel_item_ids(initial_furnace_fuel_item_ids);
-                }
-            }
-            Err(err) => {
-                tracing::warn!(
-                    ?err,
-                    "continuing without session furnace-fuel refresh rules"
-                );
-                world.set_furnace_fuel_item_ids(initial_furnace_fuel_item_ids);
-            }
-        }
-        world.set_brewing_potion_item_ids(items.brewing_potion_item_ids_by_protocol_id());
-        world.set_brewing_ingredient_item_ids(items.brewing_ingredient_item_ids_by_protocol_id());
-        world.set_enchantment_lapis_lazuli_item_ids(
-            items.enchantment_lapis_lazuli_item_ids_by_protocol_id(),
-        );
-        world.set_cartography_additional_item_ids(
-            items.cartography_additional_item_ids_by_protocol_id(),
-        );
-        world.set_freeze_immune_wearable_item_ids(
-            items.freeze_immune_wearable_item_ids_by_protocol_id(),
-        );
-        world.set_powder_snow_walkable_foot_item_ids(
-            items.powder_snow_walkable_foot_item_ids_by_protocol_id(),
-        );
-        world.set_default_item_mining_profiles(items.item_mining_profiles_by_protocol_id());
+        items.enable_http_player_skin_downloads(player_skin_cache_dir.clone());
+        apply_item_runtime_world_defaults(items, &mut world);
         let (atlas_width, atlas_height) = items.atlas_size();
         let missingno_index = items.texture_index("minecraft:missingno");
         tracing::info!(
@@ -666,6 +589,7 @@ fn main() -> Result<()> {
                         }
                         let reload_requests = input.take_debug_resource_pack_reload_requests();
                         if reload_requests > 0 {
+                            server_resource_pack_runtime.request_reload();
                             tracing::info!(
                                 reload_requests,
                                 "resource pack reload requested by debug hotkey"
@@ -1314,6 +1238,23 @@ fn main() -> Result<()> {
                         target.exit();
                         return;
                     }
+                    apply_pending_server_resource_pack_reload(
+                        &mut server_resource_pack_runtime,
+                        &base_pack_roots,
+                        &mut pack_roots,
+                        &mut audio_runtime,
+                        &mut audio_status,
+                        &mut particle_runtime,
+                        &mut item_runtime,
+                        &mut terrain_textures,
+                        &mut entity_variant_textures,
+                        &mut terrain_upload,
+                        &mut world,
+                        &mut renderer,
+                        &args.client_locale,
+                        client_particle_status,
+                        &player_skin_cache_dir,
+                    );
                     stats_screen_narration.tick(
                         world
                             .stats_screen_is_open()
@@ -1511,6 +1452,23 @@ fn main() -> Result<()> {
                     target.exit();
                     return;
                 }
+                apply_pending_server_resource_pack_reload(
+                    &mut server_resource_pack_runtime,
+                    &base_pack_roots,
+                    &mut pack_roots,
+                    &mut audio_runtime,
+                    &mut audio_status,
+                    &mut particle_runtime,
+                    &mut item_runtime,
+                    &mut terrain_textures,
+                    &mut entity_variant_textures,
+                    &mut terrain_upload,
+                    &mut world,
+                    &mut renderer,
+                    &args.client_locale,
+                    client_particle_status,
+                    &player_skin_cache_dir,
+                );
                 stats_screen_narration.tick(
                     world
                         .stats_screen_is_open()
@@ -1555,57 +1513,6 @@ fn main() -> Result<()> {
     })?;
 
     Ok(())
-}
-
-fn block_destroy_profiles_for_world(
-    catalog: &BlockDestroyProfileCatalog,
-) -> BTreeMap<String, WorldBlockDestroyProfile> {
-    catalog
-        .profiles()
-        .iter()
-        .map(|(block_name, profile)| (block_name.clone(), world_block_destroy_profile(profile)))
-        .collect()
-}
-
-fn world_block_destroy_profile(profile: &PackBlockDestroyProfile) -> WorldBlockDestroyProfile {
-    WorldBlockDestroyProfile {
-        destroy_time_tenths: profile.destroy_time_tenths,
-        requires_correct_tool: profile.requires_correct_tool,
-    }
-}
-
-fn block_sound_profiles_for_world(
-    catalog: &BlockSoundProfileCatalog,
-) -> BTreeMap<String, WorldBlockSoundProfile> {
-    catalog
-        .profiles()
-        .iter()
-        .map(|(block_name, profile)| (block_name.clone(), world_block_sound_profile(profile)))
-        .collect()
-}
-
-fn world_block_sound_profile(profile: &PackBlockSoundProfile) -> WorldBlockSoundProfile {
-    WorldBlockSoundProfile {
-        break_sound: profile.break_sound.clone(),
-        hit_sound: profile.hit_sound.clone(),
-        volume: profile.volume,
-        pitch: profile.pitch,
-    }
-}
-
-fn item_particle_sprite_uvs(items: &NativeItemRuntime) -> Vec<ParticleSpriteUv> {
-    items
-        .atlas_sprite_uvs()
-        .into_iter()
-        .map(|sprite| ParticleSpriteUv {
-            id: sprite.id,
-            uv: ParticleUvRect {
-                min: sprite.uv.min,
-                max: sprite.uv.max,
-            },
-            has_translucent: sprite.has_translucent,
-        })
-        .collect()
 }
 
 fn set_cursor_capture(window: &Window, captured: &mut bool, capture: bool) {
