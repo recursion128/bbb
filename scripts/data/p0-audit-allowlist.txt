@@ -57,6 +57,9 @@
 ^crates/bbb-native/src/particle_runtime(/.*)?[.]rs$	fallback
 ^crates/bbb-native/src/(runtime|input|item_frames|banner_scene|debug_entries|main)[.]rs$	fallback
 ^crates/bbb-native/src/input/.*[.]rs$	fallback
+# Synchronized jukebox audio completes only data-less known-pack stubs by resource
+# identity; server payloads and holder order never use a bootstrap ordinal fallback.
+^crates/bbb-native/src/runtime/events/dispatcher[.]rs$	let fallback = world|JukeboxSongRegistryEntry::new[(]song_id, fallback, None[)]
 # World registry/entity/chunk/client fallbacks preserve vanilla/offline semantics.
 ^crates/bbb-world/src/registries/.*[.]rs$	fallback
 ^crates/bbb-world/src/entities(/.*)?[.]rs$	fallback
