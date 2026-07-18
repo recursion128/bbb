@@ -60,13 +60,16 @@ use serde_json::json;
 use uuid::Uuid;
 
 fn publish_test_world(state: &ControlState, world: WorldStore) {
-    let snapshot_world = Arc::new(world.clone());
+    let generation = state.snapshot.load().generation.saturating_add(1);
+    state.world.store(Arc::new(ControlWorldSnapshot {
+        generation,
+        world: Arc::new(world),
+    }));
     state.snapshot.rcu(|current| {
         let mut next = (**current).clone();
-        next.world = Arc::clone(&snapshot_world);
+        next.generation = generation;
         next
     });
-    *state.world.write().unwrap() = world;
 }
 
 #[test]
@@ -122,7 +125,7 @@ fn app_status_reads_world_counters_from_world_store() {
 }
 
 #[test]
-fn high_frequency_queries_match_the_published_world_without_taking_the_live_lock() {
+fn high_frequency_queries_match_the_published_world_generation() {
     let state = ControlState::new("test");
     let mut world = WorldStore::with_dimension(WorldDimension {
         min_y: 0,
@@ -154,9 +157,6 @@ fn high_frequency_queries_match_the_published_world_without_taking_the_live_lock
     .unwrap();
     publish_test_world(&state, world);
 
-    // Keeping the compatibility world's write guard proves these migrated
-    // reads cannot be waiting on the live-world RwLock.
-    let _live_world_write = state.world.write().unwrap();
     let counters = dispatch(
         ControlRequest {
             method: "world.counters".to_string(),
@@ -182,6 +182,29 @@ fn high_frequency_queries_match_the_published_world_without_taking_the_live_lock
     assert_eq!(counters.result.unwrap(), expected_counters);
     assert_eq!(local.result.unwrap(), expected_local);
     assert_eq!(block.result.unwrap(), expected_block);
+}
+
+#[test]
+fn control_reads_retry_until_runtime_and_world_generations_match() {
+    let state = ControlState::new("test");
+    state.world.store(Arc::new(ControlWorldSnapshot {
+        generation: 1,
+        world: Arc::new(WorldStore::new()),
+    }));
+    let snapshot = Arc::clone(&state.snapshot);
+    let publisher = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        snapshot.rcu(|current| {
+            let mut next = (**current).clone();
+            next.generation = 1;
+            next
+        });
+    });
+
+    let (runtime, world) = load_control_views(&state);
+    publisher.join().unwrap();
+    assert_eq!(runtime.generation, 1);
+    assert_eq!(world.generation, 1);
 }
 
 #[test]
@@ -371,7 +394,7 @@ fn level_state_reads_canonical_world_state() {
     assert_eq!(level_state["gameplay"]["show_death_screen"], true);
     assert_eq!(level_state["gameplay"]["do_limited_crafting"], false);
 
-    let mut cleared_world = (*state.snapshot.load().world).clone();
+    let mut cleared_world = (*state.world.load().world).clone();
     cleared_world.clear_client_level();
     publish_test_world(&state, cleared_world);
     let response = dispatch(
@@ -2435,7 +2458,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
     assert_eq!(offers["offers"][1]["buy_b"], serde_json::Value::Null);
     assert_eq!(offers["offers"][1]["is_out_of_stock"], true);
 
-    let mut closed_world = (*state.snapshot.load().world).clone();
+    let mut closed_world = (*state.world.load().world).clone();
     assert!(closed_world.apply_container_close(ContainerClose { container_id: 7 }));
     publish_test_world(&state, closed_world);
     let response = dispatch(
@@ -2692,7 +2715,7 @@ fn client_cooldowns_reads_canonical_world_state() {
     );
     assert_eq!(cooldowns["minecraft:ender_pearl"]["duration"], 20);
 
-    let mut cleared_world = (*state.snapshot.load().world).clone();
+    let mut cleared_world = (*state.world.load().world).clone();
     cleared_world.apply_cooldown(Cooldown {
         cooldown_group: "minecraft:ender_pearl".to_string(),
         duration: 0,
@@ -4101,7 +4124,7 @@ fn last_projectile_power_reads_canonical_world_state() {
     assert_eq!(applied["acceleration_power"], 0.75);
     assert_eq!(applied["applied"], true);
 
-    let mut ignored_world = (*state.snapshot.load().world).clone();
+    let mut ignored_world = (*state.world.load().world).clone();
     assert!(!ignored_world.apply_projectile_power(ProjectilePower {
         entity_id: 20,
         acceleration_power: 0.25,

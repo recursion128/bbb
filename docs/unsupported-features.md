@@ -598,7 +598,9 @@ Owner: `bbb-protocol` + `bbb-net` + `bbb-native`
 Owner: `bbb-world` + `bbb-native` + `bbb-control`
 
 - Move the remaining client-observable state into `WorldStore`, removing
-  native-only `last_*` snapshots wherever a world owner exists or should exist.
+  native-only `last_*` snapshots wherever a world owner exists or should exist;
+  any new control exposure must derive from the paired immutable world/runtime
+  generation rather than create an independent control-owned value.
 - Keep `NetCounters` limited to connection/runtime status and command-queue
   projections.
 

@@ -17642,7 +17642,7 @@ fn client_tick_end_is_queued_after_native_tick_commands_and_particles() {
 
 #[test]
 fn publish_snapshot_includes_audio_runtime_counters() {
-    let snapshot = bbb_control::shared_snapshot("test");
+    let control = bbb_control::ControlState::new("test");
     let audio = AudioCounters {
         enabled: true,
         catalog_events: 1902,
@@ -17656,20 +17656,21 @@ fn publish_snapshot_includes_audio_runtime_counters() {
     let world = WorldStore::new();
 
     assert!(publish_snapshot(
-        &snapshot,
+        &control.snapshot,
+        &control.world,
         &world,
         RendererCounters::default(),
         &net,
         &audio,
     ));
 
-    assert_eq!(snapshot.load().audio, audio);
+    assert_eq!(control.snapshot.load().audio, audio);
 }
 
 #[test]
 fn publish_snapshot_preserves_control_quit_and_freezes_world_generation() {
-    let snapshot = bbb_control::shared_snapshot("test");
-    snapshot.rcu(|current| {
+    let control = bbb_control::ControlState::new("test");
+    control.snapshot.rcu(|current| {
         let mut next = (**current).clone();
         next.app.running = false;
         next
@@ -17678,19 +17679,35 @@ fn publish_snapshot_preserves_control_quit_and_freezes_world_generation() {
     world.apply_block_changed_ack(BlockChangedAck { sequence: 4 });
 
     assert!(!publish_snapshot(
-        &snapshot,
+        &control.snapshot,
+        &control.world,
         &world,
         RendererCounters::default(),
         &NetCounters::default(),
         &AudioCounters::default(),
     ));
-    let published = snapshot.load_full();
+    let published = control.snapshot.load_full();
+    let published_world = control.world.load_full();
     assert!(!published.app.running);
-    assert_eq!(published.world.counters().block_changed_ack_packets, 1);
+    assert_eq!(published.generation, published_world.generation);
+    assert_eq!(
+        published_world.world.counters().block_changed_ack_packets,
+        1
+    );
 
     world.apply_block_changed_ack(BlockChangedAck { sequence: 5 });
-    assert_eq!(published.world.counters().block_changed_ack_packets, 1);
+    assert_eq!(
+        published_world.world.counters().block_changed_ack_packets,
+        1
+    );
     assert_eq!(world.counters().block_changed_ack_packets, 2);
+}
+
+#[test]
+fn native_event_loop_owns_live_world_without_a_shared_lock() {
+    let source = include_str!("../main.rs");
+    assert!(!source.contains(&["world", "_shared"].concat()));
+    assert!(!source.contains(&["world lock", " poisoned"].concat()));
 }
 
 fn local_player_pose(position: [f64; 3], y_rot: f32, x_rot: f32) -> LocalPlayerPoseState {

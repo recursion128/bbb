@@ -19270,3 +19270,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 删除 250ms debounce 与 20s 全量重建节流；首次加载、普通更新、F3+T reload、
   chunk 选择变化和空 world 都走同一预算调度与显式清理。透明层缓存上传会按当前
   camera 重新生成块内 indices 和跨块 far-to-near 顺序，避免复用旧 camera 排序。
+
+## 2026-07-18：control lock-free world 快照
+
+- [x] `ControlSnapshot` 与 `SharedWorld` 改为配对 generation 的 ArcSwap 不可变发布：
+  runtime counters 与 world 副本保持 owner 分离，control 请求在 generation 不一致时
+  重试，因此一次响应内的 app/net/audio/renderer/world 数据来自同一帧；`app.quit`
+  用 RCU 更新，不会被 native 的下一次发布覆盖。
+- [x] pose/counters/probe_block 先以旧 canonical 查询逐值对照，再将 registries、HUD、
+  inventory、entities、chunks 等全部只读 method 迁移到同一 published world；dispatcher
+  删除 `spawn_blocking` 止血路径，不再读取 live `WorldStore` 或等待整帧写锁。
+- [x] native winit event loop 直接拥有唯一可变 `WorldStore`，每个 rendered frame 只深拷贝
+  并发布一次；`SharedWorld = Arc<RwLock<WorldStore>>` 和 whole-event write guard 已删除。
+  control 写操作仍经独立 `ControlRequests` 队列回到 native，不形成第二 canonical owner。

@@ -8,7 +8,8 @@ use std::{
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
 use bbb_control::{
-    AudioCounters, NetCounters, RendererCounters, SharedControlRequests, SharedSnapshot,
+    AudioCounters, ControlWorldSnapshot, NetCounters, RendererCounters, SharedControlRequests,
+    SharedSnapshot, SharedWorld,
 };
 use bbb_item_model::{
     ItemModelKeybindContext, NativeItemMapTooltipData, NativeItemRuntime, NativeItemTooltipOptions,
@@ -13953,18 +13954,23 @@ pub(crate) fn control_renderer_counters(
 
 pub(crate) fn publish_snapshot(
     snapshot: &SharedSnapshot,
+    published_world: &SharedWorld,
     world: &WorldStore,
     renderer: RendererCounters,
     net: &NetCounters,
     audio: &AudioCounters,
 ) -> bool {
-    let world = Arc::new(world.clone());
+    let generation = snapshot.load().generation.saturating_add(1);
+    published_world.store(Arc::new(ControlWorldSnapshot {
+        generation,
+        world: Arc::new(world.clone()),
+    }));
     snapshot.rcu(|current| {
         let mut next = (**current).clone();
+        next.generation = generation;
         next.renderer = renderer.clone();
         next.net = net.clone();
         next.audio = audio.clone();
-        next.world = Arc::clone(&world);
         next
     });
     snapshot.load().app.running

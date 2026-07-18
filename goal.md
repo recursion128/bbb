@@ -87,9 +87,10 @@
   （split-borrow）；后续子域收敛仿此模式。
 - `WorldCounters` 字段只能经 `counters.rs` 的 `world_counters!` 宏声明；
   字段名与顺序由 serde 形状测试锁定。
-- control 层是纯派生视图：`ControlSnapshot` 只承载 counters 派生数据，world
-  查询走 `SharedWorld`（`Arc<RwLock<WorldStore>>`）读锁按请求执行，输入请求
-  走 `ControlRequests`；不得把 WorldStore 或请求队列塞回快照。
+- control 层是纯派生视图：`ControlSnapshot` 只承载 runtime counters 与发布
+  generation，world 查询走同 generation 的 `SharedWorld` ArcSwap 不可变副本；
+  输入请求走 `ControlRequests`。live `WorldStore` 只归 native 所有，不得把它或
+  请求队列塞进 `ControlSnapshot`。
 - `bbb-world` 可序列化状态路径不得引入 wall-clock（SystemTime/Instant）；
   音效 seed 走 `ClientAudioState.sound_seed_random` 确定性链。
 - 大文件布局：particle_runtime / particles / item_models 为 facade + 域
@@ -461,14 +462,11 @@ recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实�
 
 连接与主循环解耦及持续架构优化（高优先级跟进，2026-07-18 排队）：
 
-0. **control 面 lock-free 快照**：主循环每帧经 arc-swap 发布不可变快照，control 读
-   彻底脱离 live world 锁（spawn_blocking 仅是止血）。按 gate 高频读域渐进
-   （pose/counters/probe_block 先行），快照与 lock 路径读数一致作为门禁断言。
-1. **模拟与渲染解耦**：「应用服务端状态 + client tick」移入独立 20Hz 模拟线程，
+0. **模拟与渲染解耦**：「应用服务端状态 + client tick」移入独立 20Hz 模拟线程，
    渲染按帧消费快照；已增量化的 terrain 慢帧自此只影响画面。动 runtime.rs 单线程
    所有权假设，属大型重构需先出设计再切片；canonical 输入路径与 tick 语义不得
    分叉（P0 红线）。
-2. **rust/tokio/hecs 特性驱动的持续优化**（长期方向，随 slice 顺带落地）：rust 用
+1. **rust/tokio/hecs 特性驱动的持续优化**（长期方向，随 slice 顺带落地）：rust 用
    类型状态/newtype 收紧协议状态机非法空间、`Arc` 共享替代克隆；tokio 连接/控制
    任务零阻塞 await、`watch`/arc-swap 快照、JoinSet 管理任务生命周期；hecs 把
    per-tick 实体动画/物理收敛为 ECS 查询批处理，作为 dual-path 实体迁移统一落

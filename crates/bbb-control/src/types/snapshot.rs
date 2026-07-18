@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, Mutex},
 };
 
 use arc_swap::ArcSwap;
@@ -343,19 +343,29 @@ where
 }
 
 /// Immutable control-plane view published atomically by the native runtime.
-/// `world` is a derived copy of the canonical live [`WorldStore`]; readers
-/// retain one `Arc` generation for the whole request and never lock the live
-/// runtime owner.
+/// World-owned state is published separately through [`SharedWorld`] at the
+/// same `generation`, keeping runtime counters out of canonical state.
 #[derive(Debug, Clone, Default)]
 pub struct ControlSnapshot {
+    pub generation: u64,
     pub app: AppStatus,
     pub net: NetCounters,
     pub audio: AudioCounters,
     pub renderer: RendererCounters,
-    pub world: Arc<WorldStore>,
 }
 
 pub type SharedSnapshot = Arc<ArcSwap<ControlSnapshot>>;
+
+/// Immutable world generation paired with [`ControlSnapshot::generation`].
+/// This is a derived copy; the live canonical owner remains native's event
+/// loop and is never shared with control readers.
+#[derive(Debug, Clone, Default)]
+pub struct ControlWorldSnapshot {
+    pub generation: u64,
+    pub world: Arc<WorldStore>,
+}
+
+pub type SharedWorld = Arc<ArcSwap<ControlWorldSnapshot>>;
 
 /// Control-plane input queues: produced by the control API server (and the
 /// native code-of-conduct overlay) and drained by the native runtime each
@@ -370,12 +380,6 @@ pub struct ControlRequests {
 }
 
 pub type SharedControlRequests = Arc<Mutex<ControlRequests>>;
-
-/// Compatibility handle for the final native ownership migration. Control
-/// reads use [`ControlSnapshot::world`] exclusively; this live handle remains
-/// temporarily so the native event loop can be moved off its whole-event lock
-/// in a separately reviewable phase.
-pub type SharedWorld = Arc<RwLock<WorldStore>>;
 
 /// Bundle of the shared control-plane handles served by the control API.
 #[derive(Debug, Clone, Default)]

@@ -11,8 +11,8 @@ use tokio::{
 use crate::types::{
     AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest,
     ContainerClickSlotControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
-    ControlState, CreativeModeSlotControlRequest, InputControlRequest, InputKeyControl,
-    InputMouseButtonControl, NetControlRequest, SharedSnapshot,
+    ControlState, ControlWorldSnapshot, CreativeModeSlotControlRequest, InputControlRequest,
+    InputKeyControl, InputMouseButtonControl, NetControlRequest, SharedSnapshot,
 };
 
 mod params;
@@ -1229,7 +1229,7 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         };
     }
 
-    let snapshot_view = state.snapshot.load_full();
+    let (snapshot_view, world_snapshot) = load_control_views(state);
     let snapshot_json: Option<serde_json::Result<serde_json::Value>> = match request.method.as_str()
     {
         "app.status" => Some(Ok(serde_json::json!({
@@ -1237,21 +1237,21 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
             "net": &snapshot_view.net,
             "audio": &snapshot_view.audio,
             "renderer": &snapshot_view.renderer,
-            "world": snapshot_view.world.counters(),
+            "world": world_snapshot.world.counters(),
         }))),
         "net.counters" => Some(serde_json::to_value(&snapshot_view.net)),
         "audio.counters" => Some(serde_json::to_value(&snapshot_view.audio)),
         "renderer.counters" => Some(serde_json::to_value(&snapshot_view.renderer)),
-        "world.counters" => Some(serde_json::to_value(snapshot_view.world.counters())),
+        "world.counters" => Some(serde_json::to_value(world_snapshot.world.counters())),
         "world.client_local_player" => Some(serde_json::to_value(
-            snapshot_view.world.client_local_player(),
+            world_snapshot.world.client_local_player(),
         )),
         "world.probe_block" => {
             let x = i32_param(&request.params, "x");
             let y = i32_param(&request.params, "y");
             let z = i32_param(&request.params, "z");
             let result = match (x, y, z) {
-                (Some(x), Some(y), Some(z)) => snapshot_view
+                (Some(x), Some(y), Some(z)) => world_snapshot
                     .world
                     .probe_block(BlockPos { x, y, z })
                     .map(|probe| serde_json::to_value(probe).expect("block probe serializes"))
@@ -1266,7 +1266,7 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         return control_response_from_json(json);
     }
 
-    let world_guard = snapshot_view.world.as_ref();
+    let world_guard = world_snapshot.world.as_ref();
     let json = match request.method.as_str() {
         "world.apply_diagnostics" => serde_json::to_value(world_guard.apply_diagnostics()),
         "world.registries" => serde_json::to_value(world_guard.registries()),
@@ -1421,5 +1421,19 @@ fn control_response_from_json(json: serde_json::Result<serde_json::Value>) -> Co
             result: None,
             error: Some(err.to_string()),
         },
+    }
+}
+
+fn load_control_views(state: &ControlState) -> (Arc<ControlSnapshot>, Arc<ControlWorldSnapshot>) {
+    loop {
+        let snapshot_before = state.snapshot.load_full();
+        let world = state.world.load_full();
+        let snapshot_after = state.snapshot.load_full();
+        if Arc::ptr_eq(&snapshot_before, &snapshot_after)
+            && snapshot_before.generation == world.generation
+        {
+            return (snapshot_before, world);
+        }
+        std::hint::spin_loop();
     }
 }

@@ -205,8 +205,8 @@ fn main() -> Result<()> {
         bbb_protocol::PROTOCOL_VERSION
     ));
     let snapshot = control.snapshot.clone();
+    let published_world = control.world.clone();
     let control_requests = control.requests.clone();
-    let world_shared = control.world.clone();
     let mut world = WorldStore::new();
     world.set_dialog_link_options(args.client_chat_links, args.client_chat_links_prompt);
     let mut net_counters = NetCounters::default();
@@ -459,10 +459,6 @@ fn main() -> Result<()> {
     let mut last_command_suggestion_narration = None;
     let mut stats_screen_narration = ScreenNarrationRuntime::default();
 
-    *world_shared
-        .write()
-        .expect("world lock poisoned before event loop") = world;
-
     event_loop.run(move |event, target| {
         if let Some(narrator) = narrator_runtime.as_mut() {
             narrator.tick();
@@ -480,8 +476,7 @@ fn main() -> Result<()> {
                 .map(|_| ControlFlow::WaitUntil(next_redraw_at))
                 .unwrap_or(ControlFlow::Poll),
         );
-        let mut world_guard = world_shared.write().expect("world lock poisoned");
-        let mut world = &mut *world_guard;
+        let mut world = &mut world;
         match event {
             Event::WindowEvent { event, window_id } if window_id == window.id() => match event {
                 WindowEvent::CloseRequested => target.exit(),
@@ -1343,6 +1338,7 @@ fn main() -> Result<()> {
                         .unwrap_or_else(|| audio_status.clone());
                     let published = publish_snapshot(
                         &snapshot,
+                        &published_world,
                         &world,
                         control_renderer_counters(renderer.counters()),
                         &net_counters,

@@ -206,7 +206,12 @@ canonical world state.
 Owns external control-facing types, reports, and snapshots.
 
 - `NetCounters` and snapshot structs are derived views.
-- Control state must be synchronized from `WorldStore` and runtime status.
+- Native owns the mutable `WorldStore`; once per rendered frame it publishes
+  immutable runtime-counter and world generations through paired `ArcSwap`
+  handles. Control reads retry on a generation mismatch and never lock or own
+  the live world.
+- `ControlRequests` remains the separate control-to-native write queue; a read
+  snapshot never becomes a second gameplay authority.
 - New packet behavior should not add native-only snapshot ownership when a world
   canonical state can own it.
 
