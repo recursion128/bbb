@@ -473,6 +473,7 @@ pub use crate::registries::{
     direct_trim_pattern_presentation, painting_variant_translation_key, ArmorTrimSprite,
     BannerPatternPresentation, BannerPatternProjectionError, ChatTypeDecoration,
     ChatTypeDecorationParameter, ChatTypeProjectionError, EnchantmentTooltipDefinition,
+    InstrumentPresentation, InstrumentProjectionError, InstrumentSoundEvent,
     JukeboxSongPresentation, JukeboxSongProjectionError, JukeboxSoundEvent,
     PaintingVariantClientProjection, PaintingVariantPresentation, PaintingVariantProjectionError,
     RegistryElementData, RegistryElementDecodeError, RegistryElementSource, TimelineClockReference,
@@ -480,9 +481,9 @@ pub use crate::registries::{
     TimelineProjectionError, TimelineTimeMarker, TimelineTrackDefinition, TrimMaterialPresentation,
     TrimPatternPresentation, TrimRegistryProjectionError, VanillaEnchantmentIdentity,
     VanillaInstrumentIdentity, VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity,
-    WorldClockDefinition, BANNER_PATTERN_REGISTRY, CHAT_TYPE_REGISTRY, JUKEBOX_SONG_REGISTRY,
-    PAINTING_VARIANT_REGISTRY, TIMELINE_REGISTRY, TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
-    VANILLA_ENCHANTMENT_TOOLTIP_ORDER, WORLD_CLOCK_REGISTRY,
+    WorldClockDefinition, BANNER_PATTERN_REGISTRY, CHAT_TYPE_REGISTRY, INSTRUMENT_REGISTRY,
+    JUKEBOX_SONG_REGISTRY, PAINTING_VARIANT_REGISTRY, TIMELINE_REGISTRY, TRIM_MATERIAL_REGISTRY,
+    TRIM_PATTERN_REGISTRY, VANILLA_ENCHANTMENT_TOOLTIP_ORDER, WORLD_CLOCK_REGISTRY,
 };
 pub use crate::terrain_state::*;
 pub use crate::world_state::*;

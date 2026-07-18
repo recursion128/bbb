@@ -86,6 +86,43 @@ pub(crate) fn world_trim_pattern_keys(world: &WorldStore) -> Option<Vec<String>>
     world_registry_keys(world, "minecraft:trim_pattern")
 }
 
+pub(crate) fn world_instrument_tooltip_context(
+    world: &WorldStore,
+) -> Option<(Vec<String>, Vec<Option<bbb_world::InstrumentPresentation>>)> {
+    let resource_ids = world_registry_keys(world, bbb_world::INSTRUMENT_REGISTRY)?;
+    let mut keys = Vec::with_capacity(resource_ids.len());
+    let mut presentations = Vec::with_capacity(resource_ids.len());
+    for (index, resource_id) in resource_ids.into_iter().enumerate() {
+        let holder_id = i32::try_from(index).ok();
+        let projection =
+            holder_id.map(|holder_id| world.synchronized_instrument_presentation(holder_id));
+        let data_less_stub = holder_id
+            .and_then(|holder_id| {
+                world.registry_entry_by_holder_id(bbb_world::INSTRUMENT_REGISTRY, holder_id)
+            })
+            .is_some_and(|entry| !entry.has_data);
+        match projection {
+            Some(Ok(Some(presentation))) => {
+                keys.push(resource_id);
+                presentations.push(Some(presentation));
+            }
+            Some(Ok(None))
+                if data_less_stub
+                    && bbb_world::VanillaInstrumentIdentity::for_resource_id(&resource_id)
+                        .is_some() =>
+            {
+                keys.push(resource_id);
+                presentations.push(None);
+            }
+            _ => {
+                keys.push(String::new());
+                presentations.push(None);
+            }
+        }
+    }
+    Some((keys, presentations))
+}
+
 pub(crate) fn world_trim_material_tooltip_context(
     world: &WorldStore,
 ) -> Option<(

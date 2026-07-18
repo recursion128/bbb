@@ -33,10 +33,10 @@ use bbb_world::{
     direct_banner_pattern_presentation, direct_trim_material_presentation,
     direct_trim_pattern_presentation, painting_variant_translation_key, vanilla_painting_variant,
     BannerPatternPresentation, EnchantmentAttributeModifier, EnchantmentTooltipDefinition,
-    JukeboxSongPresentation, PaintingVariantPresentation, RegistrySet, TrimMaterialPresentation,
-    TrimPatternPresentation, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
-    VanillaPaintingVariant, VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity,
-    VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    InstrumentPresentation, JukeboxSongPresentation, PaintingVariantPresentation, RegistrySet,
+    TrimMaterialPresentation, TrimPatternPresentation, VanillaEnchantmentIdentity,
+    VanillaInstrumentIdentity, VanillaPaintingVariant, VanillaTrimMaterialIdentity,
+    VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 
 use super::icon_model::effective_attribute_modifiers;
@@ -159,6 +159,8 @@ pub struct NativeItemTooltipOptions<'a> {
     pub trim_material_presentations: Option<&'a [Option<TrimMaterialPresentation>]>,
     pub trim_pattern_keys: Option<&'a [String]>,
     pub trim_pattern_presentations: Option<&'a [Option<TrimPatternPresentation>]>,
+    pub instrument_keys: Option<&'a [String]>,
+    pub instrument_presentations: Option<&'a [Option<InstrumentPresentation>]>,
     pub jukebox_song_keys: Option<&'a [String]>,
     pub jukebox_song_presentations: Option<&'a [Option<JukeboxSongPresentation>]>,
     pub banner_pattern_keys: Option<&'a [String]>,
@@ -507,6 +509,7 @@ fn push_map_id_tooltip_lines(
 fn push_instrument_tooltip_lines(
     language: &LanguageCatalog,
     component_patch: &DataComponentPatchSummary,
+    options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     if let Some(description) = &component_patch.instrument_description {
@@ -525,9 +528,44 @@ fn push_instrument_tooltip_lines(
         return;
     }
 
-    let Some(instrument_key) = component_patch
-        .instrument_id
-        .and_then(VanillaInstrumentIdentity::for_vanilla_registry_id)
+    let Some(holder_id) = component_patch.instrument_id else {
+        return;
+    };
+    if let Some(instrument_keys) = options.instrument_keys {
+        let Some(index) = usize::try_from(holder_id).ok() else {
+            return;
+        };
+        if let Some(Some(presentation)) = options
+            .instrument_presentations
+            .and_then(|presentations| presentations.get(index))
+        {
+            lines.push(NativeItemTooltipLine {
+                text: presentation.description.clone(),
+                tint: TOOLTIP_TEXT_GRAY,
+                runs: hud_runs_from_component(
+                    &presentation.description_styled,
+                    &presentation.description,
+                    &INSTRUMENT_DESCRIPTION_STYLE,
+                ),
+            });
+            return;
+        }
+        let Some(instrument_key) = instrument_keys
+            .get(index)
+            .filter(|key| VanillaInstrumentIdentity::for_resource_id(key).is_some())
+        else {
+            return;
+        };
+        lines.push(NativeItemTooltipLine::plain(
+            language
+                .get_or_key(&description_key("instrument", instrument_key))
+                .to_string(),
+            TOOLTIP_TEXT_GRAY,
+        ));
+        return;
+    }
+
+    let Some(instrument_key) = VanillaInstrumentIdentity::for_vanilla_registry_id(holder_id)
         .map(VanillaInstrumentIdentity::resource_id)
     else {
         return;
@@ -3188,7 +3226,7 @@ impl NativeItemRuntime {
             push_tropical_fish_tooltip_lines(&self.language, component_patch, lines);
         }
         if shows(component_id::VANILLA_DATA_COMPONENT_INSTRUMENT_TYPE_ID) {
-            push_instrument_tooltip_lines(&self.language, component_patch, lines);
+            push_instrument_tooltip_lines(&self.language, component_patch, options, lines);
         }
         if shows(component_id::VANILLA_DATA_COMPONENT_MAP_ID_TYPE_ID) {
             push_map_id_tooltip_lines(&self.language, component_patch, options, lines);

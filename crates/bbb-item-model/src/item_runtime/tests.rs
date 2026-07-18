@@ -1314,6 +1314,58 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             tooltip_line("Ponder", TOOLTIP_TEXT_GRAY),
         ])
     );
+    let instrument_keys = [
+        "example:custom_horn".to_string(),
+        "minecraft:ponder_goat_horn".to_string(),
+    ];
+    let instrument_presentations = [
+        Some(bbb_world::InstrumentPresentation {
+            element_source: bbb_world::RegistryElementSource::NetworkNbt,
+            sound_event: bbb_world::InstrumentSoundEvent::Reference {
+                resource_id: "example:custom_sound".to_string(),
+            },
+            use_duration: 4.0,
+            range: 96.0,
+            description: "Custom horn".to_string(),
+            description_styled: vec![bbb_protocol::StyledTextRun {
+                text: "Custom horn".to_string(),
+                style: bbb_protocol::ComponentStyle {
+                    italic: Some(true),
+                    color: Some(0x55_FF_55),
+                    ..bbb_protocol::ComponentStyle::default()
+                },
+            }],
+            description_nbt: NbtSummaryValue::String("Custom horn".to_string()),
+        }),
+        None,
+    ];
+    let instrument_stack = |instrument_id| ItemStackSummary {
+        item_id: Some(0),
+        count: 1,
+        component_patch: DataComponentPatchSummary {
+            instrument_id: Some(instrument_id),
+            ..DataComponentPatchSummary::default()
+        },
+    };
+    let instrument_options = NativeItemTooltipOptions {
+        instrument_keys: Some(&instrument_keys),
+        instrument_presentations: Some(&instrument_presentations),
+        ..NativeItemTooltipOptions::default()
+    };
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(&instrument_stack(0), instrument_options),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            italic_tooltip_line("Custom horn", TOOLTIP_TEXT_GRAY, 0x55_FF_55),
+        ])
+    );
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(&instrument_stack(1), instrument_options),
+        Some(vec![
+            name_line("Test Combo", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            tooltip_line("Ponder", TOOLTIP_TEXT_GRAY),
+        ])
+    );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             item_id: Some(0),

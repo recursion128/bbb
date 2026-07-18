@@ -43,6 +43,61 @@ fn synchronized_variant_registry_context_inventory_is_complete() {
 }
 
 #[test]
+fn instrument_tooltip_context_uses_typed_session_order_and_safe_stub_fallback() {
+    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
+    }
+    fn instrument_nbt(description: &str, use_duration: f32) -> Vec<u8> {
+        let mut out = vec![10, 8];
+        write_nbt_string(&mut out, "sound_event");
+        write_nbt_string(&mut out, "example:horn");
+        out.push(5);
+        write_nbt_string(&mut out, "use_duration");
+        out.extend_from_slice(&use_duration.to_bits().to_be_bytes());
+        out.push(5);
+        write_nbt_string(&mut out, "range");
+        out.extend_from_slice(&96.0_f32.to_bits().to_be_bytes());
+        out.push(8);
+        write_nbt_string(&mut out, "description");
+        write_nbt_string(&mut out, description);
+        out.push(0);
+        out
+    }
+
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        bbb_world::INSTRUMENT_REGISTRY,
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:custom",
+                instrument_nbt("Custom horn", 4.0),
+            ),
+            bbb_world::RegistryPacketEntry::stub("minecraft:ponder_goat_horn"),
+            bbb_world::RegistryPacketEntry::stub("example:unknown_stub"),
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "minecraft:sing_goat_horn",
+                instrument_nbt("Broken", 0.0),
+            ),
+        ],
+    );
+
+    let (keys, presentations) = world_instrument_tooltip_context(&world).unwrap();
+    assert_eq!(
+        keys,
+        ["example:custom", "minecraft:ponder_goat_horn", "", ""]
+    );
+    assert_eq!(
+        presentations[0]
+            .as_ref()
+            .map(|presentation| presentation.description.as_str()),
+        Some("Custom horn")
+    );
+    assert!(presentations[1..].iter().all(Option::is_none));
+}
+
+#[test]
 fn trim_tooltip_context_keeps_valid_payloads_and_only_known_vanilla_stubs() {
     fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
         out.extend_from_slice(&(value.len() as u16).to_be_bytes());
