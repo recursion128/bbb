@@ -266,8 +266,8 @@ fn section_palette_may_contain_banner(
 mod tests {
     use super::*;
     use crate::{
-        BannerPatternsState, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain,
-        PalettedContainerData, WorldDimension,
+        BannerPatternHolderState, BannerPatternsState, ChunkPos, ChunkSection, ChunkState,
+        LightData, PaletteDomain, PalettedContainerData, WorldDimension,
     };
     use bbb_protocol::packets::{BlockEntityData, BlockPos as ProtocolBlockPos, BlockUpdate};
     use std::collections::BTreeMap;
@@ -452,11 +452,13 @@ mod tests {
             Some(&BannerPatternsState {
                 layers: vec![
                     BannerPatternLayerState {
-                        pattern: "minecraft:stripe_top".to_string(),
+                        pattern: BannerPatternHolderState::Named(
+                            "minecraft:stripe_top".to_string(),
+                        ),
                         color: "red".to_string(),
                     },
                     BannerPatternLayerState {
-                        pattern: "minecraft:creeper".to_string(),
+                        pattern: BannerPatternHolderState::Named("minecraft:creeper".to_string(),),
                         color: "black".to_string(),
                     },
                 ],
@@ -540,7 +542,7 @@ mod tests {
         assert_eq!(
             standing.layers,
             vec![BannerPatternLayerState {
-                pattern: "minecraft:skull".to_string(),
+                pattern: BannerPatternHolderState::Named("minecraft:skull".to_string()),
                 color: "purple".to_string(),
             }]
         );

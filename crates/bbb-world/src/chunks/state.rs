@@ -131,14 +131,26 @@ pub struct BannerPatternsState {
 }
 
 /// One banner pattern layer — vanilla `BannerPatternLayers.Layer`: the
-/// `pattern` registry id string (`BannerPattern.CODEC`, e.g.
-/// `minecraft:stripe_top`) and the `color` dye name (`DyeColor.CODEC`, e.g.
-/// `lime`), both kept raw; the projection maps them onto the renderer's
-/// pattern/color tables.
+/// named or direct `BannerPattern.CODEC` holder and the `color` dye name
+/// (`DyeColor.CODEC`, e.g. `lime`). Named holders preserve their resource id;
+/// direct holders preserve both fields from `BannerPattern.DIRECT_CODEC`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BannerPatternLayerState {
-    pub pattern: String,
+    pub pattern: BannerPatternHolderState,
     pub color: String,
+}
+
+/// Persistent `RegistryFileCodec` form used by a banner-pattern layer. The
+/// untagged representation keeps named holders serialized as their original
+/// string while direct values remain an exact two-field compound.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum BannerPatternHolderState {
+    Named(String),
+    Direct {
+        asset_id: String,
+        translation_key: String,
+    },
 }
 
 /// The decorated pot block entity's stored sherd faces — vanilla

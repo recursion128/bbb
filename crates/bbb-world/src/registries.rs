@@ -1,5 +1,6 @@
 mod animal_variants;
 mod armor_trims;
+mod banner_patterns;
 mod biomes;
 mod block_states;
 mod chat_types;
@@ -29,6 +30,10 @@ pub use armor_trims::{
     direct_trim_material_presentation, direct_trim_pattern_presentation, ArmorTrimSprite,
     TrimMaterialPresentation, TrimPatternPresentation, TrimRegistryProjectionError,
     TRIM_MATERIAL_REGISTRY, TRIM_PATTERN_REGISTRY,
+};
+pub use banner_patterns::{
+    direct_banner_pattern_presentation, BannerPatternPresentation, BannerPatternProjectionError,
+    BANNER_PATTERN_REGISTRY,
 };
 pub use biomes::{
     BiomeClientProjection, BiomeGrassColorModifier, BiomeProjectionError, BiomeTemperatureModifier,

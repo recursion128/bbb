@@ -25,10 +25,10 @@ pub(crate) use pot_decorations::decode_decorated_pot_sherds;
 pub(crate) use spawner::decode_spawner_block_entity_data;
 pub(crate) use state::EndGatewayBlockEntityData;
 pub use state::{
-    BannerPatternLayerState, BannerPatternsState, BlockEntityRecord, ChunkColumn,
-    ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState, DecoratedPotSherdsState,
-    HeightmapData, NbtPayloadSummary, SignBlockEntityTextState, SignTextDyeColor,
-    SignTextSideState, SpawnerBlockEntityData, VaultConnectionParticleState,
+    BannerPatternHolderState, BannerPatternLayerState, BannerPatternsState, BlockEntityRecord,
+    ChunkColumn, ChunkProbeSummaryState, ChunkSection, ChunkState, ChunkViewState,
+    DecoratedPotSherdsState, HeightmapData, NbtPayloadSummary, SignBlockEntityTextState,
+    SignTextDyeColor, SignTextSideState, SpawnerBlockEntityData, VaultConnectionParticleState,
     VaultConnectionParticleTargetState, VaultSharedDataState,
 };
 pub use store::ChunkBiomeSampler;

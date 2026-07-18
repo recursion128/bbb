@@ -50,7 +50,7 @@ fn banner_model_instance(
         -source.angle_degrees,
         source.form == WorldBannerBlockForm::Wall,
         banner_dye_color(source.base_color),
-        banner_pattern_layers(&source.layers),
+        banner_pattern_layers(world, &source.layers),
     )
     .with_banner_flag_phase(source.phase);
     if let Some(light) = world.sample_block_light(source.pos) {
@@ -88,10 +88,16 @@ fn banner_dye_color(color: WorldBannerDyeColorKind) -> EntityDyeColor {
 /// vanilla `BannerPatternLayers.CODEC` failing the registry/dye lookup and
 /// `loadAdditional` falling back to `BannerPatternLayers.EMPTY` (a
 /// data-driven pattern bbb has no texture for lands in that fold too).
-fn banner_pattern_layers(layers: &[BannerPatternLayerState]) -> [Option<BannerPatternLayer>; 16] {
+fn banner_pattern_layers(
+    world: &WorldStore,
+    layers: &[BannerPatternLayerState],
+) -> [Option<BannerPatternLayer>; 16] {
     let mut out = [None; 16];
     for (index, layer) in layers.iter().enumerate() {
-        let Some(pattern) = BannerPatternKind::for_resource_id(&layer.pattern) else {
+        let Ok(Some(presentation)) = world.banner_pattern_presentation(&layer.pattern) else {
+            return [None; 16];
+        };
+        let Some(pattern) = BannerPatternKind::for_resource_id(&presentation.asset_id) else {
             return [None; 16];
         };
         let Some(color) = banner_layer_dye_color(&layer.color) else {
@@ -141,7 +147,7 @@ mod tests {
     use bbb_renderer::EntityModelKind;
     use bbb_world::{
         BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, LightData, PaletteDomain,
-        PaletteKind, PalettedContainerData, WorldDimension,
+        PaletteKind, PalettedContainerData, RegistryPacketEntry, WorldDimension,
     };
     use std::collections::BTreeMap;
 
@@ -315,6 +321,43 @@ mod tests {
     }
 
     #[test]
+    fn named_block_entity_layer_uses_synchronized_pattern_value_not_static_resource_name() {
+        let mut world = world_with_air_chunk();
+        world.record_registry_entries(
+            bbb_world::BANNER_PATTERN_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                "minecraft:stripe_top",
+                banner_pattern_registry_nbt("minecraft:creeper", "block.minecraft.banner.creeper"),
+            )],
+        );
+        let pos = BlockPos { x: 3, y: 4, z: 5 };
+        set_block(
+            &mut world,
+            pos,
+            "minecraft:white_banner",
+            &[("rotation", "0")],
+        );
+        apply_banner_patterns(
+            &mut world,
+            pos,
+            banner_nbt(&[("minecraft:stripe_top", "red")]),
+        );
+
+        let instances = banner_model_instances_from_world_at_partial_tick(&world, 0.0);
+        let EntityModelKind::Banner { layers, .. } = instances[0].kind else {
+            panic!("expected banner instance");
+        };
+        assert_eq!(
+            layers[0],
+            Some(BannerPatternLayer {
+                pattern: BannerPatternKind::Creeper,
+                color: EntityDyeColor::Red,
+            })
+        );
+    }
+
+    #[test]
     fn unknown_pattern_or_color_folds_the_stack_like_the_vanilla_codec() {
         let mut world = world_with_air_chunk();
         let pos = BlockPos { x: 3, y: 4, z: 5 };
@@ -438,6 +481,17 @@ mod tests {
             BannerPatternKind::for_resource_id("minecraft:ominous"),
             None
         );
+    }
+
+    fn banner_pattern_registry_nbt(asset_id: &str, translation_key: &str) -> Vec<u8> {
+        let mut payload = vec![10, 8];
+        write_mutf8(&mut payload, "asset_id");
+        write_mutf8(&mut payload, asset_id);
+        payload.push(8);
+        write_mutf8(&mut payload, "translation_key");
+        write_mutf8(&mut payload, translation_key);
+        payload.push(0);
+        payload
     }
 
     #[test]
