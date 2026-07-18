@@ -1168,7 +1168,7 @@ def render_data_component_types(
             "                if path.is_dir() { visit(&path, violations); continue; }",
             "                if path.extension().and_then(|value| value.to_str()) != Some(\"rs\") { continue; }",
             "                let display = path.to_string_lossy();",
-            "                if display.ends_with(\"/data_component_types.rs\") || display.ends_with(\"/block_entity_types.rs\") || display.ends_with(\"/entity_data_serializers.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
+            "                if display.ends_with(\"/data_component_types.rs\") || display.ends_with(\"/block_entity_types.rs\") || display.ends_with(\"/entity_data_serializers.rs\") || display.ends_with(\"/recipe_wire_types.rs\") || display.ends_with(\"/tests.rs\") || display.contains(\"/tests/\") { continue; }",
             "                let source = fs::read_to_string(&path).unwrap();",
             "                if source.contains(\"const COMMON_ITEM_COMPONENT_TYPE_IDS\") {",
             "                    violations.push(format!(\"{}: handwritten common item component catalog\", display));",

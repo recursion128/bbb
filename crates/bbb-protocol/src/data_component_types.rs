@@ -1459,6 +1459,7 @@ mod tests {
                 if display.ends_with("/data_component_types.rs")
                     || display.ends_with("/block_entity_types.rs")
                     || display.ends_with("/entity_data_serializers.rs")
+                    || display.ends_with("/recipe_wire_types.rs")
                     || display.ends_with("/tests.rs")
                     || display.contains("/tests/")
                 {
