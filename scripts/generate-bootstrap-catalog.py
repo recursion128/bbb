@@ -889,12 +889,33 @@ def registry_holder_family_matches(
     entry: RegistryHolderConsumerEntry,
     selector: dict[str, object],
 ) -> bool:
-    allowed_keys = {"kind", "source_paths", "exclude_source_paths"}
+    allowed_keys = {
+        "kind",
+        "resource_ids",
+        "exclude_resource_ids",
+        "source_paths",
+        "exclude_source_paths",
+    }
     unknown_keys = set(selector) - allowed_keys
     if unknown_keys:
         raise ValueError(f"unknown registry holder coverage selector keys: {sorted(unknown_keys)}")
     kind = selector.get("kind")
     if kind is not None and entry.kind != kind:
+        return False
+    resource_ids = selector.get("resource_ids")
+    if resource_ids is not None:
+        if not isinstance(resource_ids, list) or not all(
+            isinstance(item, str) and item for item in resource_ids
+        ):
+            raise ValueError("registry holder coverage resource_ids must be strings")
+        if entry.resource_id not in resource_ids:
+            return False
+    exclude_resource_ids = selector.get("exclude_resource_ids", [])
+    if not isinstance(exclude_resource_ids, list) or not all(
+        isinstance(item, str) and item for item in exclude_resource_ids
+    ):
+        raise ValueError("registry holder coverage exclude_resource_ids must be strings")
+    if entry.resource_id in exclude_resource_ids:
         return False
     source_paths = selector.get("source_paths")
     if source_paths is not None:

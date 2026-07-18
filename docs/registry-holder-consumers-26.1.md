@@ -23,11 +23,11 @@ the number of concrete vanilla call sites tied to its registry for diagnostics.
 
 The generated
 `docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 194 calls to
-30 checked families. The three remaining generic network shapes and seven
-persistent Codec shapes
-name their current bbb resource-id or tag resolver surface. They remain
+40 checked families. Coverage selectors may narrow a shared vanilla source by
+concrete resource id without classifying its unrelated registry calls. The
+remaining partial families name their current bbb resource-id or tag resolver surface. They remain
 `partial` until the owning decoder/encoder receives registry context and the
-registry family has custom-reorder tests; this accounts for 164 rows. The
+registry family has custom-reorder tests; this accounts for 152 rows. The
 `sound_event` reference/direct stream codec is `complete`: vanilla owns it in
 the client built-in layer, and bbb's generated static order, direct holder
 payload, world ownership, and audio runtime resolution have cross-layer tests.
@@ -109,6 +109,13 @@ world resolution distinguishes reordered definitions, stubs, malformed data,
 and unknown ids, and both direct and custom referenced dialogs reach the native
 screen and nested-action lifecycle. Persistent dialog codecs and holder sets
 remain separate rows.
+All four banner-pattern holder shapes are `complete`: named/direct layer holders
+resolve through synchronized order and typed direct fields, while
+`provides_banner_patterns` keeps an explicit holder list or named tag through
+network and persistent forms. Tooltip, block-entity, SNBT, and runtime atlas
+consumers share that identity; custom sprites use the `banner_patterns` atlas and
+missingno rather than a bootstrap ordinal. The deferred no-depth-write render
+pipeline is a separate presentation gap, not a holder-identity gap.
 The synchronized cat, chicken, cow, pig, and wolf sound-variant stream holders
 are `complete`: entity metadata ids resolve in each server registry order, all
 five codec shapes retain their required named/direct SoundEvent holders, and

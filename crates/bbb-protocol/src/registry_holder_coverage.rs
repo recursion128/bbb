@@ -139,7 +139,11 @@ mod tests {
                 *counts.entry(entry.family.as_str()).or_insert(0usize) += 1;
                 counts
             });
-        assert_eq!(counts["network-holder-or-inline"], 3);
+        assert_eq!(counts["network-holder-or-inline"], 2);
+        assert_eq!(
+            counts["network-holder-or-inline-banner-pattern-synchronized"],
+            1
+        );
         assert_eq!(counts["network-holder-or-inline-chat-type-synchronized"], 1);
         assert_eq!(counts["network-holder-or-inline-dialog-synchronized"], 1);
         assert_eq!(
@@ -172,11 +176,13 @@ mod tests {
         );
         assert_eq!(counts["network-holder-reference-debug"], 2);
         assert_eq!(counts["network-holder-reference-helper"], 1);
-        assert_eq!(counts["network-holder-set-or-tag"], 11);
+        assert_eq!(counts["network-holder-set-or-tag"], 10);
+        assert_eq!(counts["network-holder-set-or-tag-banner-pattern"], 1);
         assert_eq!(counts["network-tag"], 1);
         assert_eq!(counts["persistent-hashed-tag"], 7);
         assert_eq!(counts["persistent-holder-or-inline-dialog-synchronized"], 1);
-        assert_eq!(counts["persistent-holder-or-inline"], 24);
+        assert_eq!(counts["persistent-holder-or-inline"], 23);
+        assert_eq!(counts["persistent-holder-or-inline-banner-pattern"], 1);
         assert_eq!(counts["persistent-holder-reference"], 41);
         assert_eq!(counts["persistent-holder-or-inline-trims"], 2);
         assert_eq!(counts["persistent-holder-set-custom"], 3);
@@ -185,7 +191,8 @@ mod tests {
             1
         );
         assert_eq!(counts["persistent-holder-set-or-inline"], 5);
-        assert_eq!(counts["persistent-holder-set-or-tag"], 50);
+        assert_eq!(counts["persistent-holder-set-or-tag"], 49);
+        assert_eq!(counts["persistent-holder-set-or-tag-banner-pattern"], 1);
         assert_eq!(counts["persistent-tag"], 11);
         assert_eq!(
             ledger
@@ -193,7 +200,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            156
+            152
         );
         assert_eq!(
             ledger
@@ -216,7 +223,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 35);
+        assert_eq!(complete.len(), 39);
         assert_eq!(
             complete
                 .iter()
@@ -224,6 +231,7 @@ mod tests {
                 .collect::<BTreeSet<_>>(),
             BTreeSet::from([
                 "minecraft:attribute",
+                "minecraft:banner_pattern",
                 "minecraft:chicken_variant",
                 "minecraft:chicken_sound_variant",
                 "minecraft:cat_sound_variant",
@@ -429,5 +437,69 @@ mod tests {
                 "trim persistent path lost structural guard {required}"
             );
         }
+    }
+
+    #[test]
+    fn complete_banner_pattern_families_keep_holder_and_render_guards() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        for family in [
+            "network-holder-or-inline-banner-pattern-synchronized",
+            "network-holder-set-or-tag-banner-pattern",
+            "persistent-holder-or-inline-banner-pattern",
+            "persistent-holder-set-or-tag-banner-pattern",
+        ] {
+            let entries = ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.family == family)
+                .collect::<Vec<_>>();
+            assert_eq!(entries.len(), 1, "banner coverage family {family}");
+            assert_eq!(
+                entries[0].status,
+                RegistryHolderCoverageStatus::Complete,
+                "banner coverage family {family}"
+            );
+        }
+
+        let protocol = include_str!("packets/data_components.rs");
+        assert!(protocol.contains("fn decode_banner_pattern_holder("));
+        let protocol_catalog = include_str!("packets/data_components/catalog.rs");
+        assert!(protocol_catalog.contains("fn decode_provides_banner_patterns("));
+
+        let world = include_str!("../../bbb-world/src/registries/banner_patterns.rs");
+        for required in [
+            "pub fn synchronized_banner_pattern_presentation(",
+            "pub fn banner_pattern_presentation(",
+            "pub fn direct_banner_pattern_presentation(",
+            "BannerPatternKind::for_resource_id(&entry.id)",
+        ] {
+            assert!(
+                world.contains(required),
+                "banner world path lost structural guard {required}"
+            );
+        }
+
+        let persistent = include_str!("../../bbb-native/src/input/component_patch.rs");
+        for required in [
+            "fn encode_provides_banner_patterns(",
+            "fn encode_banner_patterns(",
+            "direct_banner_pattern_presentation(",
+        ] {
+            assert!(
+                persistent.contains(required),
+                "banner persistence path lost structural guard {required}"
+            );
+        }
+
+        let native_textures = include_str!("../../bbb-native/src/entity_variant_textures.rs");
+        assert!(native_textures.contains("load_atlas_texture_images(atlas_name)"));
+        assert!(native_textures.contains("synchronize_texture_atlas(\"banner_patterns\""));
+        let native_scene = include_str!("../../bbb-native/src/banner_scene.rs");
+        assert!(native_scene.contains("BannerPatternTexture::Runtime"));
+        assert!(native_scene.contains("ready_banner_pattern_texture(sprite_id)"));
+
+        let renderer = include_str!("../../bbb-renderer/src/entity_models/dispatch.rs");
+        assert!(renderer.contains("BannerPatternTexture::Runtime(texture)"));
+        assert!(renderer.contains("render_textured_layers_with_dynamic_texture("));
     }
 }

@@ -65,6 +65,46 @@ class BootstrapCatalogGeneratorTests(unittest.TestCase):
                 [entry], [family, {**family, "id": "duplicate"}], Path("/unused")
             )
 
+    def test_registry_holder_coverage_selector_can_isolate_shared_source_by_resource(
+        self,
+    ) -> None:
+        entries = [
+            GENERATOR.RegistryHolderConsumerEntry(
+                "net/minecraft/example/Shared.java",
+                line,
+                11,
+                "net.minecraft.example.Shared",
+                "ByteBufCodecs.holderRegistry",
+                "network_holder_reference",
+                registry,
+                resource_id,
+            )
+            for line, registry, resource_id in [
+                (7, "Registries.BANNER_PATTERN", "minecraft:banner_pattern"),
+                (8, "Registries.ITEM", "minecraft:item"),
+            ]
+        ]
+        selector = {
+            "kind": "network_holder_reference",
+            "resource_ids": ["minecraft:banner_pattern"],
+        }
+        self.assertTrue(
+            GENERATOR.registry_holder_family_matches(entries[0], selector)
+        )
+        self.assertFalse(
+            GENERATOR.registry_holder_family_matches(entries[1], selector)
+        )
+        catch_all = {
+            "kind": "network_holder_reference",
+            "exclude_resource_ids": ["minecraft:banner_pattern"],
+        }
+        self.assertFalse(
+            GENERATOR.registry_holder_family_matches(entries[0], catch_all)
+        )
+        self.assertTrue(
+            GENERATOR.registry_holder_family_matches(entries[1], catch_all)
+        )
+
     def test_registry_holder_coverage_deferred_family_requires_restart_condition(
         self,
     ) -> None:

@@ -984,7 +984,6 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   bucket-data, and block-entity-data/lock)/
   charged-projectile/bundle/writable-book/written-book-exact-component-trees/
   lodestone/profile/
-  banner-pattern-layers direct-holder payload decoding and resource-pack texture resolution/
   container/block-state/
   built-in animal/color enum (wolf/cat collars, fox,
   salmon, parrot, mooshroom, rabbit, horse, llama, axolotl, sheep, shulker,

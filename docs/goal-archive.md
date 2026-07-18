@@ -19155,3 +19155,17 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Reconstructed persistent named, direct, and mixed armor-trim holders plus direct
   `provides_trim_material` from exact retained Component trees. Generated holder-consumer coverage
   now assigns the trim network and persistent factories to complete, locator-checked families.
+
+# 2026-07-18: Project synchronized banner pattern registries
+
+- Retained named/direct banner-pattern holders through synchronized registry order and persistent
+  block/item forms, with typed `asset_id`/`translation_key` projection, field-level malformed
+  diagnostics, tooltip context, and fail-closed SNBT reconstruction for layers and holder sets.
+- Loaded the startup `banner_patterns` atlas into the shared runtime entity-texture atlas. Banner
+  block entities map data-driven assets through vanilla's `entity/banner` prefix, preserve the
+  sixteen-layer submit order across static and dynamic atlas draws, and use atlas `missingno`
+  without substituting a bootstrap ordinal. The separate no-depth-write pipeline remains deferred.
+- Generated holder-consumer coverage now classifies all four banner network/persistent
+  holder-or-inline and holder-set/tag factories as complete. Resource-id selectors keep shared
+  `DataComponents.java` rows narrow, and structural guards pin the protocol, world, persistence,
+  atlas, and renderer integration surfaces.

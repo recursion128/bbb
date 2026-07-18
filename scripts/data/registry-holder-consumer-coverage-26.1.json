@@ -110,9 +110,35 @@
       "decision": "Vanilla 26.1 synchronizes TrimMaterial.DIRECT_CODEC and TrimPattern.DIRECT_CODEC and sends named or direct holders in item components. Protocol retains direct Component NBT; world decodes synchronized assets, descriptions, overrides, and decal through current-session holder order with exact field diagnostics; renderer and tooltip consumers share that typed projection. Only known vanilla data-less stubs use resource-identity fallback, while custom stubs, malformed payloads, and unknown holders never fall back by bootstrap ordinal."
     },
     {
+      "id": "network-holder-or-inline-banner-pattern-synchronized",
+      "selector": {
+        "kind": "network_holder_or_inline",
+        "resource_ids": [
+          "minecraft:banner_pattern"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/banner_patterns.rs#pub fn synchronized_banner_pattern_presentation",
+      "evidence": [
+        "vanilla:net/minecraft/world/level/block/entity/BannerPattern.java#public record BannerPattern(Identifier assetId, String translationKey)",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.BANNER_PATTERN, BannerPattern.DIRECT_CODEC)",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_banner_pattern_holder",
+        "crates/bbb-world/src/registries/banner_patterns.rs#pub fn synchronized_banner_pattern_presentation",
+        "crates/bbb-world/src/registries/banner_patterns.rs#fn synchronized_presentations_follow_server_order_and_direct_codec_fields",
+        "crates/bbb-native/src/item_models/tests.rs#fn banner_tooltip_context_keeps_typed_payloads_and_known_vanilla_stubs",
+        "crates/bbb-native/src/banner_scene.rs#fn data_driven_pattern_uses_mapper_sprite_and_runtime_texture",
+        "crates/bbb-native/src/entity_variant_textures.rs#fn banner_pattern_atlas_uploads_custom_sprites_and_uses_missingno",
+        "crates/bbb-renderer/src/entity_models/tests/banner.rs#fn banner_runtime_pattern_uses_dynamic_atlas_without_replacing_static_layers"
+      ],
+      "decision": "Vanilla 26.1 synchronizes BannerPattern.DIRECT_CODEC and sends named or direct holders in banner-pattern layers. Protocol retains both direct fields; world resolves current-session holder order with exact malformed-field diagnostics and only known vanilla data-less stubs use resource identity. Tooltip, persistent debug, block-entity projection, and banner_patterns atlas rendering consume the typed value; custom entries and reorder reach their own translation and sprite, while unknown holders never fall back by bootstrap ordinal."
+    },
+    {
       "id": "network-holder-or-inline",
       "selector": {
         "kind": "network_holder_or_inline",
+        "exclude_resource_ids": [
+          "minecraft:banner_pattern"
+        ],
         "exclude_source_paths": [
           "net/minecraft/sounds/SoundEvent.java",
           "net/minecraft/server/dialog/Dialog.java",
@@ -562,9 +588,32 @@
       "decision": "Vanilla 26.1 synchronizes enchantment definitions and holder order during configuration, then uses Enchantment.STREAM_CODEC only inside the enchantments/stored-enchantments component map. The protocol rejects impossible negative references while retaining nonnegative server ids; world and native consumers resolve custom reordered definitions, tooltip text, attribute effects, item-model predicates, and crossbow charge effects through the current session order. Remaining unsupported effect-component semantics stay tracked independently from holder identity."
     },
     {
+      "id": "network-holder-set-or-tag-banner-pattern",
+      "selector": {
+        "kind": "network_holder_set_or_tag",
+        "resource_ids": [
+          "minecraft:banner_pattern"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-protocol/src/packets/data_components/catalog.rs#fn decode_provides_banner_patterns",
+      "evidence": [
+        "vanilla:net/minecraft/core/component/DataComponents.java#public static final DataComponentType<HolderSet<BannerPattern>> PROVIDES_BANNER_PATTERNS",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, HolderSet<T>> holderSet",
+        "crates/bbb-protocol/src/packets/data_components/catalog.rs#fn decode_provides_banner_patterns",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decodes_provides_banner_pattern_direct_holders",
+        "crates/bbb-native/src/input/component_patch.rs#fn banner_pattern_encoders_use_session_order_or_fixed_catalog"
+      ],
+      "decision": "The provides_banner_patterns component retains either its bounded explicit current-session holder ids or one named tag from the exact HolderSet stream shape. Persistent debug reconstruction resolves explicit ids through the current session (fixed catalog only when no synchronized registry exists), preserves named tags, rejects unknown ids, and never expands or substitutes a tag by bootstrap ordinal."
+    },
+    {
       "id": "network-holder-set-or-tag",
       "selector": {
-        "kind": "network_holder_set_or_tag"
+        "kind": "network_holder_set_or_tag",
+        "exclude_resource_ids": [
+          "minecraft:banner_pattern"
+        ]
       },
       "status": "partial",
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
@@ -647,9 +696,31 @@
       "decision": "Persistent trim holder codecs now reconstruct named holders from the current-session resource id and inline holders from their normalized asset fields plus the exact retained Component NBT. ArmorTrim supports named/direct mixtures, provides_trim_material uses the same material encoder, missing Component trees fail closed, and synchronized holder reorder is preserved."
     },
     {
+      "id": "persistent-holder-or-inline-banner-pattern",
+      "selector": {
+        "kind": "persistent_holder_or_inline",
+        "resource_ids": [
+          "minecraft:banner_pattern"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#fn encode_banner_patterns",
+      "evidence": [
+        "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
+        "vanilla:net/minecraft/world/level/block/entity/BannerPattern.java#public static final Codec<Holder<BannerPattern>> CODEC",
+        "crates/bbb-world/src/registries/banner_patterns.rs#pub fn direct_banner_pattern_presentation",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_banner_patterns",
+        "crates/bbb-native/src/input/component_patch.rs#fn banner_pattern_encoders_use_session_order_or_fixed_catalog"
+      ],
+      "decision": "Persistent banner-pattern layers reconstruct named holders from the current-session resource id and inline holders from their validated asset_id/translation_key pair, preserve layer order and dye names, and fail the component closed for unknown session ids or malformed direct identifiers. The fixed vanilla identity catalog is used only when no synchronized registry exists."
+    },
+    {
       "id": "persistent-holder-or-inline",
       "selector": {
         "kind": "persistent_holder_or_inline",
+        "exclude_resource_ids": [
+          "minecraft:banner_pattern"
+        ],
         "exclude_source_paths": [
           "net/minecraft/server/dialog/Dialog.java",
           "net/minecraft/world/item/equipment/trim/TrimMaterial.java",
@@ -730,9 +801,31 @@
       "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
     },
     {
+      "id": "persistent-holder-set-or-tag-banner-pattern",
+      "selector": {
+        "kind": "persistent_holder_set_or_tag",
+        "resource_ids": [
+          "minecraft:banner_pattern"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#fn encode_provides_banner_patterns",
+      "evidence": [
+        "vanilla:net/minecraft/core/component/DataComponents.java#public static final DataComponentType<HolderSet<BannerPattern>> PROVIDES_BANNER_PATTERNS",
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_provides_banner_patterns",
+        "crates/bbb-native/src/input/component_patch.rs#fn banner_pattern_encoders_use_session_order_or_fixed_catalog"
+      ],
+      "decision": "Persistent provides_banner_patterns reconstruction keeps an explicit homogeneous named-holder list in current-session order or the original named tag form. Unknown session ids fail closed, empty explicit sets remain explicit empty lists, tags are not eagerly expanded, and no synchronized registry identity is replaced with a vanilla ordinal."
+    },
+    {
       "id": "persistent-holder-set-or-tag",
       "selector": {
-        "kind": "persistent_holder_set_or_tag"
+        "kind": "persistent_holder_set_or_tag",
+        "exclude_resource_ids": [
+          "minecraft:banner_pattern"
+        ]
       },
       "status": "partial",
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
