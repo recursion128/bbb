@@ -4,7 +4,10 @@ use uuid::Uuid;
 pub use crate::filter_mask_types::FilterMaskKind;
 use crate::{
     codec::{Decoder, ProtocolError, Result},
-    component::{decode_component_style_from_decoder, decode_component_summary_from_decoder},
+    component::{
+        decode_component_style_from_decoder, decode_styled_component_summary_with_nbt_from_decoder,
+    },
+    styled_runs_summary_text, ComponentStyle, NbtSummaryValue, StyledTextRun,
 };
 
 const MESSAGE_SIGNATURE_BYTES: usize = 256;
@@ -20,6 +23,10 @@ pub struct DeleteChat {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DisguisedChat {
     pub message: String,
+    #[serde(default)]
+    pub message_styled: Vec<StyledTextRun>,
+    #[serde(default)]
+    pub message_component: Option<NbtSummaryValue>,
     pub chat_type: ChatTypeBound,
 }
 
@@ -31,6 +38,10 @@ pub struct PlayerChat {
     pub signature: Option<MessageSignature>,
     pub body: SignedMessageBody,
     pub unsigned_content: Option<String>,
+    #[serde(default)]
+    pub unsigned_content_styled: Option<Vec<StyledTextRun>>,
+    #[serde(default)]
+    pub unsigned_content_component: Option<NbtSummaryValue>,
     pub filter_mask: FilterMask,
     pub chat_type: ChatTypeBound,
 }
@@ -70,7 +81,15 @@ pub struct FilterMask {
 pub struct ChatTypeBound {
     pub chat_type: ChatTypeHolder,
     pub name: String,
+    #[serde(default)]
+    pub name_styled: Vec<StyledTextRun>,
+    #[serde(default)]
+    pub name_component: Option<NbtSummaryValue>,
     pub target_name: Option<String>,
+    #[serde(default)]
+    pub target_name_styled: Option<Vec<StyledTextRun>>,
+    #[serde(default)]
+    pub target_name_component: Option<NbtSummaryValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -88,6 +107,8 @@ pub enum ChatTypeHolder {
 pub struct ChatTypeDecorationSummary {
     pub translation_key: String,
     pub parameters: Vec<i32>,
+    #[serde(default)]
+    pub style: ComponentStyle,
 }
 
 pub(crate) fn decode_delete_chat(decoder: &mut Decoder<'_>) -> Result<DeleteChat> {
@@ -99,8 +120,11 @@ pub(crate) fn decode_delete_chat(decoder: &mut Decoder<'_>) -> Result<DeleteChat
 }
 
 pub(crate) fn decode_disguised_chat(decoder: &mut Decoder<'_>) -> Result<DisguisedChat> {
+    let (message, message_styled, message_component) = decode_component_projection(decoder)?;
     let packet = DisguisedChat {
-        message: decode_component_summary_from_decoder(decoder)?,
+        message,
+        message_styled,
+        message_component,
         chat_type: decode_chat_type_bound(decoder)?,
     };
     reject_trailing(decoder, "disguised chat packet")?;
@@ -108,13 +132,22 @@ pub(crate) fn decode_disguised_chat(decoder: &mut Decoder<'_>) -> Result<Disguis
 }
 
 pub(crate) fn decode_player_chat(decoder: &mut Decoder<'_>) -> Result<PlayerChat> {
+    let global_index = decoder.read_var_i32()?;
+    let sender = decoder.read_uuid()?;
+    let index = decoder.read_var_i32()?;
+    let signature = decode_nullable_message_signature(decoder)?;
+    let body = decode_signed_message_body(decoder)?;
+    let (unsigned_content, unsigned_content_styled, unsigned_content_component) =
+        decode_nullable_component_projection(decoder)?;
     let packet = PlayerChat {
-        global_index: decoder.read_var_i32()?,
-        sender: decoder.read_uuid()?,
-        index: decoder.read_var_i32()?,
-        signature: decode_nullable_message_signature(decoder)?,
-        body: decode_signed_message_body(decoder)?,
-        unsigned_content: decode_nullable_component_summary(decoder)?,
+        global_index,
+        sender,
+        index,
+        signature,
+        body,
+        unsigned_content,
+        unsigned_content_styled,
+        unsigned_content_component,
         filter_mask: decode_filter_mask(decoder)?,
         chat_type: decode_chat_type_bound(decoder)?,
     };
@@ -132,11 +165,26 @@ fn decode_nullable_message_signature(
     }
 }
 
-fn decode_nullable_component_summary(decoder: &mut Decoder<'_>) -> Result<Option<String>> {
+fn decode_component_projection(
+    decoder: &mut Decoder<'_>,
+) -> Result<(String, Vec<StyledTextRun>, Option<NbtSummaryValue>)> {
+    let (styled, component) = decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
+    let summary = styled_runs_summary_text(&styled);
+    Ok((summary, styled, component))
+}
+
+fn decode_nullable_component_projection(
+    decoder: &mut Decoder<'_>,
+) -> Result<(
+    Option<String>,
+    Option<Vec<StyledTextRun>>,
+    Option<NbtSummaryValue>,
+)> {
     if decoder.read_bool()? {
-        Ok(Some(decode_component_summary_from_decoder(decoder)?))
+        let (summary, styled, component) = decode_component_projection(decoder)?;
+        Ok((Some(summary), Some(styled), component))
     } else {
-        Ok(None)
+        Ok((None, None, None))
     }
 }
 
@@ -216,10 +264,18 @@ fn decode_filter_mask(decoder: &mut Decoder<'_>) -> Result<FilterMask> {
 }
 
 fn decode_chat_type_bound(decoder: &mut Decoder<'_>) -> Result<ChatTypeBound> {
+    let chat_type = decode_chat_type_holder(decoder)?;
+    let (name, name_styled, name_component) = decode_component_projection(decoder)?;
+    let (target_name, target_name_styled, target_name_component) =
+        decode_nullable_component_projection(decoder)?;
     Ok(ChatTypeBound {
-        chat_type: decode_chat_type_holder(decoder)?,
-        name: decode_component_summary_from_decoder(decoder)?,
-        target_name: decode_nullable_component_summary(decoder)?,
+        chat_type,
+        name,
+        name_styled,
+        name_component,
+        target_name,
+        target_name_styled,
+        target_name_component,
     })
 }
 
@@ -256,11 +312,12 @@ fn decode_chat_type_decoration(decoder: &mut Decoder<'_>) -> Result<ChatTypeDeco
 
     // Style.Serializer.TRUSTED_STREAM_CODEC is an NBT-backed codec distinct
     // from ComponentSerialization.CODEC.
-    decode_component_style_from_decoder(decoder)?;
+    let style = decode_component_style_from_decoder(decoder)?;
 
     Ok(ChatTypeDecorationSummary {
         translation_key,
         parameters,
+        style,
     })
 }
 

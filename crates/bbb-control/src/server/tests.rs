@@ -2340,10 +2340,16 @@ fn client_chat_reads_canonical_world_state() {
         let mut store = WorldStore::new();
         store.apply_disguised_chat(ProtocolDisguisedChat {
             message: "server notice".to_string(),
+            message_styled: Vec::new(),
+            message_component: None,
             chat_type: ChatTypeBound {
                 chat_type: ChatTypeHolder::Registry { id: 0 },
                 name: "Server".to_string(),
+                name_styled: Vec::new(),
+                name_component: None,
                 target_name: None,
+                target_name_styled: None,
+                target_name_component: None,
             },
         });
         store.push_client_system_chat_message("[Debug]: Client version info:");

@@ -2810,6 +2810,8 @@ mod tests {
 
         let disguised_chat = packets::DisguisedChat {
             message: "Server says hi".to_string(),
+            message_styled: Vec::new(),
+            message_component: None,
             chat_type: chat_type_bound("Server"),
         };
         stream
@@ -4776,6 +4778,8 @@ mod tests {
                 last_seen: Vec::new(),
             },
             unsigned_content: None,
+            unsigned_content_styled: None,
+            unsigned_content_component: None,
             filter_mask: packets::FilterMask {
                 kind: packets::FilterMaskKind::PassThrough,
                 mask_words: Vec::new(),
@@ -4788,7 +4792,11 @@ mod tests {
         packets::ChatTypeBound {
             chat_type: packets::ChatTypeHolder::Registry { id: 0 },
             name: name.to_string(),
+            name_styled: Vec::new(),
+            name_component: None,
             target_name: None,
+            target_name_styled: None,
+            target_name_component: None,
         }
     }
 

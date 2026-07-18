@@ -133,12 +133,28 @@ pub(crate) fn decode_component_summary_from_decoder(decoder: &mut Decoder<'_>) -
     Ok(styled_runs_summary_text(&runs))
 }
 
-pub(crate) fn decode_component_style_from_decoder(decoder: &mut Decoder<'_>) -> Result<()> {
+pub(crate) fn decode_component_style_from_decoder(
+    decoder: &mut Decoder<'_>,
+) -> Result<ComponentStyle> {
     let style = decode_nbt_summary_from_decoder(decoder)?.ok_or_else(|| {
         ProtocolError::InvalidData("component style network nbt root is absent".to_string())
     })?;
-    codec::validate_component_style_nbt(&style, "component style network nbt")
-        .map_err(ProtocolError::InvalidData)
+    component_style_from_nbt_value(&style).ok_or_else(|| {
+        ProtocolError::InvalidData("invalid component style network nbt".to_string())
+    })
+}
+
+/// Decodes a validated standalone vanilla `Style.Serializer.CODEC` value.
+///
+/// Chat-type registry entries use the persistent style codec while direct
+/// chat-type holders use its trusted network form. Keeping both projections
+/// here prevents semantic consumers from reconstructing style fields.
+pub fn component_style_from_nbt_value(value: &NbtSummaryValue) -> Option<ComponentStyle> {
+    codec::validate_component_style_nbt(value, "component style").ok()?;
+    let NbtSummaryValue::Compound(entries) = value else {
+        return None;
+    };
+    Some(component_style_from_entries(entries))
 }
 
 pub(crate) fn decode_styled_component_summary_from_decoder(

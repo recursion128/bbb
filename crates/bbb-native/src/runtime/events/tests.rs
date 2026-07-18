@@ -344,7 +344,11 @@ fn protocol_chat_type(name: &str) -> ChatTypeBound {
     ChatTypeBound {
         chat_type: ChatTypeHolder::Registry { id: 0 },
         name: name.to_string(),
+        name_styled: Vec::new(),
+        name_component: None,
         target_name: None,
+        target_name_styled: None,
+        target_name_component: None,
     }
 }
 
@@ -361,6 +365,8 @@ fn player_chat_with_signature(global_index: i32, signature: MessageSignature) ->
             last_seen: Vec::new(),
         },
         unsigned_content: None,
+        unsigned_content_styled: None,
+        unsigned_content_component: None,
         filter_mask: FilterMask {
             kind: FilterMaskKind::PassThrough,
             mask_words: Vec::new(),

@@ -42,10 +42,22 @@ fn decodes_disguised_chat_with_bound_chat_type() {
         packet,
         PlayClientbound::DisguisedChat(DisguisedChat {
             message: "Server says hello".to_string(),
+            message_styled: vec![StyledTextRun {
+                text: "Server says hello".to_string(),
+                style: ComponentStyle::default(),
+            }],
+            message_component: Some(NbtSummaryValue::String("Server says hello".to_string())),
             chat_type: ChatTypeBound {
                 chat_type: ChatTypeHolder::Registry { id: 2 },
                 name: "Server".to_string(),
+                name_styled: vec![StyledTextRun {
+                    text: "Server".to_string(),
+                    style: ComponentStyle::default(),
+                }],
+                name_component: Some(NbtSummaryValue::String("Server".to_string())),
                 target_name: None,
+                target_name_styled: None,
+                target_name_component: None,
             },
         })
     );
@@ -56,7 +68,12 @@ fn decodes_disguised_chat_with_direct_chat_type() {
     let mut payload = Encoder::new();
     payload.write_bytes(&nbt_string_root("Direct hello"));
     payload.write_var_i32(0);
-    write_chat_type_decoration(&mut payload, "chat.type.text", &[0, 2]);
+    write_chat_type_decoration_with_style(
+        &mut payload,
+        "chat.type.text",
+        &[0, 2],
+        &bold_nbt_compound(),
+    );
     write_chat_type_decoration(&mut payload, "chat.type.text.narrate", &[0, 2]);
     payload.write_bytes(&nbt_string_root("Narrator"));
     payload.write_bool(false);
@@ -69,19 +86,36 @@ fn decodes_disguised_chat_with_direct_chat_type() {
         packet,
         PlayClientbound::DisguisedChat(DisguisedChat {
             message: "Direct hello".to_string(),
+            message_styled: vec![StyledTextRun {
+                text: "Direct hello".to_string(),
+                style: ComponentStyle::default(),
+            }],
+            message_component: Some(NbtSummaryValue::String("Direct hello".to_string())),
             chat_type: ChatTypeBound {
                 chat_type: ChatTypeHolder::Direct {
                     chat: ChatTypeDecorationSummary {
                         translation_key: "chat.type.text".to_string(),
                         parameters: vec![0, 2],
+                        style: ComponentStyle {
+                            bold: Some(true),
+                            ..ComponentStyle::default()
+                        },
                     },
                     narration: ChatTypeDecorationSummary {
                         translation_key: "chat.type.text.narrate".to_string(),
                         parameters: vec![0, 2],
+                        style: ComponentStyle::default(),
                     },
                 },
                 name: "Narrator".to_string(),
+                name_styled: vec![StyledTextRun {
+                    text: "Narrator".to_string(),
+                    style: ComponentStyle::default(),
+                }],
+                name_component: Some(NbtSummaryValue::String("Narrator".to_string())),
                 target_name: None,
+                target_name_styled: None,
+                target_name_component: None,
             },
         })
     );
@@ -130,6 +164,11 @@ fn decodes_player_chat_wire_order() {
                 }],
             },
             unsigned_content: Some("unsigned hello".to_string()),
+            unsigned_content_styled: Some(vec![StyledTextRun {
+                text: "unsigned hello".to_string(),
+                style: ComponentStyle::default(),
+            }]),
+            unsigned_content_component: Some(NbtSummaryValue::String("unsigned hello".into())),
             filter_mask: FilterMask {
                 kind: FilterMaskKind::PartiallyFiltered,
                 mask_words: vec![0b101],
@@ -137,7 +176,17 @@ fn decodes_player_chat_wire_order() {
             chat_type: ChatTypeBound {
                 chat_type: ChatTypeHolder::Registry { id: 0 },
                 name: "Alice".to_string(),
+                name_styled: vec![StyledTextRun {
+                    text: "Alice".to_string(),
+                    style: ComponentStyle::default(),
+                }],
+                name_component: Some(NbtSummaryValue::String("Alice".to_string())),
                 target_name: Some("Bob".to_string()),
+                target_name_styled: Some(vec![StyledTextRun {
+                    text: "Bob".to_string(),
+                    style: ComponentStyle::default(),
+                }]),
+                target_name_component: Some(NbtSummaryValue::String("Bob".to_string())),
             },
         })
     );
@@ -204,12 +253,26 @@ fn write_chat_type_bound(
 }
 
 fn write_chat_type_decoration(payload: &mut Encoder, translation_key: &str, parameters: &[i32]) {
+    write_chat_type_decoration_with_style(
+        payload,
+        translation_key,
+        parameters,
+        &empty_nbt_compound(),
+    );
+}
+
+fn write_chat_type_decoration_with_style(
+    payload: &mut Encoder,
+    translation_key: &str,
+    parameters: &[i32],
+    style: &[u8],
+) {
     payload.write_string(translation_key);
     payload.write_var_i32(parameters.len() as i32);
     for parameter in parameters {
         payload.write_var_i32(*parameter);
     }
-    payload.write_bytes(&empty_nbt_compound());
+    payload.write_bytes(style);
 }
 
 fn nbt_string_root(text: &str) -> Vec<u8> {
@@ -221,4 +284,8 @@ fn nbt_string_root(text: &str) -> Vec<u8> {
 
 fn empty_nbt_compound() -> Vec<u8> {
     vec![10, 0]
+}
+
+fn bold_nbt_compound() -> Vec<u8> {
+    vec![10, 1, 0, 4, b'b', b'o', b'l', b'd', 1, 0]
 }

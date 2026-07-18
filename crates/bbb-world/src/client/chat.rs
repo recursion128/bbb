@@ -601,6 +601,8 @@ mod tests {
                 last_seen: Vec::new(),
             },
             unsigned_content: Some("unsigned".to_string()),
+            unsigned_content_styled: Some(plain_chat_styled_content("unsigned")),
+            unsigned_content_component: None,
             filter_mask: FilterMask {
                 kind: FilterMaskKind::PartiallyFiltered,
                 mask_words: vec![1],
@@ -834,6 +836,8 @@ mod tests {
                 last_seen: Vec::new(),
             },
             unsigned_content: None,
+            unsigned_content_styled: None,
+            unsigned_content_component: None,
             filter_mask: FilterMask {
                 kind: FilterMaskKind::PassThrough,
                 mask_words: Vec::new(),
@@ -870,6 +874,8 @@ mod tests {
                 last_seen: Vec::new(),
             },
             unsigned_content: None,
+            unsigned_content_styled: None,
+            unsigned_content_component: None,
             filter_mask: FilterMask {
                 kind: FilterMaskKind::PassThrough,
                 mask_words: Vec::new(),
@@ -894,6 +900,8 @@ mod tests {
         let mut store = WorldStore::new();
         store.apply_disguised_chat(ProtocolDisguisedChat {
             message: "notice".to_string(),
+            message_styled: plain_chat_styled_content("notice"),
+            message_component: None,
             chat_type: chat_type("Server"),
         });
 
@@ -953,6 +961,8 @@ mod tests {
                 last_seen: Vec::new(),
             },
             unsigned_content: None,
+            unsigned_content_styled: None,
+            unsigned_content_component: None,
             filter_mask: FilterMask {
                 kind: FilterMaskKind::PassThrough,
                 mask_words: Vec::new(),
@@ -1011,6 +1021,8 @@ mod tests {
                 last_seen: Vec::new(),
             },
             unsigned_content: None,
+            unsigned_content_styled: None,
+            unsigned_content_component: None,
             filter_mask: FilterMask {
                 kind: FilterMaskKind::PassThrough,
                 mask_words: Vec::new(),
@@ -1143,6 +1155,8 @@ mod tests {
                 last_seen: Vec::new(),
             },
             unsigned_content: None,
+            unsigned_content_styled: None,
+            unsigned_content_component: None,
             filter_mask: FilterMask {
                 kind: filter_kind,
                 mask_words: Vec::new(),
@@ -1155,7 +1169,11 @@ mod tests {
         ChatTypeBound {
             chat_type: ChatTypeHolder::Registry { id: 0 },
             name: name.to_string(),
+            name_styled: plain_chat_styled_content(name),
+            name_component: None,
             target_name: None,
+            target_name_styled: None,
+            target_name_component: None,
         }
     }
 

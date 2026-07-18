@@ -307,6 +307,8 @@ fn configuration_state_events_update_snapshot_counters() {
             last_seen: Vec::new(),
         },
         unsigned_content: None,
+        unsigned_content_styled: None,
+        unsigned_content_component: None,
         filter_mask: FilterMask {
             kind: FilterMaskKind::PassThrough,
             mask_words: Vec::new(),
@@ -314,7 +316,11 @@ fn configuration_state_events_update_snapshot_counters() {
         chat_type: ChatTypeBound {
             chat_type: ChatTypeHolder::Registry { id: 0 },
             name: "Alice".to_string(),
+            name_styled: Vec::new(),
+            name_component: None,
             target_name: None,
+            target_name_styled: None,
+            target_name_component: None,
         },
     });
     assert_eq!(world.counters().chat_messages_tracked, 1);
@@ -1108,6 +1114,8 @@ fn client_chat_events_update_world_and_world_counters() {
             last_seen: Vec::new(),
         },
         unsigned_content: Some("unsigned hello".to_string()),
+        unsigned_content_styled: None,
+        unsigned_content_component: None,
         filter_mask: FilterMask {
             kind: FilterMaskKind::PartiallyFiltered,
             mask_words: vec![1],
@@ -1125,6 +1133,8 @@ fn client_chat_events_update_world_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::DisguisedChat(
         DisguisedChat {
             message: "server notice".to_string(),
+            message_styled: Vec::new(),
+            message_component: None,
             chat_type: protocol_chat_type("Server"),
         },
     )))

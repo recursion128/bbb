@@ -356,10 +356,16 @@ mod tests {
             .unwrap();
         probe.world.apply_disguised_chat(DisguisedChat {
             message: "previous notice".to_string(),
+            message_styled: Vec::new(),
+            message_component: None,
             chat_type: ChatTypeBound {
                 chat_type: ChatTypeHolder::Registry { id: 0 },
                 name: "Server".to_string(),
+                name_styled: Vec::new(),
+                name_component: None,
                 target_name: None,
+                target_name_styled: None,
+                target_name_component: None,
             },
         });
         assert_eq!(probe.world.counters().chat_messages_tracked, 1);
