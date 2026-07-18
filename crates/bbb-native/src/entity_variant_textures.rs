@@ -53,6 +53,8 @@ pub(crate) struct NativeEntityVariantTextureRuntime {
     armor_trim_atlas_synchronized: bool,
     banner_pattern_atlas_synchronized: bool,
     banner_pattern_atlas_ready: bool,
+    painting_atlas_synchronized: bool,
+    painting_atlas_ready: bool,
 }
 
 impl NativeEntityVariantTextureRuntime {
@@ -64,6 +66,8 @@ impl NativeEntityVariantTextureRuntime {
             armor_trim_atlas_synchronized: false,
             banner_pattern_atlas_synchronized: false,
             banner_pattern_atlas_ready: false,
+            painting_atlas_synchronized: false,
+            painting_atlas_ready: false,
         }
     }
 
@@ -95,6 +99,16 @@ impl NativeEntityVariantTextureRuntime {
             .or_else(|| self.ready_texture("minecraft:missingno"))
     }
 
+    /// Resolves one `PaintingRenderer` sprite from the startup `paintings` atlas. Once the atlas is
+    /// ready, an undeclared synchronized asset follows `TextureAtlas.getSprite` to `missingno`.
+    pub(crate) fn ready_painting_texture(&self, sprite_id: &str) -> Option<EntityDynamicTexture> {
+        if !self.painting_atlas_ready {
+            return None;
+        }
+        self.ready_texture(sprite_id)
+            .or_else(|| self.ready_texture("minecraft:missingno"))
+    }
+
     fn synchronize_with_uploader(
         &mut self,
         world: &WorldStore,
@@ -102,6 +116,7 @@ impl NativeEntityVariantTextureRuntime {
     ) {
         self.synchronize_armor_trim_atlas(uploader);
         self.synchronize_banner_pattern_atlas(uploader);
+        self.synchronize_painting_atlas(uploader);
         for (_, registry) in vanilla_data_component_animal_texture_variant_registries() {
             let Some(entry_count) = world
                 .registry_resource_ids_in_holder_order(registry)
@@ -190,6 +205,15 @@ impl NativeEntityVariantTextureRuntime {
         self.banner_pattern_atlas_synchronized = true;
         self.banner_pattern_atlas_ready =
             self.synchronize_texture_atlas("banner_patterns", "banner-pattern", uploader);
+    }
+
+    fn synchronize_painting_atlas(&mut self, uploader: &mut impl DynamicEntityTextureUploader) {
+        if self.painting_atlas_synchronized {
+            return;
+        }
+        self.painting_atlas_synchronized = true;
+        self.painting_atlas_ready =
+            self.synchronize_texture_atlas("paintings", "painting", uploader);
     }
 
     fn synchronize_texture_atlas(
@@ -593,6 +617,62 @@ mod tests {
         runtime.synchronize_with_uploader(&world, &mut uploader);
         assert_eq!(uploader.batch_calls, 1);
         assert_eq!(uploader.images.len(), 2);
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn painting_atlas_uploads_front_back_and_missingno_sprites() {
+        let root = unique_temp_dir("painting-texture-runtime");
+        let sources = root.join("sources/26.1");
+        let atlas_path = sources.join("assets/minecraft/atlases/paintings.json");
+        std::fs::create_dir_all(atlas_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &atlas_path,
+            r#"{"sources":[{"type":"minecraft:directory","source":"painting","prefix":""}]}"#,
+        )
+        .unwrap();
+        write_png(
+            &sources.join("assets/example/textures/painting/gallery/wide.png"),
+            64,
+            32,
+        );
+        write_png(
+            &sources.join("assets/minecraft/textures/painting/back.png"),
+            16,
+            16,
+        );
+        let roots = PackRoots {
+            mc_code_root: root.clone(),
+            sources_dir: sources.clone(),
+            assets_dir: sources.join("assets/minecraft"),
+            generated_assets_dir: None,
+            resource_pack_dirs: Vec::new(),
+        };
+        let mut runtime = NativeEntityVariantTextureRuntime::new(Some(roots));
+        let mut uploader = TestUploader::default();
+
+        runtime.synchronize_with_uploader(&WorldStore::new(), &mut uploader);
+
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.images.len(), 3);
+        assert_eq!(
+            runtime
+                .ready_painting_texture("example:gallery/wide")
+                .map(|texture| texture.handle),
+            runtime
+                .ready_texture("example:gallery/wide")
+                .map(|texture| texture.handle)
+        );
+        assert!(runtime.ready_painting_texture("minecraft:back").is_some());
+        assert_eq!(
+            runtime.ready_painting_texture("example:undeclared"),
+            runtime.ready_texture("minecraft:missingno")
+        );
+
+        runtime.synchronize_with_uploader(&WorldStore::new(), &mut uploader);
+        assert_eq!(uploader.batch_calls, 1);
+        assert_eq!(uploader.images.len(), 3);
 
         std::fs::remove_dir_all(root).unwrap();
     }

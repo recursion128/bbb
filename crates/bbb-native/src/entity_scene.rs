@@ -96,7 +96,7 @@ use bbb_world::{
     EntityAttachmentFace as WorldEntityAttachmentFace, EntityModelSourceState,
     EntityPickTargetState, FarmAnimalVariantModel, FarmAnimalVariantPresentation,
     FrogVariantPresentation, GuardianBeamSource as WorldGuardianBeamSource,
-    HappyGhastHarnessColor as WorldHappyGhastHarnessColor,
+    HappyGhastHarnessColor as WorldHappyGhastHarnessColor, ItemFrameFacing as WorldItemFrameFacing,
     LlamaBodyDecorColor as WorldLlamaBodyDecorColor, VanillaArmorStandMetadataAccessors,
     WolfArmorCrackiness as WorldWolfArmorCrackiness, WolfVariantPresentation, WorldStore,
     ZombieNautilusVariantModelType, ZombieNautilusVariantPresentation,
@@ -148,6 +148,10 @@ trait EntityVariantRegistryLookup {
     }
 
     fn ready_texture(&self, _asset_id: &str) -> Option<EntityDynamicTexture> {
+        None
+    }
+
+    fn ready_painting_texture(&self, _asset_id: &str) -> Option<EntityDynamicTexture> {
         None
     }
 }
@@ -213,6 +217,10 @@ impl EntityVariantRegistryLookup for EntityVariantRenderContext<'_> {
 
     fn ready_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
         self.textures.ready_texture(asset_id)
+    }
+
+    fn ready_painting_texture(&self, asset_id: &str) -> Option<EntityDynamicTexture> {
+        self.textures.ready_painting_texture(asset_id)
     }
 }
 
@@ -361,7 +369,10 @@ fn entity_model_instances_from_world_with_registry_at_partial_tick(
         .filter(|source| {
             local_player_id != Some(source.entity_id) && camera_entity_id != Some(source.entity_id)
         })
-        .filter_map(|source| {
+        .flat_map(|source| {
+            if let Some(instances) = painting_model_instances(&source, world, variant_registries) {
+                return instances;
+            }
             entity_model_instance(
                 source,
                 world,
@@ -370,6 +381,8 @@ fn entity_model_instances_from_world_with_registry_at_partial_tick(
                 entity_partial_tick,
                 variant_registries,
             )
+            .into_iter()
+            .collect()
         })
         .collect()
 }
@@ -595,6 +608,7 @@ mod entity_data;
 mod hands;
 mod instance;
 mod kind;
+mod painting;
 mod variants;
 
 pub(crate) use entity_data::armor_material;
@@ -602,6 +616,7 @@ use entity_data::*;
 use hands::*;
 use instance::*;
 use kind::*;
+use painting::*;
 use variants::*;
 
 pub(crate) fn default_spear_kinetic_weapon_for_resource_id(

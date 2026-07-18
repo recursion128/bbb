@@ -515,6 +515,20 @@ fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes() {
             4.0, 4.0, 0.0625, 0.0,
         ))
     );
+    let painting_source = store
+        .entity_model_source_at_partial_tick(22, 1.0)
+        .expect("painting must project a renderer source");
+    assert_eq!(
+        painting_source.painting_facing,
+        Some(ItemFrameFacing::South)
+    );
+    assert_eq!(
+        painting_source
+            .painting_variant_projection
+            .as_ref()
+            .map(|variant| (variant.width, variant.height, variant.asset_id.as_str())),
+        Some((4, 4, "minecraft:pointer"))
+    );
 
     assert_eq!(
         store.probe_entity_transform(23).unwrap().position,

@@ -42,6 +42,7 @@ use super::schema::{
     vanilla_entity_metadata_firework_rocket_accessors_for_entity_type,
     vanilla_entity_metadata_fox_accessors_for_entity_type,
     vanilla_entity_metadata_furnace_minecart_fuel_accessor_for_entity_type,
+    vanilla_entity_metadata_hanging_direction_accessor_for_entity_type,
     vanilla_entity_metadata_item_entity_stack_accessor_for_entity_type,
     vanilla_entity_metadata_item_frame_accessors_for_entity_type,
     vanilla_entity_metadata_ominous_item_spawner_item_accessor_for_entity_type,
@@ -2407,6 +2408,13 @@ impl EntityStore {
             polar_bear_stand_scale: client_animations
                 .animations
                 .polar_bear_stand_scale(partial_ticks),
+            painting_variant_projection: metadata.painting_variant_projection.clone(),
+            painting_facing: vanilla_entity_metadata_hanging_direction_accessor_for_entity_type(
+                identity.entity_type_id,
+            )
+            .and_then(|accessor| {
+                super::dimensions::painting_facing(accessor, identity.data, &metadata.data_values)
+            }),
             // Vanilla `Shulker.getClientPeekAmount(partialTick)`: the lerped client peek that
             // drives `ShulkerModel.setupAnim`'s lid open/close. `0.0` (closed/bind pose) for
             // every non-shulker (only the shulker is given a peek animation state).

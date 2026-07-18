@@ -366,6 +366,20 @@ pub enum EntityModelKind {
         base_color: EntityDyeColor,
         layers: [Option<BannerPatternLayer>; 16],
     },
+    /// One 1x1 segment of vanilla 26.1 `PaintingRenderer` custom geometry. Native expands a
+    /// painting entity into `width * height` instances so each segment retains the independently
+    /// sampled `PaintingRenderState.lightCoordsPerBlock` value without bloating every entity
+    /// instance. `front` is the variant asset in the synchronized `paintings` atlas; `back` is
+    /// that atlas's `minecraft:back` sprite. Boundary segments add the corresponding thin edge.
+    PaintingTile {
+        width: i32,
+        height: i32,
+        segment_x: i32,
+        segment_y: i32,
+        facing: EntityAttachmentFace,
+        front: EntityDynamicTexture,
+        back: EntityDynamicTexture,
+    },
     /// Vanilla 26.1 `BookModel` (`ModelLayers.BOOK`) submitted by the
     /// `EnchantTableRenderer` block-entity renderer — the enchanting table's
     /// hovering, page-flipping book on the `entity/enchantment/

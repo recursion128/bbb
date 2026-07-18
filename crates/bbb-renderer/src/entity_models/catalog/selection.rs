@@ -156,6 +156,7 @@ impl EntityModelKind {
             Self::ShulkerBox { .. } => "shulker_box",
             Self::DecoratedPot { .. } => "decorated_pot",
             Self::Banner { .. } => "banner",
+            Self::PaintingTile { .. } => "painting_tile",
             Self::EnchantingBook => "enchanting_table_book",
             Self::LecternBook => "lectern_book",
             Self::Arrow { .. } => "arrow",

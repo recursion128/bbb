@@ -106,7 +106,7 @@ use super::textured::{
     render_ender_dragon_beam, render_ender_dragon_death_rays, render_equine_body_armor_layer,
     render_equine_saddle_layer, render_guardian_beam, render_happy_ghast_harness_layer,
     render_horse_textured_layers, render_llama_decor_layer, render_nautilus_body_armor_layer,
-    render_nautilus_saddle_layer, render_no_overlay_scrolled_textured_layers,
+    render_nautilus_saddle_layer, render_no_overlay_scrolled_textured_layers, render_painting_tile,
     render_pig_saddle_layer, render_player_cape_layer, render_player_extra_ears_layer,
     render_player_parrot_on_shoulder_layer, render_player_spin_attack_effect_layer,
     render_player_textured_layers, render_skeleton_clothing_layer, render_skull_block_model,
@@ -200,6 +200,8 @@ pub(in crate::entity_models) trait EntityModelSink {
         instance: &EntityModelInstance,
         passes: &[EntityModelLayerPass],
     );
+
+    fn painting_tile(&mut self, _instance: &EntityModelInstance) {}
 
     fn ender_dragon_model(&mut self, instance: &EntityModelInstance) {
         let passes =
@@ -693,6 +695,10 @@ impl EntityModelSink for TexturedSink<'_> {
             self.atlas,
         );
         render_end_crystal_beam(self.meshes, *instance, self.atlas);
+    }
+
+    fn painting_tile(&mut self, instance: &EntityModelInstance) {
+        render_painting_tile(self.meshes, *instance, self.dynamic_player_texture_atlas);
     }
 
     fn ender_dragon_model(&mut self, instance: &EntityModelInstance) {
@@ -1928,6 +1934,7 @@ pub(in crate::entity_models) fn dispatch_uniform_entity_model<S: EntityModelSink
             instance,
             &banner_textured_layer_passes(wall, base_color, &layers),
         ),
+        EntityModelKind::PaintingTile { .. } => sink.painting_tile(instance),
         EntityModelKind::EnchantingBook => sink.model(
             BookModel::new(),
             enchanting_table_book_model_root_transform(*instance),

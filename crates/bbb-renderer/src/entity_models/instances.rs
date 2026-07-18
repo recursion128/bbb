@@ -1811,6 +1811,37 @@ impl EntityModelInstance {
         )
     }
 
+    /// One 1x1 tile of a painting entity. A complete painting is represented by one instance per
+    /// `segment_x`/`segment_y` pair so the scene can attach vanilla's per-block light sample to
+    /// each tile independently.
+    #[allow(clippy::too_many_arguments)]
+    pub fn painting_tile(
+        entity_id: i32,
+        position: [f32; 3],
+        width: i32,
+        height: i32,
+        segment_x: i32,
+        segment_y: i32,
+        facing: EntityAttachmentFace,
+        front: EntityDynamicTexture,
+        back: EntityDynamicTexture,
+    ) -> Self {
+        Self::new(
+            entity_id,
+            EntityModelKind::PaintingTile {
+                width,
+                height,
+                segment_x,
+                segment_y,
+                facing,
+                front,
+                back,
+            },
+            position,
+            0.0,
+        )
+    }
+
     /// An enchanting-table hovering book instance at the table block's min
     /// corner. `y_rot` carries the lerped `EnchantTableRenderer` book yaw in
     /// degrees (`state.yRot`, converted from the radian `oRot + or·partialTick`

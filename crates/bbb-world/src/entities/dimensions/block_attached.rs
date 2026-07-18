@@ -152,6 +152,22 @@ pub(crate) fn item_frame_facing(
     }
 }
 
+/// The horizontal wall the painting faces, from the synchronized hanging direction or the spawn
+/// packet `data` fallback. Vanilla rejects vertical painting directions.
+pub(crate) fn painting_facing(
+    accessor: VanillaHangingEntityMetadataAccessor,
+    add_entity_data: i32,
+    data_values: &[EntityDataValue],
+) -> Option<ItemFrameFacing> {
+    match hanging_direction(accessor.direction_data_id, add_entity_data, data_values) {
+        VanillaDirection::North => Some(ItemFrameFacing::North),
+        VanillaDirection::South => Some(ItemFrameFacing::South),
+        VanillaDirection::West => Some(ItemFrameFacing::West),
+        VanillaDirection::East => Some(ItemFrameFacing::East),
+        VanillaDirection::Down | VanillaDirection::Up => None,
+    }
+}
+
 /// The `0..=7` item rotation in the frame (vanilla `ItemFrame.getRotation`, `DATA_ROTATION % 8`), or `0`
 /// when the entity has not sent the rotation datum.
 pub(crate) fn item_frame_rotation(

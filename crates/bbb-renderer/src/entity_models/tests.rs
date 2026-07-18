@@ -59,6 +59,7 @@ mod model;
 mod mooshroom;
 mod nautilus;
 mod no_render;
+mod painting;
 mod panda;
 mod parrot;
 mod phantom;

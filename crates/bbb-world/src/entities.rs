@@ -1801,6 +1801,14 @@ entity_model_source_state! {
     pub armor_stand_wiggle: f32,
     #[serde(default)]
     pub polar_bear_stand_scale: f32,
+    /// Vanilla `PaintingRenderState.variant`: the synchronized or inline painting fields retained
+    /// from entity metadata. `None` until a painting variant is available and for non-paintings.
+    #[serde(default)]
+    pub painting_variant_projection: Option<PaintingVariantClientProjection>,
+    /// Vanilla `PaintingRenderState.direction`: the horizontal hanging direction resolved from
+    /// synchronized metadata or the add-entity data fallback.
+    #[serde(default)]
+    pub painting_facing: Option<ItemFrameFacing>,
     /// Stored block+sky light at the entity's light-probe block position,
     /// sampled like vanilla `EntityRenderer.getPackedLightCoords`. The renderer
     /// projection packs this (with the on-fire override) into the entity

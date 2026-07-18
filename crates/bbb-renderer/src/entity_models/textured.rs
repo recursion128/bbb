@@ -1769,6 +1769,231 @@ fn render_textured_dynamic_player_texture_submission(
     fill_textured_submission_vertices(mesh, start, submission);
 }
 
+const PAINTING_DYNAMIC_TEXTURE_FALLBACK_REF: EntityModelTextureRef = EntityModelTextureRef {
+    path: "textures/painting/back.png",
+    size: [16, 16],
+};
+
+/// Emits one tile of vanilla `PaintingRenderer.renderPainting` custom geometry. The scene expands
+/// the complete painting into independently lit tile instances; this helper retains the exact
+/// front partitioning, full back sprite, and boundary-only thin edges on the `paintings` atlas.
+pub(in crate::entity_models) fn render_painting_tile(
+    meshes: &mut EntityModelTexturedMeshes,
+    instance: EntityModelInstance,
+    dynamic_texture_atlas: Option<&EntityDynamicPlayerTextureAtlasLayout>,
+) {
+    let EntityModelKind::PaintingTile {
+        width,
+        height,
+        segment_x,
+        segment_y,
+        facing,
+        front,
+        back,
+    } = instance.kind
+    else {
+        return;
+    };
+    if width <= 0
+        || height <= 0
+        || !(0..width).contains(&segment_x)
+        || !(0..height).contains(&segment_y)
+        || matches!(
+            facing,
+            super::catalog::EntityAttachmentFace::Down | super::catalog::EntityAttachmentFace::Up
+        )
+        || meshes.current_outline_only
+    {
+        return;
+    }
+    let Some(front_entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, front) else {
+        return;
+    };
+    let Some(back_entry) = dynamic_texture_atlas_entry(dynamic_texture_atlas, back) else {
+        return;
+    };
+    let yaw: f32 = match facing {
+        super::catalog::EntityAttachmentFace::North => 0.0,
+        super::catalog::EntityAttachmentFace::South => 180.0,
+        super::catalog::EntityAttachmentFace::West => 90.0,
+        super::catalog::EntityAttachmentFace::East => -90.0,
+        super::catalog::EntityAttachmentFace::Down | super::catalog::EntityAttachmentFace::Up => {
+            unreachable!("vertical painting facings were rejected")
+        }
+    };
+    let transform = Mat4::from_translation(Vec3::from_array(instance.position))
+        * Mat4::from_rotation_y(yaw.to_radians());
+    let (render_type, tint) = if meshes.current_force_transparent {
+        (
+            EntityModelLayerRenderType::EntityTranslucentCullItemTarget,
+            [1.0, 1.0, 1.0, 38.0 / 255.0],
+        )
+    } else {
+        (EntityModelLayerRenderType::EntityCutoutZOffset, [1.0; 4])
+    };
+    let submit = EntityModelSubmissionEmit::new(
+        render_type,
+        PAINTING_DYNAMIC_TEXTURE_FALLBACK_REF,
+        tint,
+        transform,
+        0,
+        0,
+    )
+    .with_dynamic_texture(front);
+    render_textured_dynamic_player_texture_submission(
+        meshes,
+        submit,
+        front_entry,
+        |mesh, front_entry| {
+            append_painting_tile_geometry(
+                mesh,
+                transform,
+                width,
+                height,
+                segment_x,
+                segment_y,
+                front_entry.uv,
+                back_entry.uv,
+            );
+        },
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn append_painting_tile_geometry(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    width: i32,
+    height: i32,
+    segment_x: i32,
+    segment_y: i32,
+    front: EntityModelUvRect,
+    back: EntityModelUvRect,
+) {
+    let offset_x = -(width as f32) / 2.0;
+    let offset_y = -(height as f32) / 2.0;
+    let x0 = offset_x + (segment_x + 1) as f32;
+    let x1 = offset_x + segment_x as f32;
+    let y0 = offset_y + (segment_y + 1) as f32;
+    let y1 = offset_y + segment_y as f32;
+    let edge = 0.03125;
+    let front_u0 = (width - segment_x) as f32 / width as f32;
+    let front_u1 = (width - (segment_x + 1)) as f32 / width as f32;
+    let front_v0 = (height - segment_y) as f32 / height as f32;
+    let front_v1 = (height - (segment_y + 1)) as f32 / height as f32;
+    append_painting_quad(
+        mesh,
+        transform,
+        [
+            ([x0, y1, -edge], painting_uv(front, front_u1, front_v0)),
+            ([x1, y1, -edge], painting_uv(front, front_u0, front_v0)),
+            ([x1, y0, -edge], painting_uv(front, front_u0, front_v1)),
+            ([x0, y0, -edge], painting_uv(front, front_u1, front_v1)),
+        ],
+        [0.0, 0.0, -1.0],
+    );
+    append_painting_quad(
+        mesh,
+        transform,
+        [
+            ([x0, y0, edge], painting_uv(back, 1.0, 0.0)),
+            ([x1, y0, edge], painting_uv(back, 0.0, 0.0)),
+            ([x1, y1, edge], painting_uv(back, 0.0, 1.0)),
+            ([x0, y1, edge], painting_uv(back, 1.0, 1.0)),
+        ],
+        [0.0, 0.0, 1.0],
+    );
+    if segment_y == height - 1 {
+        append_painting_quad(
+            mesh,
+            transform,
+            [
+                ([x0, y0, -edge], painting_uv(back, 0.0, 0.0)),
+                ([x1, y0, -edge], painting_uv(back, 1.0, 0.0)),
+                ([x1, y0, edge], painting_uv(back, 1.0, 1.0 / 16.0)),
+                ([x0, y0, edge], painting_uv(back, 0.0, 1.0 / 16.0)),
+            ],
+            [0.0, 1.0, 0.0],
+        );
+    }
+    if segment_y == 0 {
+        append_painting_quad(
+            mesh,
+            transform,
+            [
+                ([x0, y1, edge], painting_uv(back, 0.0, 0.0)),
+                ([x1, y1, edge], painting_uv(back, 1.0, 0.0)),
+                ([x1, y1, -edge], painting_uv(back, 1.0, 1.0 / 16.0)),
+                ([x0, y1, -edge], painting_uv(back, 0.0, 1.0 / 16.0)),
+            ],
+            [0.0, -1.0, 0.0],
+        );
+    }
+    if segment_x == width - 1 {
+        append_painting_quad(
+            mesh,
+            transform,
+            [
+                ([x0, y0, edge], painting_uv(back, 1.0 / 16.0, 0.0)),
+                ([x0, y1, edge], painting_uv(back, 1.0 / 16.0, 1.0)),
+                ([x0, y1, -edge], painting_uv(back, 0.0, 1.0)),
+                ([x0, y0, -edge], painting_uv(back, 0.0, 0.0)),
+            ],
+            [-1.0, 0.0, 0.0],
+        );
+    }
+    if segment_x == 0 {
+        append_painting_quad(
+            mesh,
+            transform,
+            [
+                ([x1, y0, -edge], painting_uv(back, 1.0 / 16.0, 0.0)),
+                ([x1, y1, -edge], painting_uv(back, 1.0 / 16.0, 1.0)),
+                ([x1, y1, edge], painting_uv(back, 0.0, 1.0)),
+                ([x1, y0, edge], painting_uv(back, 0.0, 0.0)),
+            ],
+            [1.0, 0.0, 0.0],
+        );
+    }
+}
+
+fn painting_uv(rect: EntityModelUvRect, u: f32, v: f32) -> [f32; 2] {
+    [
+        rect.min[0] + u * (rect.max[0] - rect.min[0]),
+        rect.min[1] + v * (rect.max[1] - rect.min[1]),
+    ]
+}
+
+fn append_painting_quad(
+    mesh: &mut EntityModelTexturedMesh,
+    transform: Mat4,
+    vertices: [([f32; 3], [f32; 2]); 4],
+    normal: [f32; 3],
+) {
+    let base = u32::try_from(mesh.vertices.len()).expect("painting vertex count fits in u32");
+    let normal = transform
+        .inverse()
+        .transpose()
+        .transform_vector3(Vec3::from_array(normal))
+        .normalize_or_zero()
+        .to_array();
+    mesh.vertices.extend(vertices.map(|(position, uv)| {
+        EntityModelTexturedVertex {
+            position: transform
+                .transform_point3(Vec3::from_array(position))
+                .to_array(),
+            uv,
+            tint: [1.0; 4],
+            light: ENTITY_VERTEX_FULL_BRIGHT_LIGHT,
+            overlay: ENTITY_VERTEX_NO_OVERLAY,
+            normal,
+        }
+    }));
+    mesh.indices
+        .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    mesh.cutout_faces += 1;
+}
+
 fn render_textured_submission(
     meshes: &mut EntityModelTexturedMeshes,
     submit: EntityModelSubmissionEmit,
