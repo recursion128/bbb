@@ -24,15 +24,16 @@ use bbb_protocol::{
     tropical_fish_patterns::{
         vanilla_tropical_fish_pattern, VANILLA_TROPICAL_FISH_COMMON_VARIANTS,
     },
-    ComponentStyle, StyledTextRun,
+    ComponentStyle, NbtSummaryValue, StyledTextRun,
 };
 use bbb_render_types::BannerPatternKind;
 #[cfg(test)]
 use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
     vanilla_painting_variant, EnchantmentAttributeModifier, EnchantmentTooltipDefinition,
-    RegistrySet, VanillaEnchantmentIdentity, VanillaInstrumentIdentity, VanillaPaintingVariant,
-    VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    JukeboxSongPresentation, RegistrySet, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
+    VanillaPaintingVariant, VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity,
+    VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 
 use super::icon_model::effective_attribute_modifiers;
@@ -153,6 +154,8 @@ pub struct NativeItemTooltipOptions<'a> {
     pub map_data: Option<NativeItemMapTooltipData>,
     pub trim_material_keys: Option<&'a [String]>,
     pub trim_pattern_keys: Option<&'a [String]>,
+    pub jukebox_song_keys: Option<&'a [String]>,
+    pub jukebox_song_presentations: Option<&'a [Option<JukeboxSongPresentation>]>,
     pub enchantment_keys: Option<&'a [String]>,
     pub enchantment_definitions: Option<&'a [Option<EnchantmentTooltipDefinition>]>,
     pub enchantment_attribute_modifiers: Option<&'a [EnchantmentAttributeModifier]>,
@@ -1475,6 +1478,84 @@ mod tests {
         );
         assert_eq!(lines[0].text, "Localized Custom");
     }
+
+    #[test]
+    fn synchronized_jukebox_tooltip_uses_typed_description_and_safe_stub_fallback() {
+        let language = LanguageCatalog::from_json_bytes(
+            br#"{
+                "jukebox_song.example.custom": "Custom song",
+                "jukebox_song.minecraft.cat": "C418 - cat"
+            }"#,
+        )
+        .unwrap();
+        let keys = [
+            "example:custom".to_string(),
+            "minecraft:cat".to_string(),
+            String::new(),
+        ];
+        let presentations = [
+            Some(JukeboxSongPresentation {
+                sound_event: bbb_world::JukeboxSoundEvent::Reference {
+                    resource_id: "example:music.custom".to_string(),
+                },
+                description: "jukebox_song.example.custom".to_string(),
+                description_styled: vec![StyledTextRun {
+                    text: "jukebox_song.example.custom".to_string(),
+                    style: ComponentStyle {
+                        bold: Some(true),
+                        ..ComponentStyle::default()
+                    },
+                }],
+                description_nbt: NbtSummaryValue::Compound(vec![bbb_protocol::NbtSummaryEntry {
+                    name: "translate".to_string(),
+                    value: NbtSummaryValue::String("jukebox_song.example.custom".to_string()),
+                }]),
+                length_in_seconds: 20.0,
+                comparator_output: 3,
+            }),
+            None,
+            None,
+        ];
+        let registry = JukeboxSongRegistry::default();
+
+        let mut lines = Vec::new();
+        push_jukebox_playable_tooltip_lines(
+            &language,
+            &registry,
+            Some(0),
+            None,
+            Some(&keys),
+            Some(&presentations),
+            &mut lines,
+        );
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].text, "Custom song");
+        assert!(lines[0].runs[0].style.bold);
+
+        lines.clear();
+        push_jukebox_playable_tooltip_lines(
+            &language,
+            &registry,
+            Some(1),
+            None,
+            Some(&keys),
+            Some(&presentations),
+            &mut lines,
+        );
+        assert_eq!(lines[0].text, "C418 - cat");
+
+        lines.clear();
+        push_jukebox_playable_tooltip_lines(
+            &language,
+            &registry,
+            Some(2),
+            None,
+            Some(&keys),
+            Some(&presentations),
+            &mut lines,
+        );
+        assert!(lines.is_empty());
+    }
 }
 
 fn push_container_loot_tooltip_lines(
@@ -2192,34 +2273,113 @@ fn push_jukebox_playable_tooltip_lines(
     songs: &JukeboxSongRegistry,
     song_id: Option<i32>,
     song: Option<&JukeboxSongSummary>,
+    session_keys: Option<&[String]>,
+    session_presentations: Option<&[Option<JukeboxSongPresentation>]>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     if let Some(song) = song {
-        let base = ComponentStyle {
-            color: Some(TOOLTIP_GRAY_TEXT_COLOR),
-            ..ComponentStyle::default()
-        };
-        lines.push(NativeItemTooltipLine {
-            text: song.description.clone(),
-            tint: TOOLTIP_TEXT_GRAY,
-            runs: hud_runs_from_component(
-                song.description_styled.as_deref().unwrap_or(&[]),
-                &song.description,
-                &base,
-            ),
-        });
+        push_jukebox_description(
+            language,
+            &song.description,
+            song.description_styled.as_deref().unwrap_or(&[]),
+            song.description_nbt.as_deref(),
+            lines,
+        );
         return;
     }
     let Some(song_id) = song_id else {
         return;
     };
-    let Some(song_key) = songs.song_id(song_id) else {
+    let Some(index) = usize::try_from(song_id).ok() else {
+        return;
+    };
+    if let Some(session_presentations) = session_presentations {
+        if let Some(Some(song)) = session_presentations.get(index) {
+            push_jukebox_description(
+                language,
+                &song.description,
+                &song.description_styled,
+                Some(&song.description_nbt),
+                lines,
+            );
+            return;
+        }
+    }
+    let song_key = if session_presentations.is_some() {
+        session_keys
+            .and_then(|keys| keys.get(index))
+            .filter(|key| !key.is_empty())
+            .map(String::as_str)
+    } else {
+        songs.song_id(song_id)
+    };
+    let Some(song_key) = song_key else {
         return;
     };
     let description = language
         .get_or_key(&description_key("jukebox_song", song_key))
         .to_string();
     lines.push(NativeItemTooltipLine::plain(description, TOOLTIP_TEXT_GRAY));
+}
+
+fn push_jukebox_description(
+    language: &LanguageCatalog,
+    description: &str,
+    description_styled: &[StyledTextRun],
+    description_nbt: Option<&NbtSummaryValue>,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    let mut text = description.to_string();
+    let mut styled = description_styled.to_vec();
+    if let Some((translation_key, fallback)) =
+        description_nbt.and_then(component_translation_key_and_fallback)
+    {
+        let localized = language
+            .get(translation_key)
+            .or(fallback)
+            .unwrap_or(translation_key);
+        let encoded_text = fallback
+            .filter(|fallback| text.contains(fallback))
+            .unwrap_or(translation_key);
+        if let Some(run) = styled.iter_mut().find(|run| run.text == encoded_text) {
+            run.text = localized.to_string();
+            text = styled.iter().map(|run| run.text.as_str()).collect();
+        } else if text.contains(encoded_text) {
+            text = text.replacen(encoded_text, localized, 1);
+        }
+    }
+    let base = ComponentStyle {
+        color: Some(TOOLTIP_GRAY_TEXT_COLOR),
+        ..ComponentStyle::default()
+    };
+    lines.push(NativeItemTooltipLine {
+        text: text.clone(),
+        tint: TOOLTIP_TEXT_GRAY,
+        runs: hud_runs_from_component(&styled, &text, &base),
+    });
+}
+
+fn component_translation_key_and_fallback(value: &NbtSummaryValue) -> Option<(&str, Option<&str>)> {
+    let NbtSummaryValue::Compound(entries) = value else {
+        return None;
+    };
+    let translation_key = entries.iter().find_map(|entry| {
+        (entry.name == "translate")
+            .then_some(&entry.value)
+            .and_then(|value| match value {
+                NbtSummaryValue::String(value) => Some(value.as_str()),
+                _ => None,
+            })
+    })?;
+    let fallback = entries.iter().find_map(|entry| {
+        (entry.name == "fallback")
+            .then_some(&entry.value)
+            .and_then(|value| match value {
+                NbtSummaryValue::String(value) => Some(value.as_str()),
+                _ => None,
+            })
+    });
+    Some((translation_key, fallback))
 }
 
 fn push_armor_trim_tooltip_lines(
@@ -2982,6 +3142,8 @@ impl NativeItemRuntime {
                 &self.jukebox_songs,
                 component_patch.jukebox_song_id,
                 component_patch.jukebox_direct_song.as_deref(),
+                options.jukebox_song_keys,
+                options.jukebox_song_presentations,
                 lines,
             );
         }

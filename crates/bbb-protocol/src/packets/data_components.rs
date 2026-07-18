@@ -382,6 +382,8 @@ pub struct JukeboxSongSummary {
     pub description: String,
     #[serde(default)]
     pub description_styled: Option<Box<[StyledTextRun]>>,
+    #[serde(default)]
+    pub description_nbt: Option<Box<NbtSummaryValue>>,
     pub length_in_seconds_bits: u32,
     pub comparator_output: i32,
 }
@@ -2106,7 +2108,8 @@ fn decode_optional_player_model_type(
 
 fn decode_direct_jukebox_song_summary(decoder: &mut Decoder<'_>) -> Result<JukeboxSongSummary> {
     let sound_event = decode_sound_event_holder_summary(decoder)?;
-    let description_styled = decode_styled_component_summary_from_decoder(decoder)?;
+    let (description_styled, description_nbt) =
+        decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
     let description = styled_runs_summary_text(&description_styled);
     let length_in_seconds_bits = decoder.read_f32()?.to_bits();
     let comparator_output = decoder.read_var_i32()?;
@@ -2114,6 +2117,7 @@ fn decode_direct_jukebox_song_summary(decoder: &mut Decoder<'_>) -> Result<Jukeb
         sound_event,
         description,
         description_styled: Some(description_styled.into_boxed_slice()),
+        description_nbt: description_nbt.map(Box::new),
         length_in_seconds_bits,
         comparator_output,
     })
@@ -2999,6 +3003,16 @@ mod tests {
                         }]
                         .into_boxed_slice()
                     ),
+                    description_nbt: Some(Box::new(NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "text".to_string(),
+                            value: NbtSummaryValue::String("Test song".to_string()),
+                        },
+                        NbtSummaryEntry {
+                            name: "bold".to_string(),
+                            value: NbtSummaryValue::Byte(1),
+                        },
+                    ]))),
                     length_in_seconds_bits: 3.5f32.to_bits(),
                     comparator_output: 7,
                 })),
@@ -3036,6 +3050,9 @@ mod tests {
                     },
                     description: "Registry sound song".to_string(),
                     description_styled: Some(plain_runs("Registry sound song").into_boxed_slice()),
+                    description_nbt: Some(Box::new(NbtSummaryValue::String(
+                        "Registry sound song".to_string(),
+                    ))),
                     length_in_seconds_bits: 4.25f32.to_bits(),
                     comparator_output: 9,
                 })),
@@ -5396,6 +5413,7 @@ mod tests {
                     },
                     description: "Song".to_string(),
                     description_styled: Some(plain_runs("Song").into_boxed_slice()),
+                    description_nbt: None,
                     length_in_seconds_bits: 120.0f32.to_bits(),
                     comparator_output: 15,
                 })),

@@ -1,7 +1,7 @@
 use bbb_control::NetCounters;
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::{ConnectionState, NetCommand, NetEvent, PlayerMoveCommand};
-use bbb_pack::{JukeboxSongRegistry, SoundEventRegistry};
+use bbb_pack::{JukeboxSongRegistry, JukeboxSongRegistryEntry, SoundEventRegistry};
 use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_VAULT_ID;
 use bbb_protocol::packets::{
     BlockPos as ProtocolBlockPos, LevelParticles, ParticlePayload, Vec3d as ProtocolVec3d,
@@ -606,8 +606,37 @@ fn sound_event_registry_from_world(world: &WorldStore) -> SoundEventRegistry {
 }
 
 fn jukebox_song_registry_from_world(world: &WorldStore) -> Option<JukeboxSongRegistry> {
-    Some(JukeboxSongRegistry::from_registry_entry_ids(
-        world.registry_resource_ids_in_holder_order("minecraft:jukebox_song")?,
+    let resource_ids = world
+        .registry_resource_ids_in_holder_order("minecraft:jukebox_song")?
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    Some(JukeboxSongRegistry::from_entries(
+        resource_ids
+            .into_iter()
+            .enumerate()
+            .map(|(holder_id, song_id)| {
+                let projection = i32::try_from(holder_id).ok().and_then(|holder_id| {
+                    world
+                        .synchronized_jukebox_song_presentation(holder_id)
+                        .ok()
+                        .flatten()
+                });
+                if let Some(projection) = projection {
+                    return JukeboxSongRegistryEntry::new(
+                        song_id,
+                        Some(projection.sound_event.resource_id()),
+                        projection.sound_event.fixed_range(),
+                    );
+                }
+                let fallback = world
+                    .registry_entry_by_holder_id(
+                        "minecraft:jukebox_song",
+                        i32::try_from(holder_id).unwrap_or(i32::MAX),
+                    )
+                    .filter(|entry| !entry.has_data)
+                    .and_then(|_| JukeboxSongRegistry::vanilla_26_1_sound_event_id(&song_id));
+                JukeboxSongRegistryEntry::new(song_id, fallback, None)
+            }),
     ))
 }
 

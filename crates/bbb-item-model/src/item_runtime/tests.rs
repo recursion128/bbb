@@ -2068,6 +2068,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                         }]
                         .into_boxed_slice()
                     ),
+                    description_nbt: None,
                     length_in_seconds_bits: 120.0f32.to_bits(),
                     comparator_output: 15,
                 })),
@@ -6647,6 +6648,7 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             },
             description: "Test song".to_string(),
             description_styled: None,
+            description_nbt: None,
             length_in_seconds_bits: 3.5f32.to_bits(),
             comparator_output: 7,
         })),

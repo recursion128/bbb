@@ -31,7 +31,7 @@ pub use crate::item_registry::{
     ItemKineticWeaponDefaults, ItemMiningProfile, ItemMiningRule, ItemMountBodyArmorKind,
     ItemRegistryCatalog, ItemUseAnimation, ItemUseEffects,
 };
-pub use crate::jukebox_song_registry::JukeboxSongRegistry;
+pub use crate::jukebox_song_registry::{JukeboxSongRegistry, JukeboxSongRegistryEntry};
 pub use crate::language::{LanguageCatalog, DEFAULT_LANGUAGE_CODE};
 pub use crate::metadata::{LanguageInfo, PackMetadataCatalog};
 pub use crate::mipmap::{generate_sprite_mip_levels, SpriteMipLevel};

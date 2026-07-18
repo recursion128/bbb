@@ -1063,20 +1063,39 @@ fn jukebox_level_events_emit_runtime_audio_commands() {
 
 #[test]
 fn jukebox_song_registry_data_updates_audio_resolution() {
-    let (tx, mut rx) = mpsc::channel(2);
+    let (tx, mut rx) = mpsc::channel(3);
     tx.try_send(NetEvent::RegistryData(RegistryData {
         registry: "minecraft:jukebox_song".to_string(),
-        raw_payload_len: 48,
-        entries: vec![RegistryDataEntry {
-            id: "minecraft:tears".to_string(),
-            raw_data: None,
-        }],
+        raw_payload_len: 96,
+        entries: vec![
+            RegistryDataEntry {
+                id: "example:custom".to_string(),
+                raw_data: Some(jukebox_song_nbt(
+                    "minecraft:custom.song",
+                    Some(24.0),
+                    "Custom song",
+                    20.0,
+                    3,
+                )),
+            },
+            RegistryDataEntry {
+                id: "minecraft:tears".to_string(),
+                raw_data: None,
+            },
+        ],
     }))
     .unwrap();
     tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
         event_type: 1010,
         pos: ProtocolBlockPos { x: 1, y: 2, z: 3 },
         data: 0,
+        global: false,
+    })))
+    .unwrap();
+    tx.try_send(NetEvent::Play(PlayClientbound::LevelEvent(LevelEvent {
+        event_type: 1010,
+        pos: ProtocolBlockPos { x: 4, y: 5, z: 6 },
+        data: 1,
         global: false,
     })))
     .unwrap();
@@ -1087,7 +1106,7 @@ fn jukebox_song_registry_data_updates_audio_resolution() {
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
-        2
+        3
     );
 
     assert!(audio.errors.is_empty(), "{:?}", audio.errors);
@@ -1098,12 +1117,61 @@ fn jukebox_song_registry_data_updates_audio_resolution() {
             .unwrap()
             .entries[0]
             .id,
-        "minecraft:tears"
+        "example:custom"
     );
     let AudioCommand::PlayJukeboxSong(play) = &audio.commands[0] else {
         panic!("expected jukebox play command, got {:?}", audio.commands[0]);
     };
+    assert_eq!(play.sound.event_id, "minecraft:custom.song");
+    assert_eq!(play.sound.sound_name, "minecraft:records/custom");
+    assert_eq!(play.fixed_range, Some(24.0));
+    assert_eq!(play.jukebox_pos, [1, 2, 3]);
+
+    let AudioCommand::PlayJukeboxSong(play) = &audio.commands[1] else {
+        panic!("expected jukebox play command, got {:?}", audio.commands[1]);
+    };
     assert_eq!(play.sound.event_id, "minecraft:music_disc.tears");
     assert_eq!(play.sound.sound_name, "minecraft:records/tears");
-    assert_eq!(play.jukebox_pos, [1, 2, 3]);
+    assert_eq!(play.fixed_range, None);
+    assert_eq!(play.jukebox_pos, [4, 5, 6]);
+}
+
+fn jukebox_song_nbt(
+    sound_id: &str,
+    fixed_range: Option<f32>,
+    description: &str,
+    length_in_seconds: f32,
+    comparator_output: i32,
+) -> Vec<u8> {
+    let mut out = vec![10, 10];
+    write_test_nbt_string(&mut out, "sound_event");
+    write_test_nbt_string_field(&mut out, "sound_id", sound_id);
+    if let Some(fixed_range) = fixed_range {
+        write_test_nbt_float_field(&mut out, "range", fixed_range);
+    }
+    out.push(0);
+    write_test_nbt_string_field(&mut out, "description", description);
+    write_test_nbt_float_field(&mut out, "length_in_seconds", length_in_seconds);
+    out.push(3);
+    write_test_nbt_string(&mut out, "comparator_output");
+    out.extend_from_slice(&comparator_output.to_be_bytes());
+    out.push(0);
+    out
+}
+
+fn write_test_nbt_string_field(out: &mut Vec<u8>, name: &str, value: &str) {
+    out.push(8);
+    write_test_nbt_string(out, name);
+    write_test_nbt_string(out, value);
+}
+
+fn write_test_nbt_float_field(out: &mut Vec<u8>, name: &str, value: f32) {
+    out.push(5);
+    write_test_nbt_string(out, name);
+    out.extend_from_slice(&value.to_be_bytes());
+}
+
+fn write_test_nbt_string(out: &mut Vec<u8>, value: &str) {
+    out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+    out.extend_from_slice(value.as_bytes());
 }

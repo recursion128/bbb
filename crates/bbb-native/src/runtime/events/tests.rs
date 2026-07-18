@@ -1031,6 +1031,9 @@ fn test_sound_catalog() -> SoundCatalog {
             },
             "music_disc.tears": {
                 "sounds": ["records/tears"]
+            },
+            "custom.song": {
+                "sounds": ["records/custom"]
             }
         }"#,
     )

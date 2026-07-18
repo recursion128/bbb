@@ -98,6 +98,7 @@ impl KiraAudioRuntime {
                 command.gain,
                 command.channel_gain,
                 command.playback_rate,
+                command.fixed_range,
             ),
             AudioCommand::StopJukeboxSong(command) => {
                 self.stop_jukebox_song(command);
@@ -258,6 +259,7 @@ impl KiraAudioRuntime {
         gain: f32,
         channel_gain: f32,
         playback_rate: f32,
+        fixed_range: Option<f32>,
     ) -> Result<()> {
         self.stop_jukebox_song(&StopJukeboxSongCommand { jukebox_pos });
         self.play_spatial_sound(
@@ -268,7 +270,7 @@ impl KiraAudioRuntime {
             gain,
             channel_gain,
             playback_rate,
-            None,
+            fixed_range,
             Some(jukebox_pos),
             false,
             true,

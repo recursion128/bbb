@@ -74,6 +74,7 @@ pub struct PlayJukeboxSongCommand {
     pub channel_gain: f32,
     pub playback_rate: f32,
     pub seed: i64,
+    pub fixed_range: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -3108,6 +3108,7 @@ mod tests {
             },
             description: "Custom song".to_string(),
             description_styled: None,
+            description_nbt: None,
             length_in_seconds_bits: 60.0_f32.to_bits(),
             comparator_output: 7,
         }));

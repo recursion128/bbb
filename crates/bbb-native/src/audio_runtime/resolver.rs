@@ -219,6 +219,9 @@ impl<'a> AudioCommandResolver<'a> {
             .ok_or(AudioResolveError::UnknownJukeboxSongRegistryId {
                 registry_id: song_registry_id,
             })?;
+        let fixed_range = self
+            .jukebox_registry
+            .sound_event_fixed_range(song_registry_id);
         let seed = 0;
         let sound = self.resolve_event_for_seed(event_id, seed)?;
         let category = AudioCategory::Records;
@@ -234,6 +237,7 @@ impl<'a> AudioCommandResolver<'a> {
             packet_pitch,
             seed,
             category,
+            fixed_range,
             position: [
                 f64::from(state.pos.x) + 0.5,
                 f64::from(state.pos.y) + 0.5,
@@ -967,6 +971,7 @@ mod tests {
         assert!(play.sound.stream);
         assert_eq!(play.packet_volume, 4.0);
         assert_eq!(play.packet_pitch, 1.0);
+        assert_eq!(play.fixed_range, None);
         assert_near(play.gain, 4.0);
         assert_near(play.playback_rate, 1.0);
     }
