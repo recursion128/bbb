@@ -140,10 +140,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   than restoring numeric catalog ids; unknown-id fixtures derive the first invalid id from the
   generated catalog length. The owner-generated reverse guard excludes generated schema/renderer
   catalogs and separately owned protocol wire samples.
-  Semantic block-entity packet/state fixtures must likewise use the generated BlockEntityType
-  constants for their actual sign, banner, spawner, decorated-pot, end-gateway, jukebox, piston, or
-  vault role instead of retaining numeric placeholders; the core-registry generator owns the
-  reverse guard.
+  Semantic block-entity packet/state fixtures and item-component BlockEntityData summaries must
+  likewise use the generated BlockEntityType constants for their actual sign, banner, spawner,
+  command-block, decorated-pot, end-gateway, jukebox, piston, or vault role instead of retaining
+  numeric placeholders; the core-registry generator owns the reverse guard.
   Semantic particle packet/state/runtime/renderer fixtures must use generated ParticleType
   constants or the generated resource-id lookup instead of numeric catalog ids; unknown ids derive
   the first invalid catalog index, while the non-Vanilla item-pickup sentinel remains explicitly

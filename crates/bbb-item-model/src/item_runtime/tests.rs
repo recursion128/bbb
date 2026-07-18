@@ -2,6 +2,9 @@ use super::*;
 use crate::skin_runtime::{
     AsyncDynamicPlayerSkinRuntime, AsyncDynamicPlayerTextureRuntime, SkinPngFetcher,
 };
+use bbb_protocol::block_entity_types::{
+    VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID, VANILLA_BLOCK_ENTITY_TYPE_FURNACE_ID,
+};
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_GRAY_ID,
     VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID, VANILLA_DYE_COLOR_WHITE_ID,
@@ -2870,7 +2873,7 @@ fn native_item_runtime_shows_operator_only_nbt_warnings() {
         item_id: Some(0),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            block_entity_data_type_id: Some(23),
+            block_entity_data_type_id: Some(VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID),
             ..DataComponentPatchSummary::default()
         },
     };
@@ -2922,7 +2925,7 @@ fn native_item_runtime_shows_operator_only_nbt_warnings() {
             item_id: Some(1),
             count: 1,
             component_patch: DataComponentPatchSummary {
-                block_entity_data_type_id: Some(0),
+                block_entity_data_type_id: Some(VANILLA_BLOCK_ENTITY_TYPE_FURNACE_ID),
                 ..DataComponentPatchSummary::default()
             },
         },

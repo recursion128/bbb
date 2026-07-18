@@ -9,6 +9,7 @@ use bbb_pack::{
     BiomeColorCatalog, BiomeColorProfile, BiomeTemperatureModifier, EquipmentAssetCatalog,
     FloatAttributeModifier, FloatAttributeModifierKind, GrassColorModifier, ItemRegistryCatalog,
 };
+use bbb_protocol::block_entity_types::VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID;
 use bbb_protocol::entity_types::{
     VANILLA_ENTITY_TYPE_AXOLOTL_ID, VANILLA_ENTITY_TYPE_FISHING_BOBBER_ID,
     VANILLA_ENTITY_TYPE_PLAYER_ID,
@@ -10700,7 +10701,7 @@ fn hud_inventory_tooltip_gates_operator_nbt_warning_on_local_permission() {
         item_id: Some(2),
         count: 1,
         component_patch: DataComponentPatchSummary {
-            block_entity_data_type_id: Some(23),
+            block_entity_data_type_id: Some(VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID),
             ..DataComponentPatchSummary::default()
         },
     };

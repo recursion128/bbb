@@ -19101,3 +19101,12 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   control, and native consumers. A generator-emitted reverse guard rejects numeric field
   construction, matching, and comparison while leaving raw packet payload samples under their
   codec owner.
+
+# 2026-07-18: Derive BlockEntityData summary type ids
+
+- Replaced numeric furnace, mob-spawner, and command-block ids in item-component BlockEntityData
+  semantic fixtures with the generated BlockEntityType constants; unknown ids now derive the
+  first index beyond the generated catalog.
+- Extended the core-registry generator's reverse guard to cover BlockEntityData summary field
+  construction, assignment, and comparison across semantic consumers while preserving protocol
+  codec samples as wire evidence.

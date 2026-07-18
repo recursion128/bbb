@@ -1,6 +1,9 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
+use bbb_protocol::block_entity_types::{
+    VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
+};
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_AXOLOTL_VARIANT_BLUE_ID, VANILLA_DYE_COLOR_BLACK_ID, VANILLA_DYE_COLOR_CYAN_ID,
     VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_ORANGE_ID, VANILLA_DYE_COLOR_RED_ID,
@@ -9802,7 +9805,7 @@ fn item_stack_snbt_projects_supported_component_patch_in_wire_order() {
                 value: NbtSummaryValue::Float(20.0_f32.to_bits()),
             },
         ])),
-        block_entity_data_type_id: Some(9),
+        block_entity_data_type_id: Some(VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID),
         block_entity_data_tag: Some(NbtSummaryValue::Compound(vec![
             NbtSummaryEntry {
                 name: "Delay".to_string(),
@@ -10445,6 +10448,7 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
         EquipmentAssetCatalog::default(),
     );
     let unknown_entity_type_id = i32::try_from(VANILLA_ENTITY_TYPES.len()).unwrap();
+    let unknown_block_entity_type_id = i32::try_from(VANILLA_BLOCK_ENTITY_TYPES.len()).unwrap();
     let stack = ProtocolItemStackSummary {
         item_id: Some(0),
         count: 1,
@@ -10470,7 +10474,7 @@ fn item_stack_snbt_omits_registry_backed_components_with_unknown_ids() {
             bundle_contents_item_count: Some(1),
             entity_data_entity_type_id: Some(unknown_entity_type_id),
             entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
-            block_entity_data_type_id: Some(999),
+            block_entity_data_type_id: Some(unknown_block_entity_type_id),
             block_entity_data_tag: Some(NbtSummaryValue::Compound(Vec::new())),
             bees_present: true,
             bees_count: 1,

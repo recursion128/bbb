@@ -486,7 +486,30 @@ mod tests {
                             .is_some_and(starts_with_integer_literal)
                     })
                 });
-        numeric_construction || numeric_field_reference
+        let numeric_component_construction = compact
+            .match_indices("block_entity_data_type_id:Some(")
+            .any(|(offset, _)| {
+                starts_with_integer_literal(
+                    &compact[offset + "block_entity_data_type_id:Some(".len()..],
+                )
+            });
+        let numeric_component_reference =
+            compact
+                .match_indices(".block_entity_data_type_id")
+                .any(|(offset, _)| {
+                    let suffix = &compact[offset + ".block_entity_data_type_id".len()..];
+                    [",Some(", "==Some(", "!=Some(", "=Some("]
+                        .iter()
+                        .any(|separator| {
+                            suffix
+                                .strip_prefix(separator)
+                                .is_some_and(starts_with_integer_literal)
+                        })
+                });
+        numeric_construction
+            || numeric_field_reference
+            || numeric_component_construction
+            || numeric_component_reference
     }
 
     #[test]
@@ -497,11 +520,23 @@ mod tests {
         assert!(contains_numeric_block_entity_type_id_reference(
             "assert_eq!(entry.block_entity_type_id,\n 45);"
         ));
+        assert!(contains_numeric_block_entity_type_id_reference(
+            "block_entity_data_type_id: Some(23),"
+        ));
+        assert!(contains_numeric_block_entity_type_id_reference(
+            "patch.block_entity_data_type_id = Some(9);"
+        ));
+        assert!(contains_numeric_block_entity_type_id_reference(
+            "assert_eq!(patch.block_entity_data_type_id, Some(0));"
+        ));
         assert!(!contains_numeric_block_entity_type_id_reference(
             "entity_type_id: 7,"
         ));
         assert!(!contains_numeric_block_entity_type_id_reference(
             "block_entity_type_id: VANILLA_BLOCK_ENTITY_TYPE_SIGN_ID,"
+        ));
+        assert!(!contains_numeric_block_entity_type_id_reference(
+            "block_entity_data_type_id: Some(VANILLA_BLOCK_ENTITY_TYPE_COMMAND_BLOCK_ID),"
         ));
     }
 
