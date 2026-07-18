@@ -4,6 +4,22 @@
     "timeline": "scripts/fixtures/playable-gate/session-26.1.json",
     "world_snapshot": "scripts/fixtures/playable-gate/session-26.1.json"
   },
+  "block_interaction": {
+    "block_updates_applied_delta": 2,
+    "destroyed": true,
+    "duration_seconds": 2.4,
+    "initial_block": "minecraft:grass_block",
+    "pick_item_commands_delta": 1,
+    "player_action_commands_delta": 1,
+    "restored": true,
+    "swing_commands_delta": 1,
+    "target": {
+      "x": 0,
+      "y": 63,
+      "z": 0
+    },
+    "use_item_on_commands_delta": 1
+  },
   "mode": "fixture",
   "movement": {
     "duration_seconds": 0.6,

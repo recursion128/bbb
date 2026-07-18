@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import socket
 import sys
@@ -164,6 +165,42 @@ def validate_evidence(evidence: dict[str, Any], expected_protocol_version: int) 
         raise GateFailure("canonical local player pose was not initialized")
 
     _validate_movement(evidence.get("movement"))
+    _validate_block_interaction(evidence.get("block_interaction"))
+
+
+BLOCK_INTERACTION_COMMAND_DELTAS = (
+    "pick_item_commands_delta",
+    "player_action_commands_delta",
+    "swing_commands_delta",
+    "use_item_on_commands_delta",
+    "block_updates_applied_delta",
+)
+
+
+def _validate_block_interaction(block_interaction: Any) -> None:
+    """The destroy/place smoke must observe server results, not queued
+    commands: the picked hotbar fill, the probe flipping to air, and the
+    jump placement restoring the same cell."""
+
+    block_interaction = _object(block_interaction, "block_interaction")
+    target = _object(block_interaction.get("target"), "block_interaction.target")
+    for axis in ("x", "y", "z"):
+        if not isinstance(target.get(axis), int) or isinstance(target.get(axis), bool):
+            raise GateFailure(f"block_interaction.target.{axis} must be an integer")
+    if block_interaction.get("destroyed") is not True:
+        raise GateFailure("block_interaction did not destroy the target block")
+    if block_interaction.get("restored") is not True:
+        raise GateFailure("block_interaction did not place the picked block back")
+    initial = block_interaction.get("initial_block")
+    if not isinstance(initial, str) or not initial:
+        raise GateFailure("block_interaction.initial_block must record the destroyed block")
+    for key in BLOCK_INTERACTION_COMMAND_DELTAS:
+        value = block_interaction.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise GateFailure(
+                f"block_interaction.{key} must record at least one observed "
+                f"command/update, got {value!r}"
+            )
 
 
 MOVEMENT_MIN_HORIZONTAL_DISTANCE = 1.0
@@ -380,9 +417,12 @@ def normalize_status_capture(
 
 
 def _control_request(address: tuple[str, int], method: str, params: Any = None) -> Any:
+    # Join-time mesh builds hold the native world lock for multiple seconds,
+    # so control reads can legitimately stall well past a request's usual
+    # tens-of-milliseconds turnaround.
     request = {"method": method, "params": params}
-    with socket.create_connection(address, timeout=1.0) as sock:
-        sock.settimeout(2.0)
+    with socket.create_connection(address, timeout=10.0) as sock:
+        sock.settimeout(60.0)
         payload = json.dumps(request, separators=(",", ":")).encode("utf-8") + b"\n"
         sock.sendall(payload)
         response = bytearray()
@@ -442,16 +482,34 @@ def _pose_xz(pose: dict[str, Any]) -> tuple[float, float]:
     return float(position.get("x", 0.0)), float(position.get("z", 0.0))
 
 
+def _await_settled_player(address: tuple[str, int], deadline: float) -> dict[str, Any]:
+    """The initial spawn teleport lands asynchronously after join; driving
+    before it settles folds a server correction into the movement evidence.
+    Settled means on the ground with an unchanged position across a beat."""
+
+    last: tuple[Any, ...] | None = None
+    while time.monotonic() < deadline:
+        pose = _local_player_pose(address)
+        position = pose.get("position") or {}
+        current = (position.get("x"), position.get("y"), position.get("z"))
+        if pose.get("on_ground") is True and current == last:
+            return pose
+        last = current
+        time.sleep(0.5)
+    raise GateFailure("player never settled on the ground after join")
+
+
 def drive_basic_movement(address: tuple[str, int], timeout_seconds: float) -> dict[str, Any]:
     """Hold forward+jump and inject a look delta through the control input
     surface, then wait until the local player's canonical position moved.  The
     server acknowledges legal movement by NOT sending a position correction."""
 
-    start_pose = _local_player_pose(address)
+    start_pose = _await_settled_player(address, time.monotonic() + timeout_seconds)
     start_x, start_z = _pose_xz(start_pose)
     start_position = dict(_object(start_pose.get("position"), "local_player.pose.position"))
     start_yaw = float(start_pose.get("y_rot", 0.0))
     net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before movement")
     world_before = _object(_control_request(address, "world.counters"), "world.counters")
 
     started_at = time.monotonic()
@@ -489,6 +547,265 @@ def drive_basic_movement(address: tuple[str, int], timeout_seconds: float) -> di
         "position_corrections": int(world_after.get("player_position_packets", 0))
         - int(world_before.get("player_position_packets", 0)),
         "look_yaw_delta": abs(end_yaw - start_yaw),
+        "duration_seconds": time.monotonic() - started_at,
+    }
+
+
+def _press_mouse(address: tuple[str, int], button: str, pressed: bool) -> None:
+    _control_request(address, "input.mouse_button", {"button": button, "pressed": pressed})
+
+
+def _probe_block(address: tuple[str, int], x: int, y: int, z: int) -> dict[str, Any] | None:
+    probe = _control_request(address, "world.probe_block", {"x": x, "y": y, "z": z})
+    return probe if isinstance(probe, dict) else None
+
+
+def _block_is_air(probe: dict[str, Any] | None) -> bool:
+    if probe is None:
+        return False
+    name = probe.get("block_name")
+    if isinstance(name, str):
+        return name in ("minecraft:air", "minecraft:cave_air", "minecraft:void_air")
+    return probe.get("block_state_id") == 0
+
+
+def _look_to_pitch(address: tuple[str, int], target_pitch: float, deadline: float) -> None:
+    """Closed-loop pitch steering: read x_rot, inject a conservative look
+    delta, repeat until converged (vanilla sensitivity ~0.12 deg/px here)."""
+
+    while time.monotonic() < deadline:
+        pitch = float(_local_player_pose(address).get("x_rot", 0.0))
+        error = target_pitch - pitch
+        if abs(error) < 2.0:
+            return
+        _control_request(
+            address,
+            "input.look_delta",
+            {"dx": 0.0, "dy": max(-600.0, min(600.0, error / 0.12 * 0.7))},
+        )
+        time.sleep(0.1)
+    raise GateFailure(f"look steering did not reach pitch {target_pitch}")
+
+
+def _occupied_player_slots(address: tuple[str, int]) -> int:
+    # A creative pick answer lands in the sparse set_player_inventory mirror
+    # (player_slots) while container packets fill the survival inventory menu;
+    # count both, an empty slot serializes as a zero-count item stack.
+    inventory = _control_request(address, "world.client_inventory")
+    if not isinstance(inventory, dict):
+        return 0
+    menu = inventory.get("inventory_menu")
+    slot_lists = [
+        inventory.get("player_slots"),
+        menu.get("slots") if isinstance(menu, dict) else None,
+    ]
+    occupied = 0
+    for slots in slot_lists:
+        if not isinstance(slots, list):
+            continue
+        for slot in slots:
+            item = slot.get("item") if isinstance(slot, dict) else None
+            if isinstance(item, dict) and int(item.get("count") or 0) > 0:
+                occupied += 1
+    return occupied
+
+
+def _require_connected(net: dict[str, Any], stage: str) -> None:
+    if net.get("connected") is not True:
+        raise GateFailure(
+            f"client lost the server connection {stage}: "
+            f"{net.get('last_error') or 'not connected'}"
+        )
+
+
+def _await_control_stability(address: tuple[str, int], deadline: float) -> None:
+    """Gameplay driving needs prompt control reads; wait out the join-time
+    slow-frame window until consecutive pose reads answer quickly."""
+
+    fast_reads = 0
+    while time.monotonic() < deadline:
+        started = time.monotonic()
+        try:
+            _local_player_pose(address)
+        except (GateFailure, OSError, ValueError, json.JSONDecodeError):
+            # Join-time lock contention can stall a read past the socket
+            # timeout entirely; treat that as "not stable yet", not failure.
+            fast_reads = 0
+            continue
+        if time.monotonic() - started < 0.5:
+            fast_reads += 1
+            if fast_reads >= 10:
+                return
+        else:
+            fast_reads = 0
+        time.sleep(0.2)
+    raise GateFailure("control latency never stabilized after join")
+
+
+def drive_block_interaction(
+    address: tuple[str, int], timeout_seconds: float
+) -> dict[str, Any]:
+    """Destroy the block under the player and jump-place it back, entirely
+    through the synthetic mouse path: middle-click pick (server fills the
+    creative hotbar), left-click instant creative destroy (server block
+    update flips the probe to air), then a vanilla pillar-jump right-click
+    placement into the vacated cell (server places, probe flips back)."""
+
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    _control_request(address, "input.focus", {"focused": True})
+
+    # The movement smoke ends mid-jump; wait for the player to land so the
+    # block under the feet is the real supporting block.
+    pose = _await_settled_player(address, deadline)
+    position = _object(pose.get("position"), "local_player.pose.position")
+    column_x = math.floor(float(position["x"]))
+    column_z = math.floor(float(position["z"]))
+    feet_y = math.floor(float(position["y"]))
+    # A settled player can straddle a block seam with air directly below the
+    # feet; the pitch-90 crosshair hits the first solid block straight down
+    # the center column, so that is the block this smoke drives.
+    target = None
+    initial = None
+    for y in range(feet_y - 1, feet_y - 4, -1):
+        probe = _probe_block(address, column_x, y, column_z)
+        if probe is not None and not _block_is_air(probe) and probe.get("fluid") is None:
+            target = {"x": column_x, "y": y, "z": column_z}
+            initial = probe
+            break
+    if target is None or initial is None:
+        raise GateFailure(
+            "no solid block within reach straight below the player at "
+            f"({column_x}, {feet_y}, {column_z})"
+        )
+
+    net_before = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_before, "before block interaction")
+    world_before = _object(_control_request(address, "world.counters"), "world.counters")
+    slots_before = _occupied_player_slots(address)
+
+    _look_to_pitch(address, 90.0, deadline)
+
+    # Middle-click pick: the server answers by filling the creative hotbar.
+    # A wandering entity can transiently steal the crosshair, so re-tap a few
+    # times before giving up.
+    pick_confirmed = False
+    for _ in range(3):
+        _press_mouse(address, "middle", True)
+        _press_mouse(address, "middle", False)
+        tap_deadline = min(deadline, time.monotonic() + 3.0)
+        while time.monotonic() < tap_deadline:
+            if _occupied_player_slots(address) > slots_before:
+                pick_confirmed = True
+                break
+            time.sleep(0.1)
+        if pick_confirmed or time.monotonic() >= deadline:
+            break
+    if not pick_confirmed:
+        net_now = _object(_control_request(address, "net.counters"), "net.counters")
+
+        def _pick_delta(key: str) -> int:
+            return int(net_now.get(key, 0)) - int(net_before.get(key, 0))
+
+        raise GateFailure(
+            "server did not fill the creative hotbar after middle-click pick "
+            f"(block picks queued: {_pick_delta('pick_item_from_block_commands_queued')}, "
+            f"entity picks queued: {_pick_delta('pick_item_from_entity_commands_queued')}, "
+            f"connected: {net_now.get('connected')})"
+        )
+
+    # Left-click tap: creative instant destroy, acknowledged by the server
+    # block update flipping the canonical probe to air.  A held button keeps
+    # the vanilla destroy loop digging into the exposed blocks below, so tap
+    # and re-tap instead of holding.
+    destroyed = False
+    while not destroyed and time.monotonic() < deadline:
+        _press_mouse(address, "left", True)
+        _press_mouse(address, "left", False)
+        tap_deadline = min(deadline, time.monotonic() + 2.0)
+        while time.monotonic() < tap_deadline:
+            if _block_is_air(_probe_block(address, target["x"], target["y"], target["z"])):
+                destroyed = True
+                break
+            time.sleep(0.1)
+    if not destroyed:
+        raise GateFailure(f"block at {target} was not destroyed by the synthetic click")
+
+    # Wait for the player to settle into the vacated cell.
+    while time.monotonic() < deadline:
+        pose = _local_player_pose(address)
+        if pose.get("on_ground") is True:
+            break
+        time.sleep(0.1)
+
+    # Pillar-jump placement: right-click at the jump apex places the picked
+    # block into the cell the player occupied.
+    restored = False
+    while not restored and time.monotonic() < deadline:
+        base_y = float(_local_player_pose(address).get("position", {}).get("y", 0.0))
+        _press_key(address, "jump", True)
+        apex_deadline = min(deadline, time.monotonic() + 1.5)
+        try:
+            while time.monotonic() < apex_deadline:
+                y = float(_local_player_pose(address).get("position", {}).get("y", 0.0))
+                if y - base_y >= 1.0:
+                    _press_mouse(address, "right", True)
+                    time.sleep(0.1)
+                    _press_mouse(address, "right", False)
+                    break
+                time.sleep(0.02)
+        finally:
+            _press_key(address, "jump", False)
+        settle_deadline = min(deadline, time.monotonic() + 1.5)
+        while time.monotonic() < settle_deadline:
+            if not _block_is_air(
+                _probe_block(address, target["x"], target["y"], target["z"])
+            ):
+                restored = True
+                break
+            time.sleep(0.1)
+    if not restored:
+        net_now = _object(_control_request(address, "net.counters"), "net.counters")
+        use_delta = int(net_now.get("use_item_on_commands_queued", 0)) - int(
+            net_before.get("use_item_on_commands_queued", 0)
+        )
+        raise GateFailure(
+            f"picked block was not placed back into {target} by the jump placement "
+            f"(use_item_on queued: {use_delta}, "
+            f"connected: {net_now.get('connected')})"
+        )
+
+    # An instant server rejection arrives as a correcting block update; make
+    # sure the placement stuck rather than being a transient local prediction.
+    time.sleep(0.5)
+    if _block_is_air(_probe_block(address, target["x"], target["y"], target["z"])):
+        raise GateFailure(f"server rejected the block placed back into {target}")
+
+    net_after = _object(_control_request(address, "net.counters"), "net.counters")
+    _require_connected(net_after, "after block interaction")
+    world_after = _object(_control_request(address, "world.counters"), "world.counters")
+
+    def _delta(after: dict[str, Any], before: dict[str, Any], key: str) -> int:
+        return int(after.get(key, 0)) - int(before.get(key, 0))
+
+    return {
+        "target": target,
+        "initial_block": initial.get("block_name"),
+        "destroyed": destroyed,
+        "restored": restored,
+        "pick_item_commands_delta": _delta(
+            net_after, net_before, "pick_item_from_block_commands_queued"
+        ),
+        "player_action_commands_delta": _delta(
+            net_after, net_before, "player_action_commands_queued"
+        ),
+        "swing_commands_delta": _delta(net_after, net_before, "swing_commands_queued"),
+        "use_item_on_commands_delta": _delta(
+            net_after, net_before, "use_item_on_commands_queued"
+        ),
+        "block_updates_applied_delta": _delta(
+            world_after, world_before, "block_updates_applied"
+        ),
         "duration_seconds": time.monotonic() - started_at,
     }
 
@@ -536,6 +853,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "status": status,
             "world_snapshot": last_snapshot,
             "movement": None,
+            "block_interaction": None,
             "failure": last_error or "timed out waiting for canonical live state",
             "artifacts": {
                 "timeline": str(args.client_log),
@@ -546,13 +864,41 @@ def collect_live(args: argparse.Namespace) -> None:
         args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
         raise GateFailure(evidence["failure"])
 
+    movement: dict[str, Any] | None = None
+    block_interaction: dict[str, Any] | None = None
     try:
+        _await_control_stability(address, deadline)
         movement = drive_basic_movement(
             address, min(30.0, float(args.timeout))
         )
+        block_interaction = drive_block_interaction(
+            address, min(90.0, float(args.timeout))
+        )
         last_snapshot = _capture_control_snapshot(address)
-    except (OSError, ValueError, json.JSONDecodeError) as error:
-        raise GateFailure(f"control-driven movement failed: {error}") from error
+    except (GateFailure, OSError, ValueError, json.JSONDecodeError) as error:
+        failure = (
+            str(error)
+            if isinstance(error, GateFailure)
+            else f"control-driven gameplay failed: {error}"
+        )
+        evidence = {
+            "schema": 1,
+            "mode": "live",
+            "vanilla_version": "26.1",
+            "timeline": [],
+            "status": status,
+            "world_snapshot": last_snapshot,
+            "movement": movement,
+            "block_interaction": block_interaction,
+            "failure": failure,
+            "artifacts": {
+                "timeline": str(args.client_log),
+                "world_snapshot": str(args.output),
+                "server_log": str(args.server_log),
+            },
+        }
+        args.output.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n")
+        raise GateFailure(failure) from error
 
     client_log = args.client_log.read_text(encoding="utf-8", errors="replace")
     try:
@@ -566,6 +912,7 @@ def collect_live(args: argparse.Namespace) -> None:
             "status": status,
             "world_snapshot": last_snapshot,
             "movement": movement,
+            "block_interaction": block_interaction,
             "failure": str(error),
             "artifacts": {
                 "timeline": str(args.client_log),
@@ -583,6 +930,7 @@ def collect_live(args: argparse.Namespace) -> None:
         "status": status,
         "world_snapshot": last_snapshot,
         "movement": movement,
+        "block_interaction": block_interaction,
         "artifacts": {
             "timeline": str(args.client_log),
             "world_snapshot": str(args.output),

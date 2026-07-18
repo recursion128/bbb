@@ -120,6 +120,46 @@ class PlayableGateMovementTests(unittest.TestCase):
             playable_gate.validate_evidence(evidence, self.protocol_version)
 
 
+class PlayableGateBlockInteractionTests(unittest.TestCase):
+    def setUp(self):
+        fixture_path = (
+            REPO_ROOT
+            / "scripts"
+            / "fixtures"
+            / "playable-gate"
+            / "session-26.1.json"
+        )
+        self.fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        self.protocol_version = playable_gate._parse_protocol_version(
+            REPO_ROOT / "crates" / "bbb-protocol" / "src" / "lib.rs"
+        )
+
+    def test_missing_block_interaction_section_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        del evidence["block_interaction"]
+
+        with self.assertRaisesRegex(playable_gate.GateFailure, "block_interaction"):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_unrestored_block_fails(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["block_interaction"]["restored"] = False
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "did not place the picked block back"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+    def test_zero_observed_commands_fail(self):
+        evidence = copy.deepcopy(self.fixture)
+        evidence["block_interaction"]["use_item_on_commands_delta"] = 0
+
+        with self.assertRaisesRegex(
+            playable_gate.GateFailure, "use_item_on_commands_delta"
+        ):
+            playable_gate.validate_evidence(evidence, self.protocol_version)
+
+
 class PlayableGateTimelineTests(unittest.TestCase):
     def _packet_ledger(self):
         return json.loads(
