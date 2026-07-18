@@ -19085,3 +19085,10 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   fixture derives its holder id from the explicit entry sequence. A generator-emitted reverse
   guard covers field construction, queries, comparisons, JSON projections, and numeric aliases
   while leaving protocol wire samples under their codec owner.
+
+# 2026-07-18: Guard semantic recipe-display type ids
+
+- Replaced the remaining numeric Stonecutter recipe-display type projection with the named id
+  generated from `RecipeDisplays.bootstrap` registration order.
+- Extended the recipe catalog generator's reverse guard over semantic construction and comparison,
+  preventing world and future cross-crate consumers from restoring a second ordinal source.

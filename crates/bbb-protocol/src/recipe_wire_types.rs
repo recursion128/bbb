@@ -416,6 +416,33 @@ mod tests {
         numeric_construction || numeric_field_comparison || numeric_json_comparison
     }
 
+    fn contains_numeric_recipe_display_type_reference(source: &str) -> bool {
+        let compact: String = source
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect();
+        let numeric_construction =
+            compact
+                .match_indices("recipe_display_type_id:")
+                .any(|(offset, _)| {
+                    starts_with_integer_literal(
+                        &compact[offset + "recipe_display_type_id:".len()..],
+                    )
+                });
+        let numeric_field_comparison =
+            compact
+                .match_indices(".recipe_display_type_id")
+                .any(|(offset, _)| {
+                    let suffix = &compact[offset + ".recipe_display_type_id".len()..];
+                    [",", "==", "!=", "="].iter().any(|separator| {
+                        suffix
+                            .strip_prefix(separator)
+                            .is_some_and(starts_with_integer_literal)
+                    })
+                });
+        numeric_construction || numeric_field_comparison
+    }
+
     #[test]
     fn numeric_recipe_book_category_guard_covers_semantic_fixtures() {
         assert!(contains_numeric_recipe_book_category_reference(
@@ -432,6 +459,19 @@ mod tests {
         ));
         assert!(!contains_numeric_recipe_book_category_reference(
             "category_id: id + 10,"
+        ));
+    }
+
+    #[test]
+    fn numeric_recipe_display_type_guard_covers_semantic_fixtures() {
+        assert!(contains_numeric_recipe_display_type_reference(
+            "recipe_display_type_id: 3,"
+        ));
+        assert!(contains_numeric_recipe_display_type_reference(
+            "assert_eq!(entry.recipe_display_type_id, 3);"
+        ));
+        assert!(!contains_numeric_recipe_display_type_reference(
+            "recipe_display_type_id: VANILLA_RECIPE_DISPLAY_TYPE_STONECUTTER_ID,"
         ));
     }
 
@@ -455,6 +495,12 @@ mod tests {
                 if contains_numeric_recipe_book_category_reference(&source) {
                     violations.push(format!(
                         "{}: numeric recipe-book category reference",
+                        path.display()
+                    ));
+                }
+                if contains_numeric_recipe_display_type_reference(&source) {
+                    violations.push(format!(
+                        "{}: numeric recipe-display type reference",
                         path.display()
                     ));
                 }

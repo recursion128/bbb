@@ -166,6 +166,9 @@ Owner: `scripts/` + each generated catalog's semantic crate
   constants in protocol, world, net, control, and native consumers; the recipe catalog generator
   rejects numeric field construction and semantic comparisons while leaving raw wire payload
   samples and intentionally open server-defined category ids under their existing owners.
+  Semantic recipe-display type projections must likewise use the generated `RecipeDisplays`
+  constants; the same generator rejects numeric `recipe_display_type_id` construction and
+  comparison outside its generated owner.
   Heightmap sampler membership, semantic packet/state fixtures, queries, and comparisons must
   consume the generated `Heightmap.Types` catalog and named ids; the gameplay-id generator rejects
   numeric kind references outside protocol-owned raw codec samples.

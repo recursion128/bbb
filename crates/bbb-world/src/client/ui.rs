@@ -1545,6 +1545,7 @@ mod tests {
         SetPlayerInventory as ProtocolSetPlayerInventory, Vec3d as ProtocolVec3d,
         WrittenBookContentSummary,
     };
+    use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_DISPLAY_TYPE_STONECUTTER_ID;
     use bbb_protocol::NbtSummaryEntry;
     use uuid::Uuid;
 
@@ -2893,7 +2894,7 @@ mod tests {
             store.last_ghost_recipe(),
             Some(&GhostRecipeState {
                 container_id: 0,
-                recipe_display_type_id: 3,
+                recipe_display_type_id: VANILLA_RECIPE_DISPLAY_TYPE_STONECUTTER_ID,
                 recipe_display_type: "stonecutter".to_string(),
                 recipe_display_body_len: 7,
                 recipe_display: Some(bbb_protocol::packets::RecipeDisplaySummary {
