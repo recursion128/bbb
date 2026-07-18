@@ -21,6 +21,10 @@ use uuid::Uuid;
 
 use crate::types::{OutboundChatCommand, OutboundChatCommandSigning, OutboundChatMessage};
 
+mod runtime;
+
+pub(crate) use runtime::{ChatSessionAction, ChatSessionRuntime};
+
 const PROFILE_CERTIFICATES_URL: &str = "https://api.minecraftservices.com/player/certificates";
 const PROFILE_CERTIFICATES_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_PROFILE_CERTIFICATES_RESPONSE_BYTES: u64 = 128 * 1024;
@@ -80,6 +84,8 @@ impl ProfileKeyPair {
             && self.public_key_der == other.public_key_der
             && self.key_signature == other.key_signature
             && self.private_key == other.private_key
+            && self.expires_at_epoch_millis == other.expires_at_epoch_millis
+            && self.refreshed_after_epoch_millis == other.refreshed_after_epoch_millis
     }
 
     fn chat_session_update(&self, session_id: Uuid) -> ChatSessionUpdate {

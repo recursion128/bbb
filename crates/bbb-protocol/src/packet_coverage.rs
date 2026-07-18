@@ -3186,7 +3186,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_signed_chat_command_keeps_production_signing_open() {
+    fn play_serverbound_signed_chat_command_closes_live_signing() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3203,22 +3203,18 @@ mod tests {
             })
             .collect();
 
-        assert_eq!(complete, BTreeSet::from(["encoder"]));
+        assert_eq!(
+            complete,
+            BTreeSet::from(["command_surface", "encoder", "state_guard", "tests"])
+        );
         assert_eq!(
             entry.coverage["ack_response"].status,
             PacketCoverageStatus::NotApplicable
         );
-        for dimension in ["command_surface", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
     }
 
     #[test]
-    fn play_serverbound_chat_keeps_production_signature_and_echo_open() {
+    fn play_serverbound_chat_closes_signature_and_keeps_echo_open() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3233,18 +3229,18 @@ mod tests {
             })
             .collect();
 
-        assert_eq!(complete, BTreeSet::from(["encoder"]));
-        for dimension in ["ack_response", "command_surface", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert_eq!(
+            complete,
+            BTreeSet::from(["command_surface", "encoder", "state_guard", "tests"])
+        );
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::Partial
+        );
     }
 
     #[test]
-    fn play_serverbound_chat_session_update_keeps_key_lifecycle_open() {
+    fn play_serverbound_chat_session_update_closes_local_key_lifecycle() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3261,14 +3257,14 @@ mod tests {
             })
             .collect();
 
-        assert_eq!(complete, BTreeSet::from(["encoder"]));
-        for dimension in ["ack_response", "command_surface", "state_guard", "tests"] {
-            assert_eq!(
-                entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
-                "{dimension}"
-            );
-        }
+        assert_eq!(
+            complete,
+            BTreeSet::from(["command_surface", "encoder", "state_guard", "tests"])
+        );
+        assert_eq!(
+            entry.coverage["ack_response"].status,
+            PacketCoverageStatus::Partial
+        );
     }
 
     #[test]

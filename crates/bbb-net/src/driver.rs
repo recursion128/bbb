@@ -4,7 +4,8 @@ use tokio::{sync::mpsc, time::Interval};
 
 use crate::{
     chat_session::{
-        prepare_outbound_chat_command, prepare_outbound_chat_message, PreparedChatCommand,
+        prepare_outbound_chat_command, prepare_outbound_chat_message, ChatSessionAction,
+        ChatSessionRuntime, PreparedChatCommand,
     },
     connection::RawConnection,
     types::{AcceptTeleportCommand, ConnectionState, NetCommand},
@@ -67,12 +68,34 @@ pub(crate) enum ConnectionDrive {
     Disconnect,
 }
 
+#[cfg(test)]
 pub(crate) async fn read_packet_or_drive_connection(
     conn: &mut RawConnection,
     state: ConnectionState,
     commands: &mut mpsc::Receiver<NetCommand>,
     player_position_state: &mut PlayerPositionState,
     teleport_pending: bool,
+) -> Result<ConnectionDrive> {
+    let mut chat_sessions =
+        ChatSessionRuntime::new(uuid::Uuid::nil(), None, std::time::Duration::from_secs(1));
+    read_packet_or_drive_connection_with_chat_session(
+        conn,
+        state,
+        commands,
+        player_position_state,
+        teleport_pending,
+        &mut chat_sessions,
+    )
+    .await
+}
+
+pub(crate) async fn read_packet_or_drive_connection_with_chat_session(
+    conn: &mut RawConnection,
+    state: ConnectionState,
+    commands: &mut mpsc::Receiver<NetCommand>,
+    player_position_state: &mut PlayerPositionState,
+    teleport_pending: bool,
+    chat_sessions: &mut ChatSessionRuntime,
 ) -> Result<ConnectionDrive> {
     if !matches!(state, ConnectionState::Play) {
         return read_packet_or_disconnect_command(conn, state, commands).await;
@@ -127,7 +150,10 @@ pub(crate) async fn read_packet_or_drive_connection(
                         send_chat_acknowledgement(conn, command).await?;
                     }
                     Some(NetCommand::ChatCommand(command)) => {
-                        match prepare_outbound_chat_command(command, None)? {
+                        match prepare_outbound_chat_command(
+                            command,
+                            chat_sessions.active_session_mut(),
+                        )? {
                             PreparedChatCommand::Unsigned(packet) => {
                                 send_chat_command(conn, packet).await?;
                             }
@@ -137,11 +163,11 @@ pub(crate) async fn read_packet_or_drive_connection(
                         }
                     }
                     Some(NetCommand::ChatMessage(message)) => {
-                        let packet = prepare_outbound_chat_message(message, None)?;
+                        let packet = prepare_outbound_chat_message(
+                            message,
+                            chat_sessions.active_session_mut(),
+                        )?;
                         send_chat_message(conn, packet).await?;
-                    }
-                    Some(NetCommand::ChatSessionUpdate(session)) => {
-                        send_chat_session_update(conn, session).await?;
                     }
                     Some(NetCommand::CustomPayload(packet)) => {
                         send_custom_payload(conn, packet).await?;
@@ -271,6 +297,14 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                 }
             }
+            action = chat_sessions.next_action() => {
+                match action {
+                    ChatSessionAction::Install(session) => {
+                        send_chat_session_update(conn, session.session_update()).await?;
+                        chat_sessions.install(session);
+                    }
+                }
+            }
         }
     }
 }
@@ -301,7 +335,6 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ChatAcknowledgement(_)) => {}
                     Some(NetCommand::ChatCommand(_)) => {}
                     Some(NetCommand::ChatMessage(_)) => {}
-                    Some(NetCommand::ChatSessionUpdate(_)) => {}
                     Some(NetCommand::CustomPayload(_)) => {}
                     Some(NetCommand::CustomClickAction(packet)) => {
                         send_custom_click_action(conn, state, packet).await?;

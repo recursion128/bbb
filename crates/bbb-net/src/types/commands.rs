@@ -1,14 +1,13 @@
 use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ChatSessionUpdate, ClientCommandAction, CommandSuggestionRequest,
-    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
-    CustomClickAction, EditBook, EntityTagQuery, InteractEntity, InteractionHand,
-    LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
-    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
-    ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-    ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
-    TeleportToEntity, UseItem, UseItemOn, Vec3d,
+    ChatAcknowledgement, ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick,
+    ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged, CustomClickAction, EditBook,
+    EntityTagQuery, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
+    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+    PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand,
+    RecipeBookSeenRecipeCommand, RenameItem, ResourcePackResponseAction, SeenAdvancements,
+    SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot,
+    SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d,
 };
 use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
 use serde::{Deserialize, Serialize};
@@ -214,7 +213,6 @@ pub enum NetCommand {
     ChatAcknowledgement(ChatAcknowledgement),
     ChatCommand(OutboundChatCommand),
     ChatMessage(OutboundChatMessage),
-    ChatSessionUpdate(ChatSessionUpdate),
     CustomPayload(ServerboundCustomPayload),
     CustomClickAction(CustomClickAction),
     DebugSubscriptionRequest {

@@ -6,11 +6,11 @@ session, outbound message chain, inbound chain validation needed to validate the
 server echo, and `DeleteChat` lifecycle. It does not turn the native client into
 an authentication launcher or duplicate Mojang's Brigadier/Authlib class trees.
 
-Implementation status: phases 1-2 are complete; phase 3 fetch/refresh and live
-installation is current. The bounded Services decoder, redacted RSA key owner,
-exact signing payload, v4 session UUID, verifier, one-way chain, atomic
-last-seen value, parsed signable arguments, and net-owned outbound request path
-are available, but the session is not installed into a live connection yet.
+Implementation status: phases 1-3 are complete; phase 4 inbound trust and
+deletion closeout is current. Authenticated encrypted play sessions now fetch
+and refresh bounded Services keys without blocking packet reads, send each new
+public session before installing its signer, retain an unchanged or last valid
+chain, and reset at listener/configuration/reconnect boundaries.
 
 ## Semantic Goal and Completion Criteria
 
@@ -143,6 +143,15 @@ Final completion requires all of the following:
    reconfiguration/reconnect. Fake HTTP and duplex connection tests cover success,
    bounds/failure, ordering, refresh, and redaction. Run `bbb-net` plus integration
    tests, full gate, and `scripts/playable-gate.sh auto`.
+
+   Complete: the event-stream owner starts asynchronous key preparation only
+   after an encrypted Play Login, the driver selects the live session for every
+   semantic outbound request, and a replacement is not selectable until its
+   `ServerboundChatSessionUpdatePacket` write succeeds. Full key-pair equality
+   preserves an unchanged chain, failed refresh retains the last session, each
+   preparation schedules the next check no earlier than one hour, and listener,
+   configuration, transfer, reconnect, shutdown, and dropped-runtime boundaries
+   clear or abort owned state.
 4. **Inbound trust and deletion closeout.** Validate remote chains with the
    Services-validated player public key, propagate secure-chat errors/disconnects,
    and implement delayed/visible deletion at the world/native HUD boundary.

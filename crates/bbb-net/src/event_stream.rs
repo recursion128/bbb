@@ -19,9 +19,13 @@ use bbb_protocol::{
 use tokio::{sync::mpsc, time::timeout};
 
 use crate::{
+    chat_session::ChatSessionRuntime,
     chunk_batch::ChunkBatchSizeCalculator,
     connection::RawConnection,
-    driver::{read_packet_or_drive_connection, send_chat_acknowledgement, ConnectionDrive},
+    driver::{
+        read_packet_or_drive_connection_with_chat_session, send_chat_acknowledgement,
+        ConnectionDrive,
+    },
     login::send_login_hello,
     play_bundle::PlayPacketBundleAssembler,
     types::{ConnectionOptions, ConnectionState, NetCommand, NetEvent},
@@ -78,6 +82,11 @@ pub async fn run_event_stream(
         accepted_code_of_conduct_hash: options.accepted_code_of_conduct_hash,
         client_information: options.client_information.clone(),
     };
+    let mut chat_sessions = ChatSessionRuntime::new(
+        options.profile_id,
+        options.session_credentials.clone(),
+        options.timeout,
+    );
 
     emit(&stream.events, NetEvent::Connected).await?;
     emit(
@@ -103,12 +112,13 @@ pub async fn run_event_stream(
 
     let mut play_bundle = PlayPacketBundleAssembler::default();
     loop {
-        let drive = read_packet_or_drive_connection(
+        let drive = read_packet_or_drive_connection_with_chat_session(
             &mut stream.conn,
             stream.state,
             &mut stream.commands,
             &mut stream.player_position_state,
             stream.pending_teleports > 0,
+            &mut chat_sessions,
         )
         .await?;
         let (packet_id, payload) = match drive {
@@ -120,6 +130,7 @@ pub async fn run_event_stream(
             ConnectionDrive::AcknowledgeConfiguration {
                 pending_chat_acknowledgement,
             } => {
+                chat_sessions.reset();
                 if let Some(command) = pending_chat_acknowledgement {
                     send_chat_acknowledgement(&mut stream.conn, command).await?;
                 }
@@ -171,6 +182,15 @@ pub async fn run_event_stream(
                 let mut transfer = None;
                 if let Some(batch) = play_bundle.push(packet)? {
                     for packet in batch {
+                        match &packet {
+                            packets::PlayClientbound::Login(_) => {
+                                chat_sessions.begin_play_session(stream.conn.encryption_enabled())
+                            }
+                            packets::PlayClientbound::StartConfiguration => {
+                                chat_sessions.reset();
+                            }
+                            _ => {}
+                        }
                         if transfer.is_some() {
                             if let Some(next) =
                                 stream.handle_transfer_closing_play_packet(packet).await?
@@ -195,6 +215,7 @@ pub async fn run_event_stream(
         };
 
         if let Some(transfer) = transfer {
+            chat_sessions.reset();
             let transfer = stream
                 .drain_transfer_closing_packets(packet_state, transfer)
                 .await?;
@@ -340,6 +361,7 @@ fn _keep_encode_packet_reachable(packet_id: i32, payload: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::driver::read_packet_or_drive_connection;
     use bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_AXOLOTL_ID;
     use bbb_protocol::mob_effect_types::VANILLA_MOB_EFFECT_MINING_FATIGUE_ID;
     use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_DAMAGE_INDICATOR_ID;
@@ -362,6 +384,17 @@ mod tests {
                 bbb_protocol::entity_data_serializers::VANILLA_ENTITY_DATA_SERIALIZER_BYTE_ID,
             value: packets::EntityDataValueKind::Byte(accessors.invisible_mask),
         }
+    }
+
+    #[test]
+    fn chat_session_runtime_is_wired_to_listener_and_transport_boundaries() {
+        let source = include_str!("event_stream.rs");
+        assert!(source.contains("options.session_credentials.clone()"));
+        assert!(source.contains("PlayClientbound::Login(_) => chat_sessions"));
+        assert!(source.contains("begin_play_session(stream.conn.encryption_enabled())"));
+        assert!(source.contains("PlayClientbound::StartConfiguration =>"));
+        assert!(source.matches("chat_sessions.reset();").count() >= 3);
+        assert!(source.contains("read_packet_or_drive_connection_with_chat_session"));
     }
 
     fn entity_air_supply_data(air_supply: i32) -> packets::EntityDataValue {

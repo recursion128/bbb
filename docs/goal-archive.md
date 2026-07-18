@@ -19439,3 +19439,19 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   的 last-seen signatures；生产 driver 在 phase 3 安装 session 前仍保持 vanilla unsigned
   fallback（chat `None`、signable command 空 argument signatures），plain command 不消耗
   last-seen。
+
+## 2026-07-18：签名聊天 phase 3 live session lifecycle
+
+- [x] 对照本地 vanilla 26.1 `ClientPacketListener.handleLogin/tick/prepareKeyPair/setKeyPair`
+  与 `AccountProfileKeyPairManager`，认证且已加密的 Play Login 才异步请求 Services profile
+  key；每次 preparation 从启动时刻至少间隔一小时，失败保留最后有效 session，完整 key-pair
+  未变化时保留同一 session UUID 与 link chain，变化时创建新 v4 session。
+- [x] `bbb-net` event-stream 独占 session runtime；profile HTTP future 与 packet/command 同时
+  select，不阻塞读取。driver 先成功写出 `ServerboundChatSessionUpdatePacket`，再原子安装 signer，
+  因此新 session 的首个 ordinary chat/command signature 不会越过 public session update；移除可由
+  外部手动注入的 `NetCommand::ChatSessionUpdate` 路径。
+- [x] Play listener reset、StartConfiguration、configuration ack、transfer/reconnect、shutdown/drop
+  都会清空 signer 并中止 pending fetch。8 项 runtime/duplex 回归覆盖认证/加密 gate、刷新节流、
+  changed/unchanged key、失败保留、脱敏、reset/abort、session-update-before-signature 和 pending
+  HTTP 不阻塞 packet；完整 `bbb-net` 249 项与 non-test check 通过。本 phase 在提交 tip 运行
+  full gate 与 `playable-gate auto`，phase 4 才闭合 inbound remote trust 与 DeleteChat 生命周期。
