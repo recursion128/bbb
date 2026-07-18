@@ -35,6 +35,10 @@ pub(super) fn optional_i32_param(
         .map_err(|_| format!("net.set_beacon requires integer or null param {key}"))
 }
 
+pub(super) fn f64_param(params: &serde_json::Value, key: &str) -> Option<f64> {
+    params.get(key)?.as_f64().filter(|value| value.is_finite())
+}
+
 pub(super) fn f32_param(params: &serde_json::Value, key: &str) -> Option<f32> {
     params
         .get(key)?

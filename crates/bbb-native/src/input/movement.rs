@@ -23,7 +23,7 @@ const LOCAL_PLAYER_MOVEMENT_TICK_SECONDS: f64 = 0.05;
 const RIDING_JUMP_TICK_SECONDS: f64 = 0.05;
 
 impl ClientInputState {
-    fn local_player_input(&self) -> LocalPlayerInputState {
+    pub(crate) fn local_player_input(&self) -> LocalPlayerInputState {
         LocalPlayerInputState {
             focused: self.focused,
             forward: self.forward,

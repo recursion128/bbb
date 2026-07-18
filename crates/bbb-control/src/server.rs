@@ -13,7 +13,8 @@ use tokio::{
 use crate::types::{
     AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest,
     ContainerClickSlotControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
-    ControlState, CreativeModeSlotControlRequest, NetControlRequest, SharedSnapshot,
+    ControlState, CreativeModeSlotControlRequest, InputControlRequest, InputKeyControl,
+    NetControlRequest, SharedSnapshot,
 };
 
 mod params;
@@ -22,9 +23,10 @@ mod tests;
 
 use self::params::{
     bool_param, change_difficulty_request_param, change_game_mode_request_param,
-    edit_book_pages_param, edit_book_title_param, f32_param, i32_param, is_resource_location,
-    non_empty_string_param, optional_i32_param, recipe_book_type_param, sign_lines_param,
-    string_param, validate_creative_mode_slot_request, RENAME_ITEM_MAX_NAME_CHARS,
+    edit_book_pages_param, edit_book_title_param, f32_param, f64_param, i32_param,
+    is_resource_location, non_empty_string_param, optional_i32_param, recipe_book_type_param,
+    sign_lines_param, string_param, validate_creative_mode_slot_request,
+    RENAME_ITEM_MAX_NAME_CHARS,
 };
 
 pub fn shared_snapshot(version: impl Into<String>) -> SharedSnapshot {
@@ -468,6 +470,65 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
             result: Some(serde_json::json!({
                 "queued": true,
                 "pending": requests_guard.net_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "input.key" {
+        let Some(key) = string_param(&request.params, "key").and_then(InputKeyControl::from_name)
+        else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "input.key requires param key in \
+                     forward/backward/left/right/jump/sneak/sprint"
+                        .to_string(),
+                ),
+            };
+        };
+        let Some(pressed) = bool_param(&request.params, "pressed") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("input.key requires boolean param pressed".to_string()),
+            };
+        };
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
+            .input_requests
+            .push(InputControlRequest::Key { key, pressed });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": requests_guard.input_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "input.look_delta" {
+        let (Some(dx), Some(dy)) = (
+            f64_param(&request.params, "dx"),
+            f64_param(&request.params, "dy"),
+        ) else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("input.look_delta requires finite number params dx and dy".to_string()),
+            };
+        };
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
+            .input_requests
+            .push(InputControlRequest::LookDelta { dx, dy });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": requests_guard.input_requests.len()
             })),
             error: None,
         };

@@ -987,6 +987,83 @@ fn net_set_flying_queues_request() {
 }
 
 #[test]
+fn input_key_queues_request() {
+    let state = ControlState::new("test");
+    let response = dispatch(
+        ControlRequest {
+            method: "input.key".to_string(),
+            params: json!({"key": "forward", "pressed": true}),
+        },
+        &state,
+    );
+
+    assert!(response.ok);
+    assert_eq!(response.result.unwrap()["pending"], 1);
+    assert_eq!(
+        state.requests.lock().unwrap().input_requests,
+        vec![InputControlRequest::Key {
+            key: InputKeyControl::Forward,
+            pressed: true,
+        }]
+    );
+
+    let unknown_key = dispatch(
+        ControlRequest {
+            method: "input.key".to_string(),
+            params: json!({"key": "fly", "pressed": true}),
+        },
+        &state,
+    );
+    assert!(!unknown_key.ok);
+
+    let missing_pressed = dispatch(
+        ControlRequest {
+            method: "input.key".to_string(),
+            params: json!({"key": "jump"}),
+        },
+        &state,
+    );
+    assert!(!missing_pressed.ok);
+}
+
+#[test]
+fn input_look_delta_queues_request() {
+    let state = ControlState::new("test");
+    let response = dispatch(
+        ControlRequest {
+            method: "input.look_delta".to_string(),
+            params: json!({"dx": 12.5, "dy": -3.0}),
+        },
+        &state,
+    );
+
+    assert!(response.ok);
+    assert_eq!(response.result.unwrap()["pending"], 1);
+    assert_eq!(
+        state.requests.lock().unwrap().input_requests,
+        vec![InputControlRequest::LookDelta { dx: 12.5, dy: -3.0 }]
+    );
+
+    let non_finite = dispatch(
+        ControlRequest {
+            method: "input.look_delta".to_string(),
+            params: json!({"dx": f64::NAN, "dy": 0.0}),
+        },
+        &state,
+    );
+    assert!(!non_finite.ok);
+
+    let missing_dy = dispatch(
+        ControlRequest {
+            method: "input.look_delta".to_string(),
+            params: json!({"dx": 1.0}),
+        },
+        &state,
+    );
+    assert!(!missing_dy.ok);
+}
+
+#[test]
 fn net_perform_respawn_queues_request() {
     let state = ControlState::new("test");
     let response = dispatch(

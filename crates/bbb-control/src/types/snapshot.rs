@@ -124,6 +124,46 @@ pub enum NetControlRequest {
     },
 }
 
+/// Synthetic local-player input driven over the control API. Requests are
+/// replayed through the exact native handlers real window events use
+/// (`handle_key_input` / `handle_mouse_motion`), so focus, screen and sprint
+/// side effects stay on the canonical input path.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum InputControlRequest {
+    Key { key: InputKeyControl, pressed: bool },
+    LookDelta { dx: f64, dy: f64 },
+}
+
+/// Semantic movement keys the control API can drive; the native runtime maps
+/// each to the default vanilla key binding's physical key code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InputKeyControl {
+    Forward,
+    Backward,
+    Left,
+    Right,
+    Jump,
+    Sneak,
+    Sprint,
+}
+
+impl InputKeyControl {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "forward" => Some(Self::Forward),
+            "backward" => Some(Self::Backward),
+            "left" => Some(Self::Left),
+            "right" => Some(Self::Right),
+            "jump" => Some(Self::Jump),
+            "sneak" => Some(Self::Sneak),
+            "sprint" => Some(Self::Sprint),
+            _ => None,
+        }
+    }
+}
+
 impl NetControlRequest {
     pub fn change_difficulty_named(difficulty: &str) -> Option<Self> {
         let difficulty = match difficulty {
@@ -289,6 +329,7 @@ pub struct ControlRequests {
     pub screenshot_request: Option<String>,
     pub code_of_conduct_requests: Vec<CodeOfConductControlRequest>,
     pub net_requests: Vec<NetControlRequest>,
+    pub input_requests: Vec<InputControlRequest>,
 }
 
 pub type SharedControlRequests = Arc<Mutex<ControlRequests>>;

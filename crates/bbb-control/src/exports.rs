@@ -4,7 +4,7 @@ pub use crate::types::{
     ContainerClickControlRequest, ContainerClickSlotControlRequest, ContainerInputControl,
     ControlRequest, ControlRequests, ControlResponse, ControlSnapshot, ControlState,
     CreativeModeItemStackControl, CreativeModeSlotControlRequest, DifficultyControl,
-    GameModeControl, HashedComponentPatchControl, HashedStackControl, NetControlRequest,
-    NetCounters, RecipeBookTypeControl, RendererCounters, SharedControlRequests, SharedSnapshot,
-    SharedWorld,
+    GameModeControl, HashedComponentPatchControl, HashedStackControl, InputControlRequest,
+    InputKeyControl, NetControlRequest, NetCounters, RecipeBookTypeControl, RendererCounters,
+    SharedControlRequests, SharedSnapshot, SharedWorld,
 };

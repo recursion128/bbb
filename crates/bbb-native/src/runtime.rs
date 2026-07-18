@@ -590,7 +590,7 @@ struct InventoryHudLocalState {
     advanced_item_tooltips: bool,
 }
 
-pub(crate) use control_requests::pump_control_net_requests;
+pub(crate) use control_requests::{pump_control_input_requests, pump_control_net_requests};
 pub(crate) use events::LevelEventSoundRandomState;
 
 const HUD_DEBUG_FRAME_TIME_SAMPLE_CAPACITY: usize = 240;
@@ -2068,6 +2068,7 @@ pub(crate) fn pump_network_and_terrain(
     snapshot: &SharedSnapshot,
     control_requests: &SharedControlRequests,
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
+    code_of_conduct_overlay_visible: bool,
     render_distance_chunks: u32,
     client_framerate_limit: u32,
     client_vsync: bool,
@@ -2121,6 +2122,16 @@ pub(crate) fn pump_network_and_terrain(
         net_counters,
         world,
         code_of_conduct,
+    );
+    pump_control_input_requests(
+        control_requests,
+        input,
+        net_counters,
+        world,
+        net_commands,
+        item_runtime,
+        code_of_conduct_overlay_visible,
+        surface_size,
     );
     let now = Instant::now();
     hud_debug_fps_sampler.record_frame(now);

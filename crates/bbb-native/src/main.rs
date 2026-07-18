@@ -1201,6 +1201,8 @@ fn main() -> Result<()> {
                         drain_dynamic_player_skin_downloads(items, &mut renderer);
                     }
                     let profiler_update_started_at = Instant::now();
+                    let code_of_conduct_overlay_visible =
+                        code_of_conduct_overlay.is_visible(&world);
                     if !pump_network_and_terrain(
                         &mut net_events,
                         &net_commands,
@@ -1235,6 +1237,7 @@ fn main() -> Result<()> {
                         &snapshot,
                         &control_requests,
                         Some(&mut code_of_conduct_acceptance),
+                        code_of_conduct_overlay_visible,
                         args.render_distance_chunks,
                         args.client_framerate_limit,
                         args.client_vsync,
@@ -1415,6 +1418,7 @@ fn main() -> Result<()> {
                     items.drain_profile_resolution_results();
                     drain_dynamic_player_skin_downloads(items, &mut renderer);
                 }
+                let code_of_conduct_overlay_visible = code_of_conduct_overlay.is_visible(&world);
                 if !pump_network_and_terrain(
                     &mut net_events,
                     &net_commands,
@@ -1449,6 +1453,7 @@ fn main() -> Result<()> {
                     &snapshot,
                     &control_requests,
                     Some(&mut code_of_conduct_acceptance),
+                    code_of_conduct_overlay_visible,
                     args.render_distance_chunks,
                     args.client_framerate_limit,
                     args.client_vsync,
@@ -1557,7 +1562,7 @@ fn world_wants_cursor(world: &WorldStore) -> bool {
         || world.stats_screen_is_open()
 }
 
-fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
+pub(crate) fn runtime_wants_cursor(input: &ClientInputState, world: &WorldStore) -> bool {
     world_wants_cursor(world)
         || input.sign_editor_is_active_or_pending(world)
         || input.debug_options_screen_is_open()

@@ -1,8 +1,8 @@
 use bbb_control::{
     CodeOfConductControlRequest, ContainerClickControlRequest, ContainerInputControl,
     CreativeModeItemStackControl, CreativeModeSlotControlRequest, DifficultyControl,
-    GameModeControl, HashedComponentPatchControl, HashedStackControl, NetControlRequest,
-    NetCounters, RecipeBookTypeControl, SharedControlRequests,
+    GameModeControl, HashedComponentPatchControl, HashedStackControl, InputControlRequest,
+    InputKeyControl, NetControlRequest, NetCounters, RecipeBookTypeControl, SharedControlRequests,
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
@@ -14,6 +14,12 @@ use bbb_protocol::packets::{
 };
 use bbb_world::{ContainerClickSlotRequest, WorldStore};
 use tokio::sync::mpsc;
+
+use winit::{
+    dpi::PhysicalSize,
+    event::ElementState,
+    keyboard::{KeyCode, PhysicalKey},
+};
 
 use crate::{
     code_of_conduct::CodeOfConductAcceptance,
@@ -32,6 +38,76 @@ use crate::{
         select_hotbar_slot,
     },
 };
+use crate::{
+    input::{handle_key_input_with_item_runtime, handle_mouse_motion, ClientInputState},
+    NativeItemRuntime,
+};
+
+/// Replays control-plane synthetic input through the same handlers the real
+/// window events use, so screen interception, sprint triggers and focus
+/// gating stay on the canonical input path. The code-of-conduct overlay drops
+/// window input before those handlers run, so its visibility drops synthetic
+/// input here too. Look deltas mirror the real mouse-motion gates; a captured
+/// cursor is implied for control-driven sessions.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn pump_control_input_requests(
+    control_requests: &SharedControlRequests,
+    input: &mut ClientInputState,
+    counters: &mut NetCounters,
+    world: &mut WorldStore,
+    net_commands: &Option<mpsc::Sender<NetCommand>>,
+    item_runtime: Option<&NativeItemRuntime>,
+    code_of_conduct_overlay_visible: bool,
+    surface_size: PhysicalSize<u32>,
+) {
+    let input_requests = control_requests
+        .lock()
+        .map(|mut guard| std::mem::take(&mut guard.input_requests))
+        .unwrap_or_default();
+    if code_of_conduct_overlay_visible {
+        return;
+    }
+    for request in input_requests {
+        match request {
+            InputControlRequest::Key { key, pressed } => {
+                let state = if pressed {
+                    ElementState::Pressed
+                } else {
+                    ElementState::Released
+                };
+                handle_key_input_with_item_runtime(
+                    input,
+                    counters,
+                    world,
+                    net_commands,
+                    item_runtime,
+                    PhysicalKey::Code(input_key_code(key)),
+                    state,
+                    surface_size,
+                );
+            }
+            InputControlRequest::LookDelta { dx, dy } => {
+                if crate::runtime_wants_cursor(input, world) || input.command_entry_is_active() {
+                    continue;
+                }
+                handle_mouse_motion(input, (dx, dy));
+            }
+        }
+    }
+}
+
+/// The default vanilla key binding for each semantic control-API key.
+fn input_key_code(key: InputKeyControl) -> KeyCode {
+    match key {
+        InputKeyControl::Forward => KeyCode::KeyW,
+        InputKeyControl::Backward => KeyCode::KeyS,
+        InputKeyControl::Left => KeyCode::KeyA,
+        InputKeyControl::Right => KeyCode::KeyD,
+        InputKeyControl::Jump => KeyCode::Space,
+        InputKeyControl::Sneak => KeyCode::ShiftLeft,
+        InputKeyControl::Sprint => KeyCode::ControlLeft,
+    }
+}
 
 fn protocol_container_click(click: ContainerClickControlRequest) -> ContainerClick {
     ContainerClick {
@@ -449,6 +525,91 @@ mod tests {
         VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
     };
     use uuid::Uuid;
+
+    #[test]
+    fn pump_control_input_requests_replays_keys_through_the_real_key_handler() {
+        let requests = bbb_control::SharedControlRequests::default();
+        {
+            let mut guard = requests.lock().unwrap();
+            guard.input_requests.push(InputControlRequest::Key {
+                key: InputKeyControl::Forward,
+                pressed: true,
+            });
+            guard
+                .input_requests
+                .push(InputControlRequest::LookDelta { dx: 24.0, dy: -8.0 });
+        }
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            false,
+            PhysicalSize::new(1280, 720),
+        );
+
+        assert!(requests.lock().unwrap().input_requests.is_empty());
+        let projected = input.local_player_input();
+        assert!(projected.forward);
+        assert_eq!(projected.mouse_delta_x, 24.0);
+        assert_eq!(projected.mouse_delta_y, -8.0);
+
+        requests
+            .lock()
+            .unwrap()
+            .input_requests
+            .push(InputControlRequest::Key {
+                key: InputKeyControl::Forward,
+                pressed: false,
+            });
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            false,
+            PhysicalSize::new(1280, 720),
+        );
+        assert!(!input.local_player_input().forward);
+    }
+
+    #[test]
+    fn pump_control_input_requests_drops_input_behind_the_code_of_conduct_overlay() {
+        let requests = bbb_control::SharedControlRequests::default();
+        requests
+            .lock()
+            .unwrap()
+            .input_requests
+            .push(InputControlRequest::Key {
+                key: InputKeyControl::Jump,
+                pressed: true,
+            });
+        let mut input = ClientInputState::new(true);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &None,
+            None,
+            true,
+            PhysicalSize::new(1280, 720),
+        );
+
+        assert!(requests.lock().unwrap().input_requests.is_empty());
+        assert!(!input.local_player_input().jump);
+    }
 
     #[test]
     fn pump_control_net_requests_queues_chat_command() {

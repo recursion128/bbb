@@ -13,6 +13,6 @@ pub use snapshot::{
     ContainerClickControlRequest, ContainerClickSlotControlRequest, ContainerInputControl,
     ControlRequests, ControlSnapshot, ControlState, CreativeModeItemStackControl,
     CreativeModeSlotControlRequest, DifficultyControl, GameModeControl,
-    HashedComponentPatchControl, HashedStackControl, NetControlRequest, RecipeBookTypeControl,
-    SharedControlRequests, SharedSnapshot, SharedWorld,
+    HashedComponentPatchControl, HashedStackControl, InputControlRequest, InputKeyControl,
+    NetControlRequest, RecipeBookTypeControl, SharedControlRequests, SharedSnapshot, SharedWorld,
 };
