@@ -5413,7 +5413,7 @@ mod tests {
                     },
                     description: "Song".to_string(),
                     description_styled: Some(plain_runs("Song").into_boxed_slice()),
-                    description_nbt: None,
+                    description_nbt: Some(Box::new(NbtSummaryValue::String("Song".to_string(),))),
                     length_in_seconds_bits: 120.0f32.to_bits(),
                     comparator_output: 15,
                 })),
