@@ -1,7 +1,6 @@
-use crate::{
-    chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
-    WorldStore,
-};
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
+
+use crate::WorldStore;
 
 use super::normalize_codec_identifier;
 
@@ -62,7 +61,7 @@ pub(crate) struct SoundVariantProjectionError {
 
 impl WorldStore {
     /// Decodes a synchronized sound-variant element in current server holder order.
-    /// Known-pack stubs remain `None` so the consumer can apply source-aware fallback.
+    /// Unresolved data-less stubs remain `None` so the consumer can apply source-aware fallback.
     pub(crate) fn synchronized_sound_variant_death_sound(
         &self,
         registry: &str,
@@ -72,38 +71,33 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(registry, holder_id) else {
             return Ok(None);
         };
-        let Some(raw_data) = entry.raw_data() else {
+        let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_sound_variant_death_sound(registry, raw_data, baby).map(Some)
+        decode_sound_variant_death_sound(registry, &data.value, baby).map(Some)
     }
 }
 
 fn decode_sound_variant_death_sound(
     registry: &str,
-    raw_data: &[u8],
+    value: &NbtSummaryValue,
     baby: bool,
 ) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
-    let root = decode_nbt_root(raw_data)
-        .map_err(|_| error("<root>", "invalid NBT"))?
-        .ok_or_else(|| error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(error("<root>", "expected compound"));
     };
     match registry {
-        COW_SOUND_VARIANT_REGISTRY => decode_sound_set(&fields, COW_SOUND_FIELDS, ""),
-        CAT_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(&fields, CAT_SOUND_FIELDS, baby),
-        CHICKEN_SOUND_VARIANT_REGISTRY => {
-            decode_age_sound_sets(&fields, CHICKEN_SOUND_FIELDS, baby)
-        }
-        PIG_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(&fields, PIG_SOUND_FIELDS, baby),
-        WOLF_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(&fields, WOLF_SOUND_FIELDS, baby),
+        COW_SOUND_VARIANT_REGISTRY => decode_sound_set(fields, COW_SOUND_FIELDS, ""),
+        CAT_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, CAT_SOUND_FIELDS, baby),
+        CHICKEN_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, CHICKEN_SOUND_FIELDS, baby),
+        PIG_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, PIG_SOUND_FIELDS, baby),
+        WOLF_SOUND_VARIANT_REGISTRY => decode_age_sound_sets(fields, WOLF_SOUND_FIELDS, baby),
         _ => Err(error("<registry>", "unsupported sound-variant registry")),
     }
 }
 
 fn decode_age_sound_sets(
-    fields: &[(String, NbtValue)],
+    fields: &[NbtSummaryEntry],
     required_sound_fields: &[&str],
     baby: bool,
 ) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
@@ -115,14 +109,14 @@ fn decode_age_sound_sets(
 }
 
 fn decode_sound_set(
-    fields: &[(String, NbtValue)],
+    fields: &[NbtSummaryEntry],
     required_sound_fields: &[&str],
     prefix: &str,
 ) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
     let mut death_sound = None;
     for field in required_sound_fields {
         let path = field_path(prefix, field);
-        let value = find_nbt_entry(fields, field)
+        let value = field_value(fields, field)
             .ok_or_else(|| error(path.clone(), "missing required field"))?;
         let sound = decode_sound_event_holder(value, &path)?;
         if *field == "death_sound" {
@@ -133,24 +127,24 @@ fn decode_sound_set(
 }
 
 fn decode_sound_event_holder(
-    value: &NbtValue,
+    value: &NbtSummaryValue,
     field: &str,
 ) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
     match value {
-        NbtValue::String(resource_id) => Ok(RegistrySoundEvent::Named {
+        NbtSummaryValue::String(resource_id) => Ok(RegistrySoundEvent::Named {
             resource_id: normalize_codec_identifier(resource_id)
                 .ok_or_else(|| error(field, "invalid sound event identifier"))?,
         }),
-        NbtValue::Compound(fields) => {
+        NbtSummaryValue::Compound(fields) => {
             let sound_id_field = field_path(field, "sound_id");
-            let sound_id = match find_nbt_entry(fields, "sound_id") {
-                Some(NbtValue::String(sound_id)) => normalize_codec_identifier(sound_id)
+            let sound_id = match field_value(fields, "sound_id") {
+                Some(NbtSummaryValue::String(sound_id)) => normalize_codec_identifier(sound_id)
                     .ok_or_else(|| error(&sound_id_field, "invalid sound event identifier"))?,
                 Some(_) => return Err(error(sound_id_field, "expected string")),
                 None => return Err(error(sound_id_field, "missing required field")),
             };
             let range_field = field_path(field, "range");
-            let fixed_range = match find_nbt_entry(fields, "range") {
+            let fixed_range = match field_value(fields, "range") {
                 Some(value) => Some(
                     nbt_float(value).ok_or_else(|| error(range_field, "expected numeric range"))?,
                 ),
@@ -166,27 +160,34 @@ fn decode_sound_event_holder(
 }
 
 fn required_compound<'a>(
-    fields: &'a [(String, NbtValue)],
+    fields: &'a [NbtSummaryEntry],
     field: &str,
     path: &str,
-) -> Result<&'a [(String, NbtValue)], SoundVariantProjectionError> {
-    match find_nbt_entry(fields, field) {
-        Some(NbtValue::Compound(fields)) => Ok(fields),
+) -> Result<&'a [NbtSummaryEntry], SoundVariantProjectionError> {
+    match field_value(fields, field) {
+        Some(NbtSummaryValue::Compound(fields)) => Ok(fields),
         Some(_) => Err(error(path, "expected compound")),
         None => Err(error(path, "missing required field")),
     }
 }
 
-fn nbt_float(value: &NbtValue) -> Option<f32> {
+fn nbt_float(value: &NbtSummaryValue) -> Option<f32> {
     match value {
-        NbtValue::Byte(value) => Some(f32::from(*value)),
-        NbtValue::Short(value) => Some(f32::from(*value)),
-        NbtValue::Int(value) => Some(*value as f32),
-        NbtValue::Long(value) => Some(*value as f32),
-        NbtValue::Float(value) => Some(*value),
-        NbtValue::Double(value) => Some(*value as f32),
+        NbtSummaryValue::Byte(value) => Some(f32::from(*value)),
+        NbtSummaryValue::Short(value) => Some(f32::from(*value)),
+        NbtSummaryValue::Int(value) => Some(*value as f32),
+        NbtSummaryValue::Long(value) => Some(*value as f32),
+        NbtSummaryValue::Float(bits) => Some(f32::from_bits(*bits)),
+        NbtSummaryValue::Double(bits) => Some(f64::from_bits(*bits) as f32),
         _ => None,
     }
+}
+
+fn field_value<'a>(fields: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    fields
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
 }
 
 fn field_path(prefix: &str, field: &str) -> String {
@@ -222,7 +223,7 @@ mod tests {
         for (registry, fields, age_sets) in cases {
             let raw_data = sound_variant_nbt(fields, age_sets);
             assert_eq!(
-                decode_sound_variant_death_sound(registry, &raw_data, false).unwrap(),
+                decode_sound_variant_death_sound_nbt(registry, &raw_data, false).unwrap(),
                 RegistrySoundEvent::Named {
                     resource_id: "minecraft:entity.example.adult_death".to_string(),
                 }
@@ -238,10 +239,32 @@ mod tests {
                 }
             };
             assert_eq!(
-                decode_sound_variant_death_sound(registry, &raw_data, true).unwrap(),
+                decode_sound_variant_death_sound_nbt(registry, &raw_data, true).unwrap(),
                 expected_baby
             );
         }
+    }
+
+    #[test]
+    fn decodes_known_pack_json_through_the_same_sound_variant_projection() {
+        let data = super::super::element_value::decode_known_pack_element(
+            br#"{
+                "ambient_sound": "example:ambient",
+                "hurt_sound": "example:hurt",
+                "death_sound": {"sound_id": "example:death", "range": 24.0},
+                "step_sound": "example:step"
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            decode_sound_variant_death_sound(COW_SOUND_VARIANT_REGISTRY, &data.value, false)
+                .unwrap(),
+            RegistrySoundEvent::Direct {
+                location: "example:death".to_string(),
+                fixed_range: Some(24.0),
+            }
+        );
     }
 
     #[test]
@@ -254,7 +277,7 @@ mod tests {
             .unwrap();
         missing_field[offset + 2] = b'x';
         assert_eq!(
-            decode_sound_variant_death_sound(
+            decode_sound_variant_death_sound_nbt(
                 CHICKEN_SOUND_VARIANT_REGISTRY,
                 &missing_field,
                 false,
@@ -274,7 +297,7 @@ mod tests {
             .unwrap();
         invalid_identifier[offset] = b'E';
         assert_eq!(
-            decode_sound_variant_death_sound(
+            decode_sound_variant_death_sound_nbt(
                 COW_SOUND_VARIANT_REGISTRY,
                 &invalid_identifier,
                 false,
@@ -352,6 +375,15 @@ mod tests {
         }
         out.push(0);
         out
+    }
+
+    fn decode_sound_variant_death_sound_nbt(
+        registry: &str,
+        raw_data: &[u8],
+        baby: bool,
+    ) -> Result<RegistrySoundEvent, SoundVariantProjectionError> {
+        let data = super::super::element_value::decode_network_element(raw_data).unwrap();
+        decode_sound_variant_death_sound(registry, &data.value, baby)
     }
 
     fn write_sound_set(out: &mut Vec<u8>, fields: &[&str], baby: bool) {

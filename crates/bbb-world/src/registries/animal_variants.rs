@@ -1,7 +1,6 @@
-use crate::{
-    chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
-    WorldStore,
-};
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
+
+use crate::WorldStore;
 
 use super::normalize_codec_identifier;
 
@@ -117,7 +116,7 @@ pub struct ZombieNautilusVariantProjectionError {
 
 impl WorldStore {
     /// Decodes a synchronized chicken/cow/pig variant element in current server holder order.
-    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    /// Unresolved data-less stubs remain `None`; fallback stays consumer-owned by entry identity.
     pub fn synchronized_farm_animal_variant_presentation(
         &self,
         registry: &str,
@@ -127,14 +126,14 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(registry, holder_id) else {
             return Ok(None);
         };
-        let Some(raw_data) = entry.raw_data() else {
+        let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_farm_animal_variant(registry, raw_data).map(Some)
+        decode_farm_animal_variant_value(registry, &data.value).map(Some)
     }
 
     /// Decodes a synchronized cat variant element in current server holder order.
-    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    /// Unresolved data-less stubs remain `None`; fallback stays consumer-owned by entry identity.
     pub fn synchronized_cat_variant_presentation(
         &self,
         holder_id: i32,
@@ -142,14 +141,14 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(CAT_VARIANT_REGISTRY, holder_id) else {
             return Ok(None);
         };
-        let Some(raw_data) = entry.raw_data() else {
+        let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_cat_variant(raw_data).map(Some)
+        decode_cat_variant_value(&data.value).map(Some)
     }
 
     /// Decodes a synchronized frog variant element in current server holder order.
-    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    /// Unresolved data-less stubs remain `None`; fallback stays consumer-owned by entry identity.
     pub fn synchronized_frog_variant_presentation(
         &self,
         holder_id: i32,
@@ -157,14 +156,14 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(FROG_VARIANT_REGISTRY, holder_id) else {
             return Ok(None);
         };
-        let Some(raw_data) = entry.raw_data() else {
+        let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_frog_variant(raw_data).map(Some)
+        decode_frog_variant_value(&data.value).map(Some)
     }
 
     /// Decodes a synchronized wolf variant in current server holder order.
-    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    /// Unresolved data-less stubs remain `None`; fallback stays consumer-owned by entry identity.
     pub fn synchronized_wolf_variant_presentation(
         &self,
         holder_id: i32,
@@ -172,14 +171,14 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(WOLF_VARIANT_REGISTRY, holder_id) else {
             return Ok(None);
         };
-        let Some(raw_data) = entry.raw_data() else {
+        let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_wolf_variant(raw_data).map(Some)
+        decode_wolf_variant_value(&data.value).map(Some)
     }
 
     /// Decodes a synchronized zombie-nautilus variant in current server holder order.
-    /// Known-pack stubs remain `None`; their built-in presentation is selected by entry identity.
+    /// Unresolved data-less stubs remain `None`; fallback stays consumer-owned by entry identity.
     pub fn synchronized_zombie_nautilus_variant_presentation(
         &self,
         holder_id: i32,
@@ -190,32 +189,29 @@ impl WorldStore {
         else {
             return Ok(None);
         };
-        let Some(raw_data) = entry.raw_data() else {
+        let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_zombie_nautilus_variant(raw_data).map(Some)
+        decode_zombie_nautilus_variant_value(&data.value).map(Some)
     }
 }
 
-fn decode_farm_animal_variant(
+fn decode_farm_animal_variant_value(
     registry: &str,
-    raw_data: &[u8],
+    value: &NbtSummaryValue,
 ) -> Result<FarmAnimalVariantPresentation, FarmAnimalVariantProjectionError> {
     ensure_supported_registry(registry)?;
-    let root = decode_nbt_root(raw_data)
-        .map_err(|_| error("<root>", "invalid NBT"))?
-        .ok_or_else(|| error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(error("<root>", "expected compound"));
     };
 
-    let model = match find_nbt_entry(&fields, "model") {
+    let model = match field_value(fields, "model") {
         None => FarmAnimalVariantModel::Normal,
-        Some(NbtValue::String(model)) => decode_model(registry, model)?,
+        Some(NbtSummaryValue::String(model)) => decode_model(registry, model)?,
         Some(_) => return Err(error("model", "expected string")),
     };
-    let (adult_asset_id, adult_texture_path) = decode_resource_texture(&fields, "asset_id")?;
-    let (baby_asset_id, baby_texture_path) = decode_resource_texture(&fields, "baby_asset_id")?;
+    let (adult_asset_id, adult_texture_path) = decode_resource_texture(fields, "asset_id")?;
+    let (baby_asset_id, baby_texture_path) = decode_resource_texture(fields, "baby_asset_id")?;
 
     Ok(FarmAnimalVariantPresentation {
         model,
@@ -226,19 +222,16 @@ fn decode_farm_animal_variant(
     })
 }
 
-fn decode_cat_variant(
-    raw_data: &[u8],
+fn decode_cat_variant_value(
+    value: &NbtSummaryValue,
 ) -> Result<CatVariantPresentation, CatVariantProjectionError> {
-    let root = decode_nbt_root(raw_data)
-        .map_err(|_| cat_error("<root>", "invalid NBT"))?
-        .ok_or_else(|| cat_error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(cat_error("<root>", "expected compound"));
     };
 
     let (adult_asset_id, adult_texture_path) =
-        decode_resource_texture(&fields, "asset_id").map_err(CatVariantProjectionError::from)?;
-    let (baby_asset_id, baby_texture_path) = decode_resource_texture(&fields, "baby_asset_id")
+        decode_resource_texture(fields, "asset_id").map_err(CatVariantProjectionError::from)?;
+    let (baby_asset_id, baby_texture_path) = decode_resource_texture(fields, "baby_asset_id")
         .map_err(CatVariantProjectionError::from)?;
     Ok(CatVariantPresentation {
         adult_asset_id,
@@ -248,46 +241,40 @@ fn decode_cat_variant(
     })
 }
 
-fn decode_frog_variant(
-    raw_data: &[u8],
+fn decode_frog_variant_value(
+    value: &NbtSummaryValue,
 ) -> Result<FrogVariantPresentation, FrogVariantProjectionError> {
-    let root = decode_nbt_root(raw_data)
-        .map_err(|_| frog_error("<root>", "invalid NBT"))?
-        .ok_or_else(|| frog_error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(frog_error("<root>", "expected compound"));
     };
 
     let (asset_id, texture_path) =
-        decode_resource_texture(&fields, "asset_id").map_err(FrogVariantProjectionError::from)?;
+        decode_resource_texture(fields, "asset_id").map_err(FrogVariantProjectionError::from)?;
     Ok(FrogVariantPresentation {
         asset_id,
         texture_path,
     })
 }
 
-fn decode_wolf_variant(
-    raw_data: &[u8],
+fn decode_wolf_variant_value(
+    value: &NbtSummaryValue,
 ) -> Result<WolfVariantPresentation, WolfVariantProjectionError> {
-    let root = decode_nbt_root(raw_data)
-        .map_err(|_| wolf_error("<root>", "invalid NBT"))?
-        .ok_or_else(|| wolf_error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(wolf_error("<root>", "expected compound"));
     };
 
     Ok(WolfVariantPresentation {
-        adult: decode_wolf_asset_presentation(&fields, "assets")?,
-        baby: decode_wolf_asset_presentation(&fields, "baby_assets")?,
+        adult: decode_wolf_asset_presentation(fields, "assets")?,
+        baby: decode_wolf_asset_presentation(fields, "baby_assets")?,
     })
 }
 
 fn decode_wolf_asset_presentation(
-    fields: &[(String, NbtValue)],
+    fields: &[NbtSummaryEntry],
     field: &str,
 ) -> Result<WolfVariantAssetPresentation, WolfVariantProjectionError> {
-    let asset_fields = match find_nbt_entry(fields, field) {
-        Some(NbtValue::Compound(asset_fields)) => asset_fields,
+    let asset_fields = match field_value(fields, field) {
+        Some(NbtSummaryValue::Compound(asset_fields)) => asset_fields,
         Some(_) => return Err(wolf_error(field, "expected compound")),
         None => return Err(wolf_error(field, "missing required field")),
     };
@@ -308,28 +295,27 @@ fn decode_wolf_asset_presentation(
     })
 }
 
-fn decode_zombie_nautilus_variant(
-    raw_data: &[u8],
+fn decode_zombie_nautilus_variant_value(
+    value: &NbtSummaryValue,
 ) -> Result<ZombieNautilusVariantPresentation, ZombieNautilusVariantProjectionError> {
-    let root = decode_nbt_root(raw_data)
-        .map_err(|_| zombie_nautilus_error("<root>", "invalid NBT"))?
-        .ok_or_else(|| zombie_nautilus_error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(zombie_nautilus_error("<root>", "expected compound"));
     };
 
-    let model = match find_nbt_entry(&fields, "model") {
+    let model = match field_value(fields, "model") {
         None => ZombieNautilusVariantModelType::Normal,
-        Some(NbtValue::String(model)) if model == "normal" => {
+        Some(NbtSummaryValue::String(model)) if model == "normal" => {
             ZombieNautilusVariantModelType::Normal
         }
-        Some(NbtValue::String(model)) if model == "warm" => ZombieNautilusVariantModelType::Warm,
-        Some(NbtValue::String(_)) => {
+        Some(NbtSummaryValue::String(model)) if model == "warm" => {
+            ZombieNautilusVariantModelType::Warm
+        }
+        Some(NbtSummaryValue::String(_)) => {
             return Err(zombie_nautilus_error("model", "unknown model type"));
         }
         Some(_) => return Err(zombie_nautilus_error("model", "expected string")),
     };
-    let (asset_id, texture_path) = decode_resource_texture(&fields, "asset_id")
+    let (asset_id, texture_path) = decode_resource_texture(fields, "asset_id")
         .map_err(ZombieNautilusVariantProjectionError::from)?;
     Ok(ZombieNautilusVariantPresentation {
         model,
@@ -358,11 +344,11 @@ fn decode_model(
 }
 
 fn decode_resource_texture(
-    fields: &[(String, NbtValue)],
+    fields: &[NbtSummaryEntry],
     field: &str,
 ) -> Result<(String, String), ResourceTextureProjectionError> {
-    let raw_asset_id = match find_nbt_entry(fields, field) {
-        Some(NbtValue::String(asset_id)) => asset_id,
+    let raw_asset_id = match field_value(fields, field) {
+        Some(NbtSummaryValue::String(asset_id)) => asset_id,
         Some(_) => return Err(resource_texture_error(field, "expected string")),
         None => return Err(resource_texture_error(field, "missing required field")),
     };
@@ -373,6 +359,13 @@ fn decode_resource_texture(
         .expect("normalized identifier always has a namespace");
     let texture_path = format!("{namespace}:textures/{path}.png");
     Ok((asset_id, texture_path))
+}
+
+fn field_value<'a>(fields: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    fields
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -475,6 +468,49 @@ fn zombie_nautilus_error(
 }
 
 #[cfg(test)]
+fn decode_test_element(raw_data: &[u8]) -> NbtSummaryValue {
+    super::element_value::decode_network_element(raw_data)
+        .unwrap()
+        .value
+}
+
+#[cfg(test)]
+fn decode_farm_animal_variant(
+    registry: &str,
+    raw_data: &[u8],
+) -> Result<FarmAnimalVariantPresentation, FarmAnimalVariantProjectionError> {
+    decode_farm_animal_variant_value(registry, &decode_test_element(raw_data))
+}
+
+#[cfg(test)]
+fn decode_cat_variant(
+    raw_data: &[u8],
+) -> Result<CatVariantPresentation, CatVariantProjectionError> {
+    decode_cat_variant_value(&decode_test_element(raw_data))
+}
+
+#[cfg(test)]
+fn decode_frog_variant(
+    raw_data: &[u8],
+) -> Result<FrogVariantPresentation, FrogVariantProjectionError> {
+    decode_frog_variant_value(&decode_test_element(raw_data))
+}
+
+#[cfg(test)]
+fn decode_wolf_variant(
+    raw_data: &[u8],
+) -> Result<WolfVariantPresentation, WolfVariantProjectionError> {
+    decode_wolf_variant_value(&decode_test_element(raw_data))
+}
+
+#[cfg(test)]
+fn decode_zombie_nautilus_variant(
+    raw_data: &[u8],
+) -> Result<ZombieNautilusVariantPresentation, ZombieNautilusVariantProjectionError> {
+    decode_zombie_nautilus_variant_value(&decode_test_element(raw_data))
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::RegistryPacketEntry;
@@ -520,6 +556,29 @@ mod tests {
             .unwrap()
             .model,
             FarmAnimalVariantModel::Cold
+        );
+    }
+
+    #[test]
+    fn decodes_known_pack_json_through_the_same_farm_variant_projection() {
+        let data = super::super::element_value::decode_known_pack_element(
+            br#"{
+                "model": "warm",
+                "asset_id": "example:cattle/adult",
+                "baby_asset_id": "example:cattle/baby"
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            decode_farm_animal_variant_value(COW_VARIANT_REGISTRY, &data.value).unwrap(),
+            FarmAnimalVariantPresentation {
+                model: FarmAnimalVariantModel::Warm,
+                adult_asset_id: "example:cattle/adult".to_string(),
+                adult_texture_path: "example:textures/cattle/adult.png".to_string(),
+                baby_asset_id: "example:cattle/baby".to_string(),
+                baby_texture_path: "example:textures/cattle/baby.png".to_string(),
+            }
         );
     }
 
