@@ -14,5 +14,6 @@ pub use snapshot::{
     ControlRequests, ControlSnapshot, ControlState, CreativeModeItemStackControl,
     CreativeModeSlotControlRequest, DifficultyControl, GameModeControl,
     HashedComponentPatchControl, HashedStackControl, InputControlRequest, InputKeyControl,
-    NetControlRequest, RecipeBookTypeControl, SharedControlRequests, SharedSnapshot, SharedWorld,
+    InputMouseButtonControl, NetControlRequest, RecipeBookTypeControl, SharedControlRequests,
+    SharedSnapshot, SharedWorld,
 };

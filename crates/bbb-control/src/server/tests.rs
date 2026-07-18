@@ -1054,6 +1054,45 @@ fn input_key_queues_request() {
 }
 
 #[test]
+fn input_mouse_button_queues_request() {
+    let state = ControlState::new("test");
+    let response = dispatch(
+        ControlRequest {
+            method: "input.mouse_button".to_string(),
+            params: json!({"button": "left", "pressed": true}),
+        },
+        &state,
+    );
+
+    assert!(response.ok);
+    assert_eq!(
+        state.requests.lock().unwrap().input_requests,
+        vec![InputControlRequest::MouseButton {
+            button: InputMouseButtonControl::Left,
+            pressed: true,
+        }]
+    );
+
+    let unknown_button = dispatch(
+        ControlRequest {
+            method: "input.mouse_button".to_string(),
+            params: json!({"button": "back", "pressed": true}),
+        },
+        &state,
+    );
+    assert!(!unknown_button.ok);
+
+    let missing_pressed = dispatch(
+        ControlRequest {
+            method: "input.mouse_button".to_string(),
+            params: json!({"button": "right"}),
+        },
+        &state,
+    );
+    assert!(!missing_pressed.ok);
+}
+
+#[test]
 fn input_look_delta_queues_request() {
     let state = ControlState::new("test");
     let response = dispatch(

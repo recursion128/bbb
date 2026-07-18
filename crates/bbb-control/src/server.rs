@@ -14,7 +14,7 @@ use crate::types::{
     AppStatus, CodeOfConductControlRequest, ContainerClickControlRequest,
     ContainerClickSlotControlRequest, ControlRequest, ControlResponse, ControlSnapshot,
     ControlState, CreativeModeSlotControlRequest, InputControlRequest, InputKeyControl,
-    NetControlRequest, SharedSnapshot,
+    InputMouseButtonControl, NetControlRequest, SharedSnapshot,
 };
 
 mod params;
@@ -521,6 +521,39 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         requests_guard
             .input_requests
             .push(InputControlRequest::Key { key, pressed });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": requests_guard.input_requests.len()
+            })),
+            error: None,
+        };
+    }
+
+    if request.method == "input.mouse_button" {
+        let Some(button) =
+            string_param(&request.params, "button").and_then(InputMouseButtonControl::from_name)
+        else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some(
+                    "input.mouse_button requires param button in left/right/middle".to_string(),
+                ),
+            };
+        };
+        let Some(pressed) = bool_param(&request.params, "pressed") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("input.mouse_button requires boolean param pressed".to_string()),
+            };
+        };
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
+            .input_requests
+            .push(InputControlRequest::MouseButton { button, pressed });
         return ControlResponse {
             ok: true,
             result: Some(serde_json::json!({

@@ -131,9 +131,42 @@ pub enum NetControlRequest {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum InputControlRequest {
-    Focus { focused: bool },
-    Key { key: InputKeyControl, pressed: bool },
-    LookDelta { dx: f64, dy: f64 },
+    Focus {
+        focused: bool,
+    },
+    Key {
+        key: InputKeyControl,
+        pressed: bool,
+    },
+    LookDelta {
+        dx: f64,
+        dy: f64,
+    },
+    MouseButton {
+        button: InputMouseButtonControl,
+        pressed: bool,
+    },
+}
+
+/// In-world mouse buttons the control API can drive; replayed through the
+/// gameplay click handler only while no screen owns the cursor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InputMouseButtonControl {
+    Left,
+    Right,
+    Middle,
+}
+
+impl InputMouseButtonControl {
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "left" => Some(Self::Left),
+            "right" => Some(Self::Right),
+            "middle" => Some(Self::Middle),
+            _ => None,
+        }
+    }
 }
 
 /// Semantic movement keys the control API can drive; the native runtime maps

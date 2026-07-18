@@ -2132,6 +2132,7 @@ pub(crate) fn pump_network_and_terrain(
         item_runtime,
         code_of_conduct_overlay_visible,
         surface_size,
+        client_animation_ticks.entity_partial_tick(),
     );
     let now = Instant::now();
     hud_debug_fps_sampler.record_frame(now);

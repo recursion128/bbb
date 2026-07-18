@@ -2,7 +2,8 @@ use bbb_control::{
     CodeOfConductControlRequest, ContainerClickControlRequest, ContainerInputControl,
     CreativeModeItemStackControl, CreativeModeSlotControlRequest, DifficultyControl,
     GameModeControl, HashedComponentPatchControl, HashedStackControl, InputControlRequest,
-    InputKeyControl, NetControlRequest, NetCounters, RecipeBookTypeControl, SharedControlRequests,
+    InputKeyControl, InputMouseButtonControl, NetControlRequest, NetCounters,
+    RecipeBookTypeControl, SharedControlRequests,
 };
 use bbb_net::NetCommand;
 use bbb_protocol::packets::{
@@ -17,7 +18,7 @@ use tokio::sync::mpsc;
 
 use winit::{
     dpi::PhysicalSize,
-    event::ElementState,
+    event::{ElementState, MouseButton},
     keyboard::{KeyCode, PhysicalKey},
 };
 
@@ -40,8 +41,8 @@ use crate::{
 };
 use crate::{
     input::{
-        handle_focus_change, handle_key_input_with_item_runtime, handle_mouse_motion,
-        ClientInputState,
+        handle_focus_change, handle_key_input_with_item_runtime,
+        handle_mouse_input_at_partial_tick, handle_mouse_motion, ClientInputState,
     },
     NativeItemRuntime,
 };
@@ -62,6 +63,7 @@ pub(crate) fn pump_control_input_requests(
     item_runtime: Option<&NativeItemRuntime>,
     code_of_conduct_overlay_visible: bool,
     surface_size: PhysicalSize<u32>,
+    entity_partial_tick: f32,
 ) {
     let input_requests = control_requests
         .lock()
@@ -98,7 +100,41 @@ pub(crate) fn pump_control_input_requests(
                 }
                 handle_mouse_motion(input, (dx, dy));
             }
+            InputControlRequest::MouseButton { button, pressed } => {
+                // Screens own the cursor through their dedicated handlers (and
+                // the container path has its own net.container_* surface), so
+                // synthetic gameplay clicks only replay while the world owns
+                // the cursor -- mirroring the real captured-cursor click path.
+                if super::input_screen_is_open(input, world)
+                    || input.command_entry_is_active()
+                    || input.debug_game_mode_switcher_is_open()
+                {
+                    continue;
+                }
+                let state = if pressed {
+                    ElementState::Pressed
+                } else {
+                    ElementState::Released
+                };
+                handle_mouse_input_at_partial_tick(
+                    input,
+                    world,
+                    counters,
+                    net_commands,
+                    input_mouse_button(button),
+                    state,
+                    entity_partial_tick,
+                );
+            }
         }
+    }
+}
+
+fn input_mouse_button(button: InputMouseButtonControl) -> MouseButton {
+    match button {
+        InputMouseButtonControl::Left => MouseButton::Left,
+        InputMouseButtonControl::Right => MouseButton::Right,
+        InputMouseButtonControl::Middle => MouseButton::Middle,
     }
 }
 
@@ -563,6 +599,7 @@ mod tests {
             None,
             false,
             PhysicalSize::new(1280, 720),
+            1.0,
         );
 
         assert!(requests.lock().unwrap().input_requests.is_empty());
@@ -588,6 +625,7 @@ mod tests {
             None,
             false,
             PhysicalSize::new(1280, 720),
+            1.0,
         );
         assert!(!input.local_player_input().forward);
     }
@@ -616,10 +654,47 @@ mod tests {
             None,
             true,
             PhysicalSize::new(1280, 720),
+            1.0,
         );
 
         assert!(requests.lock().unwrap().input_requests.is_empty());
         assert!(!input.local_player_input().jump);
+    }
+
+    #[test]
+    fn pump_control_input_requests_replays_clicks_through_the_real_mouse_handler() {
+        let requests = bbb_control::SharedControlRequests::default();
+        {
+            let mut guard = requests.lock().unwrap();
+            guard
+                .input_requests
+                .push(InputControlRequest::Focus { focused: true });
+            guard.input_requests.push(InputControlRequest::MouseButton {
+                button: InputMouseButtonControl::Left,
+                pressed: true,
+            });
+        }
+        let (tx, mut rx) = tokio::sync::mpsc::channel(8);
+        let mut input = ClientInputState::new(false);
+        let mut world = WorldStore::new();
+        let mut counters = NetCounters::default();
+
+        pump_control_input_requests(
+            &requests,
+            &mut input,
+            &mut counters,
+            &mut world,
+            &Some(tx),
+            None,
+            false,
+            PhysicalSize::new(1280, 720),
+            1.0,
+        );
+
+        // An empty world has no crosshair block/entity target, so the real
+        // click path queues exactly the vanilla attack swing.
+        assert_eq!(counters.swing_commands_queued, 1);
+        assert!(matches!(rx.try_recv(), Ok(NetCommand::Swing(_))));
     }
 
     #[test]
