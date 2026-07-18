@@ -55,6 +55,7 @@ url = "2"
 uuid = { version = "1", features = ["serde"] }
 wgpu = "0.19"
 winit = "0.29"
+zip = { version = "2.4.2", default-features = false, features = ["deflate-flate2", "flate2"] }
 
 [workspace.lints.rust]
 # deny-warnings lives here (not in RUSTFLAGS) so gate and daily focused tests

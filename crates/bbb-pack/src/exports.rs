@@ -40,6 +40,10 @@ pub use crate::particle_sprites::ParticleSpriteCatalog;
 pub use crate::resource_textures::ResourceTextureImage;
 pub use crate::resources::{PackResource, PackResourceStack, ResourceLocation};
 pub use crate::roots::{PackRoots, DEFAULT_MC_CODE_ROOT, MC_VERSION};
+pub use crate::server_pack::{
+    materialize_server_pack_archive, ServerPackArchiveLimits, ServerPackFormat,
+    ServerPackFormatRange, ServerPackMaterialization,
+};
 pub use crate::sound_event_registry::SoundEventRegistry;
 pub use crate::sounds::{SoundCatalog, SoundEntry, SoundEntryKind, SoundEventDefinition};
 pub use crate::sprites::{
