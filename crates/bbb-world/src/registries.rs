@@ -62,7 +62,8 @@ pub use jukebox_songs::{
     JukeboxSongPresentation, JukeboxSongProjectionError, JukeboxSoundEvent, JUKEBOX_SONG_REGISTRY,
 };
 pub use painting_variants::{
-    PaintingVariantClientProjection, PaintingVariantProjectionError, PAINTING_VARIANT_REGISTRY,
+    painting_variant_translation_key, PaintingVariantClientProjection, PaintingVariantPresentation,
+    PaintingVariantProjectionError, PAINTING_VARIANT_REGISTRY,
 };
 pub(crate) use sound_variants::{
     RegistrySoundEvent, CAT_SOUND_VARIANT_REGISTRY, CHICKEN_SOUND_VARIANT_REGISTRY,

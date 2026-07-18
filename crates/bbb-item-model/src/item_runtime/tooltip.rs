@@ -31,11 +31,12 @@ use bbb_render_types::BannerPatternKind;
 use bbb_world::VANILLA_PAINTING_VARIANTS;
 use bbb_world::{
     direct_banner_pattern_presentation, direct_trim_material_presentation,
-    direct_trim_pattern_presentation, vanilla_painting_variant, BannerPatternPresentation,
-    EnchantmentAttributeModifier, EnchantmentTooltipDefinition, JukeboxSongPresentation,
-    RegistrySet, TrimMaterialPresentation, TrimPatternPresentation, VanillaEnchantmentIdentity,
-    VanillaInstrumentIdentity, VanillaPaintingVariant, VanillaTrimMaterialIdentity,
-    VanillaTrimPatternIdentity, VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
+    direct_trim_pattern_presentation, painting_variant_translation_key, vanilla_painting_variant,
+    BannerPatternPresentation, EnchantmentAttributeModifier, EnchantmentTooltipDefinition,
+    JukeboxSongPresentation, PaintingVariantPresentation, RegistrySet, TrimMaterialPresentation,
+    TrimPatternPresentation, VanillaEnchantmentIdentity, VanillaInstrumentIdentity,
+    VanillaPaintingVariant, VanillaTrimMaterialIdentity, VanillaTrimPatternIdentity,
+    VANILLA_ENCHANTMENT_TOOLTIP_ORDER,
 };
 
 use super::icon_model::effective_attribute_modifiers;
@@ -162,6 +163,7 @@ pub struct NativeItemTooltipOptions<'a> {
     pub jukebox_song_presentations: Option<&'a [Option<JukeboxSongPresentation>]>,
     pub banner_pattern_keys: Option<&'a [String]>,
     pub banner_pattern_presentations: Option<&'a [Option<BannerPatternPresentation>]>,
+    pub painting_variant_presentations: Option<&'a [Option<PaintingVariantPresentation>]>,
     pub enchantment_keys: Option<&'a [String]>,
     pub enchantment_definitions: Option<&'a [Option<EnchantmentTooltipDefinition>]>,
     pub enchantment_attribute_modifiers: Option<&'a [EnchantmentAttributeModifier]>,
@@ -715,28 +717,76 @@ fn push_item_specific_tooltip_lines(
         component_patch,
         component_id::VANILLA_DATA_COMPONENT_PAINTING_VARIANT_TYPE_ID,
     ) {
-        push_painting_tooltip_lines(language, component_patch, options.creative, lines);
+        push_painting_tooltip_lines(language, component_patch, options, lines);
     }
 }
 
 fn push_painting_tooltip_lines(
     language: &LanguageCatalog,
     component_patch: &DataComponentPatchSummary,
-    creative: bool,
+    options: NativeItemTooltipOptions<'_>,
     lines: &mut Vec<NativeItemTooltipLine>,
 ) {
     if let Some(variant) = component_patch.painting_variant_direct.as_ref() {
         push_painting_variant_tooltip_lines(language, variant, lines);
     } else if let Some(variant_id) = component_patch.painting_variant_id {
-        if let Some(variant) = vanilla_painting_variant(variant_id) {
+        if let Some(presentations) = options.painting_variant_presentations {
+            let presentation = usize::try_from(variant_id)
+                .ok()
+                .and_then(|index| presentations.get(index))
+                .and_then(Option::as_ref);
+            if let Some(presentation) = presentation {
+                push_painting_variant_presentation_tooltip_lines(language, presentation, lines);
+            }
+        } else if let Some(variant) = vanilla_painting_variant(variant_id) {
             push_vanilla_painting_variant_tooltip_lines(language, variant, lines);
         }
-    } else if creative {
+    } else if options.creative {
         lines.push(NativeItemTooltipLine::plain(
             language.get_or_key(PAINTING_RANDOM_KEY).to_string(),
             TOOLTIP_TEXT_GRAY,
         ));
     }
+}
+
+fn push_painting_variant_presentation_tooltip_lines(
+    language: &LanguageCatalog,
+    variant: &PaintingVariantPresentation,
+    lines: &mut Vec<NativeItemTooltipLine>,
+) {
+    if let Some(title_key) = variant.title_translation_key.as_deref() {
+        lines.push(colored_component_tooltip_line(
+            language.get_or_key(title_key).to_string(),
+            TOOLTIP_YELLOW_TEXT_COLOR,
+        ));
+    } else {
+        push_optional_component_tooltip_line(
+            variant.title.as_deref(),
+            Some(&variant.title_styled),
+            lines,
+        );
+    }
+    if let Some(author_key) = variant.author_translation_key.as_deref() {
+        lines.push(colored_component_tooltip_line(
+            language.get_or_key(author_key).to_string(),
+            TOOLTIP_GRAY_TEXT_COLOR,
+        ));
+    } else {
+        push_optional_component_tooltip_line(
+            variant.author.as_deref(),
+            Some(&variant.author_styled),
+            lines,
+        );
+    }
+    lines.push(NativeItemTooltipLine::plain(
+        translate_with_two_args(
+            language,
+            PAINTING_DIMENSIONS_KEY,
+            &variant.width.to_string(),
+            &variant.height.to_string(),
+        ),
+        TOOLTIP_TEXT_WHITE,
+    ));
 }
 
 fn push_vanilla_painting_variant_tooltip_lines(
@@ -847,15 +897,6 @@ fn push_operator_nbt_warning_tooltip_lines(
             }],
         });
     }
-}
-
-fn painting_variant_translation_key(key: &str, suffix: &str) -> Option<String> {
-    let (namespace, path) = key.split_once(':')?;
-    Some(format!(
-        "painting.{namespace}.{}.{}",
-        path.replace('/', "."),
-        suffix
-    ))
 }
 
 fn push_spawner_block_entity_tooltip_lines(

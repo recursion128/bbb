@@ -819,6 +819,51 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
             colored_trim_tooltip_line("Localized Opal", 0x12_34_56),
         ])
     );
+    let synchronized_paintings = vec![Some(bbb_world::PaintingVariantPresentation {
+        width: 4,
+        height: 2,
+        asset_id: "example:gallery/wide".to_string(),
+        title: Some("Custom gallery".to_string()),
+        title_styled: vec![bbb_protocol::StyledTextRun {
+            text: "Custom gallery".to_string(),
+            style: bbb_protocol::ComponentStyle {
+                color: Some(0x12_34_56),
+                ..bbb_protocol::ComponentStyle::default()
+            },
+        }],
+        title_translation_key: None,
+        author: Some("Pack author".to_string()),
+        author_styled: vec![bbb_protocol::StyledTextRun {
+            text: "Pack author".to_string(),
+            style: bbb_protocol::ComponentStyle {
+                color: Some(0x65_43_21),
+                ..bbb_protocol::ComponentStyle::default()
+            },
+        }],
+        author_translation_key: None,
+    })];
+    assert_eq!(
+        runtime.tooltip_lines_for_stack_with_context(
+            &ItemStackSummary {
+                item_id: Some(2),
+                count: 1,
+                component_patch: DataComponentPatchSummary {
+                    painting_variant_id: Some(0),
+                    ..DataComponentPatchSummary::default()
+                },
+            },
+            NativeItemTooltipOptions {
+                painting_variant_presentations: Some(&synchronized_paintings),
+                ..NativeItemTooltipOptions::default()
+            },
+        ),
+        Some(vec![
+            name_line("Painting", TOOLTIP_TEXT_WHITE, 0xFF_FF_FF, false),
+            colored_tooltip_line("Custom gallery", TOOLTIP_TEXT_WHITE, 0x12_34_56),
+            colored_tooltip_line("Pack author", TOOLTIP_TEXT_WHITE, 0x65_43_21),
+            tooltip_line("4x2", TOOLTIP_TEXT_WHITE),
+        ])
+    );
     assert_eq!(
         runtime.tooltip_lines_for_stack(&ItemStackSummary {
             item_id: Some(1),

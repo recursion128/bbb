@@ -1,7 +1,10 @@
+use bbb_protocol::{
+    decode_nbt_summary, styled_component_runs_from_nbt_value, styled_runs_summary_text,
+    validate_component_nbt, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
     painting_variants::{
         vanilla_painting_variant, vanilla_painting_variant_for_resource_id, VanillaPaintingVariant,
     },
@@ -18,6 +21,20 @@ pub struct PaintingVariantClientProjection {
     pub width: i32,
     pub height: i32,
     pub asset_id: String,
+}
+
+/// The fields consumed by painting item tooltips and entity rendering from one named holder.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PaintingVariantPresentation {
+    pub width: i32,
+    pub height: i32,
+    pub asset_id: String,
+    pub title: Option<String>,
+    pub title_styled: Vec<StyledTextRun>,
+    pub title_translation_key: Option<String>,
+    pub author: Option<String>,
+    pub author_styled: Vec<StyledTextRun>,
+    pub author_translation_key: Option<String>,
 }
 
 /// Identifies the exact `PaintingVariant.DIRECT_CODEC` field that could not be projected.
@@ -41,6 +58,18 @@ impl WorldStore {
         &self,
         holder_id: i32,
     ) -> Result<Option<PaintingVariantClientProjection>, PaintingVariantProjectionError> {
+        self.painting_variant_presentation(holder_id)
+            .map(|presentation| presentation.map(client_projection_from_presentation))
+    }
+
+    /// Resolves the complete client-consumed painting presentation through the current server
+    /// holder order. A synchronized registry is authoritative; only known vanilla data-less stubs
+    /// use their resource identity, and the fixed bootstrap order is used only when no synchronized
+    /// painting registry exists.
+    pub fn painting_variant_presentation(
+        &self,
+        holder_id: i32,
+    ) -> Result<Option<PaintingVariantPresentation>, PaintingVariantProjectionError> {
         if let Some(entry) = self.registry_entry_by_holder_id(PAINTING_VARIANT_REGISTRY, holder_id)
         {
             if let Some(raw_data) = entry.raw_data() {
@@ -49,61 +78,117 @@ impl WorldStore {
             if entry.has_data {
                 return Ok(None);
             }
-            return Ok(vanilla_painting_variant_for_resource_id(&entry.id)
-                .map(client_projection_from_vanilla));
+            return Ok(
+                vanilla_painting_variant_for_resource_id(&entry.id).map(presentation_from_vanilla)
+            );
         }
 
         if self.registry_content(PAINTING_VARIANT_REGISTRY).is_some() {
             return Ok(None);
         }
-        Ok(vanilla_painting_variant(holder_id).map(client_projection_from_vanilla))
+        Ok(vanilla_painting_variant(holder_id).map(presentation_from_vanilla))
     }
 }
 
-fn client_projection_from_vanilla(
-    variant: &VanillaPaintingVariant,
+fn client_projection_from_presentation(
+    variant: PaintingVariantPresentation,
 ) -> PaintingVariantClientProjection {
     PaintingVariantClientProjection {
         width: variant.width,
         height: variant.height,
+        asset_id: variant.asset_id,
+    }
+}
+
+fn presentation_from_vanilla(variant: &VanillaPaintingVariant) -> PaintingVariantPresentation {
+    PaintingVariantPresentation {
+        width: variant.width,
+        height: variant.height,
         asset_id: variant.resource_id.to_string(),
+        title: None,
+        title_styled: Vec::new(),
+        title_translation_key: painting_variant_translation_key(variant.resource_id, "title"),
+        author: None,
+        author_styled: Vec::new(),
+        author_translation_key: if variant.has_author {
+            painting_variant_translation_key(variant.resource_id, "author")
+        } else {
+            None
+        },
     }
 }
 
 fn decode_painting_variant(
     raw_data: &[u8],
-) -> Result<PaintingVariantClientProjection, PaintingVariantProjectionError> {
-    let root = decode_nbt_root(raw_data)
+) -> Result<PaintingVariantPresentation, PaintingVariantProjectionError> {
+    let root = decode_nbt_summary(raw_data)
         .map_err(|_| error("<root>", "invalid NBT"))?
         .ok_or_else(|| error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = root else {
         return Err(error("<root>", "expected compound"));
     };
     let width = required_size(&fields, "width")?;
     let height = required_size(&fields, "height")?;
-    let asset_id = match find_nbt_entry(&fields, "asset_id") {
-        Some(NbtValue::String(asset_id)) => normalize_codec_identifier(asset_id)
+    let asset_id = match field(&fields, "asset_id") {
+        Some(NbtSummaryValue::String(asset_id)) => normalize_codec_identifier(asset_id)
             .ok_or_else(|| error("asset_id", "invalid identifier"))?,
         Some(_) => return Err(error("asset_id", "expected string")),
         None => return Err(error("asset_id", "missing required field")),
     };
-    Ok(PaintingVariantClientProjection {
+    let (title, title_styled) = optional_component(&fields, "title")?;
+    let (author, author_styled) = optional_component(&fields, "author")?;
+    Ok(PaintingVariantPresentation {
         width,
         height,
         asset_id,
+        title,
+        title_styled,
+        title_translation_key: None,
+        author,
+        author_styled,
+        author_translation_key: None,
     })
 }
 
 fn required_size(
-    fields: &[(String, NbtValue)],
+    fields: &[NbtSummaryEntry],
     field: &str,
 ) -> Result<i32, PaintingVariantProjectionError> {
-    match find_nbt_entry(fields, field) {
-        Some(NbtValue::Int(value)) if (1..=16).contains(value) => Ok(*value),
-        Some(NbtValue::Int(_)) => Err(error(field, "integer outside 1..=16")),
+    match self::field(fields, field) {
+        Some(NbtSummaryValue::Int(value)) if (1..=16).contains(value) => Ok(*value),
+        Some(NbtSummaryValue::Int(_)) => Err(error(field, "integer outside 1..=16")),
         Some(_) => Err(error(field, "expected integer")),
         None => Err(error(field, "missing required field")),
     }
+}
+
+fn optional_component(
+    fields: &[NbtSummaryEntry],
+    name: &str,
+) -> Result<(Option<String>, Vec<StyledTextRun>), PaintingVariantProjectionError> {
+    let Some(value) = field(fields, name) else {
+        return Ok((None, Vec::new()));
+    };
+    validate_component_nbt(value, "painting variant component")
+        .map_err(|_| error(name, "invalid Component"))?;
+    let styled = styled_component_runs_from_nbt_value(value);
+    let text = styled_runs_summary_text(&styled);
+    Ok((Some(text), styled))
+}
+
+fn field<'a>(fields: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    fields
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
+}
+
+pub fn painting_variant_translation_key(resource_id: &str, suffix: &str) -> Option<String> {
+    let (namespace, path) = resource_id.split_once(':')?;
+    Some(format!(
+        "painting.{namespace}.{}.{suffix}",
+        path.replace('/', ".")
+    ))
 }
 
 fn error(field: impl Into<String>, reason: &'static str) -> PaintingVariantProjectionError {
@@ -137,6 +222,46 @@ mod tests {
                 height: 2,
                 asset_id: "example:gallery/wide".to_string(),
             })
+        );
+    }
+
+    #[test]
+    fn presentation_retains_optional_components_and_static_translation_keys() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            PAINTING_VARIANT_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                "example:wide",
+                painting_variant_nbt_with_components(
+                    4,
+                    2,
+                    "example:gallery/wide",
+                    Some("Custom title"),
+                    Some("Custom author"),
+                ),
+            )],
+        );
+
+        let presentation = store.painting_variant_presentation(0).unwrap().unwrap();
+        assert_eq!(presentation.title.as_deref(), Some("Custom title"));
+        assert_eq!(presentation.author.as_deref(), Some("Custom author"));
+        assert_eq!(presentation.title_styled[0].text, "Custom title");
+        assert_eq!(presentation.author_styled[0].text, "Custom author");
+        assert_eq!(presentation.title_translation_key, None);
+        assert_eq!(presentation.author_translation_key, None);
+
+        let vanilla = WorldStore::new()
+            .painting_variant_presentation(0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            vanilla.title_translation_key.as_deref(),
+            Some("painting.minecraft.kebab.title")
+        );
+        assert_eq!(
+            vanilla.author_translation_key.as_deref(),
+            Some("painting.minecraft.kebab.author")
         );
     }
 
@@ -195,10 +320,26 @@ mod tests {
     }
 
     fn painting_variant_nbt(width: i32, height: i32, asset_id: &str) -> Vec<u8> {
+        painting_variant_nbt_with_components(width, height, asset_id, None, None)
+    }
+
+    fn painting_variant_nbt_with_components(
+        width: i32,
+        height: i32,
+        asset_id: &str,
+        title: Option<&str>,
+        author: Option<&str>,
+    ) -> Vec<u8> {
         let mut out = vec![10];
         write_int(&mut out, "width", width);
         write_int(&mut out, "height", height);
         write_string(&mut out, "asset_id", asset_id);
+        if let Some(title) = title {
+            write_string(&mut out, "title", title);
+        }
+        if let Some(author) = author {
+            write_string(&mut out, "author", author);
+        }
         out.push(0);
         out
     }

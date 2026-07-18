@@ -221,6 +221,26 @@ pub(crate) fn world_banner_pattern_tooltip_context(
     Some((keys, presentations))
 }
 
+pub(crate) fn world_painting_variant_tooltip_context(
+    world: &WorldStore,
+) -> Option<Vec<Option<bbb_world::PaintingVariantPresentation>>> {
+    let resource_ids = world_registry_keys(world, bbb_world::PAINTING_VARIANT_REGISTRY)?;
+    Some(
+        resource_ids
+            .iter()
+            .enumerate()
+            .map(|(index, _)| {
+                i32::try_from(index).ok().and_then(|holder_id| {
+                    world
+                        .painting_variant_presentation(holder_id)
+                        .ok()
+                        .flatten()
+                })
+            })
+            .collect(),
+    )
+}
+
 pub(crate) fn world_attribute_keys(world: &WorldStore) -> Option<Vec<String>> {
     world_registry_keys(world, "minecraft:attribute")
 }

@@ -166,6 +166,63 @@ fn banner_tooltip_context_keeps_typed_payloads_and_known_vanilla_stubs() {
 }
 
 #[test]
+fn painting_tooltip_context_uses_session_order_and_typed_components() {
+    fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
+        out.extend_from_slice(&(value.len() as u16).to_be_bytes());
+        out.extend_from_slice(value.as_bytes());
+    }
+    fn write_string(out: &mut Vec<u8>, name: &str, value: &str) {
+        out.push(8);
+        write_nbt_string(out, name);
+        write_nbt_string(out, value);
+    }
+    fn write_int(out: &mut Vec<u8>, name: &str, value: i32) {
+        out.push(3);
+        write_nbt_string(out, name);
+        out.extend_from_slice(&value.to_be_bytes());
+    }
+    fn painting_nbt(width: i32, height: i32, asset_id: &str, title: &str) -> Vec<u8> {
+        let mut out = vec![10];
+        write_int(&mut out, "width", width);
+        write_int(&mut out, "height", height);
+        write_string(&mut out, "asset_id", asset_id);
+        write_string(&mut out, "title", title);
+        out.push(0);
+        out
+    }
+
+    let mut world = WorldStore::new();
+    world.record_registry_entries(
+        bbb_world::PAINTING_VARIANT_REGISTRY,
+        0,
+        vec![
+            bbb_world::RegistryPacketEntry::with_raw_data(
+                "example:wide",
+                painting_nbt(4, 2, "example:gallery/wide", "Custom gallery"),
+            ),
+            bbb_world::RegistryPacketEntry::stub("minecraft:kebab"),
+            bbb_world::RegistryPacketEntry::stub("example:unknown"),
+        ],
+    );
+
+    let presentations = world_painting_variant_tooltip_context(&world).unwrap();
+    assert_eq!(presentations.len(), 3);
+    assert_eq!(
+        presentations[0]
+            .as_ref()
+            .map(|presentation| presentation.title.as_deref()),
+        Some(Some("Custom gallery"))
+    );
+    assert_eq!(
+        presentations[1]
+            .as_ref()
+            .and_then(|presentation| presentation.title_translation_key.as_deref()),
+        Some("painting.minecraft.kebab.title")
+    );
+    assert_eq!(presentations[2], None);
+}
+
+#[test]
 fn first_person_projection_does_not_restore_component_id_aliases() {
     let source = include_str!("first_person.rs");
     for old_alias in [
