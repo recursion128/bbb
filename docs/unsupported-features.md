@@ -16,6 +16,9 @@ code, its tests, `docs/goal-archive.md`, and `git log`.
 - Never add an entry describing what was built.
 - Every todo carries an owner crate and, where the behavior is vanilla-derived,
   the vanilla 26.1 anchor (class / method / constant) it must follow.
+- File and heading order are an ownership inventory, not an execution schedule.
+  Ready todos join the global hardest-ready-first selection in `goal.md`; blocked,
+  deferred, or prerequisite-incomplete work does not enter that candidate set.
 - Two states are not todos, and deleting one silently re-opens a decision that
   was already made:
   - **Deferred** — a real gap, intentionally not scheduled. Carries the

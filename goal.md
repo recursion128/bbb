@@ -126,7 +126,7 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
 
 ## Slice 工作流（每轮）
 
-队列 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0 clean 时不得停下
+选片 auto-start 是默认分支，只有新的 P0 blocker 能抢占；P0 clean 时不得停下
 等待确认，也不因历史 ledger 文字重开 P0。
 
 1. **收尾**：确认工作树；已验证未提交的 slice 先完成提交。
@@ -134,10 +134,23 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
    playable/session smoke 没有回退迹象 ⇒ 无新 P0 blocker。exit 1 时人工归类新增命中，
    并在同一 slice 将有明确非 P0 依据的新分类附注释写入 allowlist。不与历史计数对比，
    只看新的不可归类命中或行为回退。
-3. **分支**：命中重开条件 → 开 P0 regression slice，只修 blocker，不顺手
-   吸收视觉 parity；未命中 → 本轮立即从当前最高优先级队列取首个可执行小
-   slice 进入实现，不等待确认。
-4. **实现循环**（每个 slice）：
+3. **P0 分支**：命中重开条件 → 开 P0 regression slice，只修 blocker，不顺手
+   吸收视觉 parity；未命中 → 立即进入 hardest-ready 候选选择，不等待确认。
+4. **Hardest-ready 候选选择**：从 P1～P4 路线图与
+   `docs/unsupported-features.md` 的全部开放项建立候选集，不按章节顺序串行取项。
+   - 排除 `blocked`、`deferred`、前置依赖尚未满足的项目；候选必须能切成有界、
+     可独立测试、可正常提交的单 slice。不能满足这些条件的目标只作为依赖方向，
+     不直接进入实现。
+   - 对 ready 候选按五项综合评估实现难度：核心架构/协议/状态机风险，跨 crate 或
+     跨所有权边界的集成范围，vanilla 行为或 wire 事实不确定性，测试/fixture/回归
+     验证复杂度，以及失败影响范围与定位难度。默认选择难度最高者。
+   - 全局最难开放目标仍过大或依赖未就绪时，选择能解锁它的“最难且 ready 的有界
+     前置 slice”；不得借 hardest-first 同时展开多个功能，也不得扩大单 slice 范围。
+   - 难度相当时，依次选择：能解锁更多后续目标者；更接近 playable session 或最终
+     交付闭环者；最后才按下方 P1～P4 与各节原有路线顺序裁决。这不是 P4→P1 倒序。
+   - 每轮开始的进度更新必须简记主要候选、被排除候选及原因、最终选择和上述难度
+     依据；子 agent 是否使用仍只按 `AGENTS.md` 的既有并行条件判断。
+5. **实现循环**（每个 slice）：
    1. 先 grep 当前实现，确认缺口真实存在（历史上多次出现"账本以为缺失但
       代码已实现"）；
    2. 定位 vanilla 26.1 源码依据（常量/公式/顺序）；已批量提取过的先查
@@ -147,7 +160,7 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
       本文件对应队列项划掉或改写其剩余部分；
    5. 运行本节规定的 slice 检查，审查 diff 后独立提交（英文祈使句单行
       message，沿用仓库风格）；再按下方 checkpoint 规则继续或结束批次。
-5. **Checkpoint 批次**：仍一次只实现一个完整 slice，不并行启动多个功能。
+6. **Checkpoint 批次**：仍一次只实现一个完整 slice，不并行启动多个功能。
    连续 2～4 个语义相关且风险可局部界定的低风险 slice 可以组成一个批次；每个
    slice 各自完成 focused tests、fmt check、diff check、按需 docs lint、diff review
    和干净提交。正常批次只在最新提交运行一次 `scripts/cargo-dev.sh gate`，通过后批次
@@ -166,9 +179,10 @@ warnings = "deny"` 承担，gate 与日常 focused test 共享同一构建指纹
    - 主 agent 必须记录最近一次通过完整门禁的 commit hash。进度更新和最终交付必须
      报告本批次提交、focused test 结果、完整门禁结果和最近已门禁 commit。任何准备
      交付或合并的 HEAD 都必须已通过完整门禁。
-6. **队列维护**：队列消化顺序见"客户端差异优先级"首行；当前命名 milestone
-   无可执行项时顺延下一条，垂直依赖只前移能恢复该 milestone/playable 场景的最小
-   slice；结转项只在重启判据满足后入队；新发现工作按优先级插队并在账本立条目。
+7. **路线图维护**：P1～P4 继续记录 owner、依赖、里程碑、完成标准与同分顺序，
+   不再作为默认串行消化队列。新发现工作在账本立条目并参与下一轮全局候选评估；
+   结转项只在重启判据满足后恢复为 ready 候选。垂直依赖若阻塞高难目标，只前移一个
+   最难且有界的必要前置 slice。
 
 ## P0 重新打开条件与 audit 分类
 
@@ -213,17 +227,18 @@ ordering、canonical state 与 side effect，不以“未崩溃”代替语义�
 
 ## 客户端差异优先级
 
-本节只列开放队列。
-默认顺序是：机械 catalog → protocol/session foundation → RegistryAccess foundation →
+本节只列开放路线图。P1～P4 保留为 owner/依赖/里程碑说明，以及 hardest-ready 难度
+相当时的最终裁决依据；不再要求按章节或下列路线顺序串行消化，也不是把 P4→P1 倒序。
+原有路线顺序仍为：机械 catalog → protocol/session foundation → RegistryAccess foundation →
 playable-gate foundation → entity matrix foundation/families → 非实体 closeout →
-screen/HUD → resource reload → 健壮性/性能/平台交付。protocol/registry/entity 的长尾按
-文中命名 milestone 而非整节原子化；关闭
-一个 milestone 后运行 playable-gate，若暴露后续队列的垂直依赖，可前移一个最小 slice
-闭环，不得借机跳到无关低优先视觉 polish。新发现工作按优先级插队并在账本立条目。
+screen/HUD → resource reload → 健壮性/性能/平台交付。明确的 foundation 和垂直依赖仍是
+readiness 条件；protocol/registry/entity 的长尾按文中命名 milestone 切成有界候选，
+与其它 ready 项一起按上方 hardest-ready 规则评估。关闭 milestone 后照常运行适用的
+playable-gate；暴露出的依赖进入下一轮候选，不得借机扩大当前 slice。
 
-### 结转项（blocked / defer，不进消化队列）
+### 结转项（blocked / defer，不进 ready 候选集）
 
-重启判据见对应账本条目；条件满足前不列入队列，也不因 ledger 文字重开。
+重启判据见对应账本条目；条件满足前不列入候选集，也不因 ledger 文字重开。
 
 - creative inventory-tab preview（原 P1-3）：blocked on creative-screen 基建
   （客户端 `CreativeModeInventoryScreen` 外壳 + `CreativeModeTabs` 物品目录
@@ -251,7 +266,7 @@ entity metadata extractor 是统一 Tree-sitter Java extraction foundation 的�
 消费者。尚未迁移的 Java generator 后续按独立 slice 处理；本阶段不要求一次改完，
 也不得把未迁移 generator 记为已完成。
 
-按以下顺序消化，每项独立成可门禁、可提交的 slice：
+开放方向如下；每项切成可门禁、可提交的单 slice 后参与全局 hardest-ready 评估：
 
 1. **资源与 tag 派生表**：继续审计手写 block/item/entity membership；有精确 vanilla tag
    的直接从 tag 派生，没有精确 tag 的只在 class/property/registry source fact 能证明等价时
@@ -278,7 +293,7 @@ extractor 可直接消费统一 CST/IR 而不复制 tokenizer/parser，普通 bu
 机械元数据；decode/encode、world apply 和 runtime side effect 保持手写，但必须能从
 同一 catalog 证明没有遗漏、重复分发或无主 packet。
 
-按以下顺序推进：
+路线图与依赖顺序如下；前置未满足的项不进入 ready 候选集：
 
 1. **建立派生矩阵**：由 `VANILLA_PACKET_CATALOGS` 生成 checked-in coverage ledger，
    clientbound 至少记录 decode、connection/world ownership、canonical apply、runtime
@@ -330,7 +345,8 @@ registry 时，其顺序与内容必须成为该 session 的唯一权威来源�
 Codec 框架；protocol 保留无损 wire summary，world 拥有 session registry，具体语义
 owner 按消费需要实现 typed value decode。
 
-本队列在 protocol/session foundation 完成后开始，并按以下顺序消化：
+本路线在 protocol/session foundation 完成后才 ready；下列编号表达依赖与路线图，
+不是跨全部开放项的默认串行调度：
 
 1. **来源与生命周期审计**：对照 vanilla 26.1 `ClientboundRegistryDataPacket`、
    `RegistryDataLoader`、`RegistryAccess`/`RegistryFriendlyByteBuf` 及 configuration
@@ -462,16 +478,19 @@ metadata match。
    每个 `complete` cell 有实现/测试引用、catalog 新增项默认令门禁失败，且生产中的
    entity type 分支只引用 catalog 常量/schema API。
 
-推进顺序优先复用现有 surface：base/display/projectile/vehicle 已有状态面先闭环，再按
-living 的 aquatic/passive/tamable/villager/illager/undead/arthropod/boss family 消化；
+matrix/schema/base lifecycle 是后续 family 的 readiness 前置。该前置完成后，
+base/display/projectile/vehicle 与 living 的 aquatic/passive/tamable/villager/illager/
+undead/arthropod/boss family 都按有界 slice 参与全局 hardest-ready 评估；上述原顺序仅作
+难度相当时的本节内最终裁决。
 registry-backed variant cell 必须在上一队列的 custom reorder 测试通过后才能标为
 `complete`。允许一个 family 因明确 server-only 或不可重建随机行为保留窄
 `not-applicable`，不允许以“已有通用 fallback”把缺专属模型、动画或 client tick 标绿。
 
 该矩阵不是一个必须 157 项全部清空才允许后续工作的原子队列：matrix+schema+base
 lifecycle 为 foundation milestone，之后每个上述 family 是独立 milestone。每关闭一个
-family 都运行 playable-gate，并优先修复其暴露的 registry、non-entity、screen 或 resource
-垂直依赖；这些依赖可从后续队列前移成一个小 slice。不得无证据跳过高优先缺口，也不得
+family 都运行 playable-gate；其暴露的 registry、non-entity、screen 或 resource 垂直依赖
+进入下一轮全局候选，若阻塞更难目标则选择其中最难且 ready 的有界前置 slice。不得
+无证据跳过必要依赖，也不得
 用“仍在 P1”长期阻塞已经具备独立验收面的 P2/P3 可玩性修复。
 
 完成标准：矩阵恰好覆盖 catalog 157 项；所有客户端适用 cell 均为 `complete`，其余仅

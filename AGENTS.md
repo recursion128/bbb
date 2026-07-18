@@ -60,6 +60,25 @@ implements the slice, runs focused tests, updates documentation, reviews the dif
 runs the per-slice checks, and commits without delegation. Related low-risk slices
 may share a later checkpoint gate under the policy in `goal.md`.
 
+After a clean P0 audit, select work by **hardest-ready-first** across all open roadmap
+and ledger items. Build a candidate set that excludes blocked/deferred work, unmet
+prerequisites, and work that cannot yet be cut into one bounded, independently
+testable, normally committable slice. Rank the remaining slices by architecture,
+protocol, or state-machine risk; cross-crate/ownership integration breadth; vanilla
+or wire uncertainty; test/fixture/regression complexity; and failure impact plus
+localization difficulty. Choose the hardest ready slice by default. If the hardest
+open target is still too large or not ready, choose its hardest ready, bounded
+prerequisite instead of expanding multiple features.
+
+For equally difficult candidates, prefer the slice that unlocks more later work,
+then the one closest to a playable-session or delivery closure, then the P1-P4/order
+already recorded in `goal.md`. This is not a P4-to-P1 reversal: those sections remain
+the roadmap, dependency map, and final tie-breaker. At the start of every round,
+briefly report the main candidates, excluded candidates and reasons, and the final
+selection with its difficulty basis. Hardest-ready-first changes task selection only;
+it does not enlarge slice scope, start multiple complete features, or make subagents
+the default.
+
 Spawn a subagent only when the expected critical-path saving is greater than the
 setup, context-transfer, worktree, integration, and review cost. In particular, the
 following should all be true for an implementation worker:
@@ -100,14 +119,17 @@ next slice without editing files or launching Cargo, but the next implementation
 waits for the current commit.
 
 Parallelize by semantic ownership, not by checklist count. When a slice establishes
-a reusable renderer or world surface, prefer the next ledger item that can consume
-that surface without violating priority order; this amortizes verification and
-reduces repeated architecture work.
+a reusable renderer or world surface, include dependent ledger items in the next
+ready-candidate audit; select among them and all other ready work using
+hardest-ready-first. Reuse and unlock value inform the tie-breakers without bypassing
+required prerequisites.
 
 ## Standard Workflow
 
 1. Start with `git status --short`.
-2. Identify the next slice that moves the repo closer to the native 26.1 client.
+2. After the P0 audit, apply the hardest-ready-first policy above and record the main
+   candidates, exclusions, final selection, and difficulty basis in the progress
+   update.
 3. Verify relevant vanilla wire format or behavior from local sources.
 4. Identify the semantic ownership involved, usually:
    - protocol: packet ids, structs, encode/decode, protocol tests
