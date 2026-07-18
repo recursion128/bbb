@@ -1030,7 +1030,9 @@ fn configuration_audio_registry_projections_commit_at_play_transition() {
     );
     audio.jukebox_registry = JukeboxSongRegistry::from_registry_entry_ids(["minecraft:cat"]);
 
-    let (tx, mut rx) = mpsc::channel(3);
+    let required_registries = minimal_non_empty_synchronized_registry_data();
+    let expected_event_count = 3 + required_registries.len();
+    let (tx, mut rx) = mpsc::channel(expected_event_count);
     tx.try_send(NetEvent::StateChanged {
         state: bbb_net::ConnectionState::Configuration,
     })
@@ -1053,11 +1055,14 @@ fn configuration_audio_registry_projections_commit_at_play_transition() {
         }],
     }))
     .unwrap();
+    for update in required_registries {
+        tx.try_send(NetEvent::RegistryData(update)).unwrap();
+    }
     drop(tx);
 
     assert_eq!(
         drain_net_events_with_audio(&mut rx, &mut world, &mut counters, &None, Some(&mut audio)),
-        3
+        expected_event_count
     );
     assert_eq!(
         world.registry_resource_id_by_holder_id("minecraft:sound_event", 0),

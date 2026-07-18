@@ -14,6 +14,7 @@ mod instrument_values;
 mod instruments;
 mod jukebox_songs;
 mod painting_variants;
+mod revision;
 mod sound_variants;
 mod state;
 mod store;

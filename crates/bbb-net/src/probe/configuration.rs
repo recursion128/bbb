@@ -150,6 +150,24 @@ mod tests {
     use tokio::time::timeout;
     use uuid::Uuid;
 
+    fn record_minimal_non_empty_synchronized_registries(
+        world: &mut bbb_world::WorldStore,
+        omitted_registry: &str,
+    ) {
+        for data_type in bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES
+        {
+            if data_type.validator == Some("RegistryValidator.nonEmpty ()")
+                && data_type.resource_id != omitted_registry
+            {
+                world.record_registry_entries(
+                    data_type.resource_id,
+                    0,
+                    vec![RegistryPacketEntry::stub("minecraft:base")],
+                );
+            }
+        }
+    }
+
     #[tokio::test]
     async fn probe_configuration_disconnect_is_terminal_and_keeps_state() {
         let (client, _server) = raw_connection_pair().await;
@@ -238,6 +256,7 @@ mod tests {
             }))
             .await
             .unwrap();
+        record_minimal_non_empty_synchronized_registries(&mut probe.world, "minecraft:damage_type");
         probe
             .handle_configuration_packet(ConfigurationClientbound::Finish)
             .await
@@ -264,6 +283,10 @@ mod tests {
             vec![RegistryPacketEntry::stub("minecraft:pale")],
         );
         probe.world.begin_registry_configuration();
+        record_minimal_non_empty_synchronized_registries(
+            &mut probe.world,
+            "minecraft:wolf_variant",
+        );
         probe
             .handle_configuration_packet(ConfigurationClientbound::RegistryData(RegistryData {
                 registry: "minecraft:wolf_variant".to_string(),

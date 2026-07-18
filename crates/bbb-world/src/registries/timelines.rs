@@ -121,13 +121,7 @@ impl WorldStore {
         let Some(data) = entry.element_data else {
             return Ok(None);
         };
-        if !matches!(data.value, NbtSummaryValue::Compound(_)) {
-            return Err(error(
-                entry.resource_id,
-                "<root>",
-                "WorldClock.DIRECT_CODEC expects a compound",
-            ));
-        }
+        validate_world_clock_value(entry.resource_id, &data.value)?;
         Ok(Some(WorldClockDefinition {
             resource_id: entry.resource_id.to_string(),
             source: entry.source,
@@ -230,6 +224,21 @@ impl WorldStore {
                 Ok((timeline, total_ticks))
             })
             .collect()
+    }
+}
+
+pub(super) fn validate_world_clock_value(
+    resource_id: &str,
+    value: &NbtSummaryValue,
+) -> Result<(), TimelineProjectionError> {
+    if matches!(value, NbtSummaryValue::Compound(_)) {
+        Ok(())
+    } else {
+        Err(error(
+            resource_id,
+            "<root>",
+            "WorldClock.DIRECT_CODEC expects a compound",
+        ))
     }
 }
 

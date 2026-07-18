@@ -1128,6 +1128,15 @@ fn biome_colors_follow_active_registry_resource_order_after_finish() {
             bbb_world::RegistryPacketEntry::stub("minecraft:plains"),
         ],
     );
+    for data_type in bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
+        if data_type.validator == Some("RegistryValidator.nonEmpty ()") {
+            world.record_registry_entries(
+                data_type.resource_id,
+                0,
+                vec![bbb_world::RegistryPacketEntry::stub("example:minimal")],
+            );
+        }
+    }
     assert!(!textures.synchronize_biome_registry(&world));
 
     world.finish_registry_configuration().unwrap();

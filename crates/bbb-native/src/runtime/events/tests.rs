@@ -98,6 +98,21 @@ mod session_protocol_events;
 mod trial_spawner_and_sculk_events;
 mod world_state_lifecycle;
 
+fn minimal_non_empty_synchronized_registry_data() -> Vec<RegistryData> {
+    bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES
+        .iter()
+        .filter(|data_type| data_type.validator == Some("RegistryValidator.nonEmpty ()"))
+        .map(|data_type| RegistryData {
+            registry: data_type.resource_id.to_string(),
+            raw_payload_len: 0,
+            entries: vec![RegistryDataEntry {
+                id: "example:minimal".to_string(),
+                raw_data: None,
+            }],
+        })
+        .collect()
+}
+
 fn item_stack(item_id: i32, count: i32) -> ItemStackSummary {
     ItemStackSummary {
         item_id: Some(item_id),

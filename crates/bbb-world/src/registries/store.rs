@@ -1,12 +1,11 @@
+use crate::WorldStore;
 use bbb_protocol::packets::{RegistryData, UpdateTags};
 use bbb_protocol::registry_data_types::{built_in_registry_type, synchronized_registry_data_type};
 use bbb_protocol::registry_holder_consumers::registry_holder_consumer_count;
-use std::collections::BTreeMap;
-
-use crate::WorldStore;
 
 use super::{
-    element_value::decode_known_pack_element, state::PendingRegistryCollection,
+    revision::{materialize_registry_tags, RegistryRevisionCandidate},
+    state::PendingRegistryCollection,
     BiomeClientProjection, BiomeProjectionError, RegistryContentState, RegistryPacket,
     RegistryPacketEntry, RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
@@ -48,50 +47,21 @@ impl WorldStore {
     }
 
     pub fn finish_registry_configuration(&mut self) -> Result<(), RegistryValidationError> {
-        let Some(mut pending) = self.registries.pending.take() else {
+        let Some(pending) = self.registries.pending.take() else {
             return Ok(());
         };
-        if let Err(err) = materialize_pending_known_pack_data(
+        let candidate = RegistryRevisionCandidate::build(
+            &self.registries,
+            pending,
             self.selected_known_pack_data.as_ref(),
             self.known_pack_data_error.as_deref(),
             !self.features.known_packs.selected.is_empty(),
-            &mut pending,
-        ) {
-            self.record_apply_error("registry_configuration_known_packs", &err);
-            return Err(err);
-        }
-        if let Err(err) = validate_pending_registry_element_data(&pending) {
-            self.record_apply_error("registry_configuration_element_data", &err);
-            return Err(err);
-        }
-        if let Err(err) = validate_pending_registry_collection(&pending) {
-            self.record_apply_error("registry_configuration_validation", &err);
-            return Err(err);
-        }
-        materialize_pending_registry_tags(&self.registries, &mut pending);
-        let contents_changed = !pending.registries.is_empty();
-        let tags_changed = contents_changed || !pending.tags.is_empty();
-        if contents_changed {
-            for registry in pending.contents.keys() {
-                self.registries.tags.remove(registry);
-                self.registries.unresolved_tag_holders.remove(registry);
-            }
-            self.registries.registries = pending.registries;
-            self.registries.contents = pending.contents;
-        }
-        for registry in pending.tags.keys() {
-            self.registries.unresolved_tag_holders.remove(registry);
-        }
-        self.registries.tags.append(&mut pending.tags);
-        self.registries
-            .unresolved_tag_holders
-            .append(&mut pending.unresolved_tag_holders);
-        if contents_changed {
-            self.registries.revision.contents = self.registries.revision.contents.saturating_add(1);
-        }
-        if tags_changed {
-            self.registries.revision.tags = self.registries.revision.tags.saturating_add(1);
-        }
+        )
+        .map_err(|failure| {
+            self.record_apply_error(failure.stage, &failure.error);
+            failure.error
+        })?;
+        self.registries = candidate.into_registry_set();
         self.sync_registry_counters();
         self.sync_registry_tag_counters();
         self.items.refresh_furnace_fuel_item_ids(&self.registries);
@@ -428,96 +398,6 @@ impl WorldStore {
     }
 }
 
-fn materialize_pending_known_pack_data(
-    source: Option<&bbb_pack::KnownPackDataSource>,
-    source_error: Option<&str>,
-    selected_any: bool,
-    pending: &mut PendingRegistryCollection,
-) -> Result<(), RegistryValidationError> {
-    if let Some(message) = source_error {
-        return Err(RegistryValidationError {
-            registry: "minecraft:root".to_string(),
-            validator: "KnownPacksManager.createResourceManager".to_string(),
-            message: message.to_string(),
-        });
-    }
-    if !selected_any {
-        return Ok(());
-    }
-    let Some(source) = source else {
-        return Err(RegistryValidationError {
-            registry: "minecraft:root".to_string(),
-            validator: "KnownPacksManager.createResourceManager".to_string(),
-            message: "selected known packs have no local SERVER_DATA source".to_string(),
-        });
-    };
-
-    for (registry, contents) in &mut pending.contents {
-        for entry in &mut contents.entries {
-            materialize_known_pack_entry(source, registry, entry)?;
-        }
-    }
-    for packet in &mut pending.registries {
-        for entry in &mut packet.entries {
-            materialize_known_pack_entry(source, &packet.name, entry)?;
-        }
-    }
-    Ok(())
-}
-
-fn materialize_known_pack_entry(
-    source: &bbb_pack::KnownPackDataSource,
-    registry: &str,
-    entry: &mut RegistryPacketEntry,
-) -> Result<(), RegistryValidationError> {
-    if entry.has_data {
-        return Ok(());
-    }
-    let Some(data) = source.registry_element_json_arc(registry, &entry.id) else {
-        return Err(RegistryValidationError {
-            registry: registry.to_string(),
-            validator: "KnownPacksManager.createResourceManager".to_string(),
-            message: format!(
-                "selected known packs do not provide registry element {registry}/{}",
-                entry.id
-            ),
-        });
-    };
-    let element_data =
-        decode_known_pack_element(&data).map_err(|error| RegistryValidationError {
-            registry: registry.to_string(),
-            validator: "RegistryDataLoader.elementCodec".to_string(),
-            message: format!(
-                "failed to decode known-pack registry element {registry}/{}: {error}",
-                entry.id
-            ),
-        })?;
-    entry.known_pack_data = Some(data);
-    entry.element_data = Some(std::sync::Arc::new(element_data));
-    entry.element_data_error = None;
-    Ok(())
-}
-
-fn validate_pending_registry_element_data(
-    pending: &PendingRegistryCollection,
-) -> Result<(), RegistryValidationError> {
-    for (registry, contents) in &pending.contents {
-        for entry in &contents.entries {
-            if let Some(error) = &entry.element_data_error {
-                return Err(RegistryValidationError {
-                    registry: registry.clone(),
-                    validator: "RegistryDataLoader.elementCodec".to_string(),
-                    message: format!(
-                        "failed to decode network registry element {registry}/{}: {error}",
-                        entry.id
-                    ),
-                });
-            }
-        }
-    }
-    Ok(())
-}
-
 fn resource_id_matches_search(resource_id: &str, search_term: &str) -> bool {
     let (namespace, path) = resource_id
         .split_once(':')
@@ -528,107 +408,4 @@ fn resource_id_matches_search(resource_id: &str, search_term: &str) -> bool {
         }
         None => path.contains(search_term),
     }
-}
-
-fn validate_pending_registry_collection(
-    pending: &PendingRegistryCollection,
-) -> Result<(), RegistryValidationError> {
-    for (registry, contents) in &pending.contents {
-        if contents.duplicate_entry_count() > 0 {
-            let duplicate_ids = contents
-                .duplicate_entry_ids
-                .keys()
-                .cloned()
-                .collect::<Vec<_>>()
-                .join(", ");
-            return Err(RegistryValidationError {
-                registry: registry.clone(),
-                validator: "MappedRegistry.register".to_string(),
-                message: format!("Adding duplicate keys to registry {registry}: {duplicate_ids}"),
-            });
-        }
-        let Some(validator) =
-            synchronized_registry_data_type(registry).and_then(|data| data.validator)
-        else {
-            continue;
-        };
-        match validator {
-            "RegistryValidator.nonEmpty ()" if contents.entries.is_empty() => {
-                return Err(RegistryValidationError {
-                    registry: registry.clone(),
-                    validator: validator.to_string(),
-                    message: format!("Registry must be non-empty: {registry}"),
-                });
-            }
-            "RegistryValidator.nonEmpty ()" => {}
-            _ => {
-                return Err(RegistryValidationError {
-                    registry: registry.clone(),
-                    validator: validator.to_string(),
-                    message: format!(
-                        "unknown synchronized registry validator {validator}: {registry}"
-                    ),
-                });
-            }
-        }
-    }
-    Ok(())
-}
-
-fn materialize_pending_registry_tags(
-    active: &super::RegistrySet,
-    pending: &mut PendingRegistryCollection,
-) {
-    let raw_tags = std::mem::take(&mut pending.tags);
-    for (_, raw) in raw_tags {
-        let (resolved, unresolved) =
-            materialize_registry_tags(active, Some(&pending.contents), raw);
-        let registry = resolved.registry.clone();
-        pending.tags.insert(registry.clone(), resolved);
-        if !unresolved.is_empty() {
-            pending.unresolved_tag_holders.insert(registry, unresolved);
-        }
-    }
-}
-
-fn materialize_registry_tags(
-    active: &super::RegistrySet,
-    pending_contents: Option<&BTreeMap<String, RegistryContentState>>,
-    raw: RegistryTagState,
-) -> (RegistryTagState, BTreeMap<String, Vec<i32>>) {
-    let RegistryTagState { registry, tags } = raw;
-    let mut resolved_tags = BTreeMap::new();
-    let mut unresolved_tags = BTreeMap::new();
-    for (tag, holder_ids) in tags {
-        let mut resolved = Vec::with_capacity(holder_ids.len());
-        let mut unresolved = Vec::new();
-        for holder_id in holder_ids {
-            let present = pending_contents
-                .and_then(|contents| contents.get(&registry))
-                .map_or_else(
-                    || {
-                        active
-                            .resolved_entry_by_holder_id(&registry, holder_id)
-                            .is_some()
-                    },
-                    |contents| contents.entry_by_holder_id(holder_id).is_some(),
-                );
-            if present {
-                resolved.push(holder_id);
-            } else {
-                unresolved.push(holder_id);
-            }
-        }
-        resolved_tags.insert(tag.clone(), resolved);
-        if !unresolved.is_empty() {
-            unresolved_tags.insert(tag, unresolved);
-        }
-    }
-    (
-        RegistryTagState {
-            registry,
-            tags: resolved_tags,
-        },
-        unresolved_tags,
-    )
 }

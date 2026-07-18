@@ -15,6 +15,30 @@ use crate::{
 };
 use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 
+fn record_minimal_non_empty_synchronized_registries(
+    store: &mut WorldStore,
+    omitted_registry: Option<&str>,
+) {
+    for data_type in bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
+        if data_type.validator != Some("RegistryValidator.nonEmpty ()")
+            || omitted_registry == Some(data_type.resource_id)
+        {
+            continue;
+        }
+        store.record_registry_entries(
+            data_type.resource_id,
+            0,
+            vec![RegistryPacketEntry::with_raw_data(
+                format!(
+                    "example:minimal_{}",
+                    data_type.constant_name.to_ascii_lowercase()
+                ),
+                vec![10, 0],
+            )],
+        );
+    }
+}
+
 #[test]
 fn loads_vanilla_block_state_registry() {
     let registries = RegistrySet::vanilla_26_1();
@@ -606,6 +630,7 @@ fn frozen_registry_access_exposes_payload_source_and_atomic_revisions() {
     let typed_raw = nbt_compound_with_string("message_id", "example.typed");
 
     store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
     store.record_registry_entries(
         "minecraft:damage_type",
         0,
@@ -879,6 +904,7 @@ fn configuration_registry_collection_commits_atomically_and_replaces_holder_orde
     });
 
     store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
     store.record_registry_entries(
         "minecraft:test",
         0,
@@ -981,6 +1007,7 @@ fn configuration_registry_validation_rejects_empty_non_empty_registry_atomically
     });
 
     store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, Some(registry));
     store.record_registry_data(RegistryData {
         registry: registry.to_string(),
         entries: Vec::new(),
@@ -1030,6 +1057,7 @@ fn configuration_registry_validation_rejects_empty_non_empty_registry_atomically
     );
 
     store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, Some(registry));
     store.record_registry_data(RegistryData {
         registry: registry.to_string(),
         entries: vec![RegistryDataEntry {
@@ -1055,6 +1083,7 @@ fn configuration_registry_validation_rejects_duplicate_keys_atomically() {
         vec![RegistryPacketEntry::stub("minecraft:old")],
     );
     store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
     store.record_registry_entries(
         registry,
         0,
@@ -1080,6 +1109,7 @@ fn configuration_tags_resolve_after_all_registry_packets_arrive() {
     let registry = "minecraft:damage_type";
     let mut store = WorldStore::new();
     store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
     store.apply_update_tags(UpdateTags {
         registries: vec![RegistryTags {
             registry: registry.to_string(),
@@ -1115,9 +1145,66 @@ fn configuration_tags_resolve_after_all_registry_packets_arrive() {
 }
 
 #[test]
+fn configuration_candidate_resolves_synchronized_and_static_tags_against_their_layers() {
+    let damage_registry = "minecraft:damage_type";
+    let item_registry = "minecraft:item";
+    let snowball = bbb_protocol::item_types::VANILLA_ITEM_SNOWBALL_ID;
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        damage_registry,
+        0,
+        vec![RegistryPacketEntry::stub("example:damage")],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![
+            RegistryTags {
+                registry: damage_registry.to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:synchronized".to_string(),
+                    entries: vec![0, 1],
+                }],
+            },
+            RegistryTags {
+                registry: item_registry.to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:static".to_string(),
+                    entries: vec![snowball, i32::MAX],
+                }],
+            },
+        ],
+    });
+
+    store.finish_registry_configuration().unwrap();
+
+    assert_eq!(
+        store
+            .registry_resource_ids_for_tag(damage_registry, "example:synchronized")
+            .unwrap(),
+        Some(vec!["example:damage"])
+    );
+    assert_eq!(
+        store.registry_unresolved_holder_ids_for_tag(damage_registry, "example:synchronized"),
+        Some([1].as_slice())
+    );
+    assert_eq!(
+        store
+            .registry_resource_ids_for_tag(item_registry, "example:static")
+            .unwrap(),
+        Some(vec!["minecraft:snowball"])
+    );
+    assert_eq!(
+        store.registry_unresolved_holder_ids_for_tag(item_registry, "example:static"),
+        Some([i32::MAX].as_slice())
+    );
+}
+
+#[test]
 fn configuration_registry_validation_allows_empty_registry_without_validator() {
     let mut store = WorldStore::new();
     store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
     store.record_registry_data(RegistryData {
         registry: "minecraft:world_clock".to_string(),
         entries: Vec::new(),
@@ -1131,6 +1218,50 @@ fn configuration_registry_validation_allows_empty_registry_without_validator() {
             .unwrap()
             .count(),
         0
+    );
+    assert_eq!(
+        store.registries().contents.len(),
+        bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES.len()
+    );
+    for data_type in bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
+        assert!(
+            store.registry_content(data_type.resource_id).is_some(),
+            "missing authoritative synchronized registry {}",
+            data_type.resource_id
+        );
+    }
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:world_clock", 0),
+        None,
+        "an authoritative empty synchronized registry must not use the bootstrap fallback"
+    );
+}
+
+#[test]
+fn any_contents_batch_requires_every_declared_non_empty_registry() {
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    store.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:damage",
+            nbt_compound_with_string("message_id", "example.damage"),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    let data_type =
+        bbb_protocol::registry_data_types::synchronized_registry_data_type(&error.registry)
+            .expect("failure belongs to the generated synchronized inventory");
+    assert_eq!(data_type.validator, Some("RegistryValidator.nonEmpty ()"));
+    assert_eq!(error.validator, "RegistryValidator.nonEmpty ()");
+    assert_eq!(store.registry_access_revision(), Default::default());
+    assert!(store.registry_content("minecraft:damage_type").is_none());
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:damage_type", 0),
+        Some("minecraft:in_fire")
     );
 }
 
@@ -1307,6 +1438,60 @@ fn update_tags_recomputes_furnace_fuels_after_immediate_and_transactional_tag_ap
 }
 
 #[test]
+fn failed_registry_candidate_keeps_static_tags_and_tag_derived_item_state() {
+    let item_id = |resource_id| {
+        bbb_protocol::item_types::vanilla_item_type_for_resource_id(resource_id)
+            .unwrap()
+            .id
+    };
+    let stick = item_id("minecraft:stick");
+    let oak_log = item_id("minecraft:oak_log");
+    let birch_log = item_id("minecraft:birch_log");
+    let mut store = WorldStore::new();
+    store.set_furnace_fuel_profile(
+        BTreeSet::new(),
+        vec![
+            FurnaceFuelRule::AddItem(stick),
+            FurnaceFuelRule::AddTag("minecraft:logs".to_string()),
+        ],
+    );
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:logs".to_string(),
+                entries: vec![oak_log],
+            }],
+        }],
+    });
+
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, Some("minecraft:wolf_variant"));
+    store.record_registry("minecraft:wolf_variant", 0);
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: "minecraft:item".to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "minecraft:logs".to_string(),
+                entries: vec![birch_log],
+            }],
+        }],
+    });
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:wolf_variant");
+    assert_eq!(
+        store.registry_tags("minecraft:item").unwrap().tags["minecraft:logs"],
+        vec![oak_log]
+    );
+    assert_eq!(
+        store.furnace_fuel_item_ids(),
+        &BTreeSet::from([stick, oak_log])
+    );
+}
+
+#[test]
 fn creative_tag_search_reads_immediate_and_transactional_tag_reloads() {
     let mut store = WorldStore::new();
     store.apply_update_tags(UpdateTags {
@@ -1378,6 +1563,7 @@ fn selected_known_pack_materializes_stub_data_before_registry_commit() {
         .unwrap();
     let mut store = WorldStore::new();
     store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
     store.apply_select_known_packs_with_data(vec![core.clone()], vec![core], data_source);
     store.record_registry_data(RegistryData {
         registry: "minecraft:damage_type".to_string(),
@@ -1443,6 +1629,50 @@ fn malformed_network_registry_element_rejects_configuration_atomically() {
     assert_eq!(
         store.registry_resource_id_by_holder_id("minecraft:damage_type", 0),
         Some("minecraft:old")
+    );
+}
+
+#[test]
+fn registered_typed_codec_failure_rejects_candidate_atomically() {
+    let registry = "minecraft:world_clock";
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        registry,
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:day")],
+    );
+    let active_revision = store.registry_access_revision();
+    store.begin_registry_configuration();
+    record_minimal_non_empty_synchronized_registries(&mut store, None);
+    store.record_registry_entries(
+        registry,
+        0,
+        vec![RegistryPacketEntry::with_known_pack_data_for_test(
+            "example:not_a_clock",
+            b"[]".to_vec(),
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, registry);
+    assert_eq!(error.validator, "WorldClock.DIRECT_CODEC");
+    assert_eq!(
+        error.message,
+        "example:not_a_clock <root>: WorldClock.DIRECT_CODEC expects a compound"
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id(registry, 0),
+        Some("minecraft:day")
+    );
+    assert_eq!(store.registry_access_revision(), active_revision);
+    assert_eq!(
+        store
+            .apply_diagnostics()
+            .last_apply_error
+            .as_ref()
+            .map(|error| error.source.as_str()),
+        Some("registry_configuration_typed_values")
     );
 }
 

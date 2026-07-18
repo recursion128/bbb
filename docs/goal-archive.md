@@ -19475,3 +19475,19 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   regression 覆盖 exact 60-tick bound、delayed removal、cache miss disconnect、chain/expiry/
   signature failure 与 native command propagation。coverage ledger 已关闭 remote trust 和
   DeleteChat lifecycle，仅保留独立的完整 ChatListener 呈现 TODO。
+
+## 2026-07-18：动态 RegistryAccess typed revision phase 1 atomic candidate
+
+- [x] 对照本地 vanilla 26.1 `RegistryDataCollector`、`RegistryDataLoader`、
+  `NetworkRegistryLoadTask` 与 `MappedRegistry.freeze`，新增 world-owned
+  `RegistryRevisionCandidate`：network/known-pack materialization、通用元素解码、duplicate、
+  candidate tag resolution、typed codec 与生成清单 validator 全部在唯一发布点前完成；任一失败
+  保留旧 frozen revision、tag 与 tag-derived item state。
+- [x] 一旦收到任一 RegistryData，候选按生成的 28 项同步注册表清单物化完整权威层；省略的
+  registry 是空 registry 而不是 bootstrap/上一 revision fallback，全部 13 个声明
+  `RegistryValidator.nonEmpty ()` 的 registry 都参与 finish。同步 tag 对候选 holder 顺序解析，
+  static tag 对原 built-in 层解析，未知 holder 继续单独保留 diagnostics。
+- [x] `WorldClock.DIRECT_CODEC` 作为首个 candidate typed guard，证明合法 source-neutral 值才会
+  发布，非 compound 值在配置切换前回滚。完整 `bbb-world` 1727、`bbb-net` 249、`bbb-native`
+  2144 项回归及三 crate non-test check 通过；后续 phase 只沿同一 dispatcher 注册 timeline、
+  environment、sound/game-test 与其余既有消费族，不增加第二 commit path。
