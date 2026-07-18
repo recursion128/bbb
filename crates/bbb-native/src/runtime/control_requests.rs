@@ -6,6 +6,8 @@ use bbb_control::{
     RecipeBookTypeControl, SharedControlRequests,
 };
 use bbb_net::NetCommand;
+#[cfg(test)]
+use bbb_net::OutboundChatCommand;
 use bbb_protocol::packets::{
     BlockEntityTagQuery, BlockPos as ProtocolBlockPos, ChangeDifficultyCommand,
     ChangeGameModeCommand, ContainerClick, ContainerInput, Difficulty, EditBook, EntityTagQuery,
@@ -716,9 +718,7 @@ mod tests {
         assert_eq!(counters.chat_command_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::ChatCommand(bbb_protocol::packets::ChatCommand {
-                command: "give @p minecraft:stone".to_string()
-            })
+            NetCommand::ChatCommand(OutboundChatCommand::unsigned("give @p minecraft:stone"))
         );
         assert!(requests.lock().unwrap().net_requests.is_empty());
     }
@@ -742,13 +742,15 @@ mod tests {
 
         assert_eq!(counters.chat_command_commands_queued, 1);
         match rx.try_recv().unwrap() {
-            NetCommand::ChatCommandSigned(packet) => {
+            NetCommand::ChatCommand(packet) => {
                 assert_eq!(packet.command, "say hello");
-                assert!(packet.timestamp_millis > 0);
-                assert_ne!(packet.salt, 0);
-                assert!(packet.argument_signatures.entries.is_empty());
+                let signing = packet.signing.expect("signable command signing context");
+                assert!(signing.timestamp_millis > 0);
+                assert_ne!(signing.salt, 0);
+                assert_eq!(signing.arguments[0].name, "message");
+                assert_eq!(signing.arguments[0].value, "hello");
             }
-            command => panic!("expected signed chat command, got {command:?}"),
+            command => panic!("expected chat command request, got {command:?}"),
         }
         assert!(requests.lock().unwrap().net_requests.is_empty());
     }

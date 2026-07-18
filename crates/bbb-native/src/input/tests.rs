@@ -1,5 +1,6 @@
 use super::*;
 use bbb_item_model::NativeItemRuntime;
+use bbb_net::OutboundChatCommand;
 use bbb_pack::{EquipmentAssetCatalog, ItemRegistryCatalog};
 use bbb_protocol::block_entity_types::{
     VANILLA_BLOCK_ENTITY_TYPES, VANILLA_BLOCK_ENTITY_TYPE_MOB_SPAWNER_ID,
@@ -93,8 +94,8 @@ use bbb_protocol::packets::BlockEntityData;
 use bbb_protocol::packets::{
     AddEntity, AdvancementDisplaySummary, AdvancementFrameType, AdvancementIconSummary,
     AdvancementSummary, BlockEntityTagQuery, BlockPos as ProtocolBlockPos,
-    BlockUpdate as ProtocolBlockUpdate, ChatCommand, CommandArgumentParser, CommandNode,
-    CommandNodeType, CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
+    BlockUpdate as ProtocolBlockUpdate, CommandArgumentParser, CommandNode, CommandNodeType,
+    CommandSuggestion, CommandSuggestionRequest, CommandSuggestions, Commands,
     CommonPlayerSpawnInfo, ContainerClick, ContainerCloseRequest, ContainerInput,
     ContainerSetContent as ProtocolContainerSetContent, CustomChatCompletions,
     CustomChatCompletionsAction, DataComponentPatchSummary, DeleteChat, DialogHolder,
@@ -16409,9 +16410,7 @@ fn command_entry_submits_slash_command_without_leading_slash() {
     );
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::ChatCommand(ChatCommand {
-            command: "time set day".to_string(),
-        })
+        NetCommand::ChatCommand(OutboundChatCommand::unsigned("time set day"))
     );
 }
 
@@ -16457,19 +16456,27 @@ fn command_entry_with_signable_message_argument_submits_signed_command() {
         })
     );
     match rx.try_recv().unwrap() {
-        NetCommand::ChatCommandSigned(packet) => {
+        NetCommand::ChatCommand(packet) => {
             assert_eq!(packet.command, "say hello");
-            assert!(packet.timestamp_millis > 0);
-            assert_ne!(packet.salt, 0);
-            assert!(packet.argument_signatures.entries.is_empty());
-            assert_eq!(packet.last_seen_messages.offset, 1);
-            assert_eq!(packet.last_seen_messages.acknowledged, 1 << 19);
+            let signing = packet.signing.expect("signable command signing context");
+            assert!(signing.timestamp_millis > 0);
+            assert_ne!(signing.salt, 0);
+            assert_eq!(signing.arguments[0].name, "message");
+            assert_eq!(signing.arguments[0].value, "hello");
+            assert_eq!(signing.last_seen.update.offset, 1);
+            assert_eq!(signing.last_seen.update.acknowledged, 1 << 19);
             assert_ne!(
-                packet.last_seen_messages.checksum,
+                signing.last_seen.update.checksum,
                 LastSeenMessagesUpdate::default().checksum
             );
+            assert_eq!(
+                signing.last_seen.signatures,
+                vec![MessageSignature {
+                    bytes: vec![12; 256]
+                }]
+            );
         }
-        command => panic!("expected signed chat command, got {command:?}"),
+        command => panic!("expected chat command request, got {command:?}"),
     }
     assert!(rx.try_recv().is_err());
     assert_eq!(
@@ -16531,7 +16538,8 @@ fn chat_key_opens_chat_entry_and_submits_unsigned_message() {
             assert_eq!(packet.message, "hello world");
             assert!(packet.timestamp_millis > 0);
             assert_ne!(packet.salt, 0);
-            assert_eq!(packet.last_seen_messages, LastSeenMessagesUpdate::default());
+            assert_eq!(packet.last_seen.update, LastSeenMessagesUpdate::default());
+            assert!(packet.last_seen.signatures.is_empty());
         }
         command => panic!("expected chat message command, got {command:?}"),
     }
@@ -16852,9 +16860,7 @@ fn command_entry_filters_vanilla_disallowed_formatting_character() {
 
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::ChatCommand(ChatCommand {
-            command: "seed".to_string(),
-        })
+        NetCommand::ChatCommand(OutboundChatCommand::unsigned("seed"))
     );
     assert!(rx.try_recv().is_err());
 }
@@ -16895,11 +16901,17 @@ fn chat_key_submits_message_with_pending_last_seen_update() {
     match rx.try_recv().unwrap() {
         NetCommand::ChatMessage(packet) => {
             assert_eq!(packet.message, "reply");
-            assert_eq!(packet.last_seen_messages.offset, 1);
-            assert_eq!(packet.last_seen_messages.acknowledged, 1 << 19);
+            assert_eq!(packet.last_seen.update.offset, 1);
+            assert_eq!(packet.last_seen.update.acknowledged, 1 << 19);
             assert_ne!(
-                packet.last_seen_messages.checksum,
+                packet.last_seen.update.checksum,
                 LastSeenMessagesUpdate::default().checksum
+            );
+            assert_eq!(
+                packet.last_seen.signatures,
+                vec![MessageSignature {
+                    bytes: vec![12; 256]
+                }]
             );
         }
         command => panic!("expected chat message command, got {command:?}"),
@@ -16949,9 +16961,7 @@ fn chat_entry_starting_with_slash_requests_suggestions_and_submits_command() {
     );
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::ChatCommand(ChatCommand {
-            command: "seed".to_string(),
-        })
+        NetCommand::ChatCommand(OutboundChatCommand::unsigned("seed"))
     );
     assert!(rx.try_recv().is_err());
 }
@@ -17231,9 +17241,7 @@ fn command_entry_control_a_selection_replaces_and_submits_command() {
     }
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::ChatCommand(ChatCommand {
-            command: "time set day".to_string(),
-        })
+        NetCommand::ChatCommand(OutboundChatCommand::unsigned("time set day"))
     );
     assert!(rx.try_recv().is_err());
 }
@@ -17503,9 +17511,7 @@ fn command_entry_tab_applies_latest_suggestion_range() {
     );
     assert_eq!(
         rx.try_recv().unwrap(),
-        NetCommand::ChatCommand(ChatCommand {
-            command: "give".to_string(),
-        })
+        NetCommand::ChatCommand(OutboundChatCommand::unsigned("give"))
     );
 }
 

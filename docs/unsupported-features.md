@@ -611,9 +611,11 @@ The local-session, outbound signing, server-echo validation, and deletion
 lifecycle work follows the serial ownership contract in
 [`signed-chat-session-design.md`](signed-chat-session-design.md).
 
-- Produce `ServerboundChatPacket` signatures. The protocol encoder accepts the
-  optional 256-byte signature, but the production chat path still sends `None`.
-- Produce non-empty `ServerboundChatCommandSignedPacket` argument signatures.
+- Install the prepared local session into the net-owned outbound request path so
+  production `ServerboundChatPacket` carries its 256-byte signature and
+  `ServerboundChatCommandSignedPacket` carries non-empty argument signatures;
+  the conversion/signing core exists, but the live driver still selects the
+  vanilla unsigned encoder until the phase-3 key fetch completes.
 - Drive profile-key fetch/refresh from authenticated encrypted connections,
   install the local chat session/message encoder, validate the resulting server
   broadcast, and automatically send `ServerboundChatSessionUpdatePacket` before

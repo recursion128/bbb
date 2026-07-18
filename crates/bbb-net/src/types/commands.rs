@@ -1,15 +1,16 @@
 use bbb_protocol::packets::{
     self, AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
-    ChatAcknowledgement, ChatCommand, ChatCommandSigned, ChatMessage, ChatSessionUpdate,
-    ClientCommandAction, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-    ContainerCloseRequest, ContainerSlotStateChanged, CustomClickAction, EditBook, EntityTagQuery,
-    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
-    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
-    PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+    ChatAcknowledgement, ChatSessionUpdate, ClientCommandAction, CommandSuggestionRequest,
+    ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerSlotStateChanged,
+    CustomClickAction, EditBook, EntityTagQuery, InteractEntity, InteractionHand,
+    LockDifficultyCommand, PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
+    PlayerAbilitiesCommand, PlayerAction, PlayerCommand, PlayerInput, PlayerPositionState,
+    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem,
+    ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
     ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
     TeleportToEntity, UseItem, UseItemOn, Vec3d,
 };
+use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -127,6 +128,56 @@ pub struct VehicleMoveCommand {
     pub on_ground: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutboundChatCommandSigning {
+    pub timestamp_millis: i64,
+    pub salt: i64,
+    pub arguments: Vec<SignableCommandArgument>,
+    pub last_seen: OutboundLastSeenMessages,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutboundChatCommand {
+    pub command: String,
+    pub signing: Option<OutboundChatCommandSigning>,
+}
+
+impl OutboundChatCommand {
+    pub fn unsigned(command: impl Into<String>) -> Self {
+        Self {
+            command: command.into(),
+            signing: None,
+        }
+    }
+
+    pub fn signed(
+        command: impl Into<String>,
+        timestamp_millis: i64,
+        salt: i64,
+        arguments: Vec<SignableCommandArgument>,
+        last_seen: OutboundLastSeenMessages,
+    ) -> Self {
+        debug_assert!(!arguments.is_empty());
+        Self {
+            command: command.into(),
+            signing: Some(OutboundChatCommandSigning {
+                timestamp_millis,
+                salt,
+                arguments,
+                last_seen,
+            }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutboundChatMessage {
+    pub message: String,
+    pub timestamp_millis: i64,
+    pub salt: i64,
+    pub last_seen: OutboundLastSeenMessages,
+}
+
 impl VehicleMoveCommand {
     pub(crate) fn encode_packet(self) -> (i32, Vec<u8>) {
         packets::encode_play_move_vehicle(
@@ -161,9 +212,8 @@ pub enum NetCommand {
     PlayerAbilities(PlayerAbilitiesCommand),
     PlayerInput(PlayerInput),
     ChatAcknowledgement(ChatAcknowledgement),
-    ChatCommand(ChatCommand),
-    ChatCommandSigned(ChatCommandSigned),
-    ChatMessage(ChatMessage),
+    ChatCommand(OutboundChatCommand),
+    ChatMessage(OutboundChatMessage),
     ChatSessionUpdate(ChatSessionUpdate),
     CustomPayload(ServerboundCustomPayload),
     CustomClickAction(CustomClickAction),

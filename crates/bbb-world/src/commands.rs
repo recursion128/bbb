@@ -44,61 +44,82 @@ pub struct CommandArgumentParserState {
     pub properties: Vec<u8>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SignableCommandArgument {
+    pub name: String,
+    pub value: String,
+}
+
 impl CommandTreeState {
     pub fn command_requires_signed_arguments(&self, command: &str) -> bool {
-        let command = command.trim().trim_start_matches('/').trim_start();
-        if command.is_empty() {
-            return false;
-        }
-
-        let tokens = command.split_whitespace().collect::<Vec<_>>();
-        let mut visited = HashSet::new();
-        self.node_requires_signed_arguments(self.root_index, &tokens, 0, &mut visited)
+        !self.signable_arguments(command).is_empty()
     }
 
-    fn node_requires_signed_arguments(
+    pub fn signable_arguments(&self, command: &str) -> Vec<SignableCommandArgument> {
+        let command = command.trim_start().strip_prefix('/').unwrap_or(command);
+        let command = command.trim_start();
+        if command.is_empty() {
+            return Vec::new();
+        }
+
+        let mut visited = HashSet::new();
+        self.node_signable_arguments(self.root_index, command, 0, &mut visited)
+            .unwrap_or_default()
+    }
+
+    fn node_signable_arguments(
         &self,
         node_index: i32,
-        tokens: &[&str],
-        position: usize,
+        command: &str,
+        cursor: usize,
         visited: &mut HashSet<(i32, usize)>,
-    ) -> bool {
-        if !visited.insert((node_index, position)) {
-            return false;
+    ) -> Option<Vec<SignableCommandArgument>> {
+        if !visited.insert((node_index, cursor)) {
+            return None;
         }
 
         let Some(node) = self.node(node_index) else {
-            return false;
+            return None;
         };
 
         if let Some(redirect) = node.redirect {
-            if self.node_requires_signed_arguments(redirect, tokens, position, visited) {
-                return true;
+            if let Some(arguments) =
+                self.node_signable_arguments(redirect, command, cursor, visited)
+            {
+                return Some(arguments);
             }
         }
 
-        let Some(token) = tokens.get(position) else {
-            return false;
-        };
+        let argument_start = skip_ascii_whitespace(command, cursor);
+        if argument_start == command.len() {
+            return None;
+        }
 
         let mut matched_literal = false;
         for child_index in &node.children {
             let Some(child) = self.node(*child_index) else {
                 continue;
             };
-            if child.node_type == CommandNodeKindState::Literal
-                && child.name.as_deref() == Some(*token)
+            if child.node_type != CommandNodeKindState::Literal {
+                continue;
+            }
+            let Some(literal_end) = child
+                .name
+                .as_deref()
+                .and_then(|literal| match_literal(command, argument_start, literal))
+            else {
+                continue;
+            };
+            matched_literal = true;
+            if let Some(arguments) =
+                self.node_signable_arguments(*child_index, command, literal_end, visited)
             {
-                matched_literal = true;
-                if self.node_requires_signed_arguments(*child_index, tokens, position + 1, visited)
-                {
-                    return true;
-                }
+                return Some(arguments);
             }
         }
 
         if matched_literal {
-            return false;
+            return None;
         }
 
         for child_index in &node.children {
@@ -108,19 +129,26 @@ impl CommandTreeState {
             if child.node_type != CommandNodeKindState::Argument {
                 continue;
             }
-            if child
-                .parser
-                .as_ref()
-                .is_some_and(|parser| parser.name == SIGNABLE_COMMAND_ARGUMENT_PARSER)
-            {
-                return true;
+            let Some(parser) = child.parser.as_ref() else {
+                continue;
+            };
+            if parser.name == SIGNABLE_COMMAND_ARGUMENT_PARSER {
+                return Some(vec![SignableCommandArgument {
+                    name: child.name.clone().unwrap_or_default(),
+                    value: command[argument_start..].to_string(),
+                }]);
             }
-            if self.node_requires_signed_arguments(*child_index, tokens, position + 1, visited) {
-                return true;
+            let Some(argument_end) = parse_argument_end(command, argument_start, parser) else {
+                continue;
+            };
+            if let Some(arguments) =
+                self.node_signable_arguments(*child_index, command, argument_end, visited)
+            {
+                return Some(arguments);
             }
         }
 
-        false
+        None
     }
 
     fn node(&self, index: i32) -> Option<&CommandNodeState> {
@@ -194,6 +222,10 @@ impl WorldStore {
         self.commands.command_requires_signed_arguments(command)
     }
 
+    pub fn signable_command_arguments(&self, command: &str) -> Vec<SignableCommandArgument> {
+        self.commands.signable_arguments(command)
+    }
+
     pub(crate) fn reset_command_tree_for_new_listener(&mut self) {
         self.commands = CommandTreeState::default();
         self.update_command_tree_counters();
@@ -234,6 +266,123 @@ impl WorldStore {
         self.counters.last_command_root_index =
             (!self.commands.nodes.is_empty()).then_some(self.commands.root_index);
     }
+}
+
+fn skip_ascii_whitespace(command: &str, mut cursor: usize) -> usize {
+    while command
+        .as_bytes()
+        .get(cursor)
+        .is_some_and(u8::is_ascii_whitespace)
+    {
+        cursor += 1;
+    }
+    cursor
+}
+
+fn match_literal(command: &str, start: usize, literal: &str) -> Option<usize> {
+    let end = start.checked_add(literal.len())?;
+    (command.get(start..end) == Some(literal)
+        && command
+            .as_bytes()
+            .get(end)
+            .is_none_or(u8::is_ascii_whitespace))
+    .then_some(end)
+}
+
+fn parse_argument_end(
+    command: &str,
+    start: usize,
+    parser: &CommandArgumentParserState,
+) -> Option<usize> {
+    match parser.name.as_str() {
+        "brigadier:string" => match parser.properties.first().copied().unwrap_or_default() {
+            2 => Some(command.len()),
+            1 => parse_quotable_argument_end(command, start),
+            _ => parse_lexical_argument_end(command, start),
+        },
+        "minecraft:vec3" | "minecraft:block_pos" => parse_argument_parts_end(command, start, 3),
+        "minecraft:vec2" | "minecraft:rotation" | "minecraft:column_pos" => {
+            parse_argument_parts_end(command, start, 2)
+        }
+        _ => parse_lexical_argument_end(command, start),
+    }
+}
+
+fn parse_argument_parts_end(command: &str, mut cursor: usize, count: usize) -> Option<usize> {
+    for _ in 0..count {
+        cursor = skip_ascii_whitespace(command, cursor);
+        cursor = parse_lexical_argument_end(command, cursor)?;
+    }
+    Some(cursor)
+}
+
+fn parse_quotable_argument_end(command: &str, start: usize) -> Option<usize> {
+    if command.as_bytes().get(start) == Some(&b'\"') {
+        return parse_quoted_end(command, start);
+    }
+    parse_lexical_argument_end(command, start)
+}
+
+fn parse_quoted_end(command: &str, start: usize) -> Option<usize> {
+    let bytes = command.as_bytes();
+    let quote = *bytes.get(start)?;
+    let mut cursor = start + 1;
+    let mut escaped = false;
+    while let Some(byte) = bytes.get(cursor).copied() {
+        cursor += 1;
+        if escaped {
+            escaped = false;
+        } else if byte == b'\\' {
+            escaped = true;
+        } else if byte == quote {
+            return Some(cursor);
+        }
+    }
+    None
+}
+
+fn parse_lexical_argument_end(command: &str, start: usize) -> Option<usize> {
+    let bytes = command.as_bytes();
+    if matches!(bytes.get(start), Some(b'\"' | b'\'')) {
+        return parse_quoted_end(command, start);
+    }
+
+    let mut cursor = start;
+    let mut escaped = false;
+    let mut quote = None;
+    let mut delimiters = Vec::new();
+    while let Some(byte) = bytes.get(cursor).copied() {
+        if escaped {
+            escaped = false;
+            cursor += 1;
+            continue;
+        }
+        if byte == b'\\' {
+            escaped = true;
+            cursor += 1;
+            continue;
+        }
+        if let Some(active_quote) = quote {
+            if byte == active_quote {
+                quote = None;
+            }
+            cursor += 1;
+            continue;
+        }
+        match byte {
+            b'\"' | b'\'' => quote = Some(byte),
+            b'[' => delimiters.push(b']'),
+            b'{' => delimiters.push(b'}'),
+            b'(' => delimiters.push(b')'),
+            b']' | b'}' | b')' if delimiters.last() == Some(&byte) => {
+                delimiters.pop();
+            }
+            byte if byte.is_ascii_whitespace() && delimiters.is_empty() => break,
+            _ => {}
+        }
+        cursor += 1;
+    }
+    (cursor > start && quote.is_none() && delimiters.is_empty()).then_some(cursor)
 }
 
 #[cfg(test)]
@@ -302,8 +451,16 @@ mod tests {
 
         assert!(store.command_requires_signed_arguments("say hello world"));
         assert!(store.command_requires_signed_arguments("/say hello world"));
+        assert_eq!(
+            store.signable_command_arguments("say   hello  world  "),
+            vec![SignableCommandArgument {
+                name: "message".to_string(),
+                value: "hello  world  ".to_string(),
+            }]
+        );
         assert!(!store.command_requires_signed_arguments("time set day"));
         assert!(!store.command_requires_signed_arguments(""));
+        assert!(store.signable_command_arguments("say").is_empty());
     }
 
     #[test]
@@ -320,7 +477,29 @@ mod tests {
         store.apply_commands(nested_message_command_tree());
 
         assert!(store.command_requires_signed_arguments("tell Steve hello world"));
+        assert_eq!(
+            store.signable_command_arguments("tell @e[name=\"A B\"] hello world"),
+            vec![SignableCommandArgument {
+                name: "message".to_string(),
+                value: "hello world".to_string(),
+            }]
+        );
         assert!(!store.command_requires_signed_arguments("tell"));
+    }
+
+    #[test]
+    fn follows_redirects_and_keeps_literal_precedence() {
+        let mut store = WorldStore::new();
+        store.apply_commands(redirected_message_command_tree());
+
+        assert_eq!(
+            store.signable_command_arguments("w Steve redirected message"),
+            vec![SignableCommandArgument {
+                name: "message".to_string(),
+                value: "redirected message".to_string(),
+            }]
+        );
+        assert!(store.signable_command_arguments("time set day").is_empty());
     }
 
     fn command_tree(literal: &str, parser_name: &str) -> Commands {
@@ -430,5 +609,33 @@ mod tests {
                 },
             ],
         }
+    }
+
+    fn redirected_message_command_tree() -> Commands {
+        let mut tree = nested_message_command_tree();
+        tree.nodes[0].children.extend([4, 5]);
+        tree.nodes.push(CommandNode {
+            node_type: CommandNodeType::Literal,
+            flags: 1,
+            children: Vec::new(),
+            redirect: Some(1),
+            name: Some("w".to_string()),
+            parser: None,
+            suggestions: None,
+            executable: false,
+            restricted: false,
+        });
+        tree.nodes.push(CommandNode {
+            node_type: CommandNodeType::Literal,
+            flags: 1,
+            children: Vec::new(),
+            redirect: None,
+            name: Some("time".to_string()),
+            parser: None,
+            suggestions: None,
+            executable: true,
+            restricted: false,
+        });
+        tree
     }
 }

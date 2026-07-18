@@ -6,17 +6,17 @@ use std::{
 };
 
 use bbb_control::NetCounters;
-use bbb_net::{NetCommand, VehicleMoveCommand};
+use bbb_net::{NetCommand, OutboundChatCommand, OutboundChatMessage, VehicleMoveCommand};
 use bbb_protocol::packets::{
-    AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand, ChatCommand,
-    ChatCommandSigned, ChatMessage, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-    ContainerCloseRequest, ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook,
-    EntityTagQuery, InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat,
-    PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
-    PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
-    RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements,
-    SelectBundleItem, SelectTradeCommand, SetBeacon, SetCreativeModeSlot, SignUpdate,
-    SpectateEntity, TeleportToEntity, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
+    AttackEntity, BlockEntityTagQuery, ChangeDifficultyCommand, ChangeGameModeCommand,
+    CommandSuggestionRequest, ContainerButtonClick, ContainerClick, ContainerCloseRequest,
+    ContainerSlotStateChanged, Direction as ProtocolDirection, EditBook, EntityTagQuery,
+    InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
+    PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerActionKind,
+    PlayerCommand, PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
+    RecipeBookSeenRecipeCommand, RenameItem, SeenAdvancements, SelectBundleItem,
+    SelectTradeCommand, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
+    TeleportToEntity, UseItem, UseItemOn, Vec3d as ProtocolVec3d,
 };
 use bbb_world::{BlockPos, WorldStore};
 use tokio::sync::mpsc;
@@ -467,15 +467,15 @@ pub(crate) fn queue_chat_command(
 ) {
     if let Some(tx) = net_commands {
         let command = command.into();
-        let command = if world.command_requires_signed_arguments(&command) {
-            let (timestamp_millis, salt) = unsigned_chat_clock_fields(&command);
-            let mut packet = ChatCommandSigned::unsigned_arguments(command, timestamp_millis, salt);
-            packet.last_seen_messages = world.take_last_seen_messages_update_for_outbound_chat();
-            NetCommand::ChatCommandSigned(packet)
+        let arguments = world.signable_command_arguments(&command);
+        let request = if arguments.is_empty() {
+            OutboundChatCommand::unsigned(command)
         } else {
-            NetCommand::ChatCommand(ChatCommand { command })
+            let (timestamp_millis, salt) = unsigned_chat_clock_fields(&command);
+            let last_seen = world.take_last_seen_messages_for_outbound_chat();
+            OutboundChatCommand::signed(command, timestamp_millis, salt, arguments, last_seen)
         };
-        if tx.try_send(command).is_ok() {
+        if tx.try_send(NetCommand::ChatCommand(request)).is_ok() {
             counters.chat_command_commands_queued += 1;
         }
     }
@@ -490,9 +490,13 @@ pub(crate) fn queue_chat_message_command(
     if let Some(tx) = net_commands {
         let message = message.into();
         let (timestamp_millis, salt) = unsigned_chat_clock_fields(&message);
-        let mut packet = ChatMessage::unsigned(message, timestamp_millis, salt);
-        packet.last_seen_messages = world.take_last_seen_messages_update_for_outbound_chat();
-        if tx.try_send(NetCommand::ChatMessage(packet)).is_ok() {
+        let request = OutboundChatMessage {
+            message,
+            timestamp_millis,
+            salt,
+            last_seen: world.take_last_seen_messages_for_outbound_chat(),
+        };
+        if tx.try_send(NetCommand::ChatMessage(request)).is_ok() {
             counters.chat_message_commands_queued += 1;
         }
     }
@@ -783,11 +787,11 @@ mod tests {
     use super::*;
     use bbb_protocol::packets::{
         AttackEntity, BlockHitResult as ProtocolBlockHitResult, BlockPos as ProtocolBlockPos,
-        ChatCommand, ChatCommandSigned, CommandArgumentParser, CommandNode, CommandNodeType,
-        CommandSuggestionRequest, Commands, ContainerButtonClick, ContainerSlotStateChanged,
-        Direction as ProtocolDirection, InteractEntity, InteractionHand, LastSeenMessagesUpdate,
-        PickItemFromBlock, PickItemFromEntity, PlayerAction, PlayerActionKind, RecipeBookType,
-        RecipeDisplayId, UseItemOn, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
+        CommandArgumentParser, CommandNode, CommandNodeType, CommandSuggestionRequest, Commands,
+        ContainerButtonClick, ContainerSlotStateChanged, Direction as ProtocolDirection,
+        InteractEntity, InteractionHand, LastSeenMessagesUpdate, PickItemFromBlock,
+        PickItemFromEntity, PlayerAction, PlayerActionKind, RecipeBookType, RecipeDisplayId,
+        UseItemOn, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
     };
     use bbb_protocol::packets::{
         ContainerInput, HashedComponentPatch, HashedItemStack, HashedStack,
@@ -841,9 +845,7 @@ mod tests {
         assert_eq!(counters.chat_command_commands_queued, 1);
         assert_eq!(
             rx.try_recv().unwrap(),
-            NetCommand::ChatCommand(ChatCommand {
-                command: "give @p minecraft:stone".to_string(),
-            })
+            NetCommand::ChatCommand(OutboundChatCommand::unsigned("give @p minecraft:stone"))
         );
     }
 
@@ -859,24 +861,32 @@ mod tests {
 
         assert_eq!(counters.chat_command_commands_queued, 1);
         match rx.try_recv().unwrap() {
-            NetCommand::ChatCommandSigned(packet) => {
-                let timestamp_millis = packet.timestamp_millis;
-                let salt = packet.salt;
-                assert_eq!(
-                    packet,
-                    ChatCommandSigned {
-                        command: "say hello world".to_string(),
-                        timestamp_millis,
-                        salt,
-                        argument_signatures: Default::default(),
-                        last_seen_messages: LastSeenMessagesUpdate::default(),
-                    }
-                );
-                assert!(timestamp_millis > 0);
-                assert_ne!(salt, 0);
+            NetCommand::ChatCommand(packet) => {
+                assert_eq!(packet.command, "say hello world");
+                let signing = packet.signing.expect("signable command signing context");
+                assert!(signing.timestamp_millis > 0);
+                assert_ne!(signing.salt, 0);
+                assert_eq!(signing.arguments.len(), 1);
+                assert_eq!(signing.arguments[0].name, "message");
+                assert_eq!(signing.arguments[0].value, "hello world");
+                assert_eq!(signing.last_seen.update, LastSeenMessagesUpdate::default());
+                assert!(signing.last_seen.signatures.is_empty());
             }
-            command => panic!("expected signed chat command, got {command:?}"),
+            command => panic!("expected chat command request, got {command:?}"),
         }
+    }
+
+    #[test]
+    fn native_chat_queue_owns_only_semantic_net_requests() {
+        let production = include_str!("commands.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        assert!(production.contains("OutboundChatCommand"));
+        assert!(production.contains("OutboundChatMessage"));
+        assert!(!production.contains("ChatCommandSigned"));
+        assert!(!production.contains("ChatMessage::unsigned"));
+        assert!(!production.contains("LastSeenMessagesUpdate"));
     }
 
     #[test]
@@ -894,7 +904,8 @@ mod tests {
                 assert_eq!(packet.message, "hello world");
                 assert!(packet.timestamp_millis > 0);
                 assert_ne!(packet.salt, 0);
-                assert_eq!(packet.last_seen_messages, LastSeenMessagesUpdate::default());
+                assert_eq!(packet.last_seen.update, LastSeenMessagesUpdate::default());
+                assert!(packet.last_seen.signatures.is_empty());
             }
             command => panic!("expected chat message command, got {command:?}"),
         }

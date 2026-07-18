@@ -160,6 +160,12 @@ pub struct ProcessedChatSignatureState {
     pub bytes: Vec<u8>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutboundLastSeenMessages {
+    pub update: LastSeenMessagesUpdate,
+    pub signatures: Vec<ProtocolMessageSignature>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeletedChatState {
     pub signature: Option<ChatSignatureState>,
@@ -482,18 +488,22 @@ impl WorldStore {
         Some(ProtocolChatAcknowledgement { offset })
     }
 
-    pub fn take_last_seen_messages_update_for_outbound_chat(&mut self) -> LastSeenMessagesUpdate {
+    pub fn take_last_seen_messages_for_outbound_chat(&mut self) -> OutboundLastSeenMessages {
         let offset = self.client_chat.acknowledgement.pending_offset;
         self.client_chat.acknowledgement.pending_offset = 0;
 
         let mut acknowledged = 0_u32;
         let mut checksum = 1_i32;
+        let mut signatures = Vec::new();
         let len = self.client_chat.last_seen_messages.entries.len();
         if len == 0 {
             refresh_chat_counters(self);
-            return LastSeenMessagesUpdate {
-                offset,
-                ..LastSeenMessagesUpdate::default()
+            return OutboundLastSeenMessages {
+                update: LastSeenMessagesUpdate {
+                    offset,
+                    ..LastSeenMessagesUpdate::default()
+                },
+                signatures,
             };
         }
         for i in 0..len {
@@ -503,15 +513,21 @@ impl WorldStore {
                 checksum = checksum
                     .wrapping_mul(31)
                     .wrapping_add(entry.signature.checksum);
+                signatures.push(ProtocolMessageSignature {
+                    bytes: entry.signature.bytes.clone(),
+                });
                 entry.pending = false;
             }
         }
 
         refresh_chat_counters(self);
-        LastSeenMessagesUpdate {
-            offset,
-            acknowledged,
-            checksum: last_seen_checksum_byte(checksum),
+        OutboundLastSeenMessages {
+            update: LastSeenMessagesUpdate {
+                offset,
+                acknowledged,
+                checksum: last_seen_checksum_byte(checksum),
+            },
+            signatures,
         }
     }
 
@@ -905,7 +921,7 @@ mod tests {
             None
         );
         assert_eq!(
-            store.apply_player_chat(player_chat_with_signature(1, duplicate)),
+            store.apply_player_chat(player_chat_with_signature(1, duplicate.clone())),
             None
         );
 
@@ -916,12 +932,13 @@ mod tests {
         );
         assert_eq!(store.client_chat().acknowledgement.pending_offset, 1);
 
-        let update = store.take_last_seen_messages_update_for_outbound_chat();
-        assert_eq!(update.offset, 1);
+        let outbound = store.take_last_seen_messages_for_outbound_chat();
+        assert_eq!(outbound.update.offset, 1);
         assert_eq!(
-            update.acknowledged,
+            outbound.update.acknowledged,
             1 << (LAST_SEEN_MESSAGES_TRACKER_CAPACITY - 1)
         );
+        assert_eq!(outbound.signatures, vec![duplicate]);
     }
 
     #[test]
@@ -954,29 +971,31 @@ mod tests {
             None
         );
 
-        let update = store.take_last_seen_messages_update_for_outbound_chat();
+        let outbound = store.take_last_seen_messages_for_outbound_chat();
 
-        assert_eq!(update.offset, 1);
+        assert_eq!(outbound.update.offset, 1);
         assert_eq!(
-            update.acknowledged,
+            outbound.update.acknowledged,
             1 << (LAST_SEEN_MESSAGES_TRACKER_CAPACITY - 1)
         );
         assert_eq!(
-            update.checksum,
+            outbound.update.checksum,
             last_seen_checksum_byte(1_i32.wrapping_mul(31).wrapping_add(seen.checksum()))
         );
+        assert_eq!(outbound.signatures, vec![seen]);
         assert_eq!(
             store.counters().player_chat_acknowledgement_pending_offset,
             0
         );
 
-        let second = store.take_last_seen_messages_update_for_outbound_chat();
-        assert_eq!(second.offset, 0);
+        let second = store.take_last_seen_messages_for_outbound_chat();
+        assert_eq!(second.update.offset, 0);
         assert_eq!(
-            second.acknowledged,
+            second.update.acknowledged,
             1 << (LAST_SEEN_MESSAGES_TRACKER_CAPACITY - 1)
         );
-        assert_eq!(second.checksum, update.checksum);
+        assert_eq!(second.update.checksum, outbound.update.checksum);
+        assert_eq!(second.signatures, outbound.signatures);
     }
 
     #[test]
@@ -991,11 +1010,15 @@ mod tests {
             None
         );
 
-        let update = store.take_last_seen_messages_update_for_outbound_chat();
+        let outbound = store.take_last_seen_messages_for_outbound_chat();
 
-        assert_eq!(update.offset, 1);
-        assert_eq!(update.acknowledged, 0);
-        assert_eq!(update.checksum, LastSeenMessagesUpdate::default().checksum);
+        assert_eq!(outbound.update.offset, 1);
+        assert_eq!(outbound.update.acknowledged, 0);
+        assert_eq!(
+            outbound.update.checksum,
+            LastSeenMessagesUpdate::default().checksum
+        );
+        assert!(outbound.signatures.is_empty());
         assert_eq!(
             store.counters().player_chat_acknowledgement_pending_offset,
             0
@@ -1017,11 +1040,15 @@ mod tests {
                 full_signature: Some(deleted),
             },
         });
-        let update = store.take_last_seen_messages_update_for_outbound_chat();
+        let outbound = store.take_last_seen_messages_for_outbound_chat();
 
-        assert_eq!(update.offset, 1);
-        assert_eq!(update.acknowledged, 0);
-        assert_eq!(update.checksum, LastSeenMessagesUpdate::default().checksum);
+        assert_eq!(outbound.update.offset, 1);
+        assert_eq!(outbound.update.acknowledged, 0);
+        assert_eq!(
+            outbound.update.checksum,
+            LastSeenMessagesUpdate::default().checksum
+        );
+        assert!(outbound.signatures.is_empty());
     }
 
     #[test]
@@ -1042,14 +1069,23 @@ mod tests {
             );
         }
 
-        let update = store.take_last_seen_messages_update_for_outbound_chat();
+        let outbound = store.take_last_seen_messages_for_outbound_chat();
 
-        assert_eq!(update.offset, 21);
+        assert_eq!(outbound.update.offset, 21);
         assert_eq!(
-            update.acknowledged,
+            outbound.update.acknowledged,
             (1 << LAST_SEEN_MESSAGES_TRACKER_CAPACITY) - 1
         );
-        assert_eq!(update.checksum, last_seen_checksum_byte(expected_checksum));
+        assert_eq!(
+            outbound.update.checksum,
+            last_seen_checksum_byte(expected_checksum)
+        );
+        assert_eq!(
+            outbound.signatures.len(),
+            LAST_SEEN_MESSAGES_TRACKER_CAPACITY
+        );
+        assert_eq!(outbound.signatures[0], signature(1));
+        assert_eq!(outbound.signatures[19], signature(20));
     }
 
     #[test]

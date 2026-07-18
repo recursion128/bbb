@@ -19422,3 +19422,20 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   HTTP POST/Bearer、token/private-key redaction、Content-Length 上限、坏 PEM/时间/空签名、
   mismatched 与非 2048-bit key；完整 `bbb-net` 238 项与 non-test check 通过。本 phase
   按高风险工程合同在提交 tip 运行 full gate，phase 2 才接 world/native outbound path。
+
+## 2026-07-18：签名聊天 phase 2 outbound signing contract
+
+- [x] 对照本地 vanilla 26.1 `SignableCommand`、`MessageArgument`、
+  `ClientPacketListener.sendChat/sendCommand` 与 `LastSeenMessagesTracker`，把 command tree
+  的布尔探测收敛为解析结果：保留 `minecraft:message` 参数名及从首个非空白字符到命令末尾
+  的原始 greedy value（含内部/尾部空白），遵守 literal precedence、redirect 与常用多 token
+  参数跨度；确认 26.1 仅 `MessageArgument` 实现 `SignedArgument`。
+- [x] `bbb-world` 的 outbound last-seen 操作现在原子返回同一 ring-order 视图的 wire
+  `LastSeenMessagesUpdate` 与完整 256-byte signatures，并一起清空 offset/pending；filtered、
+  deleted-pending、未满 ring 与 wrap ring 回归同时核对 bitset、checksum 和签名顺序。
+- [x] 新增 net-owned `OutboundChatCommand` / `OutboundChatMessage`；`bbb-native` 不再构造
+  protocol chat packet，`bbb-net` 独占最终 packet 与签名。注入 session 的确定性回归验证
+  ordinary chat 消耗一个 link、多个 command argument 按 wire 顺序逐个消耗，且共享完全相同
+  的 last-seen signatures；生产 driver 在 phase 3 安装 session 前仍保持 vanilla unsigned
+  fallback（chat `None`、signable command 空 argument signatures），plain command 不消耗
+  last-seen。

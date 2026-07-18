@@ -4,7 +4,10 @@ use std::{fmt, time::Duration};
 
 use anyhow::{anyhow, ensure, Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use bbb_protocol::packets::{ChatSessionUpdate, MessageSignature};
+use bbb_protocol::packets::{
+    ArgumentSignature, ArgumentSignatures, ChatCommand, ChatCommandSigned, ChatMessage,
+    ChatSessionUpdate, MessageSignature,
+};
 use chrono::DateTime;
 use reqwest::StatusCode;
 use rsa::{
@@ -15,6 +18,8 @@ use rsa::{
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
+
+use crate::types::{OutboundChatCommand, OutboundChatCommandSigning, OutboundChatMessage};
 
 const PROFILE_CERTIFICATES_URL: &str = "https://api.minecraftservices.com/player/certificates";
 const PROFILE_CERTIFICATES_TIMEOUT: Duration = Duration::from_secs(5);
@@ -256,6 +261,78 @@ impl<'a> SignedChatBody<'a> {
     }
 }
 
+pub(crate) enum PreparedChatCommand {
+    Unsigned(ChatCommand),
+    Signed(ChatCommandSigned),
+}
+
+pub(crate) fn prepare_outbound_chat_command(
+    request: OutboundChatCommand,
+    session: Option<&mut LocalChatSession>,
+) -> Result<PreparedChatCommand> {
+    let Some(OutboundChatCommandSigning {
+        timestamp_millis,
+        salt,
+        arguments,
+        last_seen,
+    }) = request.signing
+    else {
+        return Ok(PreparedChatCommand::Unsigned(ChatCommand {
+            command: request.command,
+        }));
+    };
+    ensure!(
+        !arguments.is_empty(),
+        "signed outbound command has no signable arguments"
+    );
+
+    let mut entries = Vec::with_capacity(arguments.len());
+    if let Some(session) = session {
+        for argument in arguments {
+            let signature = session.sign(SignedChatBody::new(
+                &argument.value,
+                timestamp_millis,
+                salt,
+                &last_seen.signatures,
+            ))?;
+            entries.push(ArgumentSignature {
+                name: argument.name,
+                signature,
+            });
+        }
+    }
+    Ok(PreparedChatCommand::Signed(ChatCommandSigned {
+        command: request.command,
+        timestamp_millis,
+        salt,
+        argument_signatures: ArgumentSignatures { entries },
+        last_seen_messages: last_seen.update,
+    }))
+}
+
+pub(crate) fn prepare_outbound_chat_message(
+    request: OutboundChatMessage,
+    session: Option<&mut LocalChatSession>,
+) -> Result<ChatMessage> {
+    let signature = session
+        .map(|session| {
+            session.sign(SignedChatBody::new(
+                &request.message,
+                request.timestamp_millis,
+                request.salt,
+                &request.last_seen.signatures,
+            ))
+        })
+        .transpose()?;
+    Ok(ChatMessage {
+        message: request.message,
+        timestamp_millis: request.timestamp_millis,
+        salt: request.salt,
+        signature,
+        last_seen_messages: request.last_seen.update,
+    })
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ProfileKeyPairResponse {
@@ -428,6 +505,8 @@ fn parse_epoch_millis(value: &str, field: &str) -> Result<i64> {
 mod tests {
     use std::sync::OnceLock;
 
+    use bbb_protocol::packets::LastSeenMessagesUpdate;
+    use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
     use rand::{rngs::StdRng, SeedableRng};
     use rsa::pkcs8::{EncodePrivateKey, EncodePublicKey};
     use tokio::{
@@ -549,6 +628,135 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("exhausted"));
+        assert!(pair.same_key_material(session.key_pair()));
+    }
+
+    #[test]
+    fn outbound_requests_are_unsigned_without_a_session() {
+        let last_seen = OutboundLastSeenMessages {
+            update: LastSeenMessagesUpdate {
+                offset: 3,
+                acknowledged: 5,
+                checksum: 7,
+            },
+            signatures: vec![MessageSignature {
+                bytes: vec![0x11; MESSAGE_SIGNATURE_BYTES],
+            }],
+        };
+        let message = prepare_outbound_chat_message(
+            OutboundChatMessage {
+                message: "hello".to_string(),
+                timestamp_millis: 2_000,
+                salt: 9,
+                last_seen: last_seen.clone(),
+            },
+            None,
+        )
+        .unwrap();
+        assert_eq!(message.signature, None);
+        assert_eq!(message.last_seen_messages, last_seen.update);
+
+        let command = prepare_outbound_chat_command(
+            OutboundChatCommand::signed(
+                "say hello",
+                3_000,
+                10,
+                vec![SignableCommandArgument {
+                    name: "message".to_string(),
+                    value: "hello".to_string(),
+                }],
+                last_seen.clone(),
+            ),
+            None,
+        )
+        .unwrap();
+        let PreparedChatCommand::Signed(command) = command else {
+            panic!("signable command must retain the signed-command packet shape");
+        };
+        assert!(command.argument_signatures.entries.is_empty());
+        assert_eq!(command.last_seen_messages, last_seen.update);
+
+        let command =
+            prepare_outbound_chat_command(OutboundChatCommand::unsigned("time set day"), None)
+                .unwrap();
+        let PreparedChatCommand::Unsigned(command) = command else {
+            panic!("plain command must use the unsigned command packet");
+        };
+        assert_eq!(command.command, "time set day");
+    }
+
+    #[test]
+    fn outbound_requests_sign_content_and_command_arguments_in_wire_order() {
+        let pair = decode_profile_key_pair(&fixture_response()).unwrap();
+        let profile_id = Uuid::from_u128(21);
+        let session_id = Uuid::from_u128(22);
+        let mut session = LocalChatSession::with_session_id(profile_id, session_id, pair.clone());
+        let last_seen_signature = MessageSignature {
+            bytes: vec![0x22; MESSAGE_SIGNATURE_BYTES],
+        };
+        let last_seen = OutboundLastSeenMessages {
+            update: LastSeenMessagesUpdate::default(),
+            signatures: vec![last_seen_signature],
+        };
+
+        let message = prepare_outbound_chat_message(
+            OutboundChatMessage {
+                message: "first".to_string(),
+                timestamp_millis: 4_000,
+                salt: 11,
+                last_seen: last_seen.clone(),
+            },
+            Some(&mut session),
+        )
+        .unwrap();
+        let signature = message.signature.as_ref().unwrap();
+        assert!(session
+            .verify(
+                0,
+                SignedChatBody::new("first", 4_000, 11, &last_seen.signatures),
+                signature,
+            )
+            .unwrap());
+
+        let command = prepare_outbound_chat_command(
+            OutboundChatCommand::signed(
+                "custom alpha beta",
+                5_000,
+                12,
+                vec![
+                    SignableCommandArgument {
+                        name: "first".to_string(),
+                        value: "alpha".to_string(),
+                    },
+                    SignableCommandArgument {
+                        name: "second".to_string(),
+                        value: "beta".to_string(),
+                    },
+                ],
+                last_seen.clone(),
+            ),
+            Some(&mut session),
+        )
+        .unwrap();
+        let PreparedChatCommand::Signed(command) = command else {
+            panic!("signable command must use the signed-command packet");
+        };
+        assert_eq!(command.argument_signatures.entries[0].name, "first");
+        assert_eq!(command.argument_signatures.entries[1].name, "second");
+        assert!(session
+            .verify(
+                1,
+                SignedChatBody::new("alpha", 5_000, 12, &last_seen.signatures),
+                &command.argument_signatures.entries[0].signature,
+            )
+            .unwrap());
+        assert!(session
+            .verify(
+                2,
+                SignedChatBody::new("beta", 5_000, 12, &last_seen.signatures),
+                &command.argument_signatures.entries[1].signature,
+            )
+            .unwrap());
         assert!(pair.same_key_material(session.key_pair()));
     }
 

@@ -6,10 +6,11 @@ session, outbound message chain, inbound chain validation needed to validate the
 server echo, and `DeleteChat` lifecycle. It does not turn the native client into
 an authentication launcher or duplicate Mojang's Brigadier/Authlib class trees.
 
-Implementation status: phase 1 is complete; phase 2 outbound contract is
-current. The bounded Services decoder, redacted RSA key owner, exact signing
-payload, v4 session UUID, verifier, and one-way chain are available in
-`bbb-net` but are not installed into a live connection yet.
+Implementation status: phases 1-2 are complete; phase 3 fetch/refresh and live
+installation is current. The bounded Services decoder, redacted RSA key owner,
+exact signing payload, v4 session UUID, verifier, one-way chain, atomic
+last-seen value, parsed signable arguments, and net-owned outbound request path
+are available, but the session is not installed into a live connection yet.
 
 ## Semantic Goal and Completion Criteria
 
@@ -127,6 +128,14 @@ Final completion requires all of the following:
    or each argument in FIFO order. Test literal/redirect/greedy parsing, identical
    last-seen inputs, multi-argument link order, unsigned fallback, and source
    ownership. Run affected world/net/native tests and a full gate.
+
+   Complete: `bbb-world` returns the exact `minecraft:message` name/value range
+   and atomically drains the matching wire update plus ordered full signatures;
+   `bbb-native` emits only `OutboundChatCommand`/`OutboundChatMessage`; and
+   `bbb-net` alone creates protocol packets and advances injected session links.
+   The production driver deliberately supplies no session until phase 3, so its
+   fallback remains an unsigned chat signature or an empty signed-command
+   argument list exactly as vanilla's unsigned encoder does.
 3. **Fetch, refresh, and automatic session update.** Start key preparation only
    for authenticated encrypted connections, keep packet reads live while it runs,
    atomically install the returned session, send its public data before using the

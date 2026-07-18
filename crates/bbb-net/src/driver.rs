@@ -3,6 +3,9 @@ use bbb_protocol::packets::{self, PlayerPositionState};
 use tokio::{sync::mpsc, time::Interval};
 
 use crate::{
+    chat_session::{
+        prepare_outbound_chat_command, prepare_outbound_chat_message, PreparedChatCommand,
+    },
     connection::RawConnection,
     types::{AcceptTeleportCommand, ConnectionState, NetCommand},
 };
@@ -124,13 +127,18 @@ pub(crate) async fn read_packet_or_drive_connection(
                         send_chat_acknowledgement(conn, command).await?;
                     }
                     Some(NetCommand::ChatCommand(command)) => {
-                        send_chat_command(conn, command).await?;
-                    }
-                    Some(NetCommand::ChatCommandSigned(command)) => {
-                        send_chat_command_signed(conn, command).await?;
+                        match prepare_outbound_chat_command(command, None)? {
+                            PreparedChatCommand::Unsigned(packet) => {
+                                send_chat_command(conn, packet).await?;
+                            }
+                            PreparedChatCommand::Signed(packet) => {
+                                send_chat_command_signed(conn, packet).await?;
+                            }
+                        }
                     }
                     Some(NetCommand::ChatMessage(message)) => {
-                        send_chat_message(conn, message).await?;
+                        let packet = prepare_outbound_chat_message(message, None)?;
+                        send_chat_message(conn, packet).await?;
                     }
                     Some(NetCommand::ChatSessionUpdate(session)) => {
                         send_chat_session_update(conn, session).await?;
@@ -292,7 +300,6 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::PlayerInput(_)) => {}
                     Some(NetCommand::ChatAcknowledgement(_)) => {}
                     Some(NetCommand::ChatCommand(_)) => {}
-                    Some(NetCommand::ChatCommandSigned(_)) => {}
                     Some(NetCommand::ChatMessage(_)) => {}
                     Some(NetCommand::ChatSessionUpdate(_)) => {}
                     Some(NetCommand::CustomPayload(_)) => {}
@@ -356,25 +363,27 @@ async fn read_packet_or_disconnect_command(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::{OutboundChatCommand, OutboundChatMessage};
     use bbb_protocol::{
         codec::Decoder,
         ids,
         packets::{
             AttackEntity, BlockEntityTagQuery, BlockHitResult, BlockPos, ChangeDifficultyCommand,
-            ChangeGameModeCommand, ChatAcknowledgement, ChatCommand, ChatCommandSigned,
-            ChatMessage, CommandSuggestionRequest, ContainerButtonClick, ContainerClick,
-            ContainerCloseRequest, ContainerInput, ContainerSlotStateChanged, CustomClickAction,
-            DataComponentPatchSummary, Difficulty, Direction, EditBook, EntityTagQuery, GameType,
-            HashedStack, InteractEntity, InteractionHand, ItemStackSummary, LockDifficultyCommand,
-            PaddleBoat, PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand,
-            PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand,
-            PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
-            RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
-            ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
-            ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
-            TeleportToEntity, UseItem, UseItemOn, Vec3d,
+            ChangeGameModeCommand, ChatAcknowledgement, CommandSuggestionRequest,
+            ContainerButtonClick, ContainerClick, ContainerCloseRequest, ContainerInput,
+            ContainerSlotStateChanged, CustomClickAction, DataComponentPatchSummary, Difficulty,
+            Direction, EditBook, EntityTagQuery, GameType, HashedStack, InteractEntity,
+            InteractionHand, ItemStackSummary, LockDifficultyCommand, PaddleBoat,
+            PickItemFromBlock, PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand,
+            PlayerAction, PlayerActionKind, PlayerCommand, PlayerCommandAction, PlayerInput,
+            RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand, RecipeBookType,
+            RecipeDisplayId, RenameItem, ResourcePackResponseAction, SeenAdvancements,
+            SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload, SetBeacon,
+            SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem, UseItemOn,
+            Vec3d,
         },
     };
+    use bbb_world::{OutboundLastSeenMessages, SignableCommandArgument};
     use std::{collections::BTreeMap, time::Duration};
     use tokio::{sync::mpsc, time::timeout};
     use uuid::Uuid;
@@ -771,25 +780,29 @@ mod tests {
     async fn drive_connection_sends_chat_and_command_net_commands_in_play() {
         let (mut conn, mut server) = raw_connection_pair_with_server().await;
         let (tx, mut commands) = mpsc::channel(5);
-        tx.send(NetCommand::ChatCommand(ChatCommand {
-            command: "give @p minecraft:stone".to_string(),
-        }))
+        tx.send(NetCommand::ChatCommand(OutboundChatCommand::unsigned(
+            "give @p minecraft:stone",
+        )))
         .await
         .unwrap();
-        tx.send(NetCommand::ChatCommandSigned(
-            ChatCommandSigned::unsigned_arguments(
-                "say hello",
-                1_717_986_918_300,
-                0x0102_0304_0506_0708,
-            ),
-        ))
-        .await
-        .unwrap();
-        tx.send(NetCommand::ChatMessage(ChatMessage::unsigned(
-            "hello",
+        tx.send(NetCommand::ChatCommand(OutboundChatCommand::signed(
+            "say hello",
             1_717_986_918_300,
             0x0102_0304_0506_0708,
+            vec![SignableCommandArgument {
+                name: "message".to_string(),
+                value: "hello".to_string(),
+            }],
+            OutboundLastSeenMessages::default(),
         )))
+        .await
+        .unwrap();
+        tx.send(NetCommand::ChatMessage(OutboundChatMessage {
+            message: "hello".to_string(),
+            timestamp_millis: 1_717_986_918_300,
+            salt: 0x0102_0304_0506_0708,
+            last_seen: OutboundLastSeenMessages::default(),
+        }))
         .await
         .unwrap();
         tx.send(NetCommand::CommandSuggestionRequest(
