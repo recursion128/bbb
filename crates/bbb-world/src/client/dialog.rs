@@ -4,7 +4,7 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{registries::normalize_codec_identifier, RegistrySet};
+use crate::{registries::normalize_codec_identifier, FrozenRegistryAccess, RegistrySet};
 
 mod action;
 mod body;
@@ -28,13 +28,23 @@ const DIALOG_REGISTRY: &str = "minecraft:dialog";
 
 #[derive(Debug, Clone, Copy)]
 struct DialogDecodeContext<'a> {
-    registries: Option<&'a RegistrySet>,
+    registry_access: Option<FrozenRegistryAccess<'a>>,
     depth: usize,
 }
 
 impl<'a> DialogDecodeContext<'a> {
     fn new(registries: Option<&'a RegistrySet>, depth: usize) -> Self {
-        Self { registries, depth }
+        Self::with_registry_access(registries.map(RegistrySet::frozen_access), depth)
+    }
+
+    fn with_registry_access(
+        registry_access: Option<FrozenRegistryAccess<'a>>,
+        depth: usize,
+    ) -> Self {
+        Self {
+            registry_access,
+            depth,
+        }
     }
 }
 
@@ -151,7 +161,13 @@ pub struct DialogTextState {
 
 impl DialogState {
     pub(super) fn direct(dialog: NbtSummaryValue, registries: &RegistrySet) -> Self {
-        Self::resolved("direct", None, None, dialog, Some(registries))
+        Self::resolved(
+            "direct",
+            None,
+            None,
+            dialog,
+            Some(registries.frozen_access()),
+        )
     }
 
     pub(super) fn context_free(dialog: NbtSummaryValue) -> Self {
@@ -169,7 +185,7 @@ impl DialogState {
             Some(registry_id),
             Some(resource_id),
             dialog,
-            Some(registries),
+            Some(registries.frozen_access()),
         )
     }
 
@@ -194,9 +210,16 @@ impl DialogState {
         registry_id: Option<i32>,
         resource_id: Option<String>,
         dialog: NbtSummaryValue,
-        registries: Option<&RegistrySet>,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
     ) -> Self {
-        Self::resolved_at_depth(holder_kind, registry_id, resource_id, dialog, registries, 0)
+        Self::resolved_at_depth(
+            holder_kind,
+            registry_id,
+            resource_id,
+            dialog,
+            registry_access,
+            0,
+        )
     }
 
     fn resolved_at_depth(
@@ -204,13 +227,13 @@ impl DialogState {
         registry_id: Option<i32>,
         resource_id: Option<String>,
         dialog: NbtSummaryValue,
-        registries: Option<&RegistrySet>,
+        registry_access: Option<FrozenRegistryAccess<'_>>,
         depth: usize,
     ) -> Self {
         let decoded = if depth == 0 {
-            decode_dialog_data(&dialog, registries)
+            decode_dialog_data_with_registry_access(&dialog, registry_access)
         } else {
-            decode_dialog_data_inner(&dialog, registries, depth)
+            decode_dialog_data_inner(&dialog, registry_access, depth)
         };
         let (data, semantic_error) = match decoded {
             Ok(data) => (Some(data), None),
@@ -228,23 +251,31 @@ impl DialogState {
     }
 }
 
+#[cfg(test)]
 pub(super) fn decode_dialog_data(
     dialog: &NbtSummaryValue,
     registries: Option<&RegistrySet>,
 ) -> Result<DialogDataState, String> {
-    decode_dialog_data_inner(dialog, registries, 0)
+    decode_dialog_data_with_registry_access(dialog, registries.map(RegistrySet::frozen_access))
+}
+
+fn decode_dialog_data_with_registry_access(
+    dialog: &NbtSummaryValue,
+    registry_access: Option<FrozenRegistryAccess<'_>>,
+) -> Result<DialogDataState, String> {
+    decode_dialog_data_inner(dialog, registry_access, 0)
 }
 
 pub(crate) fn decode_component_click_dialog(
     dialog: &NbtSummaryValue,
     registries: Option<&RegistrySet>,
 ) -> Result<DialogState, String> {
-    action::decode_action_dialog_holder(dialog, registries, 1)
+    action::decode_action_dialog_holder(dialog, registries.map(RegistrySet::frozen_access), 1)
 }
 
 fn decode_dialog_data_inner(
     dialog: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registry_access: Option<FrozenRegistryAccess<'_>>,
     depth: usize,
 ) -> Result<DialogDataState, String> {
     if depth > MAX_DIALOG_SEMANTIC_DEPTH {
@@ -254,7 +285,7 @@ fn decode_dialog_data_inner(
     }
     let entries = compound_entries(dialog, "dialog root")?;
     let dialog_type = required_string(entries, "type", "dialog")?;
-    let context = DialogDecodeContext::new(registries, depth);
+    let context = DialogDecodeContext::with_registry_access(registry_access, depth);
     let common = decode_common_dialog_data(entries, context)?;
     match dialog_type {
         "notice" | "minecraft:notice" => Ok(DialogDataState::Notice {
@@ -316,7 +347,7 @@ fn decode_dialog_data_inner(
                 common,
                 dialogs: decode_dialog_holder_set(
                     required_entry(entries, "dialogs", "dialog-list dialog")?,
-                    registries,
+                    registry_access,
                     depth,
                 )?,
                 exit_action: find_entry(entries, "exit_action")
@@ -332,22 +363,23 @@ fn decode_dialog_data_inner(
 
 fn decode_dialog_holder_set(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registry_access: Option<FrozenRegistryAccess<'_>>,
     depth: usize,
 ) -> Result<DialogHolderSetState, String> {
-    let Some(registries) = registries else {
+    let Some(registry_access) = registry_access else {
         return decode_context_free_dialog_holder_set(value, depth);
     };
     if let NbtSummaryValue::String(tag) = value {
         if let Some(tag) = tag.strip_prefix('#') {
             let tag = normalize_codec_identifier(tag)
                 .ok_or_else(|| format!("invalid dialog tag #{tag}"))?;
-            let holder_ids = registries
-                .holder_ids_for_tag(DIALOG_REGISTRY, &tag)
-                .ok_or_else(|| format!("missing dialog tag #{tag}"))?;
-            let entries = holder_ids
-                .iter()
-                .map(|holder_id| decode_referenced_dialog_entry(*holder_id, registries, depth))
+            let holder_set = registry_access
+                .holder_set_by_tag(DIALOG_REGISTRY, &tag)
+                .map_err(|error| error.to_string())?;
+            let entries = holder_set
+                .entries
+                .into_iter()
+                .map(|entry| decode_referenced_dialog_entry(entry, registry_access, depth))
                 .collect::<Result<Vec<_>, _>>()?;
             return Ok(DialogHolderSetState {
                 holder_set_kind: "named".to_string(),
@@ -375,13 +407,13 @@ fn decode_dialog_holder_set(
             NbtSummaryValue::String(resource_id) => {
                 let resource_id = normalize_codec_identifier(resource_id)
                     .ok_or_else(|| format!("invalid dialog resource id {resource_id}"))?;
-                let holder_id = registries
-                    .holder_id_by_resource_id(DIALOG_REGISTRY, &resource_id)
-                    .ok_or_else(|| format!("missing {DIALOG_REGISTRY} resource {resource_id}"))?;
-                decode_referenced_dialog_entry(holder_id, registries, depth)?
+                let entry = registry_access
+                    .require_entry_by_resource_id(DIALOG_REGISTRY, &resource_id)
+                    .map_err(|error| error.to_string())?;
+                decode_referenced_dialog_entry(entry, registry_access, depth)?
             }
             dialog @ NbtSummaryValue::Compound(_) => {
-                let data = decode_dialog_data_inner(dialog, Some(registries), depth + 1)?;
+                let data = decode_dialog_data_inner(dialog, Some(registry_access), depth + 1)?;
                 DialogListEntryState {
                     holder_kind: "direct".to_string(),
                     registry_id: None,
@@ -444,46 +476,50 @@ fn dialog_holder_kind(value: &NbtSummaryValue) -> Result<&'static str, String> {
 }
 
 fn decode_referenced_dialog_entry(
-    holder_id: i32,
-    registries: &RegistrySet,
+    entry: crate::FrozenRegistryEntry<'_>,
+    registry_access: FrozenRegistryAccess<'_>,
     depth: usize,
 ) -> Result<DialogListEntryState, String> {
-    let entry = registries
-        .entry_by_holder_id(DIALOG_REGISTRY, holder_id)
-        .ok_or_else(|| format!("missing {DIALOG_REGISTRY} holder {holder_id}"))?;
-    let raw_data = entry.raw_data().ok_or_else(|| {
-        format!(
-            "dialog registry entry {} has no synchronized payload",
-            entry.id
-        )
-    })?;
-    let dialog = match decode_nbt_summary(raw_data) {
-        Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => dialog,
-        Ok(Some(_)) => {
+    let raw_data = match entry.payload {
+        crate::RegistryEntryPayload::Server {
+            raw_data: Some(raw_data),
+            ..
+        } => raw_data,
+        _ => {
             return Err(format!(
-                "dialog registry entry {} root is not a compound tag",
-                entry.id
-            ))
-        }
-        Ok(None) => return Err(format!("dialog registry entry {} is an end tag", entry.id)),
-        Err(error) => {
-            return Err(format!(
-                "invalid dialog registry entry {}: {error}",
-                entry.id
+                "dialog registry entry {} has no synchronized payload",
+                entry.resource_id
             ))
         }
     };
+    let dialog = decode_dialog_registry_payload(entry.resource_id, raw_data)?;
     let common = decode_common_dialog_data(
         compound_entries(&dialog, "dialog root")?,
-        DialogDecodeContext::new(Some(registries), depth + 1),
+        DialogDecodeContext::with_registry_access(Some(registry_access), depth + 1),
     )?;
     Ok(DialogListEntryState {
         holder_kind: "reference".to_string(),
-        registry_id: Some(holder_id),
-        resource_id: Some(entry.id.clone()),
+        registry_id: Some(entry.holder_id),
+        resource_id: Some(entry.resource_id.to_string()),
         external_title: common.external_title.unwrap_or(common.title),
         dialog: None,
     })
+}
+
+fn decode_dialog_registry_payload(
+    resource_id: &str,
+    raw_data: &[u8],
+) -> Result<NbtSummaryValue, String> {
+    match decode_nbt_summary(raw_data) {
+        Ok(Some(dialog @ NbtSummaryValue::Compound(_))) => Ok(dialog),
+        Ok(Some(_)) => Err(format!(
+            "dialog registry entry {resource_id} root is not a compound tag"
+        )),
+        Ok(None) => Err(format!("dialog registry entry {resource_id} is an end tag")),
+        Err(error) => Err(format!(
+            "invalid dialog registry entry {resource_id}: {error}"
+        )),
+    }
 }
 
 fn dialog_external_title(data: &DialogDataState) -> DialogTextState {
@@ -566,7 +602,9 @@ fn decode_button(
     let action = find_entry(entries, "action").cloned();
     let action_data = action
         .as_ref()
-        .map(|action| action::decode_dialog_action(action, context.registries, context.depth + 1))
+        .map(|action| {
+            action::decode_dialog_action(action, context.registry_access, context.depth + 1)
+        })
         .transpose()?;
     Ok(DialogButtonState {
         label,
@@ -627,7 +665,7 @@ fn decode_component(
             body::validate_component_player_profile(profile, payload_what)
         }
         ComponentPayload::ShowDialog(dialog) => {
-            action::decode_action_dialog_holder(dialog, context.registries, context.depth + 1)
+            action::decode_action_dialog_holder(dialog, context.registry_access, context.depth + 1)
                 .map(|_| ())
                 .map_err(|error| format!("{payload_what}: {error}"))
         }
@@ -1333,7 +1371,7 @@ mod tests {
             Some(store.registries()),
         )
         .unwrap_err()
-        .contains("missing dialog tag"));
+        .contains("missing minecraft:dialog tag"));
         assert!(decode_dialog_data(
             &dialog_list(NbtSummaryValue::String("example:stub".to_string())),
             Some(store.registries()),

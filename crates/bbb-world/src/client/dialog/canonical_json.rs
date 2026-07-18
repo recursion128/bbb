@@ -25,7 +25,7 @@ pub(in crate::client::dialog) fn canonical_component_json_utf16_len_with_context
         }
         CanonicalComponentOwnerValue::Dialog => canonical_dialog_holder_json_utf16_len(
             value,
-            DialogDecodeContext::new(context.registries, context.depth + 1),
+            DialogDecodeContext::with_registry_access(context.registry_access, context.depth + 1),
         ),
     })
 }
@@ -34,7 +34,7 @@ fn canonical_dialog_holder_json_utf16_len(
     value: &NbtSummaryValue,
     context: DialogDecodeContext<'_>,
 ) -> Result<Option<usize>, String> {
-    let state = decode_action_dialog_holder(value, context.registries, context.depth)?;
+    let state = decode_action_dialog_holder(value, context.registry_access, context.depth)?;
     dialog_holder_len(&state, context)
 }
 
@@ -183,8 +183,10 @@ fn dialog_holder_set_len(
             .as_ref()
             .map(|tag| string_len(&format!("#{tag}")))),
         "direct" => {
-            let nested_context =
-                DialogDecodeContext::new(context.registries, context.depth.saturating_add(1));
+            let nested_context = DialogDecodeContext::with_registry_access(
+                context.registry_access,
+                context.depth.saturating_add(1),
+            );
             let mut lengths = Vec::with_capacity(holder_set.entries.len());
             for entry in &holder_set.entries {
                 let length = match entry.holder_kind.as_str() {
@@ -200,7 +202,7 @@ fn dialog_holder_set_len(
                         };
                         let state = decode_action_dialog_holder(
                             dialog,
-                            nested_context.registries,
+                            nested_context.registry_access,
                             nested_context.depth,
                         )?;
                         let Some(length) = dialog_holder_len(&state, nested_context)? else {

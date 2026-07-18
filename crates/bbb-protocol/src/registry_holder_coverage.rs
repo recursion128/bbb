@@ -169,10 +169,15 @@ mod tests {
         assert_eq!(counts["network-holder-set-or-tag"], 11);
         assert_eq!(counts["network-tag"], 1);
         assert_eq!(counts["persistent-hashed-tag"], 7);
-        assert_eq!(counts["persistent-holder-or-inline"], 27);
+        assert_eq!(counts["persistent-holder-or-inline-dialog-synchronized"], 1);
+        assert_eq!(counts["persistent-holder-or-inline"], 26);
         assert_eq!(counts["persistent-holder-reference"], 41);
         assert_eq!(counts["persistent-holder-set-custom"], 3);
-        assert_eq!(counts["persistent-holder-set-or-inline"], 6);
+        assert_eq!(
+            counts["persistent-holder-set-or-inline-dialog-synchronized"],
+            1
+        );
+        assert_eq!(counts["persistent-holder-set-or-inline"], 5);
         assert_eq!(counts["persistent-holder-set-or-tag"], 50);
         assert_eq!(counts["persistent-tag"], 11);
         assert_eq!(
@@ -181,7 +186,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            164
+            162
         );
         assert_eq!(
             ledger
@@ -204,7 +209,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 27);
+        assert_eq!(complete.len(), 29);
         assert_eq!(
             complete
                 .iter()

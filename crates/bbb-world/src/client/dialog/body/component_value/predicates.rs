@@ -283,12 +283,7 @@ pub(super) fn decode_item_predicate(
     let entries = compound(value, what)?;
     let items = find_entry(entries, "items")
         .map(|value| {
-            decode_registry_holder_set(
-                value,
-                ITEM_REGISTRY,
-                context.registries.map(crate::RegistrySet::frozen_access),
-                what,
-            )
+            decode_registry_holder_set(value, ITEM_REGISTRY, context.registry_access, what)
         })
         .transpose()?;
     let count = find_entry(entries, "count")
@@ -311,12 +306,7 @@ fn decode_block_predicate(
     Ok(DialogBlockPredicateState {
         blocks: find_entry(entries, "blocks")
             .map(|value| {
-                decode_registry_holder_set(
-                    value,
-                    BLOCK_REGISTRY,
-                    context.registries.map(crate::RegistrySet::frozen_access),
-                    what,
-                )
+                decode_registry_holder_set(value, BLOCK_REGISTRY, context.registry_access, what)
             })
             .transpose()?,
         state: find_entry(entries, "state")
@@ -485,11 +475,7 @@ fn decode_concrete_component_predicate(
             })
         }
         "minecraft:enchantments" | "minecraft:stored_enchantments" => {
-            let enchantments = decode_enchantment_predicates(
-                value,
-                context.registries.map(crate::RegistrySet::frozen_access),
-                what,
-            )?;
+            let enchantments = decode_enchantment_predicates(value, context.registry_access, what)?;
             if resource_id == "minecraft:enchantments" {
                 Ok(DialogDataComponentPredicateState::Enchantments { enchantments })
             } else {
@@ -500,7 +486,7 @@ fn decode_concrete_component_predicate(
             potions: decode_registry_holder_set(
                 value,
                 POTION_REGISTRY,
-                context.registries.map(crate::RegistrySet::frozen_access),
+                context.registry_access,
                 what,
             )?,
         }),
@@ -575,7 +561,7 @@ fn decode_concrete_component_predicate(
                         decode_collection_predicate(value, what, &|value, nested_what| {
                             decode_attribute_modifier_entry_predicate(
                                 value,
-                                context.registries.map(crate::RegistrySet::frozen_access),
+                                context.registry_access,
                                 nested_what,
                             )
                         })
@@ -591,7 +577,7 @@ fn decode_concrete_component_predicate(
                         decode_registry_holder_set(
                             value,
                             TRIM_MATERIAL_REGISTRY,
-                            context.registries.map(crate::RegistrySet::frozen_access),
+                            context.registry_access,
                             what,
                         )
                     })
@@ -601,7 +587,7 @@ fn decode_concrete_component_predicate(
                         decode_registry_holder_set(
                             value,
                             TRIM_PATTERN_REGISTRY,
-                            context.registries.map(crate::RegistrySet::frozen_access),
+                            context.registry_access,
                             what,
                         )
                     })
@@ -616,7 +602,7 @@ fn decode_concrete_component_predicate(
                         decode_registry_holder_set(
                             value,
                             JUKEBOX_SONG_REGISTRY,
-                            context.registries.map(crate::RegistrySet::frozen_access),
+                            context.registry_access,
                             what,
                         )
                     })
@@ -627,7 +613,7 @@ fn decode_concrete_component_predicate(
             villager_types: decode_registry_holder_set(
                 value,
                 VILLAGER_TYPE_REGISTRY,
-                context.registries.map(crate::RegistrySet::frozen_access),
+                context.registry_access,
                 what,
             )?,
         }),

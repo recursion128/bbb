@@ -621,40 +621,49 @@
     {
       "call_site": "net/minecraft/server/dialog/Dialog.java:22:34:RegistryFileCodec.create",
       "column": 34,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog/action.rs#fn decode_action_dialog_holder",
+      "decision": "Dialog persistent named references resolve through the frozen current-session registry and require synchronized payload data, while inline compounds remain direct values; unknown, stub, malformed, and recursive reference paths stay explicit and bounded.",
       "evidence": [
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.DIALOG, Dialog.DIRECT_CODEC)",
         "vanilla:net/minecraft/resources/RegistryFileCodec.java#public final class RegistryFileCodec<E>",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/state.rs#pub fn require_entry_by_resource_id",
+        "crates/bbb-world/src/client/dialog/action.rs#fn decode_action_dialog_holder",
+        "crates/bbb-world/src/client/dialog/action.rs#fn decodes_inline_and_referenced_show_dialog_actions",
+        "crates/bbb-world/src/client/dialog.rs#fn dialog_components_resolve_click_dialog_references_and_bound_cycles"
       ],
       "factory": "RegistryFileCodec.create",
-      "family": "persistent-holder-or-inline",
+      "family": "persistent-holder-or-inline-dialog-synchronized",
       "kind": "persistent_holder_or_inline",
       "line": 22,
       "owner": "net.minecraft.server.dialog.Dialog",
       "registry_expression": "Registries.DIALOG",
       "resource_id": "minecraft:dialog",
       "source_path": "net/minecraft/server/dialog/Dialog.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/server/dialog/Dialog.java:23:42:RegistryCodecs.homogeneousList",
       "column": 42,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/client/dialog.rs#fn decode_dialog_holder_set",
+      "decision": "Dialog homogeneous holder sets preserve direct-reference versus direct-inline homogeneity, resolve named tags and resource references through one frozen session revision, retain tag order, and reject mixed, missing, stub, or malformed entries without falling back to bootstrap order.",
       "evidence": [
         "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_resource_ids",
+        "crates/bbb-world/src/client/dialog.rs#fn decode_dialog_holder_set",
+        "crates/bbb-world/src/client/dialog.rs#fn decodes_dialog_list_tag_in_session_tag_order",
+        "crates/bbb-world/src/client/dialog.rs#fn decodes_compact_dialog_holders_and_rejects_invalid_holder_sets"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-inline",
+      "family": "persistent-holder-set-or-inline-dialog-synchronized",
       "kind": "persistent_holder_set_or_inline",
       "line": 23,
       "owner": "net.minecraft.server.dialog.Dialog",
       "registry_expression": "Registries.DIALOG",
       "resource_id": "minecraft:dialog",
       "source_path": "net/minecraft/server/dialog/Dialog.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/server/dialog/Dialog.java:24:72:ByteBufCodecs.holder",
