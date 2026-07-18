@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::entity_models::gpu::build_dynamic_player_texture_atlas_with_height_limit;
 use crate::entity_models::model::{EntityModel, ModelCube};
 use crate::player_skin::{DynamicPlayerSkinImage, DynamicPlayerTextureImage};
 use glam::{Mat4, Vec3};
@@ -1314,6 +1315,50 @@ fn dynamic_player_texture_atlas_stitches_variable_profile_textures() {
     assert_eq!(atlas_pixel(&rgba, layout.width, 3, 1), [13, 3, 1, 255]);
     assert_eq!(atlas_pixel(&rgba, layout.width, 1, 2), [41, 1, 0, 255]);
     assert_eq!(atlas_pixel(&rgba, layout.width, 2, 2), [0, 0, 0, 0]);
+}
+
+#[test]
+fn dynamic_player_texture_atlas_wraps_columns_at_the_height_limit() {
+    // Three 4x2 images under a height limit of 5 leave room for two images per
+    // column, so the third starts a second column instead of exceeding the cap
+    // (the llvmpipe/Metal 16384 device limit in production).
+    let first = dynamic_player_texture_image(20, [4, 2], 10);
+    let second = dynamic_player_texture_image(30, [4, 2], 20);
+    let third = dynamic_player_texture_image(40, [4, 2], 30);
+
+    let (layout, rgba) = build_dynamic_player_texture_atlas_with_height_limit(
+        &[first.clone(), second.clone(), third.clone()],
+        5,
+    )
+    .expect("dynamic player texture atlas");
+
+    assert_eq!(layout.width, 8);
+    assert_eq!(layout.height, 4);
+    assert_eq!(layout.entries.len(), 3);
+    assert_close2(layout.entries[0].uv.min, [0.0, 0.0]);
+    assert_close2(layout.entries[0].uv.max, [0.5, 0.5]);
+    assert_close2(layout.entries[1].uv.min, [0.0, 0.5]);
+    assert_close2(layout.entries[1].uv.max, [0.5, 1.0]);
+    assert_close2(layout.entries[2].uv.min, [0.5, 0.0]);
+    assert_close2(layout.entries[2].uv.max, [1.0, 0.5]);
+
+    // Row 0 pixel 0 of each image lands at its column origin.
+    assert_eq!(atlas_pixel(&rgba, layout.width, 0, 0), [10, 0, 0, 255]);
+    assert_eq!(atlas_pixel(&rgba, layout.width, 0, 2), [20, 0, 0, 255]);
+    assert_eq!(atlas_pixel(&rgba, layout.width, 4, 0), [30, 0, 0, 255]);
+    // The second column below the third image stays empty.
+    assert_eq!(atlas_pixel(&rgba, layout.width, 4, 2), [0, 0, 0, 0]);
+}
+
+#[test]
+fn dynamic_player_texture_atlas_rejects_one_image_taller_than_the_height_limit() {
+    let err = build_dynamic_player_texture_atlas_with_height_limit(
+        &[dynamic_player_texture_image(20, [2, 6], 10)],
+        5,
+    )
+    .unwrap_err();
+
+    assert!(err.to_string().contains("exceeds atlas column limit 5"));
 }
 
 #[test]

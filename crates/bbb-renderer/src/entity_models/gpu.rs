@@ -3052,7 +3052,16 @@ fn create_dynamic_player_texture_atlas_gpu(
     camera_buffer: &wgpu::Buffer,
     images: &[DynamicPlayerTextureImage],
 ) -> Result<EntityDynamicPlayerTextureAtlasGpu> {
-    let (layout, rgba) = build_dynamic_player_texture_atlas(images)?;
+    let max_dimension = device.limits().max_texture_dimension_2d;
+    let (layout, rgba) =
+        build_dynamic_player_texture_atlas_with_height_limit(images, max_dimension)?;
+    if layout.width > max_dimension {
+        bail!(
+            "dynamic player texture atlas width {} exceeds device limit {}",
+            layout.width,
+            max_dimension
+        );
+    }
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("bbb-dynamic-player-texture-atlas"),
         size: wgpu::Extent3d {
@@ -3192,23 +3201,54 @@ pub(crate) fn build_dynamic_player_skin_atlas(
 pub(crate) fn build_dynamic_player_texture_atlas(
     images: &[DynamicPlayerTextureImage],
 ) -> Result<(EntityDynamicPlayerTextureAtlasLayout, Vec<u8>)> {
+    build_dynamic_player_texture_atlas_with_height_limit(images, u32::MAX)
+}
+
+/// Packs images into vertical columns so the atlas never exceeds
+/// `max_column_height`; hardware like llvmpipe caps 2D textures at 16384.
+pub(crate) fn build_dynamic_player_texture_atlas_with_height_limit(
+    images: &[DynamicPlayerTextureImage],
+    max_column_height: u32,
+) -> Result<(EntityDynamicPlayerTextureAtlasLayout, Vec<u8>)> {
     if images.is_empty() {
         bail!("dynamic player texture atlas requires at least one image");
     }
 
     let mut seen = BTreeMap::new();
-    let mut width = 0u32;
-    let mut height = 0u32;
+    let mut column_width = 0u32;
     for image in images {
         validate_dynamic_player_texture_image(image)?;
         if seen.insert(image.handle, ()).is_some() {
             bail!("duplicate dynamic player texture handle {}", image.handle);
         }
-        width = width.max(image.size[0]);
-        height = height
-            .checked_add(image.size[1])
-            .ok_or_else(|| anyhow!("dynamic player texture atlas height overflow"))?;
+        if image.size[1] > max_column_height {
+            bail!(
+                "dynamic player texture {} height {} exceeds atlas column limit {}",
+                image.handle,
+                image.size[1],
+                max_column_height
+            );
+        }
+        column_width = column_width.max(image.size[0]);
     }
+    let mut columns = 1u32;
+    let mut column_y = 0u32;
+    let mut height = 0u32;
+    for image in images {
+        let image_height = image.size[1];
+        if column_y
+            .checked_add(image_height)
+            .is_none_or(|fill| fill > max_column_height)
+        {
+            columns += 1;
+            column_y = 0;
+        }
+        column_y += image_height;
+        height = height.max(column_y);
+    }
+    let width = column_width
+        .checked_mul(columns)
+        .ok_or_else(|| anyhow!("dynamic player texture atlas width overflow"))?;
     if width == 0 || height == 0 {
         bail!("dynamic player texture atlas dimensions must be non-zero");
     }
@@ -3216,10 +3256,17 @@ pub(crate) fn build_dynamic_player_texture_atlas(
     let mut rgba = vec![0u8; atlas_len];
     let mut entries = Vec::with_capacity(images.len());
 
+    let mut x = 0u32;
     let mut y = 0u32;
     for image in images {
         let image_width = image.size[0];
         let image_height = image.size[1];
+        if y.checked_add(image_height)
+            .is_none_or(|fill| fill > max_column_height)
+        {
+            x += column_width;
+            y = 0;
+        }
         let row_len = usize::try_from(image_width)
             .ok()
             .and_then(|width| width.checked_mul(4))
@@ -3227,7 +3274,7 @@ pub(crate) fn build_dynamic_player_texture_atlas(
         for row in 0..image_height {
             let src_start = rgba_offset(image_width, row, 0, "dynamic player texture source")?;
             let src_end = src_start + row_len;
-            let dst_start = rgba_offset(width, y + row, 0, "dynamic player texture atlas")?;
+            let dst_start = rgba_offset(width, y + row, x, "dynamic player texture atlas")?;
             let dst_end = dst_start + row_len;
             rgba[dst_start..dst_end].copy_from_slice(&image.rgba[src_start..src_end]);
         }
@@ -3235,9 +3282,9 @@ pub(crate) fn build_dynamic_player_texture_atlas(
             handle: image.handle,
             size: image.size,
             uv: EntityModelUvRect {
-                min: [0.0, y as f32 / height as f32],
+                min: [x as f32 / width as f32, y as f32 / height as f32],
                 max: [
-                    image_width as f32 / width as f32,
+                    (x + image_width) as f32 / width as f32,
                     (y + image_height) as f32 / height as f32,
                 ],
             },
