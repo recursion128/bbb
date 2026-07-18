@@ -1,10 +1,9 @@
-use bbb_protocol::damage_types::vanilla_damage_type_for_resource_id;
+use bbb_protocol::{
+    damage_types::vanilla_damage_type_for_resource_id, NbtSummaryEntry, NbtSummaryValue,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
-    WorldStore,
-};
+use crate::WorldStore;
 
 pub const DAMAGE_TYPE_REGISTRY: &str = "minecraft:damage_type";
 
@@ -61,13 +60,13 @@ impl WorldStore {
         &self,
         holder_id: i32,
     ) -> Result<Option<DamageTypePresentation>, DamageTypeProjectionError> {
-        let Some(raw_data) = self
+        let Some(data) = self
             .registry_entry_by_holder_id(DAMAGE_TYPE_REGISTRY, holder_id)
-            .and_then(|entry| entry.raw_data())
+            .and_then(|entry| entry.element_data())
         else {
             return Ok(None);
         };
-        decode_damage_type(raw_data).map(Some)
+        decode_damage_type_value(&data.value).map(Some)
     }
 
     pub fn damage_type_effects_by_holder_id(
@@ -88,34 +87,31 @@ impl WorldStore {
     }
 }
 
-fn decode_damage_type(
-    raw_data: &[u8],
+fn decode_damage_type_value(
+    value: &NbtSummaryValue,
 ) -> Result<DamageTypePresentation, DamageTypeProjectionError> {
-    let root = decode_nbt_root(raw_data)
-        .map_err(|_| error("<root>", "invalid NBT"))?
-        .ok_or_else(|| error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(error("<root>", "expected compound"));
     };
-    let message_id = required_string(&fields, "message_id")?.to_string();
-    let scaling = match required_string(&fields, "scaling")? {
+    let message_id = required_string(fields, "message_id")?.to_string();
+    let scaling = match required_string(fields, "scaling")? {
         "never" => DamageTypeScaling::Never,
         "when_caused_by_living_non_player" => DamageTypeScaling::WhenCausedByLivingNonPlayer,
         "always" => DamageTypeScaling::Always,
         _ => return Err(error("scaling", "unknown enum value")),
     };
-    let exhaustion = match find_nbt_entry(&fields, "exhaustion") {
-        Some(NbtValue::Float(value)) if value.is_finite() => *value,
-        Some(NbtValue::Float(_)) => return Err(error("exhaustion", "float must be finite")),
-        Some(_) => return Err(error("exhaustion", "expected float")),
+    let exhaustion = match field_value(fields, "exhaustion") {
+        Some(value) => numeric_f32(value)
+            .filter(|value| value.is_finite())
+            .ok_or_else(|| error("exhaustion", "expected finite number"))?,
         None => return Err(error("exhaustion", "missing required field")),
     };
-    let effects = match optional_string(&fields, "effects")? {
+    let effects = match optional_string(fields, "effects")? {
         None => DamageTypeEffects::Hurt,
         Some(value) => DamageTypeEffects::from_codec_name(value)
             .ok_or_else(|| error("effects", "unknown enum value"))?,
     };
-    let death_message_type = match optional_string(&fields, "death_message_type")? {
+    let death_message_type = match optional_string(fields, "death_message_type")? {
         None | Some("default") => DamageTypeDeathMessageType::Default,
         Some("fall_variants") => DamageTypeDeathMessageType::FallVariants,
         Some("intentional_game_design") => DamageTypeDeathMessageType::IntentionalGameDesign,
@@ -145,21 +141,40 @@ impl DamageTypeEffects {
 }
 
 fn required_string<'a>(
-    fields: &'a [(String, NbtValue)],
+    fields: &'a [NbtSummaryEntry],
     field: &str,
 ) -> Result<&'a str, DamageTypeProjectionError> {
     optional_string(fields, field)?.ok_or_else(|| error(field, "missing required field"))
 }
 
 fn optional_string<'a>(
-    fields: &'a [(String, NbtValue)],
+    fields: &'a [NbtSummaryEntry],
     field: &str,
 ) -> Result<Option<&'a str>, DamageTypeProjectionError> {
-    match find_nbt_entry(fields, field) {
-        Some(NbtValue::String(value)) => Ok(Some(value)),
+    match field_value(fields, field) {
+        Some(NbtSummaryValue::String(value)) => Ok(Some(value)),
         Some(_) => Err(error(field, "expected string")),
         None => Ok(None),
     }
+}
+
+fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => f32::from(*value),
+        NbtSummaryValue::Short(value) => f32::from(*value),
+        NbtSummaryValue::Int(value) => *value as f32,
+        NbtSummaryValue::Long(value) => *value as f32,
+        NbtSummaryValue::Float(bits) => f32::from_bits(*bits),
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
+        _ => return None,
+    })
+}
+
+fn field_value<'a>(fields: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    fields
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
 }
 
 fn error(field: impl Into<String>, reason: &'static str) -> DamageTypeProjectionError {
@@ -167,6 +182,14 @@ fn error(field: impl Into<String>, reason: &'static str) -> DamageTypeProjection
         field: field.into(),
         reason,
     }
+}
+
+#[cfg(test)]
+fn decode_damage_type(
+    raw_data: &[u8],
+) -> Result<DamageTypePresentation, DamageTypeProjectionError> {
+    let data = super::element_value::decode_network_element(raw_data).unwrap();
+    decode_damage_type_value(&data.value)
 }
 
 #[cfg(test)]
@@ -200,6 +223,30 @@ mod tests {
         assert_eq!(
             defaults.death_message_type,
             DamageTypeDeathMessageType::Default
+        );
+    }
+
+    #[test]
+    fn decodes_known_pack_json_through_the_same_damage_projection() {
+        let data = super::super::element_value::decode_known_pack_element(
+            br#"{
+                "message_id": "custom.freeze",
+                "scaling": "always",
+                "exhaustion": 0.125,
+                "effects": "freezing"
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            decode_damage_type_value(&data.value).unwrap(),
+            DamageTypePresentation {
+                message_id: "custom.freeze".to_string(),
+                scaling: DamageTypeScaling::Always,
+                exhaustion: 0.125,
+                effects: DamageTypeEffects::Freezing,
+                death_message_type: DamageTypeDeathMessageType::Default,
+            }
         );
     }
 

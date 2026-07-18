@@ -1,9 +1,7 @@
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use bbb_render_types::BannerPatternKind;
 
-use crate::{
-    chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
-    BannerPatternHolderState, WorldStore,
-};
+use crate::{BannerPatternHolderState, WorldStore};
 
 use super::normalize_codec_identifier;
 
@@ -39,10 +37,9 @@ impl std::error::Error for BannerPatternProjectionError {}
 impl WorldStore {
     /// Projects one numeric holder through the current synchronized registry order.
     ///
-    /// A synchronized registry is authoritative. Only data-less known-pack stubs may use a
+    /// A synchronized registry is authoritative. Only unresolved data-less stubs may use a
     /// resource-identity fallback; malformed, unknown, or missing entries never fall through to a
-    /// bootstrap ordinal. The fixed vanilla order is used only when no synchronized registry
-    /// exists.
+    /// bootstrap ordinal. The fixed vanilla order is used only when no synchronized registry exists.
     pub fn synchronized_banner_pattern_presentation(
         &self,
         holder_id: i32,
@@ -100,8 +97,8 @@ pub fn direct_banner_pattern_presentation(
 fn presentation_from_registry_entry(
     entry: &crate::RegistryPacketEntry,
 ) -> Result<Option<BannerPatternPresentation>, BannerPatternProjectionError> {
-    if let Some(raw_data) = entry.raw_data() {
-        return decode_banner_pattern(raw_data)
+    if let Some(data) = entry.element_data() {
+        return decode_banner_pattern_value(&data.value)
             .map(Some)
             .map_err(|failure| BannerPatternProjectionError {
                 resource_id: entry.id.clone(),
@@ -113,7 +110,7 @@ fn presentation_from_registry_entry(
         return Err(BannerPatternProjectionError {
             resource_id: entry.id.clone(),
             field: "<root>".to_string(),
-            reason: "payload bytes unavailable",
+            reason: "typed payload unavailable",
         });
     }
     Ok(BannerPatternKind::for_resource_id(&entry.id).map(presentation_from_vanilla))
@@ -132,15 +129,14 @@ struct DecodeFailure {
     reason: &'static str,
 }
 
-fn decode_banner_pattern(raw_data: &[u8]) -> Result<BannerPatternPresentation, DecodeFailure> {
-    let root = decode_nbt_root(raw_data)
-        .map_err(|_| failure("<root>", "invalid NBT"))?
-        .ok_or_else(|| failure("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+fn decode_banner_pattern_value(
+    value: &NbtSummaryValue,
+) -> Result<BannerPatternPresentation, DecodeFailure> {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(failure("<root>", "expected compound"));
     };
-    let asset_id = required_identifier(&fields, "asset_id")?;
-    let translation_key = required_string(&fields, "translation_key")?;
+    let asset_id = required_identifier(fields, "asset_id")?;
+    let translation_key = required_string(fields, "translation_key")?;
     Ok(BannerPatternPresentation {
         asset_id,
         translation_key,
@@ -148,7 +144,7 @@ fn decode_banner_pattern(raw_data: &[u8]) -> Result<BannerPatternPresentation, D
 }
 
 fn required_identifier(
-    fields: &[(String, NbtValue)],
+    fields: &[NbtSummaryEntry],
     field: &'static str,
 ) -> Result<String, DecodeFailure> {
     let value = required_string(fields, field)?;
@@ -156,14 +152,21 @@ fn required_identifier(
 }
 
 fn required_string(
-    fields: &[(String, NbtValue)],
+    fields: &[NbtSummaryEntry],
     field: &'static str,
 ) -> Result<String, DecodeFailure> {
-    match find_nbt_entry(fields, field) {
-        Some(NbtValue::String(value)) => Ok(value.clone()),
+    match field_value(fields, field) {
+        Some(NbtSummaryValue::String(value)) => Ok(value.clone()),
         Some(_) => Err(failure(field, "expected string")),
         None => Err(failure(field, "missing required field")),
     }
+}
+
+fn field_value<'a>(fields: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    fields
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
 }
 
 const fn failure(field: &'static str, reason: &'static str) -> DecodeFailure {
@@ -206,6 +209,25 @@ mod tests {
                 asset_id: "example:replacement".to_string(),
                 translation_key: "block.example.banner.replacement".to_string(),
             })
+        );
+    }
+
+    #[test]
+    fn decodes_known_pack_json_through_the_same_banner_projection() {
+        let data = super::super::element_value::decode_known_pack_element(
+            br#"{
+                "asset_id": "example:patterns/known",
+                "translation_key": "block.example.banner.known"
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            decode_banner_pattern_value(&data.value).unwrap(),
+            BannerPatternPresentation {
+                asset_id: "example:patterns/known".to_string(),
+                translation_key: "block.example.banner.known".to_string(),
+            }
         );
     }
 
