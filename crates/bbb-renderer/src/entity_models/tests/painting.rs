@@ -65,11 +65,24 @@ fn painting_tiles_emit_vanilla_partitioned_faces_and_per_tile_light() {
         None,
         Some(&dynamic_atlas),
     );
-    let mesh = &meshes.dynamic_player_texture_cutout_z_offset;
+    let mesh = &meshes.dynamic_player_texture_solid_z_offset_forward;
     assert_eq!(meshes.submissions.len(), 2);
+    assert!(meshes.submissions.iter().all(|submission| {
+        submission.render_type == EntityModelLayerRenderType::EntitySolidZOffsetForward
+    }));
     assert_eq!(mesh.cutout_faces, 10);
     assert_eq!(mesh.vertices.len(), 40);
     assert_eq!(mesh.indices.len(), 60);
+    for (triangle_index, triangle) in mesh.indices.chunks_exact(3).enumerate() {
+        let a = Vec3::from_array(mesh.vertices[triangle[0] as usize].position);
+        let b = Vec3::from_array(mesh.vertices[triangle[1] as usize].position);
+        let c = Vec3::from_array(mesh.vertices[triangle[2] as usize].position);
+        let normal = Vec3::from_array(mesh.vertices[triangle[0] as usize].normal);
+        assert!(
+            (b - a).cross(c - a).dot(normal) > 0.0,
+            "painting solid triangle {triangle_index} must keep outward front winding"
+        );
+    }
     assert!(mesh.vertices[..20]
         .iter()
         .all(|vertex| vertex.light == [3.0 / 15.0, 10.0 / 15.0]));
@@ -139,6 +152,9 @@ fn painting_tile_facing_uses_vanilla_yaw_mapping() {
         None,
         Some(&dynamic_atlas),
     );
-    let first = meshes.dynamic_player_texture_cutout_z_offset.vertices[0].position;
+    let first = meshes
+        .dynamic_player_texture_solid_z_offset_forward
+        .vertices[0]
+        .position;
     assert_close3(first, [-0.03125, -0.5, -0.5]);
 }

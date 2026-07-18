@@ -519,6 +519,22 @@ fn entity_model_cutout_z_offset_shader() -> String {
         )
 }
 
+fn entity_model_solid_z_offset_forward_shader() -> String {
+    ENTITY_MODEL_TEXTURED_CULL_SHADER
+        .replace(
+            "    minecraft_light1: vec4<f32>,\n};",
+            "    minecraft_light1: vec4<f32>,\n    glint_offsets: vec4<f32>,\n    view_proj_view_offset_z: mat4x4<f32>,\n    view_proj_view_offset_z_forward: mat4x4<f32>,\n};",
+        )
+        .replace(
+            "out.position = camera.view_proj * vec4<f32>(input.position, 1.0);",
+            "out.position = camera.view_proj_view_offset_z_forward * vec4<f32>(input.position, 1.0);",
+        )
+        .replace(
+            "    if sample.a < 0.1 {\n        discard;\n    }\n",
+            "",
+        )
+}
+
 pub(super) const ENTITY_MODEL_ARMOR_SHADER: &str = r#"
 struct Camera {
     view_proj: mat4x4<f32>,
@@ -1627,6 +1643,29 @@ pub(crate) fn create_entity_model_textured_cull_pipeline(
     )
 }
 
+/// Vanilla `RenderPipelines.ENTITY_SOLID_Z_OFFSET_FORWARD`: entity-solid opaque replacement,
+/// depth write, back-face culling, lightmap and overlay, with
+/// `LayeringTransform.VIEW_OFFSET_Z_LAYERING_FORWARD` applied before drawing.
+pub(crate) fn create_entity_model_solid_z_offset_forward_pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    bind_group_layout: &wgpu::BindGroupLayout,
+    lightmap_bind_group_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let shader = entity_model_solid_z_offset_forward_shader();
+    create_entity_model_textured_pipeline_with_depth(
+        device,
+        format,
+        bind_group_layout,
+        Some(lightmap_bind_group_layout),
+        "bbb-entity-model-solid-z-offset-forward",
+        &shader,
+        ENTITY_MODEL_SURFACE_OPAQUE_BLEND,
+        ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED,
+        ENTITY_MODEL_SURFACE_CULL_MODE,
+    )
+}
+
 /// Vanilla `RenderPipelines.ENTITY_CUTOUT_Z_OFFSET`: the same entity shader state as
 /// `ENTITY_CUTOUT`, plus `RenderTypes.entityCutoutZOffset` applies
 /// `LayeringTransform.VIEW_OFFSET_Z_LAYERING` before drawing.
@@ -2470,6 +2509,12 @@ impl Renderer {
                 meshes.dissolve,
                 "bbb-entity-model-dissolve",
             );
+            self.entity_model_solid_z_offset_forward_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.solid_z_offset_forward,
+                    "bbb-entity-model-solid-z-offset-forward",
+                );
             self.entity_model_cutout_z_offset_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -2568,6 +2613,12 @@ impl Renderer {
                     meshes.dynamic_player_skin_cutout_cull,
                     "bbb-entity-dynamic-player-skin-cutout-cull",
                 );
+            self.entity_dynamic_player_skin_solid_z_offset_forward_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_skin_solid_z_offset_forward,
+                    "bbb-entity-dynamic-player-skin-solid-z-offset-forward",
+                );
             self.entity_dynamic_player_skin_cutout_z_offset_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
                     &self.device,
@@ -2603,6 +2654,12 @@ impl Renderer {
                     &self.device,
                     meshes.dynamic_player_texture_cutout_cull,
                     "bbb-entity-dynamic-player-texture-cutout-cull",
+                );
+            self.entity_dynamic_player_texture_solid_z_offset_forward_mesh =
+                create_entity_model_textured_mesh_gpu_from_mesh(
+                    &self.device,
+                    meshes.dynamic_player_texture_solid_z_offset_forward,
+                    "bbb-entity-dynamic-player-texture-solid-z-offset-forward",
                 );
             self.entity_dynamic_player_texture_cutout_z_offset_mesh =
                 create_entity_model_textured_mesh_gpu_from_mesh(
@@ -2671,6 +2728,7 @@ impl Renderer {
             self.entity_model_textured_mesh = None;
             self.entity_model_textured_cull_mesh = None;
             self.entity_model_dissolve_mesh = None;
+            self.entity_model_solid_z_offset_forward_mesh = None;
             self.entity_model_cutout_z_offset_mesh = None;
             self.entity_model_armor_cutout_mesh = None;
             self.entity_model_armor_trim_mesh = None;
@@ -2692,12 +2750,14 @@ impl Renderer {
             self.entity_model_outline_cull_mesh = None;
             self.entity_dynamic_player_skin_cutout_mesh = None;
             self.entity_dynamic_player_skin_cutout_cull_mesh = None;
+            self.entity_dynamic_player_skin_solid_z_offset_forward_mesh = None;
             self.entity_dynamic_player_skin_cutout_z_offset_mesh = None;
             self.entity_dynamic_player_skin_translucent_mesh = None;
             self.entity_dynamic_player_skin_item_entity_translucent_mesh = None;
             self.entity_dynamic_player_skin_item_entity_translucent_cull_mesh = None;
             self.entity_dynamic_player_texture_cutout_mesh = None;
             self.entity_dynamic_player_texture_cutout_cull_mesh = None;
+            self.entity_dynamic_player_texture_solid_z_offset_forward_mesh = None;
             self.entity_dynamic_player_texture_cutout_z_offset_mesh = None;
             self.entity_dynamic_player_texture_armor_cutout_mesh = None;
             self.entity_dynamic_player_texture_armor_trim_mesh = None;
@@ -2722,6 +2782,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_dissolve_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_model_solid_z_offset_forward_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_model_cutout_z_offset_mesh
@@ -2778,6 +2841,9 @@ impl Renderer {
             self.entity_dynamic_player_skin_cutout_cull_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_skin_solid_z_offset_forward_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_skin_cutout_z_offset_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
@@ -2794,6 +2860,9 @@ impl Renderer {
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_cutout_cull_mesh
+                .as_ref()
+                .and_then(|mesh| mesh.bounds),
+            self.entity_dynamic_player_texture_solid_z_offset_forward_mesh
                 .as_ref()
                 .and_then(|mesh| mesh.bounds),
             self.entity_dynamic_player_texture_cutout_z_offset_mesh
@@ -3642,7 +3711,8 @@ fn create_entity_model_portal_mesh_gpu_from_mesh(
 mod tests {
     use super::{
         entity_model_cutout_z_offset_shader, entity_model_glint_shader, entity_model_portal_shader,
-        ENTITY_MODEL_ADDITIVE_BLEND, ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
+        entity_model_solid_z_offset_forward_shader, ENTITY_MODEL_ADDITIVE_BLEND,
+        ENTITY_MODEL_ARMOR_CULL_MODE, ENTITY_MODEL_ARMOR_CUTOUT_BLEND,
         ENTITY_MODEL_ARMOR_DECAL_DEPTH_COMPARE, ENTITY_MODEL_ARMOR_DECAL_DEPTH_WRITE_ENABLED,
         ENTITY_MODEL_ARMOR_DEPTH_WRITE_ENABLED, ENTITY_MODEL_ARMOR_SHADER,
         ENTITY_MODEL_ARMOR_TRANSLUCENT_BLEND, ENTITY_MODEL_DISSOLVE_SHADER,
@@ -3849,6 +3919,50 @@ mod tests {
             source[factory..armor_factory].contains("ENTITY_MODEL_SURFACE_OPAQUE_BLEND")
                 && source[factory..armor_factory].contains("ENTITY_MODEL_SURFACE_NO_CULL_MODE"),
             "vanilla ENTITY_CUTOUT_Z_OFFSET is opaque replacement blending with cull disabled"
+        );
+    }
+
+    #[test]
+    fn entity_model_solid_z_offset_forward_keeps_vanilla_pipeline_state_split() {
+        let source = include_str!("gpu.rs");
+        let factory = source
+            .find("pub(crate) fn create_entity_model_solid_z_offset_forward_pipeline")
+            .expect("entitySolidZOffsetForward pipeline factory is present");
+        let next_factory = source[factory..]
+            .find("pub(crate) fn create_entity_model_cutout_z_offset_pipeline")
+            .map(|index| factory + index)
+            .expect("next entity pipeline factory is present");
+        let factory_source = &source[factory..next_factory];
+
+        assert!(factory_source.contains("\"bbb-entity-model-solid-z-offset-forward\""));
+        assert!(factory_source.contains("entity_model_solid_z_offset_forward_shader()"));
+        assert!(
+            factory_source.contains("ENTITY_MODEL_SURFACE_OPAQUE_BLEND")
+                && factory_source.contains("ENTITY_MODEL_SURFACE_DEPTH_WRITE_ENABLED")
+                && factory_source.contains("ENTITY_MODEL_SURFACE_CULL_MODE"),
+            "vanilla ENTITY_SOLID_Z_OFFSET_FORWARD is opaque, depth-writing, and back-face culled"
+        );
+    }
+
+    #[test]
+    fn entity_model_solid_z_offset_forward_shader_matches_vanilla_entity_solid() {
+        let shader = entity_model_solid_z_offset_forward_shader();
+        assert!(
+            shader.contains("view_proj_view_offset_z_forward: mat4x4<f32>")
+                && shader.contains(
+                    "camera.view_proj_view_offset_z_forward * vec4<f32>(input.position, 1.0)"
+                ),
+            "vanilla entitySolidZOffsetForward applies VIEW_OFFSET_Z_LAYERING_FORWARD"
+        );
+        assert!(
+            shader.contains("sample_lightmap(input.light)")
+                && shader.contains("input.overlay")
+                && shader.contains("diffuse_light(input.normal)"),
+            "vanilla ENTITY_SOLID keeps LightTexture, overlay, and culling-shaped lighting"
+        );
+        assert!(
+            !shader.contains("if sample.a < 0.1") && !shader.contains("discard"),
+            "vanilla ENTITY_SOLID does not define ALPHA_CUTOUT"
         );
     }
 

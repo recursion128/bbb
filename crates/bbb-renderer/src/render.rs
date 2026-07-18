@@ -341,6 +341,19 @@ impl Renderer {
                 pass.draw_indexed(0..mesh.index_count, 0, 0..1);
                 stats.entity_model_draw_calls += 1;
             }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_model_solid_z_offset_forward_mesh,
+                &self.entity_model_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_solid_z_offset_forward_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
             // Vanilla `RenderTypes.entityCutoutDissolve` (the dying ender dragon body): opaque cutout
             // family, drawn in the main pass through the dedicated DISSOLVE-mask pipeline.
             if let (Some(mesh), Some(atlas)) = (
@@ -409,6 +422,19 @@ impl Renderer {
                 stats.entity_model_draw_calls += 1;
             }
             if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_skin_solid_z_offset_forward_mesh,
+                &self.entity_dynamic_player_skin_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_solid_z_offset_forward_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
                 &self.entity_dynamic_player_skin_cutout_z_offset_mesh,
                 &self.entity_dynamic_player_skin_atlas,
             ) {
@@ -439,6 +465,19 @@ impl Renderer {
                 &self.entity_dynamic_player_texture_atlas,
             ) {
                 pass.set_pipeline(&self.entity_model_textured_pipeline);
+                stats.pipeline_switches += 1;
+                pass.set_bind_group(0, &atlas.bind_group, &[]);
+                pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
+                pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+                pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+                pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+                stats.entity_model_draw_calls += 1;
+            }
+            if let (Some(mesh), Some(atlas)) = (
+                &self.entity_dynamic_player_texture_solid_z_offset_forward_mesh,
+                &self.entity_dynamic_player_texture_atlas,
+            ) {
+                pass.set_pipeline(&self.entity_model_solid_z_offset_forward_pipeline);
                 stats.pipeline_switches += 1;
                 pass.set_bind_group(0, &atlas.bind_group, &[]);
                 pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[]);
@@ -5108,6 +5147,42 @@ mod tests {
                 && source[armor_cutout..water_mask]
                     .contains("entity_dynamic_player_texture_cutout_z_offset_mesh"),
             "dynamic atlas z-offset buckets also route through the main-pass cutout-z-offset pipeline"
+        );
+    }
+
+    #[test]
+    fn entity_solid_z_offset_forward_uses_dedicated_main_pass_pipeline() {
+        let source = include_str!("render.rs");
+        let main_pass = source
+            .find("label: Some(\"bbb-native-terrain-opaque-group-pass\")")
+            .expect("main terrain/entity pass label is used");
+        let pipeline = source[main_pass..]
+            .find("pass.set_pipeline(&self.entity_model_solid_z_offset_forward_pipeline)")
+            .map(|index| main_pass + index)
+            .expect("entitySolidZOffsetForward pipeline is drawn in the main pass");
+        let pass_end = source[main_pass..]
+            .find("    fn opaque_particle_main_pass(")
+            .map(|index| main_pass + index)
+            .expect("opaque entity main pass has a bounded function body");
+        let block = &source[main_pass..pass_end];
+        assert!(
+            pipeline < pass_end,
+            "forward z-offset pipeline stays in the opaque pass"
+        );
+
+        for mesh in [
+            "entity_model_solid_z_offset_forward_mesh",
+            "entity_dynamic_player_skin_solid_z_offset_forward_mesh",
+            "entity_dynamic_player_texture_solid_z_offset_forward_mesh",
+        ] {
+            assert!(
+                block.contains(mesh),
+                "{mesh} must draw through the dedicated opaque main-pass family"
+            );
+        }
+        assert!(
+            block.contains("pass.set_bind_group(1, &self.lightmap.sample_bind_group, &[])"),
+            "entitySolidZOffsetForward keeps the entity LightTexture bind"
         );
     }
 

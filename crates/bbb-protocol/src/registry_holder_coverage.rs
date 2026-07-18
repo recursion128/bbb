@@ -336,7 +336,7 @@ mod tests {
         for required in [
             "pub(in crate::entity_models) fn render_painting_tile(",
             "append_painting_tile_geometry(",
-            "EntityModelLayerRenderType::EntityCutoutZOffset",
+            "EntityModelLayerRenderType::EntitySolidZOffsetForward",
         ] {
             assert!(
                 renderer.contains(required),

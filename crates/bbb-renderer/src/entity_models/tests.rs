@@ -114,6 +114,14 @@ fn textured_layer_render_type_names_match_vanilla_render_types() {
             false,
         ),
         (
+            EntityModelLayerRenderType::EntitySolidZOffsetForward,
+            "entitySolidZOffsetForward",
+            EntityModelLayerRenderBucket::SolidZOffsetForward,
+            true,
+            true,
+            false,
+        ),
+        (
             EntityModelLayerRenderType::ArmorCutoutNoCull,
             "armorCutoutNoCull",
             EntityModelLayerRenderBucket::Cutout,

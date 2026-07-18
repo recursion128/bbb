@@ -51,6 +51,7 @@ pub(crate) const HUD_ENTITY_PREVIEW_PIP_PASS_LABEL: &str = "bbb-native-hud-entit
 pub(crate) enum HudEntityPreviewPipPipeline {
     Cutout,
     CutoutCull,
+    SolidZOffsetForward,
     CutoutZOffset,
     ArmorCutout,
     ArmorTrim,
@@ -236,6 +237,7 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
     // Cutout family, in main_world_pass order.
     geometry.append_textured(CutoutCull, Static, meshes.cutout_cull);
     geometry.append_textured(Cutout, Static, meshes.cutout);
+    geometry.append_textured(SolidZOffsetForward, Static, meshes.solid_z_offset_forward);
     geometry.append_textured(CutoutZOffset, Static, meshes.cutout_z_offset);
     geometry.append_textured(ArmorCutout, Static, meshes.armor_cutout);
     geometry.append_textured(
@@ -244,6 +246,11 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
         meshes.dynamic_player_skin_cutout_cull,
     );
     geometry.append_textured(Cutout, DynamicPlayerSkin, meshes.dynamic_player_skin_cutout);
+    geometry.append_textured(
+        SolidZOffsetForward,
+        DynamicPlayerSkin,
+        meshes.dynamic_player_skin_solid_z_offset_forward,
+    );
     geometry.append_textured(
         CutoutZOffset,
         DynamicPlayerSkin,
@@ -258,6 +265,11 @@ pub(crate) fn bake_hud_entity_preview_pip_geometry(
         Cutout,
         DynamicPlayerTexture,
         meshes.dynamic_player_texture_cutout,
+    );
+    geometry.append_textured(
+        SolidZOffsetForward,
+        DynamicPlayerTexture,
+        meshes.dynamic_player_texture_solid_z_offset_forward,
     );
     geometry.append_textured(
         CutoutZOffset,
@@ -689,6 +701,9 @@ impl Renderer {
                         }
                         HudEntityPreviewPipPipeline::CutoutCull => {
                             (&self.entity_model_textured_cull_pipeline, true)
+                        }
+                        HudEntityPreviewPipPipeline::SolidZOffsetForward => {
+                            (&self.entity_model_solid_z_offset_forward_pipeline, true)
                         }
                         HudEntityPreviewPipPipeline::CutoutZOffset => {
                             (&self.entity_model_cutout_z_offset_pipeline, true)

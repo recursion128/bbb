@@ -192,6 +192,8 @@ pub(in crate::entity_models) enum EntityModelLayerKind {
 pub(crate) enum EntityModelLayerRenderType {
     /// Vanilla `RenderTypes.entitySolid(texture)`.
     EntitySolid,
+    /// Vanilla `RenderTypes.entitySolidZOffsetForward(texture)`.
+    EntitySolidZOffsetForward,
     /// Vanilla `RenderTypes.armorCutoutNoCull(texture)` used by equipment layers.
     ArmorCutoutNoCull,
     /// Vanilla armor-trim sheet through `RenderTypes.armorCutoutNoCull`.
@@ -248,6 +250,10 @@ pub(crate) enum EntityModelLayerRenderType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
     Cutout,
+    /// Vanilla `RenderPipelines.ENTITY_SOLID_Z_OFFSET_FORWARD`: the culling, opaque entity-solid
+    /// state with `VIEW_OFFSET_Z_LAYERING_FORWARD` projection. It cannot share the ordinary solid
+    /// bucket because the GPU path needs the forward z-offset matrix.
+    SolidZOffsetForward,
     /// Vanilla `RenderPipelines.ENTITY_CUTOUT_DISSOLVE` (`RenderTypes.entityCutoutDissolve`): opaque
     /// cutout state plus a per-fragment DISSOLVE mask sample (the dying ender dragon). Kept out of the
     /// plain [`Self::Cutout`] bucket so the GPU path can own the dedicated dissolve pipeline and its
@@ -269,8 +275,9 @@ pub(in crate::entity_models) enum EntityModelLayerRenderBucket {
 
 impl EntityModelLayerRenderType {
     #[cfg(test)]
-    pub(in crate::entity_models) const ALL: [Self; 25] = [
+    pub(in crate::entity_models) const ALL: [Self; 26] = [
         Self::EntitySolid,
+        Self::EntitySolidZOffsetForward,
         Self::ArmorCutoutNoCull,
         Self::ArmorTrimCutoutNoCull,
         Self::ArmorTrimDecalCutoutNoCull,
@@ -305,6 +312,7 @@ impl EntityModelLayerRenderType {
             | Self::ArmorTrimDecalCutoutNoCull
             | Self::EntityCutout
             | Self::EntityCutoutCull => EntityModelLayerRenderBucket::Cutout,
+            Self::EntitySolidZOffsetForward => EntityModelLayerRenderBucket::SolidZOffsetForward,
             Self::EntityCutoutDissolve => EntityModelLayerRenderBucket::Dissolve,
             Self::EntityCutoutZOffset => EntityModelLayerRenderBucket::CutoutZOffset,
             Self::ArmorTranslucent | Self::EntityTranslucent => {
@@ -332,6 +340,7 @@ impl EntityModelLayerRenderType {
         matches!(
             self,
             Self::EntitySolid
+                | Self::EntitySolidZOffsetForward
                 | Self::ArmorCutoutNoCull
                 | Self::ArmorTrimCutoutNoCull
                 | Self::ArmorTrimDecalCutoutNoCull
@@ -365,7 +374,10 @@ impl EntityModelLayerRenderType {
     pub(in crate::entity_models) const fn surface_cull(self) -> bool {
         matches!(
             self,
-            Self::EntitySolid | Self::EntityCutoutCull | Self::EntityTranslucentCullItemTarget
+            Self::EntitySolid
+                | Self::EntitySolidZOffsetForward
+                | Self::EntityCutoutCull
+                | Self::EntityTranslucentCullItemTarget
         )
     }
 
@@ -377,6 +389,7 @@ impl EntityModelLayerRenderType {
     pub(in crate::entity_models) const fn vanilla_name(self) -> &'static str {
         match self {
             Self::EntitySolid => "entitySolid",
+            Self::EntitySolidZOffsetForward => "entitySolidZOffsetForward",
             Self::ArmorCutoutNoCull => "armorCutoutNoCull",
             Self::ArmorTrimCutoutNoCull => "armorTrimsSheet",
             Self::ArmorTrimDecalCutoutNoCull => "armorTrimsDecalSheet",

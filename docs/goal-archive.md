@@ -19179,6 +19179,9 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Projected painting direction and variant into entity render sources, expanded each entity into
   independently lit 1x1 tiles, loaded custom front/back/missing sprites from the startup
   `paintings` atlas, and emitted vanilla front partitions, full backs, and boundary-only edges.
+  Painting submissions use a dedicated opaque, back-face-culled
+  `entitySolidZOffsetForward` bucket and the camera's forward view-offset matrix, matching
+  `PaintingRenderer` instead of reusing the cutout z-offset path.
 - Split the network and persistent painting calls from the generic holder families in the generated
   coverage ledger. Both calls are complete with locator-checked protocol, world, tooltip,
   persistence, atlas, light, and renderer evidence.

@@ -316,6 +316,10 @@ struct PendingSortedScrollUpload {
 pub(super) struct EntityModelTexturedMeshes {
     pub(super) cutout: EntityModelTexturedMesh,
     pub(super) cutout_cull: EntityModelTexturedMesh,
+    /// Vanilla `RenderTypes.entitySolidZOffsetForward(texture)` geometry. This owns a dedicated
+    /// bucket because it uses the forward view-offset projection instead of the ordinary entity
+    /// camera matrix.
+    pub(super) solid_z_offset_forward: EntityModelTexturedMesh,
     /// Vanilla `RenderTypes.entityCutoutDissolve(dragon.png, dragon_exploding.png)` geometry (the
     /// dying ender dragon body). Its base UVs match the plain cutout bucket, but each vertex also
     /// carries a `mask_uv` set so the GPU dissolve pipeline can sample `dragon_exploding.png` for the
@@ -352,6 +356,7 @@ pub(super) struct EntityModelTexturedMeshes {
     /// cutout/translucent render type while swapping only the texture source.
     pub(super) dynamic_player_skin_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_cutout_cull: EntityModelTexturedMesh,
+    pub(super) dynamic_player_skin_solid_z_offset_forward: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_cutout_z_offset: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_translucent: EntityModelTexturedMesh,
     pub(super) dynamic_player_skin_item_entity_translucent: EntityModelTexturedMesh,
@@ -360,6 +365,7 @@ pub(super) struct EntityModelTexturedMeshes {
     /// variable-size atlas while preserving the vanilla render type.
     pub(super) dynamic_player_texture_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_cutout_cull: EntityModelTexturedMesh,
+    pub(super) dynamic_player_texture_solid_z_offset_forward: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_cutout_z_offset: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_armor_cutout: EntityModelTexturedMesh,
     pub(super) dynamic_player_texture_armor_trim: EntityModelTexturedMesh,
@@ -419,6 +425,7 @@ impl EntityModelTexturedMeshes {
         Self {
             cutout: EntityModelTexturedMesh::new(),
             cutout_cull: EntityModelTexturedMesh::new(),
+            solid_z_offset_forward: EntityModelTexturedMesh::new(),
             dissolve: EntityModelDissolveMesh::new(),
             cutout_z_offset: EntityModelTexturedMesh::new(),
             armor_cutout: EntityModelTexturedMesh::new(),
@@ -434,12 +441,14 @@ impl EntityModelTexturedMeshes {
             outline_cull: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout_cull: EntityModelTexturedMesh::new(),
+            dynamic_player_skin_solid_z_offset_forward: EntityModelTexturedMesh::new(),
             dynamic_player_skin_cutout_z_offset: EntityModelTexturedMesh::new(),
             dynamic_player_skin_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_skin_item_entity_translucent: EntityModelTexturedMesh::new(),
             dynamic_player_skin_item_entity_translucent_cull: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout_cull: EntityModelTexturedMesh::new(),
+            dynamic_player_texture_solid_z_offset_forward: EntityModelTexturedMesh::new(),
             dynamic_player_texture_cutout_z_offset: EntityModelTexturedMesh::new(),
             dynamic_player_texture_armor_cutout: EntityModelTexturedMesh::new(),
             dynamic_player_texture_armor_trim: EntityModelTexturedMesh::new(),
@@ -496,6 +505,7 @@ impl EntityModelTexturedMeshes {
                     &mut self.cutout
                 }
             }
+            EntityModelLayerRenderBucket::SolidZOffsetForward => &mut self.solid_z_offset_forward,
             EntityModelLayerRenderBucket::CutoutZOffset => &mut self.cutout_z_offset,
             EntityModelLayerRenderBucket::Translucent => &mut self.translucent,
             EntityModelLayerRenderBucket::TranslucentEmissive => &mut self.translucent_emissive,
@@ -535,6 +545,9 @@ impl EntityModelTexturedMeshes {
             }
             EntityModelLayerRenderBucket::CutoutZOffset => {
                 &mut self.dynamic_player_skin_cutout_z_offset
+            }
+            EntityModelLayerRenderBucket::SolidZOffsetForward => {
+                &mut self.dynamic_player_skin_solid_z_offset_forward
             }
             EntityModelLayerRenderBucket::Translucent => &mut self.dynamic_player_skin_translucent,
             EntityModelLayerRenderBucket::ItemEntityTranslucent => {
@@ -582,6 +595,9 @@ impl EntityModelTexturedMeshes {
             }
             EntityModelLayerRenderBucket::CutoutZOffset => {
                 &mut self.dynamic_player_texture_cutout_z_offset
+            }
+            EntityModelLayerRenderBucket::SolidZOffsetForward => {
+                &mut self.dynamic_player_texture_solid_z_offset_forward
             }
             EntityModelLayerRenderBucket::Translucent => {
                 &mut self.dynamic_player_texture_translucent
@@ -1829,7 +1845,10 @@ pub(in crate::entity_models) fn render_painting_tile(
             [1.0, 1.0, 1.0, 38.0 / 255.0],
         )
     } else {
-        (EntityModelLayerRenderType::EntityCutoutZOffset, [1.0; 4])
+        (
+            EntityModelLayerRenderType::EntitySolidZOffsetForward,
+            [1.0; 4],
+        )
     };
     let submit = EntityModelSubmissionEmit::new(
         render_type,
@@ -1989,8 +2008,19 @@ fn append_painting_quad(
             normal,
         }
     }));
-    mesh.indices
-        .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    let a = Vec3::from_array(mesh.vertices[base as usize].position);
+    let b = Vec3::from_array(mesh.vertices[(base + 1) as usize].position);
+    let c = Vec3::from_array(mesh.vertices[(base + 2) as usize].position);
+    if (b - a).cross(c - a).dot(Vec3::from_array(normal)) >= 0.0 {
+        mesh.indices
+            .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+    } else {
+        // Vanilla emits quads and lets the backend expand them. Normalize the triangle-list
+        // expansion against the submitted normal so the dedicated entity-solid cull state keeps
+        // every front/back/edge face visible on wgpu.
+        mesh.indices
+            .extend([base, base + 2, base + 1, base, base + 3, base + 2]);
+    }
     mesh.cutout_faces += 1;
 }
 
