@@ -2147,6 +2147,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                         }]
                         .into_boxed_slice()
                     ),
+                    description_nbt: None,
                 })),
                 armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
                     asset_id: "minecraft:test_pattern".to_string(),
@@ -2161,6 +2162,7 @@ fn native_item_runtime_loads_fixture_and_keeps_missingno_fallback() {
                         }]
                         .into_boxed_slice()
                     ),
+                    description_nbt: None,
                     decal: false,
                 })),
                 dyed_color: Some(0x11_22_33),
@@ -6696,11 +6698,13 @@ fn native_item_runtime_resolves_component_condition_predicates() {
             )]),
             description: "Test material".to_string(),
             description_styled: None,
+            description_nbt: None,
         })),
         armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
             asset_id: "minecraft:test_pattern".to_string(),
             description: "Test pattern".to_string(),
             description_styled: None,
+            description_nbt: None,
             decal: true,
         })),
         ..DataComponentPatchSummary::default()

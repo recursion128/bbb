@@ -430,6 +430,8 @@ pub struct TrimMaterialSummary {
     pub description: String,
     #[serde(default)]
     pub description_styled: Option<Box<[StyledTextRun]>>,
+    #[serde(default)]
+    pub description_nbt: Option<Box<NbtSummaryValue>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -438,6 +440,8 @@ pub struct TrimPatternSummary {
     pub description: String,
     #[serde(default)]
     pub description_styled: Option<Box<[StyledTextRun]>>,
+    #[serde(default)]
+    pub description_nbt: Option<Box<NbtSummaryValue>>,
     pub decal: bool,
 }
 
@@ -1888,13 +1892,15 @@ fn decode_direct_instrument_description(decoder: &mut Decoder<'_>) -> Result<Vec
 
 fn decode_direct_trim_material_summary(decoder: &mut Decoder<'_>) -> Result<TrimMaterialSummary> {
     let (asset_name, override_armor_assets) = decode_material_asset_group_summary(decoder)?;
-    let description_styled = decode_styled_component_summary_from_decoder(decoder)?;
+    let (description_styled, description_nbt) =
+        decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
     let description = styled_runs_summary_text(&description_styled);
     Ok(TrimMaterialSummary {
         asset_name,
         override_armor_assets,
         description,
         description_styled: Some(description_styled.into_boxed_slice()),
+        description_nbt: description_nbt.map(Box::new),
     })
 }
 
@@ -1937,13 +1943,15 @@ fn decode_trim_pattern_holder(decoder: &mut Decoder<'_>) -> Result<TrimPatternHo
 
 fn decode_direct_trim_pattern_summary(decoder: &mut Decoder<'_>) -> Result<TrimPatternSummary> {
     let asset_id = read_resource_location(decoder)?;
-    let description_styled = decode_styled_component_summary_from_decoder(decoder)?;
+    let (description_styled, description_nbt) =
+        decode_styled_component_summary_with_nbt_from_decoder(decoder)?;
     let description = styled_runs_summary_text(&description_styled);
     let decal = decoder.read_bool()?;
     Ok(TrimPatternSummary {
         asset_id,
         description,
         description_styled: Some(description_styled.into_boxed_slice()),
+        description_nbt: description_nbt.map(Box::new),
         decal,
     })
 }
@@ -3101,6 +3109,16 @@ mod tests {
                         }]
                         .into_boxed_slice()
                     ),
+                    description_nbt: Some(Box::new(NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "text".to_string(),
+                            value: NbtSummaryValue::String("Test pattern".to_string()),
+                        },
+                        NbtSummaryEntry {
+                            name: "bold".to_string(),
+                            value: NbtSummaryValue::Byte(1),
+                        },
+                    ]))),
                     decal: true,
                 })),
                 ..DataComponentPatchSummary::default()
@@ -3155,6 +3173,20 @@ mod tests {
                         }]
                         .into_boxed_slice()
                     ),
+                    description_nbt: Some(Box::new(NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "text".to_string(),
+                            value: NbtSummaryValue::String("Test material".to_string()),
+                        },
+                        NbtSummaryEntry {
+                            name: "italic".to_string(),
+                            value: NbtSummaryValue::Byte(1),
+                        },
+                        NbtSummaryEntry {
+                            name: "color".to_string(),
+                            value: NbtSummaryValue::String("gold".to_string()),
+                        },
+                    ]))),
                 })),
                 armor_trim_pattern_id: Some(0),
                 ..DataComponentPatchSummary::default()
@@ -3214,6 +3246,12 @@ mod tests {
                     override_armor_assets: BTreeMap::new(),
                     description: "Template material".to_string(),
                     description_styled: Some(plain_runs("Template material").into_boxed_slice()),
+                    description_nbt: Some(Box::new(NbtSummaryValue::Compound(vec![
+                        NbtSummaryEntry {
+                            name: "text".to_string(),
+                            value: NbtSummaryValue::String("Template material".to_string()),
+                        },
+                    ]))),
                 })),
                 ..DataComponentPatchSummary::default()
             }

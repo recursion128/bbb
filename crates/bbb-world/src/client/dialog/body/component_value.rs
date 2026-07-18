@@ -1619,6 +1619,7 @@ fn apply_trim_material_holder(
                 override_armor_assets: material.override_armor_assets.clone(),
                 description: material.description.text.clone(),
                 description_styled: Some(material.description.runs.clone().into_boxed_slice()),
+                description_nbt: Some(Box::new(material.description.component.clone())),
             }));
         }
     }
@@ -1642,6 +1643,7 @@ fn apply_trim_pattern_holder(
                 asset_id: pattern.asset_id.clone(),
                 description: pattern.description.text.clone(),
                 description_styled: Some(pattern.description.runs.clone().into_boxed_slice()),
+                description_nbt: Some(Box::new(pattern.description.component.clone())),
                 decal: pattern.decal,
             }));
         }

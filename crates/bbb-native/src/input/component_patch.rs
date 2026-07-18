@@ -2913,6 +2913,7 @@ mod tests {
                 override_armor_assets: Default::default(),
                 description: "Custom material".to_string(),
                 description_styled: None,
+                description_nbt: None,
             }));
         assert_eq!(encode_added_component_value_snbt(62, &patch, None), None);
     }
@@ -2941,6 +2942,7 @@ mod tests {
                 override_armor_assets: Default::default(),
                 description: "Custom material".to_string(),
                 description_styled: None,
+                description_nbt: None,
             }));
         assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);
         patch.armor_trim_material_direct = None;
@@ -2949,6 +2951,7 @@ mod tests {
                 asset_id: "example:custom".to_string(),
                 description: "Custom pattern".to_string(),
                 description_styled: None,
+                description_nbt: None,
                 decal: false,
             }));
         assert_eq!(encode_added_component_value_snbt(56, &patch, None), None);

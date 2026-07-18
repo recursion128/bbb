@@ -446,11 +446,13 @@ fn entity_model_sources_project_named_and_direct_armor_trim_sprites() {
                 )]),
                 description: String::new(),
                 description_styled: None,
+                description_nbt: None,
             })),
             armor_trim_pattern_direct: Some(Box::new(TrimPatternSummary {
                 asset_id: "example:spiral".to_string(),
                 description: String::new(),
                 description_styled: None,
+                description_nbt: None,
                 decal: true,
             })),
             ..Default::default()

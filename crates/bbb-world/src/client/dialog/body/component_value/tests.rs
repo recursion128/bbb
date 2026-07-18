@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use bbb_protocol::builtin_enum_component_values::{
     VANILLA_DYE_COLOR_BLUE_ID, VANILLA_DYE_COLOR_LIGHT_BLUE_ID, VANILLA_DYE_COLOR_RED_ID,
     VANILLA_DYE_COLOR_YELLOW_ID,
@@ -21,6 +23,7 @@ use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_SPEED_ID,
 };
 
+use super::trim::{DialogTrimMaterialState, DialogTrimPatternState};
 use super::*;
 
 #[test]
@@ -2139,6 +2142,56 @@ fn suspicious_stew_fields_follow_compound_last_wins_semantics() {
             if effects[0].effect.resource_id == "minecraft:speed"
                 && effects[0].duration == 20
     ));
+}
+
+#[test]
+fn direct_trim_projection_retains_component_nbt() {
+    let material_component = compound(vec![string_entry("translate", "trim.example.material")]);
+    let pattern_component = compound(vec![string_entry("text", "Custom pattern")]);
+    let mut patch = DataComponentPatchSummary::default();
+    assert!(apply_item_patch_value(
+        VANILLA_DATA_COMPONENT_TRIM_TYPE_ID,
+        &DialogDataComponentValueState::Trim {
+            material: DialogTrimMaterialHolderState::Direct {
+                material: DialogTrimMaterialState {
+                    asset_name: "opal".to_string(),
+                    override_armor_assets: BTreeMap::new(),
+                    description: DialogTextState {
+                        text: "Custom material".to_string(),
+                        runs: Vec::new(),
+                        component: material_component.clone(),
+                    },
+                },
+            },
+            pattern: DialogTrimPatternHolderState::Direct {
+                pattern: DialogTrimPatternState {
+                    asset_id: "example:spiral".to_string(),
+                    description: DialogTextState {
+                        text: "Custom pattern".to_string(),
+                        runs: Vec::new(),
+                        component: pattern_component.clone(),
+                    },
+                    decal: true,
+                },
+            },
+        },
+        &mut patch,
+    ));
+
+    assert_eq!(
+        patch
+            .armor_trim_material_direct
+            .as_deref()
+            .and_then(|material| material.description_nbt.as_deref()),
+        Some(&material_component)
+    );
+    assert_eq!(
+        patch
+            .armor_trim_pattern_direct
+            .as_deref()
+            .and_then(|pattern| pattern.description_nbt.as_deref()),
+        Some(&pattern_component)
+    );
 }
 
 #[test]
