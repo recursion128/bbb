@@ -59,14 +59,7 @@ async fn handle_client(stream: TcpStream, state: ControlState) -> Result<()> {
     let mut lines = BufReader::new(reader).lines();
     while let Some(line) = lines.next_line().await? {
         let response = match serde_json::from_str::<ControlRequest>(&line) {
-            // dispatch blocks on the canonical world lock, which the native
-            // main thread can hold across a multi-second frame.  Run it on
-            // the blocking pool so stacked-up control requests cannot starve
-            // the async workers that drive the server connection.
-            Ok(request) => {
-                let dispatch_state = state.clone();
-                tokio::task::spawn_blocking(move || dispatch(request, &dispatch_state)).await?
-            }
+            Ok(request) => dispatch(request, &state),
             Err(err) => ControlResponse {
                 ok: false,
                 result: None,
@@ -1273,7 +1266,7 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         return control_response_from_json(json);
     }
 
-    let world_guard = state.world.read().expect("control world poisoned");
+    let world_guard = snapshot_view.world.as_ref();
     let json = match request.method.as_str() {
         "world.apply_diagnostics" => serde_json::to_value(world_guard.apply_diagnostics()),
         "world.registries" => serde_json::to_value(world_guard.registries()),

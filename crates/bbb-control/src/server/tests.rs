@@ -59,13 +59,14 @@ use bbb_world::{
 use serde_json::json;
 use uuid::Uuid;
 
-fn publish_test_world_snapshot(state: &ControlState, world: &WorldStore) {
-    let world = Arc::new(world.clone());
+fn publish_test_world(state: &ControlState, world: WorldStore) {
+    let snapshot_world = Arc::new(world.clone());
     state.snapshot.rcu(|current| {
         let mut next = (**current).clone();
-        next.world = Arc::clone(&world);
+        next.world = Arc::clone(&snapshot_world);
         next
     });
+    *state.world.write().unwrap() = world;
 }
 
 #[test]
@@ -99,8 +100,7 @@ fn app_status_reads_world_counters_from_world_store() {
             };
             next
         });
-        publish_test_world_snapshot(&state, &store);
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -152,7 +152,7 @@ fn high_frequency_queries_match_the_published_world_without_taking_the_live_lock
             .unwrap(),
     )
     .unwrap();
-    publish_test_world_snapshot(&state, &world);
+    publish_test_world(&state, world);
 
     // Keeping the compatibility world's write guard proves these migrated
     // reads cannot be waiting on the live-world RwLock.
@@ -182,6 +182,13 @@ fn high_frequency_queries_match_the_published_world_without_taking_the_live_lock
     assert_eq!(counters.result.unwrap(), expected_counters);
     assert_eq!(local.result.unwrap(), expected_local);
     assert_eq!(block.result.unwrap(), expected_block);
+}
+
+#[test]
+fn dispatcher_read_methods_have_no_live_world_or_blocking_pool_path() {
+    let source = include_str!("../server.rs");
+    assert!(!source.contains("state.world.read"));
+    assert!(!source.contains("spawn_blocking"));
 }
 
 #[test]
@@ -258,7 +265,7 @@ fn registries_reads_canonical_world_state() {
                 }],
             }],
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -331,7 +338,7 @@ fn level_state_reads_canonical_world_state() {
             },
             enforces_secure_chat: true,
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -364,7 +371,9 @@ fn level_state_reads_canonical_world_state() {
     assert_eq!(level_state["gameplay"]["show_death_screen"], true);
     assert_eq!(level_state["gameplay"]["do_limited_crafting"], false);
 
-    state.world.write().unwrap().clear_client_level();
+    let mut cleared_world = (*state.snapshot.load().world).clone();
+    cleared_world.clear_client_level();
+    publish_test_world(&state, cleared_world);
     let response = dispatch(
         ControlRequest {
             method: "world.level_state".to_string(),
@@ -2250,7 +2259,7 @@ fn client_hud_reads_canonical_world_state() {
         store.apply_subtitle_text(SetSubtitleText {
             content: "Return to camp".to_string(),
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2310,7 +2319,7 @@ fn client_inventory_reads_canonical_world_state() {
             id: 2,
             value: 10,
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2390,7 +2399,7 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
             show_progress: true,
             can_restock: false,
         }));
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2426,11 +2435,9 @@ fn client_inventory_reads_merchant_offers_and_close_from_canonical_world_state()
     assert_eq!(offers["offers"][1]["buy_b"], serde_json::Value::Null);
     assert_eq!(offers["offers"][1]["is_out_of_stock"], true);
 
-    assert!(state
-        .world
-        .write()
-        .unwrap()
-        .apply_container_close(ContainerClose { container_id: 7 }));
+    let mut closed_world = (*state.snapshot.load().world).clone();
+    assert!(closed_world.apply_container_close(ContainerClose { container_id: 7 }));
+    publish_test_world(&state, closed_world);
     let response = dispatch(
         ControlRequest {
             method: "world.client_inventory".to_string(),
@@ -2476,7 +2483,7 @@ fn client_recipe_book_reads_canonical_world_state() {
                 filtering: false,
             },
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2531,7 +2538,7 @@ fn client_recipes_reads_canonical_world_state() {
                 },
             }],
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2582,7 +2589,7 @@ fn client_chat_reads_canonical_world_state() {
             },
         });
         store.push_client_system_chat_message("[Debug]: Client version info:");
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2638,7 +2645,7 @@ fn client_combat_reads_canonical_world_state() {
             player_id: 123,
             message: "You died".to_string(),
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2666,7 +2673,7 @@ fn client_cooldowns_reads_canonical_world_state() {
             cooldown_group: "minecraft:ender_pearl".to_string(),
             duration: 20,
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2685,10 +2692,12 @@ fn client_cooldowns_reads_canonical_world_state() {
     );
     assert_eq!(cooldowns["minecraft:ender_pearl"]["duration"], 20);
 
-    state.world.write().unwrap().apply_cooldown(Cooldown {
+    let mut cleared_world = (*state.snapshot.load().world).clone();
+    cleared_world.apply_cooldown(Cooldown {
         cooldown_group: "minecraft:ender_pearl".to_string(),
         duration: 0,
     });
+    publish_test_world(&state, cleared_world);
     let response = dispatch(
         ControlRequest {
             method: "world.client_cooldowns".to_string(),
@@ -2745,7 +2754,7 @@ fn client_effects_reads_canonical_world_state() {
                 raw_options: vec![0xaa, 0xbb],
             },
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2805,7 +2814,7 @@ fn client_stats_reads_canonical_world_state() {
                 },
             ],
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2865,7 +2874,7 @@ fn client_waypoints_reads_canonical_world_state() {
                 }),
             },
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -2935,7 +2944,7 @@ fn client_ui_reads_canonical_world_state() {
             dialog: DialogHolder::Reference { registry_id: 7 },
         });
         store.apply_pong_response(PongResponse { time: 123456789 });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3004,7 +3013,7 @@ fn client_audio_reads_canonical_world_state() {
             source: Some(SoundSource::Music),
             name: Some("minecraft:music.menu".to_string()),
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3057,7 +3066,7 @@ fn client_debug_game_reads_canonical_world_state() {
                 },
             ],
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3102,7 +3111,7 @@ fn client_debug_query_reads_canonical_world_state() {
             tag_present: true,
             raw_nbt: vec![10, 0],
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3129,7 +3138,7 @@ fn client_command_suggestions_reads_canonical_world_state() {
             action: CustomChatCompletionsAction::Set,
             entries: vec!["/warp".to_string(), "/spawn".to_string()],
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3165,7 +3174,7 @@ fn client_features_reads_canonical_world_state() {
                 "minecraft:trade_rebalance".to_string(),
             ],
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3196,7 +3205,7 @@ fn client_known_packs_reads_canonical_world_state() {
             }],
             Vec::new(),
         );
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3221,7 +3230,7 @@ fn apply_diagnostics_reads_canonical_world_state() {
     {
         let mut store = WorldStore::new();
         store.record_apply_error("light_update", "invalid light payload");
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3251,7 +3260,7 @@ fn command_tree_reads_canonical_world_state() {
     {
         let mut store = WorldStore::new();
         store.apply_commands(command_tree("say"));
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3278,7 +3287,7 @@ fn last_block_changed_ack_reads_canonical_world_state() {
     {
         let mut store = WorldStore::new();
         store.apply_block_changed_ack(BlockChangedAck { sequence: 17 });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3327,7 +3336,7 @@ fn client_block_events_reads_canonical_world_state() {
             data: 9,
             global: true,
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3380,7 +3389,7 @@ fn world_border_reads_canonical_world_state() {
         });
         store.apply_set_border_warning_delay(SetBorderWarningDelay { warning_delay: 11 });
         store.apply_set_border_warning_distance(SetBorderWarningDistance { warning_blocks: 12 });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3424,7 +3433,7 @@ fn client_advancements_reads_canonical_world_state() {
         store.apply_select_advancements_tab(SelectAdvancementsTab {
             tab: Some("minecraft:story/root".to_string()),
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3478,8 +3487,7 @@ fn client_local_player_reads_canonical_world_state() {
             pitch: -10.0,
         });
         store.apply_simulation_distance(SetSimulationDistance { distance: 12 });
-        publish_test_world_snapshot(&state, &store);
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3537,7 +3545,7 @@ fn client_player_info_reads_canonical_world_state() {
             }],
         });
         assert_eq!(applied, 1);
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3607,7 +3615,7 @@ fn client_scoreboard_reads_canonical_world_state() {
             }),
             players: vec!["Alice".to_string(), "Bob".to_string()],
         }));
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3672,7 +3680,7 @@ fn client_maps_reads_canonical_world_state() {
                 colors: vec![1, 2, 3, 4],
             }),
         }));
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3725,7 +3733,7 @@ fn last_map_color_patch_reads_canonical_world_state() {
                 colors: vec![1, 2, 3, 4],
             }),
         });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3768,7 +3776,7 @@ fn level_clock_reads_canonical_world_state() {
             frozen: true,
         });
         store.apply_ticking_step(TickingStep { tick_steps: 7 });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3841,7 +3849,7 @@ fn server_presentation_reads_canonical_world_state() {
                 }),
             },
         );
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -3894,8 +3902,7 @@ fn probes_chunk_and_block_from_world_store() {
         });
         store.insert_decoded_chunk(single_section_chunk());
 
-        publish_test_world_snapshot(&state, &store);
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let chunk_response = dispatch(
@@ -3962,7 +3969,7 @@ fn chunk_view_reads_canonical_world_state() {
             chunk_z: 7,
         });
         store.apply_set_chunk_cache_radius(SetChunkCacheRadius { radius: 10 });
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -4008,7 +4015,7 @@ fn probes_entity_transforms_from_world_store_components() {
             })
         );
 
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let one_response = dispatch(
@@ -4078,7 +4085,7 @@ fn last_projectile_power_reads_canonical_world_state() {
             entity_id: 10,
             acceleration_power: 0.75,
         }));
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let applied_response = dispatch(
@@ -4094,14 +4101,12 @@ fn last_projectile_power_reads_canonical_world_state() {
     assert_eq!(applied["acceleration_power"], 0.75);
     assert_eq!(applied["applied"], true);
 
-    assert!(!state
-        .world
-        .write()
-        .unwrap()
-        .apply_projectile_power(ProjectilePower {
-            entity_id: 20,
-            acceleration_power: 0.25,
-        }));
+    let mut ignored_world = (*state.snapshot.load().world).clone();
+    assert!(!ignored_world.apply_projectile_power(ProjectilePower {
+        entity_id: 20,
+        acceleration_power: 0.25,
+    }));
+    publish_test_world(&state, ignored_world);
 
     let ignored_response = dispatch(
         ControlRequest {
@@ -4152,7 +4157,7 @@ fn probe_entity_status_reads_canonical_world_state() {
                 blend: true,
             },
         }));
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(
@@ -4201,7 +4206,7 @@ fn entity_pick_targets_probe_exposes_ender_dragon_part_targets() {
         let mut store = WorldStore::new();
         store.apply_add_entity(protocol_add_entity(100, 43));
         store.advance_entity_client_animations(1);
-        *state.world.write().unwrap() = store;
+        publish_test_world(&state, store);
     }
 
     let response = dispatch(

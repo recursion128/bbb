@@ -371,11 +371,10 @@ pub struct ControlRequests {
 
 pub type SharedControlRequests = Arc<Mutex<ControlRequests>>;
 
-/// Shared handle onto the authoritative `WorldStore` owned by the native
-/// runtime. The control server only ever takes short read locks to answer
-/// `world.*` queries on demand; the native event loop holds the write lock
-/// for the duration of each event, so control queries observe consistent
-/// between-event world states without any per-publish deep copy.
+/// Compatibility handle for the final native ownership migration. Control
+/// reads use [`ControlSnapshot::world`] exclusively; this live handle remains
+/// temporarily so the native event loop can be moved off its whole-event lock
+/// in a separately reviewable phase.
 pub type SharedWorld = Arc<RwLock<WorldStore>>;
 
 /// Bundle of the shared control-plane handles served by the control API.
