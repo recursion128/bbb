@@ -5198,14 +5198,19 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs",
+          "crates/bbb-pack/src/known_packs.rs#select_offered",
+          "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::SelectKnownPacks",
+          "crates/bbb-world/src/registries/store.rs#materialize_pending_known_pack_data",
           "vanilla:net/minecraft/client/multiplayer/ClientConfigurationPacketListenerImpl.java#trySelectingPacks"
         ],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "status": "complete"
       },
       "tests": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"],
+        "evidence": [
+          "crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_sends_exact_local_intersection",
+          "crates/bbb-net/src/probe/configuration.rs#probe_selects_local_core_and_materializes_registry_stubs",
+          "crates/bbb-world/src/registries/tests.rs#selected_known_pack_missing_stub_data_rejects_configuration_atomically"
+        ],
         "status": "complete"
       }
     },
@@ -5216,9 +5221,11 @@
         "status": "not-applicable"
       },
       "command_surface": {
-        "evidence": ["crates/bbb-protocol/src/packets/connection.rs#encode_select_known_packs"],
-        "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-        "status": "partial"
+        "evidence": [
+          "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::SelectKnownPacks",
+          "crates/bbb-net/src/probe/configuration.rs#ConfigurationClientbound::SelectKnownPacks"
+        ],
+        "status": "complete"
       },
       "encoder": {
         "evidence": [
@@ -5229,11 +5236,15 @@
         "status": "complete"
       },
       "state_guard": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"],
+        "evidence": ["crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_sends_exact_local_intersection"],
         "status": "complete"
       },
       "tests": {
-        "evidence": ["crates/bbb-protocol/src/packets/tests.rs#encodes_selected_known_packs_with_vanilla_limit_and_field_order", "crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"],
+        "evidence": [
+          "crates/bbb-protocol/src/packets/tests.rs#encodes_selected_known_packs_with_vanilla_limit_and_field_order",
+          "crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_sends_exact_local_intersection",
+          "crates/bbb-net/src/event_stream.rs#configuration_select_known_packs_emits_event_and_sends_empty_response"
+        ],
         "status": "complete"
       }
     },

@@ -52,10 +52,6 @@ Owner: `bbb-protocol`
   remaining `partial` cell must carry implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
-- Build a local `KnownPacksManager`/server-data resource manager, select only
-  offered packs whose registry data bbb can actually provide, and pass that
-  intersection to the existing 64-entry response encoder instead of always
-  returning an empty configuration response.
 - Close the owning decoder/encoder registry context plus custom-reorder tests
   behind the 162
   `partial` network and persistent rows in

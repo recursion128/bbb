@@ -19205,3 +19205,17 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   ledger 因而关闭 configuration/play ResourcePack Push/Pop 与 serverbound response 的
   lifecycle partial。通用 font reload、broader dynamic texture、自定义 block/item/entity
   model 与 datapack asset 组合仍由 `goal.md` P3 及本 ledger 的资源泛化条目开放维护。
+
+## 2026-07-18：Negotiate local known-pack server data
+
+- [x] `bbb-pack` 启动时验证 26.1 core 与 built-in feature packs 的完整同步 registry
+  `SERVER_DATA`，按 server offer order 对 `(namespace,id,version)` 做精确交集；online 与
+  probe 共用该选择，并通过现有 64-entry encoder 发送实际可提供的 pack，而非固定空响应。
+- [x] 每次 configuration 冻结选中 pack 的只读 direct-codec JSON view；server 省略
+  `RegistryData` element payload 时，world 在提交 frozen `RegistryAccess` 前按 resource
+  identity 物化数据。选择/source 不一致或本地资源缺失会原子拒绝 configuration，不以
+  server holder ordinal 猜测 vanilla 数据；reconfiguration、transfer 与新 session 均清理旧 view。
+- [x] pack inventory/override、online exact/empty response、probe materialization、world
+  missing/mismatch fail-closed 和 native disconnect 均有 focused regression。packet coverage
+  因而闭合 known-packs runtime 与 response command surface；完整 typed `RegistryAccess`
+  element codec 工作仍在 unsupported ledger 独立维护。
