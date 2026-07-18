@@ -17,6 +17,7 @@ bbb-pack = { path = "../bbb-pack" }
 bbb-protocol = { path = "../bbb-protocol" }
 bbb-world = { path = "../bbb-world" }
 bytes = { workspace = true }
+chrono = { workspace = true }
 num-bigint = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true }
@@ -24,6 +25,7 @@ rsa = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha1 = { workspace = true }
+sha2 = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }

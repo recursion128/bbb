@@ -614,10 +614,10 @@ lifecycle work follows the serial ownership contract in
 - Produce `ServerboundChatPacket` signatures. The protocol encoder accepts the
   optional 256-byte signature, but the production chat path still sends `None`.
 - Produce non-empty `ServerboundChatCommandSignedPacket` argument signatures.
-- Fetch and refresh profile key pairs, create the local chat session/message
-  encoder, validate the resulting server broadcast, and automatically send
-  `ServerboundChatSessionUpdatePacket`. Its protocol encoder and net send surface
-  exist, but no production key/session owner drives them yet.
+- Drive profile-key fetch/refresh from authenticated encrypted connections,
+  install the local chat session/message encoder, validate the resulting server
+  broadcast, and automatically send `ServerboundChatSessionUpdatePacket` before
+  using the replacement encoder.
 - On DeleteChat, disconnect for a packed signature that cannot be resolved,
   remove matching delayed-listener messages, and replace the visible message
   with vanilla's deleted marker no earlier than 60 GUI ticks after insertion.

@@ -19404,3 +19404,21 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] 所有权文档与设计合同更新为六阶段完成；`goal.md` 移除已完成工程项，unsupported
   ledger 反查没有 simulation-thread compatibility 行需要删除。最终 focused tests、full gate
   与 playable gate 结果随本提交交付记录报告。
+
+## 2026-07-18：签名聊天 phase 1 key service and signing core
+
+- [x] 对照本地 vanilla 26.1 `LocalChatSession`、`SignedMessageChain`、
+  `SignedMessageLink`、`SignedMessageBody`、`LastSeenMessages`、`ProfileKeyPair` 与本地
+  Authlib 7.0.63，新增 Services `POST /player/certificates` bounded client：Bearer token
+  只进 request header，128 KiB 前置流上限，严格解析 Authlib 的 PKCS#8-in-RSA-PEM、
+  X.509-in-RSA-PEM、RSA-2048 matching pair、`publicKeySignatureV2` 与 RFC 3339 时间。
+- [x] `bbb-net` 新增不可 serde、脱敏 Debug 的 private-key owner 和单向
+  `LocalChatSession`；session UUID 设置 Java `UUID.randomUUID()` 的 RFC 4122 v4 bits。
+  签名 payload 逐字节保持 sender/session UUID、non-negative link index、salt、epoch second、
+  UTF-8 byte length/content、最多 20 个完整 256-byte last-seen signature 的 big-endian 顺序，
+  以 PKCS#1 v1.5 SHA-256 产生固定 256-byte signature；`i32::MAX` link 可签一次，之后
+  fail closed，不回退 unsigned。
+- [x] 9 个专项回归覆盖字段顺序/秒级截断、连续 link 验签、chain exhaustion、v4 bits、
+  HTTP POST/Bearer、token/private-key redaction、Content-Length 上限、坏 PEM/时间/空签名、
+  mismatched 与非 2048-bit key；完整 `bbb-net` 238 项与 non-test check 通过。本 phase
+  按高风险工程合同在提交 tip 运行 full gate，phase 2 才接 world/native outbound path。

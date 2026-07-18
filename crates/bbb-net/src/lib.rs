@@ -1,3 +1,4 @@
+mod chat_session;
 mod chunk_batch;
 mod connection;
 mod driver;

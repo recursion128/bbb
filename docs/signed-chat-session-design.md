@@ -6,7 +6,10 @@ session, outbound message chain, inbound chain validation needed to validate the
 server echo, and `DeleteChat` lifecycle. It does not turn the native client into
 an authentication launcher or duplicate Mojang's Brigadier/Authlib class trees.
 
-Implementation status: the contract is frozen; phase 1 is current.
+Implementation status: phase 1 is complete; phase 2 outbound contract is
+current. The bounded Services decoder, redacted RSA key owner, exact signing
+payload, v4 session UUID, verifier, and one-way chain are available in
+`bbb-net` but are not installed into a live connection yet.
 
 ## Semantic Goal and Completion Criteria
 
