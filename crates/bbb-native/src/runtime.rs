@@ -167,6 +167,7 @@ use crate::{
         RECIPE_BOOK_OVERLAY_BUTTON_DRAW_SIZE, RECIPE_BOOK_OVERLAY_BUTTON_SIZE,
         RECIPE_BOOK_OVERLAY_ITEM_SCALE,
     },
+    resource_pack_runtime::ServerResourcePackRuntime,
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
     skull_scene::skull_model_instances_from_world_at_partial_tick,
@@ -2031,6 +2032,7 @@ pub(crate) fn take_control_screenshot(requests: &SharedControlRequests) -> Optio
 pub(crate) fn pump_network_and_terrain(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
+    server_resource_packs: &mut ServerResourcePackRuntime,
     audio_events: Option<&mut dyn AudioEventSink>,
     audio_status: &AudioCounters,
     particle_events: Option<&mut dyn ParticleEventSink>,
@@ -2088,6 +2090,7 @@ pub(crate) fn pump_network_and_terrain(
             level_event_sound_random,
         );
     }
+    server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     entity_variant_textures.synchronize(world, renderer);
     if terrain_textures.synchronize_biome_registry(world) {

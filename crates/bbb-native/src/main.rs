@@ -49,6 +49,7 @@ mod narrator_runtime;
 mod particle_runtime;
 mod platform;
 mod recipe_book_ui;
+mod resource_pack_runtime;
 mod runtime;
 mod shulker_box_scene;
 mod sign_scene;
@@ -83,6 +84,7 @@ use narrator_runtime::{
     NarratorStatus, NativeNarratorRuntime, ScreenNarrationInput, ScreenNarrationRuntime,
 };
 use particle_runtime::{NativeParticleRuntime, ParticleEventSink};
+use resource_pack_runtime::{default_server_resource_pack_cache_dir, ServerResourcePackRuntime};
 use runtime::{
     control_renderer_counters, dialog_ime_cursor_area, handle_dialog_cursor_moved_with_measurer,
     handle_dialog_key_input_with_modifiers_for_surface_and_measurer,
@@ -226,6 +228,15 @@ fn main() -> Result<()> {
         events: mut net_events,
         commands: net_commands,
     } = start_network_if_requested(&runtime, &args, &mut code_of_conduct_acceptance)?;
+    let profile_id = args
+        .profile_id
+        .unwrap_or_else(|| bbb_protocol::codec::offline_player_uuid(&args.username));
+    let mut server_resource_pack_runtime = ServerResourcePackRuntime::new(
+        runtime.handle().clone(),
+        default_server_resource_pack_cache_dir(),
+        args.username.clone(),
+        profile_id,
+    );
     start_control_api(&runtime, args.control, &control);
     let (mut audio_runtime, audio_status) = match pack_roots.as_ref() {
         Some(roots) => match NativeAudioRuntime::load(roots) {
@@ -1262,6 +1273,7 @@ fn main() -> Result<()> {
                     if !pump_network_and_terrain(
                         &mut net_events,
                         &net_commands,
+                        &mut server_resource_pack_runtime,
                         audio_runtime
                             .as_mut()
                             .map(|runtime| runtime as &mut dyn AudioEventSink),
@@ -1458,6 +1470,7 @@ fn main() -> Result<()> {
                 if !pump_network_and_terrain(
                     &mut net_events,
                     &net_commands,
+                    &mut server_resource_pack_runtime,
                     audio_runtime
                         .as_mut()
                         .map(|runtime| runtime as &mut dyn AudioEventSink),
