@@ -339,32 +339,49 @@ mod tests {
     }
 
     #[test]
-    fn configuration_known_packs_wire_does_not_claim_local_pack_selection() {
+    fn configuration_known_packs_negotiation_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_SELECT_KNOWN_PACKS",
             "CLIENTBOUND_SELECT_KNOWN_PACKS",
         ]);
-        let partial: BTreeSet<_> = ledger
+        let entries = ledger
             .entries
             .iter()
             .filter(|entry| {
                 entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
             })
-            .flat_map(|entry| {
-                entry.coverage.iter().filter_map(move |(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial)
-                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
-                })
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([
-                ("SERVERBOUND_SELECT_KNOWN_PACKS", "command_surface"),
-                ("CLIENTBOUND_SELECT_KNOWN_PACKS", "runtime_side_effect"),
-            ])
-        );
+            .collect::<Vec<_>>();
+        assert_eq!(entries.len(), packets.len());
+        for entry in &entries {
+            assert!(entry.coverage.values().all(|cell| matches!(
+                cell.status,
+                PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
+            )));
+        }
+
+        let clientbound = entries
+            .iter()
+            .find(|entry| entry.constant_name == "CLIENTBOUND_SELECT_KNOWN_PACKS")
+            .unwrap();
+        let runtime = &clientbound.coverage["runtime_side_effect"];
+        assert!(runtime
+            .evidence
+            .iter()
+            .any(|item| item.contains("known_packs.rs#select_offered")));
+        assert!(runtime
+            .evidence
+            .iter()
+            .any(|item| item.contains("store.rs#materialize_pending_known_pack_data")));
+
+        let serverbound = entries
+            .iter()
+            .find(|entry| entry.constant_name == "SERVERBOUND_SELECT_KNOWN_PACKS")
+            .unwrap();
+        assert!(serverbound.coverage["command_surface"]
+            .evidence
+            .iter()
+            .any(|item| item.contains("event_stream/configuration.rs")));
     }
 
     #[test]
