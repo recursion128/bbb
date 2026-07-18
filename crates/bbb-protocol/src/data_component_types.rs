@@ -1176,12 +1176,12 @@ mod tests {
                 .unwrap_or_else(|| panic!("missing {name}"))
         }
         let item_models = include_str!("../../bbb-native/src/item_models.rs");
-        let item_keys = function_body(
-            item_models,
-            "pub(crate) fn world_synchronized_variant_keys",
-            "pub(crate) fn world_attribute_keys",
-        );
         let native_patch = include_str!("../../bbb-native/src/input/component_patch.rs");
+        let persistent_registry_lookup = function_body(
+            native_patch,
+            "pub(super) fn registry_resource_id",
+            "pub(super) fn registry_holder_set_snbt",
+        );
         let patch_encoder = function_body(
             native_patch,
             "fn encode_named_variant",
@@ -1311,12 +1311,16 @@ mod tests {
                 "{consumer} restored fixed ordinal payload lookup"
             );
         }
+        assert!(
+            persistent_registry_lookup.contains("entry_by_holder_id")
+                && persistent_registry_lookup.contains("has_server_contents"),
+            "persistent registry lookup stopped distinguishing session contents from fallback"
+        );
+        assert!(
+            !persistent_registry_lookup.contains("for_vanilla_registry_id"),
+            "persistent registry lookup restored a fixed ordinal table"
+        );
         for (name, body, query) in [
-            (
-                "item registry keys",
-                item_keys,
-                "vanilla_data_component_animal_variant_registries",
-            ),
             (
                 "persistent patch",
                 patch_encoder,
@@ -1364,7 +1368,6 @@ mod tests {
             }
         }
         for (name, body) in [
-            ("item registry keys", item_keys),
             ("persistent patch", patch_encoder),
             ("holder decode", holder_decoder),
             ("texture sync", texture_sync),
