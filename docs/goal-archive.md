@@ -19185,3 +19185,23 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Split the network and persistent painting calls from the generic holder families in the generated
   coverage ledger. Both calls are complete with locator-checked protocol, world, tooltip,
   persistence, atlas, light, and renderer evidence.
+
+## 2026-07-18：Server resource-pack lifecycle and reload barrier
+
+- [x] 对照 vanilla 26.1 `ClientCommonPacketListenerImpl`、`DownloadedPackSource`、
+  `ServerPackManager` 与 `DownloadQueue`，configuration/play push/pop 共用单一
+  native session manager：CLI `accept|decline` 策略驱动 Accepted/Declined，合法 URL
+  下载受限 ZIP、校验可选 SHA-1、复用 verified cache，并在 session 隔离目录完成 metadata
+  与 archive materialization；required decline 本地断线，UUID replacement、late async
+  result、断线与新 Connected session 均按 push generation 隔离。
+- [x] server pack stack 以 push order 叠加在 vanilla 与启动参数 pack 之后；实际 native
+  reload barrier 先准备 item/model/language、particle、sound 与 block profiles，再更新
+  terrain/HUD/entity/sky GPU 资源，成功后才提交 runtime 与回报 `SUCCESSFULLY_LOADED`。
+  失败恢复上一活动资源并回报 `FAILED_RELOAD`；pop 在恢复 base stack 成功前保留旧 root，
+  F3+T 复用同一 barrier 且不重复发送 server lifecycle response。
+- [x] download batch、preparation batch 和 reload generation 均有 deterministic regression；
+  `world.server_presentation` 暴露每个当前 pack 的 downloading/preparing/ready/applying/
+  active/failed phase、generation 及 download/materialize/reload 失败详情。packet coverage
+  ledger 因而关闭 configuration/play ResourcePack Push/Pop 与 serverbound response 的
+  lifecycle partial。通用 font reload、broader dynamic texture、自定义 block/item/entity
+  model 与 datapack asset 组合仍由 `goal.md` P3 及本 ledger 的资源泛化条目开放维护。

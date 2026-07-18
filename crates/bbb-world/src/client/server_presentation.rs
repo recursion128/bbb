@@ -79,11 +79,51 @@ pub struct ResourcePackState {
     pub prompt: Option<String>,
     #[serde(default)]
     pub last_response: Option<ResourcePackResponseState>,
+    #[serde(default)]
+    pub runtime: ResourcePackRuntimeState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourcePackResponseState {
     pub action: ProtocolResourcePackResponseAction,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourcePackRuntimeState {
+    pub phase: ResourcePackRuntimePhase,
+    #[serde(default)]
+    pub generation: Option<u64>,
+    #[serde(default)]
+    pub failure: Option<ResourcePackRuntimeFailure>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourcePackRuntimePhase {
+    #[default]
+    Offered,
+    Downloading,
+    Preparing,
+    Ready,
+    Applying,
+    Active,
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResourcePackRuntimeFailure {
+    pub stage: ResourcePackFailureStage,
+    #[serde(default)]
+    pub generation: Option<u64>,
+    pub error: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResourcePackFailureStage {
+    Download,
+    Materialize,
+    Reload,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -156,6 +196,7 @@ impl WorldStore {
             required: packet.required,
             prompt: non_empty_component_string(packet.prompt),
             last_response: None,
+            runtime: ResourcePackRuntimeState::default(),
         };
         self.presentation.resource_packs.insert(pack.id, pack);
         self.update_resource_pack_count();
@@ -177,6 +218,22 @@ impl WorldStore {
         }
         pack.last_response = Some(ResourcePackResponseState { action });
         self.counters.resource_pack_response_updates_applied += 1;
+        true
+    }
+
+    pub fn update_resource_pack_runtime_state(
+        &mut self,
+        id: Uuid,
+        push_sequence: u64,
+        runtime: ResourcePackRuntimeState,
+    ) -> bool {
+        let Some(pack) = self.presentation.resource_packs.get_mut(&id) else {
+            return false;
+        };
+        if pack.push_sequence != push_sequence {
+            return false;
+        }
+        pack.runtime = runtime;
         true
     }
 
@@ -590,6 +647,45 @@ mod tests {
         assert_eq!(counters.resource_pack_response_updates_ignored, 1);
         assert_eq!(counters.resource_pack_required_declines, 1);
         assert_eq!(counters.resource_packs_tracked, 1);
+    }
+
+    #[test]
+    fn resource_pack_runtime_state_rejects_stale_push_generation() {
+        let mut store = WorldStore::new();
+        let id = Uuid::from_u128(0x11111111111111111111111111111111);
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            id,
+            "https://example.test/first.zip",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            false,
+            None,
+        ));
+        let first_sequence = store.resource_pack(id).unwrap().push_sequence;
+        store.apply_resource_pack_push(protocol_resource_pack_push(
+            id,
+            "https://example.test/replacement.zip",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            false,
+            None,
+        ));
+
+        assert!(!store.update_resource_pack_runtime_state(
+            id,
+            first_sequence,
+            ResourcePackRuntimeState {
+                phase: ResourcePackRuntimePhase::Failed,
+                generation: Some(1),
+                failure: Some(ResourcePackRuntimeFailure {
+                    stage: ResourcePackFailureStage::Reload,
+                    generation: Some(1),
+                    error: "stale reload".to_string(),
+                }),
+            },
+        ));
+        assert_eq!(
+            store.resource_pack(id).unwrap().runtime,
+            ResourcePackRuntimeState::default()
+        );
     }
 
     #[test]

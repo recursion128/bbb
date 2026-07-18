@@ -49,7 +49,9 @@ use bbb_protocol::recipe_wire_types::{
 use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 use bbb_world::{
     BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, LightData,
-    PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
+    PaletteDomain, PaletteKind, PalettedContainerData, ResourcePackFailureStage,
+    ResourcePackRuntimeFailure, ResourcePackRuntimePhase, ResourcePackRuntimeState, WorldDimension,
+    WorldStore,
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -3589,6 +3591,28 @@ fn server_presentation_reads_canonical_world_state() {
                 url: "https://example.invalid/support".to_string(),
             }],
         });
+        let pack_id = Uuid::from_u128(0x11111111111111111111111111111111);
+        store.apply_resource_pack_push(bbb_protocol::packets::ResourcePackPush {
+            id: pack_id,
+            url: "https://example.invalid/server-pack.zip".to_string(),
+            hash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+            required: false,
+            prompt: None,
+        });
+        let push_sequence = store.resource_pack(pack_id).unwrap().push_sequence;
+        store.update_resource_pack_runtime_state(
+            pack_id,
+            push_sequence,
+            ResourcePackRuntimeState {
+                phase: ResourcePackRuntimePhase::Failed,
+                generation: Some(7),
+                failure: Some(ResourcePackRuntimeFailure {
+                    stage: ResourcePackFailureStage::Reload,
+                    generation: Some(7),
+                    error: "missing custom model".to_string(),
+                }),
+            },
+        );
         *state.world.write().unwrap() = store;
     }
 
@@ -3624,6 +3648,12 @@ fn server_presentation_reads_canonical_world_state() {
         "https://example.invalid/support"
     );
     assert_eq!(presentation["server_links"][0]["known_type"], "support");
+    let pack = &presentation["resource_packs"]["11111111-1111-1111-1111-111111111111"];
+    assert_eq!(pack["runtime"]["phase"], "failed");
+    assert_eq!(pack["runtime"]["generation"], 7);
+    assert_eq!(pack["runtime"]["failure"]["stage"], "reload");
+    assert_eq!(pack["runtime"]["failure"]["generation"], 7);
+    assert_eq!(pack["runtime"]["failure"]["error"], "missing custom model");
 }
 
 #[test]

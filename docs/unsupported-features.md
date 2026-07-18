@@ -52,9 +52,6 @@ Owner: `bbb-protocol`
   remaining `partial` cell must carry implementation and semantic-test
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
-- Complete configuration resource-pack runtime behavior: download allowed packs,
-  verify hashes, apply/reload them, enforce required-pack outcomes, emit the full
-  response lifecycle, and unload one/all packs on pop.
 - Build a local `KnownPacksManager`/server-data resource manager, select only
   offered packs whose registry data bbb can actually provide, and pass that
   intersection to the existing 64-entry response encoder instead of always

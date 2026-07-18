@@ -1126,10 +1126,11 @@
         },
         "command_surface": {
           "evidence": [
-            "crates/bbb-net/src/resource_pack.rs#response_action_for_push"
+            "crates/bbb-net/src/resource_pack.rs#response_action_for_push",
+            "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -1147,7 +1148,8 @@
         },
         "tests": {
           "evidence": [
-            "crates/bbb-net/src/event_stream.rs#configuration_resource_pack_push_emits_push_and_response_events"
+            "crates/bbb-net/src/event_stream.rs#configuration_resource_pack_push_emits_push_and_response_events",
+            "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle"
           ],
           "gap": null,
           "status": "complete"
@@ -1797,15 +1799,18 @@
         },
         "runtime_side_effect": {
           "evidence": [
+            "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
+            "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPop"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-net/src/probe/configuration.rs#probe_applies_configuration_packets_to_world",
-            "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs"
+            "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+            "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle"
           ],
           "gap": null,
           "status": "complete"
@@ -1845,15 +1850,18 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-net/src/resource_pack.rs#response_action_for_push",
+            "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
+            "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
             "crates/bbb-net/src/event_stream.rs#configuration_resource_pack_push_emits_push_and_response_events",
-            "crates/bbb-net/src/event_stream.rs#configuration_resource_pack_push_with_invalid_url_sends_invalid_url_response"
+            "crates/bbb-net/src/event_stream.rs#configuration_resource_pack_push_with_invalid_url_sends_invalid_url_response",
+            "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle"
           ],
           "gap": null,
           "status": "complete"
@@ -5318,10 +5326,11 @@
           "evidence": [
             "crates/bbb-net/src/resource_pack.rs#response_action_for_push",
             "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::ResourcePackPush",
+            "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
             "vanilla:net/minecraft/client/resources/server/DownloadedPackSource.java#configureForServerControl"
           ],
-          "gap": "docs/unsupported-features.md#native-client-runtime",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "encoder": {
           "evidence": [
@@ -5336,11 +5345,12 @@
           "evidence": [
             "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_response",
             "crates/bbb-net/src/resource_pack.rs#is_allowed_resource_pack_url",
+            "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush",
             "vanilla:net/minecraft/client/resources/server/ServerPackManager.java#tick"
           ],
-          "gap": "docs/unsupported-features.md#native-client-runtime",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -5349,10 +5359,11 @@
             "crates/bbb-net/src/resource_pack.rs#resource_pack_response_follows_vanilla_url_scheme_gate",
             "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_emits_push_and_response_events",
             "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_with_invalid_url_sends_invalid_url_response",
-            "crates/bbb-world/src/client/server_presentation.rs#resource_pack_response_updates_existing_pack_only"
+            "crates/bbb-world/src/client/server_presentation.rs#resource_pack_response_updates_existing_pack_only",
+            "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle"
           ],
-          "gap": "docs/unsupported-features.md#native-client-runtime",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         }
       },
       "direction": "serverbound",
@@ -10901,10 +10912,12 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_pop",
+            "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
+            "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPop"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -10913,6 +10926,7 @@
             "crates/bbb-net/src/probe/play.rs#probe_play_server_presentation_packets_update_world_and_decline_resource_pack",
             "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_removes_one_pack_by_id",
             "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs",
+            "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_presentation_events_update_world_and_world_counters"
           ],
           "gap": null,
@@ -10932,10 +10946,11 @@
           "evidence": [
             "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_push",
             "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+            "crates/bbb-native/src/startup.rs#ServerResourcePackPolicyArg",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "decode": {
           "evidence": [
@@ -10957,10 +10972,12 @@
           "evidence": [
             "crates/bbb-net/src/resource_pack.rs#response_action_for_push",
             "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_response",
+            "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
+            "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"
           ],
-          "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
-          "status": "partial"
+          "gap": null,
+          "status": "complete"
         },
         "tests": {
           "evidence": [
@@ -10969,6 +10986,7 @@
             "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_with_invalid_url_sends_invalid_url_response",
             "crates/bbb-net/src/probe/play.rs#probe_play_server_presentation_packets_update_world_and_decline_resource_pack",
             "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id",
+            "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle",
             "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_presentation_events_update_world_and_world_counters"
           ],
           "gap": null,

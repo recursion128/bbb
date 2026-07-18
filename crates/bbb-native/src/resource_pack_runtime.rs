@@ -11,7 +11,10 @@ use std::{
 use bbb_net::{download_server_pack, NetCommand, ServerPackDownloadRequest};
 use bbb_pack::{materialize_server_pack_archive, ServerPackArchiveLimits};
 use bbb_protocol::packets::ResourcePackResponseAction;
-use bbb_world::{ResourcePackState, WorldStore};
+use bbb_world::{
+    ResourcePackFailureStage, ResourcePackRuntimeFailure, ResourcePackRuntimePhase,
+    ResourcePackRuntimeState, ResourcePackState, WorldStore,
+};
 use tokio::{runtime::Handle, sync::mpsc};
 use uuid::Uuid;
 
@@ -50,7 +53,9 @@ struct TrackedPack {
     state: PackDownloadState,
     removed: bool,
     active: bool,
+    active_generation: Option<u64>,
     pending_terminal_response: Option<ResourcePackResponseAction>,
+    runtime_state: ResourcePackRuntimeState,
 }
 
 #[derive(Debug, Clone)]
@@ -192,6 +197,7 @@ impl ServerResourcePackRuntime {
         self.drain_task_events();
         self.resolve_download_batches();
         self.resolve_preparation_failures();
+        self.publish_runtime_diagnostics(world);
         self.cleanup_removed_packs();
         self.flush_responses(world, commands);
         self.disconnect_for_required_declines(world, commands, connected);
@@ -240,6 +246,15 @@ impl ServerResourcePackRuntime {
             .collect();
         let generation = self.next_reload_generation;
         self.next_reload_generation = self.next_reload_generation.saturating_add(1);
+        for pack in &mut self.packs {
+            if desired.contains(&pack.key) {
+                pack.runtime_state = ResourcePackRuntimeState {
+                    phase: ResourcePackRuntimePhase::Applying,
+                    generation: Some(generation),
+                    failure: None,
+                };
+            }
+        }
         self.reload = Some(ReloadTransaction {
             generation,
             previous,
@@ -256,7 +271,7 @@ impl ServerResourcePackRuntime {
         self.force_reload_requested = true;
     }
 
-    pub(crate) fn finish_reload(&mut self, generation: u64, succeeded: bool) -> bool {
+    pub(crate) fn finish_reload(&mut self, generation: u64, result: Result<(), String>) -> bool {
         let Some(reload) = self.reload.take() else {
             return false;
         };
@@ -264,10 +279,18 @@ impl ServerResourcePackRuntime {
             self.reload = Some(reload);
             return false;
         }
-        if succeeded {
+        if result.is_ok() {
             for pack in &mut self.packs {
                 let should_be_active = reload.desired.contains(&pack.key);
                 pack.active = should_be_active;
+                if should_be_active {
+                    pack.active_generation = Some(generation);
+                    pack.runtime_state = ResourcePackRuntimeState {
+                        phase: ResourcePackRuntimePhase::Active,
+                        generation: Some(generation),
+                        failure: None,
+                    };
+                }
                 if reload.report_successful_loads && should_be_active && !pack.removed {
                     self.responses.push_back(DeferredResponse {
                         key: pack.key,
@@ -276,6 +299,7 @@ impl ServerResourcePackRuntime {
                 }
             }
         } else {
+            let error = result.expect_err("failed reload result has an error");
             for pack in &mut self.packs {
                 if reload.desired.contains(&pack.key) && !reload.previous.contains(&pack.key) {
                     if let PackDownloadState::Ready(root) = &pack.state {
@@ -283,12 +307,28 @@ impl ServerResourcePackRuntime {
                     }
                     pack.removed = true;
                     pack.state = PackDownloadState::Failed;
+                    pack.runtime_state = failed_runtime_state(
+                        ResourcePackFailureStage::Reload,
+                        Some(generation),
+                        error.clone(),
+                    );
                     self.responses.push_back(DeferredResponse {
                         key: pack.key,
                         action: ResourcePackResponseAction::FailedReload,
                     });
                 }
                 pack.active = reload.previous.contains(&pack.key);
+                if pack.active {
+                    pack.runtime_state = ResourcePackRuntimeState {
+                        phase: ResourcePackRuntimePhase::Active,
+                        generation: pack.active_generation,
+                        failure: Some(ResourcePackRuntimeFailure {
+                            stage: ResourcePackFailureStage::Reload,
+                            generation: Some(generation),
+                            error: error.clone(),
+                        }),
+                    };
+                }
             }
         }
         self.cleanup_removed_packs();
@@ -351,7 +391,13 @@ impl ServerResourcePackRuntime {
                 state: PackDownloadState::Pending,
                 removed: false,
                 active: false,
+                active_generation: None,
                 pending_terminal_response: None,
+                runtime_state: ResourcePackRuntimeState {
+                    phase: ResourcePackRuntimePhase::Downloading,
+                    generation: None,
+                    failure: None,
+                },
             });
             self.start_pack_task(key, url, hash);
         }
@@ -470,9 +516,20 @@ impl ServerResourcePackRuntime {
         }
 
         match event {
-            PackTaskEvent::Downloaded { .. } => {}
+            PackTaskEvent::Downloaded { .. } => {
+                pack.runtime_state = ResourcePackRuntimeState {
+                    phase: ResourcePackRuntimePhase::Preparing,
+                    generation: None,
+                    failure: None,
+                };
+            }
             PackTaskEvent::Ready { root, .. } => {
                 pack.state = PackDownloadState::Ready(root);
+                pack.runtime_state = ResourcePackRuntimeState {
+                    phase: ResourcePackRuntimePhase::Ready,
+                    generation: None,
+                    failure: None,
+                };
             }
             PackTaskEvent::Failed { action, error, .. } => {
                 tracing::warn!(
@@ -483,6 +540,12 @@ impl ServerResourcePackRuntime {
                     "server resource pack preparation failed"
                 );
                 pack.state = PackDownloadState::Failed;
+                let stage = if action == ResourcePackResponseAction::FailedDownload {
+                    ResourcePackFailureStage::Download
+                } else {
+                    ResourcePackFailureStage::Materialize
+                };
+                pack.runtime_state = failed_runtime_state(stage, None, error);
                 if action != ResourcePackResponseAction::FailedDownload {
                     pack.pending_terminal_response = Some(action);
                 }
@@ -568,6 +631,14 @@ impl ServerResourcePackRuntime {
                     }
                     pack.removed = true;
                     pack.state = PackDownloadState::Failed;
+                    if !failed.contains(&key) {
+                        pack.runtime_state = failed_runtime_state(
+                            ResourcePackFailureStage::Download,
+                            None,
+                            "discarded because another pack in the same download batch failed"
+                                .to_string(),
+                        );
+                    }
                     pack.pending_terminal_response = None;
                     self.responses.push_back(DeferredResponse {
                         key,
@@ -621,6 +692,14 @@ impl ServerResourcePackRuntime {
                 }
                 pack.removed = true;
                 pack.state = PackDownloadState::Failed;
+                if pack.runtime_state.failure.is_none() {
+                    pack.runtime_state = failed_runtime_state(
+                        ResourcePackFailureStage::Materialize,
+                        None,
+                        "discarded because another pack in the same preparation batch failed"
+                            .to_string(),
+                    );
+                }
                 pack.pending_terminal_response = None;
                 self.responses.push_back(DeferredResponse {
                     key,
@@ -652,6 +731,16 @@ impl ServerResourcePackRuntime {
                 PackDownloadState::Failed => false,
             }
         });
+    }
+
+    pub(crate) fn publish_runtime_diagnostics(&self, world: &mut WorldStore) {
+        for pack in &self.packs {
+            world.update_resource_pack_runtime_state(
+                pack.key.id,
+                pack.key.push_sequence,
+                pack.runtime_state.clone(),
+            );
+        }
     }
 
     fn flush_responses(
@@ -744,6 +833,22 @@ impl ServerResourcePackRuntime {
             "server resource pack preparation stack changed"
         );
         self.last_reported_ready_roots = ready_roots;
+    }
+}
+
+fn failed_runtime_state(
+    stage: ResourcePackFailureStage,
+    generation: Option<u64>,
+    error: String,
+) -> ResourcePackRuntimeState {
+    ResourcePackRuntimeState {
+        phase: ResourcePackRuntimePhase::Failed,
+        generation,
+        failure: Some(ResourcePackRuntimeFailure {
+            stage,
+            generation,
+            error,
+        }),
     }
 }
 
@@ -932,7 +1037,7 @@ mod tests {
             .responses
             .iter()
             .all(|response| { response.action != ResourcePackResponseAction::SuccessfullyLoaded }));
-        assert!(runtime.finish_reload(reload.generation, true));
+        assert!(runtime.finish_reload(reload.generation, Ok(())));
         assert!(runtime.packs[0].active);
         assert_eq!(
             runtime
@@ -945,6 +1050,67 @@ mod tests {
                 ResourcePackResponseAction::SuccessfullyLoaded,
             ]
         );
+    }
+
+    #[test]
+    fn accepted_pack_runs_download_apply_pop_restore_lifecycle() {
+        let mut world = WorldStore::new();
+        let id = Uuid::from_u128(1);
+        let key = push_accepted(&mut world, id, "https://example.test/server-pack.zip");
+        let mut runtime = test_runtime("full-lifecycle");
+        runtime.reconcile_world(&world, true);
+        let root = ready_root(&runtime, "ready");
+        runtime.apply_task_event(PackTaskEvent::Downloaded { key });
+        runtime.apply_task_event(PackTaskEvent::Ready {
+            key,
+            root: root.clone(),
+        });
+        runtime.resolve_download_batches();
+        runtime.publish_runtime_diagnostics(&mut world);
+        assert_eq!(
+            world.resource_pack(id).unwrap().runtime.phase,
+            ResourcePackRuntimePhase::Ready
+        );
+
+        let (commands, mut command_rx) = mpsc::channel(4);
+        runtime.flush_responses(&mut world, &Some(commands.clone()));
+        assert_eq!(
+            command_rx.try_recv().unwrap(),
+            NetCommand::ResourcePackResponse {
+                id,
+                action: ResourcePackResponseAction::Downloaded,
+            }
+        );
+
+        let load = runtime.take_reload().unwrap();
+        runtime.publish_runtime_diagnostics(&mut world);
+        let applying = &world.resource_pack(id).unwrap().runtime;
+        assert_eq!(applying.phase, ResourcePackRuntimePhase::Applying);
+        assert_eq!(applying.generation, Some(load.generation));
+        assert!(runtime.finish_reload(load.generation, Ok(())));
+        runtime.publish_runtime_diagnostics(&mut world);
+        runtime.flush_responses(&mut world, &Some(commands));
+        assert_eq!(
+            command_rx.try_recv().unwrap(),
+            NetCommand::ResourcePackResponse {
+                id,
+                action: ResourcePackResponseAction::SuccessfullyLoaded,
+            }
+        );
+        let active = &world.resource_pack(id).unwrap().runtime;
+        assert_eq!(active.phase, ResourcePackRuntimePhase::Active);
+        assert_eq!(active.generation, Some(load.generation));
+        assert_eq!(active.failure, None);
+
+        world.apply_resource_pack_pop(ResourcePackPop { id: Some(id) });
+        runtime.reconcile_world(&world, true);
+        let unload = runtime.take_reload().unwrap();
+        assert!(unload.server_pack_roots.is_empty());
+        assert!(runtime.finish_reload(unload.generation, Ok(())));
+        runtime.cleanup_removed_packs();
+        assert!(!root.exists());
+        assert!(runtime.packs.is_empty());
+        assert!(command_rx.try_recv().is_err());
     }
 
     #[test]
@@ -962,7 +1128,7 @@ mod tests {
         });
         runtime.resolve_download_batches();
         let load = runtime.take_reload().unwrap();
-        assert!(runtime.finish_reload(load.generation, true));
+        assert!(runtime.finish_reload(load.generation, Ok(())));
         runtime.responses.clear();
 
         world.apply_resource_pack_pop(ResourcePackPop { id: Some(id) });
@@ -972,7 +1138,7 @@ mod tests {
         let unload = runtime.take_reload().unwrap();
         assert!(unload.server_pack_roots.is_empty());
 
-        assert!(runtime.finish_reload(unload.generation, true));
+        assert!(runtime.finish_reload(unload.generation, Ok(())));
         assert!(!root.exists());
         assert!(runtime.packs.is_empty());
     }
@@ -992,7 +1158,7 @@ mod tests {
         });
         runtime.resolve_download_batches();
         let load_old = runtime.take_reload().unwrap();
-        assert!(runtime.finish_reload(load_old.generation, true));
+        assert!(runtime.finish_reload(load_old.generation, Ok(())));
         runtime.responses.clear();
 
         let new_id = Uuid::from_u128(2);
@@ -1011,7 +1177,8 @@ mod tests {
             vec![old_root.clone(), new_root.clone()]
         );
 
-        assert!(runtime.finish_reload(reload.generation, false));
+        assert!(runtime.finish_reload(reload.generation, Err("reload failed".to_string())));
+        runtime.publish_runtime_diagnostics(&mut world);
         assert!(old_root.exists());
         assert!(!new_root.exists());
         assert_eq!(
@@ -1030,6 +1197,30 @@ mod tests {
             .packs
             .iter()
             .any(|pack| pack.key == old_key && pack.active));
+        assert_eq!(
+            world.resource_pack(old_id).unwrap().runtime,
+            ResourcePackRuntimeState {
+                phase: ResourcePackRuntimePhase::Active,
+                generation: Some(load_old.generation),
+                failure: Some(ResourcePackRuntimeFailure {
+                    stage: ResourcePackFailureStage::Reload,
+                    generation: Some(reload.generation),
+                    error: "reload failed".to_string(),
+                }),
+            }
+        );
+        let failed = &world.resource_pack(new_id).unwrap().runtime;
+        assert_eq!(failed.phase, ResourcePackRuntimePhase::Failed);
+        assert_eq!(failed.generation, Some(reload.generation));
+        assert_eq!(
+            failed.failure.as_ref().unwrap().stage,
+            ResourcePackFailureStage::Reload
+        );
+        assert_eq!(
+            failed.failure.as_ref().unwrap().generation,
+            Some(reload.generation)
+        );
+        assert_eq!(failed.failure.as_ref().unwrap().error, "reload failed");
         runtime.responses.clear();
         runtime.cleanup_removed_packs();
         assert_eq!(runtime.packs.len(), 1);
@@ -1052,14 +1243,14 @@ mod tests {
         });
         runtime.resolve_download_batches();
         let initial = runtime.take_reload().unwrap();
-        assert!(runtime.finish_reload(initial.generation, true));
+        assert!(runtime.finish_reload(initial.generation, Ok(())));
         runtime.responses.clear();
         assert!(runtime.take_reload().is_none());
 
         runtime.request_reload();
         let forced = runtime.take_reload().unwrap();
         assert_eq!(forced.server_pack_roots, vec![root]);
-        assert!(runtime.finish_reload(forced.generation, true));
+        assert!(runtime.finish_reload(forced.generation, Ok(())));
         assert!(runtime.responses.is_empty());
         assert!(runtime.take_reload().is_none());
     }

@@ -315,34 +315,27 @@ mod tests {
     }
 
     #[test]
-    fn configuration_resource_pack_wire_is_closed_without_claiming_runtime_downloads() {
+    fn configuration_resource_pack_lifecycle_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let packets = BTreeSet::from([
             "SERVERBOUND_RESOURCE_PACK",
             "CLIENTBOUND_RESOURCE_PACK_POP",
             "CLIENTBOUND_RESOURCE_PACK_PUSH",
         ]);
-        let partial: BTreeSet<_> = ledger
+        let entries = ledger
             .entries
             .iter()
             .filter(|entry| {
                 entry.state == "configuration" && packets.contains(entry.constant_name.as_str())
             })
-            .flat_map(|entry| {
-                entry.coverage.iter().filter_map(move |(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial)
-                        .then_some((entry.constant_name.as_str(), dimension.as_str()))
-                })
-            })
-            .collect();
-        assert_eq!(
-            partial,
-            BTreeSet::from([
-                ("SERVERBOUND_RESOURCE_PACK", "command_surface"),
-                ("CLIENTBOUND_RESOURCE_PACK_POP", "runtime_side_effect"),
-                ("CLIENTBOUND_RESOURCE_PACK_PUSH", "runtime_side_effect"),
-            ])
-        );
+            .collect::<Vec<_>>();
+        assert_eq!(entries.len(), packets.len());
+        for entry in entries {
+            assert!(entry.coverage.values().all(|cell| matches!(
+                cell.status,
+                PacketCoverageStatus::Complete | PacketCoverageStatus::NotApplicable
+            )));
+        }
     }
 
     #[test]
@@ -2936,31 +2929,24 @@ mod tests {
     }
 
     #[test]
-    fn play_resource_pack_family_keeps_download_and_prompt_runtime_open() {
+    fn play_resource_pack_family_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
-        for (packet, expected) in [
-            (
-                "CLIENTBOUND_RESOURCE_PACK_POP",
-                BTreeSet::from(["runtime_side_effect"]),
-            ),
-            (
-                "CLIENTBOUND_RESOURCE_PACK_PUSH",
-                BTreeSet::from(["canonical_apply", "runtime_side_effect"]),
-            ),
+        for packet in [
+            "CLIENTBOUND_RESOURCE_PACK_POP",
+            "CLIENTBOUND_RESOURCE_PACK_PUSH",
         ] {
             let entry = ledger
                 .entries
                 .iter()
                 .find(|entry| entry.state == "play" && entry.constant_name == packet)
                 .expect("play resource pack coverage row");
-            let partial: BTreeSet<_> = entry
-                .coverage
-                .iter()
-                .filter_map(|(dimension, cell)| {
-                    (cell.status == PacketCoverageStatus::Partial).then_some(dimension.as_str())
-                })
-                .collect();
-            assert_eq!(partial, expected, "{packet}");
+            assert!(
+                entry
+                    .coverage
+                    .values()
+                    .all(|cell| cell.status == PacketCoverageStatus::Complete),
+                "{packet}"
+            );
         }
     }
 
@@ -3900,7 +3886,7 @@ mod tests {
     }
 
     #[test]
-    fn play_serverbound_resource_pack_keeps_download_lifecycle_open() {
+    fn play_serverbound_resource_pack_lifecycle_is_complete() {
         let ledger = vanilla_packet_coverage_26_1().unwrap();
         let entry = ledger
             .entries
@@ -3920,7 +3906,7 @@ mod tests {
         for dimension in ["command_surface", "state_guard", "tests"] {
             assert_eq!(
                 entry.coverage[dimension].status,
-                PacketCoverageStatus::Partial,
+                PacketCoverageStatus::Complete,
                 "{dimension}"
             );
         }

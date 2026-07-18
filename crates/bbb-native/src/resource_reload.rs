@@ -78,14 +78,17 @@ pub(crate) fn apply_pending_server_resource_pack_reload(
     );
     match result {
         Ok(()) => {
-            server_packs.finish_reload(generation, true);
+            server_packs.finish_reload(generation, Ok(()));
+            server_packs.publish_runtime_diagnostics(world);
             tracing::info!(generation, "applied server resource pack reload");
         }
         Err(error) => {
-            server_packs.finish_reload(generation, false);
+            let diagnostic = format!("{error:#}");
+            server_packs.finish_reload(generation, Err(diagnostic.clone()));
+            server_packs.publish_runtime_diagnostics(world);
             tracing::warn!(
                 generation,
-                error = %format!("{error:#}"),
+                error = %diagnostic,
                 "server resource pack reload failed; retained previous resources"
             );
         }
