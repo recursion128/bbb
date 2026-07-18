@@ -783,22 +783,27 @@
     {
       "call_site": "net/minecraft/world/clock/WorldClock.java:13:58:RegistryFixedCodec.create",
       "column": 58,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/timelines.rs#fn decode_timeline_definition",
+      "decision": "Every client-consumed WorldClock.CODEC reference inside synchronized timeline, dimension-type, and game-test environment payloads resolves by resource identity through the frozen session order. Unknown clocks remain explicit errors, and SetTime continues to use the separately covered network holder path.",
       "evidence": [
-        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/world/clock/WorldClock.java#public static final Codec<Holder<WorldClock>> CODEC",
+        "vanilla:net/minecraft/world/timeline/Timeline.java#WorldClock.CODEC.fieldOf(\"clock\")",
+        "vanilla:net/minecraft/world/level/dimension/DimensionType.java#WorldClock.CODEC.optionalFieldOf(\"default_clock\")",
+        "vanilla:net/minecraft/gametest/framework/TestEnvironmentDefinition.java#WorldClock.CODEC.fieldOf(\"clock\")",
+        "crates/bbb-world/src/registries/timelines.rs#fn decode_timeline_definition",
+        "crates/bbb-world/src/registries/timelines.rs#fn projects_known_pack_timeline_against_reordered_session_clocks",
+        "crates/bbb-world/src/registries/dimension_types.rs#fn known_pack_value_uses_the_dimension_projection",
+        "crates/bbb-world/src/registries/game_tests.rs#fn projects_remaining_environment_variants_and_block_based_defaults"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-world-clock-synchronized",
       "kind": "persistent_holder_reference",
       "line": 13,
       "owner": "net.minecraft.world.clock.WorldClock",
       "registry_expression": "Registries.WORLD_CLOCK",
       "resource_id": "minecraft:world_clock",
       "source_path": "net/minecraft/world/clock/WorldClock.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/clock/WorldClock.java:14:96:ByteBufCodecs.holderRegistry",
@@ -3084,22 +3089,25 @@
     {
       "call_site": "net/minecraft/world/level/dimension/DimensionType.java:101:19:RegistryCodecs.homogeneousList",
       "column": 19,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/dimension_types.rs#fn decode_timeline_holder_set",
+      "decision": "DimensionType timelines preserve an explicit named holder, ordered named list, or tag-backed set through the frozen timeline registry. Tags retain session order, every referenced identity is checked, layer order reaches timeline sampling, and missing members remain diagnostic instead of falling back by bootstrap ordinal.",
       "evidence": [
-        "vanilla:net/minecraft/resources/HolderSetCodec.java#public class HolderSetCodec<E>",
-        "vanilla:net/minecraft/core/RegistryCodecs.java#public static <E> Codec<HolderSet<E>> homogeneousList",
-        "crates/bbb-world/src/registries/state.rs#pub fn resource_ids_for_tag"
+        "vanilla:net/minecraft/world/level/dimension/DimensionType.java#RegistryCodecs.homogeneousList(Registries.TIMELINE)",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_resource_ids",
+        "crates/bbb-world/src/registries/dimension_types.rs#fn decode_timeline_holder_set",
+        "crates/bbb-world/src/registries/dimension_types.rs#fn timeline_holder_sets_follow_session_tag_order_and_diagnose_unknowns",
+        "crates/bbb-world/src/registries/timelines.rs#fn resolved_dimension_timelines"
       ],
       "factory": "RegistryCodecs.homogeneousList",
-      "family": "persistent-holder-set-or-tag",
+      "family": "persistent-holder-set-or-tag-timeline-synchronized",
       "kind": "persistent_holder_set_or_tag",
       "line": 101,
       "owner": "net.minecraft.world.level.dimension.DimensionType",
       "registry_expression": "Registries.TIMELINE",
       "resource_id": "minecraft:timeline",
       "source_path": "net/minecraft/world/level/dimension/DimensionType.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/level/gameevent/GameEvent.java:77:57:RegistryFixedCodec.create",
@@ -4107,22 +4115,24 @@
     {
       "call_site": "net/minecraft/world/timeline/Timeline.java:33:56:RegistryFixedCodec.create",
       "column": 56,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-world/src/registries/game_tests.rs#fn decode_test_environment",
+      "decision": "TestEnvironmentDefinition timeline lists resolve each Timeline.CODEC name through the frozen synchronized session rather than bootstrap order. The referenced timeline registry has its own typed NETWORK_CODEC projection, and missing identities fail with field-local diagnostics.",
       "evidence": [
-        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "vanilla:net/minecraft/world/timeline/Timeline.java#public static final Codec<Holder<Timeline>> CODEC",
+        "vanilla:net/minecraft/gametest/framework/TestEnvironmentDefinition.java#Timeline.CODEC.listOf().fieldOf(\"timelines\")",
+        "crates/bbb-world/src/registries/game_tests.rs#fn decode_test_environment",
+        "crates/bbb-world/src/registries/game_tests.rs#fn projects_remaining_environment_variants_and_block_based_defaults",
+        "crates/bbb-world/src/registries/timelines.rs#pub fn synchronized_timeline_definition"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-timeline-synchronized",
       "kind": "persistent_holder_reference",
       "line": 33,
       "owner": "net.minecraft.world.timeline.Timeline",
       "registry_expression": "Registries.TIMELINE",
       "resource_id": "minecraft:timeline",
       "source_path": "net/minecraft/world/timeline/Timeline.java",
-      "status": "partial"
+      "status": "complete"
     }
   ],
   "generated_by": "scripts/generate-bootstrap-catalog.py",

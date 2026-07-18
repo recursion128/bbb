@@ -19186,6 +19186,22 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   coverage ledger. Both calls are complete with locator-checked protocol, world, tooltip,
   persistence, atlas, light, and renderer evidence.
 
+# 2026-07-18: Project remaining synchronized registry values
+
+- Added source-neutral typed projections for the remaining synchronized dialog, world-clock,
+  timeline, instrument, test-environment, and test-instance values. Network NBT and selected
+  known-pack JSON share field validation, current-session references, explicit malformed/stub
+  states, and no bootstrap-ordinal fallback for authoritative synchronized contents.
+- Preserved ordered dimension timeline layers, resolved their clock references through the frozen
+  session, and sampled bounded float tracks with vanilla period, easing, and scalar-modifier
+  semantics. Typed instrument descriptions reach item tooltips, while game-test environments and
+  instances cover every 26.1 dispatched variant with bounded nested holders and codec defaults.
+- Split the newly owned world-clock, timeline, and dimension timeline holder calls from the generic
+  generated coverage families. The central atomic typed-revision lifecycle, strict game-rule value
+  dispatch, direct-instrument reconstruction and use behavior, remaining timeline value families,
+  non-death sound-variant consumers, and still-partial holder calls remain open in
+  `docs/unsupported-features.md`.
+
 ## 2026-07-18：Server resource-pack lifecycle and reload barrier
 
 - [x] 对照 vanilla 26.1 `ClientCommonPacketListenerImpl`、`DownloadedPackSource`、

@@ -26,6 +26,9 @@ remain explicitly distinguishable from known static registries.
 Regenerate and verify the inventory through the existing bootstrap catalog
 generator. The authoritative pre-commit gate remains the one in `goal.md`.
 
-Remaining lifecycle work is tracked in `docs/unsupported-features.md`: apply the
-declared validators when typed contents are available and finish the
-mapping from the generated holder-consumer call sites to bbb resolver consumers.
+Per-family typed projections cover the synchronized element shapes currently
+consumed by the client, with exact holder-call coverage tracked in
+`docs/registry-holder-consumer-coverage-26.1.json`. Remaining lifecycle work is
+tracked in `docs/unsupported-features.md`: materialize one atomic typed revision,
+apply every declared validator, static tag, and data-component initializer, and
+finish the still-partial holder-call mappings.

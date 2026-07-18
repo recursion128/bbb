@@ -53,8 +53,7 @@ Owner: `bbb-protocol`
   evidence through the checked-in sparse overrides; catalog presence or a
   generic dispatch arm alone is not completion.
 - Close the owning decoder/encoder registry context plus custom-reorder tests
-  behind the 162
-  `partial` network and persistent rows in
+  behind every remaining `partial` network and persistent row in
   `docs/registry-holder-consumer-coverage-26.1.json` before marking those
   families complete.
 - Thread the world/session owner into generic packet Components whose nested
@@ -71,27 +70,17 @@ Owner: `bbb-protocol`
   does not implement the per-subscription value codecs. Bounded raw payload
   diagnostics are not typed subscription support.
 - Extend the frozen session `RegistryAccess` from checked holder identity, raw
-  payloads, and resolved tags into the complete typed runtime: decode each
-  synchronized registry with its element codec, merge known-pack stubs,
-  replace resource-id-only entity-variant and derived audio projections with
-  typed element codecs, extend the source-aware built-in fallback beyond the
-  current item/block/entity-type catalogs where a consumer requires it, and
-  apply pending static tags plus data-component initializers before exposing
-  each typed revision. Raw NBT summaries, individual typed projections, and
-  derived audio/variant registries are not that complete runtime. Complete the
-  non-death consumers of synchronized animal sound-variant payloads.
-  Synchronized jukebox songs now use server holder order and typed
-  `JukeboxSong.DIRECT_CODEC` values across audio and `jukebox_playable` tooltips,
-  including named/direct sound events, rich descriptions, and direct fixed range;
-  a server-provided malformed or unknown entry never falls back through the
-  vanilla bootstrap ordinal.
-  Dimension-type direct visual environment
-  attributes now drive custom fog/sky/water-fog colors and distances plus lightmap tint/factor
-  without classifying an unknown resource as a vanilla dimension. Remaining
-  work includes environment-attribute modifier compounds, syncable audio/gameplay
-  attributes, timeline/clock holders and their layer ordering; typed `skybox`,
-  direct `ambient_light`, and `has_skylight`/`has_ceiling` weather gating are
-  complete.
+  payloads, resolved tags, and per-family projections into one complete typed
+  revision: materialize synchronized element values from network NBT or selected
+  known-pack JSON, apply declared validators plus pending static tags and
+  data-component initializers, then expose the revision atomically. Individual
+  typed projections remain inputs to that lifecycle rather than a substitute for
+  it. Finish the non-death consumers of synchronized animal sound-variant
+  payloads; the remaining dimension environment-attribute modifier/value types;
+  syncable visual, audio, and gameplay timeline tracks; and strict built-in
+  game-rule key/value dispatch inside test-environment definitions. Extend
+  source-aware built-in fallback only where a concrete consumer requires it,
+  never by applying a bootstrap ordinal to authoritative synchronized contents.
 - Resolve UpdateAttributes holder ids through that session RegistryAccess and
   validate each snapshot against the target living entity's actual AttributeMap
   instance set; do not accept arbitrary fixed-id attributes on every living type.
@@ -720,6 +709,10 @@ Commands:
   `InteractionResult.Success`, hands-busy and enabled-item gates, carried-item
   ordering, local `interactOn` prediction, swing-source handling, and held-item
   presentation. Entity state and inventory corrections remain server-authoritative.
+- Complete `InstrumentItem.use` prediction from named and direct synchronized
+  holders: preserve sound/range/use-duration values in the ItemStack component,
+  play the local records-source sound, start the use pose, and apply the matching
+  cooldown without interpreting a custom holder through vanilla bootstrap order.
 - Implement `ServerboundSignUpdatePacket` clipboard copy/cut/paste parity.
 
 Inventory:

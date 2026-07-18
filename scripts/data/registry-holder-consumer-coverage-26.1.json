@@ -780,11 +780,56 @@
       "decision": "PaintingVariant.CODEC is RegistryFixedCodec, so persistent values are named references only: native encodes a synchronized holder through its current-session resource id, uses the fixed vanilla identity only when no synchronized registry exists, and fails closed for direct network holders or unknown session ids rather than inventing a persistent inline compound."
     },
     {
+      "id": "persistent-holder-reference-world-clock-synchronized",
+      "selector": {
+        "kind": "persistent_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/clock/WorldClock.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/timelines.rs#fn decode_timeline_definition",
+      "evidence": [
+        "vanilla:net/minecraft/world/clock/WorldClock.java#public static final Codec<Holder<WorldClock>> CODEC",
+        "vanilla:net/minecraft/world/timeline/Timeline.java#WorldClock.CODEC.fieldOf(\"clock\")",
+        "vanilla:net/minecraft/world/level/dimension/DimensionType.java#WorldClock.CODEC.optionalFieldOf(\"default_clock\")",
+        "vanilla:net/minecraft/gametest/framework/TestEnvironmentDefinition.java#WorldClock.CODEC.fieldOf(\"clock\")",
+        "crates/bbb-world/src/registries/timelines.rs#fn decode_timeline_definition",
+        "crates/bbb-world/src/registries/timelines.rs#fn projects_known_pack_timeline_against_reordered_session_clocks",
+        "crates/bbb-world/src/registries/dimension_types.rs#fn known_pack_value_uses_the_dimension_projection",
+        "crates/bbb-world/src/registries/game_tests.rs#fn projects_remaining_environment_variants_and_block_based_defaults"
+      ],
+      "decision": "Every client-consumed WorldClock.CODEC reference inside synchronized timeline, dimension-type, and game-test environment payloads resolves by resource identity through the frozen session order. Unknown clocks remain explicit errors, and SetTime continues to use the separately covered network holder path."
+    },
+    {
+      "id": "persistent-holder-reference-timeline-synchronized",
+      "selector": {
+        "kind": "persistent_holder_reference",
+        "source_paths": [
+          "net/minecraft/world/timeline/Timeline.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/game_tests.rs#fn decode_test_environment",
+      "evidence": [
+        "vanilla:net/minecraft/world/timeline/Timeline.java#public static final Codec<Holder<Timeline>> CODEC",
+        "vanilla:net/minecraft/gametest/framework/TestEnvironmentDefinition.java#Timeline.CODEC.listOf().fieldOf(\"timelines\")",
+        "crates/bbb-world/src/registries/game_tests.rs#fn decode_test_environment",
+        "crates/bbb-world/src/registries/game_tests.rs#fn projects_remaining_environment_variants_and_block_based_defaults",
+        "crates/bbb-world/src/registries/timelines.rs#pub fn synchronized_timeline_definition"
+      ],
+      "decision": "TestEnvironmentDefinition timeline lists resolve each Timeline.CODEC name through the frozen synchronized session rather than bootstrap order. The referenced timeline registry has its own typed NETWORK_CODEC projection, and missing identities fail with field-local diagnostics."
+    },
+    {
       "id": "persistent-holder-reference",
       "selector": {
         "kind": "persistent_holder_reference",
         "exclude_resource_ids": [
           "minecraft:painting_variant"
+        ],
+        "exclude_source_paths": [
+          "net/minecraft/world/clock/WorldClock.java",
+          "net/minecraft/world/timeline/Timeline.java"
         ]
       },
       "status": "partial",
@@ -867,11 +912,34 @@
       "decision": "Persistent provides_banner_patterns reconstruction keeps an explicit homogeneous named-holder list in current-session order or the original named tag form. Unknown session ids fail closed, empty explicit sets remain explicit empty lists, tags are not eagerly expanded, and no synchronized registry identity is replaced with a vanilla ordinal."
     },
     {
+      "id": "persistent-holder-set-or-tag-timeline-synchronized",
+      "selector": {
+        "kind": "persistent_holder_set_or_tag",
+        "source_paths": [
+          "net/minecraft/world/level/dimension/DimensionType.java"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-world/src/registries/dimension_types.rs#fn decode_timeline_holder_set",
+      "evidence": [
+        "vanilla:net/minecraft/world/level/dimension/DimensionType.java#RegistryCodecs.homogeneousList(Registries.TIMELINE)",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_tag",
+        "crates/bbb-world/src/registries/state.rs#pub fn holder_set_by_resource_ids",
+        "crates/bbb-world/src/registries/dimension_types.rs#fn decode_timeline_holder_set",
+        "crates/bbb-world/src/registries/dimension_types.rs#fn timeline_holder_sets_follow_session_tag_order_and_diagnose_unknowns",
+        "crates/bbb-world/src/registries/timelines.rs#fn resolved_dimension_timelines"
+      ],
+      "decision": "DimensionType timelines preserve an explicit named holder, ordered named list, or tag-backed set through the frozen timeline registry. Tags retain session order, every referenced identity is checked, layer order reaches timeline sampling, and missing members remain diagnostic instead of falling back by bootstrap ordinal."
+    },
+    {
       "id": "persistent-holder-set-or-tag",
       "selector": {
         "kind": "persistent_holder_set_or_tag",
         "exclude_resource_ids": [
           "minecraft:banner_pattern"
+        ],
+        "exclude_source_paths": [
+          "net/minecraft/world/level/dimension/DimensionType.java"
         ]
       },
       "status": "partial",
