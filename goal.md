@@ -367,6 +367,9 @@ family 清空。之后按 configuration、world-state、movement/interaction、i
 command、resource/custom payload 等 family 分别关闭，并由 playable 或 non-entity 垂直
 场景决定下一个可执行 family。
 各 packet family 的逐格状态/evidence 与历史叙述见上述 coverage ledger 和归档指针。
+签名聊天的 local key/session、outbound chain、server echo trust 与 DeleteChat lifecycle
+按 `docs/signed-chat-session-design.md` 的四阶段工程合同推进；完整 ChatListener 呈现保持
+独立 screen/HUD slice，避免把密码学 transport 与 UI/reporting 混为一个不可定位阶段。
 
 完成标准：全部 vanilla 26.1 catalog entry 都有矩阵行；所有目标客户端适用项为
 `complete`，其余只有带 vanilla 依据的 `not-applicable` 或带重启判据的窄 `deferred`；

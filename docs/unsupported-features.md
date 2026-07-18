@@ -607,6 +607,10 @@ Owner: `bbb-world` + `bbb-native` + `bbb-control`
 
 Owner: `bbb-protocol` + `bbb-net` + `bbb-world` + `bbb-native`
 
+The local-session, outbound signing, server-echo validation, and deletion
+lifecycle work follows the serial ownership contract in
+[`signed-chat-session-design.md`](signed-chat-session-design.md).
+
 - Produce `ServerboundChatPacket` signatures. The protocol encoder accepts the
   optional 256-byte signature, but the production chat path still sends `None`.
 - Produce non-empty `ServerboundChatCommandSignedPacket` argument signatures.
