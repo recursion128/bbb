@@ -2,15 +2,13 @@ use std::fmt;
 
 use bbb_protocol::{
     chat_formattings::vanilla_chat_formatting_color_by_name,
-    component_style_from_nbt_value, decode_nbt_summary,
+    component_style_from_nbt_value,
     packets::{ChatTypeDecorationSummary, ChatTypeHolder},
     ComponentStyle, NbtSummaryEntry, NbtSummaryValue,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{
-    FrozenRegistryAccess, RegistryEntryPayload, RegistryEntrySource, RegistryResolutionError,
-};
+use super::{FrozenRegistryAccess, RegistryEntrySource, RegistryResolutionError};
 
 pub const CHAT_TYPE_REGISTRY: &str = "minecraft:chat_type";
 const VANILLA_CHAT_TYPE_RESOURCE_IDS: [&str; 7] = [
@@ -70,21 +68,20 @@ pub(crate) fn resolve_chat_type(
             let entry = access
                 .require_entry_by_holder_id(CHAT_TYPE_REGISTRY, *id)
                 .map_err(ChatTypeProjectionError::Registry)?;
-            let (chat, narration) = match entry.payload {
-                RegistryEntryPayload::Server {
-                    raw_data: Some(raw_data),
-                    ..
-                } => decode_chat_type(raw_data).ok_or_else(|| {
-                    ChatTypeProjectionError::MalformedPayload {
-                        resource_id: entry.resource_id.to_string(),
-                    }
-                })?,
-                RegistryEntryPayload::Server { .. } => {
-                    return Err(ChatTypeProjectionError::MissingPayload {
-                        resource_id: entry.resource_id.to_string(),
-                    });
+            let (chat, narration) = match entry.source {
+                RegistryEntrySource::Server => {
+                    let data = entry.element_data.ok_or_else(|| {
+                        ChatTypeProjectionError::MissingPayload {
+                            resource_id: entry.resource_id.to_string(),
+                        }
+                    })?;
+                    decode_chat_type(&data.value).ok_or_else(|| {
+                        ChatTypeProjectionError::MalformedPayload {
+                            resource_id: entry.resource_id.to_string(),
+                        }
+                    })?
                 }
-                RegistryEntryPayload::VanillaFallback => {
+                RegistryEntrySource::VanillaFallback => {
                     vanilla_chat_type(*id).ok_or_else(|| {
                         ChatTypeProjectionError::Registry(
                             RegistryResolutionError::MissingHolderId {
@@ -127,8 +124,8 @@ fn network_parameter(parameter: i32) -> ChatTypeDecorationParameter {
     }
 }
 
-fn decode_chat_type(raw_data: &[u8]) -> Option<(ChatTypeDecoration, ChatTypeDecoration)> {
-    let NbtSummaryValue::Compound(entries) = decode_nbt_summary(raw_data).ok()?? else {
+fn decode_chat_type(value: &NbtSummaryValue) -> Option<(ChatTypeDecoration, ChatTypeDecoration)> {
+    let NbtSummaryValue::Compound(entries) = value else {
         return None;
     };
     Some((

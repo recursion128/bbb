@@ -1,6 +1,6 @@
 use bbb_protocol::{
-    decode_nbt_summary, styled_component_runs_from_nbt_value, styled_runs_summary_text,
-    validate_component_nbt, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    styled_component_runs_from_nbt_value, styled_runs_summary_text, validate_component_nbt,
+    NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 
@@ -51,9 +51,9 @@ impl std::fmt::Display for PaintingVariantProjectionError {
 }
 
 impl WorldStore {
-    /// Resolves a painting variant through the current server holder order. Full synchronized
-    /// entries use their own codec fields, known-pack stubs use resource identity, and only a
-    /// session with no synchronized contents uses the fixed vanilla holder order.
+    /// Resolves a painting variant through the current server holder order. Materialized
+    /// synchronized entries use their own codec fields, unresolved data-less stubs use resource
+    /// identity, and only a session with no synchronized contents uses the fixed vanilla order.
     pub fn painting_variant_client_projection(
         &self,
         holder_id: i32,
@@ -63,17 +63,17 @@ impl WorldStore {
     }
 
     /// Resolves the complete client-consumed painting presentation through the current server
-    /// holder order. A synchronized registry is authoritative; only known vanilla data-less stubs
-    /// use their resource identity, and the fixed bootstrap order is used only when no synchronized
-    /// painting registry exists.
+    /// holder order. A synchronized registry is authoritative; only unresolved vanilla data-less
+    /// stubs use their resource identity, and the fixed bootstrap order is used only when no
+    /// synchronized painting registry exists.
     pub fn painting_variant_presentation(
         &self,
         holder_id: i32,
     ) -> Result<Option<PaintingVariantPresentation>, PaintingVariantProjectionError> {
         if let Some(entry) = self.registry_entry_by_holder_id(PAINTING_VARIANT_REGISTRY, holder_id)
         {
-            if let Some(raw_data) = entry.raw_data() {
-                return decode_painting_variant(raw_data).map(Some);
+            if let Some(data) = entry.element_data() {
+                return decode_painting_variant(&data.value).map(Some);
             }
             if entry.has_data {
                 return Ok(None);
@@ -119,24 +119,21 @@ fn presentation_from_vanilla(variant: &VanillaPaintingVariant) -> PaintingVarian
 }
 
 fn decode_painting_variant(
-    raw_data: &[u8],
+    value: &NbtSummaryValue,
 ) -> Result<PaintingVariantPresentation, PaintingVariantProjectionError> {
-    let root = decode_nbt_summary(raw_data)
-        .map_err(|_| error("<root>", "invalid NBT"))?
-        .ok_or_else(|| error("<root>", "missing root compound"))?;
-    let NbtSummaryValue::Compound(fields) = root else {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(error("<root>", "expected compound"));
     };
-    let width = required_size(&fields, "width")?;
-    let height = required_size(&fields, "height")?;
-    let asset_id = match field(&fields, "asset_id") {
+    let width = required_size(fields, "width")?;
+    let height = required_size(fields, "height")?;
+    let asset_id = match field(fields, "asset_id") {
         Some(NbtSummaryValue::String(asset_id)) => normalize_codec_identifier(asset_id)
             .ok_or_else(|| error("asset_id", "invalid identifier"))?,
         Some(_) => return Err(error("asset_id", "expected string")),
         None => return Err(error("asset_id", "missing required field")),
     };
-    let (title, title_styled) = optional_component(&fields, "title")?;
-    let (author, author_styled) = optional_component(&fields, "author")?;
+    let (title, title_styled) = optional_component(fields, "title")?;
+    let (author, author_styled) = optional_component(fields, "author")?;
     Ok(PaintingVariantPresentation {
         width,
         height,
@@ -155,10 +152,22 @@ fn required_size(
     field: &str,
 ) -> Result<i32, PaintingVariantProjectionError> {
     match self::field(fields, field) {
-        Some(NbtSummaryValue::Int(value)) if (1..=16).contains(value) => Ok(*value),
-        Some(NbtSummaryValue::Int(_)) => Err(error(field, "integer outside 1..=16")),
-        Some(_) => Err(error(field, "expected integer")),
+        Some(value) => match numeric_i32(value) {
+            Some(value) if (1..=16).contains(&value) => Ok(value),
+            Some(_) => Err(error(field, "integer outside 1..=16")),
+            None => Err(error(field, "expected integer")),
+        },
         None => Err(error(field, "missing required field")),
+    }
+}
+
+fn numeric_i32(value: &NbtSummaryValue) -> Option<i32> {
+    match value {
+        NbtSummaryValue::Byte(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Short(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Int(value) => Some(*value),
+        NbtSummaryValue::Long(value) => i32::try_from(*value).ok(),
+        _ => None,
     }
 }
 

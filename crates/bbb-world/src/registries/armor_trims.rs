@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use bbb_protocol::{
-    decode_nbt_summary,
     packets::{ItemStackSummary, TrimMaterialSummary, TrimPatternSummary},
     styled_component_runs_from_nbt_value, styled_runs_summary_text, validate_component_nbt,
     NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
@@ -90,24 +89,24 @@ fn synchronized_presentation<T>(
     world: &WorldStore,
     registry: &'static str,
     holder_id: i32,
-    decode: fn(&[u8]) -> Result<T, DecodeFailure>,
+    decode: fn(&NbtSummaryValue) -> Result<T, DecodeFailure>,
 ) -> Result<Option<T>, TrimRegistryProjectionError> {
     let Some(entry) = world.registry_entry_by_holder_id(registry, holder_id) else {
         return Ok(None);
     };
-    let Some(raw_data) = entry.raw_data() else {
+    let Some(data) = entry.element_data() else {
         return if entry.has_data {
             Err(TrimRegistryProjectionError {
                 registry,
                 resource_id: entry.id.clone(),
                 field: "<root>".to_string(),
-                reason: "payload bytes unavailable",
+                reason: "typed payload unavailable",
             })
         } else {
             Ok(None)
         };
     };
-    decode(raw_data)
+    decode(&data.value)
         .map(Some)
         .map_err(|failure| TrimRegistryProjectionError {
             registry,
@@ -317,8 +316,8 @@ pub(crate) fn armor_trim_sprite(
 fn named_material(registries: &RegistrySet, holder_id: i32) -> Option<TrimMaterialAssets> {
     if let Some(contents) = registries.contents.get(TRIM_MATERIAL_REGISTRY) {
         let entry = contents.entry_by_holder_id(holder_id)?;
-        return match entry.raw_data() {
-            Some(raw_data) => decode_material(raw_data).ok().map(Into::into),
+        return match entry.element_data() {
+            Some(data) => decode_material(&data.value).ok().map(Into::into),
             None => {
                 VanillaTrimMaterialIdentity::for_resource_id(&entry.id).map(static_material_assets)
             }
@@ -359,8 +358,8 @@ fn material_override_map(material: VanillaTrimMaterialIdentity) -> BTreeMap<Stri
 fn named_pattern(registries: &RegistrySet, holder_id: i32) -> Option<TrimPatternAsset> {
     if let Some(contents) = registries.contents.get(TRIM_PATTERN_REGISTRY) {
         let entry = contents.entry_by_holder_id(holder_id)?;
-        return match entry.raw_data() {
-            Some(raw_data) => decode_pattern(raw_data).ok().map(Into::into),
+        return match entry.element_data() {
+            Some(data) => decode_pattern(&data.value).ok().map(Into::into),
             None => {
                 VanillaTrimPatternIdentity::for_resource_id(&entry.id).map(static_pattern_asset)
             }
@@ -376,11 +375,11 @@ fn static_pattern_asset(pattern: VanillaTrimPatternIdentity) -> TrimPatternAsset
     }
 }
 
-fn decode_material(raw_data: &[u8]) -> Result<TrimMaterialPresentation, DecodeFailure> {
-    let entries = root_compound(raw_data)?;
-    let asset_name = required_resource_path(&entries, "asset_name")?;
+fn decode_material(value: &NbtSummaryValue) -> Result<TrimMaterialPresentation, DecodeFailure> {
+    let entries = root_compound(value)?;
+    let asset_name = required_resource_path(entries, "asset_name")?;
     let mut override_armor_assets = BTreeMap::new();
-    if let Some(value) = field(&entries, "override_armor_assets") {
+    if let Some(value) = field(entries, "override_armor_assets") {
         let NbtSummaryValue::Compound(overrides) = value else {
             return Err(failure("override_armor_assets", "expected compound"));
         };
@@ -406,7 +405,7 @@ fn decode_material(raw_data: &[u8]) -> Result<TrimMaterialPresentation, DecodeFa
             override_armor_assets.insert(asset, suffix.to_string());
         }
     }
-    let (description, description_styled, description_nbt) = required_description(&entries)?;
+    let (description, description_styled, description_nbt) = required_description(entries)?;
     Ok(TrimMaterialPresentation {
         asset_name,
         override_armor_assets,
@@ -416,16 +415,17 @@ fn decode_material(raw_data: &[u8]) -> Result<TrimMaterialPresentation, DecodeFa
     })
 }
 
-fn decode_pattern(raw_data: &[u8]) -> Result<TrimPatternPresentation, DecodeFailure> {
-    let entries = root_compound(raw_data)?;
-    let asset_id = required_string(&entries, "asset_id")?;
+fn decode_pattern(value: &NbtSummaryValue) -> Result<TrimPatternPresentation, DecodeFailure> {
+    let entries = root_compound(value)?;
+    let asset_id = required_string(entries, "asset_id")?;
     let asset_id = normalize_codec_identifier(asset_id)
         .ok_or_else(|| failure("asset_id", "invalid identifier"))?;
-    let (description, description_styled, description_nbt) = required_description(&entries)?;
-    let decal = match field(&entries, "decal") {
+    let (description, description_styled, description_nbt) = required_description(entries)?;
+    let decal = match field(entries, "decal") {
         None => false,
-        Some(NbtSummaryValue::Byte(value)) => *value != 0,
-        Some(_) => return Err(failure("decal", "expected boolean byte")),
+        Some(value) => {
+            numeric_bool(value).ok_or_else(|| failure("decal", "expected numeric boolean"))?
+        }
     };
     Ok(TrimPatternPresentation {
         asset_id,
@@ -436,14 +436,23 @@ fn decode_pattern(raw_data: &[u8]) -> Result<TrimPatternPresentation, DecodeFail
     })
 }
 
-fn root_compound(raw_data: &[u8]) -> Result<Vec<NbtSummaryEntry>, DecodeFailure> {
-    let root = decode_nbt_summary(raw_data)
-        .map_err(|_| failure("<root>", "invalid NBT"))?
-        .ok_or_else(|| failure("<root>", "missing root compound"))?;
-    let NbtSummaryValue::Compound(entries) = root else {
+fn root_compound(value: &NbtSummaryValue) -> Result<&[NbtSummaryEntry], DecodeFailure> {
+    let NbtSummaryValue::Compound(entries) = value else {
         return Err(failure("<root>", "expected compound"));
     };
     Ok(entries)
+}
+
+fn numeric_bool(value: &NbtSummaryValue) -> Option<bool> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => *value != 0,
+        NbtSummaryValue::Short(value) => *value != 0,
+        NbtSummaryValue::Int(value) => *value != 0,
+        NbtSummaryValue::Long(value) => *value != 0,
+        NbtSummaryValue::Float(bits) => f32::from_bits(*bits) != 0.0,
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) != 0.0,
+        _ => return None,
+    })
 }
 
 fn required_description(
@@ -666,7 +675,7 @@ mod tests {
                 registry: TRIM_PATTERN_REGISTRY,
                 resource_id: "example:broken_pattern".to_string(),
                 field: "decal".to_string(),
-                reason: "expected boolean byte",
+                reason: "expected numeric boolean",
             }
         );
         assert_eq!(
@@ -675,7 +684,7 @@ mod tests {
                 registry: TRIM_PATTERN_REGISTRY,
                 resource_id: "example:missing_payload".to_string(),
                 field: "<root>".to_string(),
-                reason: "payload bytes unavailable",
+                reason: "typed payload unavailable",
             }
         );
     }

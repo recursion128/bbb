@@ -1,6 +1,6 @@
 use bbb_protocol::{
-    decode_nbt_summary, styled_component_runs_from_nbt_value, styled_runs_summary_text,
-    validate_component_nbt, NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
+    styled_component_runs_from_nbt_value, styled_runs_summary_text, validate_component_nbt,
+    NbtSummaryEntry, NbtSummaryValue, StyledTextRun,
 };
 use serde::{Deserialize, Serialize};
 
@@ -80,10 +80,10 @@ impl WorldStore {
         let Some(entry) = self.registry_entry_by_holder_id(JUKEBOX_SONG_REGISTRY, holder_id) else {
             return Ok(None);
         };
-        let Some(raw_data) = entry.raw_data() else {
+        let Some(data) = entry.element_data() else {
             return Ok(None);
         };
-        decode_jukebox_song(raw_data)
+        decode_jukebox_song(&data.value)
             .map(Some)
             .map_err(|failure| JukeboxSongProjectionError {
                 resource_id: entry.id.clone(),
@@ -99,27 +99,24 @@ struct DecodeFailure {
     reason: &'static str,
 }
 
-fn decode_jukebox_song(raw_data: &[u8]) -> Result<JukeboxSongPresentation, DecodeFailure> {
-    let root = decode_nbt_summary(raw_data)
-        .map_err(|_| failure("<root>", "invalid NBT"))?
-        .ok_or_else(|| failure("<root>", "missing root compound"))?;
-    let NbtSummaryValue::Compound(entries) = root else {
+fn decode_jukebox_song(value: &NbtSummaryValue) -> Result<JukeboxSongPresentation, DecodeFailure> {
+    let NbtSummaryValue::Compound(entries) = value else {
         return Err(failure("<root>", "expected compound"));
     };
-    let sound_event = decode_sound_event(required_field(&entries, "sound_event")?)?;
-    let description_nbt = required_field(&entries, "description")?.clone();
+    let sound_event = decode_sound_event(required_field(entries, "sound_event")?)?;
+    let description_nbt = required_field(entries, "description")?.clone();
     validate_component_nbt(&description_nbt, "jukebox song description")
         .map_err(|_| failure("description", "invalid Component"))?;
     let description_styled = styled_component_runs_from_nbt_value(&description_nbt);
     let description = styled_runs_summary_text(&description_styled);
-    let length_in_seconds = required_float(&entries, "length_in_seconds")?;
+    let length_in_seconds = required_float(entries, "length_in_seconds")?;
     if !(length_in_seconds > 0.0 && length_in_seconds <= f32::MAX) {
         return Err(failure(
             "length_in_seconds",
             "float outside (0, Float.MAX_VALUE]",
         ));
     }
-    let comparator_output = required_int(&entries, "comparator_output")?;
+    let comparator_output = required_int(entries, "comparator_output")?;
     if !(0..=15).contains(&comparator_output) {
         return Err(failure("comparator_output", "integer outside 0..=15"));
     }
@@ -149,8 +146,10 @@ fn decode_sound_event(value: &NbtSummaryValue) -> Result<JukeboxSoundEvent, Deco
             let resource_id = normalize_codec_identifier(resource_id)
                 .ok_or_else(|| failure("sound_event.sound_id", "invalid identifier"))?;
             let fixed_range = match field(entries, "range") {
-                Some(NbtSummaryValue::Float(bits)) => Some(f32::from_bits(*bits)),
-                Some(_) => return Err(failure("sound_event.range", "expected float")),
+                Some(value) => Some(
+                    numeric_f32(value)
+                        .ok_or_else(|| failure("sound_event.range", "expected number"))?,
+                ),
                 None => None,
             };
             Ok(JukeboxSoundEvent::Direct {
@@ -180,16 +179,32 @@ fn required_field<'a>(
 }
 
 fn required_float(entries: &[NbtSummaryEntry], name: &'static str) -> Result<f32, DecodeFailure> {
-    match required_field(entries, name)? {
-        NbtSummaryValue::Float(bits) => Ok(f32::from_bits(*bits)),
-        _ => Err(failure(name, "expected float")),
-    }
+    numeric_f32(required_field(entries, name)?).ok_or_else(|| failure(name, "expected number"))
 }
 
 fn required_int(entries: &[NbtSummaryEntry], name: &'static str) -> Result<i32, DecodeFailure> {
-    match required_field(entries, name)? {
-        NbtSummaryValue::Int(value) => Ok(*value),
-        _ => Err(failure(name, "expected integer")),
+    numeric_i32(required_field(entries, name)?).ok_or_else(|| failure(name, "expected integer"))
+}
+
+fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => f32::from(*value),
+        NbtSummaryValue::Short(value) => f32::from(*value),
+        NbtSummaryValue::Int(value) => *value as f32,
+        NbtSummaryValue::Long(value) => *value as f32,
+        NbtSummaryValue::Float(bits) => f32::from_bits(*bits),
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
+        _ => return None,
+    })
+}
+
+fn numeric_i32(value: &NbtSummaryValue) -> Option<i32> {
+    match value {
+        NbtSummaryValue::Byte(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Short(value) => Some(i32::from(*value)),
+        NbtSummaryValue::Int(value) => Some(*value),
+        NbtSummaryValue::Long(value) => i32::try_from(*value).ok(),
+        _ => None,
     }
 }
 
@@ -204,7 +219,7 @@ mod tests {
 
     #[test]
     fn decodes_named_and_direct_sound_event_codec_forms() {
-        let named = decode_jukebox_song(&song_nbt(
+        let named = decode_jukebox_song_nbt(&song_nbt(
             SoundFixture::Reference("example:records/custom"),
             "Custom song",
             12.5,
@@ -221,7 +236,7 @@ mod tests {
         assert_eq!(named.length_in_seconds, 12.5);
         assert_eq!(named.comparator_output, 7);
 
-        let direct = decode_jukebox_song(&song_nbt(
+        let direct = decode_jukebox_song_nbt(&song_nbt(
             SoundFixture::Direct("example:records/direct", Some(24.0)),
             "Direct song",
             1.0,
@@ -322,7 +337,7 @@ mod tests {
         let invalid_comparator =
             song_nbt(SoundFixture::Reference("example:sound"), "Broken", 1.0, 16);
         assert_eq!(
-            decode_jukebox_song(&invalid_comparator).unwrap_err(),
+            decode_jukebox_song_nbt(&invalid_comparator).unwrap_err(),
             failure("comparator_output", "integer outside 0..=15")
         );
     }
@@ -330,6 +345,11 @@ mod tests {
     enum SoundFixture<'a> {
         Reference(&'a str),
         Direct(&'a str, Option<f32>),
+    }
+
+    fn decode_jukebox_song_nbt(raw_data: &[u8]) -> Result<JukeboxSongPresentation, DecodeFailure> {
+        let data = super::super::element_value::decode_network_element(raw_data).unwrap();
+        decode_jukebox_song(&data.value)
     }
 
     fn song_nbt(
