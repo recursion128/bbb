@@ -9421,7 +9421,7 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
-            "crates/bbb-world/src/entities/components.rs#EntityTransform::move_or_interpolate_to",
+            "crates/bbb-world/src/entities/components.rs#move_or_interpolate_to",
             "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
           ],
@@ -9472,7 +9472,7 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
-            "crates/bbb-world/src/entities/components.rs#EntityTransform::move_or_interpolate_to",
+            "crates/bbb-world/src/entities/components.rs#move_or_interpolate_to",
             "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
           ],
@@ -9580,7 +9580,7 @@
       "coverage": {
         "canonical_apply": {
           "evidence": [
-            "crates/bbb-world/src/entities/components.rs#EntityTransform::move_or_interpolate_to",
+            "crates/bbb-world/src/entities/components.rs#move_or_interpolate_to",
             "crates/bbb-world/src/entities/movement.rs#apply_entity_move",
             "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMoveEntity"
           ],
