@@ -2080,6 +2080,7 @@ pub(crate) fn pump_network_and_terrain(
     damage_tilt_strength: f32,
     hud_debug_profiler_chart: Option<HudDebugProfilerChart>,
 ) -> bool {
+    let pump_started_at = Instant::now();
     let mut audio_events = audio_events;
     let mut particle_events = particle_events;
     let input_screen_was_open = input_screen_is_open(input, world);
@@ -2104,6 +2105,7 @@ pub(crate) fn pump_network_and_terrain(
             level_event_sound_random,
         );
     }
+    let pump_net_drained_at = Instant::now();
     server_resource_packs.synchronize(world, net_commands, net_counters.connected);
     input.sync_dialog_native_previous_screen(world, net_counters, net_commands);
     entity_variant_textures.synchronize(world, renderer);
@@ -2138,6 +2140,7 @@ pub(crate) fn pump_network_and_terrain(
         surface_size,
         client_animation_ticks.entity_partial_tick(),
     );
+    let pump_control_synced_at = Instant::now();
     let now = Instant::now();
     hud_debug_fps_sampler.record_frame(now);
     hud_debug_network_sampler.advance_tick(
@@ -2301,6 +2304,7 @@ pub(crate) fn pump_network_and_terrain(
     // vehicle, destroy, and use commands produced by this client-tick batch are
     // already ahead of these markers in the FIFO net-command channel.
     queue_client_tick_end_commands(world, net_commands, advanced_ticks);
+    let pump_client_ticked_at = Instant::now();
     // Vanilla handles gameplay keybinds during `Minecraft.tick`, then `GameRenderer.extractGui`
     // calls `Gui.extractRenderState`; HUD values therefore read after input and use-item updates.
     let local_player = world.local_player();
@@ -2886,6 +2890,7 @@ pub(crate) fn pump_network_and_terrain(
             block_destroy_overlays,
         },
     );
+    let pump_scene_extracted_at = Instant::now();
     maybe_upload_terrain_texture_animation(renderer, terrain_upload, terrain_textures);
     if let Some(particle_events) = particle_events.as_mut() {
         particle_events.maybe_upload_particle_atlas_animation(renderer);
@@ -2899,6 +2904,22 @@ pub(crate) fn pump_network_and_terrain(
         net_commands,
         player_section_compiled_and_visible,
     );
+    let pump_elapsed = pump_started_at.elapsed();
+    // Section attribution for frames slow enough to starve the per-frame
+    // synthetic-input and net-command consumers.
+    if pump_elapsed > std::time::Duration::from_secs(1) {
+        tracing::warn!(
+            pump_millis = pump_elapsed.as_millis() as u64,
+            net_drain_millis = (pump_net_drained_at - pump_started_at).as_millis() as u64,
+            control_sync_millis = (pump_control_synced_at - pump_net_drained_at).as_millis() as u64,
+            client_tick_millis =
+                (pump_client_ticked_at - pump_control_synced_at).as_millis() as u64,
+            extract_millis = (pump_scene_extracted_at - pump_client_ticked_at).as_millis() as u64,
+            terrain_upload_millis =
+                (pump_elapsed - (pump_scene_extracted_at - pump_started_at)).as_millis() as u64,
+            "slow pump sections"
+        );
+    }
     if let Some(audio_events) = audio_events.as_mut() {
         audio_events.tick_entity_sound_positions(
             audio_scene_command_from_world(world),

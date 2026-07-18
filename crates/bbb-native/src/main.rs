@@ -1348,8 +1348,21 @@ fn main() -> Result<()> {
                         &audio_counters,
                     );
                     let profiler_publish_duration = profiler_publish_started_at.elapsed();
+                    let profiler_frame_duration = profiler_frame_started_at.elapsed();
+                    // A frame this slow starves the synthetic-input queue and
+                    // every per-frame consumer; the section split tells which
+                    // stage to blame from the session log alone.
+                    if profiler_frame_duration > std::time::Duration::from_secs(1) {
+                        tracing::warn!(
+                            frame_millis = profiler_frame_duration.as_millis() as u64,
+                            update_millis = profiler_update_duration.as_millis() as u64,
+                            render_millis = profiler_render_duration.as_millis() as u64,
+                            publish_millis = profiler_publish_duration.as_millis() as u64,
+                            "slow frame"
+                        );
+                    }
                     debug_profiler.record_frame(
-                        profiler_frame_started_at.elapsed(),
+                        profiler_frame_duration,
                         &[
                             DebugProfilerSectionSample {
                                 name: "update",
