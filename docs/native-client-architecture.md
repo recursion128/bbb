@@ -206,10 +206,12 @@ canonical world state.
 Owns external control-facing types, reports, and snapshots.
 
 - `NetCounters` and snapshot structs are derived views.
-- Native owns the mutable `WorldStore`; once per rendered frame it publishes
-  immutable runtime-counter and world generations through paired `ArcSwap`
-  handles. Control reads retry on a generation mismatch and never lock or own
-  the live world.
+- Native owns the mutable `WorldStore`; until the simulation-thread migration
+  reaches its publication phase, once per rendered frame it publishes immutable
+  runtime-counter and world generations through paired `ArcSwap` handles.
+  The target simulation owner publishes independently of frame cadence and
+  control reuses that exact world `Arc` and generation. Control reads retry on
+  a generation mismatch and never lock or own the live world.
 - `ControlRequests` remains the separate control-to-native write queue; a read
   snapshot never becomes a second gameplay authority.
 - New packet behavior should not add native-only snapshot ownership when a world
@@ -225,6 +227,14 @@ Owns runtime orchestration.
   runtime `PlayApplyEffects` sinks (audio, particles, acknowledgements).
 - Runs systems or forwards derived commands to renderer/audio/control.
 - Does not duplicate world-owned canonical state.
+
+The frozen simulation/render ownership and migration contract is
+[`simulation-render-thread-design.md`](simulation-render-thread-design.md).
+Its target gives the mutable world and canonical input/tick path to one
+simulation thread; the winit thread retains window, renderer, GPU upload,
+platform, and backend resources and consumes immutable publications plus
+ordered effects. Migration phases must not create selectable direct/threaded
+gameplay paths.
 
 ### `bbb-item-model`
 

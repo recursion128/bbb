@@ -19283,3 +19283,17 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - [x] native winit event loop 直接拥有唯一可变 `WorldStore`，每个 rendered frame 只深拷贝
   并发布一次；`SharedWorld = Arc<RwLock<WorldStore>>` 和 whole-event write guard 已删除。
   control 写操作仍经独立 `ControlRequests` 队列回到 native，不形成第二 canonical owner。
+
+## 2026-07-18：模拟/渲染线程拆分设计合同
+
+- [x] 对照 vanilla 26.1 `Minecraft.runTick/tick`、`ClientLevel.tick`、
+  `DeltaTracker.Timer` 与 `ClientPacketListener`，冻结 packet/input→最多十次 catch-up
+  client tick→effect/publication 的顺序，以及 running-world tick、raw client tick 和
+  render partial tick 的边界。
+- [x] 冻结单一 `SimulationCore`、typed command mailbox、不可变
+  `SimulationPublication`、有序 `RenderEffectBatch` 和 resource reload ack 协议；live
+  `WorldStore`/输入/net receiver/tick clock 归模拟 owner，winit/renderer/GPU/audio/platform
+  留在 render owner，control 复用同一 world `Arc` 与 generation。
+- [x] 工程迁移分为 owner shell、effect isolation、single input mailbox、immutable render
+  publication、thread activation、closeout 六个串行可构建阶段；线程激活前保持同步执行以
+  定位语义回归，并预声明 phase 2/4/5/final full gate、playable gate 与安全停点。

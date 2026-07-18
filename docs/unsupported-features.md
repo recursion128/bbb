@@ -603,6 +603,10 @@ Owner: `bbb-world` + `bbb-native` + `bbb-control`
   generation rather than create an independent control-owned value.
 - Keep `NetCounters` limited to connection/runtime status and command-queue
   projections.
+- Move publication cadence from rendered frames to the single simulation owner
+  described by `docs/simulation-render-thread-design.md`; renderer and control
+  must consume the same immutable world generation, and no render-side cache may
+  become a mutable gameplay authority.
 
 ## Signed chat and chat acknowledgement production
 

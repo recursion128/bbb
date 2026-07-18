@@ -464,8 +464,9 @@ recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实�
 
 0. **模拟与渲染解耦**：「应用服务端状态 + client tick」移入独立 20Hz 模拟线程，
    渲染按帧消费快照；已增量化的 terrain 慢帧自此只影响画面。动 runtime.rs 单线程
-   所有权假设，属大型重构需先出设计再切片；canonical 输入路径与 tick 语义不得
-   分叉（P0 红线）。
+   所有权假设，属大型重构；所有权、命令/快照/副作用协议、串行阶段、门禁与安全
+   停点已冻结在 `docs/simulation-render-thread-design.md`，后续必须按该工程切片推进；
+   canonical 输入路径与 tick 语义不得分叉（P0 红线）。
 1. **rust/tokio/hecs 特性驱动的持续优化**（长期方向，随 slice 顺带落地）：rust 用
    类型状态/newtype 收紧协议状态机非法空间、`Arc` 共享替代克隆；tokio 连接/控制
    任务零阻塞 await、`watch`/arc-swap 快照、JoinSet 管理任务生命周期；hecs 把
