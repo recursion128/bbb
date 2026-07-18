@@ -206,12 +206,12 @@ canonical world state.
 Owns external control-facing types, reports, and snapshots.
 
 - `NetCounters` and snapshot structs are derived views.
-- Native owns the mutable `WorldStore`; until the simulation-thread migration
-  reaches its publication phase, once per rendered frame it publishes immutable
-  runtime-counter and world generations through paired `ArcSwap` handles.
-  The target simulation owner publishes independently of frame cadence and
-  control reuses that exact world `Arc` and generation. Control reads retry on
-  a generation mismatch and never lock or own the live world.
+- Native owns the mutable `WorldStore`; every synchronous
+  `SimulationCore::step` seals an immutable `SimulationPublication` independently
+  of rendered-frame completion. Renderer and control reuse the exact same world
+  `Arc`, runtime counters, and generation through paired `ArcSwap` handles.
+  Control reads retry on a generation mismatch and never lock or own the live
+  world.
 - `SharedControlRequests` is a producer facade: native installs the single
   simulation mailbox sink before the control server starts, so all control
   writes share the same ordered command path as winit input. Its compatibility
@@ -252,9 +252,12 @@ generation acknowledgement, and only a matching mailbox acknowledgement
 commits world defaults and the simulation particle resolver. The
 simulation-side resolver and render-side particle atlas runtime are distinct
 owners; the reload ack carries only `Send` world-default value tables and never
-shares the render-owned item asset runtime. `SimulationRenderContext` remains
-the synchronous render adapter until phase four replaces render-thread live
-world/input reads with one immutable publication.
+shares the render-owned item asset runtime. Render extraction, particles,
+terrain upload, cursor/overlay decisions, narration, and control reads consume
+one immutable publication; a source guard rejects event-loop reads of live
+simulation fields. `SimulationRenderContext` now carries backend/cache owners
+only. Execution remains synchronous until phase five moves the unchanged
+simulation step semantics onto the named thread.
 
 ### `bbb-item-model`
 

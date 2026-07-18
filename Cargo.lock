@@ -325,6 +325,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "arboard",
+ "arc-swap",
  "bbb-audio",
  "bbb-control",
  "bbb-item-model",

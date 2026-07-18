@@ -1,0 +1,354 @@
+//! Immutable simulation generations shared by render and control readers.
+
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use arc_swap::ArcSwap;
+use bbb_control::{
+    AudioCounters, ControlSnapshot, ControlWorldSnapshot, NetCounters, RendererCounters,
+    SharedSnapshot, SharedWorld,
+};
+use bbb_world::WorldStore;
+
+use super::input_commands::SimulationInputPublication;
+use crate::{
+    input::ClientInputState,
+    runtime::{
+        CameraFovTickState, HudDebugNetworkSampler, HudDebugTpsSampler, SimulationFrameState,
+    },
+};
+
+pub(crate) type SharedSimulationPublication = Arc<ArcSwap<SimulationPublication>>;
+
+#[derive(Debug)]
+pub(crate) struct SimulationPublication {
+    pub(crate) generation: u64,
+    pub(crate) client_tick_index: u64,
+    pub(crate) world: Arc<WorldStore>,
+    pub(crate) input: Arc<ClientInputState>,
+    pub(crate) input_runtime: SimulationInputPublication,
+    pub(crate) frame: Option<SimulationFrameState>,
+    pub(crate) tick_interval: Duration,
+    pub(crate) tick_residual: f32,
+    pub(crate) tick_anchor: Instant,
+    pub(crate) frozen: bool,
+    pub(crate) running: bool,
+    pub(crate) terrain_revision: u64,
+    pub(crate) client_level_generation: u64,
+    pub(crate) net_counters: NetCounters,
+    pub(crate) renderer_counters: RendererCounters,
+    pub(crate) audio_counters: AudioCounters,
+    pub(crate) camera_fov_ticks: CameraFovTickState,
+    pub(crate) hud_debug_network_sampler: HudDebugNetworkSampler,
+    pub(crate) hud_debug_tps_sampler: HudDebugTpsSampler,
+}
+
+impl SimulationPublication {
+    /// Projects the existing vanilla timer residual forward without mutating
+    /// simulation. A renderer delayed beyond the next tick clamps rather than
+    /// extrapolating canonical state.
+    pub(crate) fn partial_tick_at(&self, now: Instant) -> f32 {
+        let elapsed = now.saturating_duration_since(self.tick_anchor);
+        let interval_seconds = self.tick_interval.as_secs_f32();
+        let advanced = if interval_seconds > 0.0 {
+            elapsed.as_secs_f32() / interval_seconds
+        } else {
+            0.0
+        };
+        (self.tick_residual + advanced).clamp(0.0, 1.0)
+    }
+}
+
+pub(crate) struct SimulationPublisher {
+    shared: SharedSimulationPublication,
+    control_snapshot: SharedSnapshot,
+    control_world: SharedWorld,
+    next_generation: u64,
+}
+
+pub(crate) struct SimulationPublicationInput<'a> {
+    pub(crate) world: &'a WorldStore,
+    pub(crate) input: &'a ClientInputState,
+    pub(crate) input_runtime: SimulationInputPublication,
+    pub(crate) frame: Option<SimulationFrameState>,
+    pub(crate) client_tick_index: u64,
+    pub(crate) tick_interval: Duration,
+    pub(crate) tick_residual: f32,
+    pub(crate) tick_anchor: Instant,
+    pub(crate) running: bool,
+    pub(crate) net_counters: &'a NetCounters,
+    pub(crate) renderer_counters: &'a RendererCounters,
+    pub(crate) audio_counters: &'a AudioCounters,
+    pub(crate) camera_fov_ticks: CameraFovTickState,
+    pub(crate) hud_debug_network_sampler: &'a HudDebugNetworkSampler,
+    pub(crate) hud_debug_tps_sampler: &'a HudDebugTpsSampler,
+}
+
+impl SimulationPublisher {
+    pub(crate) fn new(
+        initial: SimulationPublicationInput<'_>,
+        control_snapshot: SharedSnapshot,
+        control_world: SharedWorld,
+    ) -> Self {
+        let initial_generation = control_snapshot.load().generation;
+        let publication = build_publication(initial_generation, initial);
+        publish_control_views(&control_snapshot, &control_world, &publication);
+        let shared = Arc::new(ArcSwap::from(publication));
+        Self {
+            shared,
+            control_snapshot,
+            control_world,
+            next_generation: initial_generation.saturating_add(1),
+        }
+    }
+
+    pub(crate) fn shared(&self) -> SharedSimulationPublication {
+        Arc::clone(&self.shared)
+    }
+
+    pub(crate) fn publish(
+        &mut self,
+        input: SimulationPublicationInput<'_>,
+    ) -> Arc<SimulationPublication> {
+        let generation = self.next_generation;
+        self.next_generation = self.next_generation.saturating_add(1);
+        let publication = build_publication(generation, input);
+        publish_control_views(&self.control_snapshot, &self.control_world, &publication);
+        self.shared.store(Arc::clone(&publication));
+        publication
+    }
+}
+
+fn build_publication(
+    generation: u64,
+    input: SimulationPublicationInput<'_>,
+) -> Arc<SimulationPublication> {
+    let world = Arc::new(input.world.clone());
+    Arc::new(SimulationPublication {
+        generation,
+        client_tick_index: input.client_tick_index,
+        terrain_revision: world.terrain_revision(),
+        client_level_generation: world.client_level_generation(),
+        frozen: world.ticking().frozen,
+        world,
+        input: Arc::new(input.input.clone()),
+        input_runtime: input.input_runtime,
+        frame: input.frame,
+        tick_interval: input.tick_interval,
+        tick_residual: input.tick_residual,
+        tick_anchor: input.tick_anchor,
+        running: input.running,
+        net_counters: input.net_counters.clone(),
+        renderer_counters: input.renderer_counters.clone(),
+        audio_counters: input.audio_counters.clone(),
+        camera_fov_ticks: input.camera_fov_ticks,
+        hud_debug_network_sampler: input.hud_debug_network_sampler.clone(),
+        hud_debug_tps_sampler: input.hud_debug_tps_sampler.clone(),
+    })
+}
+
+fn publish_control_views(
+    snapshot: &SharedSnapshot,
+    published_world: &SharedWorld,
+    publication: &Arc<SimulationPublication>,
+) {
+    published_world.store(Arc::new(ControlWorldSnapshot {
+        generation: publication.generation,
+        world: Arc::clone(&publication.world),
+    }));
+    snapshot.rcu(|current| {
+        let mut app = current.app.clone();
+        app.running = publication.running;
+        ControlSnapshot {
+            generation: publication.generation,
+            app,
+            net: publication.net_counters.clone(),
+            audio: publication.audio_counters.clone(),
+            renderer: publication.renderer_counters.clone(),
+        }
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        runtime::{CameraFovTickState, HudDebugNetworkSampler, HudDebugTpsSampler},
+        simulation::input_commands::SimulationInputRuntime,
+    };
+    use winit::dpi::PhysicalSize;
+
+    fn input<'a>(
+        world: &'a WorldStore,
+        client_input: &'a ClientInputState,
+        input_runtime: &'a SimulationInputRuntime,
+        net: &'a NetCounters,
+        renderer: &'a RendererCounters,
+        audio: &'a AudioCounters,
+        network: &'a HudDebugNetworkSampler,
+        tps: &'a HudDebugTpsSampler,
+        now: Instant,
+    ) -> SimulationPublicationInput<'a> {
+        SimulationPublicationInput {
+            world,
+            input: client_input,
+            input_runtime: input_runtime.publication(),
+            frame: None,
+            client_tick_index: 0,
+            tick_interval: Duration::from_millis(50),
+            tick_residual: 0.25,
+            tick_anchor: now,
+            running: true,
+            net_counters: net,
+            renderer_counters: renderer,
+            audio_counters: audio,
+            camera_fov_ticks: CameraFovTickState::default(),
+            hud_debug_network_sampler: network,
+            hud_debug_tps_sampler: tps,
+        }
+    }
+
+    #[test]
+    fn render_and_control_reuse_one_world_arc_and_generation() {
+        let control = bbb_control::ControlState::new("test");
+        let world = WorldStore::new();
+        let client_input = ClientInputState::default();
+        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let net = NetCounters::default();
+        let renderer = RendererCounters::default();
+        let audio = AudioCounters::default();
+        let network = HudDebugNetworkSampler::default();
+        let tps = HudDebugTpsSampler::default();
+        let now = Instant::now();
+        let publisher = SimulationPublisher::new(
+            input(
+                &world,
+                &client_input,
+                &input_runtime,
+                &net,
+                &renderer,
+                &audio,
+                &network,
+                &tps,
+                now,
+            ),
+            Arc::clone(&control.snapshot),
+            Arc::clone(&control.world),
+        );
+
+        let render = publisher.shared().load_full();
+        let control_world = control.world.load_full();
+        let control_snapshot = control.snapshot.load_full();
+        assert_eq!(render.generation, control_world.generation);
+        assert_eq!(render.generation, control_snapshot.generation);
+        assert!(Arc::ptr_eq(&render.world, &control_world.world));
+    }
+
+    #[test]
+    fn partial_tick_projection_clamps_delayed_renderers() {
+        let control = bbb_control::ControlState::new("test");
+        let world = WorldStore::new();
+        let client_input = ClientInputState::default();
+        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let net = NetCounters::default();
+        let renderer = RendererCounters::default();
+        let audio = AudioCounters::default();
+        let network = HudDebugNetworkSampler::default();
+        let tps = HudDebugTpsSampler::default();
+        let now = Instant::now();
+        let publisher = SimulationPublisher::new(
+            input(
+                &world,
+                &client_input,
+                &input_runtime,
+                &net,
+                &renderer,
+                &audio,
+                &network,
+                &tps,
+                now,
+            ),
+            control.snapshot,
+            control.world,
+        );
+        let publication = publisher.shared().load_full();
+
+        assert_eq!(publication.partial_tick_at(now), 0.25);
+        assert_eq!(
+            publication.partial_tick_at(now + Duration::from_millis(25)),
+            0.75
+        );
+        assert_eq!(
+            publication.partial_tick_at(now + Duration::from_millis(100)),
+            1.0
+        );
+    }
+
+    #[test]
+    fn publication_and_publisher_are_thread_transfer_safe() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<SimulationPublication>();
+        assert_send_sync::<SharedSimulationPublication>();
+        assert_send_sync::<SimulationPublisher>();
+    }
+
+    #[test]
+    fn publication_freezes_world_and_publishes_matching_runtime_state() {
+        use bbb_protocol::packets::BlockChangedAck;
+
+        let control = bbb_control::ControlState::new("test");
+        let mut world = WorldStore::new();
+        let client_input = ClientInputState::default();
+        let input_runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        let net = NetCounters::default();
+        let renderer = RendererCounters::default();
+        let mut audio = AudioCounters::default();
+        let network = HudDebugNetworkSampler::default();
+        let tps = HudDebugTpsSampler::default();
+        let now = Instant::now();
+        let mut publisher = SimulationPublisher::new(
+            input(
+                &world,
+                &client_input,
+                &input_runtime,
+                &net,
+                &renderer,
+                &audio,
+                &network,
+                &tps,
+                now,
+            ),
+            Arc::clone(&control.snapshot),
+            Arc::clone(&control.world),
+        );
+        let previous = publisher.shared().load_full();
+
+        world.apply_block_changed_ack(BlockChangedAck { sequence: 4 });
+        audio.enabled = true;
+        audio.commands_submitted = 9;
+        let mut next = input(
+            &world,
+            &client_input,
+            &input_runtime,
+            &net,
+            &renderer,
+            &audio,
+            &network,
+            &tps,
+            now,
+        );
+        next.running = false;
+        let published = publisher.publish(next);
+
+        assert_eq!(previous.world.counters().block_changed_ack_packets, 0);
+        assert_eq!(published.world.counters().block_changed_ack_packets, 1);
+        assert_eq!(control.snapshot.load().generation, published.generation);
+        assert_eq!(control.snapshot.load().audio, audio);
+        assert!(!control.snapshot.load().app.running);
+        let control_world = control.world.load_full();
+        assert_eq!(control_world.generation, published.generation);
+        assert!(Arc::ptr_eq(&control_world.world, &published.world));
+    }
+}

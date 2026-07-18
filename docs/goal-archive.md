@@ -19348,3 +19348,23 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   focused regression；`bbb-control` 110 项与 `bbb-native` 2131 项完整回归通过。本 phase 因
   新增并发 mailbox 按 forced checkpoint 在提交 tip 运行 full gate，下一阶段只推进
   immutable render publication。
+
+## 2026-07-18：模拟/渲染拆分 phase 4 immutable render publication
+
+- [x] 新增 `simulation/publication.rs` 作为单一 immutable generation owner：每次同步
+  `SimulationCore::step` 在 network、typed commands 与到期 client ticks 之后发布
+  `SimulationPublication`，包含单调 generation/client tick、`Arc<WorldStore>`、输入/HUD
+  投影、tick interval/residual/anchor、freeze/running、terrain/level revision、相机与调试采样、
+  net/audio/renderer counters；render 延迟只投影并钳制 partial tick，不推进 canonical state。
+- [x] renderer、terrain、particle、dialog/command narration、code-of-conduct overlay 与 control
+  全部读取一个 publication。control 的 `ControlWorldSnapshot` 复用 renderer 所见的同一
+  world `Arc` 与 generation，不再按 rendered frame 另克隆；主循环源守卫只允许两处
+  `SimulationCore::step`，拒绝 `simulation.world/input/net/tick` 与旧 render method 访问。
+- [x] 仅渲染所有的 FPS/toast/screen narration/debug caches 迁回 render owner；会改变
+  canonical UI 的 stonecutter/beacon/loom/stats/advancement/command-suggestion 同步在 publication
+  前完成。terrain player-section readiness 携 level generation 经 mailbox 回传，旧 generation
+  不会完成新 level load；`LevelLoadRuntime` 回归 simulation owner 且网络发送不阻塞。
+  Publication/control pointer、generation、partial clamp、thread-transfer、effect-before-render、
+  stale readiness 与 live-owner source guards 均有 focused regression；完整 `bbb-native` 2135 项
+  回归通过。本 phase 在提交 tip 运行 full gate，下一阶段只推进 thread activation、deadline/
+  wakeup、join/failure propagation 与 slow-render isolation。

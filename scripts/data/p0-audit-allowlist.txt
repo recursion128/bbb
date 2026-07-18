@@ -6,6 +6,10 @@
 ^crates/bbb-renderer/src/entity_models/dispatch[.]rs$	residual mesh-emitting arm|no residual
 # Runtime tick cadence uses “residual” as a numeric accumulator, not a mesh path.
 ^crates/bbb-native/src/runtime[.]rs$	entity_animation_tick_residual|dimensionless residual
+# Immutable simulation publication carries that same vanilla timer residual as
+# a numeric interpolation accumulator; construction sites only copy the value.
+^crates/bbb-native/src/(main|simulation)[.]rs$	tick_residual: .*entity_partial_tick
+^crates/bbb-native/src/simulation/publication[.]rs$	tick_residual|timer residual
 
 # goal.md unsupported category: explicit renderer defensive failures.
 ^crates/bbb-renderer/src/screenshot[.]rs$	unsupported screenshot surface format

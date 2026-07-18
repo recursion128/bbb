@@ -38,7 +38,7 @@ impl LevelLoadRuntime {
         let Some(tx) = net_commands else {
             return;
         };
-        if tx.blocking_send(NetCommand::PlayerLoaded).is_err() {
+        if tx.try_send(NetCommand::PlayerLoaded).is_err() {
             return;
         }
         world.complete_client_level_load(timed_out);
@@ -149,10 +149,18 @@ mod tests {
             .find("    maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);")
             .expect("runtime should upload decoded terrain");
         let readiness = source
-            .find("    level_load_runtime.tick(\n        now,")
-            .expect("runtime should tick native level-load readiness");
+            .find("SimulationCommand::TerrainReadiness")
+            .expect("render publication should return level readiness");
 
         assert!(upload < readiness);
+
+        let simulation_tick = source
+            .find("level_load_runtime.tick(now, world, net_commands, player_section_ready);")
+            .expect("simulation should own native level-load completion");
+        let render_entry = source
+            .find("pub(crate) fn update_renderer_from_publication(")
+            .expect("publication render entry");
+        assert!(simulation_tick < render_entry);
     }
 
     fn loading_world(game_type: i8, y: f64) -> WorldStore {

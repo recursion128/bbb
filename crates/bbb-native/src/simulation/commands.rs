@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex, PoisonError},
 };
 
-use bbb_control::{ControlRequestSink, ControlWriteRequest};
+use bbb_control::{AudioCounters, ControlRequestSink, ControlWriteRequest, RendererCounters};
 use bbb_renderer::HudFontGlyphMap;
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -56,6 +56,14 @@ pub(crate) enum SimulationCommand {
         success: bool,
     },
     ResourceReloadAck(crate::resource_reload::ResourceReloadAck),
+    TerrainReadiness {
+        level_generation: u64,
+        player_section_compiled_and_visible: bool,
+    },
+    BackendCounters {
+        renderer: RendererCounters,
+        audio: AudioCounters,
+    },
     Control(ControlWriteRequest),
     Shutdown,
 }
@@ -200,6 +208,31 @@ fn try_coalesce_tail(
             SimulationCommand::SurfaceResized(incoming_size),
         ) => {
             *size = *incoming_size;
+            true
+        }
+        (
+            SimulationCommand::TerrainReadiness {
+                level_generation,
+                player_section_compiled_and_visible,
+            },
+            SimulationCommand::TerrainReadiness {
+                level_generation: incoming_generation,
+                player_section_compiled_and_visible: incoming_ready,
+            },
+        ) => {
+            *level_generation = *incoming_generation;
+            *player_section_compiled_and_visible = *incoming_ready;
+            true
+        }
+        (
+            SimulationCommand::BackendCounters { renderer, audio },
+            SimulationCommand::BackendCounters {
+                renderer: incoming_renderer,
+                audio: incoming_audio,
+            },
+        ) => {
+            renderer.clone_from(incoming_renderer);
+            audio.clone_from(incoming_audio);
             true
         }
         _ => false,

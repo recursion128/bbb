@@ -38,8 +38,17 @@ const DECLINE_BUTTON: OverlayRect = OverlayRect {
 
 #[derive(Debug, Default)]
 pub(crate) struct CodeOfConductOverlayState {
-    rendered_hash: Option<i32>,
     dismissed_hash: Option<i32>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct CodeOfConductOverlayProjection {
+    dismissed_hash: Option<i32>,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct CodeOfConductOverlayRenderer {
+    rendered_hash: Option<i32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,35 +73,10 @@ struct OverlayRect {
 }
 
 impl CodeOfConductOverlayState {
-    pub(crate) fn update_renderer(
-        &mut self,
-        renderer: &mut bbb_renderer::Renderer,
-        world: &WorldStore,
-        accepted_current_code_of_conduct: bool,
-    ) {
-        if accepted_current_code_of_conduct {
-            if let Some(code_of_conduct) = world.last_code_of_conduct() {
-                self.dismissed_hash = Some(code_of_conduct.text_hash);
-            }
+    pub(crate) fn projection(&self) -> CodeOfConductOverlayProjection {
+        CodeOfConductOverlayProjection {
+            dismissed_hash: self.dismissed_hash,
         }
-        let Some(code_of_conduct) = self.visible_code_of_conduct(world) else {
-            if self.rendered_hash.is_some() {
-                renderer.clear_hud_code_of_conduct_overlay();
-                self.rendered_hash = None;
-            }
-            return;
-        };
-        if self.rendered_hash == Some(code_of_conduct.text_hash) {
-            return;
-        }
-
-        let rgba = render_code_of_conduct_overlay(code_of_conduct);
-        if let Err(err) =
-            renderer.set_hud_code_of_conduct_overlay(OVERLAY_WIDTH, OVERLAY_HEIGHT, &rgba)
-        {
-            tracing::warn!(?err, "failed to upload code-of-conduct overlay");
-        }
-        self.rendered_hash = Some(code_of_conduct.text_hash);
     }
 
     pub(crate) fn handle_mouse_input(
@@ -147,9 +131,49 @@ impl CodeOfConductOverlayState {
     }
 
     fn visible_code_of_conduct<'a>(&self, world: &'a WorldStore) -> Option<&'a CodeOfConductState> {
-        let code_of_conduct = world.last_code_of_conduct()?;
-        (self.dismissed_hash != Some(code_of_conduct.text_hash)).then_some(code_of_conduct)
+        visible_code_of_conduct(world, self.dismissed_hash)
     }
+}
+
+impl CodeOfConductOverlayRenderer {
+    pub(crate) fn update_renderer(
+        &mut self,
+        renderer: &mut bbb_renderer::Renderer,
+        world: &WorldStore,
+        projection: CodeOfConductOverlayProjection,
+        accepted_current_code_of_conduct: bool,
+    ) {
+        let accepted_hash = accepted_current_code_of_conduct
+            .then(|| world.last_code_of_conduct().map(|state| state.text_hash))
+            .flatten();
+        let dismissed_hash = accepted_hash.or(projection.dismissed_hash);
+        let Some(code_of_conduct) = visible_code_of_conduct(world, dismissed_hash) else {
+            if self.rendered_hash.is_some() {
+                renderer.clear_hud_code_of_conduct_overlay();
+                self.rendered_hash = None;
+            }
+            return;
+        };
+        if self.rendered_hash == Some(code_of_conduct.text_hash) {
+            return;
+        }
+
+        let rgba = render_code_of_conduct_overlay(code_of_conduct);
+        if let Err(err) =
+            renderer.set_hud_code_of_conduct_overlay(OVERLAY_WIDTH, OVERLAY_HEIGHT, &rgba)
+        {
+            tracing::warn!(?err, "failed to upload code-of-conduct overlay");
+        }
+        self.rendered_hash = Some(code_of_conduct.text_hash);
+    }
+}
+
+fn visible_code_of_conduct(
+    world: &WorldStore,
+    dismissed_hash: Option<i32>,
+) -> Option<&CodeOfConductState> {
+    let code_of_conduct = world.last_code_of_conduct()?;
+    (dismissed_hash != Some(code_of_conduct.text_hash)).then_some(code_of_conduct)
 }
 
 fn hit_test_overlay_action(

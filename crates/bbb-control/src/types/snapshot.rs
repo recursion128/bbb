@@ -379,8 +379,9 @@ pub struct ControlSnapshot {
 pub type SharedSnapshot = Arc<ArcSwap<ControlSnapshot>>;
 
 /// Immutable world generation paired with [`ControlSnapshot::generation`].
-/// This is a derived copy; the live canonical owner remains native's event
-/// loop and is never shared with control readers.
+/// Native publication reuses the exact immutable `Arc<WorldStore>` consumed by
+/// the renderer. The live mutable canonical owner remains private to native's
+/// simulation runtime and is never shared with control readers.
 #[derive(Debug, Clone, Default)]
 pub struct ControlWorldSnapshot {
     pub generation: u64,

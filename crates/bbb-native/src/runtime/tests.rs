@@ -28,16 +28,15 @@ use bbb_protocol::packets::ClockUpdate as ProtocolClockUpdate;
 use bbb_protocol::packets::{
     AdvancementCriterionProgressSummary, AdvancementDisplaySummary, AdvancementFrameType,
     AdvancementIconSummary, AdvancementProgressSummary, AdvancementSummary, AwardStats,
-    BlockChangedAck, BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate,
-    BossBarColor, BossBarOverlay, BossEvent as ProtocolBossEvent,
-    BossEventFlags as ProtocolBossEventFlags, BossEventOperation as ProtocolBossEventOperation,
-    CommonPlayerSpawnInfo, DataComponentPatchSummary, DialogHolder,
-    EntityEvent as ProtocolEntityEvent, GameEvent as ProtocolGameEvent,
-    InitializeBorder as ProtocolInitializeBorder, InteractionHand, MerchantOffer, MerchantOffers,
-    MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime, RemoveMobEffect,
-    SetBorderLerpSize as ProtocolSetBorderLerpSize, SetCursorItem as ProtocolSetCursorItem,
-    SetPlayerInventory as ProtocolSetPlayerInventory, ShowDialog, StatUpdate, UpdateAdvancements,
-    UpdateMobEffect, WrittenBookContentSummary,
+    BlockPos as ProtocolBlockPos, BlockUpdate as ProtocolBlockUpdate, BossBarColor, BossBarOverlay,
+    BossEvent as ProtocolBossEvent, BossEventFlags as ProtocolBossEventFlags,
+    BossEventOperation as ProtocolBossEventOperation, CommonPlayerSpawnInfo,
+    DataComponentPatchSummary, DialogHolder, EntityEvent as ProtocolEntityEvent,
+    GameEvent as ProtocolGameEvent, InitializeBorder as ProtocolInitializeBorder, InteractionHand,
+    MerchantOffer, MerchantOffers, MobEffectFlags, OpenBook, OpenSignEditor, PlayLogin, PlayTime,
+    RemoveMobEffect, SetBorderLerpSize as ProtocolSetBorderLerpSize,
+    SetCursorItem as ProtocolSetCursorItem, SetPlayerInventory as ProtocolSetPlayerInventory,
+    ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
 use bbb_protocol::recipe_wire_types::{
     VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID, VANILLA_SLOT_DISPLAY_TYPE_COMPOSITE_ID,
@@ -8280,7 +8279,7 @@ fn low_disk_space_toast_uses_ten_second_visible_window_and_square_slides() {
 fn low_disk_space_warning_projects_one_server_driven_system_toast() {
     let start = std::time::Instant::now();
     let mut world = WorldStore::new();
-    let mut state = ClientAnimationTickState::default();
+    let mut state = HudRenderRuntime::default();
 
     assert_eq!(
         hud_system_toast(&mut state, &world, None, start),
@@ -8338,7 +8337,7 @@ fn low_disk_space_warning_projects_one_server_driven_system_toast() {
 fn insecure_chat_warning_projects_multiline_toast_before_low_disk_queue() {
     let start = std::time::Instant::now();
     let mut world = world_with_custom_dimension_environment();
-    let mut state = ClientAnimationTickState::default();
+    let mut state = HudRenderRuntime::default();
     assert_eq!(world.insecure_chat_warning_count(), 1);
 
     let (toast, sound) = hud_system_toast(&mut state, &world, None, start);
@@ -17666,69 +17665,6 @@ fn client_tick_end_is_queued_after_native_tick_commands_and_particle_effects() {
     assert!(movement < tick_end);
     assert!(use_item < tick_end);
     assert!(particles < tick_end);
-}
-
-#[test]
-fn publish_snapshot_includes_audio_runtime_counters() {
-    let control = bbb_control::ControlState::new("test");
-    let audio = AudioCounters {
-        enabled: true,
-        catalog_events: 1902,
-        registry_entries: 1902,
-        commands_submitted: 3,
-        submit_failures: 1,
-        last_submit_error: Some("failed to submit audio command".to_string()),
-        ..AudioCounters::default()
-    };
-    let net = NetCounters::default();
-    let world = WorldStore::new();
-
-    assert!(publish_snapshot(
-        &control.snapshot,
-        &control.world,
-        &world,
-        RendererCounters::default(),
-        &net,
-        &audio,
-    ));
-
-    assert_eq!(control.snapshot.load().audio, audio);
-}
-
-#[test]
-fn publish_snapshot_preserves_control_quit_and_freezes_world_generation() {
-    let control = bbb_control::ControlState::new("test");
-    control.snapshot.rcu(|current| {
-        let mut next = (**current).clone();
-        next.app.running = false;
-        next
-    });
-    let mut world = WorldStore::new();
-    world.apply_block_changed_ack(BlockChangedAck { sequence: 4 });
-
-    assert!(!publish_snapshot(
-        &control.snapshot,
-        &control.world,
-        &world,
-        RendererCounters::default(),
-        &NetCounters::default(),
-        &AudioCounters::default(),
-    ));
-    let published = control.snapshot.load_full();
-    let published_world = control.world.load_full();
-    assert!(!published.app.running);
-    assert_eq!(published.generation, published_world.generation);
-    assert_eq!(
-        published_world.world.counters().block_changed_ack_packets,
-        1
-    );
-
-    world.apply_block_changed_ack(BlockChangedAck { sequence: 5 });
-    assert_eq!(
-        published_world.world.counters().block_changed_ack_packets,
-        1
-    );
-    assert_eq!(world.counters().block_changed_ack_packets, 2);
 }
 
 #[test]

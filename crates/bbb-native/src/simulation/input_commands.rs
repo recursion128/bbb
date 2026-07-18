@@ -7,7 +7,7 @@ use bbb_control::{
 };
 use bbb_item_model::NativeItemRuntime;
 use bbb_net::NetCommand;
-use bbb_renderer::{HudFontGlyphMap, Renderer};
+use bbb_renderer::HudFontGlyphMap;
 use bbb_world::WorldStore;
 use tokio::sync::mpsc;
 use winit::{
@@ -22,7 +22,7 @@ use super::{
 };
 use crate::{
     code_of_conduct::CodeOfConductAcceptance,
-    code_of_conduct_overlay::CodeOfConductOverlayState,
+    code_of_conduct_overlay::{CodeOfConductOverlayProjection, CodeOfConductOverlayState},
     input::{
         handle_advancements_screen_cursor_moved, handle_advancements_screen_mouse_input,
         handle_advancements_screen_mouse_wheel, handle_book_screen_mouse_input,
@@ -56,7 +56,16 @@ pub(crate) struct SimulationInputRuntime {
     code_of_conduct_overlay: CodeOfConductOverlayState,
     net_disconnect_requested: bool,
     shutdown_requested: bool,
+    terrain_readiness: Option<(u64, bool)>,
     last_applied_sequence: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct SimulationInputPublication {
+    pub(crate) surface_size: PhysicalSize<u32>,
+    pub(crate) cursor_position: Option<PhysicalPosition<f64>>,
+    pub(crate) cursor_captured: bool,
+    pub(crate) code_of_conduct_overlay: CodeOfConductOverlayProjection,
 }
 
 impl SimulationInputRuntime {
@@ -69,21 +78,31 @@ impl SimulationInputRuntime {
             code_of_conduct_overlay: CodeOfConductOverlayState::default(),
             net_disconnect_requested: false,
             shutdown_requested: false,
+            terrain_readiness: None,
             last_applied_sequence: 0,
         }
     }
 
-    pub(crate) fn update_code_of_conduct_overlay_renderer(
-        &mut self,
-        renderer: &mut Renderer,
-        world: &WorldStore,
-        accepted_current_code_of_conduct: bool,
-    ) {
-        self.code_of_conduct_overlay.update_renderer(
-            renderer,
-            world,
-            accepted_current_code_of_conduct,
-        );
+    pub(crate) fn publication(&self) -> SimulationInputPublication {
+        SimulationInputPublication {
+            surface_size: self.surface_size,
+            cursor_position: self.cursor_position,
+            cursor_captured: self.cursor_captured,
+            code_of_conduct_overlay: self.code_of_conduct_overlay.projection(),
+        }
+    }
+
+    pub(crate) fn running(&self) -> bool {
+        !self.shutdown_requested
+    }
+
+    pub(crate) fn surface_size(&self) -> PhysicalSize<u32> {
+        self.surface_size
+    }
+
+    pub(crate) fn player_section_ready(&self, level_generation: u64) -> bool {
+        self.terrain_readiness
+            .is_some_and(|(generation, ready)| generation == level_generation && ready)
     }
 
     pub(crate) fn apply_commands(
@@ -104,6 +123,11 @@ impl SimulationInputRuntime {
         context
             .input
             .consume_debug_recreate_server_query_response(context.world, &mut clipboard);
+        let _ = context.input.command_suggestion_hud_state(
+            context.world,
+            &self.text_measurements,
+            self.surface_size,
+        );
         flush_platform_effects(&queued_effects, context.platform);
         if self.code_of_conduct_overlay.is_visible(context.world)
             || simulation_wants_cursor(context.input, context.world)
@@ -164,6 +188,17 @@ impl SimulationInputRuntime {
             }
             SimulationCommand::ResourceReloadAck(ack) => {
                 apply_resource_reload_ack(ack, context);
+            }
+            SimulationCommand::TerrainReadiness {
+                level_generation,
+                player_section_compiled_and_visible,
+            } => {
+                self.terrain_readiness =
+                    Some((level_generation, player_section_compiled_and_visible));
+            }
+            SimulationCommand::BackendCounters { renderer, audio } => {
+                *context.renderer_counters = renderer;
+                *context.audio_counters = audio;
             }
             SimulationCommand::Control(request) => self.apply_control(request, context),
             SimulationCommand::Shutdown => self.request_shutdown(context),
@@ -1015,6 +1050,8 @@ pub(crate) struct SimulationInputContext<'a, 'collector> {
     pub(crate) input: &'a mut crate::input::ClientInputState,
     pub(crate) world: &'a mut WorldStore,
     pub(crate) net_counters: &'a mut bbb_control::NetCounters,
+    pub(crate) renderer_counters: &'a mut bbb_control::RendererCounters,
+    pub(crate) audio_counters: &'a mut bbb_control::AudioCounters,
     pub(crate) net_commands: &'a Option<mpsc::Sender<NetCommand>>,
     pub(crate) server_resource_packs: &'a mut ServerResourcePackRuntime,
     pub(crate) particle_runtime: &'a mut Option<crate::particle_runtime::NativeParticleRuntime>,
@@ -1190,5 +1227,22 @@ impl DialogTextMeasurer for HudFontGlyphMap {
     fn cursor_for_width(&self, text: &str, display_start: usize, width: u32) -> usize {
         self.plain_text_cursor_for_width_from(text, display_start, width)
             .unwrap_or(display_start)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn terrain_readiness_is_scoped_to_the_published_level_generation() {
+        let mut runtime = SimulationInputRuntime::new(PhysicalSize::new(1280, 720), false);
+        runtime.terrain_readiness = Some((7, true));
+
+        assert!(runtime.player_section_ready(7));
+        assert!(!runtime.player_section_ready(8));
+
+        runtime.terrain_readiness = Some((8, false));
+        assert!(!runtime.player_section_ready(8));
     }
 }

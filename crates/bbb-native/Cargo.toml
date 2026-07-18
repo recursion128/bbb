@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
+arc-swap = { workspace = true }
 arboard = { workspace = true }
 bbb-audio = { path = "../bbb-audio", features = ["device"] }
 bbb-control = { path = "../bbb-control" }

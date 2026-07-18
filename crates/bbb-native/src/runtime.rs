@@ -1,14 +1,11 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
-    sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use bbb_audio::{AudioListenerState, EntitySoundPosition, TickEntitySoundPositionsCommand};
-use bbb_control::{
-    AudioCounters, ControlWorldSnapshot, NetCounters, RendererCounters, SharedSnapshot, SharedWorld,
-};
+use bbb_control::{AudioCounters, NetCounters, RendererCounters, SharedSnapshot};
 use bbb_item_model::{
     ItemModelKeybindContext, NativeItemMapTooltipData, NativeItemRuntime, NativeItemTooltipOptions,
 };
@@ -101,7 +98,6 @@ use crate::{
         entity_scene_outline_from_world_at_partial_tick,
         entity_scene_outline_from_world_at_partial_tick_with_server_details,
     },
-    entity_variant_textures::NativeEntityVariantTextureRuntime,
     input::{
         advance_destroying_block_at_partial_tick, advance_player_input_for_client_ticks,
         advance_using_item_at_partial_tick, inventory_screen_layout_for_surface,
@@ -170,13 +166,15 @@ use crate::{
     resource_pack_runtime::ServerResourcePackRuntime,
     shulker_box_scene::shulker_box_model_instances_from_world_at_partial_tick,
     sign_scene::{sign_model_attachment, sign_model_wood, sign_scene_from_world},
-    simulation::effects::ParticleBatchSink,
+    simulation::{
+        effects::ParticleBatchSink, publication::SimulationPublication, SimulationRenderContext,
+    },
     skull_scene::skull_model_instances_from_world_at_partial_tick,
     spawner_scene::spawner_display_entity_instances_from_world_at_partial_tick,
     startup::VANILLA_UNLIMITED_FRAMERATE_LIMIT,
     terrain_runtime::{
         maybe_upload_decoded_terrain, maybe_upload_terrain_texture_animation, BlockRenderPosition,
-        TerrainTextureState, TerrainUploadState,
+        TerrainTextureState,
     },
 };
 use bbb_protocol::attribute_types::{
@@ -192,6 +190,9 @@ use bbb_protocol::mob_effect_types::{
     VANILLA_MOB_EFFECT_RESISTANCE_ID, VANILLA_MOB_EFFECT_SPEED_ID, VANILLA_MOB_EFFECT_STRENGTH_ID,
     VANILLA_MOB_EFFECT_WITHER_ID,
 };
+
+#[cfg(test)]
+use crate::terrain_runtime::TerrainUploadState;
 
 mod control_requests;
 mod debug_light_sections;
@@ -623,6 +624,10 @@ fn push_capped_hud_debug_sample<T>(samples: &mut Vec<T>, value: T, capacity: usi
 pub(crate) struct ClientAnimationTickState {
     last_entity_animation_at: Option<Instant>,
     entity_animation_tick_residual: f64,
+}
+
+#[derive(Debug, Default)]
+pub(crate) struct HudRenderRuntime {
     insecure_chat_toast: SystemToastAnimationState,
     low_disk_space_toast: SystemToastAnimationState,
     stats_screen_narration: Option<ScreenNarrationFrame>,
@@ -632,7 +637,9 @@ impl ClientAnimationTickState {
     pub(crate) fn entity_partial_tick(&self) -> f32 {
         self.entity_animation_tick_residual.clamp(0.0, 1.0) as f32
     }
+}
 
+impl HudRenderRuntime {
     pub(crate) fn stats_screen_narration(&self) -> Option<&ScreenNarrationFrame> {
         self.stats_screen_narration.as_ref()
     }
@@ -729,7 +736,7 @@ impl SystemToastAnimationState {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct HudDebugFpsSampler {
     window_started_at: Option<Instant>,
     last_frame_at: Option<Instant>,
@@ -780,7 +787,7 @@ impl HudDebugFpsSampler {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct HudDebugNetworkSampler {
     last_sample_at: Option<Instant>,
     pending_bandwidth_bytes: u64,
@@ -881,7 +888,7 @@ impl HudDebugNetworkSampler {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct HudDebugTpsSampler {
     samples: Vec<HudDebugTpsSample>,
     tick_time_subscribed: bool,
@@ -1109,6 +1116,10 @@ impl Default for LightmapTickState {
 }
 
 impl LightmapTickState {
+    pub(crate) fn client_tick_count(&self) -> u64 {
+        self.client_tick_count
+    }
+
     pub(crate) fn with_brightness_factor_and_hide_lightning_flash(
         brightness_factor: f32,
         hide_lightning_flash: bool,
@@ -2031,6 +2042,7 @@ fn queue_client_tick_end_commands(
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct SimulationFrameState {
     pump_started_at: Instant,
     pump_net_drained_at: Instant,
@@ -2038,7 +2050,6 @@ pub(crate) struct SimulationFrameState {
     pump_client_ticked_at: Instant,
     now: Instant,
     advanced_ticks: u32,
-    entity_partial_tick: f32,
     lightmap_environment: LightmapEnvironment,
     clear_color: ClearColor,
     fog_environment: FogEnvironment,
@@ -2051,6 +2062,12 @@ pub(crate) struct SimulationFrameState {
     terrain_textures_changed: bool,
 }
 
+impl SimulationFrameState {
+    pub(crate) fn tick_anchor(&self) -> Instant {
+        self.now
+    }
+}
+
 pub(crate) fn advance_simulation(
     net_events: &mut Option<mpsc::Receiver<NetEvent>>,
     net_commands: &Option<mpsc::Sender<NetCommand>>,
@@ -2061,9 +2078,10 @@ pub(crate) fn advance_simulation(
     input: &mut ClientInputState,
     world: &mut WorldStore,
     net_counters: &mut NetCounters,
+    renderer_counters: &mut RendererCounters,
+    audio_counters: &mut AudioCounters,
     client_animation_ticks: &mut ClientAnimationTickState,
     camera_fov_ticks: &mut CameraFovTickState,
-    hud_debug_fps_sampler: &mut HudDebugFpsSampler,
     hud_debug_network_sampler: &mut HudDebugNetworkSampler,
     hud_debug_tps_sampler: &mut HudDebugTpsSampler,
     lightmap_ticks: &mut LightmapTickState,
@@ -2073,6 +2091,7 @@ pub(crate) fn advance_simulation(
     code_of_conduct: Option<&mut CodeOfConductAcceptance>,
     commands: Vec<crate::simulation::commands::SequencedSimulationCommand>,
     input_runtime: &mut crate::simulation::input_commands::SimulationInputRuntime,
+    level_load_runtime: &mut LevelLoadRuntime,
     platform_effects: &mut crate::simulation::effects::PlatformEffectCollector<'_>,
     render_distance_chunks: u32,
     hide_lightning_flash: bool,
@@ -2123,6 +2142,8 @@ pub(crate) fn advance_simulation(
             input,
             world,
             net_counters,
+            renderer_counters,
+            audio_counters,
             net_commands,
             server_resource_packs,
             particle_runtime,
@@ -2132,9 +2153,30 @@ pub(crate) fn advance_simulation(
             platform: platform_effects,
         },
     );
+    sync_stonecutter_recipe_scroll_state(input, world);
+    sync_beacon_effect_selection_state(input, world);
+    sync_loom_pattern_state_for_hud(input, world);
+    let advancement_scroll_delta =
+        input.advancement_scroll_delta(world.selected_advancements_tab());
+    advancement_hover_fade_for_hud(
+        input,
+        world,
+        advancement_scroll_delta,
+        input_runtime.surface_size(),
+    );
+    let _ = hud_stats_screen(
+        input,
+        world,
+        item_runtime,
+        terrain_textures,
+        input.item_model_keybind_context(),
+        client_animation_ticks.entity_partial_tick(),
+        input_runtime.surface_size(),
+    );
     let pump_control_synced_at = Instant::now();
     let now = Instant::now();
-    hud_debug_fps_sampler.record_frame(now);
+    let player_section_ready = input_runtime.player_section_ready(world.client_level_generation());
+    level_load_runtime.tick(now, world, net_commands, player_section_ready);
     hud_debug_network_sampler.advance_tick(
         input,
         net_counters,
@@ -2290,7 +2332,6 @@ pub(crate) fn advance_simulation(
         pump_client_ticked_at,
         now,
         advanced_ticks,
-        entity_partial_tick,
         lightmap_environment,
         clear_color,
         fog_environment,
@@ -2304,38 +2345,34 @@ pub(crate) fn advance_simulation(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn update_renderer_from_simulation(
-    state: SimulationFrameState,
-    audio_events: Option<&mut dyn AudioEventSink>,
-    audio_status: &AudioCounters,
-    input: &mut ClientInputState,
-    world: &mut WorldStore,
-    renderer: &mut Renderer,
-    surface_size: winit::dpi::PhysicalSize<u32>,
-    net_counters: &mut NetCounters,
-    net_commands: &Option<mpsc::Sender<NetCommand>>,
-    client_animation_ticks: &mut ClientAnimationTickState,
-    camera_fov_ticks: &CameraFovTickState,
-    hud_debug_fps_sampler: &HudDebugFpsSampler,
-    hud_debug_network_sampler: &HudDebugNetworkSampler,
-    hud_debug_tps_sampler: &HudDebugTpsSampler,
-    debug_collision_cache: &mut DebugCollisionCache,
-    debug_supporting_block_cache: &mut DebugSupportingBlockCache,
-    debug_sky_light_section_cache: &mut DebugSkyLightSectionCache,
-    lightmap_ticks: &LightmapTickState,
-    terrain_upload: &mut TerrainUploadState,
-    level_load_runtime: &mut LevelLoadRuntime,
-    terrain_textures: &mut TerrainTextureState,
-    entity_variant_textures: &mut NativeEntityVariantTextureRuntime,
-    item_runtime: Option<&NativeItemRuntime>,
-    snapshot: &SharedSnapshot,
-    render_distance_chunks: u32,
-    client_framerate_limit: u32,
-    client_vsync: bool,
-    damage_tilt_strength: f32,
-    hud_debug_profiler_chart: Option<HudDebugProfilerChart>,
-) -> bool {
+pub(crate) fn update_renderer_from_publication(
+    publication: &SimulationPublication,
+    context: SimulationRenderContext<'_>,
+) {
+    let SimulationRenderContext {
+        audio_events,
+        renderer,
+        mailbox,
+        terrain_upload,
+        terrain_textures,
+        entity_variant_textures,
+        item_runtime,
+        hud_render_runtime,
+        hud_debug_fps_sampler,
+        debug_collision_cache,
+        debug_supporting_block_cache,
+        debug_sky_light_section_cache,
+        render_distance_chunks,
+        client_framerate_limit,
+        client_vsync,
+        damage_tilt_strength,
+        hud_debug_profiler_chart,
+    } = context;
+    let state = publication
+        .frame
+        .as_ref()
+        .expect("rendered simulation publication must contain a frame")
+        .clone();
     let SimulationFrameState {
         pump_started_at,
         pump_net_drained_at,
@@ -2343,7 +2380,6 @@ pub(crate) fn update_renderer_from_simulation(
         pump_client_ticked_at,
         now,
         advanced_ticks,
-        entity_partial_tick,
         lightmap_environment,
         clear_color,
         fog_environment,
@@ -2355,6 +2391,20 @@ pub(crate) fn update_renderer_from_simulation(
         particle_sound_camera_position,
         terrain_textures_changed,
     } = state;
+    let mut render_input = publication.input.as_ref().clone();
+    let input = &mut render_input;
+    let world = publication.world.as_ref();
+    debug_assert_eq!(publication.terrain_revision, world.terrain_revision());
+    debug_assert_eq!(publication.frozen, world.ticking().frozen);
+    let surface_size = publication.input_runtime.surface_size;
+    let net_counters = &publication.net_counters;
+    let audio_status = &publication.audio_counters;
+    let camera_fov_ticks = publication.camera_fov_ticks;
+    let hud_debug_network_sampler = &publication.hud_debug_network_sampler;
+    let hud_debug_tps_sampler = &publication.hud_debug_tps_sampler;
+    let render_started_at = Instant::now();
+    let entity_partial_tick = publication.partial_tick_at(render_started_at);
+    hud_debug_fps_sampler.record_frame(render_started_at);
     let mut audio_events = audio_events;
     entity_variant_textures.synchronize(world, renderer);
     if terrain_textures_changed {
@@ -2396,7 +2446,7 @@ pub(crate) fn update_renderer_from_simulation(
         heart_type: local_player_heart_type(world),
         hardcore: world.is_hardcore(),
         regen: local_player_effect(world, VANILLA_MOB_EFFECT_REGENERATION_ID).is_some(),
-        tick_count: lightmap_ticks.client_tick_count,
+        tick_count: publication.client_tick_index,
     });
     let hud_food = local_player.health.map(|health| health.food);
     // Vanilla `Gui.extractArmor` reads `player.getArmorValue()` (Gui.java:799),
@@ -2410,7 +2460,7 @@ pub(crate) fn update_renderer_from_simulation(
         air: world.local_player_air_supply(),
         max_air: world.local_player_max_air_supply(),
         eye_in_water: world.local_player_eye_in_water(),
-        tick_count: lightmap_ticks.client_tick_count,
+        tick_count: publication.client_tick_index,
     });
     // Vanilla `Gui.extractVehicleHealth` inputs (Gui.java:974-979): the local
     // player's living vehicle health + MAX_HEALTH attribute; the renderer
@@ -2445,7 +2495,7 @@ pub(crate) fn update_renderer_from_simulation(
             .map(|health| health.saturation <= 0.0)
             .unwrap_or(false),
         hunger_effect: local_player_effect(world, VANILLA_MOB_EFFECT_HUNGER_ID).is_some(),
-        tick_count: lightmap_ticks.client_tick_count,
+        tick_count: publication.client_tick_index,
     };
     let hud_experience_progress = local_player
         .experience
@@ -2473,13 +2523,9 @@ pub(crate) fn update_renderer_from_simulation(
     );
     let hud_hotbar_block_item_models =
         hotbar_block_item_models(world, item_runtime, terrain_textures);
-    sync_stonecutter_recipe_scroll_state(input, world);
-    sync_beacon_effect_selection_state(input, world);
-    sync_loom_pattern_state_for_hud(input, world);
     let advancement_scroll_delta =
         input.advancement_scroll_delta(world.selected_advancements_tab());
-    let advancement_hover_fade =
-        advancement_hover_fade_for_hud(input, world, advancement_scroll_delta, surface_size);
+    let advancement_hover_fade = input.advancement_hover_fade();
     let hud_debug_options_screen = hud_debug_options_screen(input, world, surface_size);
     let hud_command_suggestions = if hud_debug_options_screen.is_none() {
         hud_command_suggestions(input, world, renderer, surface_size)
@@ -2504,11 +2550,11 @@ pub(crate) fn update_renderer_from_simulation(
             surface_size,
         )
     };
-    client_animation_ticks.stats_screen_narration = hud_stats_screen
+    hud_render_runtime.stats_screen_narration = hud_stats_screen
         .as_ref()
         .map(|screen| stats_screen_narration_frame(input, screen, item_runtime, surface_size));
     let (hud_system_toast, hud_system_toast_sound) =
-        hud_system_toast(client_animation_ticks, world, item_runtime, now);
+        hud_system_toast(hud_render_runtime, world, item_runtime, now);
     if let (Some(audio_events), Some(sound)) =
         (audio_events.as_deref_mut(), hud_system_toast_sound.as_ref())
     {
@@ -2972,11 +3018,11 @@ pub(crate) fn update_renderer_from_simulation(
     maybe_upload_decoded_terrain(world, renderer, terrain_upload, terrain_textures);
     let player_section_compiled_and_visible =
         terrain_upload.is_player_section_compiled_and_visible(world);
-    level_load_runtime.tick(
-        now,
-        world,
-        net_commands,
-        player_section_compiled_and_visible,
+    mailbox.enqueue(
+        crate::simulation::commands::SimulationCommand::TerrainReadiness {
+            level_generation: publication.client_level_generation,
+            player_section_compiled_and_visible,
+        },
     );
     let pump_elapsed = pump_started_at.elapsed();
     // Section attribution for frames slow enough to starve the per-frame
@@ -2994,7 +3040,6 @@ pub(crate) fn update_renderer_from_simulation(
             "slow pump sections"
         );
     }
-    snapshot_is_running(snapshot)
 }
 
 fn renderer_particle_block_fluid_surface_sample(
@@ -4094,7 +4139,7 @@ fn localized_gui_text(
 }
 
 fn hud_system_toast(
-    state: &mut ClientAnimationTickState,
+    state: &mut HudRenderRuntime,
     world: &WorldStore,
     item_runtime: Option<&NativeItemRuntime>,
     now: Instant,
@@ -12732,7 +12777,7 @@ fn advance_entity_client_animations(
     advanced_ticks
 }
 
-fn world_client_tick_interval(world: &WorldStore) -> Duration {
+pub(crate) fn world_client_tick_interval(world: &WorldStore) -> Duration {
     let ticking = world.ticking();
     // `Minecraft.getTickTargetMillis` keeps the base 20 Hz timer while frozen;
     // otherwise it returns max(base MSPT, TickRateManager.millisecondsPerTick).
@@ -14025,30 +14070,6 @@ pub(crate) fn control_renderer_counters(
         dropped_active_particle_instances: counters.dropped_active_particle_instances,
         dropped_limited_particle_instances: counters.dropped_limited_particle_instances,
     }
-}
-
-pub(crate) fn publish_snapshot(
-    snapshot: &SharedSnapshot,
-    published_world: &SharedWorld,
-    world: &WorldStore,
-    renderer: RendererCounters,
-    net: &NetCounters,
-    audio: &AudioCounters,
-) -> bool {
-    let generation = snapshot.load().generation.saturating_add(1);
-    published_world.store(Arc::new(ControlWorldSnapshot {
-        generation,
-        world: Arc::new(world.clone()),
-    }));
-    snapshot.rcu(|current| {
-        let mut next = (**current).clone();
-        next.generation = generation;
-        next.renderer = renderer.clone();
-        next.net = net.clone();
-        next.audio = audio.clone();
-        next
-    });
-    snapshot.load().app.running
 }
 
 #[cfg(test)]
