@@ -28,6 +28,8 @@ pub struct ServerPresentationState {
     pub last_transfer: Option<TransferTargetState>,
     #[serde(default)]
     pub resource_packs: BTreeMap<Uuid, ResourcePackState>,
+    #[serde(skip)]
+    next_resource_pack_push_sequence: u64,
     #[serde(default)]
     pub server_links: Vec<ServerLinkState>,
     #[serde(default)]
@@ -69,6 +71,8 @@ pub struct TransferTargetState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResourcePackState {
     pub id: Uuid,
+    #[serde(default)]
+    pub push_sequence: u64,
     pub url: String,
     pub hash: String,
     pub required: bool,
@@ -134,8 +138,19 @@ impl WorldStore {
 
     pub fn apply_resource_pack_push(&mut self, packet: ProtocolResourcePackPush) {
         self.counters.resource_pack_push_packets += 1;
+        let push_sequence = self
+            .presentation
+            .resource_packs
+            .values()
+            .map(|pack| pack.push_sequence)
+            .max()
+            .unwrap_or_default()
+            .saturating_add(1)
+            .max(self.presentation.next_resource_pack_push_sequence);
+        self.presentation.next_resource_pack_push_sequence = push_sequence.saturating_add(1);
         let pack = ResourcePackState {
             id: packet.id,
+            push_sequence,
             url: packet.url,
             hash: packet.hash,
             required: packet.required,
@@ -526,6 +541,7 @@ mod tests {
         ));
 
         let pack = store.resource_pack(id).expect("pack is tracked");
+        assert_eq!(pack.push_sequence, 2);
         assert_eq!(pack.url, "https://example.test/second.zip");
         assert_eq!(pack.hash, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
         assert!(pack.required);
