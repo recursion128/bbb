@@ -27,6 +27,13 @@ pub(crate) use textures::{
 
 const MAX_TERRAIN_UPLOAD_CHUNKS: usize = 49;
 const TERRAIN_TEXTURE_ANIMATION_INTERVAL: Duration = Duration::from_millis(50);
+// The terrain path rebuilds and re-uploads EVERY chunk on any block/light/
+// biome change (tens of seconds under llvmpipe); with a steady update stream
+// from the server that rebuild retriggers back-to-back and the frame loop --
+// which also consumes synthetic input and net commands -- starves for minutes.
+// Until the rebuild is incremental, space full rebuilds out so every cycle
+// leaves the frame loop a responsive window.
+const TERRAIN_FULL_REBUILD_MIN_INTERVAL: Duration = Duration::from_secs(20);
 
 #[derive(Debug, Default)]
 pub(crate) struct TerrainUploadState {
@@ -40,6 +47,7 @@ pub(crate) struct TerrainUploadState {
     observed_light_updates_applied: usize,
     observed_biome_updates_applied: usize,
     last_observed_change: Option<Instant>,
+    last_full_rebuild: Option<Instant>,
     reload_all_chunks_requested: bool,
     texture_animation_tick: u64,
     last_texture_animation_at: Option<Instant>,
@@ -161,6 +169,15 @@ pub(crate) fn maybe_upload_decoded_terrain(
     {
         return;
     }
+    // Never throttle the first build (level-load progress waits on the player
+    // section being compiled) or an explicit reload request.
+    if !reload_all_chunks_requested
+        && upload
+            .last_full_rebuild
+            .is_some_and(|rebuilt_at| rebuilt_at.elapsed() < TERRAIN_FULL_REBUILD_MIN_INTERVAL)
+    {
+        return;
+    }
 
     let center = terrain_upload_center(world);
     let mut positions = world.chunk_positions();
@@ -211,6 +228,7 @@ pub(crate) fn maybe_upload_decoded_terrain(
     upload.uploaded_chunks = chunk_count;
     upload.compiled_and_visible_chunks = compiled_and_visible_chunks;
     upload.reload_all_chunks_requested = false;
+    upload.last_full_rebuild = Some(Instant::now());
 }
 
 fn synchronize_empty_terrain_upload(
