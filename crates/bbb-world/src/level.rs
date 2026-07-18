@@ -67,6 +67,8 @@ pub struct WorldLevelInfo {
     pub biome_zoom_seed: i64,
     #[serde(default)]
     pub default_clock_resource_id: Option<String>,
+    #[serde(default)]
+    pub timeline_resource_ids: Vec<String>,
     #[serde(default = "world_level_has_sky_light_default")]
     pub has_sky_light: bool,
     #[serde(default)]
@@ -130,6 +132,10 @@ impl WorldLevelInfo {
 
     pub fn environment_attributes(&self) -> ClientEnvironmentAttributes {
         self.environment_attributes
+    }
+
+    pub fn timeline_resource_ids(&self) -> &[String] {
+        &self.timeline_resource_ids
     }
 }
 
@@ -616,7 +622,10 @@ impl WorldStore {
         let profile = dimension_profile(spawn_info.dimension_type_id, &spawn_info.dimension);
         let dimension_type_entry =
             self.registry_entry_by_holder_id(DIMENSION_TYPE_REGISTRY, spawn_info.dimension_type_id);
-        let dimension_type = dimension_type_client_projection_from_registry(dimension_type_entry);
+        let dimension_type = dimension_type_client_projection_from_registry(
+            dimension_type_entry,
+            self.frozen_registry_access(),
+        );
         let dimension_type_entry_name = dimension_type_entry.map(|entry| entry.id.clone());
         let dimension_type_name = dimension_type_entry_name
             .clone()
@@ -674,6 +683,16 @@ impl WorldStore {
         {
             self.record_apply_error("dimension_type_environment_attributes", err);
         }
+        let timeline_resource_ids = dimension_type
+            .as_ref()
+            .map(|projection| projection.timeline_resource_ids.clone())
+            .unwrap_or_default();
+        if let Some(err) = dimension_type
+            .as_ref()
+            .and_then(|projection| projection.timeline_error.as_deref())
+        {
+            self.record_apply_error("dimension_type_timelines", err);
+        }
         let default_clock_resource_id = dimension_type
             .as_ref()
             .and_then(|projection| projection.default_clock_resource_id.clone())
@@ -699,6 +718,7 @@ impl WorldStore {
             dimension_type_name,
             biome_zoom_seed: spawn_info.seed,
             default_clock_resource_id,
+            timeline_resource_ids,
             has_sky_light,
             has_ceiling,
             cardinal_lighting,
@@ -1042,10 +1062,10 @@ mod tests {
         ItemStackSummary as ProtocolItemStackSummary, LevelEvent as ProtocolLevelEvent,
         MapItemData as ProtocolMapItemData, MobEffectFlags, OpenScreen as ProtocolOpenScreen,
         PlayerExperience as ProtocolPlayerExperience, PlayerHealth as ProtocolPlayerHealth,
-        RegistryData, RegistryDataEntry, SetCamera as ProtocolSetCamera,
-        SetEntityData as ProtocolSetEntityData, Transfer as ProtocolTransfer,
+        RegistryData, RegistryDataEntry, RegistryTags, SetCamera as ProtocolSetCamera,
+        SetEntityData as ProtocolSetEntityData, TagNetworkPayload, Transfer as ProtocolTransfer,
         UpdateAttributes as ProtocolUpdateAttributes, UpdateMobEffect as ProtocolUpdateMobEffect,
-        Vec3d as ProtocolVec3d,
+        UpdateTags, Vec3d as ProtocolVec3d,
     };
     use uuid::Uuid;
 
@@ -1568,6 +1588,7 @@ mod tests {
             dimension_type_name: Some("minecraft:the_nether".to_string()),
             biome_zoom_seed: 0,
             default_clock_resource_id: None,
+            timeline_resource_ids: Vec::new(),
             has_sky_light: false,
             has_ceiling: true,
             cardinal_lighting: WorldCardinalLighting::Nether,
@@ -1789,6 +1810,40 @@ mod tests {
         });
         assert_eq!(store.level_info().unwrap().default_clock_resource_id, None);
         assert_eq!(store.world_time().unwrap().day_time, 0);
+    }
+
+    #[test]
+    fn dimension_timeline_layers_follow_session_tag_order() {
+        let mut store = WorldStore::new();
+        store.record_registry_data(RegistryData {
+            registry: crate::TIMELINE_REGISTRY.to_string(),
+            raw_payload_len: 0,
+            entries: vec![
+                registry_stub("example:custom"),
+                registry_stub("minecraft:day"),
+            ],
+        });
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: crate::TIMELINE_REGISTRY.to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:dimension_layers".to_string(),
+                    entries: vec![1, 0],
+                }],
+            }],
+        });
+        record_custom_dimension_type_registry(
+            &mut store,
+            dimension_type_nbt_with_timelines("#example:dimension_layers"),
+        );
+
+        store.apply_login(&login_packet(4, "example:custom"));
+
+        assert_eq!(
+            store.level_info().unwrap().timeline_resource_ids(),
+            ["minecraft:day", "example:custom"]
+        );
+        assert!(store.apply_diagnostics().apply_errors.is_empty());
     }
 
     #[test]
@@ -2697,6 +2752,14 @@ mod tests {
         payload.push(8);
         write_nbt_string(&mut payload, "default_clock");
         write_nbt_string(&mut payload, default_clock);
+        payload.push(0);
+        payload
+    }
+
+    fn dimension_type_nbt_with_timelines(timelines: &str) -> Vec<u8> {
+        let mut payload = dimension_type_nbt(None, None, None, None, None, None);
+        assert_eq!(payload.pop(), Some(0));
+        write_nbt_named_string(&mut payload, "timelines", timelines);
         payload.push(0);
         payload
     }

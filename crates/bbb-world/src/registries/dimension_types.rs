@@ -1,10 +1,12 @@
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
-use crate::{RegistryPacketEntry, WorldCardinalLighting, WorldDimension, WorldSkybox};
+use crate::{
+    FrozenRegistryAccess, RegistryPacketEntry, WorldCardinalLighting, WorldDimension, WorldSkybox,
+};
 
 use super::{
-    decode_client_environment_attributes, ClientEnvironmentAttributes,
-    EnvironmentAttributeProjectionError,
+    decode_client_environment_attributes, normalize_codec_identifier, ClientEnvironmentAttributes,
+    EnvironmentAttributeProjectionError, TIMELINE_REGISTRY,
 };
 
 pub const DIMENSION_TYPE_REGISTRY: &str = "minecraft:dimension_type";
@@ -18,18 +20,22 @@ pub(crate) struct DimensionTypeClientProjection {
     pub(crate) skybox: Option<WorldSkybox>,
     pub(crate) ambient_light: Option<f32>,
     pub(crate) default_clock_resource_id: Option<String>,
+    pub(crate) timeline_resource_ids: Vec<String>,
+    pub(crate) timeline_error: Option<String>,
     pub(crate) environment_attributes: ClientEnvironmentAttributes,
     pub(crate) environment_error: Option<EnvironmentAttributeProjectionError>,
 }
 
 pub(crate) fn dimension_type_client_projection_from_registry(
     entry: Option<&RegistryPacketEntry>,
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Option<DimensionTypeClientProjection> {
-    dimension_type_client_projection(&entry?.element_data()?.value)
+    dimension_type_client_projection(&entry?.element_data()?.value, registry_access)
 }
 
 fn dimension_type_client_projection(
     value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
 ) -> Option<DimensionTypeClientProjection> {
     let NbtSummaryValue::Compound(fields) = value else {
         return None;
@@ -51,6 +57,13 @@ fn dimension_type_client_projection(
     let default_clock_resource_id = match field(fields, "default_clock") {
         Some(NbtSummaryValue::String(resource_id)) => Some(resource_id.clone()),
         _ => None,
+    };
+    let (timeline_resource_ids, timeline_error) = match field(fields, "timelines") {
+        Some(value) => match decode_timeline_holder_set(value, registry_access) {
+            Ok(resource_ids) => (resource_ids, None),
+            Err(error) => (Vec::new(), Some(error)),
+        },
+        None => (Vec::new(), None),
     };
     let (environment_attributes, environment_error) = match field(fields, "attributes") {
         Some(NbtSummaryValue::Compound(entries)) => {
@@ -76,9 +89,61 @@ fn dimension_type_client_projection(
         skybox,
         ambient_light,
         default_clock_resource_id,
+        timeline_resource_ids,
+        timeline_error,
         environment_attributes,
         environment_error,
     })
+}
+
+fn decode_timeline_holder_set(
+    value: &NbtSummaryValue,
+    registry_access: FrozenRegistryAccess<'_>,
+) -> Result<Vec<String>, String> {
+    let holder_set = match value {
+        NbtSummaryValue::String(value) if value.starts_with('#') => {
+            let tag = normalize_codec_identifier(&value[1..])
+                .ok_or_else(|| format!("invalid timeline tag {value}"))?;
+            registry_access
+                .holder_set_by_tag(TIMELINE_REGISTRY, &tag)
+                .map_err(|error| error.to_string())?
+        }
+        NbtSummaryValue::String(resource_id) => {
+            let resource_id = normalize_codec_identifier(resource_id)
+                .ok_or_else(|| format!("invalid timeline resource {resource_id}"))?;
+            registry_access
+                .holder_set_by_resource_ids(TIMELINE_REGISTRY, &[resource_id])
+                .map_err(|error| error.to_string())?
+        }
+        NbtSummaryValue::List(values) => {
+            let resource_ids = values
+                .iter()
+                .enumerate()
+                .map(|(index, value)| {
+                    let NbtSummaryValue::String(resource_id) = value else {
+                        return Err(format!(
+                            "timeline holder list entry {index} is not a resource id"
+                        ));
+                    };
+                    normalize_codec_identifier(resource_id)
+                        .ok_or_else(|| format!("invalid timeline resource {resource_id}"))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            registry_access
+                .holder_set_by_resource_ids(TIMELINE_REGISTRY, &resource_ids)
+                .map_err(|error| error.to_string())?
+        }
+        _ => {
+            return Err(
+                "timeline holder set is not a resource id, resource list, or named tag".to_string(),
+            )
+        }
+    };
+    Ok(holder_set
+        .entries
+        .into_iter()
+        .map(|entry| entry.resource_id.to_string())
+        .collect())
 }
 
 fn dimension_type_shape_from_fields(fields: &[NbtSummaryEntry]) -> Option<WorldDimension> {
@@ -179,7 +244,9 @@ mod tests {
             }"#,
         )
         .unwrap();
-        let projection = dimension_type_client_projection(&known.value).unwrap();
+        let store = crate::WorldStore::new();
+        let projection =
+            dimension_type_client_projection(&known.value, store.frozen_registry_access()).unwrap();
 
         assert_eq!(projection.dimension, Some(WorldDimension::default()));
         assert_eq!(projection.has_sky_light, Some(true));
@@ -193,6 +260,55 @@ mod tests {
         assert_eq!(
             projection.default_clock_resource_id.as_deref(),
             Some("minecraft:the_end")
+        );
+    }
+
+    #[test]
+    fn timeline_holder_sets_follow_session_tag_order_and_diagnose_unknowns() {
+        use bbb_protocol::packets::{RegistryTags, TagNetworkPayload, UpdateTags};
+
+        let mut store = crate::WorldStore::new();
+        store.record_registry_entries(
+            TIMELINE_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::stub("example:custom"),
+                RegistryPacketEntry::stub("minecraft:day"),
+            ],
+        );
+        store.apply_update_tags(UpdateTags {
+            registries: vec![RegistryTags {
+                registry: TIMELINE_REGISTRY.to_string(),
+                tags: vec![TagNetworkPayload {
+                    tag: "example:layers".to_string(),
+                    entries: vec![1, 0],
+                }],
+            }],
+        });
+        let tagged = super::super::element_value::decode_known_pack_element(
+            br##"{"timelines":"#example:layers"}"##,
+        )
+        .unwrap();
+        let projection =
+            dimension_type_client_projection(&tagged.value, store.frozen_registry_access())
+                .unwrap();
+        assert_eq!(
+            projection.timeline_resource_ids,
+            ["minecraft:day", "example:custom"]
+        );
+        assert_eq!(projection.timeline_error, None);
+
+        let missing = super::super::element_value::decode_known_pack_element(
+            br#"{"timelines":"example:missing"}"#,
+        )
+        .unwrap();
+        let projection =
+            dimension_type_client_projection(&missing.value, store.frozen_registry_access())
+                .unwrap();
+        assert!(projection.timeline_resource_ids.is_empty());
+        assert_eq!(
+            projection.timeline_error.as_deref(),
+            Some("missing minecraft:timeline resource example:missing")
         );
     }
 }

@@ -3292,6 +3292,7 @@ fn local_player_in_nether_lava_current_uses_fast_lava_push() {
         dimension_type_name: Some("minecraft:the_nether".to_string()),
         biome_zoom_seed: 0,
         default_clock_resource_id: None,
+        timeline_resource_ids: Vec::new(),
         has_sky_light: false,
         has_ceiling: true,
         cardinal_lighting: WorldCardinalLighting::Nether,
