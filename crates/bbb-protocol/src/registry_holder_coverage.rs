@@ -187,8 +187,16 @@ mod tests {
         assert_eq!(counts["persistent-holder-or-inline-dialog-synchronized"], 1);
         assert_eq!(counts["persistent-holder-or-inline"], 23);
         assert_eq!(counts["persistent-holder-or-inline-banner-pattern"], 1);
-        assert_eq!(counts["persistent-holder-reference"], 40);
+        assert_eq!(counts["persistent-holder-reference"], 38);
         assert_eq!(counts["persistent-holder-reference-painting-variant"], 1);
+        assert_eq!(
+            counts["persistent-holder-reference-timeline-synchronized"],
+            1
+        );
+        assert_eq!(
+            counts["persistent-holder-reference-world-clock-synchronized"],
+            1
+        );
         assert_eq!(counts["persistent-holder-or-inline-trims"], 2);
         assert_eq!(counts["persistent-holder-set-custom"], 3);
         assert_eq!(
@@ -196,8 +204,12 @@ mod tests {
             1
         );
         assert_eq!(counts["persistent-holder-set-or-inline"], 5);
-        assert_eq!(counts["persistent-holder-set-or-tag"], 49);
+        assert_eq!(counts["persistent-holder-set-or-tag"], 48);
         assert_eq!(counts["persistent-holder-set-or-tag-banner-pattern"], 1);
+        assert_eq!(
+            counts["persistent-holder-set-or-tag-timeline-synchronized"],
+            1
+        );
         assert_eq!(counts["persistent-tag"], 11);
         assert_eq!(
             ledger
@@ -205,7 +217,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            150
+            147
         );
         assert_eq!(
             ledger
@@ -228,7 +240,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 41);
+        assert_eq!(complete.len(), 44);
         assert_eq!(
             complete
                 .iter()
@@ -260,6 +272,7 @@ mod tests {
                 "minecraft:sound_event",
                 "minecraft:trim_material",
                 "minecraft:trim_pattern",
+                "minecraft:timeline",
                 "minecraft:villager_profession",
                 "minecraft:villager_type",
                 "minecraft:wolf_sound_variant",
@@ -268,6 +281,63 @@ mod tests {
                 "minecraft:zombie_nautilus_variant",
             ])
         );
+    }
+
+    #[test]
+    fn complete_timeline_holder_families_keep_session_resolution_guards() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        for family in [
+            "persistent-holder-reference-world-clock-synchronized",
+            "persistent-holder-reference-timeline-synchronized",
+            "persistent-holder-set-or-tag-timeline-synchronized",
+        ] {
+            let entries = ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.family == family)
+                .collect::<Vec<_>>();
+            assert_eq!(entries.len(), 1, "timeline coverage family {family}");
+            assert_eq!(
+                entries[0].status,
+                RegistryHolderCoverageStatus::Complete,
+                "timeline coverage family {family}"
+            );
+        }
+
+        let timelines = include_str!("../../bbb-world/src/registries/timelines.rs");
+        for required in [
+            "pub fn synchronized_timeline_definition(",
+            "require_entry_by_resource_id(WORLD_CLOCK_REGISTRY",
+        ] {
+            assert!(
+                timelines.contains(required),
+                "timeline resolver lost structural guard {required}"
+            );
+        }
+
+        let dimension_types = include_str!("../../bbb-world/src/registries/dimension_types.rs");
+        for required in [
+            "fn decode_timeline_holder_set(",
+            "holder_set_by_tag(TIMELINE_REGISTRY",
+            "holder_set_by_resource_ids(TIMELINE_REGISTRY",
+        ] {
+            assert!(
+                dimension_types.contains(required),
+                "dimension timeline holder set lost structural guard {required}"
+            );
+        }
+
+        let game_tests = include_str!("../../bbb-world/src/registries/game_tests.rs");
+        for required in [
+            "\"minecraft:timeline_attributes\" =>",
+            "TIMELINE_REGISTRY,",
+            "decode_named_reference(",
+        ] {
+            assert!(
+                game_tests.contains(required),
+                "test environment timeline reference lost structural guard {required}"
+            );
+        }
     }
 
     #[test]
