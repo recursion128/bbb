@@ -1,9 +1,10 @@
 use super::super::{
     build_opaque_chunk_mesh, build_opaque_terrain_meshes, build_opaque_terrain_meshes_with_atlas,
-    build_terrain_mesh_layers_with_atlas, build_terrain_mesh_layers_with_atlas_and_camera,
-    build_terrain_meshes_with_atlas, TerrainBox, TerrainCardinalLighting, TerrainCross,
-    TerrainFace, TerrainFluid, TerrainFluidKind, TerrainLight, TerrainMesh, TerrainQuad,
-    TerrainSkipRendering, TerrainTint, TerrainTransparency, TerrainUvRect, TerrainVertex,
+    build_terrain_chunk_mesh_layers_with_atlas_and_camera, build_terrain_mesh_layers_with_atlas,
+    build_terrain_mesh_layers_with_atlas_and_camera, build_terrain_meshes_with_atlas, TerrainBox,
+    TerrainCardinalLighting, TerrainCross, TerrainFace, TerrainFluid, TerrainFluidKind,
+    TerrainLight, TerrainMesh, TerrainQuad, TerrainSkipRendering, TerrainTint, TerrainTransparency,
+    TerrainUvRect, TerrainVertex,
 };
 use super::*;
 
@@ -435,6 +436,31 @@ fn culls_faces_between_adjacent_chunk_snapshots() {
         meshes.iter().map(|mesh| mesh.indices.len()).sum::<usize>(),
         60
     );
+}
+
+#[test]
+fn incremental_chunk_mesh_uses_neighbors_without_rebuilding_them() {
+    let left = single_block_snapshot(0, 0, 15, 0, 2);
+    let mut right = single_block_snapshot(1, 0, 0, 0, 2);
+    right.cells[cell_index(0, 0, 2, 1)].block_state_id = 2;
+
+    let layers = build_terrain_chunk_mesh_layers_with_atlas_and_camera(
+        &left,
+        std::slice::from_ref(&right),
+        &TerrainTextureAtlas::unit(),
+        [0.0, 0.0, 0.0],
+    );
+
+    assert_eq!(layers.source_sections, 1);
+    assert_eq!(layers.opaque.len(), 1);
+    assert_eq!(layers.cutout.len(), 1);
+    assert_eq!(layers.translucent.len(), 1);
+    assert_eq!(layers.opaque[0].opaque_faces, 5);
+    assert_eq!(layers.opaque[0].culled_faces, 1);
+    assert!(layers.opaque[0]
+        .vertices
+        .iter()
+        .all(|vertex| vertex.block_state_id == 1));
 }
 
 #[test]

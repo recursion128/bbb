@@ -2131,7 +2131,25 @@ impl Renderer {
     }
 
     pub fn upload_terrain_mesh_layers(&mut self, layers: terrain::TerrainMeshLayers) {
-        self.terrain_source_sections = layers.source_sections;
+        self.upload_terrain_mesh_layer_refs(
+            layers.source_sections,
+            &layers.opaque,
+            &layers.cutout,
+            &layers.translucent,
+        );
+    }
+
+    /// Replaces terrain residency from borrowed per-chunk mesh caches. The GPU
+    /// upload consumes vertex/index bytes synchronously, so native can retain
+    /// the CPU meshes and reuse every unchanged chunk on the next rebuild.
+    pub fn upload_terrain_mesh_layer_refs<'a>(
+        &mut self,
+        source_sections: usize,
+        opaque: impl IntoIterator<Item = &'a terrain::TerrainMesh>,
+        cutout: impl IntoIterator<Item = &'a terrain::TerrainMesh>,
+        translucent: impl IntoIterator<Item = &'a terrain::TerrainMesh>,
+    ) {
+        self.terrain_source_sections = source_sections;
         self.counters.queued_sections = self.terrain_source_sections;
         self.counters.meshed_sections = self.terrain_source_sections;
         self.counters.upload_bytes = 0;
@@ -2140,17 +2158,17 @@ impl Renderer {
         self.terrain_translucent.clear();
         self.terrain_bounds = None;
 
-        for mesh in layers.opaque {
+        for mesh in opaque {
             if let Some(resident) = self.create_resident_terrain_mesh(mesh) {
                 self.terrain_opaque.push(resident);
             }
         }
-        for mesh in layers.cutout {
+        for mesh in cutout {
             if let Some(resident) = self.create_resident_terrain_mesh(mesh) {
                 self.terrain_cutout.push(resident);
             }
         }
-        for mesh in layers.translucent {
+        for mesh in translucent {
             if let Some(resident) = self.create_resident_terrain_mesh(mesh) {
                 self.terrain_translucent.push(resident);
             }
@@ -2269,7 +2287,7 @@ impl Renderer {
 
     fn create_resident_terrain_mesh(
         &mut self,
-        mesh: terrain::TerrainMesh,
+        mesh: &terrain::TerrainMesh,
     ) -> Option<ResidentTerrainMesh> {
         if mesh.vertices.is_empty() || mesh.indices.is_empty() {
             return None;
@@ -2645,7 +2663,7 @@ mod tests {
         TerrainTranslucentSortState,
     };
     use crate::camera::TerrainBounds;
-    use crate::terrain::TerrainVertex;
+    use crate::terrain::{TerrainMesh, TerrainVertex};
     use glam::Vec3;
 
     #[test]
@@ -2740,6 +2758,39 @@ mod tests {
             choose_present_mode(&[wgpu::PresentMode::Fifo], false).unwrap(),
             wgpu::PresentMode::Fifo
         );
+    }
+
+    #[test]
+    fn borrowed_terrain_upload_keeps_cpu_mesh_cache_available() {
+        let Some(mut renderer) = crate::Renderer::new_offscreen(16, 16) else {
+            return;
+        };
+        let cached = TerrainMesh {
+            vertices: vec![
+                terrain_vertex([0.0, 0.0, 0.0]),
+                terrain_vertex([1.0, 0.0, 0.0]),
+                terrain_vertex([0.0, 1.0, 0.0]),
+            ],
+            indices: vec![0, 1, 2],
+            source_sections: 1,
+            opaque_faces: 1,
+            ..TerrainMesh::default()
+        };
+
+        renderer.upload_terrain_mesh_layer_refs(
+            1,
+            std::iter::once(&cached),
+            std::iter::empty(),
+            std::iter::empty(),
+        );
+
+        assert_eq!(cached.vertices.len(), 3);
+        assert_eq!(cached.indices, vec![0, 1, 2]);
+        assert_eq!(renderer.counters().queued_sections, 1);
+        assert_eq!(renderer.counters().meshed_sections, 1);
+        assert_eq!(renderer.counters().uploaded_sections, 1);
+        assert_eq!(renderer.counters().terrain_vertices, 3);
+        assert!(renderer.counters().upload_bytes > 0);
     }
 
     #[test]

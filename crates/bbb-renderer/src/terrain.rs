@@ -723,3 +723,41 @@ pub fn build_terrain_mesh_layers_with_atlas_and_camera(
         source_sections,
     }
 }
+
+/// Builds only `target` while retaining cross-chunk lookup against its loaded
+/// neighborhood. Native's incremental terrain cache uses this to avoid
+/// re-meshing unchanged neighbors after a localized world revision.
+pub fn build_terrain_chunk_mesh_layers_with_atlas_and_camera(
+    target: &TerrainChunkSnapshot,
+    neighborhood: &[TerrainChunkSnapshot],
+    atlas: &TerrainTextureAtlas,
+    camera_position: [f32; 3],
+) -> TerrainMeshLayers {
+    let lookup = mesh::TerrainChunkLookup::with_target(target, neighborhood);
+    let opaque = mesh::build_chunk_mesh_with_lookup(
+        target,
+        &lookup,
+        atlas,
+        mesh::TerrainMeshMode::OpaqueOnly,
+    );
+    let cutout = mesh::build_chunk_mesh_with_lookup(
+        target,
+        &lookup,
+        atlas,
+        mesh::TerrainMeshMode::CutoutOnly,
+    );
+    let mut translucent = mesh::build_chunk_mesh_with_lookup(
+        target,
+        &lookup,
+        atlas,
+        mesh::TerrainMeshMode::TranslucentOnly,
+    );
+    mesh::sort_translucent_quads_by_distance(&mut translucent, camera_position);
+
+    TerrainMeshLayers {
+        opaque: vec![opaque],
+        cutout: vec![cutout],
+        translucent: vec![translucent],
+        source_sections: target.height.div_ceil(16),
+    }
+}

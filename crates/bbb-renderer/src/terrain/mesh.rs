@@ -580,6 +580,17 @@ impl<'a> TerrainChunkLookup<'a> {
         }
     }
 
+    pub(super) fn with_target(
+        target: &'a TerrainChunkSnapshot,
+        neighborhood: &'a [TerrainChunkSnapshot],
+    ) -> Self {
+        let mut lookup = Self::new(neighborhood);
+        lookup
+            .chunks
+            .insert((target.chunk_x, target.chunk_z), target);
+        lookup
+    }
+
     fn cell(&self, world_x: i32, world_y: i32, world_z: i32) -> Option<&TerrainCell> {
         let chunk_x = world_x.div_euclid(16);
         let chunk_z = world_z.div_euclid(16);
