@@ -62,7 +62,7 @@ pub(super) fn decode_trim_material_holder(
             let holder = decode_registry_holder_reference(
                 value,
                 TRIM_MATERIAL_REGISTRY,
-                context.registries,
+                context.registries.map(crate::RegistrySet::frozen_access),
                 what,
             )?;
             Ok(DialogTrimMaterialHolderState::Named {
@@ -89,7 +89,7 @@ pub(super) fn decode_trim_pattern_holder(
             let holder = decode_registry_holder_reference(
                 value,
                 TRIM_PATTERN_REGISTRY,
-                context.registries,
+                context.registries.map(crate::RegistrySet::frozen_access),
                 what,
             )?;
             Ok(DialogTrimPatternHolderState::Named {

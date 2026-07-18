@@ -10,7 +10,9 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{registries::normalize_codec_identifier, RegistrySet};
+#[cfg(test)]
+use crate::RegistrySet;
+use crate::{registries::normalize_codec_identifier, FrozenRegistryAccess};
 
 use super::{
     component_bool, component_f32_bits, find_entry,
@@ -54,7 +56,7 @@ pub enum DialogConsumeEffectState {
 
 pub(super) fn decode_consumable(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogConsumableState, String> {
     let entries = compound(value, what)?;
@@ -95,7 +97,7 @@ pub(super) fn decode_consumable(
 
 pub(super) fn decode_death_protection(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<Vec<DialogConsumeEffectState>, String> {
     let entries = compound(value, what)?;
@@ -105,7 +107,7 @@ pub(super) fn decode_death_protection(
 fn decode_optional_effects(
     entries: &[NbtSummaryEntry],
     field: &str,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<Vec<DialogConsumeEffectState>, String> {
     let Some(value) = find_entry(entries, field) else {
@@ -125,7 +127,7 @@ fn decode_optional_effects(
 
 fn decode_consume_effect(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogConsumeEffectState, String> {
     let entries = compound(value, what)?;

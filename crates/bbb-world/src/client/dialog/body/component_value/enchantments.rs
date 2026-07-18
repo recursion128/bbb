@@ -3,6 +3,8 @@ use std::collections::BTreeSet;
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
+use crate::FrozenRegistryAccess;
+#[cfg(test)]
 use crate::RegistrySet;
 
 use super::{
@@ -21,7 +23,7 @@ pub struct DialogEnchantmentEntryState {
 
 pub(super) fn decode_enchantments(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<Vec<DialogEnchantmentEntryState>, String> {
     let NbtSummaryValue::Compound(entries) = value else {

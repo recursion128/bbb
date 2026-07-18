@@ -97,7 +97,7 @@ fn decodes_compact_list_and_named_registry_holder_sets() {
     let compact = decode_registry_holder_set(
         &NbtSummaryValue::String("stone".to_string()),
         ITEM_REGISTRY,
-        Some(&registries),
+        Some(registries.frozen_access()),
         "repairable",
     )
     .unwrap();
@@ -113,7 +113,7 @@ fn decodes_compact_list_and_named_registry_holder_sets() {
             NbtSummaryValue::String("stone".to_string()),
         ]),
         ITEM_REGISTRY,
-        Some(&registries),
+        Some(registries.frozen_access()),
         "repairable",
     )
     .unwrap();
@@ -124,7 +124,7 @@ fn decodes_compact_list_and_named_registry_holder_sets() {
     let named = decode_registry_holder_set(
         &NbtSummaryValue::String("#example:repair_items".to_string()),
         ITEM_REGISTRY,
-        Some(&registries),
+        Some(registries.frozen_access()),
         "repairable",
     )
     .unwrap();
@@ -162,27 +162,27 @@ fn rejects_unavailable_or_malformed_registry_holder_sets() {
         ),
         (
             NbtSummaryValue::String("minecraft:missing_item".to_string()),
-            Some(&registries),
+            Some(registries.frozen_access()),
             "missing minecraft:item resource",
         ),
         (
             NbtSummaryValue::String("#example:missing".to_string()),
-            Some(&registries),
+            Some(registries.frozen_access()),
             "missing minecraft:item tag",
         ),
         (
             NbtSummaryValue::String("#example:broken".to_string()),
-            Some(&registries),
-            "contains missing minecraft:item holder",
+            Some(registries.frozen_access()),
+            "missing minecraft:item holder",
         ),
         (
             NbtSummaryValue::List(vec![NbtSummaryValue::Int(0)]),
-            Some(&registries),
+            Some(registries.frozen_access()),
             "entry 0 is not a resource id",
         ),
         (
             NbtSummaryValue::Int(0),
-            Some(&registries),
+            Some(registries.frozen_access()),
             "neither a tag, resource id, nor list",
         ),
     ] {
@@ -233,7 +233,7 @@ fn holder_set_record_fields_follow_compound_last_wins_semantics() {
         ]),
         "items",
         ITEM_REGISTRY,
-        Some(&registries),
+        Some(registries.frozen_access()),
         "repairable",
     )
     .unwrap();
@@ -324,7 +324,7 @@ fn synchronized_registry_holder_set_uses_session_order_and_tags() {
             NbtSummaryValue::String("example:first".to_string()),
         ]),
         registry,
-        Some(&registries),
+        Some(registries.frozen_access()),
         "banner patterns",
     )
     .unwrap();
@@ -334,7 +334,7 @@ fn synchronized_registry_holder_set_uses_session_order_and_tags() {
     let named = decode_registry_holder_set(
         &NbtSummaryValue::String("#example:reversed".to_string()),
         registry,
-        Some(&registries),
+        Some(registries.frozen_access()),
         "banner patterns",
     )
     .unwrap();
@@ -363,7 +363,7 @@ fn decodes_single_synchronized_registry_holder_reference() {
     let song = decode_registry_holder_reference(
         &NbtSummaryValue::String("minecraft:cat".to_string()),
         registry,
-        Some(&registries),
+        Some(registries.frozen_access()),
         "jukebox playable",
     )
     .unwrap();
@@ -378,12 +378,12 @@ fn decodes_single_synchronized_registry_holder_reference() {
         ),
         (
             NbtSummaryValue::String("example:missing".to_string()),
-            Some(&registries),
+            Some(registries.frozen_access()),
             "missing minecraft:jukebox_song resource",
         ),
         (
             NbtSummaryValue::List(Vec::new()),
-            Some(&registries),
+            Some(registries.frozen_access()),
             "is not a resource id",
         ),
     ] {

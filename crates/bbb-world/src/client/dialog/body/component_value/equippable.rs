@@ -3,7 +3,9 @@ use bbb_protocol::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{registries::normalize_codec_identifier, RegistrySet};
+#[cfg(test)]
+use crate::RegistrySet;
+use crate::{registries::normalize_codec_identifier, FrozenRegistryAccess};
 
 use super::{
     find_entry,
@@ -37,7 +39,7 @@ pub struct DialogEquippableState {
 
 pub(super) fn decode_equippable(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogEquippableState, String> {
     let NbtSummaryValue::Compound(entries) = value else {

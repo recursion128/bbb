@@ -1,6 +1,8 @@
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
 
+use crate::FrozenRegistryAccess;
+#[cfg(test)]
 use crate::RegistrySet;
 
 use super::{
@@ -45,7 +47,7 @@ pub struct DialogBlocksAttacksState {
 
 pub(super) fn decode_blocks_attacks(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogBlocksAttacksState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
@@ -78,7 +80,7 @@ pub(super) fn decode_blocks_attacks(
 
 fn damage_reductions(
     entries: &[NbtSummaryEntry],
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<Vec<DialogBlocksAttacksDamageReductionState>, String> {
     let Some(value) = find_entry(entries, "damage_reductions") else {
@@ -107,7 +109,7 @@ fn damage_reductions(
 
 fn decode_damage_reduction(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogBlocksAttacksDamageReductionState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
@@ -163,7 +165,7 @@ fn item_damage(
 fn optional_holder_set(
     entries: &[NbtSummaryEntry],
     field: &str,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<Option<DialogRegistryHolderSetState>, String> {
     find_entry(entries, field)

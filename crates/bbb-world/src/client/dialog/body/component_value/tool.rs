@@ -1,6 +1,8 @@
 use bbb_protocol::NbtSummaryValue;
 use serde::{Deserialize, Serialize};
 
+use crate::FrozenRegistryAccess;
+#[cfg(test)]
 use crate::RegistrySet;
 
 use super::{
@@ -31,7 +33,7 @@ pub struct DialogToolState {
 
 pub(super) fn decode_tool(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogToolState, String> {
     let NbtSummaryValue::Compound(entries) = value else {
@@ -75,7 +77,7 @@ pub(super) fn decode_tool(
 
 fn decode_tool_rule(
     value: &NbtSummaryValue,
-    registries: Option<&RegistrySet>,
+    registries: Option<FrozenRegistryAccess<'_>>,
     what: &str,
 ) -> Result<DialogToolRuleState, String> {
     let NbtSummaryValue::Compound(entries) = value else {

@@ -1842,7 +1842,11 @@ pub(super) fn decode_supported_component_value_with_context(
             }
         }
         VANILLA_DATA_COMPONENT_CONSUMABLE_TYPE_ID => DialogDataComponentValueState::Consumable {
-            consumable: decode_consumable(value, context.registries, &what)?,
+            consumable: decode_consumable(
+                value,
+                context.registries.map(crate::RegistrySet::frozen_access),
+                &what,
+            )?,
         },
         VANILLA_DATA_COMPONENT_USE_REMAINDER_TYPE_ID => {
             DialogDataComponentValueState::UseRemainder {
@@ -1851,7 +1855,11 @@ pub(super) fn decode_supported_component_value_with_context(
         }
         VANILLA_DATA_COMPONENT_DEATH_PROTECTION_TYPE_ID => {
             DialogDataComponentValueState::DeathProtection {
-                effects: decode_death_protection(value, context.registries, &what)?,
+                effects: decode_death_protection(
+                    value,
+                    context.registries.map(crate::RegistrySet::frozen_access),
+                    &what,
+                )?,
             }
         }
         VANILLA_DATA_COMPONENT_BEES_TYPE_ID => DialogDataComponentValueState::Bees {
@@ -1910,25 +1918,45 @@ pub(super) fn decode_supported_component_value_with_context(
             }
         }
         VANILLA_DATA_COMPONENT_EQUIPPABLE_TYPE_ID => DialogDataComponentValueState::Equippable {
-            equippable: decode_equippable(value, context.registries, &what)?,
+            equippable: decode_equippable(
+                value,
+                context.registries.map(crate::RegistrySet::frozen_access),
+                &what,
+            )?,
         },
         VANILLA_DATA_COMPONENT_BLOCKS_ATTACKS_TYPE_ID => {
             DialogDataComponentValueState::BlocksAttacks {
-                blocks_attacks: decode_blocks_attacks(value, context.registries, &what)?,
+                blocks_attacks: decode_blocks_attacks(
+                    value,
+                    context.registries.map(crate::RegistrySet::frozen_access),
+                    &what,
+                )?,
             }
         }
         VANILLA_DATA_COMPONENT_ENCHANTMENTS_TYPE_ID => {
             DialogDataComponentValueState::Enchantments {
-                entries: decode_enchantments(value, context.registries, &what)?,
+                entries: decode_enchantments(
+                    value,
+                    context.registries.map(crate::RegistrySet::frozen_access),
+                    &what,
+                )?,
             }
         }
         VANILLA_DATA_COMPONENT_STORED_ENCHANTMENTS_TYPE_ID => {
             DialogDataComponentValueState::StoredEnchantments {
-                entries: decode_enchantments(value, context.registries, &what)?,
+                entries: decode_enchantments(
+                    value,
+                    context.registries.map(crate::RegistrySet::frozen_access),
+                    &what,
+                )?,
             }
         }
         VANILLA_DATA_COMPONENT_TOOL_TYPE_ID => DialogDataComponentValueState::Tool {
-            tool: decode_tool(value, context.registries, &what)?,
+            tool: decode_tool(
+                value,
+                context.registries.map(crate::RegistrySet::frozen_access),
+                &what,
+            )?,
         },
         VANILLA_DATA_COMPONENT_WRITABLE_BOOK_CONTENT_TYPE_ID => {
             DialogDataComponentValueState::WritableBookContent {
@@ -1941,9 +1969,12 @@ pub(super) fn decode_supported_component_value_with_context(
             }
         }
         _ => {
-            if let Some(decoded) =
-                decode_holder_backed_component_value(type_id, value, context.registries, &what)
-            {
+            if let Some(decoded) = decode_holder_backed_component_value(
+                type_id,
+                value,
+                context.registries.map(crate::RegistrySet::frozen_access),
+                &what,
+            ) {
                 return decoded.map(Some);
             }
             return decode_string_enum_component_value(type_id, &what, value);

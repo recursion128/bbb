@@ -44,7 +44,7 @@ pub(super) fn decode_instrument_holder(
             let holder = decode_registry_holder_reference(
                 value,
                 INSTRUMENT_REGISTRY,
-                context.registries,
+                context.registries.map(crate::RegistrySet::frozen_access),
                 what,
             )?;
             Ok(DialogInstrumentHolderState::Named {
