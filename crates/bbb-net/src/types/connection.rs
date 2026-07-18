@@ -24,6 +24,8 @@ pub struct ConnectionOptions {
     pub probe_after_first_chunk_packets: usize,
     #[serde(default)]
     pub client_information: ClientInformation,
+    #[serde(default)]
+    pub server_resource_pack_policy: ServerResourcePackPolicy,
 }
 
 impl ConnectionOptions {
@@ -44,6 +46,7 @@ impl ConnectionOptions {
             accepted_code_of_conduct_hash: None,
             probe_after_first_chunk_packets: 0,
             client_information: ClientInformation::default(),
+            server_resource_pack_policy: ServerResourcePackPolicy::Decline,
         })
     }
 
@@ -65,6 +68,14 @@ impl ConnectionOptions {
     pub fn is_authenticated(&self) -> bool {
         self.session_credentials.is_some()
     }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ServerResourcePackPolicy {
+    Accept,
+    #[default]
+    Decline,
 }
 
 #[derive(Clone)]

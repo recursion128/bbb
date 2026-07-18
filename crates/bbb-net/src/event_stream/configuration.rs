@@ -4,14 +4,26 @@ use bbb_world::code_of_conduct_text_hash;
 
 use crate::{
     event_stream::{deferred_keep_alive_event, emit, EventStreamContext},
-    resource_pack::response_action_for_push,
-    types::{ConnectionState, NetEvent},
+    resource_pack::response_action_for_push_with_policy,
+    types::{ConnectionState, NetEvent, ServerResourcePackPolicy},
 };
 
 impl EventStreamContext {
     pub(super) async fn handle_configuration_packet(
         &mut self,
         packet: ConfigurationClientbound,
+    ) -> Result<Option<Transfer>> {
+        self.handle_configuration_packet_with_resource_pack_policy(
+            packet,
+            ServerResourcePackPolicy::Decline,
+        )
+        .await
+    }
+
+    pub(super) async fn handle_configuration_packet_with_resource_pack_policy(
+        &mut self,
+        packet: ConfigurationClientbound,
+        resource_pack_policy: ServerResourcePackPolicy,
     ) -> Result<Option<Transfer>> {
         let mut transfer = None;
         match packet {
@@ -45,7 +57,7 @@ impl EventStreamContext {
             }
             ConfigurationClientbound::ResourcePackPush(update) => {
                 let pack_id = update.id;
-                let action = response_action_for_push(&update);
+                let action = response_action_for_push_with_policy(&update, resource_pack_policy);
                 let (id, payload) =
                     packets::encode_configuration_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;

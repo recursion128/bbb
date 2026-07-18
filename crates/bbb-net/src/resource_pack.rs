@@ -15,6 +15,8 @@ use reqwest::{
 use sha1::{Digest, Sha1};
 use uuid::Uuid;
 
+use crate::types::ServerResourcePackPolicy;
+
 pub const VANILLA_MAX_SERVER_PACK_DOWNLOAD_BYTES: u64 = 250 * 1024 * 1024;
 const DEFAULT_SERVER_PACK_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60);
 static DOWNLOAD_SERIAL: AtomicU64 = AtomicU64::new(0);
@@ -338,8 +340,18 @@ impl Drop for DownloadCleanup {
 }
 
 pub(crate) fn response_action_for_push(update: &ResourcePackPush) -> ResourcePackResponseAction {
+    response_action_for_push_with_policy(update, ServerResourcePackPolicy::Decline)
+}
+
+pub(crate) fn response_action_for_push_with_policy(
+    update: &ResourcePackPush,
+    policy: ServerResourcePackPolicy,
+) -> ResourcePackResponseAction {
     if is_allowed_resource_pack_url(&update.url) {
-        ResourcePackResponseAction::Declined
+        match policy {
+            ServerResourcePackPolicy::Accept => ResourcePackResponseAction::Accepted,
+            ServerResourcePackPolicy::Decline => ResourcePackResponseAction::Declined,
+        }
     } else {
         ResourcePackResponseAction::InvalidUrl
     }
@@ -380,9 +392,22 @@ mod tests {
 
     #[test]
     fn resource_pack_response_follows_vanilla_url_scheme_gate() {
-        assert!(is_allowed_resource_pack_url(
-            "https://example.invalid/pack.zip"
-        ));
+        let valid = ResourcePackPush {
+            id: Uuid::nil(),
+            url: "https://example.invalid/pack.zip".to_string(),
+            hash: "".to_string(),
+            required: false,
+            prompt: None,
+        };
+        assert_eq!(
+            response_action_for_push_with_policy(&valid, ServerResourcePackPolicy::Accept),
+            ResourcePackResponseAction::Accepted
+        );
+        assert_eq!(
+            response_action_for_push_with_policy(&valid, ServerResourcePackPolicy::Decline),
+            ResourcePackResponseAction::Declined
+        );
+        assert!(is_allowed_resource_pack_url(&valid.url));
         assert!(is_allowed_resource_pack_url(
             "http://example.invalid/pack.zip"
         ));

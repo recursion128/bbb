@@ -154,7 +154,12 @@ pub async fn run_event_stream(
             }
             ConnectionState::Configuration => {
                 let packet = packets::decode_configuration_clientbound(packet_id, &payload)?;
-                stream.handle_configuration_packet(packet).await?
+                stream
+                    .handle_configuration_packet_with_resource_pack_policy(
+                        packet,
+                        options.server_resource_pack_policy,
+                    )
+                    .await?
             }
             ConnectionState::Play => {
                 let packet = packets::decode_play_clientbound(packet_id, &payload)?;
@@ -168,7 +173,12 @@ pub async fn run_event_stream(
                                 transfer = Some(next);
                             }
                         } else {
-                            transfer = stream.handle_play_packet(packet).await?;
+                            transfer = stream
+                                .handle_play_packet_with_resource_pack_policy(
+                                    packet,
+                                    options.server_resource_pack_policy,
+                                )
+                                .await?;
                         }
                     }
                 }

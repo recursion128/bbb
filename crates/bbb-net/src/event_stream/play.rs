@@ -5,14 +5,23 @@ use tokio::sync::oneshot;
 use crate::{
     driver::send_chat_acknowledgement,
     event_stream::{deferred_keep_alive_event, emit, EventStreamContext},
-    resource_pack::response_action_for_push,
-    types::{ConnectionState, NetEvent},
+    resource_pack::response_action_for_push_with_policy,
+    types::{ConnectionState, NetEvent, ServerResourcePackPolicy},
 };
 
 impl EventStreamContext {
     pub(super) async fn handle_play_packet(
         &mut self,
         packet: PlayClientbound,
+    ) -> Result<Option<Transfer>> {
+        self.handle_play_packet_with_resource_pack_policy(packet, ServerResourcePackPolicy::Decline)
+            .await
+    }
+
+    pub(super) async fn handle_play_packet_with_resource_pack_policy(
+        &mut self,
+        packet: PlayClientbound,
+        resource_pack_policy: ServerResourcePackPolicy,
     ) -> Result<Option<Transfer>> {
         let mut transfer = None;
         match packet {
@@ -83,7 +92,7 @@ impl EventStreamContext {
             }
             PlayClientbound::ResourcePackPush(update) => {
                 let pack_id = update.id;
-                let action = response_action_for_push(&update);
+                let action = response_action_for_push_with_policy(&update, resource_pack_policy);
                 let (id, payload) = packets::encode_play_resource_pack_response(pack_id, action);
                 self.conn.send_packet(id, &payload).await?;
                 emit(
