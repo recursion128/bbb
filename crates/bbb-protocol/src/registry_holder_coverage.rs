@@ -139,7 +139,7 @@ mod tests {
                 *counts.entry(entry.family.as_str()).or_insert(0usize) += 1;
                 counts
             });
-        assert_eq!(counts["network-holder-or-inline"], 2);
+        assert_eq!(counts["network-holder-or-inline"], 1);
         assert_eq!(
             counts["network-holder-or-inline-banner-pattern-synchronized"],
             1
@@ -152,6 +152,10 @@ mod tests {
         );
         assert_eq!(counts["network-holder-or-inline-sound-event"], 1);
         assert_eq!(counts["network-holder-or-inline-trims-synchronized"], 2);
+        assert_eq!(
+            counts["network-holder-or-inline-painting-variant-synchronized"],
+            1
+        );
         assert_eq!(counts["network-holder-reference-animal-sound-variants"], 5);
         assert_eq!(counts["network-holder-reference-attribute-built-in"], 1);
         assert_eq!(counts["network-holder-reference-cat-variant"], 1);
@@ -183,7 +187,8 @@ mod tests {
         assert_eq!(counts["persistent-holder-or-inline-dialog-synchronized"], 1);
         assert_eq!(counts["persistent-holder-or-inline"], 23);
         assert_eq!(counts["persistent-holder-or-inline-banner-pattern"], 1);
-        assert_eq!(counts["persistent-holder-reference"], 41);
+        assert_eq!(counts["persistent-holder-reference"], 40);
+        assert_eq!(counts["persistent-holder-reference-painting-variant"], 1);
         assert_eq!(counts["persistent-holder-or-inline-trims"], 2);
         assert_eq!(counts["persistent-holder-set-custom"], 3);
         assert_eq!(
@@ -200,7 +205,7 @@ mod tests {
                 .iter()
                 .filter(|entry| entry.status == RegistryHolderCoverageStatus::Partial)
                 .count(),
-            152
+            150
         );
         assert_eq!(
             ledger
@@ -223,7 +228,7 @@ mod tests {
             .iter()
             .filter(|entry| entry.status == RegistryHolderCoverageStatus::Complete)
             .collect::<Vec<_>>();
-        assert_eq!(complete.len(), 39);
+        assert_eq!(complete.len(), 41);
         assert_eq!(
             complete
                 .iter()
@@ -250,6 +255,7 @@ mod tests {
                 "minecraft:mob_effect",
                 "minecraft:pig_variant",
                 "minecraft:pig_sound_variant",
+                "minecraft:painting_variant",
                 "minecraft:potion",
                 "minecraft:sound_event",
                 "minecraft:trim_material",
@@ -262,6 +268,81 @@ mod tests {
                 "minecraft:zombie_nautilus_variant",
             ])
         );
+    }
+
+    #[test]
+    fn complete_painting_variant_families_keep_typed_persistence_and_render_guards() {
+        let ledger = vanilla_registry_holder_coverage_26_1().unwrap();
+        for family in [
+            "network-holder-or-inline-painting-variant-synchronized",
+            "persistent-holder-reference-painting-variant",
+        ] {
+            let entries = ledger
+                .entries
+                .iter()
+                .filter(|entry| entry.family == family)
+                .collect::<Vec<_>>();
+            assert_eq!(entries.len(), 1, "painting coverage family {family}");
+            assert_eq!(
+                entries[0].status,
+                RegistryHolderCoverageStatus::Complete,
+                "painting coverage family {family}"
+            );
+        }
+
+        let protocol = include_str!("packets/data_components.rs");
+        assert!(protocol.contains("fn decode_painting_variant_holder_summary("));
+
+        let world = include_str!("../../bbb-world/src/registries/painting_variants.rs");
+        for required in [
+            "pub fn painting_variant_presentation(",
+            "fn decode_painting_variant(",
+            "vanilla_painting_variant_for_resource_id(&entry.id)",
+        ] {
+            assert!(
+                world.contains(required),
+                "painting world path lost structural guard {required}"
+            );
+        }
+
+        let persistent = include_str!("../../bbb-native/src/input/component_patch.rs");
+        for required in [
+            "fn encode_painting_variant(",
+            "if patch.painting_variant_direct.is_some()",
+            "context.registry_resource_id(\"minecraft:painting_variant\"",
+        ] {
+            assert!(
+                persistent.contains(required),
+                "painting persistence path lost structural guard {required}"
+            );
+        }
+
+        let native_textures = include_str!("../../bbb-native/src/entity_variant_textures.rs");
+        assert!(native_textures.contains("synchronize_texture_atlas(\"paintings\""));
+        assert!(native_textures.contains("ready_painting_texture("));
+        let native_scene = include_str!("../../bbb-native/src/entity_scene/painting.rs");
+        for required in [
+            "pub(super) fn painting_model_instances(",
+            "painting_light_probe_block_pos(",
+            "EntityModelInstance::painting_tile(",
+        ] {
+            assert!(
+                native_scene.contains(required),
+                "painting scene path lost structural guard {required}"
+            );
+        }
+
+        let renderer = include_str!("../../bbb-renderer/src/entity_models/textured.rs");
+        for required in [
+            "pub(in crate::entity_models) fn render_painting_tile(",
+            "append_painting_tile_geometry(",
+            "EntityModelLayerRenderType::EntityCutoutZOffset",
+        ] {
+            assert!(
+                renderer.contains(required),
+                "painting renderer path lost structural guard {required}"
+            );
+        }
     }
 
     #[test]
