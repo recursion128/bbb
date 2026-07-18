@@ -955,13 +955,15 @@ Owner: `bbb-renderer` + `bbb-native` + `bbb-world`
   server tag-query response, which is the complete NBT authority; private
   owner/target/inventory/timer/RNG fields are not client work and must not be
   synthesized from defaults. Remaining observable work includes registry-backed
-  entity-data projection beyond painting-variant bounds/center and named F3
-  persistence (the fixed vanilla entity/block-entity type catalogs are generated),
+  other registry-backed entity-data projection (the fixed vanilla
+  entity/block-entity type catalogs are generated),
   packed variant projection, remaining codec-backed SNBT projection (component removals are complete;
   added values still include `AbstractArrow`
   `inBlockState` and `item`, attribute-modifier override-display Component trees,
-  and lossless persistent reconstruction for direct instrument, direct
-  jukebox-song, and direct painting-variant network holders. Keep their dispatch
+  and lossless persistent reconstruction for direct instrument and direct
+  jukebox-song network holders. Painting direct network holders are intentionally
+  omitted from persistent reconstruction because vanilla `PaintingVariant.CODEC`
+  is a named-only `RegistryFixedCodec`. Keep the remaining dispatch
   owned by the protocol
   generated-metadata/handler descriptor catalog and native persistent SNBT encoder registry
   beyond the supported custom-NBT/primitive (including repair-cost/enchantable/glider,

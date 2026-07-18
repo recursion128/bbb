@@ -23,11 +23,11 @@ the number of concrete vanilla call sites tied to its registry for diagnostics.
 
 The generated
 `docs/registry-holder-consumer-coverage-26.1.json` ledger maps all 194 calls to
-40 checked families. Coverage selectors may narrow a shared vanilla source by
+42 checked families. Coverage selectors may narrow a shared vanilla source by
 concrete resource id without classifying its unrelated registry calls. The
 remaining partial families name their current bbb resource-id or tag resolver surface. They remain
 `partial` until the owning decoder/encoder receives registry context and the
-registry family has custom-reorder tests; this accounts for 152 rows. The
+registry family has custom-reorder tests; this accounts for 150 rows. The
 `sound_event` reference/direct stream codec is `complete`: vanilla owns it in
 the client built-in layer, and bbb's generated static order, direct holder
 payload, world ownership, and audio runtime resolution have cross-layer tests.
@@ -116,6 +116,13 @@ network and persistent forms. Tooltip, block-entity, SNBT, and runtime atlas
 consumers share that identity; custom sprites use the `banner_patterns` atlas and
 missingno rather than a bootstrap ordinal. The deferred no-depth-write render
 pipeline is a separate presentation gap, not a holder-identity gap.
+Both painting-variant holder shapes are `complete`: the network stream codec
+retains named or inline synchronized values, while the persistent
+`RegistryFixedCodec` accepts named references only. Current-session identity
+drives typed tooltip text, entity bounds/direction, per-tile light, and
+front/back/boundary geometry from the `paintings` atlas; malformed or unknown
+holders fail closed, and a direct network holder is never fabricated into a
+persistent inline value.
 The synchronized cat, chicken, cow, pig, and wolf sound-variant stream holders
 are `complete`: entity metadata ids resolve in each server registry order, all
 five codec shapes retain their required named/direct SoundEvent holders, and

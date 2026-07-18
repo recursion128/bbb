@@ -19169,3 +19169,16 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   holder-or-inline and holder-set/tag factories as complete. Resource-id selectors keep shared
   `DataComponents.java` rows narrow, and structural guards pin the protocol, world, persistence,
   atlas, and renderer integration surfaces.
+
+# 2026-07-18: Project synchronized painting variant registries
+
+- Retained named and direct network painting holders through current-session order with typed
+  width, height, asset, title, and author projection. Item tooltips preserve styled components;
+  persistent input follows vanilla's named-only `RegistryFixedCodec` and fails closed for direct
+  network holders rather than inventing an inline persistent value.
+- Projected painting direction and variant into entity render sources, expanded each entity into
+  independently lit 1x1 tiles, loaded custom front/back/missing sprites from the startup
+  `paintings` atlas, and emitted vanilla front partitions, full backs, and boundary-only edges.
+- Split the network and persistent painting calls from the generic holder families in the generated
+  coverage ledger. Both calls are complete with locator-checked protocol, world, tooltip,
+  persistence, atlas, light, and renderer evidence.

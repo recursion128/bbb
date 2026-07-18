@@ -404,9 +404,8 @@ owner 按消费需要实现 typed value decode。
    或 inline value，但 resource/SNBT/render 投影必须在拥有当前 session registry 时才
    解析。unknown id、unknown key、缺 entry data 和不支持的 direct value 必须安全省略
    或保留明确 diagnostics，禁止误套 vanilla 下标。
-5. **typed entry decode**：按现有消费者需求逐个实现 dynamic registry entry 的 typed
-   NBT/Codec 摘要，优先 damage type、dimension type/biome、enchantment、trim、
-   instrument、painting/jukebox/banner、animal/sound variant；未消费 registry 仍可
+5. **typed entry decode**：按 coverage ledger 仍标记 `partial` 且已有实际消费者的
+   dynamic registry family，逐个实现所需 typed NBT/Codec 摘要；未消费 registry 仍可
    无损保留 ordered key/raw NBT，不为抽象完整度提前复制所有 Mojang Codec。
 6. **消费者迁移**：清除 component/item-model/entity-scene/audio/HUD 中已可由 session
    registry 解析的 bootstrap 数组和 numeric-id match；sound event、jukebox song、

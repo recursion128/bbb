@@ -133,11 +133,35 @@
       "decision": "Vanilla 26.1 synchronizes BannerPattern.DIRECT_CODEC and sends named or direct holders in banner-pattern layers. Protocol retains both direct fields; world resolves current-session holder order with exact malformed-field diagnostics and only known vanilla data-less stubs use resource identity. Tooltip, persistent debug, block-entity projection, and banner_patterns atlas rendering consume the typed value; custom entries and reorder reach their own translation and sprite, while unknown holders never fall back by bootstrap ordinal."
     },
     {
+      "id": "network-holder-or-inline-painting-variant-synchronized",
+      "selector": {
+        "kind": "network_holder_or_inline",
+        "resource_ids": [
+          "minecraft:painting_variant"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/entity_scene/painting.rs#pub(super) fn painting_model_instances",
+      "evidence": [
+        "vanilla:net/minecraft/world/entity/decoration/painting/PaintingVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<PaintingVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.PAINTING_VARIANT, PaintingVariant.DIRECT_CODEC, RegistryValidator.nonEmpty())",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary",
+        "crates/bbb-world/src/registries/painting_variants.rs#pub fn painting_variant_presentation",
+        "crates/bbb-world/src/registries/painting_variants.rs#fn decodes_synchronized_direct_codec_fields",
+        "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes",
+        "crates/bbb-native/src/item_models/tests.rs#fn painting_tooltip_context_uses_session_order_and_typed_components",
+        "crates/bbb-native/src/entity_variant_textures.rs#fn painting_atlas_uploads_front_back_and_missingno_sprites",
+        "crates/bbb-renderer/src/entity_models/tests/painting.rs#fn painting_tiles_emit_vanilla_partitioned_faces_and_per_tile_light"
+      ],
+      "decision": "Vanilla 26.1 synchronizes PaintingVariant.DIRECT_CODEC and sends named or inline holders in item components and painting entity metadata. Protocol retains both forms; world resolves the current-session holder order, validates width/height/asset/components, and permits resource-identity fallback only for known vanilla data-less stubs. Tooltips, entity bounds/direction, per-tile light, paintings-atlas sprites, and exact front/back/boundary geometry consume that typed projection; malformed and unknown entries never fall back by bootstrap ordinal."
+    },
+    {
       "id": "network-holder-or-inline",
       "selector": {
         "kind": "network_holder_or_inline",
         "exclude_resource_ids": [
-          "minecraft:banner_pattern"
+          "minecraft:banner_pattern",
+          "minecraft:painting_variant"
         ],
         "exclude_source_paths": [
           "net/minecraft/sounds/SoundEvent.java",
@@ -736,9 +760,32 @@
       "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families"
     },
     {
+      "id": "persistent-holder-reference-painting-variant",
+      "selector": {
+        "kind": "persistent_holder_reference",
+        "resource_ids": [
+          "minecraft:painting_variant"
+        ]
+      },
+      "status": "complete",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#fn encode_painting_variant",
+      "evidence": [
+        "vanilla:net/minecraft/world/entity/decoration/painting/PaintingVariant.java#public static final Codec<Holder<PaintingVariant>> CODEC = RegistryFixedCodec.create",
+        "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
+        "crates/bbb-world/src/registries/painting_variants.rs#pub fn painting_variant_presentation",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_painting_variant",
+        "crates/bbb-native/src/input/component_patch.rs#fn painting_variant_encoder_uses_session_order_or_fixed_baseline",
+        "crates/bbb-native/src/input/tests.rs#fn local_painting_save_nbt_and_bounds_follow_synchronized_holder_order"
+      ],
+      "decision": "PaintingVariant.CODEC is RegistryFixedCodec, so persistent values are named references only: native encodes a synchronized holder through its current-session resource id, uses the fixed vanilla identity only when no synchronized registry exists, and fails closed for direct network holders or unknown session ids rather than inventing a persistent inline compound."
+    },
+    {
       "id": "persistent-holder-reference",
       "selector": {
-        "kind": "persistent_holder_reference"
+        "kind": "persistent_holder_reference",
+        "exclude_resource_ids": [
+          "minecraft:painting_variant"
+        ]
       },
       "status": "partial",
       "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",

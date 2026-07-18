@@ -1594,43 +1594,51 @@
     {
       "call_site": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java:41:63:RegistryFixedCodec.create",
       "column": 63,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/input/component_patch.rs#fn encode_painting_variant",
+      "decision": "PaintingVariant.CODEC is RegistryFixedCodec, so persistent values are named references only: native encodes a synchronized holder through its current-session resource id, uses the fixed vanilla identity only when no synchronized registry exists, and fails closed for direct network holders or unknown session ids rather than inventing a persistent inline compound.",
       "evidence": [
+        "vanilla:net/minecraft/world/entity/decoration/painting/PaintingVariant.java#public static final Codec<Holder<PaintingVariant>> CODEC = RegistryFixedCodec.create",
         "vanilla:net/minecraft/resources/RegistryFixedCodec.java#public final class RegistryFixedCodec<E>",
-        "vanilla:net/minecraft/core/Registry.java#default Codec<Holder<T>> holderByNameCodec",
-        "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_resource_id"
+        "crates/bbb-world/src/registries/painting_variants.rs#pub fn painting_variant_presentation",
+        "crates/bbb-native/src/input/component_patch.rs#fn encode_painting_variant",
+        "crates/bbb-native/src/input/component_patch.rs#fn painting_variant_encoder_uses_session_order_or_fixed_baseline",
+        "crates/bbb-native/src/input/tests.rs#fn local_painting_save_nbt_and_bounds_follow_synchronized_holder_order"
       ],
       "factory": "RegistryFixedCodec.create",
-      "family": "persistent-holder-reference",
+      "family": "persistent-holder-reference-painting-variant",
       "kind": "persistent_holder_reference",
       "line": 41,
       "owner": "net.minecraft.world.entity.decoration.painting.PaintingVariant",
       "registry_expression": "Registries.PAINTING_VARIANT",
       "resource_id": "minecraft:painting_variant",
       "source_path": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java:42:101:ByteBufCodecs.holder",
       "column": 101,
-      "consumer": "crates/bbb-world/src/registries/state.rs#pub fn resolved_entry_by_holder_id",
-      "decision": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families",
+      "consumer": "crates/bbb-native/src/entity_scene/painting.rs#pub(super) fn painting_model_instances",
+      "decision": "Vanilla 26.1 synchronizes PaintingVariant.DIRECT_CODEC and sends named or inline holders in item components and painting entity metadata. Protocol retains both forms; world resolves the current-session holder order, validates width/height/asset/components, and permits resource-identity fallback only for known vanilla data-less stubs. Tooltips, entity bounds/direction, per-tile light, paintings-atlas sprites, and exact front/back/boundary geometry consume that typed projection; malformed and unknown entries never fall back by bootstrap ordinal.",
       "evidence": [
-        "vanilla:net/minecraft/network/codec/ByteBufCodecs.java#static <T> StreamCodec<RegistryFriendlyByteBuf, Holder<T>> holder(",
-        "crates/bbb-protocol/src/packets/chat.rs#fn decode_chat_type_holder",
-        "crates/bbb-protocol/src/packets/client_audio.rs#fn decode_sound_event_holder",
-        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary"
+        "vanilla:net/minecraft/world/entity/decoration/painting/PaintingVariant.java#public static final StreamCodec<RegistryFriendlyByteBuf, Holder<PaintingVariant>> STREAM_CODEC",
+        "vanilla:net/minecraft/resources/RegistryDataLoader.java#new RegistryDataLoader.RegistryData<>(Registries.PAINTING_VARIANT, PaintingVariant.DIRECT_CODEC, RegistryValidator.nonEmpty())",
+        "crates/bbb-protocol/src/packets/data_components.rs#fn decode_painting_variant_holder_summary",
+        "crates/bbb-world/src/registries/painting_variants.rs#pub fn painting_variant_presentation",
+        "crates/bbb-world/src/registries/painting_variants.rs#fn decodes_synchronized_direct_codec_fields",
+        "crates/bbb-world/src/entities/tests/creature_pick_bounds_projection.rs#fn block_attached_entity_pick_bounds_follow_vanilla_client_boxes",
+        "crates/bbb-native/src/item_models/tests.rs#fn painting_tooltip_context_uses_session_order_and_typed_components",
+        "crates/bbb-native/src/entity_variant_textures.rs#fn painting_atlas_uploads_front_back_and_missingno_sprites",
+        "crates/bbb-renderer/src/entity_models/tests/painting.rs#fn painting_tiles_emit_vanilla_partitioned_faces_and_per_tile_light"
       ],
       "factory": "ByteBufCodecs.holder",
-      "family": "network-holder-or-inline",
+      "family": "network-holder-or-inline-painting-variant-synchronized",
       "kind": "network_holder_or_inline",
       "line": 42,
       "owner": "net.minecraft.world.entity.decoration.painting.PaintingVariant",
       "registry_expression": "Registries.PAINTING_VARIANT",
       "resource_id": "minecraft:painting_variant",
       "source_path": "net/minecraft/world/entity/decoration/painting/PaintingVariant.java",
-      "status": "partial"
+      "status": "complete"
     },
     {
       "call_site": "net/minecraft/world/entity/npc/villager/VillagerData.java:20:13:Registry.holderByNameCodec",
