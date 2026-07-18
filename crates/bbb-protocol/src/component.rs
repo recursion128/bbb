@@ -452,10 +452,10 @@ fn append_primary_component_runs(
 }
 
 /// Extracts the render-relevant vanilla `Style` keys from a component
-/// compound (`Style.Serializer.MAP_CODEC` field names). Booleans arrive as
-/// NBT bytes (`Codec.BOOL` via `NbtOps`), the colour as a string
-/// (`TextColor.CODEC`). Wire callers validate first; direct projection keeps a
-/// defensive unset fallback for malformed scalar values.
+/// compound (`Style.Serializer.MAP_CODEC` field names). `DynamicOps` may expose
+/// booleans through any numeric tag width after registry NBT/JSON normalization;
+/// the colour remains a string (`TextColor.CODEC`). Wire callers validate first;
+/// direct projection keeps a defensive unset fallback for malformed values.
 fn component_style_from_entries(entries: &[NbtSummaryEntry]) -> ComponentStyle {
     ComponentStyle {
         bold: style_flag(entries, "bold"),
@@ -476,10 +476,7 @@ fn style_click_event(entries: &[NbtSummaryEntry]) -> Option<ComponentClickEvent>
 }
 
 fn style_flag(entries: &[NbtSummaryEntry], key: &str) -> Option<bool> {
-    match find_entry(entries, key) {
-        Some(NbtSummaryValue::Byte(value)) => Some(*value != 0),
-        _ => None,
-    }
+    codec::component_bool(find_entry(entries, key)?)
 }
 
 /// Vanilla `TextColor.parseColor`: `#`-prefixed hex literal in `0..=0xFFFFFF`,
@@ -599,6 +596,29 @@ mod tests {
                     click_event: None,
                 },
             }]
+        );
+    }
+
+    #[test]
+    fn component_style_projection_accepts_normalized_numeric_booleans() {
+        let style = NbtSummaryValue::Compound(vec![
+            NbtSummaryEntry {
+                name: "bold".to_string(),
+                value: NbtSummaryValue::Long(1),
+            },
+            NbtSummaryEntry {
+                name: "italic".to_string(),
+                value: NbtSummaryValue::Double(0.0f64.to_bits()),
+            },
+        ]);
+
+        assert_eq!(
+            component_style_from_nbt_value(&style),
+            Some(ComponentStyle {
+                bold: Some(true),
+                italic: Some(false),
+                ..ComponentStyle::default()
+            })
         );
     }
 
