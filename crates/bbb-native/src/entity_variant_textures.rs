@@ -83,7 +83,7 @@ impl NativeEntityVariantTextureRuntime {
 
     /// Resolves one `Sheets.BANNER_MAPPER` sprite from the startup banner-pattern atlas. Once the
     /// atlas itself is ready, an undeclared data-driven sprite follows vanilla's atlas lookup to
-    /// `missingno`; a failed/unavailable atlas leaves the caller free to use its static fallback.
+    /// `missingno`; an unavailable atlas leaves the caller on its static bootstrap texture path.
     pub(crate) fn ready_banner_pattern_texture(
         &self,
         sprite_id: &str,
