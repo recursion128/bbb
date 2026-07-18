@@ -105,13 +105,20 @@ pub(crate) fn lightmap_environment_attributes_for_world(world: &WorldStore) -> L
         return LightmapEnvironment::default();
     };
 
-    let mut environment = dimension_lightmap_environment(level);
-    if vanilla_lightmap_dimension_kind(level) == VanillaLightmapDimensionKind::Overworld {
+    let mut environment = dimension_lightmap_environment(level, level.environment_attributes());
+    let is_overworld =
+        vanilla_lightmap_dimension_kind(level) == VanillaLightmapDimensionKind::Overworld;
+    if is_overworld {
         let day_time = world
             .world_time()
             .map(|time| time.day_time)
             .unwrap_or(VANILLA_LIGHTMAP_DEFAULT_DAY_TIME);
         apply_overworld_timeline_lightmap_environment(&mut environment, day_time);
+    }
+    if let Ok(Some(sky_light_factor)) = world.sampled_timeline_sky_light_factor() {
+        environment.sky_factor = sky_light_factor;
+    }
+    if is_overworld {
         apply_weather_lightmap_environment(&mut environment, world.weather());
     }
     environment

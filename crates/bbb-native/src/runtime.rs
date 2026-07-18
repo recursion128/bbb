@@ -1911,7 +1911,10 @@ fn random_between_inclusive(
     random.next_int_bound(max_inclusive - min + 1) + min
 }
 
-fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment {
+fn dimension_lightmap_environment(
+    level: &WorldLevelInfo,
+    attributes: bbb_world::ClientEnvironmentAttributes,
+) -> LightmapEnvironment {
     let mut environment = LightmapEnvironment::default();
     environment.ambient_light = level.ambient_light();
     match vanilla_lightmap_dimension_kind(level) {
@@ -1933,7 +1936,6 @@ fn dimension_lightmap_environment(level: &WorldLevelInfo) -> LightmapEnvironment
         }
         VanillaLightmapDimensionKind::Other => {}
     }
-    let attributes = level.environment_attributes();
     if let Some(value) = attributes.block_light_tint {
         environment.block_light_tint = rgb24(rgb_u8_to_argb(value));
     }
@@ -13331,9 +13333,13 @@ fn camera_environment_colors(
     };
     let eye = camera_eye_position(camera);
     let dimension_attributes = world
-        .level_info()
-        .map(WorldLevelInfo::environment_attributes)
-        .unwrap_or_default();
+        .sampled_client_environment_attributes()
+        .unwrap_or_else(|_| {
+            world
+                .level_info()
+                .map(WorldLevelInfo::environment_attributes)
+                .unwrap_or_default()
+        });
     let water_fog_end_base = dimension_attributes
         .water_fog_end_distance
         .unwrap_or(VANILLA_DEFAULT_WATER_FOG_END_DISTANCE);

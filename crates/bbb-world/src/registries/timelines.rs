@@ -1,6 +1,6 @@
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
-use crate::{RegistryElementSource, RegistryEntrySource, WorldStore};
+use crate::{ClientEnvironmentAttributes, RegistryElementSource, RegistryEntrySource, WorldStore};
 
 use super::normalize_codec_identifier;
 
@@ -149,6 +149,313 @@ impl WorldStore {
         decode_timeline_definition(entry.resource_id, data.source, &data.value, registry_access)
             .map(Some)
     }
+
+    pub fn sampled_client_environment_attributes(
+        &self,
+    ) -> Result<ClientEnvironmentAttributes, TimelineProjectionError> {
+        let Some(level) = self.level_info() else {
+            return Ok(ClientEnvironmentAttributes::default());
+        };
+        let mut attributes = level.environment_attributes();
+        for (timeline, total_ticks) in self.resolved_dimension_timelines()? {
+            for track in &timeline.tracks {
+                apply_float_environment_track(&mut attributes, &timeline, track, total_ticks)?;
+            }
+        }
+        sanitize_float_environment_attributes(&mut attributes);
+        Ok(attributes)
+    }
+
+    pub fn sampled_timeline_sky_light_factor(
+        &self,
+    ) -> Result<Option<f32>, TimelineProjectionError> {
+        let Some(level) = self.level_info() else {
+            return Ok(None);
+        };
+        let mut value = level
+            .environment_attributes()
+            .sky_light_factor
+            .unwrap_or(1.0);
+        let mut applied = false;
+        for (timeline, total_ticks) in self.resolved_dimension_timelines()? {
+            for track in &timeline.tracks {
+                if track.attribute != "minecraft:visual/sky_light_factor" {
+                    continue;
+                }
+                let argument = sample_float_track(&timeline, track, total_ticks)?;
+                value = apply_float_modifier(&timeline, track, value, argument)?;
+                applied = true;
+            }
+        }
+        Ok(applied.then(|| value.clamp(0.0, 1.0)))
+    }
+
+    fn resolved_dimension_timelines(
+        &self,
+    ) -> Result<Vec<(TimelineDefinition, i64)>, TimelineProjectionError> {
+        let Some(level) = self.level_info() else {
+            return Ok(Vec::new());
+        };
+        level
+            .timeline_resource_ids()
+            .iter()
+            .map(|timeline_resource_id| {
+                let holder_id = self
+                    .registry_holder_id_by_resource_id(TIMELINE_REGISTRY, timeline_resource_id)
+                    .ok_or_else(|| {
+                        error(
+                            timeline_resource_id,
+                            "<holder>",
+                            "timeline is absent from the current session registry",
+                        )
+                    })?;
+                let timeline = self
+                    .synchronized_timeline_definition(holder_id)?
+                    .ok_or_else(|| {
+                        error(
+                            timeline_resource_id,
+                            "<root>",
+                            "timeline has no synchronized typed value",
+                        )
+                    })?;
+                let total_ticks = self
+                    .world_time()
+                    .and_then(|time| {
+                        time.clock_updates
+                            .iter()
+                            .find(|clock| clock.clock_id == timeline.clock.holder_id)
+                    })
+                    .map(|clock| clock.total_ticks)
+                    .unwrap_or(0);
+                Ok((timeline, total_ticks))
+            })
+            .collect()
+    }
+}
+
+fn apply_float_environment_track(
+    attributes: &mut ClientEnvironmentAttributes,
+    timeline: &TimelineDefinition,
+    track: &TimelineTrackDefinition,
+    total_ticks: i64,
+) -> Result<(), TimelineProjectionError> {
+    let (slot, default_value) = match track.attribute.as_str() {
+        "minecraft:visual/fog_start_distance" => (&mut attributes.fog_start_distance, 0.0),
+        "minecraft:visual/fog_end_distance" => (&mut attributes.fog_end_distance, 1024.0),
+        "minecraft:visual/sky_fog_end_distance" => (&mut attributes.sky_fog_end_distance, 512.0),
+        "minecraft:visual/cloud_fog_end_distance" => {
+            (&mut attributes.cloud_fog_end_distance, 2048.0)
+        }
+        "minecraft:visual/water_fog_start_distance" => {
+            (&mut attributes.water_fog_start_distance, -8.0)
+        }
+        "minecraft:visual/water_fog_end_distance" => (&mut attributes.water_fog_end_distance, 96.0),
+        "minecraft:visual/sky_light_factor" => (&mut attributes.sky_light_factor, 1.0),
+        _ => return Ok(()),
+    };
+    let argument = sample_float_track(timeline, track, total_ticks)?;
+    let base = slot.unwrap_or(default_value);
+    *slot = Some(apply_float_modifier(timeline, track, base, argument)?);
+    Ok(())
+}
+
+fn sample_float_track(
+    timeline: &TimelineDefinition,
+    track: &TimelineTrackDefinition,
+    total_ticks: i64,
+) -> Result<f32, TimelineProjectionError> {
+    let values = track
+        .keyframes
+        .iter()
+        .enumerate()
+        .map(|(index, keyframe)| {
+            numeric_f32(&keyframe.value)
+                .filter(|value| value.is_finite())
+                .ok_or_else(|| {
+                    track_error(
+                        timeline,
+                        track,
+                        format!("keyframes[{index}].value"),
+                        "float track expects a finite number",
+                    )
+                })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if values.len() == 1 {
+        return Ok(values[0]);
+    }
+    let sample_ticks = timeline
+        .period_ticks
+        .map(|period| total_ticks.rem_euclid(i64::from(period)))
+        .unwrap_or(total_ticks);
+    let first = &track.keyframes[0];
+    let last_index = track.keyframes.len() - 1;
+    let last = &track.keyframes[last_index];
+    let (from_index, from_ticks, to_index, to_ticks) = if let Some(period) = timeline.period_ticks {
+        let period = i64::from(period);
+        if sample_ticks < i64::from(first.ticks) {
+            (
+                last_index,
+                i64::from(last.ticks) - period,
+                0,
+                i64::from(first.ticks),
+            )
+        } else if let Some(index) = track
+            .keyframes
+            .windows(2)
+            .position(|pair| sample_ticks < i64::from(pair[1].ticks))
+        {
+            (
+                index,
+                i64::from(track.keyframes[index].ticks),
+                index + 1,
+                i64::from(track.keyframes[index + 1].ticks),
+            )
+        } else {
+            (
+                last_index,
+                i64::from(last.ticks),
+                0,
+                i64::from(first.ticks) + period,
+            )
+        }
+    } else if sample_ticks <= i64::from(first.ticks) {
+        return Ok(values[0]);
+    } else if let Some(index) = track
+        .keyframes
+        .windows(2)
+        .position(|pair| sample_ticks < i64::from(pair[1].ticks))
+    {
+        (
+            index,
+            i64::from(track.keyframes[index].ticks),
+            index + 1,
+            i64::from(track.keyframes[index + 1].ticks),
+        )
+    } else {
+        return Ok(values[last_index]);
+    };
+    if sample_ticks <= from_ticks {
+        return Ok(values[from_index]);
+    }
+    if sample_ticks >= to_ticks {
+        return Ok(values[to_index]);
+    }
+    let alpha = (sample_ticks - from_ticks) as f32 / (to_ticks - from_ticks) as f32;
+    let alpha = apply_easing(timeline, track, alpha)?;
+    Ok(values[from_index] + alpha * (values[to_index] - values[from_index]))
+}
+
+fn apply_easing(
+    timeline: &TimelineDefinition,
+    track: &TimelineTrackDefinition,
+    alpha: f32,
+) -> Result<f32, TimelineProjectionError> {
+    match &track.easing {
+        TimelineEasing::Simple(name) => match name.as_str() {
+            "constant" => Ok(0.0),
+            "linear" => Ok(alpha),
+            _ => Err(track_error(
+                timeline,
+                track,
+                "ease",
+                format!("unsupported easing {name}"),
+            )),
+        },
+        TimelineEasing::CubicBezier {
+            x1_bits,
+            y1_bits,
+            x2_bits,
+            y2_bits,
+        } => Ok(sample_cubic_bezier(
+            alpha,
+            f32::from_bits(*x1_bits),
+            f32::from_bits(*y1_bits),
+            f32::from_bits(*x2_bits),
+            f32::from_bits(*y2_bits),
+        )),
+    }
+}
+
+fn sample_cubic_bezier(alpha: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
+    let x_curve = cubic_curve(x1, x2);
+    let y_curve = cubic_curve(y1, y2);
+    let mut parameter = alpha;
+    for _ in 0..4 {
+        let gradient = cubic_gradient(x_curve, parameter);
+        if gradient < 1.0e-5 {
+            break;
+        }
+        parameter -= (cubic_sample(x_curve, parameter) - alpha) / gradient;
+    }
+    cubic_sample(y_curve, parameter)
+}
+
+fn cubic_curve(first: f32, second: f32) -> [f32; 3] {
+    [
+        3.0 * first - 3.0 * second + 1.0,
+        -6.0 * first + 3.0 * second,
+        3.0 * first,
+    ]
+}
+
+fn cubic_sample(curve: [f32; 3], value: f32) -> f32 {
+    ((curve[0] * value + curve[1]) * value + curve[2]) * value
+}
+
+fn cubic_gradient(curve: [f32; 3], value: f32) -> f32 {
+    (3.0 * curve[0] * value + 2.0 * curve[1]) * value + curve[2]
+}
+
+fn apply_float_modifier(
+    timeline: &TimelineDefinition,
+    track: &TimelineTrackDefinition,
+    base: f32,
+    argument: f32,
+) -> Result<f32, TimelineProjectionError> {
+    Ok(match track.modifier {
+        TimelineModifier::Override => argument,
+        TimelineModifier::Add => base + argument,
+        TimelineModifier::Subtract => base - argument,
+        TimelineModifier::Multiply => base * argument,
+        TimelineModifier::Minimum => base.min(argument),
+        TimelineModifier::Maximum => base.max(argument),
+        _ => {
+            return Err(track_error(
+                timeline,
+                track,
+                "modifier",
+                "modifier does not accept scalar float keyframes",
+            ))
+        }
+    })
+}
+
+fn sanitize_float_environment_attributes(attributes: &mut ClientEnvironmentAttributes) {
+    attributes.fog_end_distance = attributes.fog_end_distance.map(|value| value.max(0.0));
+    attributes.sky_fog_end_distance = attributes.sky_fog_end_distance.map(|value| value.max(0.0));
+    attributes.cloud_fog_end_distance = attributes
+        .cloud_fog_end_distance
+        .map(|value| value.max(0.0));
+    attributes.water_fog_end_distance = attributes
+        .water_fog_end_distance
+        .map(|value| value.max(0.0));
+    attributes.sky_light_factor = attributes
+        .sky_light_factor
+        .map(|value| value.clamp(0.0, 1.0));
+}
+
+fn track_error(
+    timeline: &TimelineDefinition,
+    track: &TimelineTrackDefinition,
+    field: impl AsRef<str>,
+    reason: impl Into<String>,
+) -> TimelineProjectionError {
+    error(
+        &timeline.resource_id,
+        format!("tracks.{}.{}", track.attribute, field.as_ref()),
+        reason,
+    )
 }
 
 fn decode_timeline_definition(
@@ -571,7 +878,10 @@ fn error(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RegistryPacketEntry;
+    use crate::{
+        ClientEnvironmentAttributes, RegistryPacketEntry, WorldCardinalLighting, WorldLevelInfo,
+        WorldSkybox,
+    };
 
     #[test]
     fn projects_known_pack_timeline_against_reordered_session_clocks() {
@@ -727,6 +1037,78 @@ mod tests {
         }
     }
 
+    #[test]
+    fn samples_float_tracks_by_clock_period_and_dimension_layer_order() {
+        let mut store = WorldStore::new();
+        store.record_registry_entries(
+            WORLD_CLOCK_REGISTRY,
+            0,
+            vec![RegistryPacketEntry::with_known_pack_data_for_test(
+                "example:clock",
+                b"{}".to_vec(),
+            )],
+        );
+        store.record_registry_entries(
+            TIMELINE_REGISTRY,
+            0,
+            vec![
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:override",
+                    br#"{
+                        "clock":"example:clock",
+                        "period_ticks":200,
+                        "tracks":{
+                            "minecraft:visual/sky_light_factor":{
+                                "keyframes":[
+                                    {"ticks":0,"value":0.0},
+                                    {"ticks":100,"value":1.0}
+                                ]
+                            }
+                        }
+                    }"#
+                    .to_vec(),
+                ),
+                RegistryPacketEntry::with_known_pack_data_for_test(
+                    "example:multiply",
+                    br#"{
+                        "clock":"example:clock",
+                        "tracks":{
+                            "minecraft:visual/sky_light_factor":{
+                                "modifier":"multiply",
+                                "keyframes":[{"ticks":0,"value":0.5}],
+                                "ease":"constant"
+                            }
+                        }
+                    }"#
+                    .to_vec(),
+                ),
+            ],
+        );
+        store.level = Some(test_level_info(vec![
+            "example:override".to_string(),
+            "example:multiply".to_string(),
+        ]));
+        store.apply_world_time(bbb_protocol::packets::PlayTime {
+            game_time: 250,
+            clock_updates: vec![bbb_protocol::packets::ClockUpdate {
+                clock_id: 0,
+                total_ticks: 250,
+                partial_tick: 0.0,
+                rate: 1.0,
+            }],
+        });
+
+        let sampled = store.sampled_client_environment_attributes().unwrap();
+        assert_eq!(sampled.sky_light_factor, Some(0.25));
+
+        store.level.as_mut().unwrap().timeline_resource_ids = vec![
+            "example:multiply".to_string(),
+            "example:override".to_string(),
+        ];
+        let reordered = store.sampled_client_environment_attributes().unwrap();
+        assert_eq!(reordered.sky_light_factor, Some(0.5));
+    }
+
     fn network_timeline_nbt(clock: &str) -> Vec<u8> {
         let mut out = vec![10, 8];
         write_nbt_string(&mut out, "clock");
@@ -738,5 +1120,26 @@ mod tests {
     fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
         out.extend_from_slice(&(value.len() as u16).to_be_bytes());
         out.extend_from_slice(value.as_bytes());
+    }
+
+    fn test_level_info(timeline_resource_ids: Vec<String>) -> WorldLevelInfo {
+        WorldLevelInfo {
+            dimension: "example:dimension".to_string(),
+            dimension_type_id: 0,
+            dimension_type_name: Some("example:dimension_type".to_string()),
+            biome_zoom_seed: 0,
+            default_clock_resource_id: Some("example:clock".to_string()),
+            timeline_resource_ids,
+            has_sky_light: true,
+            has_ceiling: false,
+            cardinal_lighting: WorldCardinalLighting::Default,
+            skybox: WorldSkybox::Overworld,
+            ambient_light: 0.0,
+            environment_attributes: ClientEnvironmentAttributes::default(),
+            last_death_location: None,
+            sea_level: 63,
+            is_debug: false,
+            is_flat: false,
+        }
     }
 }

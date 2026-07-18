@@ -5102,6 +5102,16 @@ fn custom_dimension_direct_environment_attributes_drive_lightmap_and_fog() {
 }
 
 #[test]
+fn custom_dimension_timeline_layers_drive_lightmap_from_session_registries() {
+    let world = world_with_custom_dimension_timeline();
+
+    let sampled = world.sampled_client_environment_attributes().unwrap();
+    assert_eq!(sampled.sky_light_factor, Some(0.125));
+    let lightmap = lightmap_environment_attributes_for_world(&world);
+    assert_eq!(lightmap.sky_factor, 0.125);
+}
+
+#[test]
 fn biome_positional_environment_values_override_custom_dimension_base() {
     let mut world = world_with_custom_dimension_environment();
     world.set_local_player_pose(local_player_pose([0.5, 0.0, 0.5], 0.0, 0.0));
@@ -6502,6 +6512,66 @@ fn world_with_custom_dimension_environment() -> WorldStore {
     world
 }
 
+fn world_with_custom_dimension_timeline() -> WorldStore {
+    let mut world = WorldStore::with_dimension(WorldDimension::default());
+    world.record_registry_entries(
+        "minecraft:world_clock",
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:clock",
+            vec![10, 0],
+        )],
+    );
+    world.record_registry_entries(
+        "minecraft:timeline",
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:lightmap",
+            custom_lightmap_timeline_nbt(),
+        )],
+    );
+    let mut dimension = custom_dimension_environment_nbt();
+    assert_eq!(dimension.pop(), Some(0));
+    dimension.push(8);
+    test_nbt_utf(&mut dimension, "timelines");
+    test_nbt_utf(&mut dimension, "example:lightmap");
+    dimension.push(0);
+    world.record_registry_entries(
+        "minecraft:dimension_type",
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:custom",
+            dimension,
+        )],
+    );
+    world.apply_login(&PlayLogin {
+        player_id: 42,
+        hardcore: false,
+        levels: vec!["example:level".to_string()],
+        max_players: 20,
+        chunk_radius: 8,
+        simulation_distance: 6,
+        reduced_debug_info: false,
+        show_death_screen: true,
+        do_limited_crafting: false,
+        common_spawn_info: CommonPlayerSpawnInfo {
+            dimension_type_id: 0,
+            dimension: "example:level".to_string(),
+            seed: 12345,
+            game_type: 0,
+            previous_game_type: -1,
+            is_debug: false,
+            is_flat: false,
+            last_death_location: None,
+            portal_cooldown: 0,
+            sea_level: 63,
+        },
+        enforces_secure_chat: true,
+    });
+    set_world_day_time(&mut world, 50);
+    world
+}
+
 fn custom_dimension_environment_nbt() -> Vec<u8> {
     let mut out = vec![10, 10];
     test_nbt_utf(&mut out, "attributes");
@@ -6531,6 +6601,35 @@ fn custom_dimension_environment_nbt() -> Vec<u8> {
         test_nbt_utf(&mut out, name);
         out.extend_from_slice(&value.to_bits().to_be_bytes());
     }
+    out.push(0);
+    out.push(0);
+    out
+}
+
+fn custom_lightmap_timeline_nbt() -> Vec<u8> {
+    let mut out = vec![10];
+    out.push(8);
+    test_nbt_utf(&mut out, "clock");
+    test_nbt_utf(&mut out, "example:clock");
+    out.push(10);
+    test_nbt_utf(&mut out, "tracks");
+    out.push(10);
+    test_nbt_utf(&mut out, "minecraft:visual/sky_light_factor");
+    out.push(8);
+    test_nbt_utf(&mut out, "modifier");
+    test_nbt_utf(&mut out, "multiply");
+    out.push(9);
+    test_nbt_utf(&mut out, "keyframes");
+    out.push(10);
+    out.extend_from_slice(&1_i32.to_be_bytes());
+    out.push(3);
+    test_nbt_utf(&mut out, "ticks");
+    out.extend_from_slice(&0_i32.to_be_bytes());
+    out.push(5);
+    test_nbt_utf(&mut out, "value");
+    out.extend_from_slice(&0.5_f32.to_bits().to_be_bytes());
+    out.push(0);
+    out.push(0);
     out.push(0);
     out.push(0);
     out
