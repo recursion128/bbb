@@ -15,6 +15,7 @@ mod painting_variants;
 mod sound_variants;
 mod state;
 mod store;
+mod timelines;
 mod trim_materials;
 mod trim_patterns;
 
@@ -82,6 +83,11 @@ pub use state::{
     UnresolvedRegistryTagHolder,
 };
 pub use store::RegistryValidationError;
+pub use timelines::{
+    TimelineClockReference, TimelineDefinition, TimelineEasing, TimelineKeyframe, TimelineModifier,
+    TimelineProjectionError, TimelineTimeMarker, TimelineTrackDefinition, WorldClockDefinition,
+    TIMELINE_REGISTRY, WORLD_CLOCK_REGISTRY,
+};
 pub use trim_materials::VanillaTrimMaterialIdentity;
 pub use trim_patterns::VanillaTrimPatternIdentity;
 
