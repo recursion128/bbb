@@ -34,6 +34,12 @@ pub struct RegistrySet {
     pub contents: BTreeMap<String, RegistryContentState>,
     #[serde(default)]
     pub tags: BTreeMap<String, RegistryTagState>,
+    /// Holder ids omitted while materializing network tags against the active
+    /// session registry. Vanilla's `NetworkPayload.resolve` drops unknown ids;
+    /// retaining them separately keeps that behavior diagnosable without
+    /// exposing unresolved holders through the checked tag view.
+    #[serde(default)]
+    pub unresolved_tag_holders: BTreeMap<String, BTreeMap<String, Vec<i32>>>,
     #[serde(skip)]
     pub block_states: BlockStateRegistry,
     #[serde(skip)]
@@ -45,6 +51,7 @@ pub(super) struct PendingRegistryCollection {
     pub registries: Vec<RegistryPacket>,
     pub contents: BTreeMap<String, RegistryContentState>,
     pub tags: BTreeMap<String, RegistryTagState>,
+    pub unresolved_tag_holders: BTreeMap<String, BTreeMap<String, Vec<i32>>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,6 +128,7 @@ impl RegistrySet {
             registries: Vec::new(),
             contents: BTreeMap::new(),
             tags: BTreeMap::new(),
+            unresolved_tag_holders: BTreeMap::new(),
             block_states: BlockStateRegistry::vanilla_26_1(),
             pending: None,
         }
@@ -235,6 +243,13 @@ impl RegistrySet {
 
     pub fn holder_ids_for_tag(&self, registry: &str, tag: &str) -> Option<&[i32]> {
         self.tags.get(registry)?.tags.get(tag).map(Vec::as_slice)
+    }
+
+    pub fn unresolved_holder_ids_for_tag(&self, registry: &str, tag: &str) -> Option<&[i32]> {
+        self.unresolved_tag_holders
+            .get(registry)?
+            .get(tag)
+            .map(Vec::as_slice)
     }
 
     pub fn holder_is_in_tag(&self, registry: &str, tag: &str, holder_id: i32) -> bool {

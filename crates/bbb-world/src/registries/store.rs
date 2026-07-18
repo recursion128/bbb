@@ -1,6 +1,7 @@
 use bbb_protocol::packets::{RegistryData, UpdateTags};
 use bbb_protocol::registry_data_types::{built_in_registry_type, synchronized_registry_data_type};
 use bbb_protocol::registry_holder_consumers::registry_holder_consumer_count;
+use std::collections::BTreeMap;
 
 use crate::WorldStore;
 
@@ -50,14 +51,22 @@ impl WorldStore {
             self.record_apply_error("registry_configuration_validation", &err);
             return Err(err);
         }
+        materialize_pending_registry_tags(&self.registries, &mut pending);
         if !pending.registries.is_empty() {
             for registry in pending.contents.keys() {
                 self.registries.tags.remove(registry);
+                self.registries.unresolved_tag_holders.remove(registry);
             }
             self.registries.registries = pending.registries;
             self.registries.contents = pending.contents;
         }
+        for registry in pending.tags.keys() {
+            self.registries.unresolved_tag_holders.remove(registry);
+        }
         self.registries.tags.append(&mut pending.tags);
+        self.registries
+            .unresolved_tag_holders
+            .append(&mut pending.unresolved_tag_holders);
         self.sync_registry_counters();
         self.sync_registry_tag_counters();
         self.items.refresh_furnace_fuel_item_ids(&self.registries);
@@ -202,6 +211,14 @@ impl WorldStore {
         self.registries.holder_ids_for_tag(registry, tag)
     }
 
+    pub fn registry_unresolved_holder_ids_for_tag(
+        &self,
+        registry: &str,
+        tag: &str,
+    ) -> Option<&[i32]> {
+        self.registries.unresolved_holder_ids_for_tag(registry, tag)
+    }
+
     pub fn registry_holder_is_in_tag(&self, registry: &str, tag: &str, holder_id: i32) -> bool {
         self.registries.holder_is_in_tag(registry, tag, holder_id)
     }
@@ -315,17 +332,23 @@ impl WorldStore {
                 .into_iter()
                 .map(|tag| (tag.tag, tag.entries))
                 .collect();
-            let target = match self.registries.pending.as_mut() {
-                Some(pending) => &mut pending.tags,
-                None => &mut self.registries.tags,
+            let raw = RegistryTagState {
+                registry: registry.registry,
+                tags,
             };
-            target.insert(
-                registry.registry.clone(),
-                RegistryTagState {
-                    registry: registry.registry,
-                    tags,
-                },
-            );
+            if let Some(pending) = self.registries.pending.as_mut() {
+                pending.tags.insert(raw.registry.clone(), raw);
+            } else {
+                let (resolved, unresolved) = materialize_registry_tags(&self.registries, None, raw);
+                let registry = resolved.registry.clone();
+                self.registries.tags.insert(registry.clone(), resolved);
+                self.registries.unresolved_tag_holders.remove(&registry);
+                if !unresolved.is_empty() {
+                    self.registries
+                        .unresolved_tag_holders
+                        .insert(registry, unresolved);
+                }
+            }
         }
 
         if self.registries.pending.is_none() {
@@ -372,6 +395,19 @@ fn validate_pending_registry_collection(
     pending: &PendingRegistryCollection,
 ) -> Result<(), RegistryValidationError> {
     for (registry, contents) in &pending.contents {
+        if contents.duplicate_entry_count() > 0 {
+            let duplicate_ids = contents
+                .duplicate_entry_ids
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(RegistryValidationError {
+                registry: registry.clone(),
+                validator: "MappedRegistry.register".to_string(),
+                message: format!("Adding duplicate keys to registry {registry}: {duplicate_ids}"),
+            });
+        }
         let Some(validator) =
             synchronized_registry_data_type(registry).and_then(|data| data.validator)
         else {
@@ -398,4 +434,62 @@ fn validate_pending_registry_collection(
         }
     }
     Ok(())
+}
+
+fn materialize_pending_registry_tags(
+    active: &super::RegistrySet,
+    pending: &mut PendingRegistryCollection,
+) {
+    let raw_tags = std::mem::take(&mut pending.tags);
+    for (_, raw) in raw_tags {
+        let (resolved, unresolved) =
+            materialize_registry_tags(active, Some(&pending.contents), raw);
+        let registry = resolved.registry.clone();
+        pending.tags.insert(registry.clone(), resolved);
+        if !unresolved.is_empty() {
+            pending.unresolved_tag_holders.insert(registry, unresolved);
+        }
+    }
+}
+
+fn materialize_registry_tags(
+    active: &super::RegistrySet,
+    pending_contents: Option<&BTreeMap<String, RegistryContentState>>,
+    raw: RegistryTagState,
+) -> (RegistryTagState, BTreeMap<String, Vec<i32>>) {
+    let RegistryTagState { registry, tags } = raw;
+    let mut resolved_tags = BTreeMap::new();
+    let mut unresolved_tags = BTreeMap::new();
+    for (tag, holder_ids) in tags {
+        let mut resolved = Vec::with_capacity(holder_ids.len());
+        let mut unresolved = Vec::new();
+        for holder_id in holder_ids {
+            let present = pending_contents
+                .and_then(|contents| contents.get(&registry))
+                .map_or_else(
+                    || {
+                        active
+                            .resolved_entry_by_holder_id(&registry, holder_id)
+                            .is_some()
+                    },
+                    |contents| contents.entry_by_holder_id(holder_id).is_some(),
+                );
+            if present {
+                resolved.push(holder_id);
+            } else {
+                unresolved.push(holder_id);
+            }
+        }
+        resolved_tags.insert(tag.clone(), resolved);
+        if !unresolved.is_empty() {
+            unresolved_tags.insert(tag, unresolved);
+        }
+    }
+    (
+        RegistryTagState {
+            registry,
+            tags: resolved_tags,
+        },
+        unresolved_tags,
+    )
 }

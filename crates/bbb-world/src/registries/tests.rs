@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::{FurnaceFuelRule, RegistryEntrySource};
-use crate::{RegistryPacketEntry, RegistrySet, UnresolvedRegistryTagHolder, WorldStore};
+use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 
 #[test]
 fn loads_vanilla_block_state_registry() {
@@ -595,7 +595,7 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
 }
 
 #[test]
-fn registry_tag_holder_resolution_is_ordered_and_rejects_unknown_holders() {
+fn registry_tag_holder_resolution_is_ordered_and_reports_unknown_holders() {
     let mut store = WorldStore::new();
     store.record_registry_entries(
         "minecraft:test",
@@ -650,12 +650,12 @@ fn registry_tag_holder_resolution_is_ordered_and_rejects_unknown_holders() {
     assert_eq!(
         store
             .registry_resource_ids_for_tag("minecraft:test", "minecraft:invalid")
-            .unwrap_err(),
-        UnresolvedRegistryTagHolder {
-            registry: "minecraft:test".to_string(),
-            tag: "minecraft:invalid".to_string(),
-            holder_id: 7,
-        }
+            .unwrap(),
+        Some(vec!["minecraft:second"])
+    );
+    assert_eq!(
+        store.registry_unresolved_holder_ids_for_tag("minecraft:test", "minecraft:invalid"),
+        Some([7].as_slice())
     );
 }
 
@@ -842,6 +842,75 @@ fn configuration_registry_validation_rejects_empty_non_empty_registry_atomically
         store.registry_resource_id_by_holder_id(registry, 0),
         Some("example:custom")
     );
+}
+
+#[test]
+fn configuration_registry_validation_rejects_duplicate_keys_atomically() {
+    let registry = "minecraft:damage_type";
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        registry,
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:old")],
+    );
+    store.begin_registry_configuration();
+    store.record_registry_entries(
+        registry,
+        0,
+        vec![
+            RegistryPacketEntry::stub("example:duplicate"),
+            RegistryPacketEntry::stub("example:duplicate"),
+        ],
+    );
+
+    let err = store.finish_registry_configuration().unwrap_err();
+    assert_eq!(err.registry, registry);
+    assert_eq!(err.validator, "MappedRegistry.register");
+    assert!(err.message.contains("example:duplicate"));
+    assert_eq!(
+        store.registry_resource_id_by_holder_id(registry, 0),
+        Some("minecraft:old")
+    );
+    assert_eq!(store.counters().registry_duplicate_entries, 0);
+}
+
+#[test]
+fn configuration_tags_resolve_after_all_registry_packets_arrive() {
+    let registry = "minecraft:damage_type";
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    store.apply_update_tags(UpdateTags {
+        registries: vec![RegistryTags {
+            registry: registry.to_string(),
+            tags: vec![TagNetworkPayload {
+                tag: "example:ordered".to_string(),
+                entries: vec![1, 7, 0],
+            }],
+        }],
+    });
+    store.record_registry_entries(
+        registry,
+        0,
+        vec![
+            RegistryPacketEntry::stub("example:first"),
+            RegistryPacketEntry::stub("example:second"),
+        ],
+    );
+
+    store.finish_registry_configuration().unwrap();
+
+    assert_eq!(
+        store
+            .registry_resource_ids_for_tag(registry, "example:ordered")
+            .unwrap(),
+        Some(vec!["example:second", "example:first"])
+    );
+    assert_eq!(
+        store.registry_unresolved_holder_ids_for_tag(registry, "example:ordered"),
+        Some([7].as_slice())
+    );
+    assert_eq!(store.counters().tag_entries_tracked, 2);
+    assert_eq!(store.counters().last_update_tags_total_value_count, 3);
 }
 
 #[test]
