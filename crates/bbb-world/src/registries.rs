@@ -5,6 +5,7 @@ mod biomes;
 mod block_states;
 mod chat_types;
 mod damage_types;
+mod dimension_types;
 mod element_value;
 mod enchantments;
 mod environment_attributes;
@@ -50,6 +51,8 @@ pub use damage_types::{
     DamageTypeDeathMessageType, DamageTypeEffects, DamageTypePresentation,
     DamageTypeProjectionError, DamageTypeScaling, DAMAGE_TYPE_REGISTRY,
 };
+pub(crate) use dimension_types::dimension_type_client_projection_from_registry;
+pub use dimension_types::DIMENSION_TYPE_REGISTRY;
 pub use element_value::{RegistryElementData, RegistryElementDecodeError, RegistryElementSource};
 pub use enchantments::{
     EnchantmentAttributeModifier, EnchantmentTooltipDefinition, VanillaEnchantmentIdentity,

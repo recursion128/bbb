@@ -1,4 +1,4 @@
-use crate::chunks::{decode_nbt_root, find_nbt_entry, NbtValue};
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 
 use super::environment_attributes::{decode_client_environment_attributes, parse_rgb};
 use super::RegistryPacketEntry;
@@ -42,24 +42,27 @@ pub struct BiomeProjectionError {
 pub(super) fn decode_biome_client_projection(
     entry: &RegistryPacketEntry,
 ) -> Result<Option<BiomeClientProjection>, BiomeProjectionError> {
-    let Some(raw) = entry.raw_data() else {
+    let Some(data) = entry.element_data() else {
         return Ok(None);
     };
-    let root = decode_nbt_root(raw)
-        .map_err(|_| error("<root>", "invalid NBT"))?
-        .ok_or_else(|| error("<root>", "missing root compound"))?;
-    let NbtValue::Compound(fields) = root else {
+    decode_biome_client_projection_value(&data.value).map(Some)
+}
+
+fn decode_biome_client_projection_value(
+    value: &NbtSummaryValue,
+) -> Result<BiomeClientProjection, BiomeProjectionError> {
+    let NbtSummaryValue::Compound(fields) = value else {
         return Err(error("<root>", "expected compound"));
     };
-    let has_precipitation = required_bool(&fields, "has_precipitation")?;
-    let temperature = required_finite_float(&fields, "temperature")?;
-    let downfall = required_finite_float(&fields, "downfall")?;
-    let temperature_modifier = match optional_string(&fields, "temperature_modifier")? {
+    let has_precipitation = required_bool(fields, "has_precipitation")?;
+    let temperature = required_finite_float(fields, "temperature")?;
+    let downfall = required_finite_float(fields, "downfall")?;
+    let temperature_modifier = match optional_string(fields, "temperature_modifier")? {
         None | Some("none") => BiomeTemperatureModifier::None,
         Some("frozen") => BiomeTemperatureModifier::Frozen,
         Some(_) => return Err(error("temperature_modifier", "unknown enum value")),
     };
-    let effects = required_compound(&fields, "effects")?;
+    let effects = required_compound(fields, "effects")?;
     let water_color = required_rgb(effects, "water_color")?;
     let foliage_color = optional_rgb(effects, "foliage_color")?;
     let dry_foliage_color = optional_rgb(effects, "dry_foliage_color")?;
@@ -70,13 +73,13 @@ pub(super) fn decode_biome_client_projection(
         Some("swamp") => BiomeGrassColorModifier::Swamp,
         Some(_) => return Err(error("effects.grass_color_modifier", "unknown enum value")),
     };
-    let attributes = optional_compound(&fields, "attributes")?
+    let attributes = optional_compound(fields, "attributes")?
         .map(decode_client_environment_attributes)
         .transpose()
         .map_err(|err| error(format!("attributes.{}", err.field), err.reason))?
         .unwrap_or_default();
 
-    Ok(Some(BiomeClientProjection {
+    Ok(BiomeClientProjection {
         has_precipitation,
         temperature,
         temperature_modifier,
@@ -90,78 +93,102 @@ pub(super) fn decode_biome_client_projection(
         sky_color: attributes.sky_color,
         water_fog_color: attributes.water_fog_color,
         water_fog_end_distance: attributes.water_fog_end_distance,
-    }))
+    })
 }
 
-fn required_bool(
-    entries: &[(String, NbtValue)],
-    field: &str,
-) -> Result<bool, BiomeProjectionError> {
-    match find_nbt_entry(entries, field) {
-        Some(NbtValue::Byte(value)) => Ok(*value != 0),
-        Some(_) => Err(error(field, "expected byte boolean")),
+fn required_bool(entries: &[NbtSummaryEntry], field: &str) -> Result<bool, BiomeProjectionError> {
+    match field_value(entries, field) {
+        Some(value) => numeric_bool(value).ok_or_else(|| error(field, "expected numeric boolean")),
         None => Err(error(field, "missing required field")),
     }
 }
 
 fn required_finite_float(
-    entries: &[(String, NbtValue)],
+    entries: &[NbtSummaryEntry],
     field: &str,
 ) -> Result<f32, BiomeProjectionError> {
-    match find_nbt_entry(entries, field) {
-        Some(NbtValue::Float(value)) if value.is_finite() => Ok(*value),
-        Some(NbtValue::Float(_)) => Err(error(field, "float must be finite")),
-        Some(_) => Err(error(field, "expected float")),
+    match field_value(entries, field) {
+        Some(value) => match numeric_f32(value) {
+            Some(value) if value.is_finite() => Ok(value),
+            Some(_) => Err(error(field, "number must be finite")),
+            None => Err(error(field, "expected number")),
+        },
         None => Err(error(field, "missing required field")),
     }
 }
 
 fn required_compound<'a>(
-    entries: &'a [(String, NbtValue)],
+    entries: &'a [NbtSummaryEntry],
     field: &str,
-) -> Result<&'a [(String, NbtValue)], BiomeProjectionError> {
+) -> Result<&'a [NbtSummaryEntry], BiomeProjectionError> {
     optional_compound(entries, field)?.ok_or_else(|| error(field, "missing required field"))
 }
 
 fn optional_compound<'a>(
-    entries: &'a [(String, NbtValue)],
+    entries: &'a [NbtSummaryEntry],
     field: &str,
-) -> Result<Option<&'a [(String, NbtValue)]>, BiomeProjectionError> {
-    match find_nbt_entry(entries, field) {
-        Some(NbtValue::Compound(value)) => Ok(Some(value)),
+) -> Result<Option<&'a [NbtSummaryEntry]>, BiomeProjectionError> {
+    match field_value(entries, field) {
+        Some(NbtSummaryValue::Compound(value)) => Ok(Some(value)),
         Some(_) => Err(error(field, "expected compound")),
         None => Ok(None),
     }
 }
 
 fn optional_string<'a>(
-    entries: &'a [(String, NbtValue)],
+    entries: &'a [NbtSummaryEntry],
     field: &str,
 ) -> Result<Option<&'a str>, BiomeProjectionError> {
-    match find_nbt_entry(entries, field) {
-        Some(NbtValue::String(value)) => Ok(Some(value)),
+    match field_value(entries, field) {
+        Some(NbtSummaryValue::String(value)) => Ok(Some(value)),
         Some(_) => Err(error(field, "expected string")),
         None => Ok(None),
     }
 }
 
-fn required_rgb(
-    entries: &[(String, NbtValue)],
-    field: &str,
-) -> Result<[u8; 3], BiomeProjectionError> {
+fn required_rgb(entries: &[NbtSummaryEntry], field: &str) -> Result<[u8; 3], BiomeProjectionError> {
     optional_rgb(entries, field)?.ok_or_else(|| error(field, "missing required field"))
 }
 
 fn optional_rgb(
-    entries: &[(String, NbtValue)],
+    entries: &[NbtSummaryEntry],
     field: &str,
 ) -> Result<Option<[u8; 3]>, BiomeProjectionError> {
-    match find_nbt_entry(entries, field) {
+    match field_value(entries, field) {
         Some(value) => parse_rgb(value)
             .map(Some)
             .ok_or_else(|| error(field, "expected #RRGGBB string or RGB int")),
         None => Ok(None),
     }
+}
+
+fn field_value<'a>(entries: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    entries
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
+}
+
+fn numeric_bool(value: &NbtSummaryValue) -> Option<bool> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => *value != 0,
+        NbtSummaryValue::Short(value) => *value != 0,
+        NbtSummaryValue::Int(value) => *value != 0,
+        NbtSummaryValue::Long(value) => *value != 0,
+        _ => return None,
+    })
+}
+
+fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => f32::from(*value),
+        NbtSummaryValue::Short(value) => f32::from(*value),
+        NbtSummaryValue::Int(value) => *value as f32,
+        NbtSummaryValue::Long(value) => *value as f32,
+        NbtSummaryValue::Float(bits) => f32::from_bits(*bits),
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
+        _ => return None,
+    })
 }
 
 fn error(field: impl Into<String>, reason: &'static str) -> BiomeProjectionError {
@@ -198,6 +225,25 @@ mod tests {
         assert_eq!(projection.sky_color, Some([0x55, 0x77, 0x99]));
         assert_eq!(projection.water_fog_color, Some([0x66, 0x88, 0xaa]));
         assert_eq!(projection.water_fog_end_distance, Some(48.0));
+    }
+
+    #[test]
+    fn decodes_known_pack_json_through_the_same_biome_projection() {
+        let data = super::super::element_value::decode_known_pack_element(
+            br##"{
+                "has_precipitation": true,
+                "temperature": 0.35,
+                "downfall": 0.8,
+                "effects": {"water_color": "#112233"},
+                "attributes": {"minecraft:visual/fog_color": "#446688"}
+            }"##,
+        )
+        .unwrap();
+
+        let projection = decode_biome_client_projection_value(&data.value).unwrap();
+        assert!(projection.has_precipitation);
+        assert_eq!(projection.water_color, [0x11, 0x22, 0x33]);
+        assert_eq!(projection.fog_color, Some([0x44, 0x66, 0x88]));
     }
 
     #[test]

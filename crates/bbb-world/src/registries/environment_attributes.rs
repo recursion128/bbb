@@ -1,8 +1,7 @@
 use std::fmt;
 
+use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use serde::{Deserialize, Serialize};
-
-use crate::chunks::{find_nbt_entry, NbtValue};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct ClientEnvironmentAttributes {
@@ -35,7 +34,7 @@ impl fmt::Display for EnvironmentAttributeProjectionError {
 }
 
 pub(crate) fn decode_client_environment_attributes(
-    entries: &[(String, NbtValue)],
+    entries: &[NbtSummaryEntry],
 ) -> Result<ClientEnvironmentAttributes, EnvironmentAttributeProjectionError> {
     Ok(ClientEnvironmentAttributes {
         fog_color: optional_rgb(entries, "minecraft:visual/fog_color")?,
@@ -83,16 +82,19 @@ pub(crate) fn decode_client_environment_attributes(
     })
 }
 
-pub(crate) fn parse_rgb(value: &NbtValue) -> Option<[u8; 3]> {
+pub(crate) fn parse_rgb(value: &NbtSummaryValue) -> Option<[u8; 3]> {
     let value = match value {
-        NbtValue::String(value) => {
+        NbtSummaryValue::String(value) => {
             let hex = value.strip_prefix('#')?;
             if hex.len() != 6 {
                 return None;
             }
             u32::from_str_radix(hex, 16).ok()?
         }
-        NbtValue::Int(value) => *value as u32 & 0x00ff_ffff,
+        NbtSummaryValue::Byte(value) => i64::from(*value) as u32 & 0x00ff_ffff,
+        NbtSummaryValue::Short(value) => i64::from(*value) as u32 & 0x00ff_ffff,
+        NbtSummaryValue::Int(value) => i64::from(*value) as u32 & 0x00ff_ffff,
+        NbtSummaryValue::Long(value) => *value as u32 & 0x00ff_ffff,
         _ => return None,
     };
     Some([
@@ -103,11 +105,11 @@ pub(crate) fn parse_rgb(value: &NbtValue) -> Option<[u8; 3]> {
 }
 
 fn optional_rgb(
-    entries: &[(String, NbtValue)],
+    entries: &[NbtSummaryEntry],
     field: &'static str,
 ) -> Result<Option<[u8; 3]>, EnvironmentAttributeProjectionError> {
-    match find_nbt_entry(entries, field) {
-        Some(NbtValue::Compound(_)) => {
+    match field_value(entries, field) {
+        Some(NbtSummaryValue::Compound(_)) => {
             Err(error(field, "attribute modifiers are not yet supported"))
         }
         Some(value) => parse_rgb(value)
@@ -125,19 +127,40 @@ enum FloatRange {
 }
 
 fn optional_float(
-    entries: &[(String, NbtValue)],
+    entries: &[NbtSummaryEntry],
     field: &'static str,
     range: FloatRange,
 ) -> Result<Option<f32>, EnvironmentAttributeProjectionError> {
-    match find_nbt_entry(entries, field) {
-        Some(NbtValue::Float(value)) if float_in_range(*value, range) => Ok(Some(*value)),
-        Some(NbtValue::Compound(_)) => {
+    match field_value(entries, field) {
+        Some(NbtSummaryValue::Compound(_)) => {
             Err(error(field, "attribute modifiers are not yet supported"))
         }
-        Some(NbtValue::Float(_)) => Err(error(field, float_range_reason(range))),
-        Some(_) => Err(error(field, "expected float")),
+        Some(value) => match numeric_f32(value) {
+            Some(value) if float_in_range(value, range) => Ok(Some(value)),
+            Some(_) => Err(error(field, float_range_reason(range))),
+            None => Err(error(field, "expected number")),
+        },
         None => Ok(None),
     }
+}
+
+fn field_value<'a>(entries: &'a [NbtSummaryEntry], name: &str) -> Option<&'a NbtSummaryValue> {
+    entries
+        .iter()
+        .find(|entry| entry.name == name)
+        .map(|entry| &entry.value)
+}
+
+fn numeric_f32(value: &NbtSummaryValue) -> Option<f32> {
+    Some(match value {
+        NbtSummaryValue::Byte(value) => f32::from(*value),
+        NbtSummaryValue::Short(value) => f32::from(*value),
+        NbtSummaryValue::Int(value) => *value as f32,
+        NbtSummaryValue::Long(value) => *value as f32,
+        NbtSummaryValue::Float(bits) => f32::from_bits(*bits),
+        NbtSummaryValue::Double(bits) => f64::from_bits(*bits) as f32,
+        _ => return None,
+    })
 }
 
 fn float_in_range(value: f32, range: FloatRange) -> bool {
@@ -168,25 +191,25 @@ mod tests {
     #[test]
     fn decodes_direct_visual_environment_attributes() {
         let entries = vec![
-            (
-                "minecraft:visual/fog_color".to_string(),
-                NbtValue::String("#123456".to_string()),
+            entry(
+                "minecraft:visual/fog_color",
+                NbtSummaryValue::String("#123456".to_string()),
             ),
-            (
-                "minecraft:visual/fog_start_distance".to_string(),
-                NbtValue::Float(-4.0),
+            entry(
+                "minecraft:visual/fog_start_distance",
+                NbtSummaryValue::Double((-4.0_f64).to_bits()),
             ),
-            (
-                "minecraft:visual/fog_end_distance".to_string(),
-                NbtValue::Float(192.0),
+            entry(
+                "minecraft:visual/fog_end_distance",
+                NbtSummaryValue::Double(192.0_f64.to_bits()),
             ),
-            (
-                "minecraft:visual/sky_light_factor".to_string(),
-                NbtValue::Float(0.25),
+            entry(
+                "minecraft:visual/sky_light_factor",
+                NbtSummaryValue::Double(0.25_f64.to_bits()),
             ),
-            (
-                "minecraft:visual/ambient_light_color".to_string(),
-                NbtValue::Int(0x203040),
+            entry(
+                "minecraft:visual/ambient_light_color",
+                NbtSummaryValue::Long(0x203040),
             ),
         ];
 
@@ -200,9 +223,9 @@ mod tests {
 
     #[test]
     fn rejects_relevant_modifier_compounds_and_invalid_ranges() {
-        let modifier = vec![(
-            "minecraft:visual/fog_color".to_string(),
-            NbtValue::Compound(Vec::new()),
+        let modifier = vec![entry(
+            "minecraft:visual/fog_color",
+            NbtSummaryValue::Compound(Vec::new()),
         )];
         assert_eq!(
             decode_client_environment_attributes(&modifier).unwrap_err(),
@@ -212,9 +235,9 @@ mod tests {
             }
         );
 
-        let invalid = vec![(
-            "minecraft:visual/sky_light_factor".to_string(),
-            NbtValue::Float(1.5),
+        let invalid = vec![entry(
+            "minecraft:visual/sky_light_factor",
+            NbtSummaryValue::Double(1.5_f64.to_bits()),
         )];
         assert_eq!(
             decode_client_environment_attributes(&invalid).unwrap_err(),
@@ -223,5 +246,12 @@ mod tests {
                 reason: "float must be finite and within 0..=1",
             }
         );
+    }
+
+    fn entry(name: &str, value: NbtSummaryValue) -> NbtSummaryEntry {
+        NbtSummaryEntry {
+            name: name.to_string(),
+            value,
+        }
     }
 }

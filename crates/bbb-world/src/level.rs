@@ -21,10 +21,9 @@ use bbb_protocol::packets::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    chunks::{decode_nbt_root, find_nbt_entry, NbtValue},
     registries::{
-        decode_client_environment_attributes, ClientEnvironmentAttributes,
-        EnvironmentAttributeProjectionError,
+        dimension_type_client_projection_from_registry, ClientEnvironmentAttributes,
+        DIMENSION_TYPE_REGISTRY,
     },
     BlockPos, WorldStore,
 };
@@ -615,8 +614,8 @@ impl WorldStore {
 
     fn apply_spawn_info(&mut self, spawn_info: &ProtocolSpawnInfo) {
         let profile = dimension_profile(spawn_info.dimension_type_id, &spawn_info.dimension);
-        let dimension_type_entry = self
-            .registry_entry_by_holder_id("minecraft:dimension_type", spawn_info.dimension_type_id);
+        let dimension_type_entry =
+            self.registry_entry_by_holder_id(DIMENSION_TYPE_REGISTRY, spawn_info.dimension_type_id);
         let dimension_type = dimension_type_client_projection_from_registry(dimension_type_entry);
         let dimension_type_entry_name = dimension_type_entry.map(|entry| entry.id.clone());
         let dimension_type_name = dimension_type_entry_name
@@ -985,128 +984,6 @@ fn built_in_dimension_default_clock_resource_id(
     match dimension_profile(dimension_type_id, dimension).name {
         Some("minecraft:overworld" | "minecraft:overworld_caves") => Some("minecraft:overworld"),
         Some("minecraft:the_end") => Some("minecraft:the_end"),
-        _ => None,
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-struct DimensionTypeClientProjection {
-    dimension: Option<WorldDimension>,
-    has_sky_light: Option<bool>,
-    has_ceiling: Option<bool>,
-    cardinal_lighting: Option<WorldCardinalLighting>,
-    skybox: Option<WorldSkybox>,
-    ambient_light: Option<f32>,
-    default_clock_resource_id: Option<String>,
-    environment_attributes: ClientEnvironmentAttributes,
-    environment_error: Option<EnvironmentAttributeProjectionError>,
-}
-
-fn dimension_type_client_projection_from_registry(
-    entry: Option<&crate::RegistryPacketEntry>,
-) -> Option<DimensionTypeClientProjection> {
-    let root = decode_nbt_root(entry?.raw_data()?).ok()??;
-    let NbtValue::Compound(fields) = root else {
-        return None;
-    };
-    let dimension = dimension_type_shape_from_fields(&fields);
-    let has_sky_light = match find_nbt_entry(&fields, "has_skylight") {
-        Some(NbtValue::Byte(value)) => Some(*value != 0),
-        _ => None,
-    };
-    let has_ceiling = match find_nbt_entry(&fields, "has_ceiling") {
-        Some(NbtValue::Byte(value)) => Some(*value != 0),
-        _ => None,
-    };
-    let cardinal_lighting = match find_nbt_entry(&fields, "cardinal_light") {
-        Some(NbtValue::String(name)) => cardinal_lighting_type_from_name(name),
-        None => Some(WorldCardinalLighting::Default),
-        _ => None,
-    };
-    let skybox = match find_nbt_entry(&fields, "skybox") {
-        Some(NbtValue::String(name)) => skybox_from_name(name),
-        None => Some(WorldSkybox::Overworld),
-        _ => None,
-    };
-    let ambient_light = match find_nbt_entry(&fields, "ambient_light") {
-        Some(NbtValue::Float(value)) => Some(*value),
-        _ => None,
-    };
-    let default_clock_resource_id = match find_nbt_entry(&fields, "default_clock") {
-        Some(NbtValue::String(resource_id)) => Some(resource_id.clone()),
-        _ => None,
-    };
-    let (environment_attributes, environment_error) = match find_nbt_entry(&fields, "attributes") {
-        Some(NbtValue::Compound(entries)) => match decode_client_environment_attributes(entries) {
-            Ok(attributes) => (attributes, None),
-            Err(err) => (ClientEnvironmentAttributes::default(), Some(err)),
-        },
-        Some(_) => (
-            ClientEnvironmentAttributes::default(),
-            Some(EnvironmentAttributeProjectionError {
-                field: "attributes",
-                reason: "expected compound",
-            }),
-        ),
-        None => (ClientEnvironmentAttributes::default(), None),
-    };
-    Some(DimensionTypeClientProjection {
-        dimension,
-        has_sky_light,
-        has_ceiling,
-        cardinal_lighting,
-        skybox,
-        ambient_light,
-        default_clock_resource_id,
-        environment_attributes,
-        environment_error,
-    })
-}
-
-fn dimension_type_shape_from_fields(fields: &[(String, NbtValue)]) -> Option<WorldDimension> {
-    // DimensionType.MIN_Y/MAX_Y/Y_SIZE with BlockPos.PACKED_Y_LENGTH = 12.
-    const MIN_Y: i32 = -2032;
-    const MAX_Y: i32 = 2031;
-    const MAX_HEIGHT: i32 = 4064;
-
-    let NbtValue::Int(min_y) = find_nbt_entry(fields, "min_y")? else {
-        return None;
-    };
-    let NbtValue::Int(height) = find_nbt_entry(fields, "height")? else {
-        return None;
-    };
-    let NbtValue::Int(logical_height) = find_nbt_entry(fields, "logical_height")? else {
-        return None;
-    };
-    if !(MIN_Y..=MAX_Y).contains(min_y)
-        || !(16..=MAX_HEIGHT).contains(height)
-        || !(0..=MAX_HEIGHT).contains(logical_height)
-        || logical_height > height
-        || min_y.rem_euclid(16) != 0
-        || height % 16 != 0
-        || min_y.checked_add(*height)? > MAX_Y + 1
-    {
-        return None;
-    }
-    Some(WorldDimension {
-        min_y: *min_y,
-        height: *height,
-    })
-}
-
-fn cardinal_lighting_type_from_name(name: &str) -> Option<WorldCardinalLighting> {
-    match name {
-        "default" => Some(WorldCardinalLighting::Default),
-        "nether" => Some(WorldCardinalLighting::Nether),
-        _ => None,
-    }
-}
-
-fn skybox_from_name(name: &str) -> Option<WorldSkybox> {
-    match name {
-        "none" => Some(WorldSkybox::None),
-        "overworld" => Some(WorldSkybox::Overworld),
-        "end" => Some(WorldSkybox::End),
         _ => None,
     }
 }

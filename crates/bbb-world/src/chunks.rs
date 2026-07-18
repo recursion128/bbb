@@ -19,7 +19,6 @@ pub(crate) use end_gateway::decode_end_gateway_block_entity_data;
 pub use heightmap::ChunkHeightmapSampler;
 pub use light::LightData;
 pub(crate) use light::{merge_light_data, sample_terrain_light};
-pub(crate) use nbt::{decode_nbt_root, find_entry as find_nbt_entry, NbtValue};
 pub use palette::{PaletteDomain, PaletteKind, PaletteValue, PalettedContainerData};
 pub(crate) use pot_decorations::decode_decorated_pot_sherds;
 pub(crate) use spawner::decode_spawner_block_entity_data;
