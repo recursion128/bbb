@@ -27,7 +27,7 @@ pub(crate) use commands::{
 };
 use commands::{
     send_client_tick_end, send_keep_alive_response, send_player_loaded, send_player_move_command,
-    send_vehicle_move_command,
+    send_resource_pack_response, send_vehicle_move_command,
 };
 
 pub(crate) async fn read_packet_or_send_play_tick(
@@ -125,6 +125,9 @@ pub(crate) async fn read_packet_or_drive_connection(
                     }
                     Some(NetCommand::CustomClickAction(packet)) => {
                         send_custom_click_action(conn, state, packet).await?;
+                    }
+                    Some(NetCommand::ResourcePackResponse { id, action }) => {
+                        send_resource_pack_response(conn, state, id, action).await?;
                     }
                     Some(NetCommand::DebugSubscriptionRequest { tick_time }) => {
                         send_debug_subscription_request(conn, tick_time).await?;
@@ -316,6 +319,9 @@ async fn read_packet_or_disconnect_command(
                     Some(NetCommand::ContainerClose(_)) => {}
                     Some(NetCommand::ContainerSlotStateChanged(_)) => {}
                     Some(NetCommand::CommandSuggestionRequest(_)) => {}
+                    Some(NetCommand::ResourcePackResponse { id, action }) => {
+                        send_resource_pack_response(conn, state, id, action).await?;
+                    }
                     Some(NetCommand::PerformRespawn) => {}
                     Some(NetCommand::RequestStats) => {}
                     Some(NetCommand::RequestGameRuleValues) => {}
@@ -350,9 +356,9 @@ mod tests {
             PlayerAbilitiesCommand, PlayerAction, PlayerActionKind, PlayerCommand,
             PlayerCommandAction, PlayerInput, RecipeBookChangeSettingsCommand,
             RecipeBookSeenRecipeCommand, RecipeBookType, RecipeDisplayId, RenameItem,
-            SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
-            SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
-            UseItemOn, Vec3d,
+            ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+            ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
+            TeleportToEntity, UseItem, UseItemOn, Vec3d,
         },
     };
     use std::{collections::BTreeMap, time::Duration};
@@ -561,6 +567,51 @@ mod tests {
             play_drive.await.unwrap(),
             ConnectionDrive::Disconnect
         ));
+    }
+
+    #[tokio::test]
+    async fn drive_connection_encodes_resource_pack_response_for_current_state() {
+        let pack_id = Uuid::from_u128(0x22222222_3333_4444_5555_666666666666);
+        for (state, expected_packet_id) in [
+            (
+                ConnectionState::Configuration,
+                ids::configuration::SERVERBOUND_RESOURCE_PACK,
+            ),
+            (ConnectionState::Play, ids::play::SERVERBOUND_RESOURCE_PACK),
+        ] {
+            let (mut conn, mut server) = raw_connection_pair_with_server().await;
+            let (tx, mut commands) = mpsc::channel(2);
+            tx.send(NetCommand::ResourcePackResponse {
+                id: pack_id,
+                action: ResourcePackResponseAction::Downloaded,
+            })
+            .await
+            .unwrap();
+            tx.send(NetCommand::Disconnect).await.unwrap();
+            let drive = tokio::spawn(async move {
+                let mut player_position_state = PlayerPositionState::default();
+                read_packet_or_drive_connection(
+                    &mut conn,
+                    state,
+                    &mut commands,
+                    &mut player_position_state,
+                )
+                .await
+                .unwrap()
+            });
+
+            let (packet_id, payload) =
+                read_server_packet(&mut server, "resource pack response").await;
+            assert_eq!(packet_id, expected_packet_id);
+            let mut decoder = Decoder::new(&payload);
+            assert_eq!(decoder.read_uuid().unwrap(), pack_id);
+            assert_eq!(
+                decoder.read_var_i32().unwrap(),
+                ResourcePackResponseAction::Downloaded.ordinal()
+            );
+            assert!(decoder.is_empty());
+            assert!(matches!(drive.await.unwrap(), ConnectionDrive::Disconnect));
+        }
     }
 
     #[tokio::test]

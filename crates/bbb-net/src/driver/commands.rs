@@ -7,10 +7,11 @@ use bbb_protocol::packets::{
     InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
     PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
     PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
-    SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
-    UseItemOn,
+    RenameItem, ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+    ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
+    TeleportToEntity, UseItem, UseItemOn,
 };
+use uuid::Uuid;
 
 use crate::{
     connection::RawConnection,
@@ -27,6 +28,25 @@ pub(super) async fn send_keep_alive_response(
             Some(packets::encode_configuration_keep_alive(keep_alive_id))
         }
         ConnectionState::Play => Some(packets::encode_play_keep_alive(keep_alive_id)),
+        ConnectionState::Handshake | ConnectionState::Status | ConnectionState::Login => None,
+    };
+    if let Some((packet_id, payload)) = packet {
+        conn.send_packet(packet_id, &payload).await?;
+    }
+    Ok(())
+}
+
+pub(super) async fn send_resource_pack_response(
+    conn: &mut RawConnection,
+    state: ConnectionState,
+    id: Uuid,
+    action: ResourcePackResponseAction,
+) -> Result<()> {
+    let packet = match state {
+        ConnectionState::Configuration => Some(
+            packets::encode_configuration_resource_pack_response(id, action),
+        ),
+        ConnectionState::Play => Some(packets::encode_play_resource_pack_response(id, action)),
         ConnectionState::Handshake | ConnectionState::Status | ConnectionState::Login => None,
     };
     if let Some((packet_id, payload)) = packet {

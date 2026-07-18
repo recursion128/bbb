@@ -6,11 +6,12 @@ use bbb_protocol::packets::{
     InteractEntity, InteractionHand, LockDifficultyCommand, PaddleBoat, PickItemFromBlock,
     PickItemFromEntity, PlaceRecipeCommand, PlayerAbilitiesCommand, PlayerAction, PlayerCommand,
     PlayerInput, PlayerPositionState, RecipeBookChangeSettingsCommand, RecipeBookSeenRecipeCommand,
-    RenameItem, SeenAdvancements, SelectBundleItem, SelectTradeCommand, ServerboundCustomPayload,
-    SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity, TeleportToEntity, UseItem,
-    UseItemOn, Vec3d,
+    RenameItem, ResourcePackResponseAction, SeenAdvancements, SelectBundleItem, SelectTradeCommand,
+    ServerboundCustomPayload, SetBeacon, SetCreativeModeSlot, SignUpdate, SpectateEntity,
+    TeleportToEntity, UseItem, UseItemOn, Vec3d,
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PlayerMoveCommand {
@@ -151,7 +152,9 @@ pub enum NetCommand {
     ChatSessionUpdate(ChatSessionUpdate),
     CustomPayload(ServerboundCustomPayload),
     CustomClickAction(CustomClickAction),
-    DebugSubscriptionRequest { tick_time: bool },
+    DebugSubscriptionRequest {
+        tick_time: bool,
+    },
     AttackEntity(AttackEntity),
     InteractEntity(InteractEntity),
     SetHeldSlot(u8),
@@ -188,6 +191,10 @@ pub enum NetCommand {
     ContainerClose(ContainerCloseRequest),
     ContainerSlotStateChanged(ContainerSlotStateChanged),
     CommandSuggestionRequest(CommandSuggestionRequest),
+    ResourcePackResponse {
+        id: Uuid,
+        action: ResourcePackResponseAction,
+    },
     AcceptCodeOfConduct,
     Disconnect,
 }
