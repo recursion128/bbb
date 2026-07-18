@@ -987,6 +987,33 @@ fn net_set_flying_queues_request() {
 }
 
 #[test]
+fn input_focus_queues_request() {
+    let state = ControlState::new("test");
+    let response = dispatch(
+        ControlRequest {
+            method: "input.focus".to_string(),
+            params: json!({"focused": true}),
+        },
+        &state,
+    );
+
+    assert!(response.ok);
+    assert_eq!(
+        state.requests.lock().unwrap().input_requests,
+        vec![InputControlRequest::Focus { focused: true }]
+    );
+
+    let missing_focused = dispatch(
+        ControlRequest {
+            method: "input.focus".to_string(),
+            params: json!({}),
+        },
+        &state,
+    );
+    assert!(!missing_focused.ok);
+}
+
+#[test]
 fn input_key_queues_request() {
     let state = ControlState::new("test");
     let response = dispatch(

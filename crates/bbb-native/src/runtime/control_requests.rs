@@ -39,7 +39,10 @@ use crate::{
     },
 };
 use crate::{
-    input::{handle_key_input_with_item_runtime, handle_mouse_motion, ClientInputState},
+    input::{
+        handle_focus_change, handle_key_input_with_item_runtime, handle_mouse_motion,
+        ClientInputState,
+    },
     NativeItemRuntime,
 };
 
@@ -69,6 +72,9 @@ pub(crate) fn pump_control_input_requests(
     }
     for request in input_requests {
         match request {
+            InputControlRequest::Focus { focused } => {
+                handle_focus_change(input, world, counters, net_commands, focused);
+            }
             InputControlRequest::Key { key, pressed } => {
                 let state = if pressed {
                     ElementState::Pressed
@@ -531,6 +537,11 @@ mod tests {
         let requests = bbb_control::SharedControlRequests::default();
         {
             let mut guard = requests.lock().unwrap();
+            // A Weston-headless window never receives real keyboard focus, so
+            // the control surface drives the same focus handler first.
+            guard
+                .input_requests
+                .push(InputControlRequest::Focus { focused: true });
             guard.input_requests.push(InputControlRequest::Key {
                 key: InputKeyControl::Forward,
                 pressed: true,
@@ -539,7 +550,7 @@ mod tests {
                 .input_requests
                 .push(InputControlRequest::LookDelta { dx: 24.0, dy: -8.0 });
         }
-        let mut input = ClientInputState::new(true);
+        let mut input = ClientInputState::new(false);
         let mut world = WorldStore::new();
         let mut counters = NetCounters::default();
 

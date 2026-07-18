@@ -131,6 +131,7 @@ pub enum NetControlRequest {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum InputControlRequest {
+    Focus { focused: bool },
     Key { key: InputKeyControl, pressed: bool },
     LookDelta { dx: f64, dy: f64 },
 }

@@ -475,6 +475,28 @@ fn dispatch(request: ControlRequest, state: &ControlState) -> ControlResponse {
         };
     }
 
+    if request.method == "input.focus" {
+        let Some(focused) = bool_param(&request.params, "focused") else {
+            return ControlResponse {
+                ok: false,
+                result: None,
+                error: Some("input.focus requires boolean param focused".to_string()),
+            };
+        };
+        let mut requests_guard = state.requests.lock().expect("control requests poisoned");
+        requests_guard
+            .input_requests
+            .push(InputControlRequest::Focus { focused });
+        return ControlResponse {
+            ok: true,
+            result: Some(serde_json::json!({
+                "queued": true,
+                "pending": requests_guard.input_requests.len()
+            })),
+            error: None,
+        };
+    }
+
     if request.method == "input.key" {
         let Some(key) = string_param(&request.params, "key").and_then(InputKeyControl::from_name)
         else {
