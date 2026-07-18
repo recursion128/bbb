@@ -21,6 +21,8 @@ SOURCE = Path("net/minecraft/commands/synchronization/ArgumentTypeInfos.java")
 
 
 def rust_constant_suffix(resource_id: str) -> str:
+    if resource_id == "minecraft:component":
+        return "RICH_TEXT"
     namespace, path = resource_id.split(":", 1)
     suffix = re.sub(r"[^A-Za-z0-9]+", "_", path).strip("_").upper()
     if namespace == "minecraft":
@@ -68,6 +70,7 @@ def generate(source_root: Path) -> str:
         '        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPES.last(), Some(&"minecraft:uuid"));',
         "        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_BRIGADIER_STRING_ID, 5);",
         "        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_ENTITY_ID, 6);",
+        "        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_RICH_TEXT_ID, 18);",
         "        assert_eq!(VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID, 20);",
         "    }",
         "",
