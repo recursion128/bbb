@@ -5,6 +5,7 @@ mod biomes;
 mod block_states;
 mod chat_types;
 mod damage_types;
+mod element_value;
 mod enchantments;
 mod environment_attributes;
 mod instruments;
@@ -49,6 +50,7 @@ pub use damage_types::{
     DamageTypeDeathMessageType, DamageTypeEffects, DamageTypePresentation,
     DamageTypeProjectionError, DamageTypeScaling, DAMAGE_TYPE_REGISTRY,
 };
+pub use element_value::{RegistryElementData, RegistryElementDecodeError, RegistryElementSource};
 pub use enchantments::{
     EnchantmentAttributeModifier, EnchantmentTooltipDefinition, VanillaEnchantmentIdentity,
     VANILLA_ENCHANTMENT_TOOLTIP_ORDER,

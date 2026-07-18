@@ -10,7 +10,8 @@ use std::{
 };
 
 use crate::{
-    FrozenRegistryHolderSetKind, FurnaceFuelRule, RegistryEntryPayload, RegistryEntrySource,
+    FrozenRegistryHolderSetKind, FurnaceFuelRule, NbtPayloadSummary, RegistryElementSource,
+    RegistryEntryPayload, RegistryEntrySource,
 };
 use crate::{RegistryPacketEntry, RegistrySet, WorldStore};
 
@@ -602,13 +603,14 @@ fn registry_lookup_uses_static_fallback_only_without_server_contents() {
 fn frozen_registry_access_exposes_payload_source_and_atomic_revisions() {
     let mut store = WorldStore::new();
     assert_eq!(store.registry_access_revision(), Default::default());
+    let typed_raw = nbt_compound_with_string("message_id", "example.typed");
 
     store.begin_registry_configuration();
     store.record_registry_entries(
         "minecraft:damage_type",
         0,
         vec![
-            RegistryPacketEntry::with_raw_data("example:typed", vec![0]),
+            RegistryPacketEntry::with_raw_data("example:typed", typed_raw.clone()),
             RegistryPacketEntry::stub("example:known_pack_stub"),
         ],
     );
@@ -638,10 +640,17 @@ fn frozen_registry_access_exposes_payload_source_and_atomic_revisions() {
         typed.payload,
         RegistryEntryPayload::Server {
             has_data: true,
-            raw_data: Some([0].as_slice()),
-            nbt: None,
+            raw_data: Some(typed_raw.as_slice()),
+            nbt: Some(&NbtPayloadSummary {
+                root_type: 10,
+                byte_len: typed_raw.len(),
+            }),
             known_pack_data: None,
         }
+    );
+    assert_eq!(
+        typed.element_data.unwrap().source,
+        RegistryElementSource::NetworkNbt
     );
     assert_eq!(
         access
@@ -1390,6 +1399,10 @@ fn selected_known_pack_materializes_stub_data_before_registry_commit() {
         Some(r#"{"registry":"minecraft:damage_type","source":"core"}"#.as_bytes())
     );
     assert_eq!(
+        entry.element_data().unwrap().source,
+        RegistryElementSource::KnownPackJson
+    );
+    assert_eq!(
         store
             .frozen_registry_access()
             .entry_by_holder_id("minecraft:damage_type", 0)
@@ -1401,6 +1414,35 @@ fn selected_known_pack_materializes_stub_data_before_registry_commit() {
             nbt: None,
             known_pack_data: entry.known_pack_data(),
         }
+    );
+}
+
+#[test]
+fn malformed_network_registry_element_rejects_configuration_atomically() {
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:old")],
+    );
+    store.begin_registry_configuration();
+    store.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![RegistryPacketEntry::with_raw_data(
+            "example:invalid",
+            vec![0],
+        )],
+    );
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:damage_type");
+    assert_eq!(error.validator, "RegistryDataLoader.elementCodec");
+    assert!(error.message.contains("root must not be TAG_End"));
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:damage_type", 0),
+        Some("minecraft:old")
     );
 }
 

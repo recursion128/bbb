@@ -6,9 +6,9 @@ use std::collections::BTreeMap;
 use crate::WorldStore;
 
 use super::{
-    state::PendingRegistryCollection, BiomeClientProjection, BiomeProjectionError,
-    RegistryContentState, RegistryPacket, RegistryPacketEntry, RegistryTagState,
-    ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
+    element_value::decode_known_pack_element, state::PendingRegistryCollection,
+    BiomeClientProjection, BiomeProjectionError, RegistryContentState, RegistryPacket,
+    RegistryPacketEntry, RegistryTagState, ResolvedRegistryEntry, UnresolvedRegistryTagHolder,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -58,6 +58,10 @@ impl WorldStore {
             &mut pending,
         ) {
             self.record_apply_error("registry_configuration_known_packs", &err);
+            return Err(err);
+        }
+        if let Err(err) = validate_pending_registry_element_data(&pending) {
+            self.record_apply_error("registry_configuration_element_data", &err);
             return Err(err);
         }
         if let Err(err) = validate_pending_registry_collection(&pending) {
@@ -479,7 +483,38 @@ fn materialize_known_pack_entry(
             ),
         });
     };
+    let element_data =
+        decode_known_pack_element(&data).map_err(|error| RegistryValidationError {
+            registry: registry.to_string(),
+            validator: "RegistryDataLoader.elementCodec".to_string(),
+            message: format!(
+                "failed to decode known-pack registry element {registry}/{}: {error}",
+                entry.id
+            ),
+        })?;
     entry.known_pack_data = Some(data);
+    entry.element_data = Some(std::sync::Arc::new(element_data));
+    entry.element_data_error = None;
+    Ok(())
+}
+
+fn validate_pending_registry_element_data(
+    pending: &PendingRegistryCollection,
+) -> Result<(), RegistryValidationError> {
+    for (registry, contents) in &pending.contents {
+        for entry in &contents.entries {
+            if let Some(error) = &entry.element_data_error {
+                return Err(RegistryValidationError {
+                    registry: registry.clone(),
+                    validator: "RegistryDataLoader.elementCodec".to_string(),
+                    message: format!(
+                        "failed to decode network registry element {registry}/{}: {error}",
+                        entry.id
+                    ),
+                });
+            }
+        }
+    }
     Ok(())
 }
 

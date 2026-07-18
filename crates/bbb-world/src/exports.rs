@@ -475,6 +475,7 @@ pub use crate::registries::{
     ChatTypeDecorationParameter, ChatTypeProjectionError, EnchantmentTooltipDefinition,
     JukeboxSongPresentation, JukeboxSongProjectionError, JukeboxSoundEvent,
     PaintingVariantClientProjection, PaintingVariantPresentation, PaintingVariantProjectionError,
+    RegistryElementData, RegistryElementDecodeError, RegistryElementSource,
     TrimMaterialPresentation, TrimPatternPresentation, TrimRegistryProjectionError,
     VanillaEnchantmentIdentity, VanillaInstrumentIdentity, VanillaTrimMaterialIdentity,
     VanillaTrimPatternIdentity, BANNER_PATTERN_REGISTRY, CHAT_TYPE_REGISTRY, JUKEBOX_SONG_REGISTRY,

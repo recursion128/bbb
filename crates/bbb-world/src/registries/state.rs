@@ -25,7 +25,11 @@ use serde::{Deserialize, Serialize};
 use crate::chunks::{decode_nbt_payload_summary, NbtPayloadSummary};
 
 use super::biomes::decode_biome_client_projection;
-use super::{BiomeClientProjection, BiomeProjectionError, BlockStateRegistry};
+use super::element_value::decode_network_element;
+use super::{
+    BiomeClientProjection, BiomeProjectionError, BlockStateRegistry, RegistryElementData,
+    RegistryElementDecodeError,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RegistrySet {
@@ -100,6 +104,12 @@ pub struct RegistryPacketEntry {
     /// when the server omits this entry's network payload.
     #[serde(skip)]
     pub known_pack_data: Option<Arc<[u8]>>,
+    /// Source-neutral typed value materialized from either the network NBT or
+    /// selected known-pack JSON before the registry revision is committed.
+    #[serde(skip)]
+    pub(crate) element_data: Option<Arc<RegistryElementData>>,
+    #[serde(skip)]
+    pub(crate) element_data_error: Option<RegistryElementDecodeError>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -145,6 +155,7 @@ pub struct FrozenRegistryEntry<'a> {
     pub resource_id: &'a str,
     pub source: RegistryEntrySource,
     pub payload: RegistryEntryPayload<'a>,
+    pub element_data: Option<&'a RegistryElementData>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -447,6 +458,7 @@ impl<'a> FrozenRegistryAccess<'a> {
                     nbt: entry.nbt.as_ref(),
                     known_pack_data: entry.known_pack_data(),
                 },
+                element_data: entry.element_data(),
             });
         }
         let resource_id = self
@@ -457,6 +469,7 @@ impl<'a> FrozenRegistryAccess<'a> {
             resource_id,
             source: RegistryEntrySource::VanillaFallback,
             payload: RegistryEntryPayload::VanillaFallback,
+            element_data: None,
         })
     }
 
@@ -598,6 +611,7 @@ impl Default for RegistrySet {
 impl RegistryPacketEntry {
     pub fn with_raw_data(id: impl Into<String>, raw_data: Vec<u8>) -> Self {
         let nbt = decode_registry_entry_nbt(raw_data.as_slice());
+        let (element_data, element_data_error) = decoded_network_element(raw_data.as_slice());
         Self {
             id: id.into(),
             has_data: true,
@@ -605,6 +619,8 @@ impl RegistryPacketEntry {
             nbt,
             raw_data: Some(Arc::from(raw_data)),
             known_pack_data: None,
+            element_data,
+            element_data_error,
         }
     }
 
@@ -616,6 +632,8 @@ impl RegistryPacketEntry {
             nbt: None,
             raw_data: None,
             known_pack_data: None,
+            element_data: None,
+            element_data_error: None,
         }
     }
 
@@ -627,6 +645,8 @@ impl RegistryPacketEntry {
             nbt: None,
             raw_data: None,
             known_pack_data: None,
+            element_data: None,
+            element_data_error: None,
         }
     }
 
@@ -636,6 +656,10 @@ impl RegistryPacketEntry {
 
     pub fn known_pack_data(&self) -> Option<&[u8]> {
         self.known_pack_data.as_deref()
+    }
+
+    pub fn element_data(&self) -> Option<&RegistryElementData> {
+        self.element_data.as_deref()
     }
 }
 
@@ -691,6 +715,10 @@ impl From<ProtocolRegistryDataEntry> for RegistryPacketEntry {
         let ProtocolRegistryDataEntry { id, raw_data } = entry;
         let raw_data_len = raw_data.as_ref().map_or(0, Vec::len);
         let nbt = raw_data.as_deref().and_then(decode_registry_entry_nbt);
+        let (element_data, element_data_error) = raw_data
+            .as_deref()
+            .map(decoded_network_element)
+            .unwrap_or_default();
         Self {
             id,
             has_data: raw_data.is_some(),
@@ -698,7 +726,21 @@ impl From<ProtocolRegistryDataEntry> for RegistryPacketEntry {
             nbt,
             raw_data: raw_data.map(Arc::from),
             known_pack_data: None,
+            element_data,
+            element_data_error,
         }
+    }
+}
+
+fn decoded_network_element(
+    raw_data: &[u8],
+) -> (
+    Option<Arc<RegistryElementData>>,
+    Option<RegistryElementDecodeError>,
+) {
+    match decode_network_element(raw_data) {
+        Ok(data) => (Some(Arc::new(data)), None),
+        Err(error) => (None, Some(error)),
     }
 }
 
