@@ -1796,7 +1796,7 @@
         "runtime_side_effect": {
           "evidence": [
             "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
-            "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
+            "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPop"
           ],
           "gap": null,
@@ -1847,7 +1847,7 @@
           "evidence": [
             "crates/bbb-net/src/resource_pack.rs#response_action_for_push",
             "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
-            "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
+            "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"
           ],
           "gap": null,
@@ -3304,7 +3304,7 @@
         "state_guard": {
           "evidence": [
             "crates/bbb-native/src/runtime/tests.rs#client_tick_end_commands_follow_movement_and_require_active_level",
-            "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particles",
+            "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particle_effects",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_only_in_play",
             "vanilla:net/minecraft/client/Minecraft.java#tick",
             "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientTickEnd"
@@ -3317,7 +3317,7 @@
             "crates/bbb-protocol/src/packets/tests.rs#decodes_chunk_batch_and_encodes_client_play_status_packets",
             "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_only_in_play",
             "crates/bbb-native/src/runtime/tests.rs#client_tick_end_commands_follow_movement_and_require_active_level",
-            "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particles",
+            "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particle_effects",
             "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state"
           ],
           "gap": null,
@@ -10908,7 +10908,7 @@
           "evidence": [
             "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_pop",
             "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
-            "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
+            "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPop"
           ],
           "gap": null,
@@ -10968,7 +10968,7 @@
             "crates/bbb-net/src/resource_pack.rs#response_action_for_push",
             "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_response",
             "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
-            "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
+            "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect",
             "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"
           ],
           "gap": null,

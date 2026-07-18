@@ -19,7 +19,7 @@
       },
       "state_guard": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
+          "crates/bbb-net/src/event_stream.rs#play_player_position_gates_moves_until_canonical_accept",
           "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleMovePlayer"
         ],
         "status": "complete"
@@ -27,7 +27,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/movement.rs#decodes_player_position_strictly_and_encodes_ack_pair",
-          "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded"
+          "crates/bbb-net/src/event_stream.rs#play_player_position_gates_moves_until_canonical_accept"
         ],
         "status": "complete"
       }
@@ -113,8 +113,8 @@
       "ack_response": {"evidence": ["vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientTickEnd"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "not-applicable"},
       "command_surface": {"evidence": ["crates/bbb-native/src/runtime.rs#queue_client_tick_end_commands", "crates/bbb-net/src/types/commands.rs#ClientTickEnd", "crates/bbb-net/src/driver/commands.rs#send_client_tick_end"], "status": "complete"},
       "encoder": {"evidence": ["crates/bbb-protocol/src/packets/serverbound.rs#encode_play_client_tick_end", "vanilla:net/minecraft/network/protocol/game/ServerboundClientTickEndPacket.java#STREAM_CODEC"], "status": "complete"},
-      "state_guard": {"evidence": ["crates/bbb-native/src/runtime/tests.rs#client_tick_end_commands_follow_movement_and_require_active_level", "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particles", "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_only_in_play", "vanilla:net/minecraft/client/Minecraft.java#tick", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientTickEnd"], "status": "complete"},
-      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#decodes_chunk_batch_and_encodes_client_play_status_packets", "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_only_in_play", "crates/bbb-native/src/runtime/tests.rs#client_tick_end_commands_follow_movement_and_require_active_level", "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particles", "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state"], "status": "complete"}
+      "state_guard": {"evidence": ["crates/bbb-native/src/runtime/tests.rs#client_tick_end_commands_follow_movement_and_require_active_level", "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particle_effects", "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_only_in_play", "vanilla:net/minecraft/client/Minecraft.java#tick", "vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientTickEnd"], "status": "complete"},
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/tests.rs#decodes_chunk_batch_and_encodes_client_play_status_packets", "crates/bbb-net/src/driver.rs#drive_connection_sends_client_tick_end_only_in_play", "crates/bbb-native/src/runtime/tests.rs#client_tick_end_commands_follow_movement_and_require_active_level", "crates/bbb-native/src/runtime/tests.rs#client_tick_end_is_queued_after_native_tick_commands_and_particle_effects", "crates/bbb-net/src/probe/play.rs#probe_start_configuration_acknowledges_and_resets_configuration_dedup_state"], "status": "complete"}
     },
     "play/serverbound/SERVERBOUND_CLIENT_INFORMATION": {
       "ack_response": {"evidence": ["vanilla:net/minecraft/server/network/ServerGamePacketListenerImpl.java#handleClientInformation"], "gap": "docs/unsupported-features.md#protocol-coverage-for-remaining-required-261-packet-families", "status": "not-applicable"},
@@ -703,7 +703,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/tests.rs#encodes_player_loaded",
-          "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
+          "crates/bbb-net/src/event_stream.rs#play_player_position_gates_moves_until_canonical_accept",
           "crates/bbb-net/src/driver.rs#drive_connection_sends_player_loaded_only_in_play",
           "crates/bbb-native/src/level_load_runtime.rs#player_loaded_waits_for_server_and_player_section_then_sends_once",
           "crates/bbb-native/src/level_load_runtime.rs#player_loaded_uses_vanilla_shortcuts_and_strict_timeout",
@@ -851,7 +851,7 @@
       "decode": {"evidence": ["crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_forget_level_chunk", "vanilla:net/minecraft/network/protocol/game/ClientboundForgetLevelChunkPacket.java#STREAM_CODEC"], "status": "complete"},
       "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::ForgetLevelChunk"], "status": "complete"},
       "runtime_side_effect": {"evidence": ["crates/bbb-native/src/terrain_runtime.rs#maybe_upload_decoded_terrain", "crates/bbb-native/src/terrain_runtime.rs#synchronize_empty_terrain_upload", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleForgetLevelChunk"], "gap": "docs/unsupported-features.md#block-entities-and-terrain", "status": "partial"},
-      "tests": {"evidence": ["crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_forget_level_chunk", "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world", "crates/bbb-world/src/chunks/tests.rs#forgets_loaded_chunk", "crates/bbb-world/src/chunks/tests.rs#forget_missing_chunk_is_counted_but_not_applied", "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters", "crates/bbb-native/src/terrain_runtime.rs#empty_world_transition_clears_uploaded_terrain_once_and_syncs_counters"], "gap": "docs/unsupported-features.md#block-entities-and-terrain", "status": "partial"}
+      "tests": {"evidence": ["crates/bbb-protocol/src/packets/chunks/tests.rs#decodes_forget_level_chunk", "crates/bbb-net/src/event_stream.rs#play_chunk_terrain_packets_emit_matching_events_without_responses", "crates/bbb-net/src/probe/play.rs#probe_applies_chunk_view_and_block_updates_to_world", "crates/bbb-world/src/chunks/tests.rs#forgets_loaded_chunk", "crates/bbb-world/src/chunks/tests.rs#forget_missing_chunk_is_counted_but_not_applied", "crates/bbb-native/src/runtime/events/tests/world_state_lifecycle.rs#terrain_chunk_events_update_world_counters", "crates/bbb-native/src/terrain_runtime.rs#empty_world_transition_clears_incremental_caches_once"], "gap": "docs/unsupported-features.md#block-entities-and-terrain", "status": "partial"}
     },
     "play/clientbound/CLIENTBOUND_GAME_EVENT": {
       "canonical_apply": {"evidence": ["crates/bbb-world/src/level.rs#apply_game_event", "crates/bbb-world/src/client/audio.rs#game_event_positioned_sound", "vanilla:net/minecraft/client/multiplayer/ClientPacketListener.java#handleGameEvent"], "gap": "docs/unsupported-features.md#screens-and-presentation", "status": "partial"},
@@ -983,14 +983,14 @@
       "canonical_apply": {"evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_pop", "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_removes_one_pack_by_id", "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPop"], "status": "complete"},
       "decode": {"evidence": ["crates/bbb-protocol/src/packets/server_presentation.rs#decodes_resource_pack_pop_packet", "vanilla:net/minecraft/network/protocol/common/ClientboundResourcePackPopPacket.java#STREAM_CODEC"], "status": "complete"},
       "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::ResourcePackPop"], "status": "complete"},
-      "runtime_side_effect": {"evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_pop", "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime", "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPop"], "status": "complete"},
+      "runtime_side_effect": {"evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_pop", "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime", "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPop"], "status": "complete"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/server_presentation.rs#decodes_resource_pack_pop_packet", "crates/bbb-net/src/event_stream.rs#play_server_presentation_packets_emit_matching_events_and_cookie_response", "crates/bbb-net/src/probe/play.rs#probe_play_server_presentation_packets_update_world_and_decline_resource_pack", "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_removes_one_pack_by_id", "crates/bbb-world/src/client/server_presentation.rs#resource_pack_pop_without_id_clears_all_packs", "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_presentation_events_update_world_and_world_counters"], "status": "complete"}
     },
     "play/clientbound/CLIENTBOUND_RESOURCE_PACK_PUSH": {
       "canonical_apply": {"evidence": ["crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_push", "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id", "crates/bbb-native/src/startup.rs#ServerResourcePackPolicyArg", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"], "status": "complete"},
       "decode": {"evidence": ["crates/bbb-protocol/src/packets/server_presentation.rs#decodes_resource_pack_push_packet", "vanilla:net/minecraft/network/protocol/common/ClientboundResourcePackPushPacket.java#STREAM_CODEC"], "status": "complete"},
       "ownership": {"evidence": ["crates/bbb-world/src/play_apply.rs#PlayClientbound::ResourcePackPush", "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::ResourcePackPush"], "status": "complete"},
-      "runtime_side_effect": {"evidence": ["crates/bbb-net/src/resource_pack.rs#response_action_for_push", "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_response", "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime", "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"], "status": "complete"},
+      "runtime_side_effect": {"evidence": ["crates/bbb-net/src/resource_pack.rs#response_action_for_push", "crates/bbb-world/src/client/server_presentation.rs#apply_resource_pack_response", "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime", "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect", "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"], "status": "complete"},
       "tests": {"evidence": ["crates/bbb-protocol/src/packets/server_presentation.rs#decodes_resource_pack_push_packet", "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_emits_push_and_response_events", "crates/bbb-net/src/event_stream.rs#play_resource_pack_push_with_invalid_url_sends_invalid_url_response", "crates/bbb-net/src/probe/play.rs#probe_play_server_presentation_packets_update_world_and_decline_resource_pack", "crates/bbb-world/src/client/server_presentation.rs#resource_pack_push_stores_and_upserts_by_id", "crates/bbb-native/src/resource_pack_runtime.rs#accepted_pack_runs_download_apply_pop_restore_lifecycle", "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#server_presentation_events_update_world_and_world_counters"], "status": "complete"}
     },
     "play/clientbound/CLIENTBOUND_RESPAWN": {
@@ -2545,7 +2545,7 @@
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/movement.rs#player_position_update_applies_relative_state",
-          "crates/bbb-net/src/event_stream.rs#play_player_position_waits_for_canonical_ack_and_defers_player_loaded",
+          "crates/bbb-net/src/event_stream.rs#play_player_position_gates_moves_until_canonical_accept",
           "crates/bbb-net/src/probe/play.rs#probe_player_position_echoes_unchanged_mounted_pose",
           "crates/bbb-native/src/runtime/events/tests/session_hud_and_vehicle_events.rs#mounted_player_position_event_acknowledges_unchanged_canonical_pose",
           "crates/bbb-world/src/client/local_player.rs#local_player_position_does_not_move_mounted_player",
@@ -4300,8 +4300,7 @@
       },
       "command_surface": {
         "evidence": [
-          "crates/bbb-native/src/runtime/events/dispatcher.rs#NetEvent::KeepAlive",
-          "crates/bbb-net/src/types/commands.rs#KeepAliveResponse"
+          "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::KeepAlive"
         ],
         "status": "complete"
       },
@@ -4313,14 +4312,16 @@
         "status": "complete"
       },
       "state_guard": {
-        "evidence": ["crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state"],
+        "evidence": [
+          "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::KeepAlive",
+          "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"
+        ],
         "status": "complete"
       },
       "tests": {
         "evidence": [
           "crates/bbb-protocol/src/packets/tests.rs#encodes_play_connection_lifecycle_packets",
-          "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#keep_alive_event_queues_response_before_expiry"
+          "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"
         ],
         "status": "complete"
       }
@@ -4343,7 +4344,7 @@
         "status": "complete"
       },
       "state_guard": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#play_keep_alive_defers_while_ping_sends_immediately"],
+        "evidence": ["crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"],
         "status": "complete"
       },
       "tests": {
@@ -4370,19 +4371,15 @@
       },
       "runtime_side_effect": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#play_keep_alive_defers_while_ping_sends_immediately",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#expired_keep_alive_event_drops_response",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#keep_alive_event_queues_response_before_expiry",
-          "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state",
+          "crates/bbb-net/src/event_stream/play.rs#PlayClientbound::KeepAlive",
+          "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection",
           "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleKeepAlive"
         ],
         "status": "complete"
       },
       "tests": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#play_keep_alive_defers_while_ping_sends_immediately",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#expired_keep_alive_event_drops_response",
-          "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state"
+          "crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"
         ],
         "status": "complete"
       }
@@ -4412,7 +4409,7 @@
         "status": "complete"
       },
       "tests": {
-        "evidence": ["crates/bbb-net/src/event_stream.rs#play_keep_alive_defers_while_ping_sends_immediately"],
+        "evidence": ["crates/bbb-net/src/event_stream.rs#play_keep_alive_and_ping_answer_on_the_connection"],
         "status": "complete"
       }
     },
@@ -4640,9 +4637,9 @@
           "crates/bbb-world/src/registries/store.rs#resolved_registry_entry_by_holder_id",
           "crates/bbb-world/src/registries/store.rs#registry_resource_ids_in_holder_order",
           "crates/bbb-native/src/entity_scene.rs#EntityVariantRegistryLookup",
-          "crates/bbb-world/src/level.rs#dimension_type_client_projection_from_registry",
-          "crates/bbb-world/src/level.rs#dimension_type_shape_from_fields",
-          "crates/bbb-world/src/level.rs#skybox_from_name",
+          "crates/bbb-world/src/registries/dimension_types.rs#dimension_type_client_projection_from_registry",
+          "crates/bbb-world/src/registries/dimension_types.rs#dimension_type_shape_from_fields",
+          "crates/bbb-world/src/registries/dimension_types.rs#skybox_from_name",
           "crates/bbb-world/src/level.rs#built_in_dimension_ambient_light",
           "crates/bbb-world/src/level.rs#can_have_weather",
           "crates/bbb-world/src/registries/tests.rs#registry_holder_lookup_uses_checked_wire_order_identity",
@@ -5267,7 +5264,7 @@
       "runtime_side_effect": {
         "evidence": [
           "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
-          "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
+          "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect",
           "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPop"
         ],
         "status": "complete"
@@ -5301,7 +5298,7 @@
         "evidence": [
           "crates/bbb-net/src/resource_pack.rs#response_action_for_push",
           "crates/bbb-native/src/resource_pack_runtime.rs#ServerResourcePackRuntime",
-          "crates/bbb-native/src/resource_reload.rs#apply_pending_server_resource_pack_reload",
+          "crates/bbb-native/src/resource_reload.rs#apply_server_resource_pack_reload_effect",
           "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleResourcePackPush"
         ],
         "status": "complete"
@@ -5494,19 +5491,15 @@
       },
       "runtime_side_effect": {
         "evidence": [
+          "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::KeepAlive",
           "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#expired_keep_alive_event_drops_response",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#keep_alive_event_queues_response_before_expiry",
-          "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state",
           "vanilla:net/minecraft/client/multiplayer/ClientCommonPacketListenerImpl.java#handleKeepAlive"
         ],
         "status": "complete"
       },
       "tests": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#expired_keep_alive_event_drops_response",
-          "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state"
+          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
         ],
         "status": "complete"
       }
@@ -5567,8 +5560,7 @@
       },
       "command_surface": {
         "evidence": [
-          "crates/bbb-native/src/runtime/events/dispatcher.rs#NetEvent::KeepAlive",
-          "crates/bbb-net/src/types/commands.rs#KeepAliveResponse"
+          "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::KeepAlive"
         ],
         "status": "complete"
       },
@@ -5577,14 +5569,15 @@
         "status": "complete"
       },
       "state_guard": {
-        "evidence": ["crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state"],
+        "evidence": [
+          "crates/bbb-net/src/event_stream/configuration.rs#ConfigurationClientbound::KeepAlive",
+          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
+        ],
         "status": "complete"
       },
       "tests": {
         "evidence": [
-          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff",
-          "crates/bbb-net/src/driver.rs#drive_connection_encodes_deferred_keep_alive_for_current_state",
-          "crates/bbb-native/src/runtime/events/tests/session_protocol_events.rs#keep_alive_event_queues_response_before_expiry"
+          "crates/bbb-net/src/event_stream.rs#configuration_control_responses_precede_finish_and_play_handoff"
         ],
         "status": "complete"
       }
