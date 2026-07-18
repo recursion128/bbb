@@ -1,10 +1,12 @@
 use bbb_protocol::packets::{
-    RegistryData, RegistryDataEntry, RegistryTags, TagNetworkPayload, UpdateTags,
+    KnownPack, RegistryData, RegistryDataEntry, RegistryTags, TagNetworkPayload, UpdateTags,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
     path::Path,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use crate::{
@@ -638,6 +640,7 @@ fn frozen_registry_access_exposes_payload_source_and_atomic_revisions() {
             has_data: true,
             raw_data: Some([0].as_slice()),
             nbt: None,
+            known_pack_data: None,
         }
     );
     assert_eq!(
@@ -649,6 +652,7 @@ fn frozen_registry_access_exposes_payload_source_and_atomic_revisions() {
             has_data: false,
             raw_data: None,
             nbt: None,
+            known_pack_data: None,
         }
     );
     assert_eq!(
@@ -1354,4 +1358,161 @@ fn write_nbt_string(out: &mut Vec<u8>, value: &str) {
     let bytes = value.as_bytes();
     out.extend((bytes.len() as u16).to_be_bytes());
     out.extend(bytes);
+}
+
+#[test]
+fn selected_known_pack_materializes_stub_data_before_registry_commit() {
+    let manager = test_known_packs_manager("materialize");
+    let core = core_known_pack();
+    let data_source = manager
+        .data_source_for(std::slice::from_ref(&core))
+        .unwrap();
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    store.apply_select_known_packs_with_data(vec![core.clone()], vec![core], data_source);
+    store.record_registry_data(RegistryData {
+        registry: "minecraft:damage_type".to_string(),
+        entries: vec![RegistryDataEntry {
+            id: "minecraft:base".to_string(),
+            raw_data: None,
+        }],
+        raw_payload_len: 0,
+    });
+
+    store.finish_registry_configuration().unwrap();
+
+    let entry = store
+        .registry_entry_by_holder_id("minecraft:damage_type", 0)
+        .unwrap();
+    assert!(!entry.has_data);
+    assert_eq!(
+        entry.known_pack_data(),
+        Some(r#"{"registry":"minecraft:damage_type","source":"core"}"#.as_bytes())
+    );
+    assert_eq!(
+        store
+            .frozen_registry_access()
+            .entry_by_holder_id("minecraft:damage_type", 0)
+            .unwrap()
+            .payload,
+        RegistryEntryPayload::Server {
+            has_data: false,
+            raw_data: None,
+            nbt: None,
+            known_pack_data: entry.known_pack_data(),
+        }
+    );
+}
+
+#[test]
+fn selected_known_pack_missing_stub_data_rejects_configuration_atomically() {
+    let manager = test_known_packs_manager("missing");
+    let core = core_known_pack();
+    let data_source = manager
+        .data_source_for(std::slice::from_ref(&core))
+        .unwrap();
+    let mut store = WorldStore::new();
+    store.record_registry_entries(
+        "minecraft:damage_type",
+        0,
+        vec![RegistryPacketEntry::stub("minecraft:old")],
+    );
+    store.begin_registry_configuration();
+    store.apply_select_known_packs_with_data(vec![core.clone()], vec![core], data_source);
+    store.record_registry_data(RegistryData {
+        registry: "minecraft:damage_type".to_string(),
+        entries: vec![RegistryDataEntry {
+            id: "example:missing".to_string(),
+            raw_data: None,
+        }],
+        raw_payload_len: 0,
+    });
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:damage_type");
+    assert_eq!(error.validator, "KnownPacksManager.createResourceManager");
+    assert_eq!(
+        error.message,
+        "selected known packs do not provide registry element minecraft:damage_type/example:missing"
+    );
+    assert_eq!(
+        store.registry_resource_id_by_holder_id("minecraft:damage_type", 0),
+        Some("minecraft:old")
+    );
+}
+
+#[test]
+fn selected_known_pack_list_must_match_its_frozen_data_source() {
+    let manager = test_known_packs_manager("selection-mismatch");
+    let core = core_known_pack();
+    let data_source = manager
+        .data_source_for(std::slice::from_ref(&core))
+        .unwrap();
+    let mut store = WorldStore::new();
+    store.begin_registry_configuration();
+    store.apply_select_known_packs_with_data(vec![core], Vec::new(), data_source);
+
+    let error = store.finish_registry_configuration().unwrap_err();
+
+    assert_eq!(error.registry, "minecraft:root");
+    assert_eq!(
+        error.message,
+        "selected known packs do not match the frozen SERVER_DATA view"
+    );
+}
+
+fn test_known_packs_manager(label: &str) -> Arc<bbb_pack::KnownPacksManager> {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let root = std::env::temp_dir().join(format!(
+        "bbb-world-known-packs-{label}-{}-{nonce}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&root).unwrap();
+    write_test_file(
+        &root.join("version.json"),
+        &format!(
+            r#"{{"id":"26.1","protocol_version":{}}}"#,
+            bbb_protocol::PROTOCOL_VERSION
+        ),
+    );
+    for registry in bbb_protocol::registry_data_types::VANILLA_SYNCHRONIZED_REGISTRY_DATA_TYPES {
+        let (_, registry_path) = registry.resource_id.split_once(':').unwrap();
+        write_test_file(
+            &root
+                .join("data/minecraft")
+                .join(registry_path)
+                .join("base.json"),
+            &format!(
+                r#"{{"registry":"{}","source":"core"}}"#,
+                registry.resource_id
+            ),
+        );
+    }
+    let roots = bbb_pack::PackRoots {
+        mc_code_root: root.clone(),
+        sources_dir: root.clone(),
+        assets_dir: root.join("assets/minecraft"),
+        generated_assets_dir: None,
+        resource_pack_dirs: Vec::new(),
+    };
+    let manager = Arc::new(bbb_pack::KnownPacksManager::load(&roots).unwrap());
+    fs::remove_dir_all(root).unwrap();
+    manager
+}
+
+fn write_test_file(path: &Path, contents: &str) {
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, contents).unwrap();
+}
+
+fn core_known_pack() -> KnownPack {
+    KnownPack {
+        namespace: "minecraft".to_string(),
+        id: "core".to_string(),
+        version: "26.1".to_string(),
+    }
 }

@@ -331,6 +331,7 @@ mod tests {
             raw_data_len: 0,
             raw_data: None,
             nbt: None,
+            known_pack_data: None,
         }];
         let reordered_custom_stat_type_id = i32::try_from(
             stat_type_entries
@@ -349,6 +350,7 @@ mod tests {
                 raw_data_len: 0,
                 raw_data: None,
                 nbt: None,
+                known_pack_data: None,
             }],
         );
         store.apply_award_stats(AwardStats {

@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+use bbb_pack::KnownPackDataSource;
 use serde::{Deserialize, Serialize};
 
 use crate::item_profiles::ItemProfiles;
@@ -119,6 +120,10 @@ pub struct WorldStore {
     pub(crate) debug_query: ClientDebugQueryState,
     #[serde(default)]
     pub(crate) features: ClientFeatureState,
+    #[serde(skip)]
+    pub(crate) selected_known_pack_data: Option<KnownPackDataSource>,
+    #[serde(skip)]
+    pub(crate) known_pack_data_error: Option<String>,
     #[serde(default)]
     pub(crate) player_info: PlayerInfoState,
     #[serde(default)]

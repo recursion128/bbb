@@ -97,8 +97,9 @@ use runtime::{
 use sky_assets::load_sky_textures;
 use startup::{
     build_window, client_framerate_limit_interval, create_event_loop, init_tracing,
-    load_pack_roots, parse_args, run_probe_if_requested, run_status_if_requested, spawn_frame_tick,
-    start_control_api, start_network_if_requested, NetworkHandles,
+    load_known_packs_manager, load_pack_roots, parse_args, run_probe_if_requested,
+    run_status_if_requested, spawn_frame_tick, start_control_api, start_network_if_requested,
+    NetworkHandles,
 };
 use terrain_runtime::{load_terrain_textures, TerrainUploadState};
 
@@ -197,6 +198,7 @@ fn main() -> Result<()> {
 
     let mut pack_roots = load_pack_roots(&args);
     let base_pack_roots = pack_roots.clone();
+    let known_packs_manager = load_known_packs_manager(pack_roots.as_ref());
     let control = ControlState::new(format!(
         "bbb-native {} / protocol {}",
         bbb_protocol::MC_VERSION,
@@ -227,7 +229,12 @@ fn main() -> Result<()> {
     let NetworkHandles {
         events: mut net_events,
         commands: net_commands,
-    } = start_network_if_requested(&runtime, &args, &mut code_of_conduct_acceptance)?;
+    } = start_network_if_requested(
+        &runtime,
+        &args,
+        &mut code_of_conduct_acceptance,
+        known_packs_manager,
+    )?;
     let profile_id = args
         .profile_id
         .unwrap_or_else(|| bbb_protocol::codec::offline_player_uuid(&args.username));

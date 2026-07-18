@@ -31,6 +31,7 @@ impl WorldStore {
         let next_session = self.registries.revision.session.saturating_add(1);
         self.registries = super::RegistrySet::vanilla_26_1();
         self.registries.revision.session = next_session;
+        self.begin_known_pack_configuration();
         self.counters.last_registry_data_registry = None;
         self.counters.last_registry_data_entry_count = 0;
         self.counters.last_update_tags_registry_count = 0;
@@ -42,6 +43,7 @@ impl WorldStore {
     }
 
     pub fn begin_registry_configuration(&mut self) {
+        self.begin_known_pack_configuration();
         self.registries.pending = Some(PendingRegistryCollection::default());
     }
 
@@ -49,6 +51,15 @@ impl WorldStore {
         let Some(mut pending) = self.registries.pending.take() else {
             return Ok(());
         };
+        if let Err(err) = materialize_pending_known_pack_data(
+            self.selected_known_pack_data.as_ref(),
+            self.known_pack_data_error.as_deref(),
+            !self.features.known_packs.selected.is_empty(),
+            &mut pending,
+        ) {
+            self.record_apply_error("registry_configuration_known_packs", &err);
+            return Err(err);
+        }
         if let Err(err) = validate_pending_registry_collection(&pending) {
             self.record_apply_error("registry_configuration_validation", &err);
             return Err(err);
@@ -411,6 +422,65 @@ impl WorldStore {
     pub fn registry_tags(&self, registry: &str) -> Option<&RegistryTagState> {
         self.registries.tags.get(registry)
     }
+}
+
+fn materialize_pending_known_pack_data(
+    source: Option<&bbb_pack::KnownPackDataSource>,
+    source_error: Option<&str>,
+    selected_any: bool,
+    pending: &mut PendingRegistryCollection,
+) -> Result<(), RegistryValidationError> {
+    if let Some(message) = source_error {
+        return Err(RegistryValidationError {
+            registry: "minecraft:root".to_string(),
+            validator: "KnownPacksManager.createResourceManager".to_string(),
+            message: message.to_string(),
+        });
+    }
+    if !selected_any {
+        return Ok(());
+    }
+    let Some(source) = source else {
+        return Err(RegistryValidationError {
+            registry: "minecraft:root".to_string(),
+            validator: "KnownPacksManager.createResourceManager".to_string(),
+            message: "selected known packs have no local SERVER_DATA source".to_string(),
+        });
+    };
+
+    for (registry, contents) in &mut pending.contents {
+        for entry in &mut contents.entries {
+            materialize_known_pack_entry(source, registry, entry)?;
+        }
+    }
+    for packet in &mut pending.registries {
+        for entry in &mut packet.entries {
+            materialize_known_pack_entry(source, &packet.name, entry)?;
+        }
+    }
+    Ok(())
+}
+
+fn materialize_known_pack_entry(
+    source: &bbb_pack::KnownPackDataSource,
+    registry: &str,
+    entry: &mut RegistryPacketEntry,
+) -> Result<(), RegistryValidationError> {
+    if entry.has_data {
+        return Ok(());
+    }
+    let Some(data) = source.registry_element_json_arc(registry, &entry.id) else {
+        return Err(RegistryValidationError {
+            registry: registry.to_string(),
+            validator: "KnownPacksManager.createResourceManager".to_string(),
+            message: format!(
+                "selected known packs do not provide registry element {registry}/{}",
+                entry.id
+            ),
+        });
+    };
+    entry.known_pack_data = Some(data);
+    Ok(())
 }
 
 fn resource_id_matches_search(resource_id: &str, search_term: &str) -> bool {

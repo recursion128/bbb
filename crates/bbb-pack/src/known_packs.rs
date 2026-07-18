@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, path::Path, sync::Arc};
+use std::{collections::BTreeMap, fmt, path::Path, sync::Arc};
 
 use anyhow::{bail, Context, Result};
 use bbb_protocol::{
@@ -11,7 +11,7 @@ use crate::{PackResourceStack, PackRoots, MC_VERSION};
 const VANILLA_NAMESPACE: &str = "minecraft";
 const CORE_PACK_ID: &str = "core";
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct KnownPacksManager {
     available: Vec<KnownPackResources>,
 }
@@ -25,10 +25,36 @@ struct KnownPackResources {
 /// Immutable SERVER_DATA view assembled in the same order as the selected
 /// known packs. Later packs override earlier resources, matching vanilla's
 /// `MultiPackResourceManager` precedence.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct KnownPackDataSource {
     selected: Vec<KnownPack>,
     registry_elements: BTreeMap<(String, String), Arc<[u8]>>,
+}
+
+impl fmt::Debug for KnownPacksManager {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("KnownPacksManager")
+            .field(
+                "available_packs",
+                &self
+                    .available
+                    .iter()
+                    .map(|pack| &pack.info)
+                    .collect::<Vec<_>>(),
+            )
+            .finish()
+    }
+}
+
+impl fmt::Debug for KnownPackDataSource {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("KnownPackDataSource")
+            .field("selected", &self.selected)
+            .field("registry_element_count", &self.registry_elements.len())
+            .finish()
+    }
 }
 
 impl KnownPacksManager {
@@ -147,6 +173,16 @@ impl KnownPackDataSource {
         self.registry_elements
             .get(&(registry.to_string(), resource_id.to_string()))
             .map(AsRef::as_ref)
+    }
+
+    pub fn registry_element_json_arc(
+        &self,
+        registry: &str,
+        resource_id: &str,
+    ) -> Option<Arc<[u8]>> {
+        self.registry_elements
+            .get(&(registry.to_string(), resource_id.to_string()))
+            .map(Arc::clone)
     }
 }
 

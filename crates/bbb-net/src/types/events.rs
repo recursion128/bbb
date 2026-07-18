@@ -1,3 +1,4 @@
+use bbb_pack::KnownPackDataSource;
 use bbb_protocol::packets::{
     CustomPayload, CustomReportDetails, KnownPack, PlayClientbound, PlayerPositionState,
     PlayerPositionUpdate, RegistryData, ResourcePackPop, ResourcePackPush,
@@ -73,6 +74,7 @@ pub enum NetEvent {
     SelectKnownPacks {
         known_packs: Vec<KnownPack>,
         selected_packs: Vec<KnownPack>,
+        data_source: KnownPackDataSource,
     },
     CodeOfConduct {
         text: String,

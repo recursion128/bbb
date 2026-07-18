@@ -284,6 +284,7 @@ fn configuration_state_events_update_snapshot_counters() {
             version: "26.1".to_string(),
         }],
         selected_packs: Vec::new(),
+        data_source: bbb_pack::KnownPackDataSource::default(),
     })
     .unwrap();
     tx.try_send(NetEvent::ResetChat).unwrap();

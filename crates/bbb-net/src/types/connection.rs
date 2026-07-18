@@ -1,6 +1,7 @@
-use std::{fmt, net::ToSocketAddrs, time::Duration};
+use std::{fmt, net::ToSocketAddrs, sync::Arc, time::Duration};
 
 use anyhow::{anyhow, Result};
+use bbb_pack::KnownPacksManager;
 use bbb_protocol::{
     codec::offline_player_uuid,
     packets::{validate_handshake_host, validate_login_username, ClientInformation},
@@ -26,6 +27,8 @@ pub struct ConnectionOptions {
     pub client_information: ClientInformation,
     #[serde(default)]
     pub server_resource_pack_policy: ServerResourcePackPolicy,
+    #[serde(skip)]
+    pub known_packs_manager: Option<Arc<KnownPacksManager>>,
 }
 
 impl ConnectionOptions {
@@ -47,6 +50,7 @@ impl ConnectionOptions {
             probe_after_first_chunk_packets: 0,
             client_information: ClientInformation::default(),
             server_resource_pack_policy: ServerResourcePackPolicy::Decline,
+            known_packs_manager: None,
         })
     }
 

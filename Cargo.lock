@@ -348,6 +348,7 @@ dependencies = [
  "aes",
  "anyhow",
  "base64",
+ "bbb-pack",
  "bbb-protocol",
  "bbb-world",
  "bytes",
@@ -421,6 +422,7 @@ dependencies = [
 name = "bbb-world"
 version = "0.1.0"
 dependencies = [
+ "bbb-pack",
  "bbb-protocol",
  "bbb-render-types",
  "criterion",

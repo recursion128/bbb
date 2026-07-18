@@ -96,6 +96,10 @@ pub struct RegistryPacketEntry {
     pub nbt: Option<NbtPayloadSummary>,
     #[serde(skip)]
     pub raw_data: Option<Arc<[u8]>>,
+    /// Direct-codec JSON supplied by a locally selected SERVER_DATA known pack
+    /// when the server omits this entry's network payload.
+    #[serde(skip)]
+    pub known_pack_data: Option<Arc<[u8]>>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -149,6 +153,7 @@ pub enum RegistryEntryPayload<'a> {
         has_data: bool,
         raw_data: Option<&'a [u8]>,
         nbt: Option<&'a NbtPayloadSummary>,
+        known_pack_data: Option<&'a [u8]>,
     },
     VanillaFallback,
 }
@@ -440,6 +445,7 @@ impl<'a> FrozenRegistryAccess<'a> {
                     has_data: entry.has_data,
                     raw_data: entry.raw_data(),
                     nbt: entry.nbt.as_ref(),
+                    known_pack_data: entry.known_pack_data(),
                 },
             });
         }
@@ -598,6 +604,7 @@ impl RegistryPacketEntry {
             raw_data_len: raw_data.len(),
             nbt,
             raw_data: Some(Arc::from(raw_data)),
+            known_pack_data: None,
         }
     }
 
@@ -608,6 +615,7 @@ impl RegistryPacketEntry {
             raw_data_len,
             nbt: None,
             raw_data: None,
+            known_pack_data: None,
         }
     }
 
@@ -618,11 +626,16 @@ impl RegistryPacketEntry {
             raw_data_len: 0,
             nbt: None,
             raw_data: None,
+            known_pack_data: None,
         }
     }
 
     pub fn raw_data(&self) -> Option<&[u8]> {
         self.raw_data.as_deref()
+    }
+
+    pub fn known_pack_data(&self) -> Option<&[u8]> {
+        self.known_pack_data.as_deref()
     }
 }
 
@@ -684,6 +697,7 @@ impl From<ProtocolRegistryDataEntry> for RegistryPacketEntry {
             raw_data_len,
             nbt,
             raw_data: raw_data.map(Arc::from),
+            known_pack_data: None,
         }
     }
 }

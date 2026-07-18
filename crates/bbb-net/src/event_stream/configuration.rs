@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use bbb_pack::KnownPacksManager;
 use bbb_protocol::packets::{self, ConfigurationClientbound, Transfer};
 use bbb_world::code_of_conduct_text_hash;
 
@@ -16,6 +17,7 @@ impl EventStreamContext {
         self.handle_configuration_packet_with_resource_pack_policy(
             packet,
             ServerResourcePackPolicy::Decline,
+            None,
         )
         .await
     }
@@ -24,6 +26,7 @@ impl EventStreamContext {
         &mut self,
         packet: ConfigurationClientbound,
         resource_pack_policy: ServerResourcePackPolicy,
+        known_packs_manager: Option<&KnownPacksManager>,
     ) -> Result<Option<Transfer>> {
         let mut transfer = None;
         match packet {
@@ -78,7 +81,14 @@ impl EventStreamContext {
                 emit(&self.events, NetEvent::UpdateEnabledFeatures(update)).await?;
             }
             ConfigurationClientbound::SelectKnownPacks { known_packs } => {
-                let selected_packs = Vec::new();
+                let (selected_packs, data_source) = match known_packs_manager {
+                    Some(manager) => {
+                        let selected = manager.select_offered(&known_packs);
+                        let data_source = manager.data_source_for(&selected)?;
+                        (selected, data_source)
+                    }
+                    None => (Vec::new(), bbb_pack::KnownPackDataSource::default()),
+                };
                 let (id, payload) = packets::encode_select_known_packs(&selected_packs)?;
                 self.conn.send_packet(id, &payload).await?;
                 emit(
@@ -86,6 +96,7 @@ impl EventStreamContext {
                     NetEvent::SelectKnownPacks {
                         known_packs,
                         selected_packs,
+                        data_source,
                     },
                 )
                 .await?;

@@ -158,6 +158,7 @@ pub async fn run_event_stream(
                     .handle_configuration_packet_with_resource_pack_policy(
                         packet,
                         options.server_resource_pack_policy,
+                        options.known_packs_manager.as_deref(),
                     )
                     .await?
             }
@@ -890,9 +891,79 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn configuration_select_known_packs_emits_event_and_sends_empty_response() {
+    async fn configuration_select_known_packs_sends_exact_local_intersection() {
         let (client, mut server) = raw_connection_pair().await;
         let (events_tx, mut events_rx) = mpsc::channel(4);
+        let (_commands_tx, commands_rx) = mpsc::channel(1);
+        let mut stream = EventStreamContext {
+            conn: client,
+            events: events_tx,
+            commands: commands_rx,
+            state: ConnectionState::Configuration,
+            player_position_state: PlayerPositionState::default(),
+            chunk_batch_size: ChunkBatchSizeCalculator::new(),
+            server_cookies: BTreeMap::new(),
+            seen_code_of_conduct: false,
+            accepted_code_of_conduct_hash: None,
+            client_information: packets::ClientInformation::default(),
+        };
+
+        let manager = crate::test_support::known_packs_manager("event-stream");
+        stream
+            .handle_configuration_packet_with_resource_pack_policy(
+                packets::ConfigurationClientbound::SelectKnownPacks {
+                    known_packs: vec![packets::KnownPack {
+                        namespace: "minecraft".to_string(),
+                        id: "core".to_string(),
+                        version: "26.1".to_string(),
+                    }],
+                },
+                crate::types::ServerResourcePackPolicy::Decline,
+                Some(&manager),
+            )
+            .await
+            .unwrap();
+
+        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
+            .await
+            .expect("select-known-packs response should be sent")
+            .unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_SELECT_KNOWN_PACKS
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_string(32_767).unwrap(), "minecraft");
+        assert_eq!(decoder.read_string(32_767).unwrap(), "core");
+        assert_eq!(decoder.read_string(32_767).unwrap(), "26.1");
+        assert!(decoder.is_empty());
+
+        let event = timeout(Duration::from_secs(1), events_rx.recv())
+            .await
+            .expect("select-known-packs event should be emitted")
+            .unwrap();
+        match event {
+            NetEvent::SelectKnownPacks {
+                known_packs,
+                selected_packs,
+                data_source,
+            } => {
+                assert_eq!(known_packs.len(), 1);
+                assert_eq!(known_packs[0].namespace, "minecraft");
+                assert_eq!(known_packs[0].id, "core");
+                assert_eq!(known_packs[0].version, "26.1");
+                assert_eq!(selected_packs, known_packs);
+                assert_eq!(data_source.selected_packs(), selected_packs);
+            }
+            other => panic!("expected select-known-packs event, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn configuration_select_known_packs_emits_event_and_sends_empty_response() {
+        let (client, mut server) = raw_connection_pair().await;
+        let (events_tx, mut events_rx) = mpsc::channel(1);
         let (_commands_tx, commands_rx) = mpsc::channel(1);
         let mut stream = EventStreamContext {
             conn: client,
@@ -918,10 +989,7 @@ mod tests {
             .await
             .unwrap();
 
-        let (packet_id, payload) = timeout(Duration::from_secs(1), server.read_packet())
-            .await
-            .expect("select-known-packs response should be sent")
-            .unwrap();
+        let (packet_id, payload) = server.read_packet().await.unwrap();
         assert_eq!(
             packet_id,
             ids::configuration::SERVERBOUND_SELECT_KNOWN_PACKS
@@ -929,24 +997,14 @@ mod tests {
         let mut decoder = Decoder::new(&payload);
         assert_eq!(decoder.read_var_i32().unwrap(), 0);
         assert!(decoder.is_empty());
-
-        let event = timeout(Duration::from_secs(1), events_rx.recv())
-            .await
-            .expect("select-known-packs event should be emitted")
-            .unwrap();
-        match event {
-            NetEvent::SelectKnownPacks {
-                known_packs,
+        assert!(matches!(
+            events_rx.recv().await,
+            Some(NetEvent::SelectKnownPacks {
                 selected_packs,
-            } => {
-                assert_eq!(known_packs.len(), 1);
-                assert_eq!(known_packs[0].namespace, "minecraft");
-                assert_eq!(known_packs[0].id, "core");
-                assert_eq!(known_packs[0].version, "26.1");
-                assert!(selected_packs.is_empty());
-            }
-            other => panic!("expected select-known-packs event, got {other:?}"),
-        }
+                data_source,
+                ..
+            }) if selected_packs.is_empty() && data_source.selected_packs().is_empty()
+        ));
     }
 
     #[tokio::test]

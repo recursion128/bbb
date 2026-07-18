@@ -99,6 +99,53 @@ fn login_starts_fresh_registry_session_but_play_reconfiguration_keeps_access() {
 }
 
 #[test]
+fn invalid_configuration_registry_commit_requests_disconnect() {
+    let mut world = WorldStore::new();
+    let mut counters = NetCounters::default();
+    let (command_tx, mut command_rx) = mpsc::channel(1);
+
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Configuration,
+    })
+    .unwrap();
+    assert_eq!(
+        drain_net_events(
+            &mut rx,
+            &mut world,
+            &mut counters,
+            &Some(command_tx.clone())
+        ),
+        1
+    );
+    world.record_registry_data(bbb_protocol::packets::RegistryData {
+        registry: "minecraft:wolf_variant".to_string(),
+        entries: Vec::new(),
+        raw_payload_len: 0,
+    });
+
+    let (tx, mut rx) = mpsc::channel(1);
+    tx.try_send(NetEvent::StateChanged {
+        state: bbb_net::ConnectionState::Play,
+    })
+    .unwrap();
+    assert_eq!(
+        drain_net_events(&mut rx, &mut world, &mut counters, &Some(command_tx)),
+        1
+    );
+
+    assert_eq!(command_rx.try_recv().unwrap(), NetCommand::Disconnect);
+    assert_eq!(
+        world
+            .apply_diagnostics()
+            .last_apply_error
+            .as_ref()
+            .map(|error| error.source.as_str()),
+        Some("registry_configuration_validation")
+    );
+}
+
+#[test]
 fn chunk_cache_events_update_world_counters() {
     let (tx, mut rx) = mpsc::channel(2);
     tx.try_send(NetEvent::Play(PlayClientbound::SetChunkCacheCenter(

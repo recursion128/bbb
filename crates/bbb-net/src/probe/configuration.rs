@@ -59,11 +59,21 @@ impl ProbeContext {
                 self.world.apply_update_enabled_features(update);
             }
             ConfigurationClientbound::SelectKnownPacks { known_packs } => {
-                let selected_packs = Vec::new();
+                let (selected_packs, data_source) = match self.known_packs_manager.as_deref() {
+                    Some(manager) => {
+                        let selected = manager.select_offered(&known_packs);
+                        let data_source = manager.data_source_for(&selected)?;
+                        (selected, data_source)
+                    }
+                    None => (Vec::new(), bbb_pack::KnownPackDataSource::default()),
+                };
                 let (id, payload) = packets::encode_select_known_packs(&selected_packs)?;
                 self.conn.send_packet(id, &payload).await?;
-                self.world
-                    .apply_select_known_packs(known_packs, selected_packs);
+                self.world.apply_select_known_packs_with_data(
+                    known_packs,
+                    selected_packs,
+                    data_source,
+                );
             }
             ConfigurationClientbound::CookieRequest(request) => {
                 let payload = self.server_cookies.get(&request.key).map(Vec::as_slice);
@@ -135,7 +145,7 @@ mod tests {
     use bbb_world::{
         code_of_conduct_text_hash, ChunkPos, DialogState, RegistryPacketEntry, TransferTargetState,
     };
-    use std::{collections::BTreeMap, time::Duration};
+    use std::{collections::BTreeMap, sync::Arc, time::Duration};
     use tokio::net::TcpListener;
     use tokio::time::timeout;
     use uuid::Uuid;
@@ -184,6 +194,63 @@ mod tests {
             .is_err());
         assert_eq!(probe.state, ConnectionState::Play);
         assert!(probe.play_tick.is_some());
+    }
+
+    #[tokio::test]
+    async fn probe_selects_local_core_and_materializes_registry_stubs() {
+        let (client, mut server) = raw_connection_pair().await;
+        let manager = Arc::new(crate::test_support::known_packs_manager("probe"));
+        let mut probe = ProbeContext::new(client);
+        probe.state = ConnectionState::Configuration;
+        probe.known_packs_manager = Some(Arc::clone(&manager));
+        probe.world.begin_registry_configuration();
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::SelectKnownPacks {
+                known_packs: vec![KnownPack {
+                    namespace: "minecraft".to_string(),
+                    id: "core".to_string(),
+                    version: "26.1".to_string(),
+                }],
+            })
+            .await
+            .unwrap();
+        let (packet_id, payload) = server.read_packet().await.unwrap();
+        assert_eq!(
+            packet_id,
+            ids::configuration::SERVERBOUND_SELECT_KNOWN_PACKS
+        );
+        let mut decoder = Decoder::new(&payload);
+        assert_eq!(decoder.read_var_i32().unwrap(), 1);
+        assert_eq!(decoder.read_string(32_767).unwrap(), "minecraft");
+        assert_eq!(decoder.read_string(32_767).unwrap(), "core");
+        assert_eq!(decoder.read_string(32_767).unwrap(), "26.1");
+        assert!(decoder.is_empty());
+
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::RegistryData(RegistryData {
+                registry: "minecraft:damage_type".to_string(),
+                entries: vec![RegistryDataEntry {
+                    id: "minecraft:base".to_string(),
+                    raw_data: None,
+                }],
+                raw_payload_len: 0,
+            }))
+            .await
+            .unwrap();
+        probe
+            .handle_configuration_packet(ConfigurationClientbound::Finish)
+            .await
+            .unwrap();
+
+        assert_eq!(probe.world.known_packs().selected.len(), 1);
+        assert!(probe
+            .world
+            .registry_entry_by_holder_id("minecraft:damage_type", 0)
+            .unwrap()
+            .known_pack_data()
+            .is_some());
+        assert_eq!(probe.state, ConnectionState::Play);
     }
 
     #[tokio::test]

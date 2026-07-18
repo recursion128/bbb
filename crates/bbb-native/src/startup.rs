@@ -1,11 +1,12 @@
 use std::{
-    convert::Infallible, fmt, net::SocketAddr, path::PathBuf, str::FromStr, thread, time::Duration,
+    convert::Infallible, fmt, net::SocketAddr, path::PathBuf, str::FromStr, sync::Arc, thread,
+    time::Duration,
 };
 
 use anyhow::{ensure, Context, Result};
 use bbb_control::ControlState;
 use bbb_net::{ConnectionOptions, NetCommand, NetEvent, ServerResourcePackPolicy};
-use bbb_pack::PackRoots;
+use bbb_pack::{KnownPacksManager, PackRoots};
 use bbb_protocol::packets::{
     ClientChatVisibility, ClientInformation, ClientMainHand, ClientParticleStatus,
 };
@@ -311,6 +312,8 @@ pub(crate) fn run_probe_if_requested(runtime: &Runtime, args: &Args) -> Result<b
     }
 
     let mut options = connection_options_from_args(args)?;
+    let roots = load_pack_roots(args);
+    options.known_packs_manager = load_known_packs_manager(roots.as_ref());
     options.client_information = client_information_from_args(args)?;
     options.probe_after_first_chunk_packets = args.probe_after_first_chunk_packets;
     let report = runtime.block_on(bbb_net::run_probe(options))?;
@@ -331,6 +334,19 @@ pub(crate) fn load_pack_roots(args: &Args) -> Option<PackRoots> {
     }
 }
 
+pub(crate) fn load_known_packs_manager(
+    roots: Option<&PackRoots>,
+) -> Option<Arc<KnownPacksManager>> {
+    let roots = roots?;
+    match KnownPacksManager::load(roots) {
+        Ok(manager) => Some(Arc::new(manager)),
+        Err(err) => {
+            tracing::warn!(?err, "local 26.1 known packs unavailable");
+            None
+        }
+    }
+}
+
 fn apply_resource_pack_dirs(
     roots: PackRoots,
     dirs: impl IntoIterator<Item = PathBuf>,
@@ -342,6 +358,7 @@ pub(crate) fn start_network_if_requested(
     runtime: &Runtime,
     args: &Args,
     code_of_conduct: &mut CodeOfConductAcceptance,
+    known_packs_manager: Option<Arc<KnownPacksManager>>,
 ) -> Result<NetworkHandles> {
     if !args.connect_server {
         return Ok(NetworkHandles {
@@ -353,6 +370,7 @@ pub(crate) fn start_network_if_requested(
     let mut options = connection_options_from_args(args)?;
     options.client_information = client_information_from_args(args)?;
     options.accepted_code_of_conduct_hash = code_of_conduct.accepted_hash_for_options(&options);
+    options.known_packs_manager = known_packs_manager;
     code_of_conduct.set_connected_server(&options);
     let (tx, rx) = mpsc::channel(8192);
     let (command_tx, command_rx) = mpsc::channel(256);

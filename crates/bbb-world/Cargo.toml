@@ -10,6 +10,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+bbb-pack = { path = "../bbb-pack" }
 bbb-protocol = { path = "../bbb-protocol" }
 bbb-render-types = { path = "../bbb-render-types" }
 hecs = { workspace = true }

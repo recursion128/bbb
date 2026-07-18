@@ -1,6 +1,7 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::{Context, Result};
+use bbb_pack::KnownPacksManager;
 use bbb_protocol::packets::{self, ClientIntent, PlayerPositionState};
 use bbb_world::{BlockPos, ChunkPos, LevelEventSoundRandomState, WorldStore};
 use tokio::time::{timeout, Interval};
@@ -35,6 +36,7 @@ struct ProbeContext {
     last_unsupported_packet_state: Option<ConnectionState>,
     last_unsupported_packet_id: Option<i32>,
     last_unsupported_packet_len: Option<usize>,
+    known_packs_manager: Option<Arc<KnownPacksManager>>,
 }
 
 #[derive(Debug)]
@@ -87,6 +89,7 @@ impl ProbeContext {
             last_unsupported_packet_state: None,
             last_unsupported_packet_id: None,
             last_unsupported_packet_len: None,
+            known_packs_manager: None,
         }
     }
 
@@ -151,6 +154,7 @@ pub async fn run_probe(options: ConnectionOptions) -> Result<ProbeReport> {
 
 async fn run_probe_inner(options: ConnectionOptions) -> Result<ProbeReport> {
     let mut probe = ProbeContext::new(RawConnection::connect(&options.address, None).await?);
+    probe.known_packs_manager = options.known_packs_manager.clone();
     probe.accepted_code_of_conduct_hash = options.accepted_code_of_conduct_hash;
     probe.client_information = options.client_information.clone();
     let mut packets_seen = 0usize;

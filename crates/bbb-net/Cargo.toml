@@ -13,6 +13,7 @@ workspace = true
 aes = { workspace = true }
 anyhow = { workspace = true }
 base64 = { workspace = true }
+bbb-pack = { path = "../bbb-pack" }
 bbb-protocol = { path = "../bbb-protocol" }
 bbb-world = { path = "../bbb-world" }
 bytes = { workspace = true }

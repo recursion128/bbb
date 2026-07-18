@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use bbb_pack::KnownPackDataSource;
 use bbb_protocol::packets::{
     KnownPack as ProtocolKnownPack, UpdateEnabledFeatures as ProtocolUpdateEnabledFeatures,
 };
@@ -40,6 +41,14 @@ pub struct KnownPackState {
 }
 
 impl WorldStore {
+    pub(crate) fn begin_known_pack_configuration(&mut self) {
+        self.features.known_packs = ClientKnownPacksState::default();
+        self.selected_known_pack_data = None;
+        self.known_pack_data_error = None;
+        self.counters.known_packs_offered = 0;
+        self.counters.known_packs_selected = 0;
+    }
+
     pub fn apply_update_enabled_features(&mut self, packet: ProtocolUpdateEnabledFeatures) {
         self.counters.update_enabled_features_packets += 1;
         let mut enabled = BTreeSet::new();
@@ -71,6 +80,36 @@ impl WorldStore {
         known_packs: Vec<ProtocolKnownPack>,
         selected_packs: Vec<ProtocolKnownPack>,
     ) {
+        self.apply_select_known_packs_inner(known_packs, selected_packs, None);
+    }
+
+    pub fn apply_select_known_packs_with_data(
+        &mut self,
+        known_packs: Vec<ProtocolKnownPack>,
+        selected_packs: Vec<ProtocolKnownPack>,
+        data_source: KnownPackDataSource,
+    ) {
+        self.apply_select_known_packs_inner(known_packs, selected_packs, Some(data_source));
+    }
+
+    fn apply_select_known_packs_inner(
+        &mut self,
+        known_packs: Vec<ProtocolKnownPack>,
+        selected_packs: Vec<ProtocolKnownPack>,
+        data_source: Option<KnownPackDataSource>,
+    ) {
+        let (data, error) = match data_source {
+            Some(data) if data.selected_packs() == selected_packs => (Some(data), None),
+            Some(_) => (
+                None,
+                Some("selected known packs do not match the frozen SERVER_DATA view".to_string()),
+            ),
+            None if selected_packs.is_empty() => (None, None),
+            None => (
+                None,
+                Some("selected known packs have no frozen SERVER_DATA view".to_string()),
+            ),
+        };
         self.counters.select_known_packs_packets += 1;
         self.features.known_packs = ClientKnownPacksState {
             offered: known_packs.into_iter().map(KnownPackState::from).collect(),
@@ -81,6 +120,8 @@ impl WorldStore {
         };
         self.counters.known_packs_offered = self.features.known_packs.offered.len();
         self.counters.known_packs_selected = self.features.known_packs.selected.len();
+        self.selected_known_pack_data = data;
+        self.known_pack_data_error = error;
     }
 
     pub fn known_packs(&self) -> &ClientKnownPacksState {
@@ -208,5 +249,13 @@ mod tests {
         assert_eq!(counters.select_known_packs_packets, 1);
         assert_eq!(counters.known_packs_offered, 2);
         assert_eq!(counters.known_packs_selected, 1);
+
+        store.begin_registry_configuration();
+        assert_eq!(store.known_packs(), &ClientKnownPacksState::default());
+        assert!(store.selected_known_pack_data.is_none());
+        assert!(store.known_pack_data_error.is_none());
+        assert_eq!(store.counters().select_known_packs_packets, 1);
+        assert_eq!(store.counters().known_packs_offered, 0);
+        assert_eq!(store.counters().known_packs_selected, 0);
     }
 }

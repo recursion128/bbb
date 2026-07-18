@@ -206,13 +206,18 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             }
             NetEvent::StateChanged {
                 state: ConnectionState::Play,
-            } => {
-                if world.finish_registry_configuration().is_ok() {
+            } => match world.finish_registry_configuration() {
+                Ok(()) => {
                     if let Some(audio_events) = audio_events.as_deref_mut() {
                         synchronize_audio_registries_from_world(world, audio_events);
                     }
                 }
-            }
+                Err(_) => {
+                    if let Some(tx) = net_commands {
+                        let _ = tx.try_send(NetCommand::Disconnect);
+                    }
+                }
+            },
             NetEvent::ServicesProfileKeys { public_keys } => {
                 world.replace_services_profile_keys(public_keys);
             }
@@ -250,8 +255,9 @@ pub(in crate::runtime) fn drain_net_events_with_sinks_and_debug(
             NetEvent::SelectKnownPacks {
                 known_packs,
                 selected_packs,
+                data_source,
             } => {
-                world.apply_select_known_packs(known_packs, selected_packs);
+                world.apply_select_known_packs_with_data(known_packs, selected_packs, data_source);
             }
             NetEvent::CodeOfConduct { text } => {
                 world.apply_code_of_conduct(text);
