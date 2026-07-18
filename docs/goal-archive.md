@@ -19235,3 +19235,23 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
   missing/mismatch fail-closed 和 native disconnect 均有 focused regression。packet coverage
   因而闭合 known-packs runtime 与 response command surface；完整 typed `RegistryAccess`
   element codec 工作仍在 unsupported ledger 独立维护。
+
+## 2026-07-18：可玩门禁阶段 1 基础游玩输入闭环
+
+- [x] 移动与视角闭环：`input.focus/key/look_delta` control 注入经真实
+  focus/key/mouse handler 驱动 local-player prediction，live gate 断言位置位移、
+  look yaw 变化、move 命令入队且服务器零位置纠正（fixture 同步等价 movement 断言）。
+- [x] 破坏/放置闭环：`input.mouse_button` 合成点击经真实 mouse handler 走
+  pick→creative 即时破坏→跳跃放置全流程，live gate 用 `world.probe_block` 断言
+  目标方块被服务器破坏并放回，且 pick/player_action/swing/use_item_on 命令与
+  block update 全部入账。打通过程中修复三项连接级断裂：keep-alive 回执改在
+  连接线程内联应答（对齐 vanilla `handleKeepAlive` 无 ensureRunningOnSameThread）、
+  net event/command 通道容量放大避免长帧背压卡死事件流、control dispatch 移入
+  blocking pool 防止阻塞式 world 读锁饿死全部 async worker。
+- [x] 连接活性收尾：事件流对 PlayerPosition/StartConfiguration 的两处阻塞回执
+  往返改为 pending-state 门控——流只记 pending 并继续读包，主循环 apply 后经
+  命令通道回发 `AcceptTeleport`/`AcknowledgeConfiguration`，由流补发 accept+
+  位置回显/chat-ack+config-ack；teleport pending 期间出站 move 结构性丢弃
+  （vanilla 同语义），主线程 ClientTickEnd 改 try_send。连接任务自此没有任何
+  等待游戏线程的 await，main↔stream 死锁环消除。live 验证：服务端 playerdata
+  证实移动/转向/pick/destroy 全部经新协议同步，live gate 8 阶段全绿。

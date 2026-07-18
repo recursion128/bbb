@@ -4,10 +4,13 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 goal="$repo_root/goal.md"
 
-# workflow-v3 reduced goal.md to 564 lines on 2026-07-15. The 660-line cap
-# leaves about 17% headroom. When the cap is reached, archive completed history
-# before changing the limit; do not raise it to accommodate coverage prose.
-max_goal_lines=660
+# workflow-v3 reduced goal.md to 564 lines on 2026-07-15; the original 660
+# cap left about 17% headroom. 2026-07-18: after archiving the playable-gate
+# stage-1 input-loop history, the queued frame-loop/terrain architecture items
+# still needed room, so the cap moved to 700 (~4% headroom). When the cap is
+# reached, archive completed history before changing the limit; do not raise
+# it to accommodate coverage prose.
+max_goal_lines=700
 line_count=$(wc -l <"$goal")
 failed=0
 

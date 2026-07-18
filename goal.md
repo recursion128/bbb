@@ -447,25 +447,11 @@ recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实�
 
 剩余阶段：
 
-1. **基础游玩**：通过 control/CLI 驱动实体交互、hotbar、容器、
-   inventory、chat/command、声音/粒子与 deterministic screenshot/readback，验证 server
-   acknowledgement、world 结果和呈现 side effect，而不只检查命令入队。
-   移动与视角已闭环（2026-07-18）：`input.focus/key/look_delta` control 注入经真实
-   focus/key/mouse handler 驱动 local-player prediction，live gate 断言位置位移、
-   look yaw 变化、move 命令入队且服务器零位置纠正（fixture 同步等价 movement 断言）。
-   破坏/放置已闭环（2026-07-18）：`input.mouse_button` 合成点击经真实 mouse handler
-   走 pick→creative 即时破坏→跳跃放置全流程，live gate 用 `world.probe_block` 断言
-   目标方块被服务器破坏并放回，且 pick/player_action/swing/use_item_on 命令与
-   block update 全部入账；打通过程中修复了三项连接级断裂——keep-alive 回执改在
-   连接线程内联应答（对齐 vanilla `handleKeepAlive` 无 ensureRunningOnSameThread）、
-   net event/command 通道容量放大避免长帧背压卡死事件流、control dispatch 移入
-   blocking pool 防止阻塞式 world 读锁饿死全部 async worker。
-   连接活性收尾（2026-07-18）：事件流对 PlayerPosition/StartConfiguration 的两处
-   阻塞回执往返改为 pending-state 门控——流只记 pending 并继续读包，主循环 apply
-   后经命令通道回发 `AcceptTeleport`/`AcknowledgeConfiguration`，由流补发 accept+
-   位置回显/chat-ack+config-ack；teleport pending 期间出站 move 结构性丢弃（vanilla
-   同语义），主线程 ClientTickEnd 改 try_send。连接任务自此没有任何等待游戏线程的
-   await，main↔stream 死锁环消除。
+1. **基础游玩**：通过 control/CLI 驱动实体交互、hotbar、容器、inventory、
+   chat/command、声音/粒子与 deterministic screenshot/readback，验证 server
+   acknowledgement、world 结果和呈现 side effect，而不只检查命令入队。已闭环：
+   移动与视角、破坏/放置、连接活性（pending-state 门控消除 main↔stream 死锁
+   环）——见 `docs/goal-archive.md` 2026-07-18 归档小节。
 2. **生命周期场景**：覆盖 respawn、dimension change、death、resource-pack push/pop、
    configuration re-entry、disconnect/reconnect 与第二 session registry；断言旧 world、
    registry、renderer/audio runtime 和 pending request 不泄漏。
@@ -475,34 +461,23 @@ recorded fixture smoke 并明确报告未运行 live 部分。阶段 1/2 的实�
 
 连接与主循环解耦及持续架构优化（高优先级跟进，2026-07-18 排队）：
 
-0. **terrain 全量重建增量化**（最高优先，2026-07-18 实测归因）：现状
-   `maybe_upload_decoded_terrain` 在任何 block/light/biome 变化 250ms 静默后
-   把全部 chunk 重新提取、重新 mesh、一次性重新上传，llvmpipe 环境实测单次
-   22-23 秒；服务端持续更新流（雪/光照/随机 tick）会让它背靠背连环，渲染
-   线程（同时是合成输入与 net command 的逐帧消费者）分钟级饿死——这是 live
-   gate 全部随机断裂/输入失效的总根源（慢帧插桩 `slow frame`/`slow pump
-   sections` 已落地，client.log 可直接归因）。已做 20s 全量重建节流止血
-   （`TERRAIN_FULL_REBUILD_MIN_INTERVAL`，首次构建与显式 reload 放行）；
-   根治 slice：按 chunk 缓存 mesh 结果，变化只重建 dirty chunk 再拼接上传，
-   吞吐目标是单次重建耗时与 dirty chunk 数成正比。
+0. **terrain 全量重建增量化**（最高优先，2026-07-18 实测归因）：任何 block/
+   light/biome 变化触发全量重 mesh 上传，实测单次 22-23 秒且持续更新流下背靠背
+   连环，渲染线程（合成输入与 net command 的逐帧消费者）分钟级饿死——live gate
+   随机断裂总根源。慢帧插桩与 20s 节流止血已落地；根治：按 chunk 缓存 mesh，
+   只重建 dirty chunk 再拼接上传，重建耗时与 dirty 数成正比。
 1. **control 面 lock-free 快照**：主循环每帧经 arc-swap 发布不可变快照，control 读
-   彻底脱离 live world 锁（现状 spawn_blocking 是止血：阻塞读仍在 blocking pool 排队，
-   长帧下 driver 高频轮询会积压）。WorldStore 过大不可整体克隆，按 gate 高频读域
-   渐进（pose/net·world counters/probe_block 先行），live 快照与 lock 路径读数一致
-   作为门禁断言。
-2. **模拟与渲染解耦**：把「应用服务端状态 + client tick」移入独立 20Hz 模拟线程，
-   渲染线程按帧消费快照；terrain 全量重建长帧（见条目 0，实测 22-23 秒/次）
-   自此只影响画面不影响 canonical 状态与连接。动
-   runtime.rs 单线程所有权假设（input handler 持 `&mut WorldStore`），属大型重构，
-   需先出设计再切片；canonical 输入路径与 tick 语义不得分叉（P0 红线）。
-3. **rust/tokio/hecs 特性驱动的持续优化**（性能、健壮性、可维护性，长期方向，
-   随 slice 顺带落地而非独立大改）：rust 侧用类型状态/newtype 收紧协议与连接状态机
-   的非法状态空间、用 `Arc` 不可变共享替代大结构克隆；tokio 侧连接/控制任务保持
-   零阻塞 await（spawn_blocking 仅限止血过渡）、用 `watch`/arc-swap 发布快照、
-   JoinSet 结构化管理任务生命周期；hecs 侧（bbb-world 已依赖 0.10）把 per-tick
-   实体动画/物理推进收敛为 archetype 友好的 ECS 查询批处理，替代逐实体分派，
-   并作为 dual-path 实体迁移的统一落点。每项优化必须保持线上可观测语义 vanilla
-   一致（P0 红线），以 focused tests + live gate 稳定性作为回归判据。
+   彻底脱离 live world 锁（spawn_blocking 仅是止血）。按 gate 高频读域渐进
+   （pose/counters/probe_block 先行），快照与 lock 路径读数一致作为门禁断言。
+2. **模拟与渲染解耦**：「应用服务端状态 + client tick」移入独立 20Hz 模拟线程，
+   渲染按帧消费快照；terrain 长帧（条目 0）自此只影响画面。动 runtime.rs 单线程
+   所有权假设，属大型重构需先出设计再切片；canonical 输入路径与 tick 语义不得
+   分叉（P0 红线）。
+3. **rust/tokio/hecs 特性驱动的持续优化**（长期方向，随 slice 顺带落地）：rust 用
+   类型状态/newtype 收紧协议状态机非法空间、`Arc` 共享替代克隆；tokio 连接/控制
+   任务零阻塞 await、`watch`/arc-swap 快照、JoinSet 管理任务生命周期；hecs 把
+   per-tick 实体动画/物理收敛为 ECS 查询批处理，作为 dual-path 实体迁移统一落
+   点。线上语义 vanilla 一致（P0 红线），focused tests + live gate 为回归判据。
 
 完成标准：fixture smoke 可在 clean checkout 的标准测试环境运行；live `playable-gate`
 能一条命令完成上述场景并稳定回收；合法 vanilla session 无 panic、hang、required unknown
