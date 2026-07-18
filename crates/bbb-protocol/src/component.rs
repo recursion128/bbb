@@ -139,9 +139,12 @@ pub(crate) fn decode_component_style_from_decoder(
     let style = decode_nbt_summary_from_decoder(decoder)?.ok_or_else(|| {
         ProtocolError::InvalidData("component style network nbt root is absent".to_string())
     })?;
-    component_style_from_nbt_value(&style).ok_or_else(|| {
-        ProtocolError::InvalidData("invalid component style network nbt".to_string())
-    })
+    codec::validate_component_style_nbt(&style, "component style network nbt")
+        .map_err(ProtocolError::InvalidData)?;
+    let NbtSummaryValue::Compound(entries) = style else {
+        unreachable!("validated component style must be a compound")
+    };
+    Ok(component_style_from_entries(&entries))
 }
 
 /// Decodes a validated standalone vanilla `Style.Serializer.CODEC` value.
