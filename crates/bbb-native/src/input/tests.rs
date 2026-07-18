@@ -107,6 +107,9 @@ use bbb_protocol::packets::{
     WrittenBookContentSummary, VANILLA_COMMAND_ARGUMENT_TYPE_MESSAGE_ID,
 };
 use bbb_protocol::packets::{ChatTypeBound, ChatTypeHolder};
+use bbb_protocol::stat_types::{
+    VANILLA_STAT_TYPE_ENTITY_KILLED_ID, VANILLA_STAT_TYPE_ITEM_CRAFTED_ID,
+};
 use bbb_protocol::tropical_fish_patterns::VANILLA_TROPICAL_FISH_PATTERN_STRIPEY_PACKED_ID;
 use bbb_protocol::{
     MC_BUILD_TIME, MC_DATA_PACK_FORMAT, MC_DATA_VERSION, MC_DATA_VERSION_SERIES,
@@ -21564,7 +21567,7 @@ fn stats_screen_control_tab_and_digits_skip_disabled_tabs() {
     world.apply_award_stats(AwardStats {
         stats: vec![
             StatUpdate {
-                stat_type_id: 1,
+                stat_type_id: VANILLA_STAT_TYPE_ITEM_CRAFTED_ID,
                 value_id: bbb_protocol::item_types::vanilla_item_type_for_resource_id(
                     "minecraft:apple",
                 )
@@ -21573,7 +21576,7 @@ fn stats_screen_control_tab_and_digits_skip_disabled_tabs() {
                 amount: 1,
             },
             StatUpdate {
-                stat_type_id: 6,
+                stat_type_id: VANILLA_STAT_TYPE_ENTITY_KILLED_ID,
                 value_id: VANILLA_ENTITY_TYPE_ZOMBIE_ID,
                 amount: 1,
             },

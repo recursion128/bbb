@@ -1,5 +1,7 @@
 use anyhow::{bail, Result};
 use bbb_protocol::packets::{self, ChatAcknowledgement, PlayClientbound};
+#[cfg(test)]
+use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 use bbb_world::{
     ChunkPos, PlayApplyEffects, RemovedPlayerVehicleTeleportRecovery, VehicleMoveReport,
 };
@@ -370,12 +372,12 @@ mod tests {
             .handle_play_packet(PlayClientbound::AwardStats(AwardStats {
                 stats: vec![
                     StatUpdate {
-                        stat_type_id: 8,
+                        stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                         value_id: 10,
                         amount: 3,
                     },
                     StatUpdate {
-                        stat_type_id: 0,
+                        stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                         value_id: 4,
                         amount: 11,
                     },
@@ -386,8 +388,14 @@ mod tests {
 
         let report = probe.finish(8, ChunkPos { x: 0, z: 0 });
 
-        assert_eq!(report.world.stat_value(8, 10), Some(3));
-        assert_eq!(report.world.stat_value(0, 4), Some(11));
+        assert_eq!(
+            report.world.stat_value(VANILLA_STAT_TYPE_CUSTOM_ID, 10),
+            Some(3)
+        );
+        assert_eq!(
+            report.world.stat_value(VANILLA_STAT_TYPE_BLOCK_MINED_ID, 4),
+            Some(11)
+        );
         assert_eq!(report.world_counters.award_stats_packets, 1);
         assert_eq!(report.world_counters.award_stats_entries_received, 2);
         assert_eq!(report.world_counters.last_award_stats_entry_count, 2);

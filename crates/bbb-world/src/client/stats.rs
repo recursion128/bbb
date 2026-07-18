@@ -153,6 +153,10 @@ mod tests {
     use super::*;
     use crate::RegistryPacketEntry;
     use bbb_protocol::packets::{AwardStats, StatUpdate};
+    use bbb_protocol::stat_types::{
+        VANILLA_STAT_TYPES, VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID,
+        VANILLA_STAT_TYPE_ITEM_CRAFTED_ID,
+    };
 
     #[test]
     fn award_stats_updates_canonical_values_and_last_batch() {
@@ -161,30 +165,33 @@ mod tests {
         store.apply_award_stats(AwardStats {
             stats: vec![
                 StatUpdate {
-                    stat_type_id: 8,
+                    stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                     value_id: 10,
                     amount: 3,
                 },
                 StatUpdate {
-                    stat_type_id: 0,
+                    stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                     value_id: 4,
                     amount: 11,
                 },
                 StatUpdate {
-                    stat_type_id: 8,
+                    stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                     value_id: 10,
                     amount: 5,
                 },
             ],
         });
 
-        assert_eq!(store.stat_value(8, 10), Some(5));
-        assert_eq!(store.stat_value(0, 4), Some(11));
-        assert_eq!(store.stat_value(1, 4), None);
+        assert_eq!(store.stat_value(VANILLA_STAT_TYPE_CUSTOM_ID, 10), Some(5));
         assert_eq!(
-            store.stat_identity(8, 10),
+            store.stat_value(VANILLA_STAT_TYPE_BLOCK_MINED_ID, 4),
+            Some(11)
+        );
+        assert_eq!(store.stat_value(VANILLA_STAT_TYPE_ITEM_CRAFTED_ID, 4), None);
+        assert_eq!(
+            store.stat_identity(VANILLA_STAT_TYPE_CUSTOM_ID, 10),
             Some(&StatIdentityState {
-                stat_type_id: 8,
+                stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                 value_id: 10,
                 stat_type_resource_id: Some("minecraft:custom".to_string()),
                 value_registry: Some("minecraft:custom_stat".to_string()),
@@ -192,22 +199,22 @@ mod tests {
                 formatter: Some("DISTANCE".to_string()),
             })
         );
-        assert!(store.stat_identity(0, 4).is_some_and(|identity| identity
-            .stat_type_resource_id
-            .as_deref()
-            == Some("minecraft:mined")
-            && identity.value_registry.as_deref() == Some("minecraft:block")
-            && identity.value_resource_id.is_some()));
+        assert!(store
+            .stat_identity(VANILLA_STAT_TYPE_BLOCK_MINED_ID, 4)
+            .is_some_and(|identity| identity.stat_type_resource_id.as_deref()
+                == Some("minecraft:mined")
+                && identity.value_registry.as_deref() == Some("minecraft:block")
+                && identity.value_resource_id.is_some()));
         assert_eq!(
             store.client_stats().values,
             vec![
                 StatValueState {
-                    stat_type_id: 0,
+                    stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                     value_id: 4,
                     amount: 11,
                 },
                 StatValueState {
-                    stat_type_id: 8,
+                    stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                     value_id: 10,
                     amount: 5,
                 },
@@ -218,17 +225,17 @@ mod tests {
             Some(&StatsUpdateState {
                 entries: vec![
                     StatValueState {
-                        stat_type_id: 8,
+                        stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                         value_id: 10,
                         amount: 3,
                     },
                     StatValueState {
-                        stat_type_id: 0,
+                        stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                         value_id: 4,
                         amount: 11,
                     },
                     StatValueState {
-                        stat_type_id: 8,
+                        stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                         value_id: 10,
                         amount: 5,
                     },
@@ -248,7 +255,7 @@ mod tests {
         let mut store = WorldStore::new();
         store.apply_award_stats(AwardStats {
             stats: vec![StatUpdate {
-                stat_type_id: 0,
+                stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                 value_id: 1,
                 amount: 2,
             }],
@@ -256,7 +263,10 @@ mod tests {
 
         store.apply_award_stats(AwardStats { stats: Vec::new() });
 
-        assert_eq!(store.stat_value(0, 1), Some(2));
+        assert_eq!(
+            store.stat_value(VANILLA_STAT_TYPE_BLOCK_MINED_ID, 1),
+            Some(2)
+        );
         assert_eq!(
             store.last_stats_update(),
             Some(&StatsUpdateState {
@@ -273,19 +283,20 @@ mod tests {
     #[test]
     fn award_stats_retains_explicit_unresolved_identity_without_guessing() {
         let mut store = WorldStore::new();
+        let unknown_stat_type_id = i32::try_from(VANILLA_STAT_TYPES.len()).unwrap();
         store.apply_award_stats(AwardStats {
             stats: vec![StatUpdate {
-                stat_type_id: 99,
+                stat_type_id: unknown_stat_type_id,
                 value_id: 123,
                 amount: 7,
             }],
         });
 
-        assert_eq!(store.stat_value(99, 123), Some(7));
+        assert_eq!(store.stat_value(unknown_stat_type_id, 123), Some(7));
         assert_eq!(
-            store.stat_identity(99, 123),
+            store.stat_identity(unknown_stat_type_id, 123),
             Some(&StatIdentityState {
-                stat_type_id: 99,
+                stat_type_id: unknown_stat_type_id,
                 value_id: 123,
                 stat_type_resource_id: None,
                 value_registry: None,
@@ -314,17 +325,21 @@ mod tests {
     #[test]
     fn award_stats_resolves_reordered_session_holder_identity() {
         let mut store = WorldStore::new();
-        store.record_registry_entries(
-            "minecraft:stat_type",
-            0,
-            vec![RegistryPacketEntry {
-                id: "minecraft:custom".to_string(),
-                has_data: false,
-                raw_data_len: 0,
-                raw_data: None,
-                nbt: None,
-            }],
-        );
+        let stat_type_entries = vec![RegistryPacketEntry {
+            id: "minecraft:custom".to_string(),
+            has_data: false,
+            raw_data_len: 0,
+            raw_data: None,
+            nbt: None,
+        }];
+        let reordered_custom_stat_type_id = i32::try_from(
+            stat_type_entries
+                .iter()
+                .position(|entry| entry.id == "minecraft:custom")
+                .unwrap(),
+        )
+        .unwrap();
+        store.record_registry_entries("minecraft:stat_type", 0, stat_type_entries);
         store.record_registry_entries(
             "minecraft:custom_stat",
             0,
@@ -338,13 +353,15 @@ mod tests {
         );
         store.apply_award_stats(AwardStats {
             stats: vec![StatUpdate {
-                stat_type_id: 0,
+                stat_type_id: reordered_custom_stat_type_id,
                 value_id: 0,
                 amount: 250,
             }],
         });
 
-        let identity = store.stat_identity(0, 0).unwrap();
+        let identity = store
+            .stat_identity(reordered_custom_stat_type_id, 0)
+            .unwrap();
         assert_eq!(
             identity.stat_type_resource_id.as_deref(),
             Some("minecraft:custom")

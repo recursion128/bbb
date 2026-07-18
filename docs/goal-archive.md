@@ -19075,3 +19075,13 @@ PauseScreen、DebugOptionsScreen 主体均已落地（完成史见 goal-archive�
 - Replaced numeric Brigadier String, Entity, and Message parser ids across world, net, control, and
   native command-tree fixtures. A generator-emitted structure-scoped guard rejects direct and
   conditional numeric `CommandArgumentParser.type_id` values outside protocol wire samples.
+
+# 2026-07-18: Derive semantic StatType ids
+
+- Extended the generated `Stats.java` catalog with named ids for all nine StatType registrations
+  and replaced numeric mined, crafted, killed, killed-by, and custom holder ids across world, net,
+  control, and native semantic consumers.
+- Unknown-holder fixtures now derive the first invalid catalog id, and the reordered-session
+  fixture derives its holder id from the explicit entry sequence. A generator-emitted reverse
+  guard covers field construction, queries, comparisons, JSON projections, and numeric aliases
+  while leaving protocol wire samples under their codec owner.

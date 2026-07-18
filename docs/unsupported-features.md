@@ -173,6 +173,10 @@ Owner: `scripts/` + each generated catalog's semantic crate
   `ArgumentTypeInfos.bootstrap` for every `CommandArgumentParser.type_id`; the dedicated command
   argument generator owns the public 57-entry catalog and reverse guard, while protocol decoder
   wire samples remain separately owned.
+  AwardStats semantic fixtures, queries, and control projections must use the named StatType ids
+  generated from `Stats.java`; unknown holders derive the first invalid catalog id, while custom
+  registry-order fixtures derive ids from their explicit entry order. The gameplay-id generator
+  guards world, net, control, and native consumers; protocol wire samples remain separately owned.
   All `bbb-native` semantic consumers must use generated entity-data serializer constants rather
   than numeric fields or local aliases across presentation, runtime, event, and input fixtures.
   All `bbb-world` semantic consumers must follow the same rule across inline tests and test

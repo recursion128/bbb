@@ -1,6 +1,8 @@
 use super::*;
 use std::time::{Duration, Instant};
 
+use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
+
 #[test]
 fn services_profile_keys_event_enables_world_validation() {
     let (tx, mut rx) = mpsc::channel(1);
@@ -213,12 +215,12 @@ fn award_stats_event_updates_world_state_and_world_counters() {
     tx.try_send(NetEvent::Play(PlayClientbound::AwardStats(AwardStats {
         stats: vec![
             StatUpdate {
-                stat_type_id: 8,
+                stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                 value_id: 10,
                 amount: 3,
             },
             StatUpdate {
-                stat_type_id: 0,
+                stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                 value_id: 4,
                 amount: 11,
             },
@@ -234,8 +236,11 @@ fn award_stats_event_updates_world_state_and_world_counters() {
         1
     );
 
-    assert_eq!(world.stat_value(8, 10), Some(3));
-    assert_eq!(world.stat_value(0, 4), Some(11));
+    assert_eq!(world.stat_value(VANILLA_STAT_TYPE_CUSTOM_ID, 10), Some(3));
+    assert_eq!(
+        world.stat_value(VANILLA_STAT_TYPE_BLOCK_MINED_ID, 4),
+        Some(11)
+    );
     assert_eq!(world.counters().award_stats_packets, 1);
     assert_eq!(world.counters().award_stats_entries_received, 2);
     assert_eq!(world.counters().last_award_stats_entry_count, 2);
@@ -245,12 +250,12 @@ fn award_stats_event_updates_world_state_and_world_counters() {
         Some(&bbb_world::StatsUpdateState {
             entries: vec![
                 bbb_world::StatValueState {
-                    stat_type_id: 8,
+                    stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                     value_id: 10,
                     amount: 3,
                 },
                 bbb_world::StatValueState {
-                    stat_type_id: 0,
+                    stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                     value_id: 4,
                     amount: 11,
                 },

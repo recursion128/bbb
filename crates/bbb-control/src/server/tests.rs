@@ -43,6 +43,7 @@ use bbb_protocol::packets::{
 };
 use bbb_protocol::particle_types::VANILLA_PARTICLE_TYPE_HEART_ID;
 use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_STONECUTTER_ID;
+use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 use bbb_world::{
     BlockEntityRecord, ChunkColumn, ChunkSection, ChunkState, HeightmapData, LightData,
     PaletteDomain, PaletteKind, PalettedContainerData, WorldDimension, WorldStore,
@@ -2550,17 +2551,17 @@ fn client_stats_reads_canonical_world_state() {
         store.apply_award_stats(AwardStats {
             stats: vec![
                 StatUpdate {
-                    stat_type_id: 8,
+                    stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                     value_id: 10,
                     amount: 3,
                 },
                 StatUpdate {
-                    stat_type_id: 0,
+                    stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                     value_id: 4,
                     amount: 11,
                 },
                 StatUpdate {
-                    stat_type_id: 8,
+                    stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                     value_id: 10,
                     amount: 5,
                 },
@@ -2579,16 +2580,28 @@ fn client_stats_reads_canonical_world_state() {
 
     assert!(response.ok);
     let stats = response.result.unwrap();
-    assert_eq!(stats["values"][0]["stat_type_id"], 0);
+    assert_eq!(
+        stats["values"][0]["stat_type_id"],
+        VANILLA_STAT_TYPE_BLOCK_MINED_ID
+    );
     assert_eq!(stats["values"][0]["value_id"], 4);
     assert_eq!(stats["values"][0]["amount"], 11);
-    assert_eq!(stats["values"][1]["stat_type_id"], 8);
+    assert_eq!(
+        stats["values"][1]["stat_type_id"],
+        VANILLA_STAT_TYPE_CUSTOM_ID
+    );
     assert_eq!(stats["values"][1]["value_id"], 10);
     assert_eq!(stats["values"][1]["amount"], 5);
-    assert_eq!(stats["last_update"]["entries"][0]["stat_type_id"], 8);
+    assert_eq!(
+        stats["last_update"]["entries"][0]["stat_type_id"],
+        VANILLA_STAT_TYPE_CUSTOM_ID
+    );
     assert_eq!(stats["last_update"]["entries"][0]["value_id"], 10);
     assert_eq!(stats["last_update"]["entries"][0]["amount"], 3);
-    assert_eq!(stats["last_update"]["entries"][2]["stat_type_id"], 8);
+    assert_eq!(
+        stats["last_update"]["entries"][2]["stat_type_id"],
+        VANILLA_STAT_TYPE_CUSTOM_ID
+    );
     assert_eq!(stats["last_update"]["entries"][2]["value_id"], 10);
     assert_eq!(stats["last_update"]["entries"][2]["amount"], 5);
 }

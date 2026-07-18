@@ -29,6 +29,11 @@ use bbb_protocol::packets::{
     ShowDialog, StatUpdate, UpdateAdvancements, UpdateMobEffect, WrittenBookContentSummary,
 };
 use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_MISC_ID;
+use bbb_protocol::stat_types::{
+    VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID,
+    VANILLA_STAT_TYPE_ENTITY_KILLED_BY_ID, VANILLA_STAT_TYPE_ENTITY_KILLED_ID,
+    VANILLA_STAT_TYPE_ITEM_CRAFTED_ID,
+};
 use bbb_protocol::{NbtSummaryEntry, NbtSummaryValue};
 use bbb_world::{
     BlockPos, ChunkColumn, ChunkPos, ChunkSection, ChunkState, HeightmapData, LightData,
@@ -7465,27 +7470,27 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
     world.apply_award_stats(AwardStats {
         stats: vec![
             StatUpdate {
-                stat_type_id: 8,
+                stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                 value_id: 6,
                 amount: 12_345,
             },
             StatUpdate {
-                stat_type_id: 6,
+                stat_type_id: VANILLA_STAT_TYPE_ENTITY_KILLED_ID,
                 value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
                 amount: 2,
             },
             StatUpdate {
-                stat_type_id: 0,
+                stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                 value_id: stone_block_id,
                 amount: 9,
             },
             StatUpdate {
-                stat_type_id: 7,
+                stat_type_id: VANILLA_STAT_TYPE_ENTITY_KILLED_BY_ID,
                 value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
                 amount: 1,
             },
             StatUpdate {
-                stat_type_id: 1,
+                stat_type_id: VANILLA_STAT_TYPE_ITEM_CRAFTED_ID,
                 value_id: bbb_protocol::item_types::vanilla_item_type_for_resource_id(
                     "minecraft:snowball",
                 )
@@ -7494,7 +7499,7 @@ fn hud_stats_screen_waits_for_response_then_projects_general_item_and_mob_rows()
                 amount: 7,
             },
             StatUpdate {
-                stat_type_id: 1,
+                stat_type_id: VANILLA_STAT_TYPE_ITEM_CRAFTED_ID,
                 value_id: bbb_protocol::item_types::vanilla_item_type_for_resource_id(
                     "minecraft:apple",
                 )
@@ -7717,12 +7722,12 @@ fn stats_screen_narration_matches_tabs_general_items_and_mobs_widgets() {
     world.apply_award_stats(AwardStats {
         stats: vec![
             StatUpdate {
-                stat_type_id: 8,
+                stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                 value_id: 6,
                 amount: 12_345,
             },
             StatUpdate {
-                stat_type_id: 1,
+                stat_type_id: VANILLA_STAT_TYPE_ITEM_CRAFTED_ID,
                 value_id: bbb_protocol::item_types::vanilla_item_type_for_resource_id(
                     "minecraft:apple",
                 )
@@ -7731,12 +7736,12 @@ fn stats_screen_narration_matches_tabs_general_items_and_mobs_widgets() {
                 amount: 2,
             },
             StatUpdate {
-                stat_type_id: 6,
+                stat_type_id: VANILLA_STAT_TYPE_ENTITY_KILLED_ID,
                 value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
                 amount: 2,
             },
             StatUpdate {
-                stat_type_id: 7,
+                stat_type_id: VANILLA_STAT_TYPE_ENTITY_KILLED_BY_ID,
                 value_id: bbb_protocol::entity_types::VANILLA_ENTITY_TYPE_ZOMBIE_ID,
                 amount: 1,
             },

@@ -9,6 +9,8 @@ use anyhow::{anyhow, Context, Result};
 use bbb_protocol::heightmap_types::VANILLA_HEIGHTMAP_WORLD_SURFACE_ID;
 #[cfg(test)]
 use bbb_protocol::recipe_wire_types::VANILLA_RECIPE_BOOK_CATEGORY_CRAFTING_EQUIPMENT_ID;
+#[cfg(test)]
+use bbb_protocol::stat_types::{VANILLA_STAT_TYPE_BLOCK_MINED_ID, VANILLA_STAT_TYPE_CUSTOM_ID};
 use bbb_protocol::{
     frame::encode_packet,
     packets::{self, ClientIntent, PlayerPositionState, Transfer},
@@ -2283,12 +2285,12 @@ mod tests {
         let stats = packets::AwardStats {
             stats: vec![
                 packets::StatUpdate {
-                    stat_type_id: 8,
+                    stat_type_id: VANILLA_STAT_TYPE_CUSTOM_ID,
                     value_id: 10,
                     amount: 3,
                 },
                 packets::StatUpdate {
-                    stat_type_id: 0,
+                    stat_type_id: VANILLA_STAT_TYPE_BLOCK_MINED_ID,
                     value_id: 4,
                     amount: 11,
                 },
